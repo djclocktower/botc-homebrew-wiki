@@ -35,7 +35,7 @@
  */
 
 import {
-  SHEET, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
+  SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet,
 } from './script.js';
@@ -200,8 +200,14 @@ function swashTitle(text, options, shadowDX, shadowDY) {
   return wrap;
 }
 
-/* one character row: icon, name (+ jinx partner icons), ability */
-function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul, mark) {
+/* one character row: icon, name (+ jinx partner icons), ability.
+   `heightEm` is the row's drawn height; `naturalEm` is what its own text
+   needs. They differ when a section is dealing out spare height (an uneven
+   column split, or a short script spreading down the page) — and the icon
+   goes by the second, because it belongs beside the NAME, not in the middle
+   of the padding under it. Centring it in the drawn row let it sink away
+   from its own name as the rows stretched. */
+function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul, mark, naturalEm) {
   const { textSize, nameSize } = options;
   const colW = SHEET.textOffsetX + SHEET.textWidth * widthMul; // column width in % of sheet
   const textLeftPct = (SHEET.textOffsetX / colW) * 100;
@@ -216,7 +222,8 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
 
   const iconPx = ed(iconEm) * (char.iconScale || 1);
   const iconLeft = ((char.iconDX || 0) / 100) * SHEET_W;
-  const iconTop = ed((heightEm - iconEm) / 2 + 0.5) - (iconPx - ed(iconEm)) / 2 + e(char.iconDY || 0);
+  const blockEm = Math.min(naturalEm == null ? heightEm : naturalEm, heightEm);
+  const iconTop = ed((blockEm - iconEm) / 2 + 0.5) - (iconPx - ed(iconEm)) / 2 + e(char.iconDY || 0);
   if (options.iconFrame && options.iconFrame !== 'none') {
     // a token-style backing: a parchment disc, or just its ring
     const pad = iconPx * 0.1;
@@ -505,7 +512,7 @@ export function layoutSheet(script, options, requestRender) {
     let fit = 1;
     for (let iter = 0; iter < 3; iter++) {
       const neededEm = totalNeedAt(fit);
-      const f = clamp(availFor(0) / neededEm, 0.42, 1.55);
+      const f = clamp(availFor(0) / neededEm, 0.42, FIT.growMax);
       if (Math.abs(f - fit) < 0.002) { fit = f; break; }
       fit = f;
     }
@@ -537,6 +544,26 @@ export function layoutSheet(script, options, requestRender) {
         d = found.d;
         pages = found.pages;
       }
+      /* ── fill the sheets it settled on ──
+         Packing greedily at one density fills every page but the last and
+         leaves that one ragged: 40 characters came out as a full sheet and
+         a sheet two-thirds empty. So once the page COUNT is settled, solve
+         the density that fills them all — the same sum as the single-sheet
+         fit, over the room on every page rather than one, and under the
+         same cap. Verified by re-packing: growing the type wraps more
+         abilities, so a density that does not hold is stepped back down
+         rather than trusted. */
+      const n = pages.length;
+      let room = 0;
+      for (let i = 0; i < n; i++) room += availFor(i);
+      let grown = d;
+      for (let k = 0; k < 3; k++) {
+        grown = clamp(room / (totalNeedAt(grown) + (n - 1) * SHEET.sectionGap * 0.5), d, FIT.growMax);
+      }
+      for (let tries = 0; tries < 10 && grown > d + 1e-9; tries++, grown -= 0.02) {
+        const p3 = pack(grown, false);
+        if (p3.length <= n) { d = grown; pages = p3; break; }
+      }
     }
   } else {
     pages = pack(d, !options.paginate);
@@ -552,24 +579,50 @@ export function layoutSheet(script, options, requestRender) {
     return needs.map((n) => n + per);
   };
 
+  /* ── take up the rest of the page ──
+     The density stops growing at FIT.growMax, so a page holding less than
+     that fills is left with room under its last row. Rather than leave it
+     there as a hole at the foot of the sheet, the rows and the gaps between
+     sections stretch into it (up to FIT.spreadMax of what they need), and
+     what is still left after that is split above and below the block so the
+     sheet reads as laid out rather than as run out. A page that is already
+     full solves stretch = 1 and no offset, so nothing about a normal script
+     moves. Team HEADINGS are left out of the stretch: a heading band is type,
+     not space, and stretching it would just push the name off its rule. */
   pages.forEach((page) => {
-    let cursorPx = topFor(page.index) * U;
     page.header = pageHasHeader(page.index);
     page.topEm = topFor(page.index);
+    const gapCount = Math.max(0, page.sections.length - 1);
+    const fixedEm = page.sections.reduce((a, m) => a + (m.head || 0), 0);
+    const flexEm = page.sections.reduce((a, m) => a + m.need - (m.head || 0), 0) +
+      gapCount * SHEET.sectionGap;
+    const roomEm = availFor(page.index) / d;
+    const stretch = flexEm > 0.01
+      ? clamp((roomEm - fixedEm) / flexEm, 1, FIT.spreadMax) : 1;
+    const gapEm = SHEET.sectionGap * stretch;
+    const spareEm = Math.max(0, roomEm - fixedEm - flexEm * stretch);
+    page.stretch = stretch;
+    let cursorPx = topFor(page.index) * U + ed(spareEm * FIT.topShare);
     page.sections.forEach((m, i) => {
       const topPx = cursorPx;
-      const heightPx = ed(m.need);
-      cursorPx += heightPx + ed(SHEET.sectionGap);
+      const headEmSec = m.head || 0;
+      const rowsNeed = (m.need - headEmSec) * stretch;
+      const heightPx = ed(rowsNeed + headEmSec);
+      m.gapAboveEm = i ? gapEm : SHEET.sectionGap;
+      m.gapBelowEm = gapEm;
+      cursorPx += heightPx + ed(gapEm);
       m.topPx = topPx;
       m.heightPx = heightPx;
-      m.headPx = ed(m.head || 0);
-      const rowsNeed = m.need - (m.head || 0);
-      m.leftHeights = layoutEven ? dealEven(m.leftNeeds, rowsNeed) : m.rowHeights;
+      m.headPx = ed(headEmSec);
+      const rows = layoutEven ? null : m.rowHeights.map((h) => h * stretch);
+      m.leftHeights = layoutEven ? dealEven(m.leftNeeds, rowsNeed) : rows;
       m.rightHeights = layoutEven
         ? dealEven(m.rightNeeds, rowsNeed)
-        : m.rowHeights.slice(m.shift ? 1 : 0);
+        : rows.slice(m.shift ? 1 : 0);
+      m.leftNatural = layoutEven ? m.leftNeeds : m.rowHeights;
+      m.rightNatural = layoutEven ? m.rightNeeds : m.rowHeights.slice(m.shift ? 1 : 0);
       m.rowsTopPx = topPx + m.headPx;
-      m.rightTopPx = ((!layoutEven && m.shift) ? topPx + ed(m.rowHeights[0] || 0) : topPx) + m.headPx;
+      m.rightTopPx = ((!layoutEven && m.shift) ? topPx + ed(rows[0] || 0) : topPx) + m.headPx;
       m.first = i === 0;
     });
   });
@@ -821,7 +874,12 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     // fade are baked into the art's alpha.
     if (si > 0 && options.showDividers && !dvT.hidden) {
       const divH = 0.5 * dvT.scale;
-      const divTop = topPx - ed(SHEET.sectionGap) + ed(0.7962 - divH / 2) + e(dvT.dy);
+      // the rule rides just under the top of its section, so a gap that
+      // stretched to fill the page carries it along instead of leaving it
+      // stranded at the old pitch above
+      const gapAbove = sec.gapAboveEm != null ? sec.gapAboveEm : SHEET.sectionGap;
+      const divTop = topPx - ed(gapAbove) +
+        ed(0.7962 * (gapAbove / SHEET.sectionGap) - divH / 2) + e(dvT.dy);
       const op = String(clamp((options.dividerOpacity == null ? 1 : options.dividerOpacity) * dvT.opacity, 0, 1));
       wrap.append(img(resolveSrc(dvT.src) || ART + 'divider-taper.png', {
         position: 'absolute', left: (8.3 + dvT.dx) + '%', top: px(divTop),
@@ -872,8 +930,15 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
          em (any density above the auto fit) — flooring the last label at
          the minimum whatever it said. It is positional, not a long-word
          problem: a five-letter LORIC collapsed exactly like TRAVELLERS did. */
-      const ownH = heightPx + ed(SHEET.sectionGap);
-      const spanH = isLast ? Math.max(ownH, 87.5 * U - topPx) : ownH;
+      const ownH = heightPx + ed(sec.gapBelowEm != null ? sec.gapBelowEm : SHEET.sectionGap);
+      /* and only ever a bonus: on a page the content does not reach the
+         foot of, that run down to the garland is mostly empty ribbon, and
+         centring the label on it walked the word away from the rows it
+         names — a three-character script printed OUTSIDER halfway down a
+         blank sheet. The band may reach past its own height, but not by
+         more than its own height again. */
+      const spanH = isLast
+        ? clamp(87.5 * U - topPx, ownH, ownH * 2) : ownH;
       // upright vertical letters advance ≈ font-size (Chromium ignores
       // line-height in vertical-rl/upright) — shrink-to-fit uses 0.85/letter
       const fitFs = (spanH - e(0.2)) / (label.length * 0.85);
@@ -908,7 +973,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       pointerEvents: 'auto',
     });
     left.forEach((c, i) => colL.append(
-      characterEntry(c, options, leftHeights[i], iconEm, ed, e, fonts, widthMul, mark),
+      characterEntry(c, options, leftHeights[i], iconEm, ed, e, fonts, widthMul, mark,
+        sec.leftNatural && sec.leftNatural[i]),
     ));
     wrap.append(colL);
 
@@ -924,7 +990,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       pointerEvents: 'auto',
     });
     right.forEach((c, i) => colR.append(
-      characterEntry(c, options, rightHeights[i], iconEm, ed, e, fonts, widthMul, mark),
+      characterEntry(c, options, rightHeights[i], iconEm, ed, e, fonts, widthMul, mark,
+        sec.rightNatural && sec.rightNatural[i]),
     ));
     wrap.append(colR);
 

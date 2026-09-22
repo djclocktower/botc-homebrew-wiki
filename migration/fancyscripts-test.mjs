@@ -82,5 +82,24 @@ check('preview icon: site-relative art', S.previewIcon('/assets/art/x.jpg'), '/a
 check('preview icon: everything else untouched', [S.previewIcon('/assets/fancyscripts/icons/imp.webp'), S.previewIcon('data:image/png;base64,AA'), S.previewIcon('https://images.weserv.nl/?url=x'), S.previewIcon('')],
   ['/assets/fancyscripts/icons/imp.webp', 'data:image/png;base64,AA', 'https://images.weserv.nl/?url=x', '']);
 
+// the Bootlegger tick: added, taken out, and the team it prints under
+check('bootlegger: absent by default', S.hasBootlegger(['imp', 'baron']), false);
+check('bootlegger: added as a fabled', S.withBootlegger(['imp'], true), ['imp', { id: 'bootlegger', team: 'fabled' }]);
+check('bootlegger: adding twice does not', S.withBootlegger(S.withBootlegger(['imp'], true), true).length, 2);
+check('bootlegger: taken out again', S.withBootlegger(S.withBootlegger(['imp'], true), false), ['imp']);
+check('bootlegger: a file that carries one is found', S.hasBootlegger(['imp', 'bootlegger']), true);
+check("bootlegger: a file's bare id is filed under fabled too",
+  S.withBootlegger(['imp', 'bootlegger'], true), ['imp', { id: 'bootlegger', team: 'fabled' }]);
+check("bootlegger: a file's own team is left alone",
+  S.withBootlegger(['imp', { id: 'bootlegger', team: 'loric' }], true), ['imp', { id: 'bootlegger', team: 'loric' }]);
+check('bootlegger: unticking takes out one the file came with', S.withBootlegger(['imp', 'bootlegger'], false), ['imp']);
+check('bootlegger: off leaves a script without one untouched', S.withBootlegger(['imp'], false), ['imp']);
+const bootParsed = S.parseScript(S.withBootlegger(['imp'], true), true).characters;
+check('bootlegger: name, ability and team off the roster',
+  bootParsed.map((c) => c.id + '/' + c.team + '/' + (c.name === 'Bootlegger' && /homebrew/i.test(c.ability))),
+  ['imp/demon/false', 'bootlegger/fabled/true']);
+check('bootlegger: does not wake', bootParsed[1].firstNight + bootParsed[1].otherNight, 0);
+check('bootlegger: the default option is off', S.normalizeOptions({}).bootlegger, false);
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

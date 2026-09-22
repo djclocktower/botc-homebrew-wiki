@@ -3244,6 +3244,81 @@ The footnote sits on the last page (or every page), and pages get a
 "1 / 2" number. `columnLayout: 'single'` is one column the width of both
 (`widthMul`).
 
+### A sheet fills its page, at both ends of the range (`FIT`)
+
+The three numbers in `script.js`'s **`FIT`** are the only ones in the
+engine that are policy rather than measurement, and they exist because the
+auto fit on its own went wrong at both ends. They are shared by the sheet
+(`layoutSheet`) and the night lists (`layoutList`), so the two cannot
+drift apart.
+
+- **`growMax` (1.25)** caps how far the fit may grow the reference pitch.
+  It used to be 1.55 on the sheet and 1.0 on the night lists. At 1.55 a
+  teensyville was printed half as big again — a poster, not a script sheet
+  — and it *still* did not fill the page, because `iconEmFor()` caps an
+  icon at the text gutter, so past about 1.2 the icons stop keeping up with
+  the names beside them and the rows go text-heavy.
+- **`spreadMax` (1.7)** is how far what is left over may be dealt out as
+  SPACE. On the sheet the rows and the gaps between sections stretch to it
+  (team *headings* are left out: a heading band is type, not space). On a
+  night list the rows are moved further APART instead of made taller —
+  `rowNode()` reads a row's line count, its zebra band and its rule off its
+  own height, so stretching that would grow the band and drift the icon off
+  its name.
+- **`topShare` (0.42)** splits whatever is still left above and below the
+  block, a little above centre. **`listTopMax` (1.6 em)** caps the top half
+  of that on a night list only: a sheet is a framed page and a block off
+  its centre reads as laid out, but a list is a list under a heading, and a
+  hand's breadth of nothing between "First Night" and Dusk reads as a
+  fault. A first night of four rows (Dusk, the two info steps, Dawn) is an
+  ordinary shape on a script whose roster is fifty.
+
+A page the pack already filled solves stretch 1 and no offset, so **nothing
+about a normal script moves** — the fit and the page count are unchanged
+from 13 characters up.
+
+The same fill is what settles a LONG script. Once the page COUNT is
+settled (the loop above), the density is re-solved against the room on
+*every* page rather than one, so the sheets fill evenly instead of the
+pack filling each in turn and leaving the last one ragged: 40 characters
+came out as a sheet 93% full and a sheet 66% full, and now both are full.
+The re-solve is verified by re-packing and stepped back down if it does
+not hold, because growing the type wraps more abilities.
+
+One thing follows from the stretch: a character's icon is placed against
+the row's **natural** height, not its drawn height (`naturalEm` in
+`characterEntry`, `leftNatural`/`rightNatural` off the layout). It belongs
+beside the NAME, not in the middle of the padding under it. The section
+divider and the ribbon label follow the stretched gaps the same way
+(`gapAboveEm` / `gapBelowEm`), and the last label's band down to the
+garland is now capped at twice its own height — on a page the content does
+not reach the foot of, centring it on that run walked the word away from
+the rows it names, and a three-character script printed OUTSIDER halfway
+down a blank sheet.
+
+### The Bootlegger tick
+
+`options.bootlegger` puts the Bootlegger — the Fabled that says a script
+carries homebrew characters or house rules — on the sheet, or takes it off
+one that came with it. It is a tick rather than a rule because it is the
+author's statement about their own script: `loadJson()` starts it at
+whether the file already has one (`hasBootlegger`), so a script that
+carries it keeps it and one that does not is not given it, and the tick
+settles it from then on.
+
+`withBootlegger(json, on)` applies it **at parse time**, on the way into
+`parseScript()`, so the entry goes through the same door as every other
+character and takes its name, ability and icon from the official roster.
+The raw file is never touched, so unticking puts the script back exactly
+as it was loaded. It is filed under **fabled**, which is where the
+official app and the official sheets print it; the wiki's `roles.json` has
+it under `loric` (the edition the release feed it came from puts it in)
+and going by that would print a LORIC band for one character. A file that
+already carries one is filed the same way, so the tick cannot move the
+character from one band to another by being unticked and ticked again — an
+entry that names its own team is left alone. The Script Builder hand-back
+carries it too, or a round trip would come back with the box unticked.
+
 ### Everything else worth knowing
 
 - **Every number in `script.js`'s `SHEET` is calibration, not layout
