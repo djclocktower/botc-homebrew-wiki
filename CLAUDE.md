@@ -63,7 +63,8 @@ Key dynamic behavior:
   `pageShell()`. These are **deliberately unlisted**: `noindex`, no sitemap
   entry, no search, no browse list, no homepage strip. The only two links in
   are the "Pages" section on the parent script/collection page and the
-  author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
+  author's `/author?a=` + `/u/{username}` pages — plus **Featured Articles**,
+  but only for a page an admin picked (see that section). Only the parent page's owner
   (or an admin) — or an **approved editor of the parent** — can create one;
   the owner's page is owned by whoever wrote it, an editor's is filed under the
   parent's owner as a draft. Who may EDIT one is the parent's "Who can edit"
@@ -651,7 +652,9 @@ jinxes.html            /jinxes: every jinx on the wiki, as a grouped list and an
                        cannot disagree. Creators can add a jinx to a character
                        they own (POST /api/jinx). Linked from tools.html and the
                        homepage browse cards; in the sitemap's staticPages.
-news.html              /news index (client-rendered from /api/news)
+news.html              /news index (client-rendered from /api/news), with the
+                       Featured Articles grid under it (and, for admins, the
+                       paste-a-link box and Remove buttons)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus
                        summary/hero/pin, and preview/publish/delete
@@ -2547,7 +2550,25 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   and every browse page. Exactly two things link to one: the **Pages** section
   on its parent script/collection page, and its author's `/author?a=` and
   `/u/{username}` pages. If you add a new listing anywhere, do **not** add
-  wiki pages to it — being unlisted is the feature.
+  wiki pages to it — being unlisted is the feature. The one exception is
+  **Featured Articles** (below), and only because an admin picked the page.
+- **Featured Articles** — the grid under News on the homepage (3 newest
+  picks) and on `/news` (all of them), drawn with the news card
+  (`NewsRender.renderPageCard()`: byline + parent in place of the date, then
+  title, blurb, "Read more"). **Admin-picked, never automatic**: a toggle in
+  the page's own head (`wikipage.js`, admins only, drawn in the browser
+  because the published HTML is shared) or a paste-a-link box on `/news`, both
+  `POST /api/admin/featured-article {slug, on}` (slug may be the whole
+  address). The picks are ONE `settings` row, `featured_articles` =
+  `[{slug, at}]`, newest first, capped at `FEATURED_ARTICLES_MAX` (24) —
+  nothing is written onto the page, so no owner save can touch it. A pick
+  whose page goes to draft, or whose parent is deleted, is hidden on read and
+  comes back with it; `?all=1` (admins) lists those too with a `hidden`
+  reason. Deleting the page drops the pick (`unfeatureArticle()`), or a new
+  page reusing the slug would inherit it. `GET /api/featured-articles` is
+  cached like `/api/news` on `FEATURED_DEPS` (wikipage, script, collection);
+  `feature`/`unfeature` are in `FEED_CHANGING_ACTIONS`. The page itself stays
+  `noindex` and out of every other list.
 - **Who may write one:** the owner of the parent script/collection (or an
   admin), and the parent's approved editors. The owner's page belongs to the
   writer; an editor's is filed under the parent's owner as a draft, so it

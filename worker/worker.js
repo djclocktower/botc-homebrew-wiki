@@ -83,7 +83,13 @@
  *                                Deliberately unlisted: no sitemap entry, no
  *                                search, no browse list — only the parent
  *                                script/collection page and its author's page
- *                                link to it.
+ *                                link to it, plus Featured Articles when an
+ *                                admin has picked it (below).
+ *   GET  /api/featured-articles -> the pages admins picked for the Featured
+ *                                Articles cards (?limit=, ?format=cards;
+ *                                admin ?all=1 adds the hidden ones)
+ *   POST /api/admin/featured-article -> admin: {slug, on} feature / unfeature
+ *                                one page; slug may be the page's address
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
@@ -1124,7 +1130,9 @@ const FEED_CHANGING_ACTIONS = new Set([
   // Approving a suggestion writes the page; 'suggest' itself changes nothing.
   'suggestion-approve',
   // `publicEdit` rides the feeds, and these rewrite it in bulk.
-  'tags-open', 'open-editing'
+  'tags-open', 'open-editing',
+  // A custom page put on (or taken off) the Featured Articles list.
+  'feature', 'unfeature'
 ]);
 
 // ---- activity log helper ----
@@ -4513,6 +4521,111 @@ async function cachedNewsBody(env, ctx, limit, cards, version) {
   try { return await pending; } finally { _newsPending.delete(key); }
 }
 
+// ---- featured articles (/news and the homepage) ----
+// Custom wiki pages (/p/) are unlisted by design; this is the one list they
+// can appear on, and only because an admin picked them. The picks are one
+// settings row, [{slug, at}] with the newest pick first, so featuring a page
+// writes nothing onto the page itself and no save by its owner can touch it.
+// A page that goes back to draft, or whose script/collection is deleted,
+// drops out on read and comes back with it; deleting the page removes the
+// pick for good (unfeatureArticle), so a new page that happens to reuse the
+// slug is never featured by accident.
+const FEATURED_ARTICLES_KEY = 'featured_articles';
+const FEATURED_ARTICLES_MAX = 24;
+// The list shows each page's title, blurb and parent name, and drops a page
+// whose parent is deleted — so a save to any of the three rolls the cache.
+const FEATURED_DEPS = ['wikipage', 'script', 'collection'];
+// Deliberately uncaught: a failed read must reject, not cache an empty list.
+async function featuredArticlePicks(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(FEATURED_ARTICLES_KEY).first();
+  let list;
+  try { list = JSON.parse((r && r.value) || '[]'); } catch { list = []; }
+  return (Array.isArray(list) ? list : [])
+    .filter(e => e && typeof e.slug === 'string' && /^[a-z0-9-]{1,80}$/.test(e.slug))
+    .slice(0, FEATURED_ARTICLES_MAX);
+}
+async function writeFeaturedArticlePicks(env, list) {
+  await env.DB.prepare(
+    `INSERT INTO settings (key,value) VALUES (?,?)
+     ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+  ).bind(FEATURED_ARTICLES_KEY, JSON.stringify(list)).run();
+}
+// A pasted link is the likeliest thing an admin types, so take the whole
+// address (…/p/{slug}) as well as the bare slug.
+function featuredSlugFrom(raw) {
+  let s = String(raw || '').trim();
+  const m = s.match(/\/p\/([^/?#\s]+)/);
+  if (m) s = m[1];
+  try { s = decodeURIComponent(s); } catch { /* keep it as typed */ }
+  s = s.replace(/\.html$/i, '').toLowerCase();
+  return /^[a-z0-9-]{1,80}$/.test(s) ? s : '';
+}
+// The picks resolved into card data, in pick order. `all` (admins only) also
+// returns the picks that are hidden right now, each saying why, so an admin
+// can see and remove them.
+async function featuredArticles(env, limit, opts = {}) {
+  const picks = await featuredArticlePicks(env);
+  if (!picks.length) return { articles: [] };
+  await ensurePagesTable(env);
+  const { results } = await env.DB.prepare(
+    `SELECT slug, title, status, parent_type, parent_slug, author, data, updated_at
+     FROM pages WHERE slug IN (${picks.map(() => '?').join(',')})`
+  ).bind(...picks.map(p => p.slug)).all();
+  const bySlug = new Map((results || []).map(r => [r.slug, r]));
+  const articles = [];
+  for (const pick of picks) {
+    if (articles.length >= limit) break;
+    const r = bySlug.get(pick.slug);
+    if (!r) continue;
+    let hidden = r.status === 'published' ? '' : 'draft';
+    if (hidden && !opts.all) continue;
+    const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+    // Same rule as the author listing: a page goes down with its parent.
+    if (!hidden && parent && parent.status === 'deleted') hidden = 'parent-deleted';
+    if (hidden && !opts.all) continue;
+    const d = parseData(r);
+    articles.push({
+      slug: r.slug, title: r.title,
+      author: r.author || d.author || null,
+      blurb: d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 160),
+      parentType: r.parent_type,
+      parentKey: parent ? parent.key : r.parent_slug,
+      parentName: parent ? parent.name : null,
+      featuredAt: pick.at || null,
+      updatedAt: r.updated_at,
+      ...(opts.all ? { hidden } : {})
+    });
+  }
+  return { articles };
+}
+const _featuredPending = new Map();
+async function cachedFeaturedBody(env, ctx, limit, cards, version) {
+  const key = `https://feed.internal/featured-articles.json?v=${version}&limit=${limit}&cards=${cards}&build=${BUILD_ID}`;
+  if (_featuredPending.has(key)) return _featuredPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      const data = await featuredArticles(env, limit);
+      body = cards
+        ? JSON.stringify({ html: data.articles.map(a => NewsRender.renderPageCard(a, { linkRoot: '' })).join('') })
+        : JSON.stringify(data);
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    return body;
+  })();
+  _featuredPending.set(key, pending);
+  try { return await pending; } finally { _featuredPending.delete(key); }
+}
+// Called when a page is deleted for good.
+async function unfeatureArticle(env, slug) {
+  try {
+    const picks = await featuredArticlePicks(env);
+    if (picks.some(p => p.slug === slug)) {
+      await writeFeaturedArticlePicks(env, picks.filter(p => p.slug !== slug));
+    }
+  } catch { /* the pick is filtered out on read anyway */ }
+}
+
 // One compact homepage snapshot per content version and UTC day. Random tile
 // order remains a browser choice, so every collection/script stays eligible.
 const HOME_FORMAT_V = 3;
@@ -6003,6 +6116,25 @@ export default {
       return new Response(await cachedNewsBody(env, ctx, limit, cards, version), { headers });
     }
 
+    // ---------- FEATURED ARTICLES ----------
+    // The custom pages an admin picked, newest pick first — the Featured
+    // Articles cards under News on the homepage and on /news. Cached exactly
+    // like the news list. ?all=1 is for admins: uncached, and it includes the
+    // picks that are hidden right now (a draft, a deleted parent) so they can
+    // be seen and removed. Anybody else asking for it gets the public list.
+    if (method === 'GET' && path === '/api/featured-articles') {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || String(FEATURED_ARTICLES_MAX), 10) || FEATURED_ARTICLES_MAX, 1), FEATURED_ARTICLES_MAX);
+      if (url.searchParams.get('all') === '1' && await adminSession(env, request)) {
+        return jsonResponse(await featuredArticles(env, FEATURED_ARTICLES_MAX, { all: true }));
+      }
+      const cards = url.searchParams.get('format') === 'cards';
+      const version = await contentVersion(env, FEATURED_DEPS);
+      const etag = `W/"featured-${version}-${limit}-${cards}-${BUILD_ID}"`;
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+      return new Response(await cachedFeaturedBody(env, ctx, limit, cards, version), { headers });
+    }
+
     // One article as JSON. Public for published articles; the admin editor
     // uses it to load drafts too.
     if (method === 'GET' && path === '/api/news/item') {
@@ -6218,6 +6350,8 @@ export default {
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
             : '',
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
+            // A draft cannot be featured, so wikipage.js offers admins no button.
+            (isDraft ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
@@ -10606,6 +10740,7 @@ export default {
           await env.DB.prepare('DELETE FROM pages WHERE slug=?').bind(row.slug).run();
           await ensureCommentTables(env);
           await env.DB.prepare("DELETE FROM comments WHERE entity_type='wikipage' AND slug=?").bind(row.slug).run();
+          await unfeatureArticle(env, row.slug);
           await logActivity(env, sess, 'delete', 'wikipage', row.slug, row.title);
           return jsonResponse({ ok: true, deleted: row.slug });
         }
@@ -12382,6 +12517,53 @@ export default {
         _announcementCache = null;
         await logActivity(env, sess, 'announce', 'wiki', null, text.slice(0, 60));
         return jsonResponse({ ok: true, announcement: ann });
+      }
+
+      // ---- admin: feature a custom wiki page (Featured Articles) ----
+      // {slug, on}. `slug` may be the page's whole address. Featuring an
+      // already-featured page changes nothing (it keeps its place); only a
+      // published page can be picked. The fresh list comes back in the
+      // response, so the admin's screen never waits on another isolate's
+      // content-version memo to catch up.
+      if (path === '/api/admin/featured-article') {
+        const b = await request.json().catch(() => ({}));
+        const slug = featuredSlugFrom(b.slug);
+        if (!slug) return jsonResponse({ error: 'Paste the address of a page (it has /p/ in it).' }, { status: 400 });
+        await ensurePagesTable(env);
+        const row = await env.DB.prepare('SELECT slug, title, status FROM pages WHERE slug=?')
+          .bind(slug).first().catch(() => null);
+        const on = b.on !== false;
+        let picks = await featuredArticlePicks(env);
+        // Forget picks whose page no longer exists, so they stop counting
+        // towards the cap.
+        if (picks.length) {
+          const { results } = await env.DB.prepare(
+            `SELECT slug FROM pages WHERE slug IN (${picks.map(() => '?').join(',')})`
+          ).bind(...picks.map(p => p.slug)).all();
+          const live = new Set((results || []).map(r => r.slug));
+          picks = picks.filter(p => live.has(p.slug));
+        }
+        const already = picks.some(p => p.slug === slug);
+        if (on && !already) {
+          if (!row) return jsonResponse({ error: 'There is no page at /p/' + slug + '.' }, { status: 404 });
+          if (row.status !== 'published') {
+            return jsonResponse({ error: 'That page is a draft. It can be featured once it is published.' }, { status: 400 });
+          }
+          if (picks.length >= FEATURED_ARTICLES_MAX) {
+            return jsonResponse({ error: 'There are already ' + FEATURED_ARTICLES_MAX + ' featured articles. Remove one first.' }, { status: 400 });
+          }
+          picks.unshift({ slug, at: new Date().toISOString() });
+        } else if (!on) {
+          picks = picks.filter(p => p.slug !== slug);
+        }
+        await writeFeaturedArticlePicks(env, picks);
+        if (on !== already) {
+          await logActivity(env, sess, on ? 'feature' : 'unfeature', 'wikipage', slug, row ? row.title : slug);
+        }
+        return jsonResponse({
+          ok: true, slug, featured: on,
+          articles: (await featuredArticles(env, FEATURED_ARTICLES_MAX, { all: true })).articles
+        });
       }
 
       // ---- admin: rewrite one of the site's own strings (/text-editor) ----
