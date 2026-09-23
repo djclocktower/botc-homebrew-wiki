@@ -95,17 +95,19 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<span class="featured-side">' +
         '<img loading="lazy" decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
-        quickSlot(c) + '</span>' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +
             (c.curata ? window.classBadgeHTML('curata', { from: c.curataFrom }) : '') + '</h3>' +
           (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
           (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
+          // The quick actions ride the credit line, right after the name:
+          // here the card's icon is the big picture on the left, and the
+          // owner wanted the buttons beside who made it rather than under it.
           '<div class="featured-meta">' +
             (creator ? '<span>by ' + esc(creator) + '</span>' : '') +
+            quickSlot(c) +
             (appears ? '<span>· ' + esc(appears) + '</span>' : '') +
           '</div>' +
           '<span class="featured-link">View Full Page →</span>' +

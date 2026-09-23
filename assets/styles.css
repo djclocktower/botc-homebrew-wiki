@@ -1490,66 +1490,72 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .filter-chip[hidden] { display: none !important; }
 
 /* ── Card quick actions (assets/card-actions.js) ──
-   Two small buttons under a character card's icon — the heart (Favorites)
-   and the page (Add to Script) — on every card and row a character is drawn
-   as: the browse grids, rosters, a script page's list, the homepage's
-   Featured and Recently Added, the search results. They are the info card's
-   buttons above in miniature: the same parchment skin, the same .tog-ico
-   glyph that fills in when on, the same faint .tog-pop swell.
+   Two small buttons on every card and row a character is drawn as — the
+   heart (Favorites) and the page (Add to Script): the browse grids, rosters,
+   a script page's list, the homepage's Featured and Recently Added, the
+   search results. The glyphs and the swell are the info card's (.tog-ico:
+   an outline that fills in when on; .tog-pop), so the card and the page
+   read as one control.
+   Everywhere but the search box they are bare icons, stacked one above the
+   other under the character's icon — no box, no background: the owner
+   wanted just the icons, a little larger than the first boxed version. The
+   fill IS the state, so nothing else has to change when one is switched on.
    .card-side is the icon's column; the renderers wrap the icon and the slot
    in it. The slot is printed EMPTY (the browser fills it) and carries its
-   height from the start, so filling it moves nothing. z-index lifts the
-   buttons over the transparent overflow of a transformed icon (the Featured
-   card scales its art 8/6), which would otherwise sit on top of them and eat
-   the tap. */
+   height from the start, so filling it moves nothing. */
 .card-side {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
   flex-shrink: 0;
 }
 .cq {
-  display: flex; justify-content: center; gap: 5px;
-  min-height: 28px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 62px;                 /* two 30px buttons and the gap */
   position: relative; z-index: 1;
 }
 .cq-btn {
   box-sizing: border-box;
-  width: 28px; height: 28px; margin: 0; padding: 0;
+  width: 30px; height: 30px; margin: 0; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 15px; line-height: 1;
-  color: var(--maroon); background: var(--parch);
-  border: 2px solid var(--parch-frame); border-radius: 0;
+  font-size: 20px; line-height: 1;
+  color: var(--maroon); background: none; border: 0; border-radius: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background .15s, color .15s, border-color .15s;
+  transition: color .15s;
 }
-.cq-btn:hover { background: var(--parch-frame); color: #fff; }
-.cq-btn.on { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
-.cq-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
-.cq-btn:focus-visible { outline: 2px solid var(--good-name); outline-offset: 1px; }
+/* Hover shifts the colour rather than fading it, and only with a real
+   pointer: a phone keeps :hover on the last thing tapped, which left a heart
+   that had just been filled in looking half-faded. */
+@media (hover: hover) { .cq-btn:hover { color: var(--evil); } }
+.cq-btn:focus-visible { outline: 2px solid var(--good-name); outline-offset: 0; }
 .cq-btn .tog-ico { display: block; margin: 0; vertical-align: 0; }
 .cq-btn.on .tog-ico path { fill: currentColor; }
-/* A script page's roster rows, the search results and a creator's pinned
-   strip are compact lists, so their buttons are a size down. */
-.script-char-row .card-side, .search-result .card-side, .pin-card .card-side { gap: 5px; }
-.script-char-row .cq, .search-result .cq, .pin-card .cq { min-height: 24px; gap: 4px; }
-.script-char-row .cq-btn, .search-result .cq-btn, .pin-card .cq-btn { width: 24px; height: 24px; font-size: 13px; }
-/* The search box is dark: outlined in parchment, filled parchment when on. */
+/* A script page's roster rows and a creator's pinned strip are compact
+   lists, so their icons are a size down. */
+.script-char-row .card-side, .pin-card .card-side { gap: 3px; }
+.script-char-row .cq, .pin-card .cq { min-height: 54px; }
+.script-char-row .cq-btn, .pin-card .cq-btn { width: 26px; height: 26px; font-size: 17px; }
+/* Recently Added stacks icon, buttons, name: the icon's own bottom margin is
+   the gap above the buttons. */
+.recent-card .cq { margin-bottom: 6px; }
+/* Featured: the buttons sit side by side on the credit line, right after
+   "by {creator}", rather than under the big picture. */
+.featured-meta { align-items: center; }
+.featured-meta .cq { flex-direction: row; min-height: 26px; gap: 2px; }
+.featured-meta .cq-btn { width: 26px; height: 26px; font-size: 18px; }
+/* The search results keep the first version: two small boxed buttons side by
+   side under the result's icon, outlined in parchment on the dark box and
+   filled parchment when on. */
+.search-result .card-side { gap: 5px; }
+.search-result .cq { flex-direction: row; min-height: 24px; gap: 4px; }
 .search-result .cq-btn {
-  background: transparent; color: var(--parch); border-color: rgba(214,196,150,.45);
+  width: 24px; height: 24px; font-size: 13px;
+  background: transparent; color: var(--parch);
+  border: 2px solid rgba(214,196,150,.45);
+  transition: background .15s, color .15s, border-color .15s;
 }
 .search-result .cq-btn:hover { background: rgba(255,255,255,.1); color: var(--parch); }
 .search-result .cq-btn.on { background: var(--parch); border-color: var(--parch); color: var(--maroon); }
 .search-result .cq-btn.on:hover { background: #fff; border-color: #fff; }
-/* Recently Added stacks icon, buttons, name: the icon's own bottom margin is
-   the gap above the buttons. */
-.recent-card .cq { margin-bottom: 8px; }
-/* Featured: the icon's column, buttons under the art. */
-.featured-side {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  min-width: 0;
-}
-.featured-side .cq { min-height: 32px; gap: 6px; }
-.featured-side .cq-btn { width: 32px; height: 32px; font-size: 17px; }
 
 /* ── Hamburger menu (mobile nav) ──────────────────────────────── */
 .hamburger {
@@ -1888,10 +1894,13 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .featured-meta {
   font-family: 'Oswald', sans-serif; font-size: .76rem;
   letter-spacing: .04em;
-  color: var(--ink); opacity: .75;
+  color: var(--ink);
   margin-bottom: 10px;
   display: flex; gap: 6px; flex-wrap: wrap;
 }
+/* The words are faded, not the line: the quick-action buttons ride it too
+   (after the creator's name) and must stay full strength. */
+.featured-meta > span:not(.cq) { opacity: .75; }
 .featured-link {
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .08em;

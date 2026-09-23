@@ -280,6 +280,9 @@ assets/
                        creator rosters (+ pinned characters), /favorites, a
                        script page's roster, the homepage's Featured Character
                        and Recently Added, and the top-bar search results.
+                       Bare icons stacked under the card's icon; boxed and
+                       side by side in the search results; on the Featured
+                       card, beside the creator's name (see "Favorites").
                        Browser + Worker: slotHTML(c) prints an EMPTY
                        <span class="cq" data-cq-slug> (nothing for a draft, an
                        official character or a row with no slug), which the
@@ -2379,10 +2382,15 @@ saved characters PLUS those rosters, resolved server-side.
   same on all three. The owner asked for that parity after the heart alone
   had an icon and a pop; the pop itself started at 135% and was toned down
   to barely moving at the owner's request — keep it faint.
-- **On every character card too** (`assets/card-actions.js`): two small
-  square buttons under the icon, the heart and the Add to Script page, in
-  the same `.tog-ico` / `.tog-pop` skin. The owner asked for them on every
-  card including Featured and the search results. They toggle the same two
+- **On every character card too** (`assets/card-actions.js`): the heart
+  and the Add to Script page, in the same `.tog-ico` / `.tog-pop` skin. The
+  owner asked for them on every card including Featured and the search
+  results, and then settled the look: **bare icons with no box, stacked one
+  above the other under the character's icon**; on the Featured card they
+  sit side by side on the credit line right after "by {creator}"; and the
+  **search results alone keep the first version** — two small boxed buttons
+  side by side under the result's icon. Change the one without the others
+  only on purpose. They toggle the same two
   stores the info card does, so a card and the page never disagree; a
   logged-out heart goes to login and back, like the page's. Toggling a heart
   fires `onChange`, and the Favorites chips re-count through it — which is
