@@ -1534,9 +1534,10 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .script-char-row .card-side, .pin-card .card-side { gap: 3px; }
 .script-char-row .cq, .pin-card .cq { min-height: 54px; }
 .script-char-row .cq-btn, .pin-card .cq-btn { width: 26px; height: 26px; font-size: 17px; }
-/* Recently Added stacks icon, buttons, name: the icon's own bottom margin is
-   the gap above the buttons. */
-.recent-card .cq { margin-bottom: 6px; }
+/* Recently Added: the same bare icons, but side by side under the team name
+   (the owner's call for this strip — stacked under the icon, every card grew
+   twice as tall). */
+.recent-card .cq { flex-direction: row; min-height: 30px; gap: 8px; margin-top: 6px; }
 /* Featured: the buttons sit side by side on the credit line, right after
    "by {creator}", rather than under the big picture. */
 .featured-meta { align-items: center; }

@@ -282,7 +282,8 @@ assets/
                        and Recently Added, and the top-bar search results.
                        Bare icons stacked under the card's icon; boxed and
                        side by side in the search results; on the Featured
-                       card, beside the creator's name (see "Favorites").
+                       card, beside the creator's name; on Recently Added,
+                       side by side under the team name (see "Favorites").
                        Browser + Worker: slotHTML(c) prints an EMPTY
                        <span class="cq" data-cq-slug> (nothing for a draft, an
                        official character or a row with no slug), which the
@@ -2387,7 +2388,9 @@ saved characters PLUS those rosters, resolved server-side.
   owner asked for them on every card including Featured and the search
   results, and then settled the look: **bare icons with no box, stacked one
   above the other under the character's icon**; on the Featured card they
-  sit side by side on the credit line right after "by {creator}"; and the
+  sit side by side on the credit line right after "by {creator}"; on the
+  homepage's Recently Added cards they sit side by side under the team
+  name (the last line of the card); and the
   **search results alone keep the first version** — two small boxed buttons
   side by side under the result's icon. Change the one without the others
   only on purpose. They toggle the same two

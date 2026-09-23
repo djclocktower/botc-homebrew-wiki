@@ -80,9 +80,11 @@
       var label = TEAM_LABEL[c.team] || c.team;
       return '<a class="recent-card" href="' + esc(c.page) + '">' +
         '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
-        quickSlot(c) +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
+        // Side by side under the team name — the owner's layout for this
+        // strip, where stacked under the icon made every card twice as tall.
+        quickSlot(c) +
       '</a>';
     }
 
