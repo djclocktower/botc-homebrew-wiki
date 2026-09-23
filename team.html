@@ -62,6 +62,8 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
+  <script src="assets/card-actions.js"></script>
   <script>
     var GOOD = { townsfolk: 1, outsider: 1 };
     var TEAM_LABEL = {
@@ -93,7 +95,11 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
+        // The icon, and under it the Favorites / Add to Script quick actions
+        // (assets/card-actions.js fills the slot).
+        '<span class="card-side">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art">' +
+        (window.CardActions ? window.CardActions.slotHTML(c) : '') + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +

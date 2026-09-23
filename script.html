@@ -640,6 +640,9 @@
         renderCredits();
       });
     })();
+    // A search result's Add to Script button (assets/card-actions.js) writes
+    // the same list this page draws; redraw so the roster follows it.
+    window.addEventListener('botc-script-change', function () { renderAll(); });
     document.getElementById('sb-export').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
       var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';

@@ -93,6 +93,7 @@
   <script src="assets/tags.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/favorites.js"></script>
+  <script src="assets/card-actions.js"></script>
   <script>
     var TEAMS = [
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
@@ -124,7 +125,11 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
+        // The icon, and under it the Favorites / Add to Script quick actions
+        // (assets/card-actions.js fills the slot).
+        '<span class="card-side">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+        (window.CardActions ? window.CardActions.slotHTML(c) : '') + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) +
           window.classBadgeHTML(window.classifyCharacter(c), { from: c.curataFrom }) + '</div>' +
@@ -198,7 +203,10 @@
       return {
         includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
         includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-        creatorQuery: '', showPartial: false, curataOnly: false, favOnly: false, sort: 'name-asc'
+        creatorQuery: '', showPartial: false, curataOnly: false, favOnly: false, sort: 'name-asc',
+        // 'team': one section per team (the default); 'none': every card in
+        // one grid, so the sort runs across all of them at once.
+        group: 'team'
       };
     }
     var STATE = blankState();
@@ -289,6 +297,12 @@
         '<option value="name-asc">Name (A–Z)</option>' +
         '<option value="name-desc">Name (Z–A)</option>' +
         '<option value="recent">Recently added</option>' +
+        '</select></div>';
+      // Group — by team (a section each, the way this page has always been
+      // laid out) or all together in one grid.
+      html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="fc-group">' +
+        '<option value="team">By team</option>' +
+        '<option value="none">All together</option>' +
         '</select></div>';
       // Reset
       html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="fc-reset">Reset filters</button></div>';
@@ -401,8 +415,14 @@
           favBtn.classList.toggle('active', STATE.favOnly);
           render();
         });
+        // Only re-draws the list when the list depends on the answer (the
+        // chip is on, or has just been switched on or off). Every heart on
+        // the cards (assets/card-actions.js) calls this through onChange,
+        // and re-drawing 1,500 cards for one of them would throw the reader
+        // back to the top of the page.
         var favLoad = function(){
           window.Favorites.characterSlugs().then(function(set){
+            var wasOn = STATE.favOnly;
             FAV_SET = set;
             var n = set ? list.filter(function(c){ return set.has(c.slug); }).length : 0;
             favBtn.hidden = !n;
@@ -414,7 +434,7 @@
               favLoad.opened = true;
               STATE.favOnly = true; favBtn.classList.add('active');
             }
-            render();
+            if (wasOn || STATE.favOnly) render();
           });
         };
         favLoad();
@@ -442,12 +462,14 @@
       }
 
       document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
+      document.getElementById('fc-group').addEventListener('change', function(e){ STATE.group = e.target.value; render(); });
       document.getElementById('fc-reset').addEventListener('click', function(){
         STATE = blankState();
         bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active','active-exclude'); });
         if (crSearch) crSearch.value = '';
         renderCreatorChips();
         document.getElementById('fc-sort').value = 'name-asc';
+        document.getElementById('fc-group').value = 'team';
         render();
       });
     }
@@ -567,6 +589,13 @@
         return;
       }
       var groups = [];
+      if (STATE.group === 'none'){
+        // All together: one grid, in the order the sort put them.
+        groups.push({ selector: '.char-grid[data-team="all"]', items: list });
+        panel.innerHTML = '<section class="type-section" id="all"><div class="char-grid" data-team="all"></div></section>';
+        cancelCards = window.mountCardBatches(panel, groups, card);
+        return;
+      }
       panel.innerHTML = TEAMS.map(function(t){
         var chars = list.filter(function(c){ return c.team === t[0]; });
         if (!chars.length) return '';

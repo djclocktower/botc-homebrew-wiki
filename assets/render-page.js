@@ -17,6 +17,16 @@
     return null;
   }
 
+  /* The quick-action slot under a card's icon (assets/card-actions.js). The
+     Worker hands the module in through setCardActions(); in the browser it is
+     window.CardActions. Without either, cards simply draw no slot. */
+  var cardActions = null;
+  function setCardActions(ca) { cardActions = ca || null; }
+  function quickSlot(c) {
+    var ca = cardActions || (typeof window !== 'undefined' ? window.CardActions : null);
+    return ca && ca.slotHTML ? ca.slotHTML(c) : '';
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -298,7 +308,9 @@
         '<div class="script-char-list">';
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+          '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+          quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -312,7 +324,9 @@
       html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+          '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="">' +
+          quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -386,7 +400,11 @@
         (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
         (hasCurata ? ' data-curata="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
+        // The icon and, under it, the two quick actions (Favorites, Add to
+        // Script — assets/card-actions.js). A draft gets no slot.
+        '<span class="card-side">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        quickSlot(c) + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
         '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
@@ -1085,6 +1103,7 @@
     renderScriptPage: renderScriptPage,
     renderCollectionPage: renderCollectionPage,
     renderRosterCards: renderRosterCards,
+    setCardActions: setCardActions,
     nightItems: nightItems,
     filterBoxHTML: filterBoxHTML,
     scriptJinxes: scriptJinxes,

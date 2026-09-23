@@ -69,6 +69,12 @@
       '</a>';
     }
 
+    // The Favorites / Add to Script quick actions under a card's icon
+    // (assets/card-actions.js fills the slot; index.html loads it).
+    function quickSlot(c){
+      return window.CardActions ? window.CardActions.slotHTML(c) : '';
+    }
+
     function recentCardHTML(c){
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
@@ -76,6 +82,9 @@
         '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
+        // Side by side under the team name — the owner's layout for this
+        // strip, where stacked under the icon made every card twice as tall.
+        quickSlot(c) +
       '</a>';
     }
 
@@ -95,8 +104,12 @@
             (c.curata ? window.classBadgeHTML('curata', { from: c.curataFrom }) : '') + '</h3>' +
           (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
           (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
+          // The quick actions ride the credit line, right after the name:
+          // here the card's icon is the big picture on the left, and the
+          // owner wanted the buttons beside who made it rather than under it.
           '<div class="featured-meta">' +
             (creator ? '<span>by ' + esc(creator) + '</span>' : '') +
+            quickSlot(c) +
             (appears ? '<span>· ' + esc(appears) + '</span>' : '') +
           '</div>' +
           '<span class="featured-link">View Full Page →</span>' +
