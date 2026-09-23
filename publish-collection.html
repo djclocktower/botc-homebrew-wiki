@@ -211,7 +211,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
       </div>
       <div class="sb-fld">
-        <label for="pc-desc">Description <span class="req">*</span></label>
+        <label for="pc-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
         <textarea id="pc-desc" placeholder="A short blurb about this collection."></textarea>
       </div>
       <div class="sb-fld">
@@ -378,7 +378,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <button class="sb-btn sb-btn-delete" id="pc-delete" type="button" style="display:none" title="Remove this collection from the site (an admin can restore it)">Delete Collection</button>
       <span class="pub-status-pill" id="pub-status-pill"></span>
     </div>
-    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account — only you (and admins) can see a draft. Name and description are required, and you must be logged in.</p>
+    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account — only you (and admins) can see a draft. A name is required, and you must be logged in.</p>
     <div id="sb-publish-status"></div>
 
     </div><!-- /editor -->
@@ -852,7 +852,6 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var name = $('pc-name').value.trim();
       var desc = $('pc-desc').value.trim();
       if (!name){ pubStatus('err', 'Please give the collection a name.'); return; }
-      if (!desc){ pubStatus('err', 'Please add a short description.'); return; }
       var wanted = EDIT_KEY || slugify(name);
       if (!wanted){ pubStatus('err', 'Could not derive a collection id from that name.'); return; }
       var id = wanted, bumped = false;

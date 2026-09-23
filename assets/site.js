@@ -590,6 +590,19 @@
       });
     }
 
+    // The Favorites / Add to Script buttons under each character result's
+    // icon (assets/card-actions.js, which needs favorites.js for the heart).
+    // Most pages have neither, so they are fetched alongside the feeds the
+    // first time the box warms up — never twice, since a second copy of
+    // favorites.js would be a second list. A failure costs the buttons only.
+    function ensureQuickActions() {
+      if (window.CardActions) return Promise.resolve();
+      var B = window.BotcData;
+      return (window.Favorites ? Promise.resolve() : B.script('favorites.js'))
+        .then(function () { return window.CardActions ? null : B.script('card-actions.js'); })
+        .catch(function () { /* results draw without the buttons */ });
+    }
+
     function ensureData() {
       if (allChars) return Promise.resolve(allChars);
       if (fetchPromise) return fetchPromise;
@@ -600,7 +613,8 @@
         // this is already in the browser's cache.
         fetchList('characters.json?fields=grid'),
         fetchList('scripts.json?fields=browse').catch(function () { return []; }),
-        fetchList('collections.json?fields=browse').catch(function () { return []; })
+        fetchList('collections.json?fields=browse').catch(function () { return []; }),
+        ensureQuickActions()
       ]).then(function (res) {
         allChars = res[0] || [];
         allScripts = res[1] || [];
@@ -735,8 +749,10 @@
         var fieldTag = r.field !== 'name'
           ? '<span class="search-match">matched ' + esc(r.field) + '</span>' : '';
         return '<a class="search-result" href="' + esc(ROOT + c.page) + '" role="option">' +
+          '<span class="card-side">' +
           '<img class="search-result-thumb" src="' + esc(charThumb(c)) + '" alt="" ' +
           'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
+          (window.CardActions ? window.CardActions.slotHTML(c) : '') + '</span>' +
           '<div class="search-result-info">' +
           '<span class="search-result-name">' + esc(c.name) + fieldTag + '</span>' +
           '<span class="search-result-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</span>' +
@@ -795,7 +811,10 @@
       if (e.key === 'ArrowDown') { var f = drop.querySelector('.search-result'); if (f) { e.preventDefault(); f.focus(); } }
     });
     drop.addEventListener('keydown', function (e) {
+      // Arrow keys move between results, also from a result's quick-action
+      // buttons (card-actions.js), which sit inside the result's link.
       var cur = document.activeElement;
+      if (cur && cur.closest && cur.closest('.search-result')) cur = cur.closest('.search-result');
       if (e.key === 'ArrowDown') { e.preventDefault(); var n = cur.nextElementSibling; if (n) n.focus(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); var p = cur.previousElementSibling; if (p) p.focus(); else input.focus(); }
       else if (e.key === 'Escape') { close(); input.focus(); }

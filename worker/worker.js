@@ -286,6 +286,11 @@ import Render from '../assets/render.js';
 // the browser). It receives render.js's exports through init().
 import PageRender from '../assets/render-page.js';
 PageRender.init(Render);
+// The quick-action slot (Favorites + Add to Script) under every card's icon.
+// The server only prints the empty slot; card-actions.js fills it in the
+// browser, where saved/unsaved is known.
+import CardActions from '../assets/card-actions.js';
+PageRender.setCardActions(CardActions);
 // Creator-symbol registry ("credit icons"), single source in creators.js.
 // Injected so SSR /c/ pages show a creator's symbol next to their name.
 import Creators from '../assets/creators.js';
@@ -5068,8 +5073,9 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
       // Favorite button on a draft. Private render; never in the public cache.
       (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
     // favorites.js before charpage.js: the info card's Favorite button is
-    // mounted by charpage.js through window.Favorites.
-    scripts: ['reader.js', 'tags.js', 'favorites.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
+    // mounted by charpage.js through window.Favorites. card-actions.js before
+    // it too: the info card's Add to Script / Token glyphs are drawn from it.
+    scripts: ['reader.js', 'tags.js', 'favorites.js', 'card-actions.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
   });
 }
 
@@ -5549,10 +5555,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     // sao.js before card-filters.js: the filter box only builds its Steven
     // Approved Order option when window.saoCompare is already there.
     // favorites.js before both pageview.js (which mounts the page's Favorite
-    // button) and card-filters.js (whose Favorites chip asks it for the list).
+    // button) and card-filters.js (whose Favorites chip asks it for the list),
+    // and before card-actions.js, which fills the roster's quick actions.
     scripts: isScript
-      ? ['reader.js', 'favorites.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
-      : ['reader.js', 'favorites.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      ? ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      : ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
 }

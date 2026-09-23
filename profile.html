@@ -172,6 +172,7 @@
        window.saoCompare is already defined. -->
   <script src="/assets/sao.js"></script>
   <script src="/assets/favorites.js"></script>
+  <script src="/assets/card-actions.js"></script>
   <script src="/assets/card-filters.js"></script>
   <script>
   (function () {
@@ -320,9 +321,15 @@
               : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
         name = hit.displayName || hit.slug;
       }
+      // A pinned character carries the same quick actions as every other
+      // character card (assets/card-actions.js); a script or collection pin
+      // has none to carry.
+      var slot = p.type === 'character' && window.CardActions ? window.CardActions.slotHTML(hit) : '';
       return '<a class="pin-card" href="' + esc(href) + '">' +
+        (slot ? '<span class="card-side">' : '') +
         '<img loading="lazy" decoding="async" class="pin-thumb" src="' + esc(thumb) +
         '" alt="" onerror="this.onerror=null;this.src=\'/assets/favicon.png\'">' +
+        (slot ? slot + '</span>' : '') +
         '<span class="pin-text"><span class="pin-name">' + esc(name) + '</span>' +
         '<span class="pin-kind">' + esc(p.type) + '</span></span></a>';
     }

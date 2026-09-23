@@ -69,11 +69,18 @@
       '</a>';
     }
 
+    // The Favorites / Add to Script quick actions under a card's icon
+    // (assets/card-actions.js fills the slot; index.html loads it).
+    function quickSlot(c){
+      return window.CardActions ? window.CardActions.slotHTML(c) : '';
+    }
+
     function recentCardHTML(c){
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
       return '<a class="recent-card" href="' + esc(c.page) + '">' +
         '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
+        quickSlot(c) +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
       '</a>';
@@ -88,7 +95,9 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
+        '<span class="featured-side">' +
         '<img loading="lazy" decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
+        quickSlot(c) + '</span>' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +

@@ -271,7 +271,35 @@ assets/
                        and the Favorite button — see favorites.js). The three
                        stacked buttons share one skin — .tog-ico (an outline
                        glyph, filled when on) + .tog-pop (the swell) in
-                       styles.css — so they look and move as one set.
+                       styles.css — so they look and move as one set. The
+                       script and token glyphs come from card-actions.js
+                       (CardActions.glyph), which loads before it.
+  card-actions.js      The two small quick-action buttons (heart = Favorites,
+                       page = Add to Script) under the icon of EVERY character
+                       card and row: All Characters, team, tag, collection and
+                       creator rosters (+ pinned characters), /favorites, a
+                       script page's roster, the homepage's Featured Character
+                       and Recently Added, and the top-bar search results.
+                       Browser + Worker: slotHTML(c) prints an EMPTY
+                       <span class="cq" data-cq-slug> (nothing for a draft, an
+                       official character or a row with no slug), which the
+                       renderers wrap with the icon in a .card-side column;
+                       render-page.js gets it through PageRender.
+                       setCardActions() in worker.js. The browser half fills
+                       every slot (a MutationObserver — cards arrive in batches,
+                       filters move them, search rebuilds per keystroke),
+                       paints saved/on state and answers clicks with ONE
+                       capture-phase listener that stops the card's link from
+                       following. Same stores as the /c/ info card: botc_script
+                       (localStorage) and the account's favorites through
+                       favorites.js, which it needs for the heart glyph and
+                       fetches itself where a page lacks it. Printed empty
+                       because published /s/ and /collection/ HTML is shared
+                       cache and the heart glyph lives in favorites.js; the
+                       CSS gives the empty slot its height so nothing moves.
+                       site.js fetches favorites.js + card-actions.js with the
+                       search feeds on pages that have neither. Fires
+                       'botc-script-change', which script.html redraws on.
   favorites.js         Favorites, the browser half: ONE module for the button
                        on a character page (charpage.js), the one on a script
                        or collection page (pageview.js), the Favorites chip
@@ -281,7 +309,8 @@ assets/
                        (botc_favs:*) for two minutes and patches the cache on
                        a toggle. Logged-out readers cost no request at all.
                        Loaded BEFORE charpage.js / pageview.js / card-filters.js
-                       wherever those mount something of it. See "Favorites".
+                       / card-actions.js wherever those mount something of it.
+                       See "Favorites".
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
                        A description of '' is a tag with no hover box (Magic),
@@ -337,6 +366,15 @@ assets/
                        leaves Partial characters visible (hiding one there
                        would put it out of reach of the script you are
                        building).
+                       A **Group** select (By team / All together) sits beside
+                       Sort on the renderRosterCards grids when there is more
+                       than one team: All together moves every card into one
+                       `.cf-flat` grid built above the team sections, so the
+                       sort runs across the whole roster; By team puts each
+                       card back in its own section. Not offered where the
+                       caller passes its own sectionSel (the Script Builder)
+                       or groupChoice: false. Not remembered between visits,
+                       like Sort.
   jinx-editor.js       One script's jinxes: switch off one the characters
                        carry, or write one only this script has. Stores
                        `jinxEdits{off[],add[]}` and resolves through
@@ -582,7 +620,9 @@ index.html             Homepage (collections grid, scripts, browse cards, sideba
                        Browse cards include Grimoire Forge and Icon Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
                        the "By Creator" card and /tools).
-all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
+all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view).
+                       Its Group select (By team / All together) draws one
+                       grid instead of a section per team.
 team/tag/tags.html     Browse pages
 creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
@@ -624,7 +664,10 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        nor turns it into a character page, nor prints a token
                        for it.
 publish-script.html    Script publishing page: name/author/tagline/version/
-                       difficulty/description + wiki sections (synopsis, gameplay,
+                       difficulty/description (only name and author are
+                       required — the description is optional, and on
+                       publish-collection.html only the name is) + wiki
+                       sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
                        SAO sort (localStorage botc_script_meta). The roster
                        summary lists every character with ▲▼ to arrange it by
@@ -2336,6 +2379,16 @@ saved characters PLUS those rosters, resolved server-side.
   same on all three. The owner asked for that parity after the heart alone
   had an icon and a pop; the pop itself started at 135% and was toned down
   to barely moving at the owner's request — keep it faint.
+- **On every character card too** (`assets/card-actions.js`): two small
+  square buttons under the icon, the heart and the Add to Script page, in
+  the same `.tog-ico` / `.tog-pop` skin. The owner asked for them on every
+  card including Featured and the search results. They toggle the same two
+  stores the info card does, so a card and the page never disagree; a
+  logged-out heart goes to login and back, like the page's. Toggling a heart
+  fires `onChange`, and the Favorites chips re-count through it — which is
+  why all-characters.html and card-filters.js only re-draw the grid on that
+  when the chip is ON: re-drawing 1,500 cards for one tap threw the reader
+  back to the top of the page. `Favorites.me()` is exported for it.
 - **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
   the creator page, the Script Builder's Add sidebar, `/favorites`);
   all-characters.html, scripts.html and all-collections.html carry their own,

@@ -1489,6 +1489,68 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    is a <button> with its own display rules elsewhere. */
 .filter-chip[hidden] { display: none !important; }
 
+/* ── Card quick actions (assets/card-actions.js) ──
+   Two small buttons under a character card's icon — the heart (Favorites)
+   and the page (Add to Script) — on every card and row a character is drawn
+   as: the browse grids, rosters, a script page's list, the homepage's
+   Featured and Recently Added, the search results. They are the info card's
+   buttons above in miniature: the same parchment skin, the same .tog-ico
+   glyph that fills in when on, the same faint .tog-pop swell.
+   .card-side is the icon's column; the renderers wrap the icon and the slot
+   in it. The slot is printed EMPTY (the browser fills it) and carries its
+   height from the start, so filling it moves nothing. z-index lifts the
+   buttons over the transparent overflow of a transformed icon (the Featured
+   card scales its art 8/6), which would otherwise sit on top of them and eat
+   the tap. */
+.card-side {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+.cq {
+  display: flex; justify-content: center; gap: 5px;
+  min-height: 28px;
+  position: relative; z-index: 1;
+}
+.cq-btn {
+  box-sizing: border-box;
+  width: 28px; height: 28px; margin: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1;
+  color: var(--maroon); background: var(--parch);
+  border: 2px solid var(--parch-frame); border-radius: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.cq-btn:hover { background: var(--parch-frame); color: #fff; }
+.cq-btn.on { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
+.cq-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
+.cq-btn:focus-visible { outline: 2px solid var(--good-name); outline-offset: 1px; }
+.cq-btn .tog-ico { display: block; margin: 0; vertical-align: 0; }
+.cq-btn.on .tog-ico path { fill: currentColor; }
+/* A script page's roster rows, the search results and a creator's pinned
+   strip are compact lists, so their buttons are a size down. */
+.script-char-row .card-side, .search-result .card-side, .pin-card .card-side { gap: 5px; }
+.script-char-row .cq, .search-result .cq, .pin-card .cq { min-height: 24px; gap: 4px; }
+.script-char-row .cq-btn, .search-result .cq-btn, .pin-card .cq-btn { width: 24px; height: 24px; font-size: 13px; }
+/* The search box is dark: outlined in parchment, filled parchment when on. */
+.search-result .cq-btn {
+  background: transparent; color: var(--parch); border-color: rgba(214,196,150,.45);
+}
+.search-result .cq-btn:hover { background: rgba(255,255,255,.1); color: var(--parch); }
+.search-result .cq-btn.on { background: var(--parch); border-color: var(--parch); color: var(--maroon); }
+.search-result .cq-btn.on:hover { background: #fff; border-color: #fff; }
+/* Recently Added stacks icon, buttons, name: the icon's own bottom margin is
+   the gap above the buttons. */
+.recent-card .cq { margin-bottom: 8px; }
+/* Featured: the icon's column, buttons under the art. */
+.featured-side {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  min-width: 0;
+}
+.featured-side .cq { min-height: 32px; gap: 6px; }
+.featured-side .cq-btn { width: 32px; height: 32px; font-size: 17px; }
+
 /* ── Hamburger menu (mobile nav) ──────────────────────────────── */
 .hamburger {
   display: none;

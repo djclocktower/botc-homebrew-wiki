@@ -175,7 +175,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <main class="pub-main">
     <div class="home-hero" style="padding-bottom:14px">
       <h1 id="pub-page-title">Publish Your Script</h1>
-      <p>Give your script a name, author, and description, then publish it to the wiki for everyone to see.</p>
+      <p>Give your script a name and an author, then publish it to the wiki for everyone to see.</p>
     </div>
 
     <!-- Read-only summary of the script currently in the builder -->
@@ -225,7 +225,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
       </div>
       <div class="sb-fld">
-        <label for="sb-desc">Description <span class="req">*</span></label>
+        <label for="sb-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
         <textarea id="sb-desc" placeholder="A short blurb about the script."></textarea>
       </div>
       <div class="sb-fld">
@@ -408,7 +408,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <span class="pub-status-pill" id="pub-status-pill"></span>
       <a class="pub-back" href="script">← Back to Script Builder</a>
     </div>
-    <p class="sb-publish-blurb">Publishing creates a <strong>new public page</strong> on the Scripts list that anyone can view. <strong>Save as Draft</strong> keeps it private to your account so you can finish it later — only you (and admins) can see a draft. Name, author, and description are required, and you must be logged in.</p>
+    <p class="sb-publish-blurb">Publishing creates a <strong>new public page</strong> on the Scripts list that anyone can view. <strong>Save as Draft</strong> keeps it private to your account so you can finish it later — only you (and admins) can see a draft. A name and an author are required, and you must be logged in.</p>
     <div id="sb-publish-status"></div>
 
   </main>
@@ -959,7 +959,6 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var missing = [];
       if (!name) missing.push('name');
       if (!author) missing.push('author');
-      if (!desc) missing.push('description');
       if (missing.length) { pubStatus('err', 'Please fill in the ' + missing.join(', ') + ' before saving.'); return; }
       if (!chars.length) { pubStatus('err', 'Your script is empty. <a href="script">Add characters in the Script Builder →</a>'); return; }
 
