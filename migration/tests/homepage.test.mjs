@@ -111,7 +111,7 @@ test('homepage renders without article/creator scripts, preserves escaped ledes 
     creator: 'Creator', ability: 'Learn a player.', classification: 'standard', lede: '{{red|A story}} <img src=x onerror=bad()>' };
   const data = homeData([c], [], [], 20000);
   assert.equal(data.featured.plainLede, WikiRender.plainText(c.lede));
-  const ids = ['news-section','news-grid','landing-stats','bc-team','bc-creator','bc-tag','bc-jinx',
+  const ids = ['news-section','news-grid','articles-section','articles-grid','landing-stats','bc-team','bc-creator','bc-tag','bc-jinx',
     'recent-strip','featured-wrap','collections-grid','scripts-grid','home-rules'];
   const nodes = Object.fromEntries(ids.map(id => [id, { innerHTML: '', textContent: '', hidden: true }]));
   const context = { document: { getElementById: id => nodes[id] }, console,
@@ -129,4 +129,5 @@ test('homepage renders without article/creator scripts, preserves escaped ledes 
   assert.match(nodes['collections-grid'].innerHTML, /All Collections/);
   assert.ok(nodes['home-rules'].innerHTML);
   assert.equal(nodes['news-section'].hidden, true);
+  assert.equal(nodes['articles-section'].hidden, true);
 });

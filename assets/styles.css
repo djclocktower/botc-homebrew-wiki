@@ -2924,6 +2924,37 @@ a:hover .curata-mark { opacity: .9; }
   color: rgba(236,225,200,.85); text-decoration: none;
 }
 .news-admin-edit:hover { color: #fff; text-decoration: underline; }
+/* Featured Articles (admin controls): the Remove button under a card on
+   /news, the paste-a-link box above the grid, and the toggle an admin sees in
+   a custom page's head. */
+button.news-admin-edit { background: none; border: 0; padding: 0; cursor: pointer; }
+button.news-admin-edit:disabled { opacity: .5; cursor: default; }
+.feature-add { margin: 0 0 16px; }
+.feature-add-label {
+  display: block; margin: 0 0 6px;
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.8);
+}
+.feature-add-row { display: flex; gap: 8px; }
+.feature-add-input {
+  flex: 1; min-width: 0; padding: 8px 10px; font-size: 16px;
+  border: 2px solid var(--parch-frame); background: #f4ead2; color: var(--ink);
+}
+.feature-add-btn { flex: none; margin-top: 0; padding: 8px 18px; border: 0; cursor: pointer; font-size: .9rem; }
+.feature-add-msg {
+  margin: 6px 0 0; min-height: 1.2em;
+  font-size: .86rem; color: rgba(236,225,200,.8); overflow-wrap: anywhere;
+}
+.wiki-feature { margin: 10px 0 0; }
+.wiki-feature-btn {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .04em;
+  padding: 5px 12px; cursor: pointer;
+  background: rgba(122,92,24,.12); color: var(--maroon);
+  border: 1px solid var(--parch-frame);
+  -webkit-tap-highlight-color: transparent;
+}
+.wiki-feature-btn[aria-pressed="true"] { background: rgba(122,92,24,.28); }
+.wiki-feature-btn:disabled { opacity: .6; cursor: default; }
 @media (max-width: 640px) {
   .news-article { padding: 16px 14px; border-width: 2px; }
   .news-article h1 { font-size: 1.35rem; }

@@ -61,6 +61,22 @@
         <p class="news-empty" style="grid-column:1/-1">Loading news…</p>
       </div>
     </section>
+
+    <!-- Custom pages (/p/) an admin has featured. Hidden from readers while
+         there are none; admins always see it, with the box for adding one. -->
+    <section class="landing-section" id="featured-articles" hidden>
+      <h2 class="type-header">Featured Articles</h2>
+      <div class="type-rule"></div>
+      <form class="feature-add" id="feature-add" hidden>
+        <label class="feature-add-label" for="feature-add-input">Feature a page: paste its link</label>
+        <div class="feature-add-row">
+          <input class="feature-add-input" id="feature-add-input" type="text" placeholder="botchomebrew.wiki/p/…" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button class="create-btn feature-add-btn" type="submit">Feature</button>
+        </div>
+        <p class="feature-add-msg" id="feature-add-msg" role="status"></p>
+      </form>
+      <div class="news-grid" id="articles-grid"></div>
+    </section>
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
@@ -74,11 +90,14 @@
 
     // Admins get the "Write an Article" button and see their own drafts in the
     // list, marked as such. Everyone else only ever gets published articles.
-    fetch('/api/me').then(function(r){ return r.json(); }).then(function(me){
+    var adminReady = fetch('/api/me').then(function(r){ return r.json(); }).then(function(me){
       var isAdmin = !!(me && me.isAdmin);
       if (isAdmin) document.getElementById('write-btn').style.display = '';
       return isAdmin;
-    }).catch(function(){ return false; }).then(function(isAdmin){
+    }).catch(function(){ return false; });
+    adminReady.then(loadFeatured);
+
+    adminReady.then(function(isAdmin){
       return fetch('/api/news?limit=100' + (isAdmin ? '&drafts=1' : '') + '&_=' + Date.now())
         .then(function(r){ return r.json(); })
         .then(function(d){
@@ -111,6 +130,83 @@
     }).catch(function(){
       grid.innerHTML = '<p class="news-empty" style="grid-column:1/-1">Could not load news.</p>';
     });
+
+    // ── Featured Articles ─────────────────────────────────────────
+    // Custom pages admins picked. Readers get the public list and the whole
+    // section stays hidden while it is empty. Admins get every pick, the ones
+    // hidden right now included, each with a Remove button, plus the box for
+    // featuring another (the button on the page itself does the same).
+    var fSec = document.getElementById('featured-articles');
+    var fGrid = document.getElementById('articles-grid');
+    var fForm = document.getElementById('feature-add');
+    var fMsg = document.getElementById('feature-add-msg');
+    var HIDDEN_WHY = { draft: 'Hidden: page is a draft', 'parent-deleted': 'Hidden: its script or collection was deleted' };
+
+    function esc(s){
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function drawFeatured(list, isAdmin){
+      if (!list.length && !isAdmin){ fSec.hidden = true; return; }
+      fSec.hidden = false;
+      if (!list.length){
+        fGrid.innerHTML = '<p class="news-empty" style="grid-column:1/-1">Nothing is featured yet. Paste a page link above, or use the button on the page itself.</p>';
+        return;
+      }
+      fGrid.innerHTML = list.map(function(a){
+        var card = window.NewsRender.renderPageCard(a, { linkRoot: '' });
+        if (!isAdmin) return card;
+        return '<div class="news-admin-item">' + card +
+          '<div class="news-admin-row">' +
+            '<span class="news-admin-pill ' + (a.hidden ? 'draft' : 'published') + '">' +
+              esc(a.hidden ? (HIDDEN_WHY[a.hidden] || 'Hidden') : 'Featured') + '</span>' +
+            '<button type="button" class="news-admin-edit feature-remove" data-slug="' + esc(a.slug) + '">&#10005; Remove</button>' +
+          '</div></div>';
+      }).join('');
+    }
+    function setFeatured(slug, on){
+      return fetch('/api/admin/featured-article', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: slug, on: on })
+      }).then(function(r){
+        return r.json().catch(function(){ return {}; }).then(function(d){
+          if (!r.ok) throw new Error(d.error || 'That did not save. Try again.');
+          drawFeatured(d.articles || [], true);
+          return d;
+        });
+      });
+    }
+    function loadFeatured(isAdmin){
+      var src = isAdmin ? '/api/featured-articles?all=1' : '/api/featured-articles';
+      fetch(src, { credentials: 'same-origin' })
+        .then(function(r){ if (!r.ok) throw new Error(); return r.json(); })
+        .then(function(d){
+          drawFeatured((d && d.articles) || [], isAdmin);
+          // The homepage links to #featured-articles, which is hidden until
+          // now, so the browser could not scroll to it on arrival.
+          if (!fSec.hidden && location.hash === '#featured-articles') fSec.scrollIntoView();
+        })
+        .catch(function(){ if (isAdmin){ fSec.hidden = false; fGrid.innerHTML = '<p class="news-empty" style="grid-column:1/-1">Could not load featured articles.</p>'; } });
+      if (!isAdmin) return;
+      fForm.hidden = false;
+      fForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        var input = document.getElementById('feature-add-input');
+        var link = input.value.trim();
+        if (!link) return;
+        fMsg.textContent = 'Saving…';
+        setFeatured(link, true).then(function(){ input.value = ''; fMsg.textContent = 'Featured.'; })
+          .catch(function(err){ fMsg.textContent = err.message; });
+      });
+      fGrid.addEventListener('click', function(e){
+        var btn = e.target.closest && e.target.closest('.feature-remove');
+        if (!btn) return;
+        btn.disabled = true;
+        setFeatured(btn.getAttribute('data-slug'), false)
+          .catch(function(err){ btn.disabled = false; alert(err.message); });
+      });
+    }
   })();
   </script>
   <script src="assets/site.js"></script>
