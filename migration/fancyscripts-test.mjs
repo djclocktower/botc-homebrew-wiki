@@ -6,7 +6,8 @@
  * own data files and checks the things that are easy to break without
  * noticing: the night order of the owner's reference sheets ("Blending
  * In", line for line), the file's own _meta sequences, reminder marks,
- * the option model's legacy folding, page lists, per-character overrides.
+ * the option model's legacy folding, page lists, per-character overrides,
+ * and the ribbon-style night sheet's defaults and bundled step icons.
  * No browser needed — the engine has no DOM. Exits non-zero on a failure.
  */
 import fs from 'node:fs';
@@ -133,6 +134,19 @@ check('name: wraps at its spaces', S.fitNameLines('Fortune Teller', 10, scaled, 
 check('name: one long word shrinks instead of being cut', S.fitNameLines('Washerwoman', 8, scaled, fontAt), { scale: 8 / 11, lines: ['Washerwoman'] });
 check('name: a night name shrinks a little before it wraps', S.fitNameLines('Scarlet Woman', 12, scaled, fontAt, { shrinkFirst: 0.8 }),
   { scale: 12 / 13, lines: ['Scarlet Woman'] });
+
+// the ribbon-style night sheet (the default) and what it retired
+const dn = S.normalizeOptions({});
+check('night: ribbon style by default', [dn.night.style, dn.night.ribbon, dn.night.hang, dn.jinxPage.style], ['ribbon', true, true, 'ribbon']);
+check('night: every-icon offsets default to nothing', [dn.iconShiftX, dn.iconShiftY, dn.night.iconShiftX, dn.night.iconShiftY, dn.jinxPage.iconShiftX, dn.jinxPage.iconShiftY], [0, 0, 0, 0, 0, 0]);
+const oldDesign = S.normalizeOptions({ night: { showFooter: true, footer1: 'x', footer2: 'y', showBadge: true }, jinxPage: { showFooter: false, showBadge: true }, el: { nightBadge: { dx: 2 }, nightFooter: { dy: 1 }, jinxBadge: {}, jinxFooter: {}, nightTitle: { dy: 3 } } });
+check('night: an old design drops the footer and badge', [Object.keys(oldDesign.night).filter((k) => /footer|badge/i.test(k)), Object.keys(oldDesign.jinxPage).filter((k) => /footer|badge/i.test(k)), Object.keys(oldDesign.el)], [[], [], ['nightTitle']]);
+check('night: no footer or badge element', S.ELEMENTS.filter((e) => /Footer|Badge/.test(e.key)).length, 0);
+check('night: the step icons are the bundled discs', ['dusk', 'dawn', 'minion', 'demon'].map((k) => S.STEP_ICONS[k]),
+  ['dusk', 'dawn', 'minion', 'demon'].map((k) => '/assets/fancyscripts/art/night-' + k + '.webp'));
+check('night: the step icon files exist', ['dusk', 'dawn', 'minion', 'demon'].every((k) => fs.existsSync(path.join(root, 'assets/fancyscripts/art/night-' + k + '.webp'))), true);
+check('night: dusk and dawn in the printed sheets\' wording', [S.NIGHT_STEPS.dusk.text, S.NIGHT_STEPS.dawn.text],
+  ['Check that all eyes are closed. Some Travellers & Fabled act.', 'Wait a few seconds. Call for eyes open.']);
 
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

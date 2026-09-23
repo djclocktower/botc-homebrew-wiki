@@ -42,8 +42,6 @@ import {
 import { ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected } from './elements.js';
 import { appendRibbon } from './sheet.js';
 
-const BADGE = '/assets/ccc-parchment.png';
-
 function iconImg(src, style, alt) {
   const n = img(src, style, alt);
   n.crossOrigin = 'anonymous';
@@ -61,7 +59,7 @@ const appCfg = (options) => options.app || {};
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 
 /* the centre of the parchment right of the ribbon, where the app centres
-   its logo and its footer */
+   its logo */
 const paperCX = (ribbonW) => (ribbonW + 100) / 2;
 
 function fontsOf(options, cfg) {
@@ -394,8 +392,10 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
   // icon, centred on the row
   const iconEm = layout.iconEm;
   const iconPx = ed(iconEm) * (c.iconScale || 1);
-  const iconLeft = (A.iconCX / 100) * SHEET_W - iconPx / 2 + ((c.iconDX || 0) / 100) * SHEET_W;
-  const iconTop = ed(h / 2) - iconPx / 2 + e(c.iconDY || 0);
+  // this character's own nudge plus the sheet's "move every icon" offset
+  const iconLeft = (A.iconCX / 100) * SHEET_W - iconPx / 2 +
+    (((c.iconDX || 0) + (Number(options.iconShiftX) || 0)) / 100) * SHEET_W;
+  const iconTop = ed(h / 2) - iconPx / 2 + e((c.iconDY || 0) + (Number(options.iconShiftY) || 0));
   if (options.iconFrame && options.iconFrame !== 'none') {
     const pad = iconPx * 0.1;
     row.append(el('div', {
@@ -862,16 +862,18 @@ function nightRow(u, g, layout, cfg, options, ed, e, mark) {
   node.dataset.fsRow = row.id;
   if (mark && row.list) mark(node, 'nrow:' + row.list + ':' + row.id);
 
-  // icon(s), centred on the row
+  // icon(s), centred on the row, moved by the sheet's "move every icon"
   const iconPx = ed(layout.iconEm);
+  const shiftX = ((Number(cfg.iconShiftX) || 0) / 100) * SHEET_W;
+  const shiftY = e(Number(cfg.iconShiftY) || 0);
   row.icons.forEach((raw, k) => {
     const src = resolveSrc(raw);
     const fit = iconFit(src) || ICON_IDENTITY;
     const size = iconPx * (row.icons.length > 1 ? 0.86 : 1);
     const ic = iconImg(drawIcon(src), {
       position: 'absolute',
-      left: px((g.iconCX / 100) * SHEET_W - size / 2 + k * size * 0.62),
-      top: px(ed(h / 2) - size / 2),
+      left: px((g.iconCX / 100) * SHEET_W - size / 2 + k * size * 0.62 + shiftX),
+      top: px(ed(h / 2) - size / 2 + shiftY),
       width: px(size), height: px(size),
       objectFit: 'contain', transform: inkTransform(fit), transformOrigin: 'center',
       filter: iconFilter(options.iconEffect, cfg.iconShadow == null ? 1 : cfg.iconShadow, ed),
@@ -1099,28 +1101,6 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
         opacity: String(lT.opacity),
         textShadow: `${e(0.04)}px ${e(0.07)}px ${e(0.08)}px rgba(40, 20, 10, 0.35)`,
       }, title), 'el:' + P + 'Logo'));
-    }
-  }
-
-  // the footer lines and the badge, only when asked for (the app has none)
-  if (cfg.appFooter) {
-    const fT = elGet(options, P + 'Footer');
-    if (cfg.showFooter !== false && !fT.hidden && ((cfg.footer1 || '').trim() || (cfg.footer2 || '').trim())) {
-      const foot = el('div', {
-        position: 'absolute', right: (2.4 - fT.dx) + '%', top: px(e(96.5 + fT.dy)), textAlign: 'right',
-        fontFamily: fonts.text, fontSize: px(e(0.82) * fT.scale), lineHeight: px(e(1.1) * fT.scale),
-        color: cfg.textColor || '#2b2b2b', opacity: String(fT.opacity * 0.85), whiteSpace: 'nowrap',
-      });
-      if ((cfg.footer1 || '').trim()) foot.append(el('div', null, smartTypography(cfg.footer1)));
-      if ((cfg.footer2 || '').trim()) foot.append(el('div', null, smartTypography(cfg.footer2)));
-      sheet.append(mark(foot, 'el:' + P + 'Footer'));
-    }
-    const bT = elGet(options, P + 'Badge');
-    if (cfg.showBadge !== false && !bT.hidden) {
-      sheet.append(mark(img(resolveSrc(bT.src) || BADGE, {
-        position: 'absolute', left: (A.sidebarW + 1.2 + bT.dx) + '%', bottom: px(e(1.2 - bT.dy)),
-        width: (12.2 * bT.scale) + '%', opacity: String(bT.opacity),
-      }), 'el:' + P + 'Badge'));
     }
   }
 

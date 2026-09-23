@@ -19,7 +19,8 @@
  * 1080×1440) as fractions of the sheet, then re-trued against the generator
  * family's own CSS (JohnForster/botc-fancy-script-generator). NIGHT was
  * measured the same way off the owner's reference night sheets ("Blending
- * In", 903×1225). Vertical unit: 1 em = 1% of sheet height; horizontal
+ * In", 903×1225), and NIGHT_RIBBON off the second set ("Valley of Shadows",
+ * 1414×2000). Vertical unit: 1 em = 1% of sheet height; horizontal
  * positions are % of sheet width. Change one value at a time and compare
  * against a known-good render — nothing in here is a guess, including the
  * ones that look like one.
@@ -108,6 +109,16 @@ export const FIT = {
      four rows (Dusk, the two info steps, Dawn) on a script whose roster is
      fifty, so this is not a rare shape. */
   listTopMax: 1.6, // em
+  /* The ribbon-style night sheet has no title over the list (the title is
+     on the ribbon), so nothing reads as a gap above a short list and it is
+     centred instead. And a short list may grow further than the script
+     sheet: a first night of six steps at 1.3x filled its page only by
+     leaving a hand's breadth between every row, and the rows floated. A
+     night sheet is read at the table, often in poor light, so larger type
+     is the better way to take up the room; the spacing does the rest.
+     Bars stay their own height; only the space between them grows. */
+  listGrowMax: 1.6,
+  listSpreadMax: 2.2,
 };
 
 /* CSS pixel size of the rendered sheet (3:4, matching the reference trim
@@ -153,13 +164,6 @@ export const NIGHT = {
   textLine: 1.2, // reminder line pitch (em)
   rowMin: 3.92, // one-line row pitch (name + one line + gap)
   rowGap: 0.95, // added under the last text line
-  footerRight: 2.4,
-  footerTop: 96.5,
-  footerLine: 1.1,
-  footerSize: 0.82,
-  badgeX: 1.4,
-  badgeBottom: 1.2,
-  badgeW: 12.2,
   // the two-column layout (both nights on one page): each column is a
   // narrower copy of the single-column grid
   colGap: 2.4,
@@ -243,14 +247,61 @@ export const APP_NIGHT = {
   colGap: 2.4,
 };
 
-/* The non-character steps of a night, in the official app's own wording
-   (this is also what the reference sheets print). Positions come from
+/* The ribbon style, the default night sheet: measured off the owner's
+   second set of reference sheets ("Valley of Shadows", 1414×2000, A4) and
+   carried onto this 3:4 page as fractions of the width (x) and of the
+   height (em). Each row is the icon, the name set RIGHT-aligned against a
+   thin bar in the team's colour, and the reminder beside the bar, its
+   second line indented; the bar, the name and the icon are all centred on
+   the reminder. The title runs down a damask ribbon on the right edge and
+   the script's logo sits at the foot of the page, bottom right, with the
+   list wrapping short around it. */
+export const NIGHT_RIBBON = {
+  ribbonW: 6.0, // % width: the ribbon down the right edge (5.7% on A4)
+  edgeW: 1.0, // % width: the torn paper edge laid over its left side
+  titleTop: 7.2, // em: the first letter of the ribbon title
+  titleSize: 2.55, // em (Dumbledor, upright)
+  titleSpacing: -0.2, // em: upright letters advance a whole em without it
+  titleMin: 1.1, // em: as small as a long title may shrink
+  listTop: 3.2, // em: first row top
+  listBottom: 97.2, // em: rows end above this
+  iconX: 2.7, // % width: the icon's left edge
+  iconSize: 3.75, // em
+  /* the name column: it starts nameGap past the icon and is as wide as the
+     longest name on the script's night sheets, between nameMin and nameMax
+     (the reference's, which ends the names at 21.4% of the width); a name
+     longer than that is set smaller. All four scale with the type. */
+  nameGap: 0.8, // % width
+  nameMin: 5, // % width
+  nameMax: 14, // % width
+  barGap: 1.1, // % width from the names' end to the bar
+  barW: 0.3, // % width (never under 2px)
+  textGap: 1.15, // % width from the bar to the reminder
+  textRight: 1.5, // % width kept clear between the reminder and the ribbon
+  hang: 2.6, // % width: the indent of a reminder's second and later lines
+  nameSize: 1.62, // em (Goudy bold)
+  textSize: 1.08, // em (Trade Gothic)
+  textLine: 1.36, // em: reminder line pitch
+  barMin: 3.1, // em: the bar beside a one-line reminder
+  rowGap: 1.0, // em between one bar and the next
+  logoRight: 1.4, // % width in from the ribbon's edge
+  logoBottom: 1.6, // em up from the foot of the page
+  logoMaxW: 24, // % width
+  logoMaxH: 16, // em
+  logoClear: 1.2, // % width / em the list keeps clear of the logo
+  colGap: 2.6, // % width between two columns
+  twoColScale: 0.72, // a column of two squeezes the icon-to-text run this much
+};
+
+/* The non-character steps of a night, in the wording the official printed
+   night sheets use (Dusk and Dawn as the "Valley of Shadows" reference
+   prints them). Positions come from
    assets/night-order.json's `meta` list when it is handed in; these are the
    fallbacks so the steps still appear without it. */
 export const NIGHT_STEPS = {
   dusk: {
     id: 'dusk', name: 'Dusk', icon: 'dusk', firstNight: 0, otherNight: 0,
-    text: 'Start the Night Phase.',
+    text: 'Check that all eyes are closed. Some Travellers & Fabled act.',
   },
   minioninfo: {
     id: 'minioninfo', name: 'Minion Info', icon: 'minion', firstNight: 19, otherNight: null,
@@ -262,7 +313,7 @@ export const NIGHT_STEPS = {
   },
   dawn: {
     id: 'dawn', name: 'Dawn', icon: 'dawn', firstNight: 9999, otherNight: 9999,
-    text: 'Wait for a few seconds. End the Night Phase.',
+    text: 'Wait a few seconds. Call for eyes open.',
   },
 };
 
@@ -359,14 +410,16 @@ export const ELEMENTS = [
   { key: 'nightList', label: 'Night list', page: 'night', kind: 'block' },
   { key: 'nightDecorFirst', label: 'Corner art', page: 'night', kind: 'image', only: 'app', which: 'first' },
   { key: 'nightDecorOther', label: 'Corner art', page: 'night', kind: 'image', only: 'app', which: 'other' },
-  { key: 'nightFooter', label: 'Footer', page: 'night', kind: 'text' },
-  { key: 'nightBadge', label: 'Content badge', page: 'night', kind: 'image' },
   { key: 'jinxTitle', label: 'Jinx page title', page: 'jinx', kind: 'text' },
   { key: 'jinxLogo', label: 'Script logo', page: 'jinx', kind: 'image' },
   { key: 'jinxList', label: 'Jinx list', page: 'jinx', kind: 'block' },
-  { key: 'jinxFooter', label: 'Footer', page: 'jinx', kind: 'text' },
-  { key: 'jinxBadge', label: 'Content badge', page: 'jinx', kind: 'image' },
 ];
+
+/* what the night and jinx pages used to carry and no longer draw: the
+   footer lines and the Community Created Content badge. normalizeOptions
+   drops them from a design saved before, so a design file stays tidy. */
+const RETIRED_LIST_KEYS = ['showFooter', 'footer1', 'footer2', 'showBadge', 'appFooter'];
+const RETIRED_ELEMENTS = ['nightFooter', 'nightBadge', 'jinxFooter', 'jinxBadge'];
 
 export const ELEMENT_BY_KEY = new Map(ELEMENTS.map((e) => [e.key, e]));
 
@@ -409,11 +462,20 @@ export const DEFAULT_APP = {
 };
 
 export const DEFAULT_NIGHT = {
-  style: 'classic', // classic | app — how the night sheets are laid out
-  appTitle: false, // app view: "First Night" at the top (the app has none)
-  appFooter: false, // app view: the footer lines and the badge
   first: false, // the tick boxes — a night page exists only when it is ticked
   other: false,
+  /* how the night sheets are laid out. 'ribbon' (the default): name beside
+     a team-coloured bar, the title down a ribbon on the right, the logo
+     bottom right (NIGHT_RIBBON). 'classic': the name over the reminder, the
+     title top left and the logo top right (NIGHT). Both are night.js's.
+     'app': the official app's view (APP_NIGHT, appview.js). */
+  style: 'ribbon',
+  appTitle: false, // app view: "First Night" at the top (the app has none)
+  ribbon: true, // the ribbon down the right edge (ribbon style)
+  ribbonColor: '', // '' follows the script sheet's ribbon
+  hang: true, // indent a reminder's second and later lines (ribbon style)
+  iconShiftX: 0, // every icon on the page, % of the width
+  iconShiftY: 0, // every icon on the page, em
   combined: false, // both nights on ONE page, two columns
   twoColumns: false, // one night split over two columns (long lists on one page)
   showMeta: true, // dusk / minion info / demon info / dawn
@@ -434,19 +496,16 @@ export const DEFAULT_NIGHT = {
   goodColor: '', // '' inherits the sheet's colours
   evilColor: '',
   neutralColor: '',
-  metaColor: '#1c1c1c',
+  metaColor: '', // '' = the style's own (khaki on the ribbon style, ink on classic)
   textColor: '#2b2b2b',
   titleColor: '#1c1c1c',
+  dotColor: '#62489b', // the ':reminder:' dots
   fontTitle: 'dumbledor',
   fontName: 'goudy',
   fontText: 'trade',
   fontToken: 'tradebold',
   dotStyle: 'dot', // dot | token | none — how ':reminder:' is drawn
-  tokenStyle: 'caps', // caps | bold | plain — how *YOU ARE* tokens are drawn
-  showFooter: true,
-  footer1: '© Steven Medway · bloodontheclocktower.com',
-  footer2: 'Pressed with Fancy Scripts · botchomebrew.wiki',
-  showBadge: true,
+  tokenStyle: 'bold', // caps | bold | plain — how *YOU ARE* tokens are drawn
   iconShadow: 1,
   rowLines: false, // a hairline under every step
   zebra: false, // a faint band behind every other step
@@ -458,6 +517,11 @@ export const DEFAULT_NIGHT = {
 
 export const DEFAULT_JINX = {
   enabled: false,
+  style: 'ribbon', // the night sheets' chrome: 'ribbon' | 'classic'
+  ribbon: true,
+  ribbonColor: '',
+  iconShiftX: 0,
+  iconShiftY: 0,
   title: 'Jinxes',
   showHouseRules: true,
   houseTitle: 'House Rules',
@@ -471,8 +535,6 @@ export const DEFAULT_JINX = {
   minFit: 0.68,
   showLogo: true,
   showName: true,
-  showFooter: true,
-  showBadge: true,
   titleColor: '#1c1c1c',
   textColor: '#2b2b2b',
   fontTitle: 'dumbledor',
@@ -553,6 +615,8 @@ export const DEFAULT_OPTIONS = {
   abilityAlign: 'left', // left | justify
   bracketStyle: 'plain', // how "[+2 Outsiders]" setup notes print: plain | italic | bold | muted
   iconShadow: 1,
+  iconShiftX: 0, // every icon on the sheet, % of the width
+  iconShiftY: 0, // every icon on the sheet, em
   iconEffect: 'none', // none | grayscale | sepia | engraved
   iconFrame: 'none', // none | disc | ring — a token-style backing behind every icon
   normalizeIcons: true,
@@ -782,33 +846,21 @@ export const PLACEHOLDER_ICON =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#6b7ba0" stroke-width="3" opacity="0.8"/><circle cx="50" cy="50" r="33" fill="none" stroke="#6b7ba0" stroke-width="1.4" opacity="0.6"/><text x="50" y="68" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="52" text-anchor="middle" fill="#6b7ba0">?</text></svg>`,
   );
 
-/* the night sheet's own step icons, drawn to match the official set: a
-   navy moon disc for dusk, a gold sun for dawn, and the ringed M and D of
-   the minion/demon info steps. SVG data URLs — no font is needed, the
-   letters are paths. */
+/* the night sheet's own step icons. Dusk, Dawn and the two info steps are
+   the official painted discs (the moon, the sun, the M and the D), bundled
+   in art/; the house-rule and jinx marks are drawn here as SVG data URLs —
+   no font is needed, the letters are paths. */
 function discIcon(inner, fill, ring) {
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
     `<circle cx="50" cy="50" r="46" fill="${fill}" stroke="${ring}" stroke-width="3"/>` + inner + `</svg>`);
 }
+const STEP_ART = '/assets/fancyscripts/art/';
 export const STEP_ICONS = {
-  dusk: discIcon(
-    `<path d="M62 22a31 31 0 1 0 15 47 24 24 0 0 1-15-47z" fill="#f4f0e2"/>` +
-    `<circle cx="66" cy="30" r="2.6" fill="#f4f0e2"/><circle cx="76" cy="44" r="1.8" fill="#f4f0e2"/><circle cx="34" cy="70" r="1.6" fill="#f4f0e2" opacity=".8"/>`,
-    '#25305f', '#151a3a'),
-  dawn: discIcon(
-    `<circle cx="50" cy="50" r="16" fill="#fff4cf" stroke="#b98a25" stroke-width="3"/>` +
-    `<g stroke="#b98a25" stroke-width="4" stroke-linecap="round">` +
-    `<path d="M50 14v11M50 75v11M14 50h11M75 50h11M24.5 24.5l7.8 7.8M67.7 67.7l7.8 7.8M24.5 75.5l7.8-7.8M67.7 32.3l7.8-7.8"/></g>`,
-    '#e9c25a', '#a9791a'),
-  minion: discIcon(
-    `<circle cx="50" cy="50" r="38" fill="none" stroke="#1c1c1c" stroke-width="3"/>` +
-    `<path d="M28 68V33h8l14 22 14-22h8v35h-8V45L50 65 36 45v23z" fill="#1c1c1c"/>`,
-    '#f6f1e3', '#1c1c1c'),
-  demon: discIcon(
-    `<circle cx="50" cy="50" r="38" fill="none" stroke="#1c1c1c" stroke-width="3"/>` +
-    `<path d="M32 68V33h15c12 0 21 7 21 17.5S59 68 47 68zm8-7h7c8 0 13-4 13-10.5S55 40 47 40h-7z" fill="#1c1c1c"/>`,
-    '#f6f1e3', '#1c1c1c'),
+  dusk: STEP_ART + 'night-dusk.webp',
+  dawn: STEP_ART + 'night-dawn.webp',
+  minion: STEP_ART + 'night-minion.webp',
+  demon: STEP_ART + 'night-demon.webp',
   rule: discIcon(
     `<path d="M32 26h30l10 10v38H32z" fill="#f6f1e3" stroke="#1c1c1c" stroke-width="3"/>` +
     `<path d="M62 26v10h10" fill="none" stroke="#1c1c1c" stroke-width="3"/>` +
@@ -1364,7 +1416,9 @@ export const PRESETS = [
 ];
 
 /* which style a page is drawn in: the script sheet and the night sheets
-   each have their own; the jinx page and the back cover have one */
+   each have their own; the jinx page and the back cover have one. For the
+   night sheets 'classic' means the printed family night.js draws, the
+   ribbon style included: night.js reads night.style itself. */
 export function pageStyle(options, kind) {
   if (kind === 'front') return options.sheetStyle === 'app' ? 'app' : 'classic';
   if (kind === 'night') return options.night && options.night.style === 'app' ? 'app' : 'classic';
@@ -1529,6 +1583,8 @@ export function normalizeOptions(o) {
     out.el.flr = { ...(out.el.flr || {}), dx: (out.el.flr && out.el.flr.dx || 0) + Number(src.flourishSpread) };
     delete out.flourishSpread;
   }
+  for (const k of RETIRED_LIST_KEYS) { delete out.night[k]; delete out.jinxPage[k]; }
+  for (const k of RETIRED_ELEMENTS) delete out.el[k];
   if (src.includeBackCover != null) out.exportOpts.pages.back = !!src.includeBackCover;
   out.includeBackCover = out.exportOpts.pages.back;
   return out;

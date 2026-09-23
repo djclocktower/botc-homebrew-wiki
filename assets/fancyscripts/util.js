@@ -165,31 +165,39 @@ export function wrappedLineCount(text, font, maxW) {
 }
 
 /* the same for text made of runs in different fonts — the night sheet's
-   reminders mix Trade Gothic with bold condensed info tokens. `runs` is
-   [{s, font}] (a run may hold several words); `gap` is the width of one
-   space in the base font. */
-export function wrappedRunLineCount(runs, maxW, baseFont) {
-  const key = runs.map((r) => r.font + '' + r.s).join('') + '' + Math.round(maxW);
+   reminders mix Trade Gothic with bold info tokens. `runs` is [{s, font}]
+   (a run may hold several words); a run may also carry `ls`, a letter
+   spacing in px (canvas measureText knows nothing of CSS letter-spacing),
+   or be a fixed-width box `{w}` that is never split (a reminder dot drawn
+   as a circle rather than a glyph). `restW` is the width of every line
+   after the first, when a hanging indent makes it narrower. */
+export function wrappedRunLineCount(runs, maxW, baseFont, restW) {
+  const rest = restW == null ? maxW : restW;
+  const key = runs.map((r) => (r.w != null ? '#' + r.w.toFixed(2) : r.font + '' + (r.ls || 0) + '' + r.s)).join('') +
+    '' + Math.round(maxW) + '' + Math.round(rest);
   const hit = wrapCache.get(key);
   if (hit != null) return hit;
   const space = textWidth(' ', baseFont);
   let lines = 1;
   let x = 0;
   let pendingSpace = false;
+  const place = (w) => {
+    const need = (pendingSpace && x > 0 ? space : 0) + w;
+    if (x > 0 && x + need > (lines === 1 ? maxW : rest)) {
+      lines++;
+      x = w;
+    } else {
+      x += need;
+    }
+    pendingSpace = false;
+  };
   for (const r of runs) {
+    if (r.w != null) { place(r.w); continue; }
     const parts = r.s.split(/(\s+)/);
     for (const p of parts) {
       if (!p) continue;
       if (/^\s+$/.test(p)) { pendingSpace = true; continue; }
-      const w = textWidth(p, r.font);
-      const need = (pendingSpace && x > 0 ? space : 0) + w;
-      if (x > 0 && x + need > maxW) {
-        lines++;
-        x = w;
-      } else {
-        x += need;
-      }
-      pendingSpace = false;
+      place(textWidth(p, r.font) + (r.ls || 0) * p.length);
     }
   }
   if (wrapCache.size > WRAP_CACHE_MAX) wrapCache = new Map();

@@ -3075,14 +3075,17 @@ Official script-tool JSON in, a set of official-style print pages out: the
 classic parchment script sheet (or sheets — a long script continues onto a
 second one) with the damask sidebar, engraved dividers and the gold-leaf
 swash title; **First Night / Other Nights** sheets in the official night-order
-style; an optional **jinx & house-rules page**; and the damask **back cover**.
+style (the name beside a team-coloured bar, the title down a ribbon on the
+right, the logo bottom right); an optional **jinx & house-rules page**; and
+the damask **back cover**.
 Every element on every page can be moved, sized, turned, faded, hidden or
 replaced with an upload, and free text/image stickers go anywhere.
 Downloadable as a share JPEG, a print PNG, all pages as PNGs, or one PDF.
 Client-side only: no Worker route, no D1, nothing stored server-side (the
-autosave is localStorage; a design file is a download). The script sheet and
-the night sheets each come in two styles, the printed sheet above and the
-**app view** (see below).
+autosave is localStorage; a design file is a download). The script sheet
+comes in two styles, the printed sheet above and the **app view** (see
+below); the night sheets in three: the ribbon style (the default), the
+classic printed sheet and the app view.
 
 ### How the modules fit
 
@@ -3091,8 +3094,8 @@ the night sheets each come in two styles, the printed sheet above and the
   node: **`node migration/fancyscripts-test.mjs`** checks the night order
   of the owner's reference sheets line for line (the "Blending In" roster
   in app.js's samples), the `_meta` sequences, reminder marks, the option
-  model's legacy folding, page lists and per-character overrides — run it
-  after touching script.js.
+  model's legacy folding, page lists, per-character overrides and the
+  ribbon-style night sheet's defaults — run it after touching script.js.
   `DEFAULT_OPTIONS` (+ `DEFAULT_NIGHT`, `DEFAULT_JINX`, `DEFAULT_BG`,
   `DEFAULT_EXPORT`, `DEFAULT_BACK`) is the whole state of a design;
   `normalizeOptions()` deep-merges anything loaded (an autosave, a design
@@ -3170,12 +3173,12 @@ the night sheets each come in two styles, the printed sheet above and the
 `rot`, `opacity`, `hidden`, `src`) for every movable piece in `ELEMENTS`
 (title, author, skull, both flourishes, ribbon, team labels, character grid
 and its two columns, dividers, footnote, page number; the night/jinx pages'
-title, logo, list, footer and badge). `elGet()` gives the effective
+title, logo and list). `elGet()` gives the effective
 transform; renderers add the offsets to the CALIBRATED position, so a
 design with an empty `el` is the reference sheet exactly, and "Reset this
 element" is `delete options.el[key]`. `src` is an upload that replaces the
-built-in art (skull, flourishes, ribbon, dividers, the CCC badge, the step
-icons) — or, for the title, an image drawn instead of the text. Stickers
+built-in art (skull, flourishes, ribbon, dividers, the step icons) — or,
+for the title, an image drawn instead of the text. Stickers
 (`options.custom[]`, `newTextElement()` / `newImageElement()`) carry their
 own x/y in % and a `page` scope (`'all'`, a page kind, or an exact
 `pageKey`). Per-character overrides live in `options.chars[id]` (hide,
@@ -3203,8 +3206,8 @@ Data: `roles.json` carries the official reminder TEXT
 (`firstNightReminder` / `otherNightReminder`, with `*INFO TOKEN*` marks and
 `:reminder:` placements) and `assets/night-order.json` the wake POSITIONS
 plus the non-character steps' positions (`meta`: dusk, minioninfo,
-demoninfo, dawn — their wording is `NIGHT_STEPS` in script.js, the official
-app's own). `setOfficialRoster(roles, jinxes, nightOrder)` merges them per
+demoninfo, dawn — their wording is `NIGHT_STEPS` in script.js, as the
+printed official night sheets word it). `setOfficialRoster(roles, jinxes, nightOrder)` merges them per
 id; a custom character's own `firstNight`/`otherNight` numbers and
 reminders win over the official ones (the wiki's night-order picker writes
 numbers on the official scale, e.g. 33.5691 for "after the Poisoner").
@@ -3215,20 +3218,81 @@ written by dragging a row) or else the file's `_meta.firstNight`/
 an arranged script) and the option is on, and otherwise sorts by number with each step slotted in front of the
 first character that acts after it — the same rule render-page.js uses to
 write those sequences. `reminderParts()` tokenises a reminder into text,
-`*token*` runs (bold condensed caps, `tokenStyle`) and dots (`dotStyle`:
-a dot, a little token carrying the character's icon, or nothing).
+`*token*` runs (bold caps, bold condensed caps or plain words, `tokenStyle`)
+and dots (`dotStyle`: a dot, a little token carrying the character's icon,
+or nothing).
 
-Geometry is `NIGHT` in script.js, measured off the owner's reference
-sheets ("Blending In", 903×1225) in the same units as `SHEET`. The pages
-are ticked on in the Pages card (`night.first` / `night.other`;
+The pages are ticked on in the Pages card (`night.first` / `night.other`;
 `night.combined` puts both nights on one page in two columns;
 `night.twoColumns` splits one night over two columns by weight). Each
-carries its own colours, fonts, footer, badge and background; `''` for a
-night colour means "follow the sheet". The list auto-fits down to
-`night.minFit` and then continues onto a second page (two-column specs
-shrink instead). The step icons are inline SVG data URLs (`STEP_ICONS`),
-drawn as letter paths so no font is needed; `night.stepIcons` replaces
-them with uploads.
+carries its own colours, fonts and background; `''` for a night colour
+means "follow the sheet". The list auto-fits down to `night.minFit` and then
+continues onto a second page (two-column specs shrink instead); a list that
+needs two pages is dealt out EVENLY between them rather than filling the
+first and leaving a straggler. The step icons are the official painted discs
+(the moon, the sun, the M, the D) bundled as `art/night-{dusk,dawn,minion,
+demon}.webp` and named in `STEP_ICONS`; `night.stepIcons` replaces them
+with uploads. **There is no footer and no Community Created Content badge**
+on the night or jinx pages any more: the owner asked for both off, and
+`normalizeOptions()` drops their old keys (`showFooter`, `footer1/2`,
+`showBadge`, `el.nightFooter` …) from a design saved before.
+
+**Two styles, `night.style`** (the jinx page has `jinxPage.style` too):
+
+- **`'ribbon'`, the default**, measured off the owner's second set of
+  reference sheets ("Valley of Shadows", 1414×2000) into `NIGHT_RIBBON`.
+  Each row is the icon, the name set RIGHT-aligned against a thin bar in
+  the team's colour (khaki for Dusk/Info/Dawn, `META_INK` in night.js), and
+  the reminder beside the bar with its second line indented (`night.hang`).
+  Icon, name, bar and reminder are all centred on the reminder: the name's
+  and the reminder's CAPITALS are centred on the bar (`NAME_TOP` /
+  `TEXT_DROP`, measured off Goudy and Trade Gothic), which is how the
+  reference lines them up. The **name column is sized to the longest name
+  on BOTH night sheets** (`spec.names`, between `nameMin` and `nameMax`),
+  so a page of short names gives the room to the reminders and the first
+  and other nights put the bar in the same place; a longer name is set
+  smaller, never run into the icon. The run from the icon to the reminder
+  scales with the density. The title runs down a **damask ribbon on the
+  right edge** (`night.ribbon`, tinted `night.ribbonColor` or else the
+  script sheet's `sidebarColor`, drawn flat when the script sheet's ribbon
+  is flat, from the same upload when it has one; `appendRibbon()` in
+  sheet.js with `side: 'right'`, so it shares the per-colour recolour
+  cache), in upright Dumbledor in
+  the team-label colour, with a torn paper edge (a fixed seeded clip-path,
+  so every render and export is identical) and a "1/2" under it on a
+  two-page list. The **logo sits at the foot, bottom right** (the script's
+  name in the title face when it has none). Its drawn box comes from the
+  image's own size (`logoSize()`, loaded once and re-laid out), and a row
+  whose reminder would pass it is measured again narrower and wraps short
+  of it; since that moves the rows below, the solve repeats until no new
+  row reaches the logo (rows are only ever added, so it settles). A column
+  that would be left a sliver beside the logo (the right-hand column of
+  two) **stops above it** instead (`floorOf()`). Dots are purple circles
+  (`night.dotColor`) and the info tokens bold caps in the text face
+  (`tokenStyle: 'bold'`), both the reference's look; the wrap measurer
+  counts a dot as a fixed-width box and a token's letter spacing.
+- **`'classic'`**: the earlier look, `NIGHT`, measured off "Blending In"
+  (903×1225): the title at the top left, the logo at the top right, the
+  name over the reminder. The jinx page always draws its rows this way (a
+  pair's two names do not fit a name column), under whichever chrome its
+  style picks.
+
+**Filling the page** follows `FIT`, with night-list numbers of its own on
+the ribbon style: the type may grow to `FIT.listGrowMax` (1.6, against the
+script sheet's 1.25) and the rows spread to `FIT.listSpreadMax`, and what is
+left is split evenly above and below (the list is centred; there is no
+title over it to hold a short one up). A first night of six steps at the
+script sheet's numbers filled its page only with a hand's breadth between
+rows; larger type is the better answer for a sheet read at the table. Every
+unit's drawn position is stored on the layout (`u.yEm`), which is what the
+drag-to-reorder reads, so a drop lands where the row was let go on a spread
+or centred list too.
+
+**Moving every icon at once**: `iconShiftX` (% width) / `iconShiftY` (em)
+on the script sheet (Layout card), on `night` and on `jinxPage`, added to
+each icon's own position (and, on the script sheet, to a character's own
+nudge). On a bar row a name keeps clear of an icon moved right by setting
+itself smaller; nothing else moves.
 
 ### Long scripts continue onto more sheets
 
@@ -3302,9 +3366,13 @@ down a blank sheet.
 
 ### The app view (`appview.js`)
 
-A second style for the script sheet (`options.sheetStyle`) and for the night
-sheets (`options.night.style`), each `'classic'` or `'app'` and switched
-separately from the top of the Pages card. It copies the official app's own
+A second style for the script sheet (`options.sheetStyle`, `'classic'` or
+`'app'`) and a third for the night sheets (`options.night.style`, `'ribbon'`
+by default, `'classic'` or `'app'`), switched separately from the top of the
+Pages card. `pageStyle()` answers `'app'` or `'classic'`, and for a night
+sheet `'classic'` means the printed family night.js draws, the ribbon style
+included: night.js reads `night.style` itself, so the style groups and
+cards written for "classic" serve both printed night styles. It copies the official app's own
 script view off the owner's screenshots: one column, a red damask ribbon with
 the team names turned up it, then icon, name, a coloured bar and the ability;
 the night sheets set the names flush right against the bar, mark each
@@ -3357,8 +3425,16 @@ jinx page and the back cover have one style.
   deep, newest request first), because a navy classic sheet and a red app
   night sheet can be in one design, and one slot had the two pages recolour
   over each other on every render. `appendRibbon()` in sheet.js draws the
-  ribbon for both styles; `ribbonReady()` lets an export wait for a page's
-  colour, since the PDF renders pages the preview may never have shown.
+  ribbon for every style (`side: 'right'` for the ribbon-style night and
+  jinx pages; it wipes an adopted canvas's style first, because one colour
+  can be a left strip and a right one in the same design); `ribbonReady()`
+  lets an export wait for a page's colour, since the PDF renders pages the
+  preview may never have shown, and app.js asks it for a ribbon-style page's
+  colour too (`nightRibbonColor()`).
+- The app night sheet had an opt-in "Footer lines and badge"; it went with
+  the night sheets' footer and badge when the owner asked for both off.
+  `appFooter` is a retired key like the others. The app view honours the
+  "move every icon" sliders like every other style.
 - The controls column is `min-width: 0`: a select with a long option ("The
   script's own background image") otherwise set its width on a phone and
   pushed the whole page sideways once a card holding one was open.

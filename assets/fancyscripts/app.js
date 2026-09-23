@@ -32,7 +32,7 @@ import {
   pageStyle,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle, ribbonReady } from './sheet.js';
-import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage } from './night.js';
+import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage, nightRibbonColor } from './night.js';
 import { layoutAppSheet, renderAppSheetPage, layoutAppList, renderAppListPage } from './appview.js';
 import { renderBack, backCanvas, backReady } from './back.js';
 import { setAssetResolver } from './elements.js';
@@ -1114,7 +1114,8 @@ function buildPagesCard() {
   const box = $('fs-pages-box');
   const styles = [['classic', 'Printed sheet'], ['app', 'App view']];
   makeSelect(box, 'Script sheet style', styles, bindPath('sheetStyle'), { onChange: styleChanged });
-  makeSelect(box, 'Night sheet style', styles, bindPath('night.style'), { onChange: styleChanged });
+  makeSelect(box, 'Night sheet style', [['ribbon', 'Ribbon (name beside a colour bar)'], ['classic', 'Printed sheet (name over the reminder)'], ['app', 'App view']],
+    bindPath('night.style'), { onChange: styleChanged });
   makeHint(box, 'App view copies the official app: one column, a red ribbon and a bar beside each ability.');
   makeToggle(box, 'First Night sheet', bindPath('night.first'));
   makeToggle(box, 'Other Nights sheet', bindPath('night.other'));
@@ -1242,6 +1243,8 @@ function buildLayoutCard() {
   });
   makeSlider(box, 'Smallest auto-fit before a second sheet', 0.4, 1, 0.01, pct, bindPath('minFit'), { reset: 0.62 });
   makeSlider(box, 'Icon size', 0.6, 1.6, 0.01, pct, bindPath('iconSize'), { reset: 1 });
+  makeSlider(box, 'Move every icon left / right', -5, 5, 0.05, signed(2, '%'), bindPath('iconShiftX'), { reset: 0 });
+  makeSlider(box, 'Move every icon up / down', -3, 3, 0.05, signed(2), bindPath('iconShiftY'), { reset: 0 });
   makeSlider(box, 'Text size', 0.7, 1.4, 0.01, pct, bindPath('textSize'), { reset: 1 });
   makeSlider(box, 'Name size', 0.6, 1.5, 0.01, pct, bindPath('nameSize'), { reset: 1 });
   makeSlider(box, 'Jinx icon size', 0.5, 2, 0.01, pct, bindPath('jinxIconSize'), { reset: 1 });
@@ -1351,6 +1354,9 @@ function buildNightCard() {
   beginCard();
   makeText(box, 'First night title', bindPath('night.titleFirst'));
   makeText(box, 'Other nights title', bindPath('night.titleOther'));
+  const nr = styleGroup(box, 'night', 'classic');
+  makeToggle(nr, 'Ribbon down the right edge (ribbon style)', bindPath('night.ribbon'));
+  makeToggle(nr, 'Indent the second line of a reminder (ribbon style)', bindPath('night.hang'));
   makeToggle(box, 'Split one night over two columns', bindPath('night.twoColumns'));
   makeToggle(box, 'Dusk, Minion Info, Demon Info and Dawn', bindPath('night.showMeta'));
   const stepRow = makeRow(box, 'fs-colors');
@@ -1362,7 +1368,6 @@ function buildNightCard() {
   makeToggle(nc, 'Faint band behind every other step', bindPath('night.zebra'));
   const na = styleGroup(box, 'night', 'app');
   makeToggle(na, 'Page title (First Night, Other Nights)', bindPath('night.appTitle'));
-  makeToggle(na, 'Footer lines and badge', bindPath('night.appFooter'));
   makeToggle(box, 'Reminder text under each name', bindPath('night.showReminders'));
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
   const ord = makeRow(box);
@@ -1371,9 +1376,6 @@ function buildNightCard() {
   makeToggle(box, 'Number the steps', bindPath('night.numbered'));
   makeToggle(box, 'Script logo', bindPath('night.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('night.showName'));
-  const nf = styleGroup(box, 'night', 'classic');
-  makeToggle(nf, 'Footer lines', bindPath('night.showFooter'));
-  makeToggle(nf, 'Community Created Content badge', bindPath('night.showBadge'));
   makeToggle(box, 'Auto-fit the list to the page', bindPath('night.fit'), { onChange: () => syncControls() });
   nightDensityBinding = makeSlider(box, 'List density', 0.5, 1.5, 0.01, pct, bindPath('night.density'), {
     onInput: () => { if (options.night.fit !== false) { options.night.fit = false; syncControls(); } }, reset: 1,
@@ -1384,6 +1386,8 @@ function buildNightCard() {
   makeSlider(box, 'Reminder text size', 0.7, 1.4, 0.01, pct, bindPath('night.textSize'), { reset: 1 });
   makeSlider(box, 'Space between steps', 0, 2.5, 0.05, fmtNum(2), bindPath('night.rowGap'), { reset: 1 });
   makeSlider(box, 'Icon shadow', 0, 2, 0.05, fmtNum(2), bindPath('night.iconShadow'), { reset: 1 });
+  makeSlider(box, 'Move every icon left / right', -5, 5, 0.05, signed(2, '%'), bindPath('night.iconShiftX'), { reset: 0 });
+  makeSlider(box, 'Move every icon up / down', -3, 3, 0.05, signed(2), bindPath('night.iconShiftY'), { reset: 0 });
   makeSelect(box, 'Reminder token mark', [['dot', 'Dot ●'], ['token', 'Little token with the icon'], ['none', 'None']], bindPath('night.dotStyle'));
   makeSelect(box, 'Info tokens (YOU ARE)', [['caps', 'Bold condensed caps'], ['bold', 'Bold'], ['plain', 'Plain']], bindPath('night.tokenStyle'));
   makeLabel(box, 'Colours (× = follow the sheet)');
@@ -1391,9 +1395,12 @@ function buildNightCard() {
   makeColor(colors, 'Good names', bindPath('night.goodColor'), { clearable: true, fallback: () => options.goodColor });
   makeColor(colors, 'Evil names', bindPath('night.evilColor'), { clearable: true, fallback: () => options.evilColor });
   makeColor(colors, 'Travellers / Fabled', bindPath('night.neutralColor'), { clearable: true, fallback: () => options.neutralColor });
-  makeColor(colors, 'Dusk / Info / Dawn', bindPath('night.metaColor'));
+  makeColor(colors, 'Dusk / Info / Dawn', bindPath('night.metaColor'), { clearable: true, fallback: () => (options.night.style === 'classic' ? '#1c1c1c' : '#8a7b58') });
   makeColor(colors, 'Reminder text', bindPath('night.textColor'));
   makeColor(colors, 'Page title', bindPath('night.titleColor'));
+  const nrc = makeRow(styleGroup(box, 'night', 'classic'), 'fs-colors');
+  makeColor(nrc, 'Reminder dots', bindPath('night.dotColor'));
+  makeColor(nrc, 'Ribbon', bindPath('night.ribbonColor'), { clearable: true, fallback: () => options.sidebarColor });
   makeLabel(box, 'Fonts');
   const nfo = styleGroup(box, 'night', 'classic');
   makeFont(nfo, 'Page title', bindPath('night.fontTitle'));
@@ -1406,9 +1413,6 @@ function buildNightCard() {
     makeUpload(steps, label, 'image/*', (url) => { options.night.stepIcons[k] = addAsset(url); commit(); });
   }
   makeButton(steps, 'Built-in icons', () => { options.night.stepIcons = { dusk: '', minion: '', demon: '', dawn: '' }; commit(); });
-  makeLabel(box, 'Footer');
-  makeText(box, 'Footer line 1', bindPath('night.footer1'));
-  makeText(box, 'Footer line 2', bindPath('night.footer2'));
   const nb = styleGroup(box, 'night', 'classic');
   makeLabel(nb, 'Background');
   bgControls(nb, 'night.bg', 'list');
@@ -1462,15 +1466,15 @@ function buildAppCard() {
 function buildJinxCard() {
   const box = $('fs-jinx-box');
   beginCard();
+  makeSelect(box, 'Page style', [['ribbon', 'Ribbon (like the night sheets)'], ['classic', 'Classic (title at the top)']], bindPath('jinxPage.style'));
   makeText(box, 'Page title', bindPath('jinxPage.title'));
+  makeToggle(box, 'Ribbon down the right edge (ribbon style)', bindPath('jinxPage.ribbon'));
   makeToggle(box, 'House rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
   makeText(box, 'House rules heading', bindPath('jinxPage.houseTitle'));
   makeText(box, 'Notes heading', bindPath('jinxPage.notesTitle'));
   makeText(box, 'Notes, printed under the jinxes (blank line = new paragraph)', bindPath('jinxPage.notes'), { multiline: true, rows: 4 });
-  makeToggle(box, 'Script logo at the top right', bindPath('jinxPage.showLogo'));
+  makeToggle(box, 'Script logo', bindPath('jinxPage.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('jinxPage.showName'));
-  makeToggle(box, 'Footer lines (shared with the night sheets)', bindPath('jinxPage.showFooter'));
-  makeToggle(box, 'Community Created Content badge', bindPath('jinxPage.showBadge'));
   makeToggle(box, 'Auto-fit the list to the page', bindPath('jinxPage.fit'), { onChange: () => syncControls() });
   jinxDensityBinding = makeSlider(box, 'List density', 0.5, 1.5, 0.01, pct, bindPath('jinxPage.density'), {
     onInput: () => { if (options.jinxPage.fit !== false) { options.jinxPage.fit = false; syncControls(); } }, reset: 1,
@@ -1478,9 +1482,12 @@ function buildJinxCard() {
   makeSlider(box, 'Icon size', 0.6, 1.6, 0.01, pct, bindPath('jinxPage.iconSize'), { reset: 1 });
   makeSlider(box, 'Name size', 0.6, 1.5, 0.01, pct, bindPath('jinxPage.nameSize'), { reset: 1 });
   makeSlider(box, 'Text size', 0.7, 1.4, 0.01, pct, bindPath('jinxPage.textSize'), { reset: 1 });
+  makeSlider(box, 'Move every icon left / right', -5, 5, 0.05, signed(2, '%'), bindPath('jinxPage.iconShiftX'), { reset: 0 });
+  makeSlider(box, 'Move every icon up / down', -3, 3, 0.05, signed(2), bindPath('jinxPage.iconShiftY'), { reset: 0 });
   const colors = makeRow(box, 'fs-colors');
   makeColor(colors, 'Text', bindPath('jinxPage.textColor'));
   makeColor(colors, 'Page title', bindPath('jinxPage.titleColor'));
+  makeColor(colors, 'Ribbon', bindPath('jinxPage.ribbonColor'), { clearable: true, fallback: () => options.sidebarColor });
   makeFont(box, 'Page title font', bindPath('jinxPage.fontTitle'));
   makeFont(box, 'Names', bindPath('jinxPage.fontName'));
   makeFont(box, 'Text', bindPath('jinxPage.fontText'));
@@ -1871,13 +1878,16 @@ function reorderNight(list, rid, d) {
   for (const pc of page.columns) {
     const idx = pc.units.findIndex((u) => u.type === 'row' && u.row.id === rid && u.row.list === list);
     if (idx < 0) continue;
-    // where the page drew them: offset, the rows, and the space between
+    // where the page drew them: the position the layout recorded (night.js
+    // does, spacing and centring included), else the offset, the rows and
+    // the space between
     let y = lay.listTop * U + ed(page.offsetEm || 0), y0 = 0, h0 = 0;
     const centres = [];
     pc.units.forEach((u, i) => {
+      const top = u.yEm != null ? lay.listTop * U + ed(u.yEm) : y;
       const h = ed(u.hEm);
-      if (i === idx) { y0 = y; h0 = h; }
-      if (u.type === 'row') centres.push({ id: u.row.id, c: y + h / 2 });
+      if (i === idx) { y0 = top; h0 = h; }
+      if (u.type === 'row') centres.push({ id: u.row.id, c: top + h / 2 });
       y += h + ed(page.gapEm || 0);
     });
     const cy = y0 + h0 / 2 + (d.dy / 100) * SHEET_H;
@@ -2280,6 +2290,13 @@ async function withPageNode(p, fn) {
   // a page the preview never showed may still be recolouring its ribbon
   if (pageStyle(options, p.kind) === 'app' && options.app.sidebarMode === 'damask') await ribbonReady(options.app.sidebarColor);
   else if (p.kind === 'front' && options.sidebarMode === 'damask') await ribbonReady(options.sidebarColor);
+  else if (p.kind === 'night' || p.kind === 'jinx') {
+    // a ribbon-style night or jinx page hangs its own ribbon down the right
+    const cfg = p.kind === 'night' ? options.night : options.jinxPage;
+    if (cfg.style !== 'classic' && cfg.ribbon !== false && options.sidebarMode !== 'flat' && !elGet(options, 'sidebar').src) {
+      await ribbonReady(nightRibbonColor(cfg, options));
+    }
+  }
   const holder = offscreenHolder();
   try {
     computeLayouts();

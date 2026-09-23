@@ -194,16 +194,23 @@ export function ribbonReady(color) {
   });
 }
 
-/* the ribbon down the left edge, shared by both styles: the damask art
-   (recoloured), a flat colour, or an upload, full height from the sheet
-   edge to `widthPct`. `shade` lays the parchment frame's shading over the
-   damask (the classic sheet's slider; 0 elsewhere). */
+/* the ribbon, shared by every style: the damask art (recoloured), a flat
+   colour, or an upload, full height from the sheet's edge to `widthPct`.
+   Down the LEFT edge on the script sheets; the ribbon-style night sheets
+   hang theirs down the right (`side: 'right'`), where the art is cropped to
+   the narrower strip from its own left edge. `shade` lays the parchment
+   frame's shading over the damask (the classic sheet's slider; 0
+   elsewhere). */
 export function appendRibbon(sheet, r, ctx) {
-  const style = { position: 'absolute', left: '0', top: '0', width: r.widthPct + '%', height: '100%' };
+  const style = {
+    position: 'absolute', top: '0', height: '100%', width: r.widthPct + '%',
+    ...(r.side === 'right' ? { right: '0' } : { left: '0' }),
+    objectFit: 'cover', objectPosition: r.side === 'right' ? '0% 50%' : '50% 50%',
+  };
   const opacity = String(r.opacity == null ? 1 : r.opacity);
   if (r.mode === 'none') return;
   if (r.src) {
-    sheet.append(img(r.src, { ...style, objectFit: 'cover', opacity }));
+    sheet.append(img(r.src, { ...style, opacity }));
     return;
   }
   if (r.mode === 'flat') {
@@ -216,12 +223,15 @@ export function appendRibbon(sheet, r, ctx) {
     // the cached canvas is adopted by each new sheet; the old sheet is
     // already detached, so moving it is safe. An export render that runs
     // while the preview is up gets a COPY, so the preview keeps its ribbon.
+    // Its style is wiped first: a left strip and a right one are not laid
+    // out alike, and one colour can be both in one design.
     let node = tinted;
     if (tinted.parentNode && ctx.forExport) {
       node = document.createElement('canvas');
       node.width = tinted.width; node.height = tinted.height;
       node.getContext('2d').drawImage(tinted, 0, 0);
     }
+    node.style.cssText = '';
     Object.assign(node.style, style, { opacity });
     sheet.append(node);
   } else {
@@ -290,9 +300,11 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
   if (mark) mark(row, 'crow:' + char.id); // drag a row to reorder it within its team
 
   const iconPx = ed(iconEm) * (char.iconScale || 1);
-  const iconLeft = ((char.iconDX || 0) / 100) * SHEET_W;
+  // this character's own nudge plus the sheet's "move every icon" offset
+  const iconLeft = (((char.iconDX || 0) + (Number(options.iconShiftX) || 0)) / 100) * SHEET_W;
   const blockEm = Math.min(naturalEm == null ? heightEm : naturalEm, heightEm);
-  const iconTop = ed((blockEm - iconEm) / 2 + 0.5) - (iconPx - ed(iconEm)) / 2 + e(char.iconDY || 0);
+  const iconTop = ed((blockEm - iconEm) / 2 + 0.5) - (iconPx - ed(iconEm)) / 2 +
+    e((char.iconDY || 0) + (Number(options.iconShiftY) || 0));
   if (options.iconFrame && options.iconFrame !== 'none') {
     // a token-style backing: a parchment disc, or just its ring
     const pad = iconPx * 0.1;
