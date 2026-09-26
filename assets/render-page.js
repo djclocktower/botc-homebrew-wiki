@@ -307,7 +307,10 @@
         t[1] + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+        // data-team / data-slug are what Deal a Game (assets/deal.js) reads
+        // the roster from, so a script page needs no second copy of it.
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) +
+          ' data-team="' + esc(c.team || '') + '" data-slug="' + esc(c.slug || '') + '">' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
           quickSlot(c) + '</span>' +
@@ -323,7 +326,8 @@
     if (other.length) {
       html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) +
+          ' data-team="' + esc(c.team || '') + '" data-slug="' + esc(c.slug || '') + '">' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="">' +
           quickSlot(c) + '</span>' +
@@ -1056,6 +1060,12 @@
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
     ];
+    // Every homebrew character's almanac entry on one page, to read or print
+    // (renderAlmanacPage in worker.js). Official characters have their own
+    // wiki, so a roster of nothing but officials has no almanac to offer.
+    if (sc.slug && entries.some(function (c) { return !c.official; })) {
+      actions.push({ href: root + 's/' + encodeURIComponent(sc.slug) + '/almanac', label: '&#128214; Read the Almanac' });
+    }
     return renderPageBody({
       root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v,
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
@@ -1086,6 +1096,9 @@
         label: '⬇ Download JSON' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
+    if ((coll.id || coll.slug) && members.length) {
+      actions.push({ href: root + 'collection/' + encodeURIComponent(coll.id || coll.slug) + '/almanac', label: '&#128214; Read the Almanac' });
+    }
     return renderCollectionBody({
       root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,

@@ -48,7 +48,21 @@
        handle and {reason} is what they wrote. */
     draftedByAdmin: 'An admin moved this page to drafts:',
     draftedByAdminWho: 'by {by}',
-    draftedByAdminFix: 'Fix what is described above and publish it again — the note goes away when the page goes back up.'
+    draftedByAdminFix: 'Fix what is described above and publish it again — the note goes away when the page goes back up.',
+
+    /* The Almanac: /s/{slug}/almanac and /collection/{id}/almanac, every
+       character of a set on one page (renderAlmanacPage in worker.js). */
+    almanacKicker: 'The Almanac',
+    almanacBackScript: '← Back to the script',
+    almanacBackCollection: '← Back to the collection',
+    almanacPrint: 'Print or save as PDF',
+    almanacPerPage: 'One character per printed page',
+    almanacContents: 'Contents',
+    almanacOfficial: 'Official characters',
+    almanacOfficialNote: 'Their almanac entries are on the official wiki.',
+    almanacJinxes: 'Jinxes',
+    almanacEmpty: 'There are no published characters here yet.',
+    almanacSource: 'From the BOTC HomeBrew Wiki'
   };
 
   if (typeof window !== 'undefined') window.SystemText = SYSTEM_TEXT;

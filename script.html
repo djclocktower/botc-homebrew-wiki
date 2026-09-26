@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
+<link rel="stylesheet" href="assets/play.css">
 <style>
 /* ─── Script builder: ability dropdown ───────────────────── */
 .sb-add-row {
@@ -272,6 +273,29 @@
         <p class="sb-empty">Your script is empty. Add characters from the sidebar.</p>
       </div>
 
+      <!-- Script Check: balance, player counts, setup changes and the easy
+           mistakes, counted from the roster (assets/script-check.js). The
+           heading's second line is the verdict, so it reads while closed. -->
+      <details class="sb-night" id="sb-check-sec">
+        <summary>Script Check <span class="sb-night-arrow">&#9662;</span>
+          <span class="sb-night-sub" id="sb-check-sub">Balance, player counts and setup at a glance.</span>
+        </summary>
+        <div class="sb-night-body">
+          <div id="sb-check-body"></div>
+        </div>
+      </details>
+
+      <!-- Deal a Game: draw a legal bag from this roster and lay it out as a
+           grimoire (assets/deal.js, the same widget as a script page's). -->
+      <details class="sb-night" id="sb-deal-sec">
+        <summary>Deal a Game <span class="sb-night-arrow">&#9662;</span>
+          <span class="sb-night-sub">Draw a random bag for 5&ndash;15 players, setup changes included, and see it as a grimoire.</span>
+        </summary>
+        <div class="sb-night-body">
+          <div id="sb-deal-body"></div>
+        </div>
+      </details>
+
       <!-- Jinxes on this script: the ones the characters carry, plus any this
            script writes for itself. Same widget as the publish page. -->
       <details class="sb-night" id="sb-jinx-sec">
@@ -315,6 +339,9 @@
   <script src="assets/card-filters.js"></script>
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>
+  <script src="assets/setup-rules.js"></script>
+  <script src="assets/script-check.js"></script>
+  <script src="assets/deal.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -387,6 +414,7 @@
       else delete m.jinxEdits;
       setMeta(m);
       renderScript();
+      if (checkUI) checkUI.render();
     }
     function mountJinxEditor() {
       if (!window.JinxEditor) return;
@@ -411,6 +439,46 @@
         setNightOrder(null);
         nightUI.render();
       });
+    }
+
+    /* ── Script Check + Deal a Game ──
+       Both read rosterChars(), officials included, and redraw with the rest
+       of the page. The dealer only draws once its panel is open: a deal is
+       random, so drawing one nobody is looking at would be wasted. */
+    var checkUI = null, dealUI = null;
+    function scriptJinxCount(chars) {
+      return (window.PageRender && window.PageRender.scriptJinxes)
+        ? window.PageRender.scriptJinxes(chars, getJinxEdits()).length : 0;
+    }
+    function mountCheck() {
+      if (!window.ScriptCheck) return;
+      checkUI = window.ScriptCheck.mount(document.getElementById('sb-check-body'), {
+        getChars: rosterChars,
+        getJinxCount: scriptJinxCount,
+        summaryEl: document.getElementById('sb-check-sub')
+      });
+    }
+    function dealRoster() {
+      return rosterChars().map(function (c) {
+        return {
+          slug: c.slug, name: c.name, team: c.team, ability: c.ability || '',
+          icon: c.art ? 'assets/' + c.art : (typeof c.image === 'string' ? c.image : (Array.isArray(c.image) ? c.image[0] : '')),
+          href: c.page || '', official: !!c.official
+        };
+      });
+    }
+    function mountDeal() {
+      var sec = document.getElementById('sb-deal-sec');
+      if (!sec || !window.Deal) return;
+      function open() {
+        if (!sec.open) return;
+        if (!dealUI) dealUI = window.Deal.mount(document.getElementById('sb-deal-body'), {
+          getRoster: dealRoster,
+          name: (getMeta().name || '').trim()
+        });
+      }
+      sec.addEventListener('toggle', open);
+      open();
     }
 
     function onScript(slug) { return getScript().indexOf(slug) !== -1; }
@@ -553,6 +621,8 @@
       renderScript();
       if (nightUI) nightUI.render();
       if (jinxUI) jinxUI.render();
+      if (checkUI) checkUI.render();
+      if (dealUI) dealUI.render();
       renderCredits();
     }
 
@@ -886,6 +956,8 @@
         mountSidebarFilters();
         mountNightEditor();
         mountJinxEditor();
+        mountCheck();
+        mountDeal();
         renderAll();
       })
       .catch(function () {

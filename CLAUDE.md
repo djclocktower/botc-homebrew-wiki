@@ -147,6 +147,8 @@ worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
                        See "Importing from Bloodstar" below.
+worker/similar.js      "More Like This": pure TF-IDF + tag scoring over the grid
+                       feed, behind GET /api/similar. See "More Like This".
 wrangler.toml          Worker config: D1/KV/R2 bindings, run_worker_first, cron
 _headers               Cache rules for static assets. Matching rules COMBINE
                        (same header -> values joined with a comma), so an
@@ -565,7 +567,30 @@ assets/
                        sortRosterSAO(). Used by script.html, publish-script.html,
                        steven-approved-order.html, and safe in the Worker.
   pageview.js          Client enhancements for /s/ and /collection/ SSR pages
-                       (edit button, JSON download).
+                       (edit button, JSON download, and the Deal a Game panel
+                       under a script's roster, which it builds and lazy-loads).
+  setup-rules.js       How many of each team a game needs (the official 5-15
+                       sheet) and what a character's [bracketed] setup text does
+                       to that ([+2 Outsiders], [-1 or +1 Outsider], [+the
+                       King]; anything else is a NOTE, shown and never
+                       simulated). deal() draws a legal bag. The ONE parser:
+                       Script Check and Deal a Game both read it. Browser+Worker.
+  script-check.js      The Script Builder's Script Check panel: team balance
+                       vs 13/4/4/4 (or 6/2/2/1 when the bag is 15 or fewer),
+                       the player-count table, setup changes, nights, tags and
+                       "worth a second look". html()/analyze()/summary() are
+                       pure; the tests call them. See "Script Check and Deal a
+                       Game".
+  deal.js              Deal a Game: the grimoire circle. mount(el,{getRoster})
+                       and rosterFromPage(), which reads a /s/ page's roster
+                       rows (render-page.js stamps data-team/data-slug on them).
+  play.css             .sc-* (Script Check) and .dl-* (Deal a Game). Linked by
+                       script.html; pageview.js loads it on first open.
+  similar.js           The "More Like This" strip at the foot of a /c/ page,
+                       fetched from /api/similar as the reader nears the end.
+  daily.js             The Daily Puzzle's pure half (pick, redact, compare,
+                       share text). daily.html owns the DOM.
+  almanac.css          The Almanac page (/s/{slug}/almanac), screen and print.
   theme-editor.js      Shared theme-kit form controls (font + color pickers) for
                        publish-script/-collection/-page/-news.html.
   wiki-editor.js       Shared editor widgets: the formatting toolbar, the
@@ -649,7 +674,9 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        Night Order panel sits under the roster, the same
                        widget publish-script.html uses.
                        Jinx and Night Order panels sit under the roster
-                       (shared widgets; see "Jinxes" and "Night order").
+                       (shared widgets; see "Jinxes" and "Night order"), with
+                       Script Check and Deal a Game above them (see "Script
+                       Check and Deal a Game").
                        Every export/copy from HERE gets one extra entry, and
                        nowhere else does: the **botchomebrew.wiki credits
                        Fabled** (the site's pirate skull, id
@@ -694,6 +721,10 @@ publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/autho
                        body images (R2 pages/), fact box, custom boxes, theme kit,
                        contents + comments toggles. ?p={slug} edits,
                        ?parentType=&parentSlug= starts a new one.
+daily.html             /daily — "Who Am I?", the Daily Puzzle. One homebrew
+                       character a day, picked in the browser. See "The Daily
+                       Puzzle". Linked from the homepage browse cards and
+                       tools.html; in the sitemap's staticPages.
 jinxes.html            /jinxes: every jinx on the wiki, as a grouped list and an
                        interactive map, both built from GET /api/jinxes so they
                        cannot disagree. Creators can add a jinx to a character
@@ -2822,6 +2853,103 @@ uploaded — except for the one opt-in save described below.
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
 
+
+## Script Check and Deal a Game
+
+Two panels that answer "does this script work at a table?" from the roster
+alone. Both read `assets/setup-rules.js`, so they can never disagree about
+what a Baron does.
+
+- **Setup text is parsed, never guessed.** `parseSetup()` reads the official
+  bracket convention one sentence or clause at a time: a signed number and a
+  team word is a change (`[+2 Outsiders]`, `[-1 or +1 Outsider]`, `[+0 to +2
+  Outsiders]` → the options), `+the X` is a character that must be in play,
+  and **everything else is a note**, shown word for word and not simulated
+  (`[Most players are Legion]`, `[-? to +? Outsiders]`). A change to
+  Outsiders/Minions/Demons is paid for in Townsfolk; a change to Townsfolk in
+  Outsiders — the official way round.
+- **`deal()`**: Demon and Minions first (they decide the Outsider count),
+  their changes applied (additions before removals, and only an option that
+  leaves every team at zero or more — a Godfather at seven has no Outsider to
+  remove), repeated while a newly drawn Minion brings a change of its own;
+  then Outsiders and Townsfolk, then good modifiers once, then `+the X`
+  swaps. Bluffs are three good characters not in play. "You think you are a
+  Townsfolk" becomes a note telling the Storyteller which token to show.
+  A team the script cannot fill is reported in `short`, never padded.
+- **Script Check** is only in the Script Builder (a collapsed panel whose
+  heading's second line is the verdict, via `summary()`). The targets are
+  shown as what players expect, not as rules.
+- **Deal a Game** is in the Script Builder AND on every published `/s/` page
+  that has a Demon. On `/s/` it is built by `pageview.js`, not the server,
+  so the cached HTML is untouched; the dealer, its rules and `play.css` load
+  on first open. It reads the roster off the page's own rows
+  (`Deal.rosterFromPage()`), which is why `renderRoster()` in render-page.js
+  stamps `data-team` / `data-slug` on each `.script-char-row`. Nothing is
+  stored; the player count is remembered per browser
+  (`botc_deal_players`).
+
+## More Like This (similar characters on /c/)
+
+`GET /api/similar?slug={identity}` returns up to six published characters
+most like this one; `assets/similar.js` draws them at the foot of the page
+(the homepage's Recently Added card, quick actions included) when the reader
+nears the end. **The HTML carries nothing of it**, so a /c/ page's cache does
+not have to roll when some other character changes.
+
+- Scoring is `worker/similar.js`, pure: TF-IDF over the ability's words and
+  word pairs (0.65), IDF-weighted tag overlap (0.30), and a small same-team
+  nudge (0.08) only for a character already matched on one of those. A crude
+  but consistent stem (`votes`/`voted`/`vote` → `vot`).
+- Never suggested: Partial pages, the page itself, a word-for-word copy of
+  its ability. At most two from one creator.
+- The index is built from the **published grid feed** (`cachedFeedBody`), so
+  it can only suggest what a reader could browse to; a draft, a typo or a
+  deleted page gets `{items: []}`, never an error. Memoised per isolate per
+  content version, with overlapping misses sharing one build, and served
+  with the feeds' version-keyed ETag (a repeat visit is a 304).
+
+## The Daily Puzzle (/daily)
+
+"Who Am I?" — the ability with the name blacked out; six guesses; each wrong
+guess compared on team (yellow = same alignment), creator, set and tags; the
+icon's silhouette after two wrong guesses and the name's shape after four.
+
+- **Nothing is stored on the server and there is no route.** The day's
+  character is the eligible one (finished, has art, a real ability, a
+  townsfolk..traveller team) whose FNV hash with the UTC day number is
+  lowest. Same answer for everybody, like Featured; a newly published page
+  takes the day over only if it hashes lower, and a game already under way
+  keeps its answer (stored with the progress). Do not "simplify" it to
+  `index = day % N`: every new page would reshuffle the day.
+- Progress, streaks and the guess distribution are per browser
+  (localStorage `botc_daily`, 60 days of detail kept). Practice mode draws
+  a random one and records nothing.
+- The silhouette is painted on a canvas where the art is ours, so the
+  picture's filename (which is the character's name) is not sitting in the
+  page; remote art falls back to a CSS filter.
+- Puzzle #1 is 2026-09-26 (`EPOCH_DAY` in daily.js).
+
+## The Almanac (/s/{slug}/almanac, /collection/{id}/almanac)
+
+Every homebrew character on a set, as one readable page with a contents list,
+grouped by team in the set page's order, then the official characters named
+and linked out, then the set's jinxes (`PageRender.scriptJinxes`, its own
+edits included). A print stylesheet (`assets/almanac.css`) makes it a booklet:
+cover, contents, then one character per page, or run together if the reader
+unticks the box (a class on `<body>`). Linked from the set page's action
+buttons ("Read the Almanac").
+
+- `renderAlmanacPage()` in worker.js; each entry is
+  `Render.renderAlmanacEntry()`, which uses the /c/ renderer's own helpers
+  (ability escaped, prose through `inlineLinks()`, the reminder-token registry
+  set and cleared around it), so an entry cannot say what its page does not.
+- Same gates as the set page (draft = its editors only, deleted = 404);
+  characters come from `charsBySlug()`, published only. SSR-cached like the
+  set page (the key is the path) and counted as a view of the set.
+- `pageShell()` takes `styles: [...]` for page-specific stylesheets now; this
+  is its first user. The wording is in `assets/system-text.js` (`almanac*`).
+- Lazy icons are switched to eager before printing (`beforeprint` and the
+  Print button), or a long booklet prints with blank icons.
 
 ## Featured Character (the homepage slot)
 

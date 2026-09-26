@@ -1085,6 +1085,64 @@
     finally { curRoot = prevRoot; curHost = prevHost; setReminderTokens(null); }
   }
 
+  /* One character as an ALMANAC ENTRY — the reading text of its page in one
+     block, for /s/{slug}/almanac and /collection/{id}/almanac, where a set's
+     characters are read (or printed) one after another. It goes through the
+     same helpers as renderCharacter: the ability escaped, every prose field
+     through inlineLinks(), the reminder-token registry set and cleared around
+     it, so an entry can never say anything its own page does not. Everything
+     interactive is left out — no gallery, no JSON box, no buttons — because a
+     printed page has nowhere to click. */
+  function renderAlmanacEntry(d, artSrc, linkRoot) {
+    var root = linkRoot || '';
+    var prevRoot = curRoot, prevHost = curHost;
+    curRoot = root;
+    curHost = d || null;
+    setReminderTokens(d);
+    try { return almanacEntryBody(d || {}, artSrc, root); }
+    finally { curRoot = prevRoot; curHost = prevHost; setReminderTokens(null); }
+  }
+  function almanacEntryBody(d, artSrc, root) {
+    var team = String(d.team || 'townsfolk').toLowerCase();
+    var label = TEAM_LABEL[team] || team;
+    function list(v) {
+      return (Array.isArray(v) ? v : [v]).filter(function (x) { return typeof x === 'string' && x.trim(); });
+    }
+    function sech(title) { return '<h3 class="alm-sech">' + title + '</h3>'; }
+    var name = esc(d.name || 'Character');
+    var bullets = list(d.summaryBullets), paras = list(d.howToRun), callouts = list(d.callout);
+    var examples = list(d.examples), tips = list(d.tips), bluffing = list(d.bluffing), fighting = list(d.fighting);
+    var jinxes = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
+    var quote = String(d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
+    var who = splitCreators(d.creator);
+
+    var h = '<header class="alm-head">' +
+      (artSrc ? '<img class="alm-icon" src="' + esc(artSrc) + '" alt="" loading="lazy" decoding="async">' : '') +
+      '<div class="alm-titles"><h2 class="alm-name"><a href="' + esc(charHref(d, root)) + '">' + name + '</a></h2>' +
+      '<p class="alm-meta"><span class="alm-team">' + esc(label) + '</span>' +
+        (who.length ? ' &middot; by ' + who.map(esc).join(', ') : '') + '</p></div></header>';
+    if (d.ability) h += '<p class="alm-ability">' + esc(d.ability) + '</p>';
+    if (quote.trim()) h += '<p class="alm-quote">&ldquo;' + inlineLinks(quote) + '&rdquo;</p>';
+    if (d.lede) h += '<p class="alm-lede">' + inlineLinks(d.lede) + '</p>';
+    if (bullets.length) h += '<ul class="alm-bullets">' + bullets.map(function (b) { return '<li>' + inlineLinks(b) + '</li>'; }).join('') + '</ul>';
+    if (examples.length) h += sech('Examples') + examples.map(function (e) { return '<div class="alm-ex">' + inlineLinks(e) + '</div>'; }).join('');
+    if (paras.length || callouts.length) {
+      h += sech('How to Run') + paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
+        callouts.map(function (c) { return '<div class="alm-callout">' + inlineLinks(c) + '</div>'; }).join('');
+    }
+    if (tips.length) h += sech('Tips &amp; Tricks') + '<ul>' + tips.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul>';
+    if (bluffing.length) h += sech('Bluffing as the ' + name) + '<ul>' + bluffing.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul>';
+    if (fighting.length) h += sech('Fighting the ' + name) + '<ul>' + fighting.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul>';
+    if (jinxes.length) {
+      h += sech('Jinxes') + '<ul class="alm-jinxes">' + jinxes.map(function (j) {
+        var t = resolveJinxTarget(j, root);
+        return '<li><strong class="' + (j.align === 'evil' ? 'evil' : 'good') + '">' + esc(t.name) + ':</strong> ' +
+          inlineText(j.text || j.reason || '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    return '<article class="alm-entry alm-t-' + esc(team) + '" id="alm-' + esc(String(d.slug || slugId(d.name || ''))) + '">' + h + '</article>';
+  }
+
   /* This character's own reminder tokens, handed to the text engine for the
      duration of the render. "Place the [[Drunk]] reminder token on them" was
      rendering a link to the official Drunk, because [[Name]] resolves an
@@ -1406,6 +1464,7 @@
     module.exports = {
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
+      renderAlmanacEntry: renderAlmanacEntry,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,
