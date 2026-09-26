@@ -1,0 +1,122 @@
+/* almanac.css: /s/{slug}/almanac and /collection/{id}/almanac.
+   On screen, a long parchment read on the wiki's own background: a cover, a
+   contents list, then one card per character, grouped by team. In print, the
+   same markup becomes a booklet: ink on white, no top bar, no buttons, and
+   (unless the reader untick it) one character per page — body.alm-perpage,
+   toggled by the checkbox above the contents. */
+
+.alm-page { max-width: 880px; margin: 0 auto; }
+
+.alm-cover { text-align: center; padding: 6px 0 18px; }
+.alm-cover-img { display: block; max-width: min(520px, 90%); max-height: 240px; margin: 0 auto 14px; object-fit: contain; }
+.alm-kicker {
+  margin: 0; font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .24em;
+  text-transform: uppercase; color: rgba(236,225,200,.7);
+}
+.alm-title {
+  font-family: 'Dumbledor2', serif; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  font-size: clamp(1.8rem, 6vw, 3.2rem); color: var(--parch); margin: .1em 0 .15em;
+  text-shadow: 0 3px 12px rgba(0,0,0,.5); overflow-wrap: anywhere;
+}
+.alm-byline, .alm-tagline, .alm-count { margin: 0 0 4px; color: rgba(236,225,200,.82); }
+.alm-tagline { font-style: italic; }
+.alm-count { font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .06em; color: rgba(236,225,200,.6); }
+
+.alm-actions { display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center; align-items: center; margin: 4px 0 22px; }
+.alm-actions .cta-secondary { cursor: pointer; font: inherit; }
+.alm-perpage-opt { display: inline-flex; align-items: center; gap: 7px; color: rgba(236,225,200,.85); font-size: .88rem; cursor: pointer; }
+.alm-perpage-opt input { width: 17px; height: 17px; accent-color: #b8952a; }
+
+.alm-toc, .alm-entry, .alm-official, .alm-jinx-all {
+  background-color: var(--parch); background-image: url('parchment.webp'); background-size: cover;
+  border: 2px solid var(--parch-frame); color: var(--ink);
+  padding: 20px clamp(16px, 4vw, 34px); margin: 0 0 18px;
+  box-shadow: 0 6px 16px rgba(40,12,30,.28);
+}
+.alm-toc-title { font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon); font-size: 1.3rem; margin: 0 0 10px; text-align: center; }
+.alm-toc-cols { columns: 3 140px; column-gap: 26px; }
+.alm-toc-group { break-inside: avoid; margin-bottom: 12px; }
+.alm-toc-group h3 {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem; letter-spacing: .1em;
+  text-transform: uppercase; color: #6b5d49; margin: 0 0 4px;
+}
+.alm-toc-group ol { list-style: none; margin: 0; padding: 0; }
+.alm-toc-group li { font-size: .92rem; line-height: 1.45; padding: 0; margin: 0 0 2px; }
+.alm-toc-group li::before { content: none; }
+.alm-toc-group a { color: var(--maroon); text-decoration: none; }
+.alm-toc-group a:hover { text-decoration: underline; }
+
+.alm-teamhead {
+  font-family: 'Dumbledor2', serif; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  font-size: clamp(1.1rem, 2.6vw, 1.45rem); color: var(--parch); margin: 30px 0 12px;
+  padding-bottom: 6px; border-bottom: 2px solid; border-image: linear-gradient(90deg, var(--rule), transparent) 1;
+}
+.alm-official .alm-teamhead, .alm-jinx-all .alm-teamhead { color: var(--maroon); margin-top: 0; }
+
+.alm-entry { scroll-margin-top: 80px; }
+.alm-head { display: flex; gap: 16px; align-items: center; margin-bottom: 10px; }
+.alm-icon { width: 96px; height: 96px; object-fit: contain; flex: none; }
+.alm-titles { min-width: 0; }
+.alm-name { font-family: 'Dumbledor2', serif; font-weight: 400; font-size: clamp(1.5rem, 4vw, 2rem); margin: 0; line-height: 1.05; overflow-wrap: anywhere; }
+.alm-name a { color: var(--maroon); text-decoration: none; }
+.alm-t-townsfolk .alm-name a, .alm-t-outsider .alm-name a { color: var(--good-name); }
+.alm-t-minion .alm-name a, .alm-t-demon .alm-name a { color: var(--evil); }
+.alm-meta { margin: 4px 0 0; font-size: .86rem; color: #6b5d49; }
+.alm-team { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+.alm-ability { font-size: 1.05rem; line-height: 1.45; font-weight: 600; margin: 8px 0 10px; padding: 10px 14px; background: rgba(255,255,255,.4); border-left: 3px solid var(--parch-frame); }
+.alm-quote { font-style: italic; text-align: center; margin: 10px auto 12px; max-width: 36em; color: #3d3325; }
+.alm-lede { font-size: 1rem; line-height: 1.55; margin: 0 0 8px; }
+.alm-entry ul { margin: 0 0 10px; padding-left: 22px; line-height: 1.5; }
+.alm-entry li { margin-bottom: 3px; }
+.alm-entry p { line-height: 1.55; overflow-wrap: anywhere; }
+.alm-sech {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon); font-size: 1.12rem;
+  margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(180,160,120,.55);
+}
+.alm-ex { background: var(--ex-bg); border: 1px solid var(--ex-frame); padding: 8px 12px; margin: 0 0 8px; font-style: italic; line-height: 1.5; overflow-wrap: anywhere; }
+.alm-callout { border-left: 3px solid var(--maroon); background: rgba(91,31,33,.06); padding: 8px 12px; margin: 0 0 8px; line-height: 1.5; }
+.alm-jinxes strong.good { color: var(--good-name); }
+.alm-jinxes strong.evil { color: var(--evil); }
+.alm-official ul, .alm-jinx-all ul { margin: 0; padding-left: 20px; line-height: 1.55; }
+.alm-official li, .alm-jinx-all li { margin-bottom: 6px; }
+.alm-official a { color: var(--maroon); }
+.alm-official-team { font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #6b5d49; margin-right: 4px; }
+.alm-note { margin: -4px 0 10px; font-size: .86rem; color: #6b5d49; }
+.alm-empty { text-align: center; color: rgba(236,225,200,.8); padding: 30px 0; }
+.alm-source { text-align: center; font-size: .78rem; color: rgba(236,225,200,.55); margin: 24px 0 0; }
+@media (max-width: 520px) {
+  .alm-icon { width: 72px; height: 72px; }
+  .alm-head { gap: 12px; }
+}
+
+/* ─── Print: a booklet ──────────────────────────────────────── */
+@media print {
+  @page { margin: 16mm 14mm; }
+  body, body.alm-body { background: #fff !important; color: #000; }
+  body::before, body::after { display: none !important; }
+  .topbar, .nav-dropdown, .foot, .alm-actions, #edit-btn, .announcement, .announce-bar { display: none !important; }
+  .wrap { padding: 0 !important; max-width: none !important; }
+  .alm-page { max-width: none; }
+  .alm-toc, .alm-entry, .alm-official, .alm-jinx-all {
+    background: none !important; border: 0; box-shadow: none; padding: 0; margin: 0 0 14pt;
+  }
+  .alm-kicker, .alm-byline, .alm-tagline, .alm-count, .alm-source { color: #444; }
+  .alm-title, .alm-teamhead { color: #000; text-shadow: none; }
+  .alm-teamhead { border-image: none; border-bottom: 1.5pt solid #999; break-after: avoid; }
+  .alm-cover { padding-top: 30mm; break-after: page; }
+  .alm-cover-img { max-height: 90mm; }
+  .alm-toc { break-after: page; }
+  .alm-toc-group a { color: #000; }
+  .alm-name a { color: #000 !important; }
+  .alm-ability { background: #f4f1ea; border-left-color: #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .alm-ex { background: #f4f1ea; border-color: #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Run together (the box unticked): entries flow on, and only a heading is
+     kept with what follows it. One per page: each entry starts a page. */
+  .alm-head { break-after: avoid; }
+  .alm-perpage .alm-entry { break-before: page; }
+  .alm-perpage .alm-teamhead + .alm-entry { break-before: avoid; }
+  .alm-perpage .alm-teamhead { break-before: page; }
+  .alm-sech { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .alm-official, .alm-jinx-all { break-before: page; }
+}

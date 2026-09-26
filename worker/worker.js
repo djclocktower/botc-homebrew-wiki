@@ -110,6 +110,9 @@
  *                                not sent by the client — a conversation
  *                                image belongs to no page, so there is no
  *                                slot whose owner could be asked
+ *   GET  /s/{slug}/almanac,
+ *        /collection/{id}/almanac -> SSR: every homebrew character on the set as
+ *                                one readable, printable almanac (renderAlmanacPage)
  *   GET  /api/page-json       -> a script's or collection's export JSON as a
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
@@ -134,6 +137,11 @@
  *   GET  /api/creators        -> every creator with counts + linked account
  *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
  *                                the /jinxes index and its relationship graph
+ *   GET  /api/similar         -> ?slug={identity}: up to six published
+ *                                characters most like this one (ability text,
+ *                                tags, team), for a /c/ page's "More Like
+ *                                This" strip. Built from the grid feed,
+ *                                version-keyed like it; drafts get nothing
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
  *                                (or admin) just one of the two characters
  *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
@@ -334,6 +342,9 @@ import * as Bloodstar from './bloodstar.js';
 // Delete this import, the route and the card once the cleanup has been run.
 import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 import { homeData } from './home-data.js';
+// "More like this" on a character page: pure scoring over the grid feed,
+// behind GET /api/similar. See the header of that file for the weights.
+import { buildSimilarIndex, similarTo, SIMILAR_MAX } from './similar.js';
 import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
@@ -4801,7 +4812,9 @@ function versionAssetPaths(html) {
 function pageShell(o) {
   // o: {title, ogTitle, desc, canonicalUrl, ogImage, ogCard, themeColor, body,
   //     bodyClass, bodyStyle, mainClass, mainStyle, bootstrap, scripts[],
-  //     draftBanner, noindex, root}
+  //     styles[], draftBanner, noindex, root}
+  // `styles` adds page-specific stylesheets after the shared two (the
+  // almanac's print layout), by asset name like `scripts`.
   // `ogTitle` is the headline a LINK UNFURL shows and defaults to `title`.
   // They are split because the two are read in different places: <title> is
   // the browser tab and the Google result, where anything past the page's own
@@ -4849,7 +4862,7 @@ ${o.themeColor ? '<meta name="theme-color" content="' + attr(o.themeColor) + '">
 <link rel="apple-touch-icon" href="${R}assets/favicon.png">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['styles.css'] || 'styles.css'}">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['header-redesign.css'] || 'header-redesign.css'}">
-</head>
+${(o.styles || []).map(f => '<link rel="stylesheet" href="' + R + 'assets/' + (ASSET_MANIFEST[f] || f) + '">\n').join('')}</head>
 <body${bodyAttrs}>
 ${o.draftBanner || ''}
   <header class="topbar">
@@ -5075,7 +5088,9 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
     // favorites.js before charpage.js: the info card's Favorite button is
     // mounted by charpage.js through window.Favorites. card-actions.js before
     // it too: the info card's Add to Script / Token glyphs are drawn from it.
-    scripts: ['reader.js', 'tags.js', 'favorites.js', 'card-actions.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
+    // similar.js (More Like This) before reading-lazy.js, so its strip lands
+    // above the comments; a draft has no suggestions to ask for.
+    scripts: ['reader.js', 'tags.js', 'favorites.js', 'card-actions.js', 'charpage.js', ...(isDraft ? [] : ['similar.js']), 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
   });
 }
 
@@ -5169,6 +5184,29 @@ async function loadOfficialJinxes(env, origin) {
     _officialJinxCache = [];
   }
   return _officialJinxCache;
+}
+
+// ---- "More like this": the similarity index, one per content version ----
+// Built from the published GRID feed (the cached body every browse page
+// reads), so it can only ever suggest what a reader could already browse to,
+// and a draft is never in it. Per isolate, with overlapping misses sharing one
+// build; the feed body under it is edge-cached, so a cold isolate pays one
+// parse and one tokenising pass, not a table read.
+let _similarCache = null;        // { version, index }
+let _similarPending = null;      // { version, promise }
+async function similarIndex(env, ctx) {
+  const version = await contentVersion(env, FEED_DEPS.characters);
+  if (_similarCache && _similarCache.version === version) return { version, index: _similarCache.index };
+  if (_similarPending && _similarPending.version === version) return { version, index: await _similarPending.promise };
+  const promise = (async () => {
+    const body = await cachedFeedBody(env, ctx, 'characters', 'grid', version);
+    const index = buildSimilarIndex(JSON.parse(body));
+    _similarCache = { version, index };
+    return index;
+  })();
+  _similarPending = { version, promise };
+  try { return { version, index: await promise }; }
+  finally { if (_similarPending && _similarPending.promise === promise) _similarPending = null; }
 }
 
 // ---- the jinx index ----------------------------------------------------
@@ -5562,6 +5600,155 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
       : ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
+}
+
+/* ---- the Almanac: every character on a script or collection, on one page ----
+   GET /s/{slug}/almanac and /collection/{id}/almanac.
+
+   A homebrew script is played from its almanac, and until now the only way to
+   read one here was a page per character. This puts every homebrew entry of
+   the set on one page, in roster order and grouped by team, with a contents
+   list, the official characters named at the end (their almanac is the
+   official wiki's, so they are linked, not copied), and the set's jinxes —
+   and a print stylesheet that turns it into a booklet (assets/almanac.css):
+   one character per page, or run together, the reader's choice.
+
+   Same gates as the page it belongs to: a draft is its editors' and nobody
+   else's, a deleted set is a 404. Each entry is Render.renderAlmanacEntry(),
+   the /c/ renderer's own helpers, and the characters come from the published
+   rows only, so an entry can never show a draft or say what its page does not.
+   Views count as views of the set: reading its almanac IS reading it. */
+const ALMANAC_MAX = 300;
+async function renderAlmanacPage(env, ctx, request, url, type, key) {
+  const isScript = type === 'script';
+  const table = isScript ? 'scripts' : 'collections';
+  let row = await env.DB.prepare(`SELECT slug, data, status, owner_id, updated_at FROM ${table} WHERE slug=?`)
+    .bind(key).first();
+  if (!isScript && !row) row = await findCollectionRow(env, key);
+  if (!row || !row.data || row.status === 'deleted') return assetsOrNotFound(env, request);
+  const isDraft = row.status === 'draft';
+  if (isDraft) {
+    const sess = await getSession(env, request);
+    if (!(canEditRow(sess, row) || await canEditPage(env, sess, type, row))) return assetsOrNotFound(env, request);
+  }
+  if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || key));
+  const d = foldLegacyCurata(JSON.parse(row.data));
+  if (!d.slug) d.slug = row.slug || key;
+  const pageKey = isScript ? d.slug : (d.id || d.slug);
+  const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+  const root = '../../';
+  const back = root + (isScript ? 's/' : 'collection/') + encodeURIComponent(pageKey);
+
+  // The roster, in the order the set's own page draws it.
+  let order;
+  if (isScript) {
+    order = (d.characters || []).map(String);
+  } else {
+    const members = PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, await cachedCardChars(env, ctx)));
+    order = members.map(c => String(c.slug));
+  }
+  const homebrewSlugs = order.filter(s => s.indexOf('off-') !== 0).slice(0, ALMANAC_MAX);
+  const full = await charsBySlug(env, homebrewSlugs);
+  const bySlug = new Map(full.map(c => [String(c.slug), c]));
+  const entries = homebrewSlugs.map(s => bySlug.get(s)).filter(Boolean);
+  const official = order.some(s => s.indexOf('off-') === 0)
+    ? (await loadOfficialRoles(env, url.origin)).filter(c => order.includes(c.slug))
+    : [];
+
+  // The registries a /c/ page sets, so [[Name]] links, reminder tokens and
+  // jinx targets resolve exactly as they do on each character's own page.
+  const [icons, names, links, jx] = await Promise.all([
+    officialIconMap(env, url.origin), officialNameMap(env, url.origin),
+    cachedCharLinkMap(env, ctx), jinxIndex(env, ctx).catch(() => null)
+  ]);
+  Render.setOfficialIconUrls(icons);
+  Render.setOfficialNames(names);
+  WikiRender.setCharLinks(links);
+  Render.setWikiChars(jx ? jx.chars : {});
+  // The set's jinxes, as the set page resolves them (its own edits included).
+  // Worked out BEFORE each entry takes on its mirrored jinxes below, which the
+  // set page never sees and would only list a pair twice.
+  const jinxList = PageRender.scriptJinxes(entries.concat(official), d.jinxEdits || {});
+
+  const teams = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+  const teamOf = c => { const t = String(c.team || '').toLowerCase(); return teams.includes(t) ? t : 'other'; };
+  const groups = [...teams, 'other'].map(t => ({ t, list: entries.filter(c => teamOf(c) === t) })).filter(g => g.list.length);
+  const label = t => t === 'other' ? 'Other' : (Render.TEAM_LABEL[t] || t);
+  const esc = escapeHtml;
+
+  let toc = '';
+  let body = '';
+  for (const g of groups) {
+    toc += '<div class="alm-toc-group"><h3>' + esc(label(g.t)) + '</h3><ol>' +
+      g.list.map(c => '<li><a href="#alm-' + esc(c.slug) + '">' + esc(c.name) + '</a></li>').join('') + '</ol></div>';
+    body += '<h2 class="alm-teamhead alm-t-' + esc(g.t) + '">' + esc(label(g.t)) + '</h2>';
+    for (const c of g.list) {
+      if (jx) c.jinxes = mergeMirroredJinxes(c, String(c.slug), jx);
+      const art = c.art ? root + 'assets/' + c.art + (c.v ? '?v=' + encodeURIComponent(c.v) : '')
+        : (Array.isArray(c.image) ? c.image[0] : c.image) || '';
+      body += Render.renderAlmanacEntry(c, art, root);
+    }
+  }
+  if (official.length) {
+    toc += '<div class="alm-toc-group"><h3>' + esc(SYS.almanacOfficial) + '</h3><ol>' +
+      official.map(c => '<li><a href="' + esc(c.page) + '" target="_blank" rel="noopener">' + esc(c.name) + ' &#8599;</a></li>').join('') + '</ol></div>';
+    body += '<section class="alm-official"><h2 class="alm-teamhead">' + esc(SYS.almanacOfficial) + '</h2>' +
+      '<p class="alm-note">' + esc(SYS.almanacOfficialNote) + '</p><ul>' +
+      official.map(c => '<li><a href="' + esc(c.page) + '" target="_blank" rel="noopener"><strong>' + esc(c.name) +
+        '</strong></a> <span class="alm-official-team">' + esc(Render.TEAM_LABEL[c.team] || c.team || '') + '</span> ' +
+        esc(c.ability || '') + '</li>').join('') + '</ul></section>';
+  }
+  if (jinxList.length) {
+    body += '<section class="alm-jinx-all"><h2 class="alm-teamhead">' + esc(SYS.almanacJinxes) + '</h2><ul>' +
+      jinxList.map(j => '<li><strong>' + esc(j.a.name) + ' &amp; ' + esc(j.b.name) + ':</strong> ' +
+        WikiRender.inlineFormat(String(j.text || ''), { linkRoot: root }) + '</li>').join('') + '</ul></section>';
+  }
+
+  const logo = d.header || d.logo;
+  const cover = '<header class="alm-cover">' +
+    (logo ? '<img class="alm-cover-img" src="' + esc(PageRender.imgSrc(root, logo, rowVersion(row.updated_at))) + '" alt="">' : '') +
+    '<p class="alm-kicker">' + esc(SYS.almanacKicker) + '</p>' +
+    '<h1 class="alm-title">' + esc(name) + '</h1>' +
+    (d.author ? '<p class="alm-byline">by ' + esc(d.author) + '</p>' : '') +
+    (d.tagline ? '<p class="alm-tagline">' + esc(d.tagline) + '</p>' : '') +
+    '<p class="alm-count">' + entries.length + ' homebrew character' + (entries.length === 1 ? '' : 's') +
+      (official.length ? ' &middot; ' + official.length + ' official' : '') + '</p>' +
+    '</header>';
+  const actions = '<div class="alm-actions">' +
+    '<a class="cta-secondary" href="' + esc(back) + '">' + esc(isScript ? SYS.almanacBackScript : SYS.almanacBackCollection) + '</a>' +
+    (entries.length ? '<button type="button" class="cta-secondary alm-print">&#128438; ' + esc(SYS.almanacPrint) + '</button>' +
+      '<label class="alm-perpage-opt"><input type="checkbox" id="alm-perpage" checked> ' + esc(SYS.almanacPerPage) + '</label>' : '') +
+    '</div>';
+  const main = '<div class="alm-page">' + cover + actions +
+    (entries.length || official.length
+      ? '<nav class="alm-toc" aria-label="Contents"><h2 class="alm-toc-title">' + esc(SYS.almanacContents) + '</h2><div class="alm-toc-cols">' + toc + '</div></nav>' + body
+      : '<p class="alm-empty">' + esc(SYS.almanacEmpty) + '</p>') +
+    '<p class="alm-source">' + esc(SYS.almanacSource) + ' &middot; ' + esc(url.origin.replace(/^https?:\/\//, '') + '/' + (isScript ? 's/' : 'collection/') + pageKey) + '</p>' +
+    '</div>';
+
+  const html = pageShell({
+    title: (isDraft ? 'Draft: ' : '') + name + ' \u2014 Almanac',
+    desc: 'The almanac of ' + name + (d.author ? ' by ' + d.author : '') + ': every homebrew character on one page, ready to read or print.',
+    canonicalUrl: url.origin + '/' + (isScript ? 's/' : 'collection/') + encodeURIComponent(pageKey) + '/almanac',
+    ogImage: url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png'),
+    ogCard: d.header ? 'summary_large_image' : 'summary',
+    body: main, root, bodyClass: 'alm-body alm-perpage',
+    draftBanner: isDraft
+      ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage +
+        ' <a href="' + attr(root + (isScript ? 'publish-script?s=' : 'publish-collection?c=') + encodeURIComponent(pageKey)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+      : '',
+    styles: ['almanac.css'],
+    // Print, and the one-per-page choice: two lines, so inline rather than a
+    // file of their own. The checkbox is a class on <body> the print CSS reads.
+    bootstrap: 'window.SSR = true; window.LINK_ROOT = ' + JSON.stringify(root) + ';' +
+      // The icons are lazy on screen; a print must not catch them unloaded.
+      ' function almEager() { var w = []; document.querySelectorAll("img[loading=lazy]").forEach(function (i) { i.loading = "eager"; if (!i.complete) w.push(new Promise(function (r) { i.onload = i.onerror = r; })); }); return w; }' +
+      ' window.addEventListener("beforeprint", almEager);' +
+      ' document.addEventListener("click", function (e) { if (!e.target.closest(".alm-print")) return; var w = almEager(); Promise.race([Promise.all(w), new Promise(function (r) { setTimeout(r, 4000); })]).then(function () { window.print(); }); });' +
+      ' document.addEventListener("change", function (e) { if (e.target.id === "alm-perpage") document.body.classList.toggle("alm-perpage", e.target.checked); });',
+    scripts: ['site.js']
+  });
+  return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || key));
 }
 
 // Collections: legacy rows have a display-string PK slug (e.g. "The Academy")
@@ -6541,6 +6728,9 @@ export default {
         if (slug && /^[a-z0-9-]+$/i.test(slug)) {
           return renderContentPage(env, ctx, request, url, 'script', slug);
         }
+        // The script's almanac: every character's entry on one page.
+        const alm = /^([a-z0-9-]+)\/almanac$/i.exec(slug);
+        if (alm) return renderAlmanacPage(env, ctx, request, url, 'script', alm[1]);
         return assetsOrNotFound(env, request);
       });
     }
@@ -6555,6 +6745,11 @@ export default {
             status: 301,
             headers: { Location: url.origin + '/collection/' + encodeURIComponent(key) + url.search, 'Cache-Control': 'no-store' }
           });
+        }
+        // The collection's almanac. A legacy PK can hold spaces but never a
+        // slash, so '/almanac' at the end is never part of a key.
+        if (key && /\/almanac$/.test(key) && key.length > '/almanac'.length) {
+          return renderAlmanacPage(env, ctx, request, url, 'collection', key.slice(0, -'/almanac'.length));
         }
         if (key) {
           return renderContentPage(env, ctx, request, url, 'collection', key);
@@ -6923,6 +7118,25 @@ export default {
       return jsonResponse(payload);
     }
 
+    // ---------- MORE LIKE THIS (a /c/ page's similar-characters strip) ----------
+    // Public and anonymous: the answer is a pure function of the published
+    // feed, so it rides the same version-keyed ETag the feeds do and a repeat
+    // visit is a 304. An identity that is not in the published feed (a draft,
+    // a typo, a deleted page) gets an empty list, never an error, so the
+    // route cannot be used to ask whether an unpublished page exists.
+    if (method === 'GET' && path === '/api/similar') {
+      const slug = String(url.searchParams.get('slug') || '').slice(0, 200);
+      const safe = slug.replace(/[^a-z0-9-]/gi, '');
+      if (!safe || safe !== slug) return jsonResponse({ items: [] });
+      let found;
+      try { found = await similarIndex(env, ctx); }
+      catch { return jsonResponse({ items: [] }); }
+      const etag = `W/"similar-${safe}-v${found.version}"`;
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if ((request.headers.get('If-None-Match') || '') === etag) return new Response(null, { status: 304, headers });
+      return new Response(JSON.stringify({ items: similarTo(found.index, slug, SIMILAR_MAX) }), { headers });
+    }
+
     // ---------- CREATOR INDEX DATA (every creator, claimed or not) ----------
     // ---------- JINX INDEX (the /jinxes page: list + relationship graph) ----------
     // Nodes are every character that takes part in a jinx: the wiki pages
@@ -7165,7 +7379,7 @@ export default {
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
-        'steven-approved-order', 'rules', 'news', 'jinxes'];
+        'steven-approved-order', 'rules', 'news', 'jinxes', 'daily'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {

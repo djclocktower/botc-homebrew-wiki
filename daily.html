@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Puzzle — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Who Am I? A new homebrew Blood on the Clocktower character every day. Guess it from its ability in six tries, then share your result.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Who Am I? — the daily homebrew puzzle">
+<meta property="og:description" content="A new homebrew character every day. Guess it from its ability in six tries.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* The Daily Puzzle. One parchment card for the game, a smaller one for your
+   stats. Everything is sized for a phone first. */
+.dp-wrap { max-width: 720px; margin: 0 auto; }
+.dp-card {
+  position: relative;
+  background-color: var(--parch); background-image: url('assets/parchment.webp'); background-size: cover;
+  border: 2px solid var(--parch-frame); padding: 20px clamp(14px, 4vw, 28px) 22px;
+  color: var(--ink); box-shadow: 0 8px 22px rgba(40,12,30,.35);
+}
+.dp-top {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: #6b5d49;
+}
+.dp-top strong { color: var(--maroon); }
+.dp-mode { background: rgba(91,31,33,.1); color: var(--maroon); padding: 2px 9px; border-radius: 999px; }
+.dp-token {
+  width: 132px; height: 132px; margin: 14px auto 12px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #fffaf0 0%, #efe3c7 62%, #d9c49b 100%);
+  box-shadow: 0 0 0 3px var(--parch-frame), 0 6px 16px rgba(40,12,30,.35);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.dp-token img { width: 88%; height: 88%; object-fit: contain; user-select: none; -webkit-user-select: none; pointer-events: none; }
+.dp-token .dp-q { font-family: 'Dumbledor2', serif; font-size: 4rem; color: rgba(91,31,33,.35); line-height: 1; }
+.dp-token img.dp-sil-css { filter: brightness(0); opacity: .82; }
+.dp-token.dp-won { box-shadow: 0 0 0 3px #2f6b3f, 0 0 22px rgba(47,107,63,.45); }
+.dp-token.dp-lost { box-shadow: 0 0 0 3px var(--evil), 0 6px 16px rgba(40,12,30,.35); }
+.dp-ability {
+  font-size: clamp(1.02rem, 2.8vw, 1.22rem); line-height: 1.5; text-align: center;
+  font-style: italic; margin: 0 auto 10px; max-width: 34em; color: var(--ink);
+}
+.dp-hint { text-align: center; font-size: .84rem; color: #6b5d49; margin: 0 0 14px; min-height: 1.2em; }
+.dp-letters { display: block; font-family: 'Oswald', sans-serif; font-size: 1.15rem; letter-spacing: .08em; color: var(--maroon); margin-top: 4px; }
+.dp-form { position: relative; display: flex; gap: 8px; }
+.dp-input {
+  flex: 1; min-width: 0; font: inherit; font-size: 1rem; padding: 11px 12px;
+  border: 2px solid var(--parch-frame); background: #fffdf7; color: var(--ink); border-radius: 4px;
+}
+.dp-input:focus { outline: none; border-color: var(--maroon); }
+.dp-go {
+  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .06em; font-size: .92rem;
+  color: #fff; border: 0; border-radius: 4px; padding: 0 18px; cursor: pointer;
+  background: linear-gradient(180deg, #7a2a2d, #5B1F21);
+}
+.dp-go:disabled { opacity: .5; cursor: default; }
+.dp-sugg {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin-top: 4px;
+  background: #fffdf7; border: 2px solid var(--parch-frame); border-radius: 4px;
+  max-height: 300px; overflow-y: auto; box-shadow: 0 10px 24px rgba(40,12,30,.3);
+}
+.dp-sugg[hidden] { display: none; }
+.dp-sugg button {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid rgba(180,160,120,.3);
+  padding: 7px 10px; cursor: pointer; font: inherit; color: var(--ink);
+}
+.dp-sugg button:last-child { border-bottom: 0; }
+.dp-sugg button.on, .dp-sugg button:hover { background: rgba(91,31,33,.08); }
+.dp-sugg img { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.dp-sugg-name { font-weight: 600; color: var(--maroon); }
+.dp-sugg-by { display: block; font-size: .74rem; color: #6b5d49; }
+.dp-rows { margin-top: 16px; display: grid; gap: 8px; }
+.dp-row {
+  display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px;
+  background: rgba(255,255,255,.4); border: 1px solid rgba(180,160,120,.5); border-radius: 4px;
+  animation: dp-in .3s ease;
+}
+@keyframes dp-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.dp-row.dp-row-win { border-color: #2f6b3f; background: rgba(47,107,63,.1); }
+.dp-row-icon { width: 40px; height: 40px; object-fit: contain; flex: none; }
+.dp-row-main { flex: 1; min-width: 0; }
+.dp-row-name { font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1rem; margin-bottom: 5px; overflow-wrap: anywhere; }
+.dp-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.dp-chip {
+  display: flex; flex-direction: column; justify-content: center; min-height: 40px;
+  padding: 3px 6px; border-radius: 4px; font-size: .74rem; line-height: 1.15; color: #fff;
+  overflow-wrap: anywhere; text-align: center;
+}
+.dp-chip small { font-family: 'Oswald', sans-serif; font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.dp-chip.hit { background: #2f7a47; }
+.dp-chip.near { background: #b88a1c; }
+.dp-chip.miss { background: #5a4c4c; }
+.dp-chip.none { background: #9a8f80; }
+@media (max-width: 460px) { .dp-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dp-result { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(180,160,120,.55); text-align: center; }
+.dp-result[hidden] { display: none; }
+.dp-result h2 { font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon); margin: 0 0 6px; font-size: 1.5rem; }
+.dp-result p { margin: 0 0 12px; }
+.dp-answer-link { font-weight: 600; color: var(--maroon); }
+.dp-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 12px 0 8px; }
+.dp-actions button, .dp-actions a {
+  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .05em; font-size: .88rem;
+  border: 0; border-radius: 4px; padding: 10px 16px; cursor: pointer; text-decoration: none; color: #fff;
+  background: linear-gradient(180deg, #7a2a2d, #5B1F21);
+}
+.dp-actions .dp-alt { background: linear-gradient(180deg, #6b5d49, #4a4133); }
+.dp-next { font-size: .82rem; color: #6b5d49; }
+.dp-stats { margin-top: 18px; }
+.dp-stats h2 { font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon); font-size: 1.1rem; margin: 0 0 10px; text-align: center; }
+.dp-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; margin-bottom: 12px; }
+.dp-nums b { display: block; font-family: 'Oswald', sans-serif; font-size: 1.6rem; color: var(--maroon); line-height: 1.1; }
+.dp-nums span { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: #6b5d49; }
+.dp-dist { display: grid; gap: 4px; }
+.dp-dist-row { display: grid; grid-template-columns: 1.2em 1fr; gap: 6px; align-items: center; font-family: 'Oswald', sans-serif; font-size: .8rem; }
+.dp-dist-bar { background: #6b5d49; color: #fff; text-align: right; padding: 1px 6px; min-width: 1.8em; border-radius: 2px; }
+.dp-dist-bar.today { background: #2f7a47; }
+.dp-how { margin-top: 18px; }
+.dp-how summary { cursor: pointer; font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.05rem; }
+.dp-how ul { padding-left: 20px; margin: 10px 0 0; line-height: 1.55; font-size: .92rem; }
+.dp-key { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; }
+.dp-msg { text-align: center; color: #6b5d49; padding: 30px 0; }
+@media (prefers-reduced-motion: reduce) { .dp-row { animation: none; } }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Who Am I?</h1>
+    <p>The daily homebrew puzzle. A new character every day at midnight UTC &mdash; guess it from its ability.</p>
+  </div>
+
+  <main class="home-panel" id="content">
+    <div class="dp-wrap">
+      <section class="dp-card" id="dp-game" aria-live="polite">
+        <p class="dp-msg" id="dp-loading">Shuffling the bag&hellip;</p>
+      </section>
+
+      <section class="dp-card dp-stats" id="dp-stats" hidden></section>
+
+      <details class="dp-card dp-how">
+        <summary>How to play</summary>
+        <ul>
+          <li>Every day the wiki picks one homebrew character. Everybody gets the same one.</li>
+          <li>You see its ability with its own name blacked out. Type a character's name and pick it from the list to guess.</li>
+          <li>Each guess is compared with the answer:
+            <span class="dp-key" style="background:#2f7a47"></span> the same,
+            <span class="dp-key" style="background:#b88a1c"></span> close (the same alignment, or some tags in common),
+            <span class="dp-key" style="background:#5a4c4c"></span> different.</li>
+          <li>After two wrong guesses you see the icon's silhouette; after four, the name's length and first letter.</li>
+          <li>You have six guesses. Your streak is kept in this browser only.</li>
+        </ul>
+      </details>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/daily.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var D = window.Daily;
+    var STORE = 'botc_daily';
+    var TEAM_LABEL = D.TEAMS;
+    var game = document.getElementById('dp-game');
+    var statsEl = document.getElementById('dp-stats');
+    var today = D.dayNumber();
+    var all = [], bySlug = {}, pool = [];
+    var g = null;   // {mode:'daily'|'practice', day, answer, guesses:[slug], done:null|'win'|'lose'}
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function fresh() { return { v: 1, days: {}, played: 0, won: 0, streak: 0, best: 0, dist: [0, 0, 0, 0, 0, 0], lastWin: null }; }
+    function loadStore() {
+      try {
+        var s = JSON.parse(localStorage.getItem(STORE) || 'null');
+        if (s && s.v === 1 && s.days) return s;
+      } catch (e) { /* private window, or somebody else's junk */ }
+      return fresh();
+    }
+    function saveStore(s) {
+      // Keep the last two months of days; the totals carry everything older.
+      Object.keys(s.days).forEach(function (d) { if (Number(d) < today - 60) delete s.days[d]; });
+      try { localStorage.setItem(STORE, JSON.stringify(s)); } catch (e) { /* the game still works, it just forgets */ }
+    }
+    var store = loadStore();
+
+    function artUrl(c, big) {
+      var v = c.v ? '?v=' + encodeURIComponent(c.v) : '';
+      if (c.art && !big && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + v;
+      if (c.art) return 'assets/' + c.art + v;
+      var img = Array.isArray(c.image) ? c.image[0] : c.image;
+      return img || 'assets/favicon.png';
+    }
+    function pageUrl(c) { return String(c.page || ('c/' + c.slug)).replace(/^\//, ''); }
+    function wrongCount() { return g.guesses.filter(function (s) { return !D.compare(bySlug[s], g.answer).correct; }).length; }
+
+    /* The icon's shape and nothing else. Painted on a canvas where the art
+       is ours, so the picture's filename (which is the character's name) is
+       not sitting in the page for anyone to long-press; art hosted elsewhere
+       cannot be read back through a canvas, and falls back to a CSS filter. */
+    var silCache = {};
+    function silhouette(c, img) {
+      var src = artUrl(c, true);
+      if (silCache[c.slug]) { img.src = silCache[c.slug]; return; }
+      var probe = new Image();
+      if (/^https?:/i.test(src) && src.indexOf(location.origin) !== 0) {
+        img.src = src; img.className = 'dp-sil-css'; return;
+      }
+      probe.onload = function () {
+        try {
+          var cv = document.createElement('canvas');
+          cv.width = cv.height = 240;
+          var x = cv.getContext('2d');
+          var k = Math.min(240 / probe.naturalWidth, 240 / probe.naturalHeight);
+          var w = probe.naturalWidth * k, h = probe.naturalHeight * k;
+          x.drawImage(probe, (240 - w) / 2, (240 - h) / 2, w, h);
+          x.globalCompositeOperation = 'source-in';
+          x.fillStyle = '#1d1016';
+          x.fillRect(0, 0, 240, 240);
+          silCache[c.slug] = cv.toDataURL('image/png');
+          img.src = silCache[c.slug];
+        } catch (e) { img.src = src; img.className = 'dp-sil-css'; }
+      };
+      probe.onerror = function () { img.removeAttribute('src'); };
+      probe.src = src;
+    }
+
+    function chip(label, r) {
+      return '<span class="dp-chip ' + r.v + '"><small>' + label + '</small>' + esc(r.text) + '</span>';
+    }
+    function rowHTML(slug) {
+      var c = bySlug[slug];
+      if (!c) return '';
+      var r = D.compare(c, g.answer);
+      return '<div class="dp-row' + (r.correct ? ' dp-row-win' : '') + '">' +
+        '<img class="dp-row-icon" src="' + esc(artUrl(c)) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="dp-row-main"><div class="dp-row-name">' + esc(c.name) + (r.correct ? ' ✔' : '') + '</div>' +
+        '<div class="dp-chips">' + chip('Team', r.team) + chip('Creator', r.creator) + chip('Set', r.set) + chip('Tags', r.tags) + '</div>' +
+        '</div></div>';
+    }
+
+    function render() {
+      var a = g.answer;
+      var wrong = wrongCount();
+      var left = D.MAX_GUESSES - g.guesses.length;
+      var puzzle = D.puzzleNumber(g.day);
+      var h = '<div class="dp-top"><span>' + (g.mode === 'daily'
+        ? 'Puzzle <strong>#' + puzzle + '</strong>'
+        : '<span class="dp-mode">Practice</span>') + '</span>' +
+        '<span>' + (g.done ? (g.done === 'win' ? 'Solved' : 'Out of guesses') : '<strong>' + left + '</strong> guess' + (left === 1 ? '' : 'es') + ' left') + '</span></div>';
+
+      var tokenCls = g.done === 'win' ? ' dp-won' : g.done === 'lose' ? ' dp-lost' : '';
+      h += '<div class="dp-token' + tokenCls + '" id="dp-token">' +
+        (g.done ? '<img src="' + esc(artUrl(a, true)) + '" alt="' + esc(a.name) + '">'
+          : wrong >= D.SILHOUETTE_AT ? '<img id="dp-sil" alt="The mystery character\'s silhouette">'
+          : '<span class="dp-q" aria-hidden="true">?</span>') +
+        '</div>';
+      h += '<p class="dp-ability">' + esc(g.done ? a.ability : D.redact(a.ability, a.name)) + '</p>';
+
+      var hint = '';
+      if (!g.done) {
+        if (wrong >= D.LETTERS_AT) hint = 'The name: <span class="dp-letters">' + esc(D.letterHint(a.name)) + '</span>';
+        else if (wrong >= D.SILHOUETTE_AT) hint = 'The icon’s silhouette is showing. The name’s first letter arrives after ' + (D.LETTERS_AT - wrong) + ' more wrong guess' + (D.LETTERS_AT - wrong === 1 ? '' : 'es') + '.';
+        else hint = 'The icon’s silhouette appears after ' + (D.SILHOUETTE_AT - wrong) + ' wrong guess' + (D.SILHOUETTE_AT - wrong === 1 ? '' : 'es') + '.';
+      }
+      h += '<p class="dp-hint">' + hint + '</p>';
+
+      if (!g.done) {
+        h += '<form class="dp-form" id="dp-form" autocomplete="off">' +
+          '<input class="dp-input" id="dp-input" type="text" placeholder="Type a character’s name…" aria-label="Your guess" aria-autocomplete="list" aria-controls="dp-sugg" enterkeyhint="go">' +
+          '<button class="dp-go" id="dp-go" type="submit" disabled>Guess</button>' +
+          '<div class="dp-sugg" id="dp-sugg" role="listbox" hidden></div>' +
+          '</form>';
+      }
+      h += '<div class="dp-rows">' + g.guesses.slice().reverse().map(rowHTML).join('') + '</div>';
+
+      if (g.done) {
+        var won = g.done === 'win';
+        h += '<div class="dp-result">' +
+          '<h2>' + (won ? (g.guesses.length === 1 ? 'First try!' : 'Got it in ' + g.guesses.length + '!') : 'Better luck tomorrow') + '</h2>' +
+          '<p>It was <a class="dp-answer-link" href="' + esc(pageUrl(a)) + '">' + esc(a.name) + '</a>' +
+            (a.creator ? ', by ' + esc(String(a.creator)) : '') + '.</p>' +
+          '<div class="dp-actions">' +
+            '<a href="' + esc(pageUrl(a)) + '">Read its page →</a>' +
+            (g.mode === 'daily' ? '<button type="button" id="dp-share">⧉ Copy result</button>' : '') +
+            '<button type="button" class="dp-alt" id="dp-practice">⚄ ' + (g.mode === 'daily' ? 'Practice with a random one' : 'Another random one') + '</button>' +
+            (g.mode === 'practice' ? '<button type="button" class="dp-alt" id="dp-back">Back to today’s</button>' : '') +
+          '</div>' +
+          (g.mode === 'daily' ? '<p class="dp-next" id="dp-next"></p>' : '') +
+          '</div>';
+      }
+      game.innerHTML = h;
+      if (!g.done && wrong >= D.SILHOUETTE_AT) silhouette(a, document.getElementById('dp-sil'));
+      if (!g.done) wireInput();
+      else wireResult();
+      renderStats();
+      tick();
+    }
+
+    /* ── the guess box ── */
+    var sugg = [], active = -1, chosen = null;
+    function matches(q) {
+      q = q.toLowerCase().trim();
+      if (!q) return [];
+      var guessed = {};
+      g.guesses.forEach(function (s) { guessed[s] = true; });
+      var starts = [], contains = [];
+      for (var i = 0; i < all.length; i++) {
+        var c = all[i];
+        if (guessed[c.slug]) continue;
+        var n = String(c.name || '').toLowerCase();
+        var at = n.indexOf(q);
+        if (at === 0) starts.push(c);
+        else if (at > 0) contains.push(c);
+      }
+      var byName = function (a, b) { return String(a.name).localeCompare(String(b.name)); };
+      return starts.sort(byName).concat(contains.sort(byName)).slice(0, 8);
+    }
+    function wireInput() {
+      var input = document.getElementById('dp-input');
+      var box = document.getElementById('dp-sugg');
+      var go = document.getElementById('dp-go');
+      chosen = null; active = -1;
+      function paintSugg() {
+        if (!sugg.length) { box.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
+        box.innerHTML = sugg.map(function (c, i) {
+          return '<button type="button" role="option" data-i="' + i + '" class="' + (i === active ? 'on' : '') + '">' +
+            '<img src="' + esc(artUrl(c)) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">' +
+            '<span><span class="dp-sugg-name">' + esc(c.name) + '</span>' +
+            '<span class="dp-sugg-by">' + esc(TEAM_LABEL[String(c.team).toLowerCase()] || c.team || '') + (c.creator ? ' · by ' + esc(String(c.creator)) : '') + '</span></span>' +
+            '</button>';
+        }).join('');
+        box.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+      }
+      // Picking from the list IS the guess, as in every game of this kind:
+      // one tap on a phone, not a pick and then a button.
+      function choose(c) {
+        chosen = c;
+        sugg = []; paintSugg();
+        guess(c);
+      }
+      input.addEventListener('input', function () {
+        chosen = null;
+        sugg = matches(input.value); active = sugg.length ? 0 : -1;
+        // Typing a name exactly is as good as picking it, as long as it is
+        // one character's name and not four.
+        var exact = sugg.filter(function (c) { return String(c.name).toLowerCase() === input.value.trim().toLowerCase(); });
+        go.disabled = !(exact.length === 1 || sugg.length);
+        paintSugg();
+      });
+      input.addEventListener('keydown', function (e) {
+        if (box.hidden) return;
+        if (e.key === 'ArrowDown') { active = Math.min(sugg.length - 1, active + 1); paintSugg(); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { active = Math.max(0, active - 1); paintSugg(); e.preventDefault(); }
+        else if (e.key === 'Escape') { sugg = []; paintSugg(); }
+      });
+      box.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      box.addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-i]');
+        if (b) choose(sugg[Number(b.getAttribute('data-i'))]);
+      });
+      input.addEventListener('blur', function () { setTimeout(function () { sugg = []; paintSugg(); }, 150); });
+      document.getElementById('dp-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var c = chosen || (active >= 0 && sugg[active]) || null;
+        if (!c) {
+          var list = matches(input.value);
+          var exact = list.filter(function (x) { return String(x.name).toLowerCase() === input.value.trim().toLowerCase(); });
+          c = exact[0] || list[0] || null;
+        }
+        if (c) guess(c);
+      });
+      // Only focus the box on a device with a real keyboard: on a phone a
+      // focus on load throws the keyboard over the ability being read.
+      if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) input.focus();
+    }
+
+    function guess(c) {
+      if (!g || g.done || g.guesses.indexOf(c.slug) !== -1) return;
+      g.guesses.push(c.slug);
+      var r = D.compare(c, g.answer);
+      if (r.correct) g.done = 'win';
+      else if (g.guesses.length >= D.MAX_GUESSES) g.done = 'lose';
+      if (g.mode === 'daily') record();
+      render();
+      if (!g.done) {
+        var input = document.getElementById('dp-input');
+        if (input && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) input.focus();
+      }
+    }
+
+    /* Today's progress, and the totals once the day is decided. */
+    function record() {
+      var day = store.days[g.day] || (store.days[g.day] = { a: g.answer.slug, g: [], r: null });
+      var wasDone = !!day.r;
+      day.a = g.answer.slug; day.g = g.guesses.slice(); day.r = g.done;
+      if (g.done && !wasDone) {
+        store.played++;
+        if (g.done === 'win') {
+          store.won++;
+          store.dist[Math.min(5, g.guesses.length - 1)]++;
+          store.streak = store.lastWin === g.day - 1 ? store.streak + 1 : 1;
+          store.lastWin = g.day;
+          store.best = Math.max(store.best, store.streak);
+        } else {
+          store.streak = 0;
+        }
+      }
+      saveStore(store);
+    }
+    function currentStreak() {
+      return (store.lastWin === today || store.lastWin === today - 1) ? store.streak : 0;
+    }
+    function renderStats() {
+      if (!store.played) { statsEl.hidden = true; return; }
+      var max = Math.max.apply(null, store.dist.concat([1]));
+      var todayDay = store.days[today];
+      var todayN = todayDay && todayDay.r === 'win' ? todayDay.g.length : 0;
+      statsEl.innerHTML = '<h2>Your record</h2>' +
+        '<div class="dp-nums">' +
+          '<div><b>' + store.played + '</b><span>Played</span></div>' +
+          '<div><b>' + Math.round(store.won / store.played * 100) + '%</b><span>Won</span></div>' +
+          '<div><b>' + currentStreak() + '</b><span>Streak</span></div>' +
+          '<div><b>' + store.best + '</b><span>Best</span></div>' +
+        '</div>' +
+        '<div class="dp-dist" aria-label="Guesses needed">' + store.dist.map(function (n, i) {
+          return '<div class="dp-dist-row"><span>' + (i + 1) + '</span><span class="dp-dist-bar' + (todayN === i + 1 ? ' today' : '') + '" style="width:' + Math.max(8, Math.round(n / max * 100)) + '%">' + n + '</span></div>';
+        }).join('') + '</div>';
+      statsEl.hidden = false;
+    }
+
+    function wireResult() {
+      var share = document.getElementById('dp-share');
+      if (share) share.addEventListener('click', function () {
+        var text = D.shareText(D.puzzleNumber(g.day), g.guesses.map(function (s) { return D.compare(bySlug[s], g.answer); }),
+          g.done === 'win', location.origin + '/daily');
+        var done = function () { share.textContent = '✓ Copied — paste it anywhere'; setTimeout(function () { share.textContent = '⧉ Copy result'; }, 2200); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { window.prompt('Copy your result:', text); });
+        else window.prompt('Copy your result:', text);
+      });
+      var practice = document.getElementById('dp-practice');
+      if (practice) practice.addEventListener('click', function () { startPractice(); });
+      var back = document.getElementById('dp-back');
+      if (back) back.addEventListener('click', function () { startDaily(); });
+    }
+
+    var timer = null;
+    function tick() {
+      var el = document.getElementById('dp-next');
+      if (!el) { if (timer) { clearInterval(timer); timer = null; } return; }
+      var ms = (today + 1) * D.DAY_MS - Date.now();
+      if (ms <= 0) { location.reload(); return; }
+      var h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000);
+      el.textContent = 'The next character arrives in ' + (h ? h + 'h ' : '') + m + 'm.';
+      if (!timer) timer = setInterval(tick, 30000);
+    }
+
+    function startDaily() {
+      var saved = store.days[today];
+      // A game under way keeps its answer, even if a page published since
+      // then would now win the day: nobody's half-finished puzzle changes.
+      var answer = saved && bySlug[saved.a] && D.eligible(bySlug[saved.a]) ? bySlug[saved.a] : D.pick(pool, today);
+      if (!answer) { game.innerHTML = '<p class="dp-msg">There are no characters to puzzle over yet.</p>'; return; }
+      g = { mode: 'daily', day: today, answer: answer, guesses: [], done: null };
+      if (saved && saved.a === answer.slug) {
+        g.guesses = (saved.g || []).filter(function (s) { return bySlug[s]; });
+        g.done = saved.r || null;
+      }
+      render();
+    }
+    function startPractice() {
+      var others = pool.filter(function (c) { return !g || c.slug !== g.answer.slug; });
+      var answer = others[Math.floor(Math.random() * others.length)];
+      if (!answer) return;
+      g = { mode: 'practice', day: today, answer: answer, guesses: [], done: null };
+      render();
+      game.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function boot() {
+      window.BotcData.json('characters.json?fields=grid').then(function (list) {
+        all = list.filter(function (c) { return c && c.slug && c.name; });
+        all.forEach(function (c) { bySlug[c.slug] = c; });
+        pool = all.filter(D.eligible);
+        startDaily();
+      }).catch(function () {
+        game.innerHTML = '<p class="dp-msg">Could not load the characters. <button type="button" class="dp-go" id="dp-retry" style="padding:8px 14px">Try again</button></p>';
+        document.getElementById('dp-retry').addEventListener('click', function () { game.innerHTML = '<p class="dp-msg">Shuffling the bag&hellip;</p>'; boot(); });
+      });
+    }
+    boot();
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
