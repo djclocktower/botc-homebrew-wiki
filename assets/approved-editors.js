@@ -119,7 +119,7 @@
           if (!res || !res.found) {
             // Not added. A name nobody answers to would be dropped on save
             // anyway, and saying so now is the whole point of the lookup.
-            say('err', 'No account called “' + name + '”. Check the spelling — it is their username, ' +
+            say('err', 'No account called “' + name + '”. Check the spelling and use their username, ' +
               'the one in their profile address.');
             return;
           }

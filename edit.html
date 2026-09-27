@@ -220,16 +220,16 @@
         <div class="fmt-help">
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
-            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em> &mdash; braces rather than <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
+            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em>. Italics take braces, not <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
-            <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
-            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens &mdash; and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
+            <li><code>[[Snake Charmer]]</code> links to that character: to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens. A name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
             <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that one that way round only</li>
-            <li>The Ability box takes none of these &mdash; it is the character&rsquo;s rule, printed verbatim on tokens, exports and cards</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (that one only works that way round)</li>
+            <li>The Ability box takes none of these, because it is printed verbatim on tokens, exports and cards</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -241,12 +241,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
-        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page. Empty the box to drop the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
-        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page. Empty the box to drop the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -265,15 +265,15 @@
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
-        <label for="pronunciation">Pronunciation <span class="hint">(optional &mdash; a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
+        <label for="pronunciation">Pronunciation <span class="hint">(optional: a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
         <input type="text" id="pronunciation">
       </div>
       <div class="fld">
-        <label for="ipa">IPA spelling <span class="hint">(optional &mdash; e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
+        <label for="ipa">IPA spelling <span class="hint">(optional, e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
         <input type="text" id="ipa">
       </div>
       <div class="fld">
-        <label for="respelling">Pronunciation respelling <span class="hint">(optional &mdash; e.g. buh-GAIN)</span></label>
+        <label for="respelling">Pronunciation respelling <span class="hint">(optional, e.g. buh-GAIN)</span></label>
         <input type="text" id="respelling">
       </div>
       <div class="fld">
@@ -315,7 +315,7 @@
         </div>
       </div>
       <div class="fld" data-art-slot="alt">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional: the flipped-alignment icon, the second entry in the JSON)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
@@ -340,7 +340,7 @@
            where it is made and fine-tuned, and the file input replaces the
            image directly like any other art slot. -->
       <div class="fld" data-art-slot="token">
-        <label>Printable token <span class="hint">(optional &mdash; the Token Tool's finished token for this character)</span></label>
+        <label>Printable token <span class="hint">(optional: the Token Tool's finished token for this character)</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
           <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
           <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
@@ -629,7 +629,7 @@
           row.appendChild(warn);
         }
         warn.innerHTML = '\u26a0 <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
-          jxEsc(String(hit.text).slice(0, 140)) + '\u201d \u2014 their page keeps their wording, so the two can disagree. ' +
+          jxEsc(String(hit.text).slice(0, 140)) + '\u201d. Their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + jxEsc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
     }
@@ -962,7 +962,7 @@
     }
     function syncTokenHint(){
       var hint = $('tokenHint');
-      if (tokenDataURL) hint.textContent = 'New token image ready — it uploads when you save.';
+      if (tokenDataURL) hint.textContent = 'New token image ready. It uploads when you save.';
       else if (!tokenRemoved && originalEntry && originalEntry.token) hint.textContent = 'Saved token: ' + originalEntry.token;
       else hint.textContent = 'No token yet — tick the box above and a default one is drawn from this page automatically. Fine-tune it in the Token Tool, or upload a finished image below.';
     }
@@ -1183,7 +1183,7 @@
       guestBanner('<strong>This page takes suggestions.</strong> ' +
         esc(entry.creator || 'The creator') + ' reviews changes before they go live: edit the page ' +
         'as you think it should read, then send it. Nothing changes until they approve it, and ' +
-        'they can reply. <em>Art cannot be part of a suggestion \u2014 describe any icon change in your note.</em>' +
+        'they can reply. <em>Art cannot be part of a suggestion, so describe any icon change in your note.</em>' +
         viaSetHTML());
     }
 
@@ -1237,8 +1237,8 @@
       if (!fld || !box) return;
       if (isDraftPage) {
         fld.style.display = '';
-        box.innerHTML = '<p class="sub" style="margin:0">A draft keeps no history: it would be ' +
-          'every save you made while writing it. Recording starts when the page is published.</p>';
+        box.innerHTML = '<p class="sub" style="margin:0">A draft keeps no history. ' +
+          'Recording starts when the page is published.</p>';
         return;
       }
       fld.style.display = '';
@@ -1410,7 +1410,7 @@
         cj.title = 'The custom JSON stays with the page\u2019s creator: it can rewrite the ability in the export.';
       }
       guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
-        'opened for anyone with an account to edit \u2014 <strong>everything except the ability</strong>. ' +
+        'opened for anyone with an account to edit <strong>everything except the ability</strong>. ' +
         'The name and the ability text stay with the creator; the rest of the page is yours to improve. ' +
         'Your username and every field you change are recorded in ' + histLink(entry) +
         ', and the creator can put an earlier version back.' + viaSetHTML());
@@ -1500,7 +1500,7 @@
         var href = (via.type === 'collection' ? 'collection/' : 's/') + encodeURIComponent(via.key || '');
         guestBanner('<strong>' + esc(entry.creator || 'The creator') +
           ' made you an editor of <a href="' + esc(href) + '">' + esc(via.name) + '</a>,</strong> ' +
-          'which covers their characters on it \u2014 this is one of them. Edit it as they ' +
+          'which covers their characters on it, including this one. Edit it as they ' +
           'would; everything on this form is yours to change and it saves straight to the page. ' +
           (isDraftPage
             ? 'It is still a draft, so only they can put it live. '
@@ -1509,7 +1509,7 @@
         return;
       }
       guestBanner('<strong>' + esc(entry.creator || 'The creator') +
-        ' made you an editor of this page.</strong> Edit it as they would \u2014 everything ' +
+        ' made you an editor of this page.</strong> Edit it as they would: everything ' +
         'on this form is yours to change, and it saves straight to the page. ' +
         (isDraftPage
           ? 'It is still a draft, so only they can put it live. '
@@ -1570,8 +1570,8 @@
         : '';
       $('curata-note').innerHTML = where +
         ' It shows a laurel wreath on the page and comes up more often on the homepage. ' +
-        'Tick the box to keep it off this page \u2014 the collection and the admins\u2019 ' +
-        'decision are unaffected, only this page.' + cost;
+        'Tick the box to keep it off this page. The collection and the admins\u2019 ' +
+        'decision are unaffected.' + cost;
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);

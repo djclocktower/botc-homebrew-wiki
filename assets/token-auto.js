@@ -159,10 +159,10 @@
       // this visit. Only a token this mount drew itself is redrawn.
       if (opts.hasToken() && !auto) return;
       var art = opts.art();
-      if (!art) { opts.hint('Upload character art first — the default token is drawn from it.'); return; }
+      if (!art) { opts.hint('Upload character art first. The default token is drawn from it.'); return; }
       var entry = opts.gather();
-      if (!entry.name) { opts.hint('Give the character a name first — it is written around the token.'); return; }
-      if (!entry.ability) { opts.hint('Write the ability first — it is printed on the token.'); return; }
+      if (!entry.name) { opts.hint('Give the character a name first. It is written around the token.'); return; }
+      if (!entry.ability) { opts.hint('Write the ability first. It is printed on the token.'); return; }
       var k = payloadKey(entry, art);
       if (k === lastKey) return;
       if (busy) { again = true; return; }
@@ -171,7 +171,7 @@
       render(entry, art).then(function (url) {
         busy = false; auto = true;
         opts.apply(url);
-        opts.hint('Default token, drawn from this page — it updates as you edit, and saves with the character. Fine-tune it in the Token Tool if you like.');
+        opts.hint('Default token, drawn from this page. It updates as you edit and saves with the character. Fine-tune it in the Token Tool if you like.');
         if (again) { again = false; maybe(); }
       }, function (e) {
         busy = false;

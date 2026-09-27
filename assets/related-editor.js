@@ -90,7 +90,7 @@
         '<button type="button" class="btn btn-del btn-sm rl-del" title="Remove">&#10005;</button>' +
         '<input type="text" class="rl-name" placeholder="Link text (e.g. The Withering)">' +
         '<input type="text" class="rl-image" placeholder="Preview image URL (optional, https)">' +
-        '<textarea class="rl-note" placeholder="How they relate (optional) — e.g. Plants the Seed token on them" rows="2"></textarea>';
+        '<textarea class="rl-note" placeholder="How they relate (optional, e.g. Plants the Seed token on them)" rows="2"></textarea>';
       listEl.appendChild(row);
 
       var charField = row.querySelector('.rl-char');

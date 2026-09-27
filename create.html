@@ -229,16 +229,16 @@
         <div class="fmt-help">
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
-            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em> &mdash; braces rather than <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
+            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em>. Italics take braces, not <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
-            <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
-            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens &mdash; and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
+            <li><code>[[Snake Charmer]]</code> links to that character: to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens. A name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
             <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that one that way round only</li>
-            <li>The Ability box takes none of these &mdash; it is the character&rsquo;s rule, printed verbatim on tokens, exports and cards</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (that one only works that way round)</li>
+            <li>The Ability box takes none of these, because it is printed verbatim on tokens, exports and cards</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -250,12 +250,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
-        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page. Empty the box to drop the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
-        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page. Empty the box to drop the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -274,15 +274,15 @@
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
-        <label for="pronunciation">Pronunciation <span class="hint">(optional &mdash; a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
+        <label for="pronunciation">Pronunciation <span class="hint">(optional: a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
         <input type="text" id="pronunciation">
       </div>
       <div class="fld">
-        <label for="ipa">IPA spelling <span class="hint">(optional &mdash; e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
+        <label for="ipa">IPA spelling <span class="hint">(optional, e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
         <input type="text" id="ipa">
       </div>
       <div class="fld">
-        <label for="respelling">Pronunciation respelling <span class="hint">(optional &mdash; e.g. buh-GAIN)</span></label>
+        <label for="respelling">Pronunciation respelling <span class="hint">(optional, e.g. buh-GAIN)</span></label>
         <input type="text" id="respelling">
       </div>
       <div class="fld">
@@ -324,7 +324,7 @@
         </div>
       </div>
       <div class="fld" data-art-slot="alt">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional: the flipped-alignment icon, the second entry in the JSON)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
@@ -349,7 +349,7 @@
            that exists, so here the slot takes an upload and the fine-tuning
            door appears on the edit page after the first save. -->
       <div class="fld" data-art-slot="token">
-        <label>Printable token <span class="hint">(optional &mdash; the Token Tool's finished token for this character)</span></label>
+        <label>Printable token <span class="hint">(optional: the Token Tool's finished token for this character)</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
           <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
           <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
@@ -357,7 +357,7 @@
         <input type="file" id="tokenFile" accept="image/*">
         <img id="tokenThumb" class="artthumb" alt="printable token preview">
         <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px">&#10005; Remove token image</button>
-        <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box and a default token is drawn from your art automatically. You can also upload a finished token image here; fine-tuning lives in the Token Tool, on the edit page once the character is saved.</div>
+        <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box and a default token is drawn from your art automatically, or upload a finished token image here. Once the character is saved, you can fine-tune the token in the Token Tool from the edit page.</div>
       </div>
 
       <fieldset>
@@ -461,7 +461,7 @@
       </fieldset>
 
       <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
-      <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account and hidden from the wiki until you publish">Save as Draft</button>
       <div id="status"></div>
     </div>
 
@@ -613,7 +613,7 @@
           row.appendChild(warn);
         }
         warn.innerHTML = '\u26a0 <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
-          esc(String(hit.text).slice(0, 140)) + '\u201d \u2014 their page keeps their wording, so the two can disagree. ' +
+          esc(String(hit.text).slice(0, 140)) + '\u201d. Their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + esc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
     }

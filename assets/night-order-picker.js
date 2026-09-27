@@ -161,7 +161,7 @@
     function showResult(c, value) {
       if (!c) { p.result.hidden = true; p.result.innerHTML = ''; return; }
       p.result.innerHTML =
-        'Acts directly after the <b>' + esc(c.name) + '</b> (' + c[key] + ') &mdash; ' +
+        'Acts directly after the <b>' + esc(c.name) + '</b> (' + c[key] + '), at ' +
         'wake priority <b>' + esc(value) + '</b>. ' +
         '<button type="button" class="no-clear">clear</button>';
       p.result.hidden = false;
@@ -231,7 +231,7 @@
     .catch(function () {
       pickers.forEach(function (p) {
         p.search.disabled = true;
-        p.search.placeholder = 'Official night order unavailable — type a number below';
+        p.search.placeholder = 'Official night order unavailable. Type a number below';
       });
     });
 })();

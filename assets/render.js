@@ -350,7 +350,7 @@
       '<strong>An admin moved this page to drafts.</strong>' +
       (note.by ? ' <span class="db-who">' + esc(note.by) + (when ? ', ' + esc(when) : '') + '</span>' : '') +
       '<span class="db-reason">' + esc(note.reason) + '</span>' +
-      '<span class="db-fix">Fix that and publish it again \u2014 this note goes away when the page goes back up. ' +
+      '<span class="db-fix">Fix that and publish it again. This note goes away when the page goes back up. ' +
       'Nothing was deleted.</span>' +
     '</div>';
   }

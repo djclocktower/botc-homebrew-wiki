@@ -70,7 +70,7 @@
         '<strong>' + esc(phrase(need) || 'a name, an icon, an ability and tags') +
         '</strong>, so this was saved as a <strong>draft</strong>.</p>' +
         '<ul class="rules-list"><li>Add that in the editor above.</li>' +
-        '<li>Then press Publish again — it goes live straight away.</li></ul>' +
+        '<li>Then press Publish again and it goes live straight away.</li></ul>' +
         '<p class="rules-modal-intro" style="margin-top:14px">Drafts are visible ' +
         'only to you and the wiki admins. You can find yours any time on your ' +
         '<a href="drafts">drafts page</a>.</p>',
@@ -89,14 +89,14 @@
         }).join('') + '</ul>'
       : '';
 
-    modal('Saved — but this page counts as Partial',
+    modal('Saved, but this page counts as Partial',
       '<p class="rules-modal-intro">It is live and its own URL works, but a ' +
       '<strong>Partial</strong> page doesn\u2019t show on the homepage or in ' +
       'the All Characters search.</p>' +
       '<p class="rules-modal-intro">Still to add:</p>' +
       list +
       '<p class="rules-modal-intro" style="margin-top:14px">Add them and save ' +
-      'again — the page upgrades itself immediately.</p>',
+      'again. The page upgrades itself immediately.</p>',
       'Got it');
   }
 
