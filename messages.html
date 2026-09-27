@@ -298,7 +298,7 @@
             <button class="mini-btn del" id="delete-btn" type="button">Delete</button>
           </div>
           <div class="thread-note" id="t-blocked-note" style="display:none">
-            You've blocked this user — they can't send you messages. Unblock them to hear back.
+            You've blocked this user, so they can't send you messages. Unblock them to hear back.
           </div>
           <div class="thread-scroll" id="thread-scroll">
             <button class="mini-btn load-older" id="load-older" type="button" style="display:none">Load earlier messages</button>
@@ -479,7 +479,7 @@
 
       $('thread-msgs').innerHTML = msgs.length
         ? threadHtml(msgs)
-        : '<div class="empty-note" style="text-align:center">No messages yet — say hello!</div>';
+        : '<div class="empty-note" style="text-align:center">No messages yet. Say hello!</div>';
 
       $('thread-placeholder').style.display = 'none';
       $('thread').style.display = 'block';
@@ -558,7 +558,7 @@
           scrollToBottom();
           loadList();
         } else {
-          setInline('send-msg', 'err', res.body.error || 'Could not send — try again.');
+          setInline('send-msg', 'err', res.body.error || 'Could not send. Try again.');
         }
       });
     }

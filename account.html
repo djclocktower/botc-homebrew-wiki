@@ -334,7 +334,7 @@
       <div class="panel" id="shared-panel" style="display:none">
         <h3>Shared With You <span class="count-pill" id="n-shared">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Pages whose creator named you as an editor. You can change them exactly as they would &mdash; publishing, deleting and the editor list stay with them.
+          Pages whose creator named you as an editor. You can edit them as they would. Publishing, deleting and the editor list stay with them.
         </p>
         <table class="row-list" id="shared-table"></table>
       </div>
@@ -468,7 +468,7 @@
       <div class="panel" id="contact">
         <h3>Contact the Admins</h3>
         <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
-          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. You can attach a screenshot, and every message is a conversation: when they answer, you can write straight back here.
+          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. You can attach a screenshot, and when they answer you can reply here.
         </p>
         <div class="settings-grid">
           <section>
@@ -483,7 +483,7 @@
             </div>
             <div class="set-field">
               <label for="c-body">Message</label>
-              <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up — the more detail the better."></textarea>
+              <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up. The more detail the better."></textarea>
             </div>
             <!-- A screenshot settles most of what reaches this inbox. -->
             <div id="c-attach"></div>
@@ -551,7 +551,7 @@
       var p = new URLSearchParams(location.search);
       var note = null, cls = 'ok';
       if (p.get('welcome') === '1') note = 'Welcome! Your account is ready.';
-      else if (p.get('verified') === '1') note = 'Email verified — thank you!';
+      else if (p.get('verified') === '1') note = 'Email verified. Thank you!';
       else if (p.get('verified') === '0') { note = 'That verification link is invalid or expired. You can resend one below.'; cls = 'err'; }
       else if (p.get('linked') === '1') note = 'Discord account linked.';
       else if (p.get('error')) { note = p.get('error'); cls = 'err'; }
@@ -590,7 +590,7 @@
           ? '<span class="badge ok">verified</span>'
           : '<span class="badge warn">unverified</span> <a href="#" id="resend-verify" style="color:var(--maroon)">resend link</a>');
       } else {
-        emailLine = '<span class="badge warn">no email set</span> — add one below so you can recover your account';
+        emailLine = '<span class="badge warn">no email set</span> Add one below so you can recover your account.';
       }
       $('p-email-line').innerHTML = '✉ ' + emailLine;
       $('p-discord-line').innerHTML = p.discordLinked
@@ -626,7 +626,7 @@
       }
       if (p.discordLinked) {
         $('discord-unlink-btn').style.display = 'inline-block';
-        if (!$('discord-desc').textContent) $('discord-desc').textContent = 'Your Discord account is linked — you can log in with either method.';
+        if (!$('discord-desc').textContent) $('discord-desc').textContent = 'Your Discord account is linked. You can log in with either method.';
       } else {
         $('discord-link-btn').style.display = 'inline-block';
         $('discord-desc').textContent = 'Link your Discord account to log in with one click.';
@@ -1202,7 +1202,7 @@
       postJSON('/api/contact/reply', { id: id, body: body, images: images }).then(function(res){
         btn.disabled = false;
         if (res.ok && res.body.ok) loadMyMessages(id);
-        else setInline('c-reply-msg', 'err', (res.body && res.body.error) || 'Could not send — try again.');
+        else setInline('c-reply-msg', 'err', (res.body && res.body.error) || 'Could not send. Try again.');
       });
     }
 
@@ -1226,7 +1226,7 @@
           setInline('c-msg', 'ok', res.body.message || 'Message sent!');
           loadMyMessages();
         } else {
-          setInline('c-msg', 'err', res.body.error || 'Could not send — try again.');
+          setInline('c-msg', 'err', res.body.error || 'Could not send. Try again.');
         }
       });
     });

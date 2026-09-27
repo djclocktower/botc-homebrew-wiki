@@ -143,7 +143,7 @@
       var room = max - items.length - pending;
       if (room <= 0) { say('That is the most images one message can carry.', true); return; }
       var list = Array.prototype.slice.call(files, 0, room);
-      if (files.length > room) say('Only ' + max + ' images per message — the rest were skipped.', true);
+      if (files.length > room) say('Only ' + max + ' images per message. The rest were skipped.', true);
       list.forEach(function (file) {
         if (!/^image\//.test(file.type)) { say('Only images can be attached.', true); return; }
         if (file.size > MAX_BYTES * 4) { say('That image is far too large (5 MB max).', true); return; }

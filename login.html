@@ -403,7 +403,7 @@
       postJSON('/api/forgot-password', { email: email })
         .then(function(res){
           if (res.ok && res.body.ok) {
-            setMsg('success', res.body.message || 'Reset link sent — check your email.');
+            setMsg('success', res.body.message || 'Reset link sent. Check your email.');
             btn.textContent = 'Sent ✓';
           } else {
             setMsg('error', res.body.error || 'Could not send reset email.');

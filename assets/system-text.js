@@ -38,8 +38,8 @@
     partialDismiss: 'Dismiss this warning',
 
     /* The draft bar at the very top of an unpublished page. */
-    draftPage: 'DRAFT — only you can see this page. Publish it from',
-    draftArticle: 'DRAFT — only you can see this article. Publish it from',
+    draftPage: 'DRAFT: only you can see this page. Publish it from',
+    draftArticle: 'DRAFT: only you can see this article. Publish it from',
     draftEditorLink: 'the editor',
 
     /* Under the draft bar, when an ADMIN was the one who took the page down.
@@ -48,7 +48,7 @@
        handle and {reason} is what they wrote. */
     draftedByAdmin: 'An admin moved this page to drafts:',
     draftedByAdminWho: 'by {by}',
-    draftedByAdminFix: 'Fix what is described above and publish it again — the note goes away when the page goes back up.'
+    draftedByAdminFix: 'Fix what is described above and publish it again. The note goes away when the page goes back up.'
   };
 
   if (typeof window !== 'undefined') window.SystemText = SYSTEM_TEXT;

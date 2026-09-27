@@ -196,7 +196,7 @@
       var back = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
       var login = ROOT + 'login?next=' + back;
       return '<p class="cmt-login"><a href="' + login + '">Log in</a> or ' +
-        '<a href="' + login + '#signup">create an account</a> to join the conversation.</p>';
+        '<a href="' + login + '#signup">create an account</a> to comment.</p>';
     }
     if (!state.me.canComment) {
       return '<p class="cmt-login">This account is suspended and cannot post comments. ' +
@@ -464,7 +464,7 @@
      can be posted straight afterwards. */
   var TERMS = [
     'Be respectful. Criticise the character, never the person who made it.',
-    'Keep feedback constructive — say what works as well as what doesn’t.',
+    'Keep feedback constructive: say what works as well as what doesn’t.',
     'No harassment, slurs, spam, or self-promotion unrelated to the page.',
     'Page owners and the wiki admins can remove comments that break these rules.'
   ];
