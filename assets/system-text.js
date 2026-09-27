@@ -48,7 +48,7 @@
        handle and {reason} is what they wrote. */
     draftedByAdmin: 'An admin moved this page to drafts:',
     draftedByAdminWho: 'by {by}',
-    draftedByAdminFix: 'Fix what is described above and publish it again. The note goes away when the page goes back up.'
+    draftedByAdminFix: 'Fix the problem above, then publish the page again.'
   };
 
   if (typeof window !== 'undefined') window.SystemText = SYSTEM_TEXT;

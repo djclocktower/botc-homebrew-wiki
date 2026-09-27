@@ -142,7 +142,7 @@
     }
     return '<li class="cmt' + (c.pinned ? ' cmt-is-pinned' : '') +
       (isUnseen(c) ? ' cmt-unseen' : '') + '" id="cmt-' + c.id + '"' +
-      (isUnseen(c) ? ' title="New since you last looked at this page"' : '') + '>' +
+      (isUnseen(c) ? ' title="New since your last visit"' : '') + '>' +
       avatarHTML(c) +
       '<div class="cmt-main">' +
         '<div class="cmt-head">' +
@@ -466,7 +466,7 @@
     'Be respectful. Criticise the character, never the person who made it.',
     'Keep feedback constructive: say what works as well as what doesn’t.',
     'No harassment, slurs, spam, or self-promotion unrelated to the page.',
-    'Page owners and the wiki admins can remove comments that break these rules.'
+    'Page owners and admins can remove comments that break these rules.'
   ];
 
   function showAgreement() {

@@ -327,14 +327,14 @@
         <h3>Your Drafts <span class="count-pill" id="n-drafts">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">Drafts are hidden from the public wiki until you publish them. Only you (and admins) can view or edit them. <a href="drafts" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a></p>
         <table class="row-list" id="drafts-table"></table>
-        <div class="empty-note" id="drafts-empty" style="display:none">No drafts. When creating a character you can choose <em>Save as Draft</em> instead of publishing.</div>
+        <div class="empty-note" id="drafts-empty" style="display:none">No drafts. Choose <em>Save as Draft</em> in the editor to keep a page private.</div>
       </div>
 
       <!-- pages other people made you an editor of (approved editing) -->
       <div class="panel" id="shared-panel" style="display:none">
         <h3>Shared With You <span class="count-pill" id="n-shared">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Pages whose creator named you as an editor. You can edit them as they would. Publishing, deleting and the editor list stay with them.
+          Pages whose creator made you an editor. Only the creator can publish, delete or change the editor list.
         </p>
         <table class="row-list" id="shared-table"></table>
       </div>
@@ -343,9 +343,7 @@
       <div class="panel" id="fav-panel" style="display:none">
         <h3>Your Favorites <span class="count-pill" id="n-fav">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Characters, scripts and collections you saved with the heart button on their pages. The <strong>Favorites</strong> filter on
-          <a href="all-characters?favorites=1" style="color:var(--maroon);font-weight:700">All Characters</a> shows these characters
-          and every character on a saved script or collection. <a href="favorites" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a>
+          Pages you saved with the heart button. <a href="favorites" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a>
         </p>
         <table class="row-list" id="fav-table"></table>
       </div>
@@ -354,7 +352,7 @@
       <div class="panel" id="sug-panel" style="display:none">
         <h3>Suggested Edits <span class="count-pill" id="n-sug">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Changes other people have proposed to your pages. Nothing is live until you approve it.
+          Changes others suggested for your pages. Nothing goes live until you approve it.
         </p>
         <table class="row-list" id="sug-table"></table>
       </div>
@@ -468,7 +466,7 @@
       <div class="panel" id="contact">
         <h3>Contact the Admins</h3>
         <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
-          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. You can attach a screenshot, and when they answer you can reply here.
+          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. Replies show up here.
         </p>
         <div class="settings-grid">
           <section>
@@ -590,7 +588,7 @@
           ? '<span class="badge ok">verified</span>'
           : '<span class="badge warn">unverified</span> <a href="#" id="resend-verify" style="color:var(--maroon)">resend link</a>');
       } else {
-        emailLine = '<span class="badge warn">no email set</span> Add one below so you can recover your account.';
+        emailLine = '<span class="badge warn">no email set</span> Add one below for password resets.';
       }
       $('p-email-line').innerHTML = '✉ ' + emailLine;
       $('p-discord-line').innerHTML = p.discordLinked
@@ -622,7 +620,7 @@
       if (!p.hasPassword) {
         $('pw-title').textContent = 'Set a Password';
         $('cur-pw-field').style.display = 'none';
-        $('discord-desc').textContent = 'You signed up with Discord. Set a password if you also want to log in with your username.';
+        $('discord-desc').textContent = 'You signed up with Discord. Set a password to also log in with your username.';
       }
       if (p.discordLinked) {
         $('discord-unlink-btn').style.display = 'inline-block';
@@ -943,7 +941,7 @@
       var slug = btn.getAttribute('data-slug');
       if (act === 'edit') { location.href = editUrl(type, slug); return; }
       if (act === 'delete') {
-        if (!confirm('Delete this ' + type + '? It will be removed from the site. An admin can restore it if this was a mistake.')) return;
+        if (!confirm('Delete this ' + type + '? It will be removed from the site. An admin can restore it.')) return;
         btn.disabled = true;
         postJSON('/api/delete', { type: type, slug: slug }).then(function(res){
           if (res.ok && res.body.ok) load();
@@ -1124,7 +1122,7 @@
               shotsHtml(m.images) +
               (m.replied_at
                 ? '<div class="msg-reply">The admins replied ' + esc(fmtDate(m.replied_at)) +
-                  '. Open the conversation to read it and write back.</div>'
+                  '. Open the conversation to read and reply.</div>'
                 : '') +
               '<div class="msg-thread-slot"></div>' +
             '</div>';

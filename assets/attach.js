@@ -141,7 +141,7 @@
 
     function take(files) {
       var room = max - items.length - pending;
-      if (room <= 0) { say('That is the most images one message can carry.', true); return; }
+      if (room <= 0) { say('Only ' + max + ' images per message.', true); return; }
       var list = Array.prototype.slice.call(files, 0, room);
       if (files.length > room) say('Only ' + max + ' images per message. The rest were skipped.', true);
       list.forEach(function (file) {
