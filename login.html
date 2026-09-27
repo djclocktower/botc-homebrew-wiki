@@ -404,7 +404,7 @@
         .then(function(res){
           if (res.ok && res.body.ok) {
             setMsg('success', res.body.message || 'Reset link sent. Check your email.');
-            btn.textContent = 'Sent ✓';
+            btn.innerHTML = 'Sent <span class="ico ico-check" aria-hidden="true"></span>';
           } else {
             setMsg('error', res.body.error || 'Could not send reset email.');
             btn.disabled = false; btn.textContent = 'Send Reset Link';
@@ -428,7 +428,7 @@
           if (res.ok && res.body.ok) {
             out.style.color = '#2a6e2a';
             out.textContent = 'Loaded ' + res.body.characters + ' characters, ' + res.body.collections + ' collections, ' + res.body.scripts + ' scripts.';
-            btn.textContent = 'Seed complete ✓';
+            btn.innerHTML = 'Seed complete <span class="ico ico-check" aria-hidden="true"></span>';
           } else {
             out.style.color = '#9a2c2c';
             out.textContent = res.body.error || 'Seed failed.';

@@ -3702,6 +3702,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   border-radius: 50%;
 }
 .att-drop:hover { background: #7a2c2e; }
+.att-drop .ico { font-size: 11px; vertical-align: middle; }
 
 /* The posted images, under a comment or a message. A row that wraps, each
    one capped so a tall screenshot cannot push the rest of the conversation

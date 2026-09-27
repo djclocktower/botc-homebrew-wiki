@@ -124,7 +124,7 @@
         return '<span class="att-thumb">' +
           '<img src="' + esc(it.path) + '" alt="" loading="lazy" decoding="async">' +
           '<button type="button" class="att-drop" data-drop="' + i + '" ' +
-            'aria-label="Remove this image">&times;</button>' +
+            'aria-label="Remove this image"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '</span>';
       }).join('') + (pending
         ? '<span class="att-thumb att-thumb-wait" aria-label="Uploading">…</span>'.repeat(pending)

@@ -94,6 +94,7 @@
   .badge.warn  { background: rgba(154,110,20,.12); color: #7a5c18; border: 1px solid rgba(154,110,20,.35); }
   .profile-meta { font-size: .85rem; opacity: .85; margin-top: 10px; }
   .profile-meta span { margin-right: 18px; white-space: nowrap; }
+  .profile-meta .ico { margin-right: 0; }
 
   /* ---- page/draft lists ---- */
   .row-list { width: 100%; border-collapse: collapse; font-size: .92rem; }
@@ -310,7 +311,7 @@
             <div class="uname">@<span id="p-username"></span></div>
             <div class="bio" id="p-bio"></div>
             <a id="p-public-link" href="#" style="display:none;font-size:.85rem;margin-top:4px">View public profile →</a>
-            <a id="p-messages-link" href="messages" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">✉ Messages →</a>
+            <a id="p-messages-link" href="messages" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700"><span class="ico ico-mail" aria-hidden="true"></span> Messages →</a>
             <a id="p-admin-link" href="dashboard" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">Admin Dashboard →</a>
           </div>
         </div>
@@ -590,9 +591,9 @@
       } else {
         emailLine = '<span class="badge warn">no email set</span> Add one below for password resets.';
       }
-      $('p-email-line').innerHTML = '✉ ' + emailLine;
+      $('p-email-line').innerHTML = '<span class="ico ico-mail" aria-hidden="true"></span> ' + emailLine;
       $('p-discord-line').innerHTML = p.discordLinked
-        ? '🎮 Discord: ' + esc(p.discordUsername || 'linked') + ' <span class="badge ok">linked</span>'
+        ? '<span class="ico ico-gamepad" aria-hidden="true"></span> Discord: ' + esc(p.discordUsername || 'linked') + ' <span class="badge ok">linked</span>'
         : '';
       $('p-created').textContent = 'Member since ' + fmtDate(p.createdAt);
 
@@ -704,7 +705,7 @@
             (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
           '<button type="button" data-move="down" aria-label="Move down"' +
             (i === PINNED.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
-          '<button type="button" class="pin-drop" data-move="off" aria-label="Unpin">&#10005;</button>' +
+          '<button type="button" class="pin-drop" data-move="off" aria-label="Unpin"><span class="ico ico-x" aria-hidden="true"></span></button>' +
           '</li>';
       }).join('');
     }
