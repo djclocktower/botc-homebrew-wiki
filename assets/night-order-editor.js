@@ -66,7 +66,7 @@
     function render() {
       var L = lists();
       if (!L.first.length && !L.other.length) {
-        container.innerHTML = '<p class="no-empty">No character on this script wakes at night, so there is no night order to arrange.</p>';
+        container.innerHTML = '<p class="no-empty">No character on this script wakes at night.</p>';
         if (opts.onEmpty) opts.onEmpty(true);
         return;
       }

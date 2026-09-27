@@ -233,7 +233,7 @@
     <main class="sb-main">
       <div class="home-hero" style="padding-bottom:14px">
         <h1 id="sb-page-title">Script Builder</h1>
-        <p>Add characters from the sidebar, randomize and SAO-sort your line-up, then export the JSON, share a link, or publish it to the wiki.</p>
+        <p>Add characters from the sidebar, then export, share or publish your script.</p>
       </div>
 
       <div class="sb-toolbar">
@@ -264,7 +264,7 @@
 
       <!-- Ready to publish? Everything about naming + publishing lives on its own page. -->
       <div class="sb-publish-cta">
-        <p>Happy with your line-up? <strong>Publish it to the wiki</strong> to give it a name, description, and a public page other players can view.</p>
+        <p>Happy with your line-up? <strong>Publish it to the wiki</strong> to give it a name and a public page.</p>
         <a class="sb-btn sb-btn-publish" id="sb-publish-link" href="publish-script">★ Publish to Wiki →</a>
       </div>
 
@@ -276,7 +276,7 @@
            script writes for itself. Same widget as the publish page. -->
       <details class="sb-night" id="sb-jinx-sec">
         <summary>Jinxes <span class="sb-night-arrow">&#9662;</span>
-          <span class="sb-night-sub">Rules between two characters on this script. Remove one you do not want, or write your own.</span>
+          <span class="sb-night-sub">Remove any you do not want on this script, or write your own.</span>
         </summary>
         <div class="sb-night-body">
           <div id="sb-jinx-body"></div>
@@ -869,7 +869,7 @@
             var sh = decodeShare(shareRaw);
             var incoming = (sh.c || []).filter(function (slug) { return bySlug[slug]; });
             if (incoming.length &&
-                (!getScript().length || confirm('Load the shared script (' + incoming.length + ' characters)?\n\nThis replaces the script currently in your builder.'))) {
+                (!getScript().length || confirm('Load the shared script (' + incoming.length + ' characters)?\n\nThis replaces your current script.'))) {
               setScript(incoming);
               var m = getMeta();
               if (sh.n) m.name = sh.n;

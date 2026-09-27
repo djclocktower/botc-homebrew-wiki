@@ -77,7 +77,7 @@
 
       var html = '';
       if (!entries.length) {
-        container.innerHTML = '<p class="sjx-empty">Add characters to your script first. A jinx is a rule between two of them.</p>';
+        container.innerHTML = '<p class="sjx-empty">Add characters to your script first.</p>';
         return;
       }
       html += '<div class="sjx-list">';

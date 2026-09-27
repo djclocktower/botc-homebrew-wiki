@@ -175,7 +175,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <main class="pub-main">
     <div class="home-hero" style="padding-bottom:14px">
       <h1 id="pub-page-title">Publish Your Script</h1>
-      <p>Give your script a name and an author, then publish it to the wiki for everyone to see.</p>
+      <p>Give your script a name and an author, then publish it.</p>
     </div>
 
     <!-- Read-only summary of the script currently in the builder -->
@@ -203,7 +203,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <label for="sb-author">Author <span class="req">*</span></label>
         <input type="text" id="sb-author" placeholder="Your name">
           <label class="credit-unlink" for="sb-credit-unlinked"><input type="checkbox" id="sb-credit-unlinked"> This credit isn’t mine</label>
-          <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s script. The name in the Author box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
+          <span class="credit-unlink-hint">Tick this if you’re publishing someone else’s script. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
       </div>
       <div class="sb-fld">
         <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional: one line shown under the title)</span></label>
@@ -245,7 +245,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Optional wiki-page text sections (official-wiki style) -->
     <details class="sb-details" id="sb-sections">
-      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Synopsis, gameplay overview and strategy notes, shown on your script page like the official wiki.</span></summary>
+      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Synopsis, gameplay and strategy notes for your script page.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label for="sb-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro; a blank line starts a new paragraph)</span></label>
@@ -270,9 +270,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Night order: who acts is fixed by the characters, the ORDER is yours -->
     <details class="sb-details" id="sb-night-sec">
-      <summary>Night Order <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. The order the Night Order box lists everyone in. Starts from each character's own wake position.</span></summary>
+      <summary>Night Order <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. The order your script page lists the night in.</span></summary>
       <div class="sb-details-body">
-        <p class="sub" id="sb-night-note">Drag a character, or use &#9650;&#9660;. Only characters that wake are listed. Whether a character wakes is set on its own page.</p>
+        <p class="sub" id="sb-night-note">Drag a character, or use &#9650;&#9660;. Only characters that wake are listed.</p>
         <div class="no-cols" id="sb-night-body"></div>
         <button type="button" class="th-clear" id="sb-night-reset" style="margin-top:12px">↺ Back to the standard order</button>
       </div>
@@ -280,7 +280,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Optional custom boxes down the side of the script page -->
     <details class="sb-details" id="sb-boxes-sec">
-      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Extra boxes down the side of your script page, like the ones on character pages.</span></summary>
+      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Extra boxes down the side of your script page.</span></summary>
       <div class="sb-details-body">
         <div id="sb-boxes"></div>
         <button type="button" class="th-clear" id="sb-box-add">+ Add a box</button>
@@ -295,7 +295,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Text-first pages attached to this script (edit mode only) -->
     <details class="sb-details" id="sb-pages-sec" style="display:none">
-      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Full text pages (rules, lore, a storyteller guide) linked only from your script page.</span></summary>
+      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Text pages such as rules or lore, linked only from your script page.</span></summary>
       <div class="sb-details-body">
         <ul class="article-list" id="sb-pages-list"><li class="sub">No pages yet.</li></ul>
         <a class="th-clear" id="sb-page-new" href="#" style="display:inline-block;margin-top:10px;text-decoration:none">+ Write a page</a>
@@ -304,7 +304,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Jinxes on this script -->
     <details class="sb-details" id="sb-jinx-sec">
-      <summary>Jinxes <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Rules between two characters on this script. Remove one you do not want here, or write your own.</span></summary>
+      <summary>Jinxes <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Remove any you do not want on this script, or write your own.</span></summary>
       <div class="sb-details-body">
         <div id="sb-jinx-body"></div>
       </div>
@@ -312,13 +312,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Everything else the official app reads out of the JSON -->
     <details class="sb-details" id="sb-app-sec">
-      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. House rules, an almanac link and the title setting, all carried in the script JSON.</span></summary>
+      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. House rules, an almanac link and the title setting for the official app.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label>House rules <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the app calls these bootlegger rules)</span></label>
           <div id="sb-boot-list"></div>
           <button type="button" class="th-clear" id="sb-boot-add" style="margin-top:8px">+ Add a rule</button>
-          <p class="sub" style="margin-top:8px">One line each. They show on your script page under <em>House Rules</em> and travel with the script into the app.</p>
+          <p class="sub" style="margin-top:8px">One rule per line. Shown on your script page and in the app.</p>
         </div>
         <div class="sb-fld">
           <label for="sb-almanac">Almanac link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
@@ -338,20 +338,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <div class="sb-fld">
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
-            <option value="">Not set: my characters and pages on it keep their own settings</option>
+            <option value="">Not set: my pages on it keep their own settings</option>
             <option value="closed">Only me</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, I approve it</option>
             <option value="all">Anyone with an account can edit</option>
           </select>
-          <p class="sub" style="margin:8px 0 0">Whatever you choose here applies to this script <strong>and to every character and wiki page on it that belongs to you</strong>. Pages belonging to anyone else keep their own settings.</p>
+          <p class="sub" style="margin:8px 0 0">Applies to this script <strong>and your own characters and wiki pages on it</strong>. Other people's pages keep their own settings.</p>
         </div>
         <div class="sb-fld" id="sb-editors-fld" style="display:none">
           <label>Approved editors</label>
           <div id="sb-editors-box"></div>
-          <p class="sub" style="margin:8px 0 0">The accounts you name here can edit this script as you would, drafts included, along with the character pages and wiki pages on it that belong to you. They can also add new wiki pages, which stay drafts until you publish them. Pages belonging to anyone else are not included.</p>
+          <p class="sub" style="margin:8px 0 0">The people you name can edit this script and your own pages on it, drafts included, and add new wiki pages as drafts.</p>
         </div>
-        <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
+        <p class="sub" style="margin:0">Every edit shows in the page's history, where you can put back an earlier version. Publishing, deleting and this setting stay yours.</p>
       </div>
     </details>
 
@@ -377,7 +377,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <label for="sb-bg">Background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image)</span></label>
             <input type="file" id="sb-bg" accept="image/*">
             <img id="sb-bg-prev" class="sb-header-prev" alt="background preview">
-            <div class="sub" style="margin-top:6px">Shown behind your script's wiki page, and behind the script in the official app, which reads it from the exported JSON.</div>
+            <div class="sub" style="margin-top:6px">Shown behind your script page and in the official app.</div>
             <div id="sb-bg-note" class="sub" style="margin-top:6px"></div>
             <button type="button" class="th-clear" id="sb-bg-remove" style="display:none;margin-top:6px">Remove background</button>
           </div>
@@ -396,7 +396,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <div class="sb-fld">
           <label>Top image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the header if you set one, otherwise the logo)</span></label>
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
-          <p class="sub" style="margin:6px 0 0">Useful when the image was drawn for a light background and gets lost against the wiki's purple. The size of each image is set beside the image itself, and both previews show the result before you publish.</p>
+          <p class="sub" style="margin:6px 0 0">For an image drawn on a light background that gets lost on the wiki's purple.</p>
         </div>
       </div>
     </details>
@@ -585,7 +585,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // The script's own wiki page IS an almanac, so offer it rather than
       // making somebody paste their own URL back in.
       var slug = EDIT_SLUG || getMeta().editSlug;
-      if (!slug){ alert('Publish the script first, so its page has an address to point at.'); return; }
+      if (!slug){ alert('Publish the script first, so it has a page to link to.'); return; }
       $('sb-almanac').value = SITE_ROOT + 's/' + encodeURIComponent(slug);
       $('sb-almanac').dispatchEvent(new Event('input'));
     });
@@ -687,7 +687,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
       html += '</div>';
       html += '<p class="sub" style="margin:8px 0 0">' + chars.length + ' character' + (chars.length===1?'':'s') + ' total. ' +
-        'This is the order the script page shows, within each team. Use ▲▼ to arrange it.</p>';
+        'Use ▲▼ to reorder within each team.</p>';
       html += '<div class="pub-roster">';
       var lastTeam = null;
       chars.forEach(function(c, i){
@@ -1049,11 +1049,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         // save having failed, and "did it overwrite the other one?" is the
         // first thing anyone would wonder.
         var note = bumped
-          ? ' <em>A page already used <code>/s/' + esc(wanted) + '</code>, so this one has its own address. ' +
-            'If you meant to change a script you already made, open it from <a href="account">your account</a>.</em>'
+          ? ' <em><code>/s/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
+            'To change an existing script, open it from <a href="account">your account</a>.</em>'
           : '';
         if (isDraft) {
-          pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.' + note);
+          pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
         } else {
           pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.' + note);
         }
@@ -1072,7 +1072,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     $('sb-delete').addEventListener('click', function(){
       if (!EDIT_SLUG) return;
       var nm = (getMeta().name) || EDIT_SLUG;
-      if (!confirm('Delete "' + nm + '"?\n\nIt will be removed from the site. An admin can restore it from the dashboard if this was a mistake.')) return;
+      if (!confirm('Delete "' + nm + '"?\n\nIt will be removed from the site. An admin can restore it.')) return;
       var del = $('sb-delete');
       del.disabled = true; del.textContent = 'Deleting…';
       $('sb-publish').disabled = true; $('sb-draft').disabled = true;
@@ -1206,8 +1206,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         // publishing, unpublishing and deleting — which is also why a shared
         // DRAFT has no button to put it live.
         pubStatus('ok', currentStatus === 'draft'
-          ? 'The creator made you an editor of this script. It is still a draft, and only they can put it live. Everything else here is yours to change.'
-          : 'The creator made you an editor of this script. Everything here is yours to change; publishing and deleting stay with them.');
+          ? 'You are an editor of this script. It is a draft, and only its creator can publish it.'
+          : 'You are an editor of this script. Publishing and deleting stay with its creator.');
         $('sb-draft').style.display = 'none';
         updateButtons();   // relabel now that editRole is set
         return;
@@ -1215,7 +1215,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (mode === 'all'){
         // updateButtons() already labels Publish correctly for the stored
         // status; only the draft and delete buttons have to go.
-        pubStatus('ok', 'This script is open for anyone with an account to edit. ' +
+        pubStatus('ok', 'Anyone with an account can edit this script. ' +
           'Publishing and deleting stay with its creator.');
         $('sb-draft').style.display = 'none';
         return;
@@ -1223,7 +1223,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('sb-publish').disabled = true;
       $('sb-draft').disabled = true;
       pubStatus('err', mode === 'suggest'
-        ? 'This script only takes suggested edits, and they cannot be sent from this page yet. Message the creator instead.'
+        ? 'This script only takes suggested edits, which this page cannot send yet. Message the creator instead.'
         : 'This script belongs to another account, so you cannot save changes to it.');
     }
 

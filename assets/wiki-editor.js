@@ -135,7 +135,7 @@
       del.title = 'Remove this box';
       head.appendChild(t); head.appendChild(del);
       var c = el('textarea', 'we-box-content');
-      c.placeholder = 'Box contents… (the same formatting as the page body)';
+      c.placeholder = 'Box contents… (same formatting as the page body)';
       c.value = content || '';
       row.appendChild(head); row.appendChild(c);
       container.appendChild(row);
