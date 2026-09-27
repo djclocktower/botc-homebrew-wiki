@@ -152,31 +152,31 @@
       // token drawn for them would only make their save fail — say so
       // instead of rendering one.
       if (opts.allowed && !opts.allowed()) {
-        opts.hint('The printable token is the page owner’s (or an approved editor’s) to change.');
+        opts.hint('Only the page owner or an approved editor can change the printable token.');
         return;
       }
       // A real token already stands — saved on the row, or uploaded by hand
       // this visit. Only a token this mount drew itself is redrawn.
       if (opts.hasToken() && !auto) return;
       var art = opts.art();
-      if (!art) { opts.hint('Upload character art first. The default token is drawn from it.'); return; }
+      if (!art) { opts.hint('Add character art to draw the token.'); return; }
       var entry = opts.gather();
-      if (!entry.name) { opts.hint('Give the character a name first. It is written around the token.'); return; }
-      if (!entry.ability) { opts.hint('Write the ability first. It is printed on the token.'); return; }
+      if (!entry.name) { opts.hint('Add a name to draw the token.'); return; }
+      if (!entry.ability) { opts.hint('Add the ability to draw the token.'); return; }
       var k = payloadKey(entry, art);
       if (k === lastKey) return;
       if (busy) { again = true; return; }
       busy = true; lastKey = k;
-      opts.hint(worker ? 'Drawing the default token…' : 'Drawing the default token… (the first one loads the token engine, so it takes a moment)');
+      opts.hint(worker ? 'Drawing the default token…' : 'Drawing the default token… (the first one takes a moment)');
       render(entry, art).then(function (url) {
         busy = false; auto = true;
         opts.apply(url);
-        opts.hint('Default token, drawn from this page. It updates as you edit and saves with the character. Fine-tune it in the Token Tool if you like.');
+        opts.hint('Default token. It updates as you edit and saves with the character.');
         if (again) { again = false; maybe(); }
       }, function (e) {
         busy = false;
         again = false;
-        opts.hint('Could not draw a token: ' + ((e && e.message) || 'render failed') + ' You can still upload a finished token image below.');
+        opts.hint('Could not draw a token: ' + ((e && e.message) || 'render failed') + ' You can upload a token image instead.');
       });
     }
 

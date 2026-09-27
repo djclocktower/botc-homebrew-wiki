@@ -119,8 +119,8 @@
           if (!res || !res.found) {
             // Not added. A name nobody answers to would be dropped on save
             // anyway, and saying so now is the whole point of the lookup.
-            say('err', 'No account called “' + name + '”. Check the spelling and use their username, ' +
-              'the one in their profile address.');
+            say('err', 'No account called “' + name + '”. Use their username, as in their ' +
+              'profile address.');
             return;
           }
           // The handle as the SITE spells it, fadas and all, not as it was
@@ -131,7 +131,7 @@
           }
           list.push({ id: Number(res.id), username: String(res.username) });
           input.value = '';
-          say('ok', '@' + res.username + ' can now edit this page once you save.');
+          say('ok', '@' + res.username + ' can edit this page once you save.');
           render();
         })
         .catch(function () { say('err', 'Could not reach the wiki to check that name.'); })

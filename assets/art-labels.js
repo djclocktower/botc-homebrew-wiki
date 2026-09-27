@@ -28,9 +28,9 @@
      blank to keep existing", neither of which this file knows about, and
      neither of which has to be repeated here to survive. */
   var TRAVELLER = {
-    main: ['Character art', 'the unaligned icon: what the wiki shows, and the first entry in the JSON'],
-    alt:  ['Good art', 'the token a good traveller gets; the second entry in the JSON'],
-    alt2: ['Evil art', 'the token an evil traveller gets; the third entry in the JSON']
+    main: ['Character art', 'the unaligned icon the wiki shows'],
+    alt:  ['Good art', 'the icon a good traveller gets'],
+    alt2: ['Evil art', 'the icon an evil traveller gets']
   };
 
   /* Both spellings. Nothing validates a team on save, the importers

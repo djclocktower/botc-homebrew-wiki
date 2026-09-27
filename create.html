@@ -165,12 +165,12 @@
       <!-- import from JSON -->
       <fieldset class="import">
         <legend>Import from JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 8px">Upload or paste an official-schema character JSON to autofill ability, flavour, team, night order, reminders &amp; jinxes.</p>
+        <p class="sub" style="margin:0 0 8px">Upload or paste a character&rsquo;s official-schema JSON to fill in the form.</p>
         <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
         <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
         <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
         <div id="importmsg"></div>
-        <p class="sub" style="margin:10px 0 0">Have a whole script or a master list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Mass-upload them all at once &rarr;</a></p>
+        <p class="sub" style="margin:10px 0 0">Have a whole script or list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Mass-upload them &rarr;</a></p>
       </fieldset>
 
       <div class="fld">
@@ -194,7 +194,7 @@
           <label for="creator">Creator</label>
           <input type="text" id="creator" placeholder="Your name or handle">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
-          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
+          <span class="credit-unlink-hint">Tick this if you’re uploading someone else’s character. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
         </div>
       </div>
       <div class="fld">
@@ -229,16 +229,16 @@
         <div class="fmt-help">
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
-            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em>. Italics take braces, not <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
+            <li><code>**bold**</code> prints <strong>bold</strong> and <code>{{i|text}}</code> prints <em>italics</em> (single <code>*asterisks*</code> don&rsquo;t work)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
-            <li><code>[[Snake Charmer]]</code> links to that character: to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
-            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens. A name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
+            <li><code>[[Snake Charmer]]</code> links to that character (the official wiki, or its page here); any other name prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> when it is one of this character&rsquo;s own reminders, and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span></li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
-            <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (that one only works that way round)</li>
-            <li>The Ability box takes none of these, because it is printed verbatim on tokens, exports and cards</li>
+            <li><code>{{drop|T}}</code> at the start of a paragraph makes that letter a drop cap</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (only this way round)</li>
+            <li>The Ability box takes none of these</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -250,12 +250,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
-        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page. Empty the box to drop the section.</div>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is usually for good characters only. Its text still prints on the page; empty the box to remove the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
-        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page. Empty the box to drop the section.</div>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is usually for evil characters only. Its text still prints on the page; empty the box to remove the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -265,7 +265,7 @@
         <div class="fld">
           <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
-          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
+          <div class="sub" style="margin-top:4px">If blank, a collection that lists this character fills it in.</div>
         </div>
       </div>
       <div class="fld">
@@ -274,7 +274,7 @@
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
-        <label for="pronunciation">Pronunciation <span class="hint">(optional: a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
+        <label for="pronunciation">Pronunciation <span class="hint">(optional: a line under the flavour quote)</span></label>
         <input type="text" id="pronunciation">
       </div>
       <div class="fld">
@@ -300,7 +300,7 @@
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
           <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
-          <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame as it lands, so it prints at the same size as an official character in the script tool. Resize puts it back to that; Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
+          <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame. Resize restores that fit; Adjust lets you move and size it by hand.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
@@ -320,11 +320,11 @@
             <input type="range" id="artScale" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
             <output id="artScaleOut" for="artScale" style="min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums">100%</output>
           </div>
-          <div class="sub" style="margin-top:4px">Only the picture on the character page. The icon file, the JSON export, the cards and the search results keep the true size.</div>
+          <div class="sub" style="margin-top:4px">The icon file, export and cards keep the true size.</div>
         </div>
       </div>
       <div class="fld" data-art-slot="alt">
-        <label for="artAlt">Alternate art <span class="hint">(optional: the flipped-alignment icon, the second entry in the JSON)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional: the flipped-alignment icon)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
@@ -349,7 +349,7 @@
            that exists, so here the slot takes an upload and the fine-tuning
            door appears on the edit page after the first save. -->
       <div class="fld" data-art-slot="token">
-        <label>Printable token <span class="hint">(optional: the Token Tool's finished token for this character)</span></label>
+        <label>Printable token <span class="hint">(optional: a finished token from the Token Tool)</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
           <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
           <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
@@ -357,7 +357,7 @@
         <input type="file" id="tokenFile" accept="image/*">
         <img id="tokenThumb" class="artthumb" alt="printable token preview">
         <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px">&#10005; Remove token image</button>
-        <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box and a default token is drawn from your art automatically, or upload a finished token image here. Once the character is saved, you can fine-tune the token in the Token Tool from the edit page.</div>
+        <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box to draw a default token from your art, or upload your own. After saving, you can fine-tune it in the Token Tool.</div>
       </div>
 
       <fieldset>
@@ -421,21 +421,21 @@
 
       <fieldset id="related-fld">
         <legend>Related Pages</legend>
-        <p class="sub" style="margin:0 0 10px">The pages this character is about: a character its ability names, the wiki page for a condition it uses, a script, a collection, or any web link. They appear on the page after the Summary, each with a coloured edge saying what it links to. Leave this empty and the page shows no Related section.</p>
+        <p class="sub" style="margin:0 0 10px">Links to pages this character relates to: characters, wiki pages, scripts, collections or any website. They show after the Summary.</p>
         <div id="relatedrows"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addrelated">+ Add related page</button>
       </fieldset>
 
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
-        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
+        <p class="sub" style="margin:0 0 10px">Titled boxes for the character's sidebar. A blank line starts a new paragraph.</p>
         <div id="customboxes"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
 
       <fieldset>
         <legend>Who can edit this page</legend>
-        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
+        <p class="sub" style="margin:0 0 10px">You can put back any earlier version from the page's history.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Default: tags open to anyone until I tag the page myself</option>
@@ -449,14 +449,14 @@
         </div>
         <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
           <label>Approved editors</label>
-          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <p class="sub" style="margin:0 0 8px">People you name can edit this page, drafts included. Publishing, deleting and this list stay with you.</p>
           <div id="editors-box"></div>
         </div>
       </fieldset>
 
       <fieldset>
         <legend>Custom JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
+        <p class="sub" style="margin:0 0 10px">Replaces the auto-generated JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
       </fieldset>
 

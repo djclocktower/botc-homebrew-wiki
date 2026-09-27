@@ -283,9 +283,9 @@
        owner tags it (the Worker's defaultTagsOpen). The editor asks for this
        key when that default is what the next save will leave in force, and
        for '' once the owner's own tags have switched it off. */
-    'default': ['tags open for now', 'anyone with an account can add tags until you tag the page yourself or pick another option.'],
+    'default': ['tags open for now', 'anyone with an account can add tags until you tag the page yourself.'],
     all:       ['open to all', 'anyone with an account can edit this page.'],
-    'all-but-ability': ['open except the ability', 'anyone with an account can edit this page, but the ability text stays yours.'],
+    'all-but-ability': ['open except the ability', 'anyone with an account can edit this page except the ability.'],
     tags:      ['tags open to all', 'anyone with an account can change the tags.'],
     suggest:   ['suggestions welcome', 'anyone with an account can propose an edit for you to approve.'],
     /* Approved editing names accounts rather than opening the page. It is not
@@ -350,8 +350,7 @@
       '<strong>An admin moved this page to drafts.</strong>' +
       (note.by ? ' <span class="db-who">' + esc(note.by) + (when ? ', ' + esc(when) : '') + '</span>' : '') +
       '<span class="db-reason">' + esc(note.reason) + '</span>' +
-      '<span class="db-fix">Fix that and publish it again. This note goes away when the page goes back up. ' +
-      'Nothing was deleted.</span>' +
+      '<span class="db-fix">Fix that and publish it again. Nothing was deleted.</span>' +
     '</div>';
   }
 
