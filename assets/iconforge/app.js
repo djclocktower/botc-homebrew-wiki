@@ -255,7 +255,7 @@ function syncControls() {
   const aiBtn = $('if-bgmode').querySelector('button[data-value=ai]');
   aiBtn.disabled = !source || sourceKind !== 'raster';
   aiBtn.title = aiBtn.disabled
-    ? 'Smart remove is for photos and scans — vector art already has a transparent background'
+    ? 'Smart remove is for photos and scans. Vector art already has a transparent background.'
     : '';
 
   const swatch = $('if-chroma-swatch');
@@ -276,8 +276,8 @@ function syncControls() {
     bucketMode === 'off'
       ? 'Fill enclosed spaces by hand: pick Colour or Parchment, then tap a space in the preview. Unlike “Fill enclosed spaces”, you choose each region and its fill. Hatch adds shading lines to whatever you tap instead.'
       : bucketMode === 'hatch'
-        ? 'Now tap an ink area or an enclosed space in the preview — it gets hand-drawn hatching. Tune the lines under Hatching.'
-        : 'Now tap an enclosed space in the preview — it fills with ' +
+        ? 'Now tap an ink area or an enclosed space in the preview to give it hand-drawn hatching. Tune the lines under Hatching.'
+        : 'Now tap an enclosed space in the preview to fill it with ' +
           (bucketMode === 'color' ? 'the colour texture' : 'parchment') +
           '. Only spaces fully surrounded by ink can be filled.';
 
@@ -478,7 +478,7 @@ function openArtEditor(mode) {
     title: mode === 'edit' ? 'Edit artwork' : 'Draw your own',
     hint:
       mode === 'edit'
-        ? 'Pen, eraser, lasso, move — then bring it straight back to the forge.'
+        ? 'Use the pen, eraser, lasso and move tools, then bring it straight back to the forge.'
         : 'A blank page. Black ink on white works best in the forge.',
     onApply: (img) => {
       const name = mode === 'draw' ? 'drawing' : sourceName ? sourceName + ' (edited)' : 'edited';
@@ -519,7 +519,7 @@ function maybeRunAI() {
   const req = ++aiReq;
   aiBusy = true;
   syncControls();
-  busy(true, 0, 'Removing', 'Keep using the page — this runs in the background.');
+  busy(true, 0, 'Removing', 'Keep using the page. This runs in the background.');
   removeImageBackground(
     source,
     (fraction, phase) => {
@@ -532,8 +532,8 @@ function maybeRunAI() {
         fraction,
         'Removing',
         phase === 'fetch'
-          ? 'Fetching what it needs — about 45 MB, once per browser. It is kept for next time.'
-          : 'Keep using the page — this runs in the background.'
+          ? 'Fetching what it needs: about 45 MB, once per browser. It is kept for next time.'
+          : 'Keep using the page. This runs in the background.'
       );
     },
     (cancel) => {
@@ -635,14 +635,14 @@ $('if-stage-inner').addEventListener('pointerdown', (e) => {
   const probe = probeBucket(src, opts, fx, fy);
   if (bucketMode === 'hatch') {
     if (probe === 'open') {
-      toast('That spot is outside the artwork — tap ink or an enclosed space to hatch it.');
+      toast('That spot is outside the artwork. Tap ink or an enclosed space to hatch it.');
       return;
     }
   } else if (probe === 'solid') {
     toast('That spot is ink. Tap an empty enclosed space to fill it.');
     return;
   } else if (probe === 'open') {
-    toast('That space is not enclosed — it connects to the outside, so it cannot be filled.');
+    toast('That space is not enclosed. It connects to the outside, so it cannot be filled.');
     return;
   }
   setOpts({ bucketFills: opts.bucketFills.concat([{ x: fx, y: fy, fill: bucketMode }]) });
@@ -656,7 +656,7 @@ COLOR_TEXTURES.forEach((t) => {
   b.type = 'button';
   b.className = 'if-tex';
   b.dataset.tex = t.id;
-  b.title = t.label + ' — ' + t.sub;
+  b.title = t.label + ': ' + t.sub;
   b.setAttribute('aria-pressed', String(t.id === colorTexId));
   const sw = document.createElement('div');
   sw.className = 'if-tex-swatch';
@@ -931,7 +931,7 @@ $('if-save').addEventListener('click', async () => {
     setSaveMsg(
       'ok',
       '✓ Saved. It is live on <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
-        ' — give it a refresh if you still see the old icon.'
+        '. Give it a refresh if you still see the old icon.'
     );
   } catch (e) {
     setSaveMsg('err', '✗ ' + (e && e.message ? e.message : 'Something went wrong.'));

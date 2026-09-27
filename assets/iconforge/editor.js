@@ -129,7 +129,7 @@ export function openEditor(o) {
   const frameWrap = el('div', 'if-editor-frame');
   const loading = el('div', 'if-editor-load');
   loading.appendChild(el('div', 'if-spin'));
-  const loadMsg = el('p', null, 'Summoning the editor… the first load is a one-time 1.4 MB download, which a phone on a slow connection can take a while over.');
+  const loadMsg = el('p', null, 'Summoning the editor… The first load is a one-time 1.4 MB download, so it can take a while on a slow connection.');
   loading.appendChild(loadMsg);
   const frame = document.createElement('iframe');
   frame.title = o.title;

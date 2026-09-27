@@ -35,7 +35,7 @@
     var m = e.data || {};
     if (m.type === 'status') {
       if (m.state === 'ready') { pyReady = true; hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
-      else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The renderer failed to load — try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
+      else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The renderer failed to load. Try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
       return;
     }
     var p = pending[m.id]; if (!p) return; delete pending[m.id];
@@ -43,7 +43,7 @@
   };
   worker.onerror = function (e) {
     engineErr = e.message; hideLoad();
-    showMsg('err', 'The renderer failed to load — try a refresh, or tell DJ.');
+    showMsg('err', 'The renderer failed to load. Try a refresh, or tell DJ.');
   };
 
   /* ---- tiny DOM helpers ---- */
@@ -347,7 +347,7 @@
         if (setSlugs.indexOf(ed) < 0) setSlugs.push(ed);
         pendingEdit = ed;
       } else if (ed) {
-        showMsg('err', 'Could not open that character for token editing. A draft is only visible to its owner &mdash; make sure you are logged in on the account that made it.');
+        showMsg('err', 'Could not open that character for token editing. A draft is only visible to its owner, so make sure you are logged in on the account that made it.');
       }
     });
   }
@@ -643,7 +643,7 @@
     if (!c || c.ext) { box.style.display = 'none'; return; }
     box.style.display = '';
     $('tte-save-msg').textContent = c.token
-      ? 'This character already has a saved token — the sheets print it. Saving replaces it.'
+      ? 'This character already has a saved token, and the sheets print it. Saving replaces it.'
       : 'Saves this token onto the character’s wiki page. From then on the Token Tool prints it instead of generating one.';
     $('tte-save-go').disabled = false;
     $('tte-save-go').textContent = 'Save to page';
@@ -1043,7 +1043,7 @@
     ASSET_SLOTS.forEach(function (s) {
       $('af-' + s[0]).addEventListener('change', function () {
         var f = this.files && this.files[0]; if (!f) return;
-        if (f.size > 4 * 1024 * 1024) { showMsg('err', 'That image is over 4&nbsp;MB — please use a smaller file.'); this.value = ''; return; }
+        if (f.size > 4 * 1024 * 1024) { showMsg('err', 'That image is over 4&nbsp;MB. Please use a smaller file.'); this.value = ''; return; }
         var kind = s[0], input = this;
         fileToB64(f).then(function (b64) { return applyAsset(kind, b64); })
           .catch(function (e) { showMsg('err', 'Could not apply that image: ' + esc(e.message)); })
@@ -1244,7 +1244,7 @@
       var extCount = parsed.ext.length - parsed.official.length;
       if (extCount > 0) bits.push(extCount + ' external');
       var title = parsed.meta && parsed.meta.name ? ' \u201C' + esc(parsed.meta.name) + '\u201D' : '';
-      var msg = 'Imported' + title + ' \u2014 ' + setSlugs.length + ' characters (' + bits.join(', ') + ').';
+      var msg = 'Imported' + title + ': ' + setSlugs.length + ' characters (' + bits.join(', ') + ').';
       if (parsed.unknown.length) msg += ' Skipped ' + parsed.unknown.length + ' unrecognised (official/off-wiki) id' + (parsed.unknown.length === 1 ? '' : 's') + '.';
       showMsg('ok', msg);
       fetchExtArt(parsed.ext).then(function () { schedulePreview(); });
@@ -1390,7 +1390,7 @@
       callWorker('render', { payloads: payloads, opts: opts, art: artList(slugs) })
         .then(function (res) {
           hideGenLoad(); showOutput(res);
-          showMsg('ok', 'Done — ' + res.counts.char + ' character + ' + res.counts.rem + ' reminder tokens.');
+          showMsg('ok', 'Done: ' + res.counts.char + ' character + ' + res.counts.rem + ' reminder tokens.');
         })
         .catch(function (e) { hideGenLoad(); console.error(e); showMsg('err', 'Render error: ' + esc(e.message)); })
         .then(function () { btn.disabled = false; refreshGenerate(); });
@@ -1398,7 +1398,7 @@
   }
   function showOutput(res) {
     var out = $('output'), thumbs = $('thumbs');
-    if (!res.files.length) { showMsg('err', 'Nothing to render — check your sheet selections.'); return; }
+    if (!res.files.length) { showMsg('err', 'Nothing to render. Check your sheet selections.'); return; }
     res.files.forEach(function (f) {
       var url = 'data:' + f.mime + ';base64,' + f.b64;
       var a = document.createElement('a'); a.href = url; a.download = f.name;

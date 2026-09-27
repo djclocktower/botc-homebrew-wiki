@@ -5,7 +5,7 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grimoire Forge — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Check homebrew Blood on the Clocktower ability syntax. Terminology, casing, numbering, structure and length and get a corrected ability.">
+<meta name="description" content="Check the terminology, casing, numbering, structure and length of a homebrew Blood on the Clocktower ability, and get a corrected version.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Grimoire Forge">
 <meta property="og:description" content="Blood on the Clocktower ability syntax checker. Paste an ability, see what breaks official style.">
@@ -520,7 +520,7 @@
       <h2 class="type-header">Suggested Ability</h2>
       <div class="type-rule"></div>
       <div class="gf-card">
-        <p class="gf-hint">Every confident fix applied, then tidied: spacing, apostrophes, the final full stop and the setup brackets. Warnings are never rewritten for you — accept those one at a time.</p>
+        <p class="gf-hint">Every confident fix applied, then tidied: spacing, apostrophes, the final full stop and the setup brackets. Warnings are never rewritten for you. Accept those one at a time.</p>
         <div class="gf-output" id="gf-output"><span class="gf-empty">The corrected ability will appear here.</span></div>
         <div class="gf-meter">
           <span class="gf-count" id="gf-out-count">0 characters</span>
@@ -548,7 +548,7 @@
       <h2 class="type-header">Scan a Script or Collection</h2>
       <div class="type-rule"></div>
       <div class="gf-card">
-        <p class="gf-hint">Run every ability on a set through the checks below, tick the fixes you want, and apply them to the pages in one go. Anything you cannot edit is listed and skipped.</p>
+        <p class="gf-hint">Run every ability on a set through the checks below, tick the fixes you want, and apply them to the pages. Anything you cannot edit is listed and skipped.</p>
         <div class="gf-scan-pick">
           <select id="gf-scan-set" aria-label="Script or collection to scan">
             <option value="">Loading sets&hellip;</option>
@@ -703,7 +703,7 @@
       if (!fixes && !warns) { el.textContent = 'No issues found'; return; }
       el.textContent = fixes + ' fix' + (fixes === 1 ? '' : 'es') + ' · ' +
         warns + ' warning' + (warns === 1 ? '' : 's') +
-        (highlightBox.checked ? ' — tap a highlight for detail.' : ' — listed under Findings below.');
+        (highlightBox.checked ? '. Tap a highlight for detail.' : ', listed under Findings below.');
     }
 
     /* Counter panel. `Characters` is the figure that matters — the official
@@ -727,7 +727,7 @@
 
       var note = $('gf-len-note');
       note.className = 'gf-len-note' + (b.level === 'error' ? ' error' : '');
-      note.textContent = b.note ? ((withSpaces ? '' : b.n + ' with spaces — ') + b.note) : '';
+      note.textContent = b.note ? ((withSpaces ? '' : b.n + ' with spaces: ') + b.note) : '';
       note.hidden = !b.note;
 
       var out = suggested();
@@ -802,7 +802,7 @@
           .concat(liveNotices().map(function (n) { return findingRow(n, false); }));
         box.innerHTML = rows.length
           ? rows.join('')
-          : '<p class="gf-clean">Clean — nothing left to flag.</p>';
+          : '<p class="gf-clean">Clean. Nothing left to flag.</p>';
       }
       var n = Object.keys(dismissed).length;
       $('gf-restore-wrap').style.display = n ? 'block' : 'none';
@@ -1092,7 +1092,7 @@
           });
         }).then(function () {
           draftMsg('ok', 'Saved as a draft. <a href="edit?c=' + encodeURIComponent(slug) +
-            '">Finish it in the editor</a> — it needs an icon and almanac text before it can be published.');
+            '">Finish it in the editor</a>. It needs an icon and almanac text before it can be published.');
         });
       }).catch(function (err) {
         if (err && err.message === 'LOGIN') {
@@ -1345,7 +1345,7 @@
       return '<span class="gf-scan-body"><span class="gf-cat" style="color:' + color(i.cat) + '">' +
         esc(i.cat) + '</span>' + swap +
         (i.count > 1 ? ' <span class="gf-note">&times;' + i.count + '</span>' : '') +
-        (i.note ? ' <span class="gf-note">&mdash; ' + esc(i.note) + '</span>' : '') + '</span>';
+        (i.note ? ' <span class="gf-note">(' + esc(i.note) + ')</span>' : '') + '</span>';
     }
 
     function renderScan(set, scanned, clean, total) {
@@ -1354,7 +1354,7 @@
         $('gf-scan-bar').hidden = true;
         box.innerHTML = '';
         scanMsg('err', 'Nothing to check in <strong>' + esc(set.name) + '</strong>' +
-          (total ? ' &mdash; none of its ' + total + ' characters has an ability on the wiki yet.' : '.'));
+          (total ? '. None of its ' + total + ' characters has an ability on the wiki yet.' : '.'));
         return;
       }
       if (!scanRows.length) {
@@ -1372,8 +1372,8 @@
         nWarn += r.notices.length;
       });
       scanMsg('', '<strong>' + esc(set.name) + '</strong>: ' + scanRows.length + ' of ' + scanned +
-        ' abilities have something to look at &mdash; ' + nFix + (nFix === 1 ? ' fix' : ' fixes') +
-        ' and ' + nWarn + (nWarn === 1 ? ' warning' : ' warnings') + '. ' +
+        ' abilities have something to look at (' + nFix + (nFix === 1 ? ' fix' : ' fixes') +
+        ' and ' + nWarn + (nWarn === 1 ? ' warning' : ' warnings') + '). ' +
         (clean ? clean + ' came back clean.' : ''));
 
       box.innerHTML = scanRows.map(function (r, ri) {
@@ -1412,7 +1412,7 @@
         '</div>';
       }).join('') +
       '<p class="gf-scan-more">Ticked fixes are written straight to each character page, one save each. ' +
-      'Warnings are never applied for you &mdash; open a page and use the box at the top for those.</p>';
+      'Warnings are never applied for you. Open a page and use the box at the top for those.</p>';
 
       $('gf-scan-bar').hidden = false;
       syncScanBar();
