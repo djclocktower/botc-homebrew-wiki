@@ -3791,6 +3791,11 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 @supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
   .ico { background-color: currentColor; }
 }
+/* A flex or grid parent drops the space typed after an icon ("★ Publish"
+   came out "★Publish"). column-gap does nothing to ordinary inline text,
+   so this only acts where the space was lost, and :where() keeps its
+   specificity at zero, so a parent's own gap always wins. */
+:where(:has(> .ico)) { column-gap: .3em; }
 .ico-check { --ico: var(--ico-check); }
 .ico-x { --ico: var(--ico-x); }
 .ico-edit { --ico: var(--ico-edit); }
