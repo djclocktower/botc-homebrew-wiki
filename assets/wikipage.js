@@ -32,7 +32,7 @@
         btn.type = 'button';
         btn.className = 'wiki-feature-btn';
         function paint() {
-          btn.textContent = on ? '★ In Featured Articles · remove' : '☆ Add to Featured Articles';
+          btn.innerHTML = on ? '<span class="ico ico-star" aria-hidden="true"></span> In Featured Articles · remove' : '<span class="ico ico-star-outline" aria-hidden="true"></span> Add to Featured Articles';
           btn.setAttribute('aria-pressed', on ? 'true' : 'false');
         }
         paint();

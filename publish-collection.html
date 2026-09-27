@@ -245,8 +245,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <p class="pc-member-count" id="pc-member-count">0 characters</p>
       <div class="pc-order-bar">
         <span class="pc-order-note">Use ▲▼ to reorder within each team.</span>
-        <button type="button" class="sb-btn sb-btn-export" id="pc-sao-sort" title="Arrange the roster in Steven Approved Order">⇅ Sort (SAO)</button>
-        <button type="button" class="sb-btn sb-btn-export" id="pc-order-reset" title="Back to alphabetical within each team">↺ Reset order</button>
+        <button type="button" class="sb-btn sb-btn-export" id="pc-sao-sort" title="Arrange the roster in Steven Approved Order"><span class="ico ico-sort" aria-hidden="true"></span> Sort (SAO)</button>
+        <button type="button" class="sb-btn sb-btn-export" id="pc-order-reset" title="Back to alphabetical within each team"><span class="ico ico-reset" aria-hidden="true"></span> Reset order</button>
       </div>
       <div class="pc-member-list" id="pc-member-list">
         <p class="pub-empty" style="padding:10px">No characters yet. Set a match term or add characters above.</p>
@@ -373,7 +373,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     </details>
 
     <div class="pub-actions">
-      <button class="sb-btn sb-btn-publish" id="pc-publish" type="button">★ Publish to Wiki</button>
+      <button class="sb-btn sb-btn-publish" id="pc-publish" type="button"><span class="ico ico-star" aria-hidden="true"></span> Publish to Wiki</button>
       <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account and hidden from the wiki until you publish">Save as Draft</button>
       <button class="sb-btn sb-btn-delete" id="pc-delete" type="button" style="display:none" title="Remove this collection from the site (an admin can restore it)">Delete Collection</button>
       <span class="pub-status-pill" id="pub-status-pill"></span>
@@ -711,8 +711,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!window.sortRosterSAO || !shownMembers.length) return;
       order = window.sortRosterSAO(shownMembers.map(function(c){ return c.slug; }), bySlug);
       renderMembers();
-      var b = this; b.textContent = '✓ Sorted';
-      setTimeout(function(){ b.textContent = '⇅ Sort (SAO)'; }, 1500);
+      var b = this; b.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Sorted';
+      setTimeout(function(){ b.innerHTML = '<span class="ico ico-sort" aria-hidden="true"></span> Sort (SAO)'; }, 1500);
     });
     // Back to no stored order at all, which is alphabetical within each team.
     $('pc-order-reset').addEventListener('click', function(){
@@ -808,8 +808,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // pins the stored status for anyone but the owner. A button reading
       // "Publish to Wiki" on a shared draft would be a promise the save
       // does not keep, so it says what pressing it actually does.
-      pub.textContent   = (editRole === 'approved' || currentStatus === 'published')
-        ? '★ Save Changes' : '★ Publish to Wiki';
+      pub.innerHTML     = (editRole === 'approved' || currentStatus === 'published')
+        ? '<span class="ico ico-star" aria-hidden="true"></span> Save Changes' : '<span class="ico ico-star" aria-hidden="true"></span> Publish to Wiki';
       draft.textContent = currentStatus === 'draft' ? 'Save Draft'
                         : currentStatus === 'published' ? 'Move to Draft' : 'Save as Draft';
       pill.className = 'pub-status-pill' + (currentStatus ? ' ' + currentStatus : '');
@@ -931,14 +931,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             'To change an existing collection, open it from <a href="account">your account</a>.</em>'
           : '';
         if (isDraft){
-          pubStatus('ok', '✓ Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
         } else {
-          pubStatus('ok', '✓ Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
         }
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '✗ ' + err.message);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       });
@@ -962,16 +962,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
       .then(function(res){
         if (res.status === 200 && res.body.ok){
-          pubStatus('ok', '&#10003; Deleted. Redirecting&hellip;');
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
-          pubStatus('err', '&#10007; ' + ((res.body && res.body.error) || 'Delete failed.'));
+          pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + ((res.body && res.body.error) || 'Delete failed.'));
           del.disabled = false; del.textContent = 'Delete Collection';
           $('pc-publish').disabled = false; $('pc-draft').disabled = false;
         }
       })
       .catch(function(err){
-        pubStatus('err', '&#10007; ' + err.message);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
         del.disabled = false; del.textContent = 'Delete Collection';
         $('pc-publish').disabled = false; $('pc-draft').disabled = false;
       });

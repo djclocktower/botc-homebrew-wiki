@@ -76,7 +76,7 @@
         var rows = items.length
           ? items.map(function (it, i) {
             return '<div class="no-row" data-slug="' + esc(it.c.slug) + '" data-i="' + i + '">' +
-              '<span class="no-grip" aria-hidden="true" title="Drag to move">&#10247;</span>' +
+              '<span class="no-grip" aria-hidden="true" title="Drag to move"><span class="ico ico-grip" aria-hidden="true"></span></span>' +
               '<span class="no-pos">' + (i + 1) + '</span>' +
               '<span class="no-text">' +
                 '<span class="no-name">' + esc(it.c.name) +

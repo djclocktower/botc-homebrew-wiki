@@ -1207,6 +1207,12 @@ const FIELD_LABELS = {
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
   respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
   edition: 'edition', publicEdit: 'who may edit',
+  flavor: 'flavour text', attribution: 'credit', artScale: 'icon display size',
+  token: 'printable token', tokenImage: 'printable token', tokenArt: 'token in the icon gallery',
+  jinxDisplay: 'jinx display', jsonId: 'script JSON id', released: 'release',
+  editors: 'editors', creditUnlinked: 'credit link', curata: 'Curata', starlight: 'Curata',
+  curataOptOut: 'Curata mark', status: 'published or draft', _draftNote: 'admin note',
+  _deleted: 'deleted',
   // scripts + collections
   displayName: 'name', author: 'author', description: 'description',
   tagline: 'tagline', version: 'version', difficulty: 'difficulty',
@@ -1218,7 +1224,8 @@ const FIELD_LABELS = {
   almanac: 'almanac link', hideTitle: 'app title setting',
   // wiki pages
   title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
-  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box'
+  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box',
+  comments: 'comments', parentType: 'parent page', parentSlug: 'parent page'
 };
 const DIFF_VALUE_MAX = 1200;   // per side, per field
 const DIFF_LABEL_MAX = 6;
@@ -1242,7 +1249,7 @@ function diffFieldValues(beforeJSON, afterJSON) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = [];
   for (const k of keys) {
-    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    if (k === 'slug' || k === 'page' || k === 'id' || k === 'tagsBy') continue;
     const x = a[k] === undefined ? null : a[k];
     const y = b[k] === undefined ? null : b[k];
     if (JSON.stringify(x) === JSON.stringify(y)) continue;
@@ -1258,11 +1265,12 @@ function diffFieldLabels(beforeJSON, afterJSON) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = [];
   for (const k of keys) {
-    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    if (k === 'slug' || k === 'page' || k === 'id' || k === 'tagsBy') continue;
     const x = a[k] === undefined ? null : a[k];
     const y = b[k] === undefined ? null : b[k];
     if (JSON.stringify(x) === JSON.stringify(y)) continue;
-    out.push(FIELD_LABELS[k] || k);
+    const label = FIELD_LABELS[k] || k;
+    if (!out.includes(label)) out.push(label);
   }
   out.sort();
   if (out.length > DIFF_LABEL_MAX) {

@@ -139,14 +139,14 @@
         listHTML += '<div class="script-char-list">';
         jinxes.forEach(function(j){
           listHTML += '<div class="script-char-row"><div class="script-char-text">' +
-            '<span class="script-char-name">' + esc(j.a.name) + ' ↔ ' + esc(j.b.name) + '</span>' +
+            '<span class="script-char-name">' + esc(j.a.name) + ' <span class="ico ico-swap" aria-hidden="true"></span> ' + esc(j.b.name) + '</span>' +
             '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
         });
         listHTML += '</div></div>';
       }
 
       if (missing.length){
-        listHTML += '<p class="script-missing">⚠ ' + missing.length + ' character' + (missing.length===1?'':'s') + ' on this script ' + (missing.length===1?'is':'are') + " not in the wiki: " + missing.map(esc).join(', ') + '</p>';
+        listHTML += '<p class="script-missing"><span class="ico ico-warning" aria-hidden="true"></span> ' + missing.length + ' character' + (missing.length===1?'':'s') + ' on this script ' + (missing.length===1?'is':'are') + " not in the wiki: " + missing.map(esc).join(', ') + '</p>';
       }
 
       var countLine = entries.length + ' character' + (entries.length===1?'':'s');
@@ -171,7 +171,7 @@
               '</div>' +
               '<pre class="json-body"><code>' + esc(jsonText) + '</code></pre>' +
             '</div>' +
-            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:14px" href="#" id="json-download">⬇ Download JSON</a>' +
+            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:14px" href="#" id="json-download"><span class="ico ico-download" aria-hidden="true"></span> Download JSON</a>' +
             '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px" href="script">Open in Script Builder</a>' +
             '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px" href="tokens?script=' + encodeURIComponent(sc.slug) + '">Print Tokens</a>' +
           '</aside>' +

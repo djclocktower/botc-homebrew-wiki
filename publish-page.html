@@ -259,7 +259,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
 
       <div class="pub-actions">
-        <button type="button" class="sb-btn sb-btn-publish" id="p-publish">★ Publish Page</button>
+        <button type="button" class="sb-btn sb-btn-publish" id="p-publish"><span class="ico ico-star" aria-hidden="true"></span> Publish Page</button>
         <button type="button" class="sb-btn sb-btn-draft" id="p-draft">Save as Draft</button>
         <button type="button" class="sb-btn sb-btn-delete" id="p-delete" style="display:none">Delete Page</button>
         <span class="pub-status-pill" id="p-pill"></span>
@@ -377,7 +377,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!editorMode) return;
       $('p-delete').style.display = 'none';
       $('p-draft').style.display = 'none';
-      $('p-publish').textContent = '★ Save Changes';
+      $('p-publish').innerHTML = '<span class="ico ico-star" aria-hidden="true"></span> Save Changes';
     }
 
     function setPill(status){
@@ -385,7 +385,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var pill = $('p-pill');
       pill.className = 'pub-status-pill ' + (status === 'published' ? 'published' : 'draft');
       pill.textContent = status === 'published' ? 'Published' : 'Draft';
-      $('p-publish').textContent = status === 'published' ? '★ Save Changes' : '★ Publish Page';
+      $('p-publish').innerHTML = status === 'published' ? '<span class="ico ico-star" aria-hidden="true"></span> Save Changes' : '<span class="ico ico-star" aria-hidden="true"></span> Publish Page';
       $('p-draft').textContent = status === 'published' ? 'Move to Draft' : 'Save as Draft';
       applyEditorMode();
     }
@@ -524,7 +524,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           rd.readAsDataURL(f);
         });
       }).catch(function(err){
-        imgSay('err', '✗ ' + esc(err.message));
+        imgSay('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
       });
     });
 
@@ -568,17 +568,17 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var url = 'p/' + encodeURIComponent(slug);
         if (editorMode) {
           say('ok', res.status === 'published'
-            ? '✓ Saved. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a>'
-            : '✓ Saved as a draft. The owner of ' + esc(parentName || 'the parent page') + ' decides when it goes live. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+            ? '<span class="ico ico-check" aria-hidden="true"></span> Saved. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a>'
+            : '<span class="ico ico-check" aria-hidden="true"></span> Saved as a draft. The owner of ' + esc(parentName || 'the parent page') + ' decides when it goes live. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
           $('p-publish').disabled = false; $('p-draft').disabled = false;
           return;
         }
         say('ok', res.status === 'published'
-          ? '✓ Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
-          : '✓ Draft saved. Only you can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+          ? '<span class="ico ico-check" aria-hidden="true"></span> Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
+          : '<span class="ico ico-check" aria-hidden="true"></span> Draft saved. Only you can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       }).catch(function(err){
-        say('err', '✗ ' + esc(err.message));
+        say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       });
     }
@@ -590,7 +590,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!confirm('Delete "' + ($('p-title').value.trim() || slug) + '" for good?\n\nIts comments are deleted too. This cannot be undone.')) return;
       api('/api/wiki-page', { action: 'delete', slug: slug }).then(function(){
         location.href = parentHref();
-      }).catch(function(err){ say('err', '✗ ' + esc(err.message)); });
+      }).catch(function(err){ say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message)); });
     });
 
     // ── the other pages on the same script/collection ──

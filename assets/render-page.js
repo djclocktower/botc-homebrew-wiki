@@ -280,7 +280,7 @@
     return c && c.official ? ' target="_blank" rel="noopener"' : '';
   }
   function offMark(c) {
-    return c && c.official ? ' <span class="script-char-off" title="Official character; opens the official wiki">&#8599;</span>' : '';
+    return c && c.official ? ' <span class="script-char-off" title="Official character; opens the official wiki"><span class="ico ico-external" aria-hidden="true"></span></span>' : '';
   }
 
   function sech(id, title) {
@@ -541,14 +541,14 @@
     jinxes.forEach(function (j) {
       html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
         '<span class="script-char-name jx-pair">' +
-          side(j.a) + '<span class="jx-pair-link">&harr;</span>' + side(j.b) +
+          side(j.a) + '<span class="jx-pair-link"><span class="ico ico-swap" aria-hidden="true"></span></span>' + side(j.b) +
         '</span>' +
         '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
     });
     official.forEach(function (j) {
       html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
         '<span class="script-char-name jx-pair">' +
-          side(j.a) + '<span class="jx-pair-link">&harr;</span>' +
+          side(j.a) + '<span class="jx-pair-link"><span class="ico ico-swap" aria-hidden="true"></span></span>' +
           '<a class="jx-pair-side" href="' + esc(j.target.href) + '" target="_blank" rel="noopener noreferrer">' +
             (j.target.iconSrc ? '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' +
               esc(j.target.iconSrc) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
@@ -912,7 +912,7 @@
   function ownerBar(editHref, label) {
     if (!editHref) return '<div id="page-owner-controls"></div>';
     return '<p id="page-owner-controls" class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
-      esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
+      esc(editHref) + '"><span class="ico ico-edit" aria-hidden="true"></span> ' + esc(label) + '</a></p>';
   }
 
   /* The "who may edit this page" line used to sit here too, as a Status-box
@@ -959,7 +959,7 @@
     main += renderBootlegger(cfg.bootlegger);
     main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
     if (cfg.missing && cfg.missing.length) {
-      main += '<p class="script-missing">⚠ ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
+      main += '<p class="script-missing"><span class="ico ico-warning" aria-hidden="true"></span> ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
         (cfg.missing.length === 1 ? 'is' : 'are') + ' not in the wiki: ' + cfg.missing.map(esc).join(', ') + '</p>';
     }
 
@@ -1052,7 +1052,7 @@
       // "save link as", and cannot fail silently. See pageJsonResponse().
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
-        label: '⬇ Download JSON' },
+        label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
     ];
@@ -1083,7 +1083,7 @@
     var actions = [
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=collection&slug=' + encodeURIComponent(coll.id || coll.slug || ''),
-        label: '⬇ Download JSON' },
+        label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
     return renderCollectionBody({

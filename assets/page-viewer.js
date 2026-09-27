@@ -27,7 +27,8 @@
         if (controls && data.editHref) {
           controls.className = 'page-owner-bar';
           var edit = document.createElement('a'); edit.className = 'cta-secondary page-owner-edit';
-          edit.href = data.editHref; edit.textContent = '✎ Edit this ' + window.PAGE_TYPE;
+          edit.href = data.editHref; edit.innerHTML = '<span class="ico ico-edit" aria-hidden="true"></span>';
+          edit.appendChild(document.createTextNode(' Edit this ' + window.PAGE_TYPE));
           controls.replaceChildren(edit);
         }
         var pages = document.getElementById('page-wiki-links');

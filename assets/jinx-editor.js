@@ -88,13 +88,13 @@
           var k = key(j.a.slug, j.b.slug);
           html += '<div class="sjx-row" data-key="' + esc(k) + '">' +
             '<div class="sjx-text">' +
-              '<span class="sjx-pair">' + esc(j.a.name) + ' &harr; ' + esc(j.b.name) +
+              '<span class="sjx-pair">' + esc(j.a.name) + ' <span class="ico ico-swap" aria-hidden="true"></span> ' + esc(j.b.name) +
                 (j.custom ? ' <span class="sjx-own">this script</span>' : '') + '</span>' +
               '<span class="sjx-reason">' + esc(j.text || '(no text)') + '</span>' +
             '</div>' +
             '<button type="button" class="sjx-btn sjx-remove" data-key="' + esc(k) + '"' +
               ' data-custom="' + (j.custom ? '1' : '') + '"' +
-              ' aria-label="Remove the jinx between ' + esc(j.a.name) + ' and ' + esc(j.b.name) + '">&#10005;</button>' +
+              ' aria-label="Remove the jinx between ' + esc(j.a.name) + ' and ' + esc(j.b.name) + '"><span class="ico ico-x" aria-hidden="true"></span></button>' +
             '</div>';
         });
       }
@@ -104,7 +104,7 @@
         html += '<div class="sjx-off"><p class="sjx-off-head">Switched off for this script</p>';
         offRows.forEach(function (r) {
           html += '<div class="sjx-row sjx-row-off">' +
-            '<div class="sjx-text"><span class="sjx-pair">' + esc(r.a.name) + ' &harr; ' + esc(r.b.name) + '</span></div>' +
+            '<div class="sjx-text"><span class="sjx-pair">' + esc(r.a.name) + ' <span class="ico ico-swap" aria-hidden="true"></span> ' + esc(r.b.name) + '</span></div>' +
             '<button type="button" class="sjx-btn sjx-restore" data-key="' + esc(r.k) + '">Put back</button>' +
             '</div>';
         });
@@ -120,7 +120,7 @@
       html += '<div class="sjx-add">' +
         '<div class="sjx-add-row">' +
           '<select class="sjx-sel" id="sjx-a" aria-label="First character"><option value="">Character…</option>' + opts2 + '</select>' +
-          '<span class="sjx-amp">&harr;</span>' +
+          '<span class="sjx-amp"><span class="ico ico-swap" aria-hidden="true"></span></span>' +
           '<select class="sjx-sel" id="sjx-b" aria-label="Second character"><option value="">Character…</option>' + opts2 + '</select>' +
         '</div>' +
         '<input type="text" class="sjx-input" id="sjx-text" maxlength="300" placeholder="What the jinx does, e.g. “If both are in play, the Demon does not wake.”">' +
