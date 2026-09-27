@@ -182,7 +182,7 @@
     // around them into duplicates.
     var halted = null;
     function limitError(r, j){
-      var e = new Error((j && j.error) || 'You have hit the hourly limit. Take a short break and try again.');
+      var e = new Error((j && j.error) || 'Hourly limit reached. Try again later.');
       e.rateLimited = true;
       e.retryAfter = parseInt(r.headers.get('Retry-After') || '3600', 10) || 3600;
       return e;
