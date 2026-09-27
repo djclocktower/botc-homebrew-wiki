@@ -255,7 +255,7 @@
     curata: 'Curata'
   };
   var DESCRIPTIONS = {
-    partial: 'Unfinished — still missing part of its almanac entry. Hidden ' +
+    partial: 'Unfinished: still missing part of its almanac entry. Hidden ' +
              'from browsing unless the “Partial” filter is on.',
     standard: 'A normal, complete page.',
     curata: 'Awarded by the wiki admins. Shown more often on the homepage ' +
@@ -282,7 +282,7 @@
   function classBadgeHTML(cls, opts) {
     if (cls === 'curata') {
       var title = (opts && opts.from)
-        ? 'Curata — part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
+        ? 'Curata: part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
         : DESCRIPTIONS.curata;
       return '<span class="curata-mark' + ((opts && opts.sep) ? ' curata-mark-sep' : '') +
         '" role="img" title="' +
