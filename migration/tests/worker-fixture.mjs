@@ -13,7 +13,7 @@ export async function fixture() {
   ) + `\n// isolate ${instance++}\nexport const hooks = {
     contentVersion, bumpContentVersion, cachedFeedBody, renderCharacterPage,
     applyCollectionAppearsIn, charsBySlug, ensurePagesTable, uploadSlotDenied,
-    serveMedia, serveThumb, serveR2Image, ssrRoute, logActivity,
+    serveMedia, serveThumb, serveR2Image, ssrRoute, logActivity, verifyPassword,
     appearsInHref: typeof appearsInHref === 'function' ? appearsInHref : null
   };\n//# sourceURL=botc-worker-test-${instance}.mjs`;
   const worker = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));

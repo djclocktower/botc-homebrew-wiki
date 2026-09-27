@@ -146,7 +146,7 @@
   .tag-backup,.tag-assign-owner { background: rgba(44,91,154,.12); color: #2c5b9a; border: 1px solid rgba(44,91,154,.35); }
   .tag-ban,.tag-purge-images { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
   .tag-unban,.tag-restore-backup { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
-  .tag-promote,.tag-announce,.tag-contact,.tag-reset-link { background: rgba(44,91,154,.12); color: #2c5b9a; border: 1px solid rgba(44,91,154,.35); }
+  .tag-promote,.tag-announce,.tag-contact,.tag-reset-link,.tag-set-password { background: rgba(44,91,154,.12); color: #2c5b9a; border: 1px solid rgba(44,91,154,.35); }
   .tag-demote,.tag-clean-refs { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
   .tag-protect,.tag-unprotect { background: rgba(90,60,140,.14); color: #5a3c8c; border: 1px solid rgba(90,60,140,.4); }
 
@@ -493,7 +493,7 @@
       <section class="panel">
         <h3>Users <span class="count-pill" id="u-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Ban or unban accounts, grant or remove admin, or make a one-time password-reset link to hand to a user. Bans block logging in and all editing; the user's pages stay up.
+          Ban or unban accounts, grant or remove admin, or help someone who is locked out: <b>Reset link</b> makes a one-time link where they choose a new password, and <b>Set password</b> gives the account a temporary password you send them. Bans block logging in and all editing; the user's pages stay up.
         </p>
         <div class="act-filters">
           <input type="text" id="u-q" placeholder="search name or email">
@@ -831,7 +831,7 @@
             <optgroup label="People">
               <option>signup</option><option>contact</option><option>report</option>
               <option>ban</option><option>unban</option><option>promote</option><option>demote</option>
-              <option>reset-link</option>
+              <option>reset-link</option><option>set-password</option>
             </optgroup>
             <optgroup label="Site">
               <option>lock</option><option>unlock</option><option>announce</option>
@@ -1613,6 +1613,8 @@
               : '<button type="button" class="mini-act warn" data-u-act="promote">Make admin</button>';
           }
           btns += '<button type="button" class="mini-act ok" data-u-act="reset-link">Reset link</button>';
+          // Not on your own row: the account page is where you change yours.
+          if (!isMe) btns += '<button type="button" class="mini-act warn" data-u-act="set-password">Set password</button>';
           return '<div class="adm-row" data-u-id="' + u.id + '" data-u-name="' + esc(u.username) + '">' +
             '<span class="grow"><a href="/u/' + encodeURIComponent(u.username) + '" style="color:var(--maroon);font-weight:700;text-decoration:none">' + esc(u.username) + '</a>' + badges +
             (isMe ? ' <span class="dim">(you)</span>' : '') +
@@ -1624,6 +1626,24 @@
             '</div>';
         }).join('');
       });
+    }
+    // A read-only box under the row holding something the admin has to pass
+    // on (a reset link, a temporary password); tapping it selects it all.
+    function showCopyBox(row, value){
+      var old = row.querySelector('.u-copy-box');
+      if (old) old.remove();
+      var box = document.createElement('input');
+      box.type = 'text'; box.readOnly = true; box.value = value; box.className = 'u-copy-box';
+      box.style.cssText = 'flex-basis:100%;font-size:.78rem;padding:6px 8px;border:1px solid #cdbfa0;background:#fffdf8;border-radius:5px';
+      box.addEventListener('focus', function(){ box.select(); });
+      row.appendChild(box); box.focus();
+    }
+    // Easy to read out or type on a phone: no 0/O or 1/l/I to confuse.
+    function suggestPassword(){
+      var chars = 'abcdefghjkmnpqrstuvwxyz23456789', out = '';
+      var bytes = crypto.getRandomValues(new Uint8Array(10));
+      for (var i = 0; i < bytes.length; i++) out += chars[bytes[i] % chars.length];
+      return 'temp-' + out;
     }
     $('u-search').addEventListener('click', loadUsers);
     $('u-q').addEventListener('keydown', function(e){ if (e.key === 'Enter') loadUsers(); });
@@ -1640,19 +1660,33 @@
         'demote': 'Remove admin from @' + name + '?',
         'reset-link': 'Create a one-time password-reset link for @' + name + '? It works for 24 hours — send it to them privately.'
       };
-      if (confirms[act] && !confirm(confirms[act])) return;
+      var payload = { id: id, action: act };
+      if (act === 'set-password') {
+        // A suggestion is filled in so the quick path is one tap; any
+        // password of 8+ characters can be typed over it.
+        var pw = prompt('Set a new password for @' + name + '.\n\n' +
+          'They will be signed out everywhere. Send them the password privately ' +
+          'and ask them to change it from their account page.\n\n' +
+          'At least 8 characters:', suggestPassword());
+        if (pw === null) return;
+        pw = pw.trim();
+        if (pw.length < 8) { alert('The password needs at least 8 characters.'); return; }
+        payload.password = pw;
+      } else if (confirms[act] && !confirm(confirms[act])) return;
       var status = row.querySelector('.del-status');
       btn.disabled = true; status.textContent = '…'; status.style.color = '';
-      postJSON('/api/admin/user', { id: id, action: act }).then(function(res){
+      postJSON('/api/admin/user', payload).then(function(res){
         if (res.body && res.body.ok) {
           if (act === 'reset-link' && res.body.resetLink) {
             status.textContent = '';
             btn.disabled = false;
-            var box = document.createElement('input');
-            box.type = 'text'; box.readOnly = true; box.value = res.body.resetLink;
-            box.style.cssText = 'flex-basis:100%;font-size:.78rem;padding:6px 8px;border:1px solid #cdbfa0;background:#fffdf8;border-radius:5px';
-            box.addEventListener('focus', function(){ box.select(); });
-            row.appendChild(box); box.focus();
+            showCopyBox(row, res.body.resetLink);
+          } else if (act === 'set-password') {
+            btn.disabled = false;
+            status.textContent = '✓ Password set. Send it to them privately:';
+            status.style.color = '#1c5429';
+            showCopyBox(row, payload.password);
+            loadActivity(true);
           } else {
             loadUsers(); loadActivity(true);
           }

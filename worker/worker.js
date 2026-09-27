@@ -178,7 +178,8 @@
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
  *   GET  /api/admin/users     -> user list (?q= search) for the users panel
  *   GET  /api/admin/user-names -> every handle, for the dashboard type-ahead
- *   POST /api/admin/user      -> ban/unban/promote/demote/reset-link for a user
+ *   POST /api/admin/user      -> ban/unban/promote/demote/reset-link/set-password
+ *                                for a user
  *   GET  /api/admin/messages  -> modmail inbox (?status=open|all), newest
  *                                ACTIVITY first, each row flagged `waiting`
  *                                when the member spoke last
@@ -11324,7 +11325,7 @@ export default {
         return jsonResponse({ ok: true, message: 'Reported. The admins can now review this conversation.' });
       }
 
-      // ---- admin: manage a user (ban/unban/promote/demote/reset link) ----
+      // ---- admin: manage a user (ban/unban/promote/demote/reset link/set password) ----
       if (path === '/api/admin/user') {
         await ensureBanColumn(env);
         const b = await request.json().catch(() => ({}));
@@ -11392,6 +11393,28 @@ export default {
           await env.SESSIONS.put('pwreset:' + token, String(target.id), { expirationTtl: 86400 });
           await logActivity(env, sess, 'reset-link', 'user', null, target.username);
           return jsonResponse({ ok: true, resetLink: url.origin + '/reset-password?token=' + token });
+        } else if (action === 'set-password') {
+          // A temporary password the admin chooses and hands over privately,
+          // for somebody locked out with no working reset email (Resend not
+          // configured, no address on the account, or the mail never came).
+          // The reset link above is the gentler way — the member picks the
+          // password and no admin ever knows it — but it needs them to open a
+          // link, and "just tell me a password" is what gets asked for.
+          // Never your own: the account page asks for the current password,
+          // and this is a way round that check.
+          if (target.id === sess.userId) {
+            return jsonResponse({ error: 'Change your own password from your account page.' }, { status: 400 });
+          }
+          const password = String(b.password || '');
+          if (password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters.' }, { status: 400 });
+          await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?')
+            .bind(await hashPassword(password), target.id).run();
+          // Same as a reset: anything signed in under the old password goes,
+          // in case the reason for the reset is somebody else being in there.
+          await revokeSessions(env, target.id);
+          // The password itself is never logged.
+          await logActivity(env, sess, 'set-password', 'user', null, target.username);
+          return jsonResponse({ ok: true, username: target.username });
         } else {
           return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         }
