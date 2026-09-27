@@ -1046,7 +1046,7 @@
           if (i >= creating.length) return Promise.resolve();
           var r = creating[i];
           var at = planned.rows.indexOf(r);
-          rowState(at, 'work', 'checking URL&hellip;');
+          rowState(at, 'work', 'checking address&hellip;');
           return resolveSlug('character', r.name, opts.appearsIn).then(function (slug) {
             slugById[r.id] = slug;
             rowState(at, 'wait', 'ready');
@@ -1097,14 +1097,14 @@
             return post('/api/character', payload).then(function (j) {
               var page = (j && j.page) || ('c/' + slug);
               made.push(slug);
-              rowState(at, 'ok', '&#10003; <a href="/' + esc(page.replace(/^\//, '')) + '" target="_blank">view</a>' +
+              rowState(at, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> <a href="/' + esc(page.replace(/^\//, '')) + '" target="_blank">view</a>' +
                 (opts.art && r.entry.image && !artPath ? ' <span class="bs-chip warn">art left on Bloodstar</span>' : ''));
             });
           }).then(function () { i++; return next(); })
             .catch(function (err) {
-              if (err && err.rateLimited) { halted = err; rowState(at, 'err', '&#10007; stopped: hourly limit'); return; }
+              if (err && err.rateLimited) { halted = err; rowState(at, 'err', '<span class="ico ico-x" aria-hidden="true"></span> stopped: hourly limit'); return; }
               failed++;
-              rowState(at, 'err', '&#10007; ' + esc(err.message));
+              rowState(at, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
               i++; return next();
             });
         })();
@@ -1156,7 +1156,7 @@
         }
         var href = opts.destination === 'collection' ? '/collection/' + pageSlug
                  : opts.destination === 'script' ? '/s/' + pageSlug : '';
-        var msg = '&#10003; Imported <b>' + made.length + '</b> character page' + (made.length === 1 ? '' : 's');
+        var msg = '<span class="ico ico-check" aria-hidden="true"></span> Imported <b>' + made.length + '</b> character page' + (made.length === 1 ? '' : 's');
         if (href) msg += ' and the <a href="' + esc(href) + '" target="_blank">' + esc(opts.destination) + ' page</a>';
         msg += '.';
         if (extras.changelogSlug) msg += ' The changelog is at <a href="/p/' + esc(extras.changelogSlug) + '" target="_blank">/p/' + esc(extras.changelogSlug) + '</a>.';

@@ -658,11 +658,11 @@
             }
             inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '">📖 View collection page</a>';
+              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '"><span class="ico ico-book" aria-hidden="true"></span> View collection page</a>';
             }
             inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
+              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '"><span class="ico ico-edit" aria-hidden="true"></span> Edit Collection</a>';
             }
             // Full collection JSON (official script-tool schema, every character).
             // This page draws from the GRID feed, which has none of the schema
@@ -715,7 +715,7 @@
                   '</div>' +
                   '<pre class="json-body" hidden><code>Loading the full character data…</code></pre>' +
                 '</div>' +
-                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download">⬇ Download JSON</a>' +
+                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download"><span class="ico ico-download" aria-hidden="true"></span> Download JSON</a>' +
               '</div>';
             }
             stack.innerHTML = inner;

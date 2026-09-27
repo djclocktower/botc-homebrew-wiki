@@ -97,7 +97,7 @@
   <div class="mu-wrap">
     <div class="formcard">
       <h2>Mass Upload Characters</h2>
-      <p class="sub">Upload a script JSON or character list (official schema) to make a page for every character in it. Each needs a <code>name</code>, <code>team</code> and <code>ability</code>.</p>
+      <p class="sub">Upload a script JSON or character list (official script format) to make a page for every character in it. Each needs a <code>name</code>, <code>team</code> and <code>ability</code>.</p>
       <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? Use <a href="bloodstar">Bloodstar Import</a> to bring its almanac text too.</p>
 
       <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
@@ -232,7 +232,7 @@
       var data = JSON.parse(text);
       if (!Array.isArray(data)) {
         if (data && typeof data === 'object' && data.ability) data = [data];
-        else throw new Error('Expected a JSON array (a script or a master list of characters).');
+        else throw new Error('it is not a script or a list of characters.');
       }
       meta = null;
       var chars = [], skipped = [];
@@ -325,14 +325,13 @@
       // The URL shown here is only the one the name asks for. A name somebody
       // else already used gets its own address when the batch runs, and the
       // cell is rewritten then.
-      var exists = existingSlugs[slug] ? ' <span class="hint">(URL taken: updates your page, or gets a free one)</span>' : '';
-      var img = Array.isArray(c.image) ? c.image[0] : c.image;
-      var alt = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
+      var exists = existingSlugs[slug] ? ' <span class="hint">(address taken: updates your page, or gets a free one)</span>' : '';
+      var icons = Array.isArray(c.image) ? c.image.filter(Boolean).length : (c.image ? 1 : 0);
       return '<tr id="mu-row-' + i + '">' +
         '<td><strong>' + esc(c.name) + '</strong>' + exists + '</td>' +
         '<td class="mu-team">' + esc(normTeam(c.team)) + '</td>' +
         '<td class="mu-page">' + esc(slug) + '</td>' +
-        '<td>' + (img ? 'from URL' + (alt ? ' + alt' : '') : '—') + '</td>' +
+        '<td>' + (icons ? icons + ' icon' + (icons === 1 ? '' : 's') : '—') + '</td>' +
         '<td class="mu-state mu-state-wait">waiting</td>' +
         '</tr>';
     }
@@ -357,7 +356,7 @@
       if (meta && meta.name && !$('appears').value) $('appears').value = meta.name;
       if (!$('creator').value) $('creator').value = (meta && meta.author) || (me && (me.displayName || me.username)) || '';
       var msg = 'Found ' + parsed.length + ' character' + (parsed.length===1?'':'s') + (meta && meta.name ? ' in “' + esc(meta.name) + '”' : '') + '.';
-      if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official ids or missing name/ability).';
+      if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official characters, or a missing name or ability).';
       setStatus('ok', msg);
       drawJinxWarnings();
     });
@@ -532,7 +531,7 @@
         jinxes: Array.isArray(c.jinxes) ? c.jinxes : []
       };
 
-      rowState(i, 'work', mine ? 'reading your page&hellip;' : 'fetching art&hellip;');
+      rowState(i, 'work', mine ? 'reading your page&hellip;' : 'loading art&hellip;');
       var pageJob = !window.ImportMerge
         ? Promise.reject(new Error('the page did not finish loading. Reload and try again'))
         : mine ? loadPage(slug) : Promise.resolve(null);
@@ -541,7 +540,7 @@
         var plan = window.ImportMerge.artPlan(page, opts);
         var hasArt = !!(entry.art || entry.image);
         var kept = !!(page && imgUrl && !plan.main);
-        if (mine) rowState(i, 'work', kept ? 'keeping the page&rsquo;s icon&hellip;' : 'fetching art&hellip;');
+        if (mine) rowState(i, 'work', kept ? 'keeping the page&rsquo;s icon&hellip;' : 'loading art&hellip;');
         var artJob = Promise.resolve(kept ? 'kept' : 'remote');
         if (plan.main && imgUrl && /^https?:\/\//.test(imgUrl)) {
           artJob = loadImageToCanvas(imgUrl).then(function(dataUrl){
@@ -596,10 +595,10 @@
               if (!r.ok) throw new Error(j.error || 'save failed');
               var pageUrl = (j && j.page) || ('c/' + slug);
               rowSlug(i, pageUrl);
-              var note = artHow === 'remote' && imgUrl ? ' (art from remote URL)'
+              var note = artHow === 'remote' && imgUrl ? ' (art linked from another site)'
                 : artHow === 'kept' ? ' (page updated, icon kept)'
                 : page ? ' (page updated)' : '';
-              rowState(i, 'ok', '&#10003; <a href="' + esc(pageUrl) + '" target="_blank">view page</a>' + note);
+              rowState(i, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> <a href="' + esc(pageUrl) + '" target="_blank">view page</a>' + note);
               return true;
             });
           });
@@ -607,10 +606,10 @@
       }).catch(function(err){
         if (err && err.rateLimited) {
           halted = err;
-          rowState(i, 'err', '&#10007; stopped: hourly limit reached');
+          rowState(i, 'err', '<span class="ico ico-x" aria-hidden="true"></span> stopped: hourly limit reached');
           return false;
         }
-        rowState(i, 'err', '&#10007; ' + esc(err.message));
+        rowState(i, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         return false;
       });
     }
@@ -645,18 +644,18 @@
           return;
         }
         if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
-        else setStatus('ok', '&#10003; All ' + ok + ' pages created! Find them ' + (opts.status==='draft' ? 'under drafts on <a href="account">your account page</a>' : 'under <a href="all-characters">All Characters</a>') + '.');
+        else setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> All ' + ok + ' pages created! Find them ' + (opts.status==='draft' ? 'under drafts on <a href="account">your account page</a>' : 'under <a href="all-characters">All Characters</a>') + '.');
       }
       (function next(){
         if (i >= parsed.length || halted) { finish(); return; }
         if (rowDone(i)) { ok++; i++; next(); return; }
         var c = parsed[i], idx = i;
-        rowState(idx, 'work', 'checking URL&hellip;');
+        rowState(idx, 'work', 'checking address&hellip;');
         resolveSlug(c.name, opts.appearsIn).then(function(res){
           rowSlug(idx, res.slug);
           return createOne(c, idx, opts, res.slug, res.mine);
         }).catch(function(err){
-          rowState(idx, 'err', '&#10007; ' + esc((err && err.message) || 'failed'));
+          rowState(idx, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc((err && err.message) || 'failed'));
           return false;
         }).then(function(good){
           if (good) ok++; else fail++;

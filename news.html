@@ -123,7 +123,7 @@
                 '<span class="news-admin-pill ' + (draft ? 'draft' : 'published') + '">' +
                   (draft ? 'Draft' : 'Published') + '</span>' +
                 '<a class="news-admin-edit" href="publish-news?n=' +
-                  encodeURIComponent(a.slug) + '">&#9998; Edit</a>' +
+                  encodeURIComponent(a.slug) + '"><span class="ico ico-edit" aria-hidden="true"></span> Edit</a>' +
               '</div></div>';
           }).join('');
         });
@@ -160,7 +160,7 @@
           '<div class="news-admin-row">' +
             '<span class="news-admin-pill ' + (a.hidden ? 'draft' : 'published') + '">' +
               esc(a.hidden ? (HIDDEN_WHY[a.hidden] || 'Hidden') : 'Featured') + '</span>' +
-            '<button type="button" class="news-admin-edit feature-remove" data-slug="' + esc(a.slug) + '">&#10005; Remove</button>' +
+            '<button type="button" class="news-admin-edit feature-remove" data-slug="' + esc(a.slug) + '"><span class="ico ico-x" aria-hidden="true"></span> Remove</button>' +
           '</div></div>';
       }).join('');
     }
