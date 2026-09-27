@@ -192,13 +192,13 @@
         '><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
       if (wantPartial) {
         html += '<button type="button" class="filter-chip' + (PARTIAL_ON ? ' active' : '') +
-          '" id="cf-partial" title="Unfinished pages: an ability and an icon, but no tags, no almanac text and no mechanics.">Show Partial (' + nPartial + ')</button>';
+          '" id="cf-partial" title="Unfinished pages, missing tags or almanac text.">Show Partial (' + nPartial + ')</button>';
       }
       if (wantCurata) {
         html += '<button type="button" class="filter-chip filter-chip-curata" id="cf-curata" title="Pages the wiki admins have marked as Curata.">Curata only (' + nCurata + ')</button>';
       }
       if (wantFav) {
-        html += '<button type="button" class="filter-chip filter-chip-fav" id="cf-fav" hidden title="Characters you saved, and every character on a script or collection you saved.">' +
+        html += '<button type="button" class="filter-chip filter-chip-fav" id="cf-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' +
           window.Favorites.heartSVG() + ' Favorites</button>';
       }
       html += '</div></div>';

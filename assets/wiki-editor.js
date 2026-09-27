@@ -48,7 +48,7 @@
     { label: 'H3', title: 'Small heading', line: '### ' },
     { label: '• List', title: 'Bullet list', line: '- ' },
     { label: '1. List', title: 'Numbered list', line: '1. ' },
-    { label: '❝', title: 'Quote', line: '> ' },
+    { label: 'Quote', icon: 'quote', title: 'Quote', line: '> ' },
     { label: 'Link', title: 'Link', template: '[label](https://example.com)', select: [1, 6] },
     { label: 'Character', title: 'Link to a character on this wiki', template: '[[Character Name]]', select: [2, 16] },
     { label: 'Image', title: 'Image (add |left, |right or |wide to place it)', template: '![caption](pages/my-image.png|right)', select: [2, 9] },
@@ -58,7 +58,7 @@
        selection the way bold does — select the T, press the button. The
        character editors have no toolbar (they never load this file), so
        there it is documented in the .fmt-help callout instead. */
-    { label: 'Drop cap', title: 'Big almanac initial \u2014 select the first letter of a paragraph', wrap: ['{{drop|', '}}'] },
+    { label: 'Drop cap', title: 'Big almanac initial (select the first letter of a paragraph)', wrap: ['{{drop|', '}}'] },
     { label: 'Rule', title: 'Horizontal rule', block: '---' },
     { label: 'Contents', title: 'Put the contents box here', block: '[toc]' }
   ];
@@ -80,7 +80,11 @@
 
     BUTTONS.forEach(function (b) {
       if (opts.simple && !b.wrap && !b.line && b.label !== 'Link') return;
-      var btn = el('button', 'we-btn' + (b.cls ? ' ' + b.cls : ''), b.label);
+      var btn = el('button', 'we-btn' + (b.cls ? ' ' + b.cls : ''), b.icon ? null : b.label);
+      if (b.icon) {
+        btn.innerHTML = '<span class="ico ico-' + b.icon + '" aria-hidden="true"></span>';
+        btn.setAttribute('aria-label', b.title);
+      }
       btn.type = 'button';
       btn.title = b.title;
       btn.addEventListener('click', function () {
@@ -130,12 +134,14 @@
       t.type = 'text';
       t.placeholder = opts.titlePlaceholder || 'Box title (e.g. Lore)';
       t.value = title || '';
-      var del = el('button', 'we-box-del', '✕');
+      var del = el('button', 'we-box-del');
+      del.innerHTML = '<span class="ico ico-x" aria-hidden="true"></span>';
       del.type = 'button';
       del.title = 'Remove this box';
+      del.setAttribute('aria-label', 'Remove this box');
       head.appendChild(t); head.appendChild(del);
       var c = el('textarea', 'we-box-content');
-      c.placeholder = 'Box contents… (the same formatting as the page body)';
+      c.placeholder = 'Box contents… (same formatting as the page body)';
       c.value = content || '';
       row.appendChild(head); row.appendChild(c);
       container.appendChild(row);
@@ -178,8 +184,10 @@
       l.type = 'text'; l.placeholder = 'Label'; l.value = label || '';
       var v = el('input', 'we-info-value');
       v.type = 'text'; v.placeholder = 'Value'; v.value = value || '';
-      var del = el('button', 'we-box-del', '✕');
+      var del = el('button', 'we-box-del');
+      del.innerHTML = '<span class="ico ico-x" aria-hidden="true"></span>';
       del.type = 'button'; del.title = 'Remove this row';
+      del.setAttribute('aria-label', 'Remove this row');
       row.appendChild(l); row.appendChild(v); row.appendChild(del);
       container.appendChild(row);
       del.addEventListener('click', function () { row.remove(); onChange(); });
@@ -256,7 +264,7 @@
           var pv = opts.preview && document.getElementById(opts.preview);
           if (pv) { pv.src = dataURL; pv.style.display = 'block'; }
           var note = opts.note && document.getElementById(opts.note);
-          if (note) note.textContent = 'New image ready — it uploads when you save.';
+          if (note) note.textContent = 'New image ready. It uploads when you save.';
           opts.onReady(dataURL);
         };
         img.src = ev.target.result;

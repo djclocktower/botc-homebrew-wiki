@@ -5,7 +5,7 @@
 <script src="/assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Creator — BOTC HomeBrew Wiki</title>
-<meta name="description" content="A creator on the BOTC HomeBrew Wiki — their characters, scripts, and collections for Blood on the Clocktower.">
+<meta name="description" content="A creator's Blood on the Clocktower characters, scripts and collections on the BOTC HomeBrew Wiki.">
 <!--
   ONE page for two URLs. /u/{username} is an account's creator page;
   /author?a=Name is the same page keyed on the free-text "Creator" field that
@@ -88,7 +88,7 @@
     border-bottom:1px solid rgba(236,225,200,.3);
   }
   .profile-links a:hover { color:#ffe9ad; }
-  .profile-links .plink-icon { border:none; margin-right:5px; opacity:.7; }
+  .profile-links .plink-icon { border:none; margin-right:5px; opacity:.7; color:inherit; }
   /* Admin-only box for linking a creator name to an account. */
   .creator-link-box {
     margin:14px auto 0; max-width:520px; padding:10px 12px; text-align:left;
@@ -418,23 +418,23 @@
       var linksHTML = '';
       var L = p.links || {};
       var linkItems = [];
-      if (L.website) linkItems.push('<li><a href="' + esc(L.website) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#127760;</span>Website</a></li>');
-      if (L.bluesky) linkItems.push('<li><a href="' + esc(L.bluesky) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#9729;</span>Bluesky</a></li>');
-      if (L.other) linkItems.push('<li><a href="' + esc(L.other) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#128279;</span>Link</a></li>');
-      if (L.discord) linkItems.push('<li><span><span class="plink-icon">&#128172;</span>' + esc(L.discord) + '</span></li>');
+      if (L.website) linkItems.push('<li><a href="' + esc(L.website) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon ico ico-globe" aria-hidden="true"></span>Website</a></li>');
+      if (L.bluesky) linkItems.push('<li><a href="' + esc(L.bluesky) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon ico ico-cloud" aria-hidden="true"></span>Bluesky</a></li>');
+      if (L.other) linkItems.push('<li><a href="' + esc(L.other) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon ico ico-link" aria-hidden="true"></span>Link</a></li>');
+      if (L.discord) linkItems.push('<li><span><span class="plink-icon ico ico-chat" aria-hidden="true"></span>' + esc(L.discord) + '</span></li>');
       if (linkItems.length) linksHTML = '<ul class="profile-links">' + linkItems.join('') + '</ul>';
 
       var btns = [];
       if (me && me.loggedIn && claimed) {
         if ((me.username || '').toLowerCase() === String(p.username || '').toLowerCase()) {
-          btns.push('<a class="profile-msg-btn ghost" href="/account">&#9998; Edit your profile</a>');
+          btns.push('<a class="profile-msg-btn ghost" href="/account"><span class="ico ico-edit" aria-hidden="true"></span> Edit your profile</a>');
         } else {
           btns.push('<a class="profile-msg-btn" href="/messages?to=' + encodeURIComponent(p.username) +
-            '">&#9993; Message ' + esc(p.displayName || p.username) + '</a>');
+            '"><span class="ico ico-mail" aria-hidden="true"></span> Message ' + esc(p.displayName || p.username) + '</a>');
         }
       }
       if (me && me.isAdmin) {
-        btns.push('<a class="profile-msg-btn ghost" href="/dashboard">&#9881; Dashboard</a>');
+        btns.push('<a class="profile-msg-btn ghost" href="/dashboard"><span class="ico ico-dashboard" aria-hidden="true"></span> Dashboard</a>');
       }
 
       hero.innerHTML =
@@ -447,7 +447,7 @@
           (aka.length ? '<p class="profile-aka">Also credited as ' + esc(aka.join(', ')) + '</p>' : '') +
           (claimed
             ? (p.bio ? '<p class="profile-bio">' + esc(p.bio) + '</p>' : '')
-            : '<p class="profile-unclaimed">No wiki account is linked to this name yet. If these pages are yours, sign up and an admin can attach them to your account.</p>') +
+            : '<p class="profile-unclaimed">No account is linked to this name yet. If these pages are yours, sign up and an admin can link them to you.</p>') +
           (claimed && p.joined ? '<p class="profile-joined">Member since ' + esc(fmtDate(p.joined)) + '</p>' : '') +
           linksHTML +
           (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
@@ -535,7 +535,7 @@
       // unpublished page for a live one.
       var nDrafts = drafts.characters.length + drafts.scripts.length + drafts.collections.length;
       if (nDrafts) {
-        var inner = '<p class="draft-note">Not visible to anyone but their owner and the admins.</p>';
+        var inner = '<p class="draft-note">Only their owner can see these.</p>';
         if (drafts.characters.length) {
           inner += '<div>' + PR.renderRosterCards(drafts.characters, '/') + '</div>';
         }

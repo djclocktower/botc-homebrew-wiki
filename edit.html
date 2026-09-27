@@ -166,7 +166,7 @@
       <div class="fld">
         <label for="name">Character name *</label>
         <input type="text" id="name">
-        <div class="sub" style="margin-top:5px">Slug: <span class="slug-pill" id="slug-display">&hellip;</span></div>
+        <div class="sub" style="margin-top:5px">Page name: <span class="slug-pill" id="slug-display">&hellip;</span></div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -185,13 +185,13 @@
           <label for="creator">Creator</label>
           <input type="text" id="creator">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
-          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
+          <span class="credit-unlink-hint">Tick this if you’re uploading someone else’s character. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
         </div>
       </div>
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(also the JSON ability)</span></label>
         <textarea id="ability"></textarea>
-        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge ↗</a>
+        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge <span class="ico ico-external" aria-hidden="true"></span></a>
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
@@ -220,16 +220,16 @@
         <div class="fmt-help">
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
-            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em> &mdash; braces rather than <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
+            <li><code>**bold**</code> prints <strong>bold</strong> and <code>{{i|text}}</code> prints <em>italics</em> (single <code>*asterisks*</code> don&rsquo;t work)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
-            <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
-            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens &mdash; and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
+            <li><code>[[Snake Charmer]]</code> links to that character (the official wiki, or its page here); any other name prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> when it is one of this character&rsquo;s own reminders, and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span></li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
-            <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that one that way round only</li>
-            <li>The Ability box takes none of these &mdash; it is the character&rsquo;s rule, printed verbatim on tokens, exports and cards</li>
+            <li><code>{{drop|T}}</code> at the start of a paragraph makes that letter a drop cap</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (only this way round)</li>
+            <li>The Ability box takes none of these</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -241,12 +241,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
-        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is usually for good characters only. Its text still prints on the page; empty the box to remove the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
-        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is usually for evil characters only. Its text still prints on the page; empty the box to remove the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -256,7 +256,7 @@
         <div class="fld">
           <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
-          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
+          <div class="sub" style="margin-top:4px">If blank, a collection that lists this character fills it in.</div>
         </div>
       </div>
       <div class="fld">
@@ -265,15 +265,15 @@
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
-        <label for="pronunciation">Pronunciation <span class="hint">(optional &mdash; a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
+        <label for="pronunciation">Pronunciation <span class="hint">(optional: a line under the flavour quote)</span></label>
         <input type="text" id="pronunciation">
       </div>
       <div class="fld">
-        <label for="ipa">IPA spelling <span class="hint">(optional &mdash; e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
+        <label for="ipa">IPA spelling <span class="hint">(optional, e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
         <input type="text" id="ipa">
       </div>
       <div class="fld">
-        <label for="respelling">Pronunciation respelling <span class="hint">(optional &mdash; e.g. buh-GAIN)</span></label>
+        <label for="respelling">Pronunciation respelling <span class="hint">(optional, e.g. buh-GAIN)</span></label>
         <input type="text" id="respelling">
       </div>
       <div class="fld">
@@ -289,12 +289,12 @@
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="current art">
         <div id="artStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
-          <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame as it lands, so it prints at the same size as an official character in the script tool. Resize puts it back to that; Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
+          <button type="button" class="btn btn-sm" id="artStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame. Resize restores that fit; Adjust lets you move and size it by hand.</div>
         </div>
         <div class="sub" style="margin-top:6px">
-          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
+          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing <span class="ico ico-external" aria-hidden="true"></span></a>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
         <!-- Display size: how big the icon is DRAWN on the character page, and
@@ -311,28 +311,28 @@
             <input type="range" id="artScale" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
             <output id="artScaleOut" for="artScale" style="min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums">100%</output>
           </div>
-          <div class="sub" style="margin-top:4px">Only the picture on the character page. The icon file, the JSON export, the cards and the search results keep the true size.</div>
+          <div class="sub" style="margin-top:4px">The icon file, export and cards keep the true size.</div>
         </div>
       </div>
       <div class="fld" data-art-slot="alt">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional: the flipped-alignment icon)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAltStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove alternate art</button>
       </div>
       <div class="fld" data-art-slot="alt2">
         <label for="artAlt2">Evil art</label>
         <input type="file" id="artAlt2" accept="image/*">
         <img id="artAlt2Thumb" class="artthumb" alt="evil art">
         <div id="artAlt2StdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAlt2Std">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAlt2Adjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Std"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Adjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove evil art</button>
       </div>
       <!-- The printable token — the Token Tool's finished token for this
            character, saved to art/{identity}-token.png. The tick puts it in
@@ -340,7 +340,7 @@
            where it is made and fine-tuned, and the file input replaces the
            image directly like any other art slot. -->
       <div class="fld" data-art-slot="token">
-        <label>Printable token <span class="hint">(optional &mdash; the Token Tool's finished token for this character)</span></label>
+        <label>Printable token <span class="hint">(optional: a finished token from the Token Tool)</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
           <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
           <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
@@ -348,8 +348,8 @@
         <img id="tokenThumb" class="artthumb" alt="printable token">
         <div class="sub" id="tokenHint" style="margin-top:6px"></div>
         <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm" id="tokenEdit">&#9998; Edit in the Token Tool &#8599;</button>
-          <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none">&#10005; Remove token image</button>
+          <button type="button" class="btn btn-sm" id="tokenEdit"><span class="ico ico-edit" aria-hidden="true"></span> Edit in the Token Tool <span class="ico ico-external" aria-hidden="true"></span></button>
+          <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none"><span class="ico ico-x" aria-hidden="true"></span> Remove token image</button>
         </div>
         <label for="tokenFile" class="sub" style="display:block;margin-top:8px">Or upload a finished token image to replace it:</label>
         <input type="file" id="tokenFile" accept="image/*">
@@ -370,11 +370,11 @@
         </div>
         <div class="row2">
           <div class="fld">
-            <label for="firstNight">First-night wake priority <span class="hint">(0 = doesn&rsquo;t wake)</span></label>
+            <label for="firstNight">First-night order <span class="hint">(0 = doesn&rsquo;t wake)</span></label>
             <input type="number" id="firstNight" value="0" min="0" step="0.0001">
           </div>
           <div class="fld">
-            <label for="otherNight">Other-nights wake priority</label>
+            <label for="otherNight">Other-nights order</label>
             <input type="number" id="otherNight" value="0" min="0" step="0.0001">
           </div>
         </div>
@@ -415,7 +415,7 @@
 
       <fieldset id="related-fld">
         <legend>Related Pages</legend>
-        <p class="sub" style="margin:0 0 10px">The pages this character is about: a character its ability names, the wiki page for a condition it uses, a script, a collection, or any web link. They appear on the page after the Summary, each with a coloured edge saying what it links to. Leave this empty and the page shows no Related section.</p>
+        <p class="sub" style="margin:0 0 10px">Links to pages this character relates to: characters, wiki pages, scripts, collections or any website. They show after the Summary.</p>
         <div id="relatedBy" style="display:none"></div>
         <div id="relatedrows"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addrelated">+ Add related page</button>
@@ -423,7 +423,7 @@
 
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
-        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
+        <p class="sub" style="margin:0 0 10px">Titled boxes for the character's sidebar. A blank line starts a new paragraph.</p>
         <div id="customboxes"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
@@ -436,11 +436,11 @@
 
       <fieldset>
         <legend>Who can edit this page</legend>
-        <p class="sub" style="margin:0 0 10px">Until you tag the page or choose otherwise, anyone with an account can add tags and nothing else. Every change is listed in the page's history, and you can put any earlier version back.</p>
+        <p class="sub" style="margin:0 0 10px">You can put back any earlier version from the page's history.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Default: tags open to anyone until I tag the page myself</option>
-            <option value="closed">Only me (and the wiki admins)</option>
+            <option value="closed">Only me</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
@@ -450,7 +450,7 @@
         </div>
         <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
           <label>Approved editors</label>
-          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <p class="sub" style="margin:0 0 8px">People you name can edit this page, drafts included. Publishing, deleting and this list stay with you.</p>
           <div id="editors-box"></div>
         </div>
       </fieldset>
@@ -462,7 +462,7 @@
 
       <fieldset>
         <legend>Custom JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
+        <p class="sub" style="margin:0 0 10px">Replaces the automatic JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
       </fieldset>
 
@@ -628,8 +628,8 @@
           warn.className = 'jx-conflict';
           row.appendChild(warn);
         }
-        warn.innerHTML = '\u26a0 <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
-          jxEsc(String(hit.text).slice(0, 140)) + '\u201d \u2014 their page keeps their wording, so the two can disagree. ' +
+        warn.innerHTML = '<span class="ico ico-warning" aria-hidden="true"></span> <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
+          jxEsc(String(hit.text).slice(0, 140)) + '\u201d. Their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + jxEsc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
     }
@@ -665,7 +665,7 @@
       row.innerHTML =
         '<input type="text" class="jx-name" placeholder="Jinxed character">' +
         '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
-        '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm jx-del" aria-label="Remove jinx"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
@@ -692,7 +692,7 @@
       var row = document.createElement('div'); row.className = 'box-row';
       row.innerHTML =
         '<input type="text" class="bx-title" placeholder="Box title">' +
-        '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm bx-del" aria-label="Remove box"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
       if(title)   row.querySelector('.bx-title').value   = title;
@@ -962,7 +962,7 @@
     }
     function syncTokenHint(){
       var hint = $('tokenHint');
-      if (tokenDataURL) hint.textContent = 'New token image ready — it uploads when you save.';
+      if (tokenDataURL) hint.textContent = 'New token image ready. It uploads when you save.';
       else if (!tokenRemoved && originalEntry && originalEntry.token) hint.textContent = 'Saved token: ' + originalEntry.token;
       else hint.textContent = 'No token yet — tick the box above and a default one is drawn from this page automatically. Fine-tune it in the Token Tool, or upload a finished image below.';
     }
@@ -1043,15 +1043,15 @@
     // art AND art already on the character (loaded same-origin on edit).
     function standardizeArt(thumbId, btnId, onDone) {
       var th = $(thumbId); if (!th || !th.src || typeof normalizeArtDataURL !== 'function') return;
-      var btn = $(btnId), label = btn.textContent;
+      var btn = $(btnId), label = btn.innerHTML;
       btn.disabled = true; btn.textContent = 'Resizing…';
       normalizeArtDataURL(th.src).then(function(out){
         th.src = out; onDone(out);
-        btn.textContent = '✓ Resized'; update();
-        setTimeout(function(){ btn.textContent = label; btn.disabled = false; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Resized'; update();
+        setTimeout(function(){ btn.innerHTML = label; btn.disabled = false; }, 1400);
       }).catch(function(){
         btn.textContent = 'Could not resize'; btn.disabled = false;
-        setTimeout(function(){ btn.textContent = label; }, 2200);
+        setTimeout(function(){ btn.innerHTML = label; }, 2200);
       });
     }
     $('artStd').addEventListener('click', function(){
@@ -1065,14 +1065,14 @@
     function adjustArt(getSrc, thumbId, btnId, title, onDone) {
       var src = getSrc();
       if (!src || !window.ArtAdjust) return;
-      var btn = $(btnId), label = btn.textContent;
+      var btn = $(btnId), label = btn.innerHTML;
       btn.disabled = true;
       window.ArtAdjust.open(src, { title: title }).then(function(out){
         btn.disabled = false;
         if (!out) return;               // cancelled; leave the art alone
         $(thumbId).src = out; onDone(out); update();
-        btn.textContent = '✓ Adjusted';
-        setTimeout(function(){ btn.textContent = label; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Adjusted';
+        setTimeout(function(){ btn.innerHTML = label; }, 1400);
       }).catch(function(err){
         btn.disabled = false;
         alert((err && err.message) || 'That image could not be adjusted here.');
@@ -1147,9 +1147,9 @@
         .then(function(r){ return r.json(); })
         .then(function(res){
           if (!res || res.error) throw new Error((res && res.error) || 'Could not send that suggestion.');
-          setStatus('ok', '\u2713 Sent. ' + esc(originalEntry && originalEntry.creator || 'The creator') +
-            ' will see it on <a href="suggestions?type=character&slug=' + encodeURIComponent(originalSlug) +
-            '">the suggestions page</a>, and you will get a message either way.');
+          setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Sent. ' + esc(originalEntry && originalEntry.creator || 'The creator') +
+            ' will review it on <a href="suggestions?type=character&slug=' + encodeURIComponent(originalSlug) +
+            '">the suggestions page</a>. You\u2019ll get a message with the answer.');
         })
         .catch(function(err){
           $('save').disabled = false;
@@ -1180,10 +1180,9 @@
         '<textarea id="suggest-note" maxlength="600" placeholder="What you changed, and why."></textarea>';
       var save = $('save');
       if (save && save.parentNode) save.parentNode.insertBefore(box, save);
-      guestBanner('<strong>This page takes suggestions.</strong> ' +
-        esc(entry.creator || 'The creator') + ' reviews changes before they go live: edit the page ' +
-        'as you think it should read, then send it. Nothing changes until they approve it, and ' +
-        'they can reply. <em>Art cannot be part of a suggestion \u2014 describe any icon change in your note.</em>' +
+      guestBanner('<strong>This page takes suggestions.</strong> Edit it, then send your version for ' +
+        esc(entry.creator || 'the creator') + ' to approve. ' +
+        '<em>Art can\u2019t be suggested; describe icon changes in your note.</em>' +
         viaSetHTML());
     }
 
@@ -1237,8 +1236,8 @@
       if (!fld || !box) return;
       if (isDraftPage) {
         fld.style.display = '';
-        box.innerHTML = '<p class="sub" style="margin:0">A draft keeps no history: it would be ' +
-          'every save you made while writing it. Recording starts when the page is published.</p>';
+        box.innerHTML = '<p class="sub" style="margin:0">Drafts have no history. ' +
+          'It starts when the page is published.</p>';
         return;
       }
       fld.style.display = '';
@@ -1252,9 +1251,7 @@
           var link = '<a class="hist-open-link" href="' + histPageHref() + '">' +
             (n ? 'View history and restore' : 'Open the history page') + '</a>';
           if (!n) {
-            box.innerHTML = '<p class="sub" style="margin:0 0 8px">No edits recorded yet. Every save ' +
-              'from here on is listed, with what changed, and you can put any earlier version ' +
-              'back.</p>' + link;
+            box.innerHTML = '<p class="sub" style="margin:0 0 8px">No edits yet.</p>' + link;
             return;
           }
           var last = d.entries[0];
@@ -1266,7 +1263,7 @@
             who + (last.changed && last.changed.length
               ? ' changed ' + esc(last.changed.join(', '))
               : ' saved this page') +
-            (when ? ', ' + esc(when) : '') + '. You can put any earlier version back.</p>' + link;
+            (when ? ', ' + esc(when) : '') + '.</p>' + link;
         })
         .catch(function () {
           box.innerHTML = '<p class="sub" style="margin:0 0 8px">Could not load the history just now.</p>' +
@@ -1320,7 +1317,7 @@
       note.className = 'sub';
       note.style.margin = '8px 0 0';
       note.innerHTML = 'This page follows the setting on <a href="' + esc(setEditHref(GOVERNED_BY)) + '">' +
-        esc(GOVERNED_BY.name) + '</a>, which covers your characters and pages on it. Change it there.';
+        esc(GOVERNED_BY.name) + '</a>. Change it there.';
       var fld = sel.closest('.fld') || sel.parentNode;
       if (fld && fld.parentNode) fld.parentNode.insertBefore(note, fld.nextSibling);
       syncEditorsBox();
@@ -1331,8 +1328,8 @@
        creator opened THIS page. */
     function viaSetHTML() {
       if (!GOVERNED_BY || !GOVERNED_BY.name) return '';
-      return ' The setting comes from <a href="' + esc(setHref(GOVERNED_BY)) + '">' + esc(GOVERNED_BY.name) +
-        '</a>, which covers its creator\u2019s characters and pages on it.';
+      return ' This comes from the setting on <a href="' + esc(setHref(GOVERNED_BY)) + '">' + esc(GOVERNED_BY.name) +
+        '</a>.';
     }
     function renderEditStatus() {
       if (EDIT_MODE !== 'owner' || !window.editStatusHTML) return;
@@ -1347,7 +1344,7 @@
         // and the way to change it is on the set (see lockToSet).
         mode = GOVERNED_BY.mode;
         note = 'Set by <a href="' + esc(setHref(GOVERNED_BY)) + '">' + esc(GOVERNED_BY.name) +
-          '</a>, which covers your characters and pages on it.';
+          '</a>.';
         links.push({ href: setEditHref(GOVERNED_BY), label: 'Change this on ' + GOVERNED_BY.name });
       } else if (!mode) {
         // Nothing chosen is the default, and the default is "tags open" only
@@ -1385,9 +1382,8 @@
       nm.title = 'Only the page\u2019s creator can rename it.';
       hideOwnerOnly();
       guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
-        'opened for anyone with an account to edit. Everything but the name is yours to improve. ' +
-        'Your username and every field you change are recorded in ' + histLink(entry) +
-        ', and the creator can put an earlier version back.' + viaSetHTML());
+        'open for anyone with an account to edit, except the name. ' +
+        'Your changes are recorded in ' + histLink(entry) + '.' + viaSetHTML());
     }
     /* Open except the ability. The form is the guest form above with the
        rule itself locked: the Worker re-pins `ability` (and the custom JSON,
@@ -1407,13 +1403,11 @@
       var cj = $('customJson');
       if (cj) {
         cj.readOnly = true;
-        cj.title = 'The custom JSON stays with the page\u2019s creator: it can rewrite the ability in the export.';
+        cj.title = 'The custom JSON stays with the page\u2019s creator.';
       }
       guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
-        'opened for anyone with an account to edit \u2014 <strong>everything except the ability</strong>. ' +
-        'The name and the ability text stay with the creator; the rest of the page is yours to improve. ' +
-        'Your username and every field you change are recorded in ' + histLink(entry) +
-        ', and the creator can put an earlier version back.' + viaSetHTML());
+        'open for anyone with an account to edit, <strong>except the name and ability</strong>. ' +
+        'Your changes are recorded in ' + histLink(entry) + '.' + viaSetHTML());
     }
     // Controls that only mean something to the page's owner. The Worker carries
     // the stored value forward whatever a guest posts, so leaving these on
@@ -1467,15 +1461,13 @@
         // opened it — say so, or the banner credits them with a choice they
         // never made.
         guestBanner('<strong>Tags only.</strong> This page has no tags yet, so anyone with an ' +
-          'account can add them until ' + esc(entry.creator || 'the creator') + ' tags it or ' +
-          'chooses otherwise. Pick or unpick them below and save. Nothing else on the page can ' +
-          'be changed from here, and your change is recorded in ' + histLink(entry) + '.');
+          'account can add them. Pick them below and save. Your change is recorded in ' +
+          histLink(entry) + '.');
         return;
       }
       guestBanner('<strong>Tags only.</strong> ' + esc(entry.creator || 'The creator') +
         ' has opened this page\u2019s tags to anyone with an account. Pick or unpick them below ' +
-        'and save. Nothing else on the page can be changed from here, and your change is ' +
-        'recorded in ' + histLink(entry) + '.');
+        'and save. Your change is recorded in ' + histLink(entry) + '.');
     }
 
     /* ── an editor the creator named by hand ──
@@ -1500,21 +1492,19 @@
         var href = (via.type === 'collection' ? 'collection/' : 's/') + encodeURIComponent(via.key || '');
         guestBanner('<strong>' + esc(entry.creator || 'The creator') +
           ' made you an editor of <a href="' + esc(href) + '">' + esc(via.name) + '</a>,</strong> ' +
-          'which covers their characters on it \u2014 this is one of them. Edit it as they ' +
-          'would; everything on this form is yours to change and it saves straight to the page. ' +
+          'which includes this character. Your changes save straight to the page. ' +
           (isDraftPage
-            ? 'It is still a draft, so only they can put it live. '
+            ? 'It is still a draft, so only they can publish it. '
             : 'Publishing, deleting and the editor list stay with them. ') +
-          'Your username and every field you change are recorded in ' + histLink(entry) + '.');
+          'Your changes are recorded in ' + histLink(entry) + '.');
         return;
       }
       guestBanner('<strong>' + esc(entry.creator || 'The creator') +
-        ' made you an editor of this page.</strong> Edit it as they would \u2014 everything ' +
-        'on this form is yours to change, and it saves straight to the page. ' +
+        ' made you an editor of this page.</strong> Your changes save straight to the page. ' +
         (isDraftPage
-          ? 'It is still a draft, so only they can put it live. '
+          ? 'It is still a draft, so only they can publish it. '
           : 'Publishing, deleting and the editor list stay with them. ') +
-        'Your username and every field you change are recorded in ' + histLink(entry) + '.');
+        'Your changes are recorded in ' + histLink(entry) + '.');
     }
     // Set from the Worker's answer before the banners are drawn.
     var isDraftPage = false;
@@ -1558,7 +1548,7 @@
       if (!fld || !isOwner || !has) { if (fld) fld.style.display = 'none'; return; }
       fld.style.display = '';
       var where = entry.curata
-        ? 'The wiki\u2019s admins picked this page out as Curata.'
+        ? 'The admins marked this page as Curata.'
         : ('This page is Curata because it is in ' +
            (curataFrom ? '\u201c' + esc(curataFrom) + '\u201d' : 'a Curata collection') + '.');
       // The honest cost, said before the box is ticked rather than found
@@ -1566,12 +1556,11 @@
       var cost = window.Classify && window.Classify.isIncomplete(entry)
         ? ' This page is still missing ' +
           window.Classify.listPhrase(window.Classify.missingBits(entry)) +
-          ', so without the mark it will read as Partial and stay off the browse pages until that is filled in.'
+          ', so without the mark it becomes Partial and is hidden from the browse pages.'
         : '';
       $('curata-note').innerHTML = where +
-        ' It shows a laurel wreath on the page and comes up more often on the homepage. ' +
-        'Tick the box to keep it off this page \u2014 the collection and the admins\u2019 ' +
-        'decision are unaffected, only this page.' + cost;
+        ' It adds a laurel wreath and shows the page more often on the homepage. ' +
+        'Tick the box to hide the mark on this page only.' + cost;
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);
@@ -1864,7 +1853,7 @@
       }
 
       function writeRow(){
-        setStatus('work','Saving&hellip; updating database');
+        setStatus('work','Saving&hellip; updating the page');
         // Build the full character entry, preserving any fields from the original
         var base = originalEntry || {};
         var entry = Object.assign({}, base, {
@@ -1992,14 +1981,14 @@
           ? ' This page moved to <strong>/' + page + '</strong>; the old link still redirects here.'
           : '';
         if (currentStatus === 'draft') {
-          setStatus('ok','&#10003; Draft saved (not public).' + movedNote + ' <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
+          setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public).' + movedNote + ' <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
         } else {
-          setStatus('ok','&#10003; Saved! Live now.' + movedNote + ' <a href="'+url+'" target="_blank">View character &rarr;</a>');
+          setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Saved! Live now.' + movedNote + ' <a href="'+url+'" target="_blank">View character &rarr;</a>');
         }
         $('save').disabled = false;
         $('save-publish').disabled = false;
       }).catch(function(err){
-        setStatus('err','&#10007; '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
         $('save').disabled = false;
         $('save-publish').disabled = false;
       });
@@ -2014,7 +2003,7 @@
     // ── delete: soft-delete this character (recoverable by an admin) ──
     $('delete-char').addEventListener('click', function(){
       var name = $('name') && $('name').value ? $('name').value : originalSlug;
-      if(!confirm('Delete "'+name+'"?\n\nIt will be removed from the site. An admin can restore it from the dashboard if this was a mistake.')) return;
+      if(!confirm('Delete "'+name+'"?\n\nIt will be removed from the site. An admin can restore it.')) return;
       var del = $('delete-char');
       del.disabled = true; del.textContent = 'Deleting…';
       $('save').disabled = true; $('save-publish').disabled = true;
@@ -2025,16 +2014,16 @@
       .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
       .then(function(res){
         if(res.status === 200 && res.body.ok){
-          setStatus('ok','&#10003; Deleted. Redirecting&hellip;');
+          setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
-          setStatus('err','&#10007; '+((res.body && res.body.error) || 'Delete failed.'));
+          setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+((res.body && res.body.error) || 'Delete failed.'));
           del.disabled = false; del.textContent = 'Delete Character';
           $('save').disabled = false; $('save-publish').disabled = false;
         }
       })
       .catch(function(err){
-        setStatus('err','&#10007; '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
         del.disabled = false; del.textContent = 'Delete Character';
         $('save').disabled = false; $('save-publish').disabled = false;
       });
@@ -2053,7 +2042,7 @@
 
     // ── on load: fetch character data (drafts included if you own them) ──
     if(!originalSlug){
-      $('loading').textContent = 'No character specified. Add ?c=slug to the URL.';
+      $('loading').textContent = 'No character chosen. Open this page from a character\u2019s Edit button.';
     } else {
       fetch('/api/page?type=character&slug='+encodeURIComponent(originalSlug), { credentials: 'same-origin' })
         .then(function(r){

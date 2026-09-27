@@ -97,8 +97,8 @@
   <div class="mu-wrap">
     <div class="formcard">
       <h2>Mass Upload Characters</h2>
-      <p class="sub">Upload a whole script JSON or a master list of characters (official schema) and create a wiki page for every character in it — all at once. Characters need at least a <code>name</code>, <code>team</code> and <code>ability</code>. If a character's <code>image</code> is an array, the second entry is saved as its alternate art.</p>
-      <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? <a href="bloodstar">Bloodstar Import</a> reads its almanac as well as its JSON, so the pages arrive with their flavour text, overviews, examples, how-to-run and tips already written.</p>
+      <p class="sub">Upload a script JSON or character list (official script format) to make a page for every character in it. Each needs a <code>name</code>, <code>team</code> and <code>ability</code>.</p>
+      <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? Use <a href="bloodstar">Bloodstar Import</a> to bring its almanac text too.</p>
 
       <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
       <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" class="no-autosize" placeholder="&hellip;or paste the JSON here"></textarea></div>
@@ -124,7 +124,7 @@
         </div>
         <div class="fld">
           <label class="mu-check" for="replaceart"><input type="checkbox" id="replaceart"> Replace the art on pages that already exist</label>
-          <p class="hint" style="margin:6px 0 0">A character in this file that lands on a page you already made <strong>updates</strong> that page: the name, team, ability, night order, reminders and jinxes come from the file, and everything else on the page is kept &mdash; its icon, tags, almanac text, printable token and publish state. Tick this to write the file&rsquo;s pictures over those pages&rsquo; icons as well.</p>
+          <p class="hint" style="margin:6px 0 0">If a character matches a page you already made, that page is <strong>updated</strong>: the file replaces its name, team, ability, night order, reminders and jinxes, and everything else is kept. Tick this to replace its icon too.</p>
         </div>
         <div id="mu-jinx-warn"></div>
         <table class="mu-table" id="mu-table">
@@ -182,7 +182,7 @@
     // around them into duplicates.
     var halted = null;
     function limitError(r, j){
-      var e = new Error((j && j.error) || 'You have hit the hourly limit. Take a short break and try again.');
+      var e = new Error((j && j.error) || 'Hourly limit reached. Try again later.');
       e.rateLimited = true;
       e.retryAfter = parseInt(r.headers.get('Retry-After') || '3600', 10) || 3600;
       return e;
@@ -232,7 +232,7 @@
       var data = JSON.parse(text);
       if (!Array.isArray(data)) {
         if (data && typeof data === 'object' && data.ability) data = [data];
-        else throw new Error('Expected a JSON array (a script or a master list of characters).');
+        else throw new Error('it is not a script or a list of characters.');
       }
       meta = null;
       var chars = [], skipped = [];
@@ -325,14 +325,13 @@
       // The URL shown here is only the one the name asks for. A name somebody
       // else already used gets its own address when the batch runs, and the
       // cell is rewritten then.
-      var exists = existingSlugs[slug] ? ' <span class="hint">(that URL is taken — updates your page, or takes a free one)</span>' : '';
-      var img = Array.isArray(c.image) ? c.image[0] : c.image;
-      var alt = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
+      var exists = existingSlugs[slug] ? ' <span class="hint">(address taken: updates your page, or gets a free one)</span>' : '';
+      var icons = Array.isArray(c.image) ? c.image.filter(Boolean).length : (c.image ? 1 : 0);
       return '<tr id="mu-row-' + i + '">' +
         '<td><strong>' + esc(c.name) + '</strong>' + exists + '</td>' +
         '<td class="mu-team">' + esc(normTeam(c.team)) + '</td>' +
         '<td class="mu-page">' + esc(slug) + '</td>' +
-        '<td>' + (img ? 'from URL' + (alt ? ' + alt' : '') : '—') + '</td>' +
+        '<td>' + (icons ? icons + ' icon' + (icons === 1 ? '' : 's') : '—') + '</td>' +
         '<td class="mu-state mu-state-wait">waiting</td>' +
         '</tr>';
     }
@@ -357,7 +356,7 @@
       if (meta && meta.name && !$('appears').value) $('appears').value = meta.name;
       if (!$('creator').value) $('creator').value = (meta && meta.author) || (me && (me.displayName || me.username)) || '';
       var msg = 'Found ' + parsed.length + ' character' + (parsed.length===1?'':'s') + (meta && meta.name ? ' in “' + esc(meta.name) + '”' : '') + '.';
-      if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official ids or missing name/ability).';
+      if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official characters, or a missing name or ability).';
       setStatus('ok', msg);
       drawJinxWarnings();
     });
@@ -532,16 +531,16 @@
         jinxes: Array.isArray(c.jinxes) ? c.jinxes : []
       };
 
-      rowState(i, 'work', mine ? 'reading your page&hellip;' : 'fetching art&hellip;');
+      rowState(i, 'work', mine ? 'reading your page&hellip;' : 'loading art&hellip;');
       var pageJob = !window.ImportMerge
-        ? Promise.reject(new Error('the page did not finish loading — reload and try again'))
+        ? Promise.reject(new Error('the page did not finish loading. Reload and try again'))
         : mine ? loadPage(slug) : Promise.resolve(null);
       return pageJob.then(function(page){
         var entry = window.ImportMerge.merge(page, fromFile, opts);
         var plan = window.ImportMerge.artPlan(page, opts);
         var hasArt = !!(entry.art || entry.image);
         var kept = !!(page && imgUrl && !plan.main);
-        if (mine) rowState(i, 'work', kept ? 'keeping the page&rsquo;s icon&hellip;' : 'fetching art&hellip;');
+        if (mine) rowState(i, 'work', kept ? 'keeping the page&rsquo;s icon&hellip;' : 'loading art&hellip;');
         var artJob = Promise.resolve(kept ? 'kept' : 'remote');
         if (plan.main && imgUrl && /^https?:\/\//.test(imgUrl)) {
           artJob = loadImageToCanvas(imgUrl).then(function(dataUrl){
@@ -596,10 +595,10 @@
               if (!r.ok) throw new Error(j.error || 'save failed');
               var pageUrl = (j && j.page) || ('c/' + slug);
               rowSlug(i, pageUrl);
-              var note = artHow === 'remote' && imgUrl ? ' (art from remote URL)'
+              var note = artHow === 'remote' && imgUrl ? ' (art linked from another site)'
                 : artHow === 'kept' ? ' (page updated, icon kept)'
                 : page ? ' (page updated)' : '';
-              rowState(i, 'ok', '&#10003; <a href="' + esc(pageUrl) + '" target="_blank">view page</a>' + note);
+              rowState(i, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> <a href="' + esc(pageUrl) + '" target="_blank">view page</a>' + note);
               return true;
             });
           });
@@ -607,10 +606,10 @@
       }).catch(function(err){
         if (err && err.rateLimited) {
           halted = err;
-          rowState(i, 'err', '&#10007; stopped &mdash; hourly limit reached');
+          rowState(i, 'err', '<span class="ico ico-x" aria-hidden="true"></span> stopped: hourly limit reached');
           return false;
         }
-        rowState(i, 'err', '&#10007; ' + esc(err.message));
+        rowState(i, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         return false;
       });
     }
@@ -640,25 +639,23 @@
           var left = parsed.length - ok;
           setStatus('err',
             esc(halted.message) +
-            '<br>Stopped after ' + ok + ' of ' + parsed.length + ' &mdash; ' + left +
-            ' still to go. Leave this page open, come back ' + waitPhrase(halted.retryAfter) +
-            ' and press Create All Pages again: the ' + ok +
-            ' already made are skipped and the rest carry on from here.');
+            '<br>Stopped after ' + ok + ' of ' + parsed.length + '. Keep this page open and press Create All Pages again ' +
+            waitPhrase(halted.retryAfter) + ' to make the other ' + left + '.');
           return;
         }
         if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
-        else setStatus('ok', '&#10003; All ' + ok + ' pages created! Find them under <a href="all-characters">All Characters</a>' + (opts.status==='draft' ? ' via <a href="account">your account page</a> (drafts)' : '') + '.');
+        else setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> All ' + ok + ' pages created! Find them ' + (opts.status==='draft' ? 'under drafts on <a href="account">your account page</a>' : 'under <a href="all-characters">All Characters</a>') + '.');
       }
       (function next(){
         if (i >= parsed.length || halted) { finish(); return; }
         if (rowDone(i)) { ok++; i++; next(); return; }
         var c = parsed[i], idx = i;
-        rowState(idx, 'work', 'checking URL&hellip;');
+        rowState(idx, 'work', 'checking address&hellip;');
         resolveSlug(c.name, opts.appearsIn).then(function(res){
           rowSlug(idx, res.slug);
           return createOne(c, idx, opts, res.slug, res.mine);
         }).catch(function(err){
-          rowState(idx, 'err', '&#10007; ' + esc((err && err.message) || 'failed'));
+          rowState(idx, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc((err && err.message) || 'failed'));
           return false;
         }).then(function(good){
           if (good) ok++; else fail++;

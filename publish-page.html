@@ -120,7 +120,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <main class="pub-main">
     <div class="home-hero" style="padding-bottom:14px">
       <h1 id="page-title">Write a Page</h1>
-      <p id="page-sub">A text-first page for your script or collection — rules, lore, a glossary, a storyteller guide. It appears only on that page and on your author page: never in search, on the homepage or in the browse lists.</p>
+      <p id="page-sub">A text page for your script or collection, such as rules or lore. It is linked only from that page and your author page.</p>
     </div>
 
     <div id="gate" style="display:none">
@@ -143,7 +143,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
         <div class="sb-fld-row">
           <div class="sb-fld">
-            <label for="p-subtitle">Subtitle <span class="opt">(optional — one line under the title)</span></label>
+            <label for="p-subtitle">Subtitle <span class="opt">(optional: one line under the title)</span></label>
             <input type="text" id="p-subtitle" maxlength="200" placeholder="e.g. Every state a player can be in.">
           </div>
           <div class="sb-fld">
@@ -153,7 +153,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
 
         <div class="sb-fld">
-          <label for="p-blurb">Blurb <span class="opt">(the line under the link on your script/collection page — auto-written if you leave it blank)</span></label>
+          <label for="p-blurb">Blurb <span class="opt">(shown under its link on the script/collection page; automatic if left blank)</span></label>
           <textarea id="p-blurb" rows="2" maxlength="300"></textarea>
         </div>
 
@@ -171,12 +171,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <code>example.com</code> works too, and <code>[text](/c/imp)</code>
             links inside the wiki &middot;
             <code>[[Snake Charmer]]</code> links to a character on this wiki
-            (a name the wiki doesn't have shows as a reminder token instead) &middot;
+            (unknown names show as a reminder token) &middot;
             <code>| a | b |</code> table rows &middot;
             <code>![caption](pages/my-image.png|right)</code> image &middot;
             <code>::: note Title</code> … <code>:::</code> callout box
             (note, tip, warning, example, lore) &middot;
-            <code>[toc]</code> puts the contents box exactly where you want it.
+            <code>[toc]</code> places the contents box.
           </p>
         </div>
 
@@ -185,7 +185,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
 
       <details class="sb-details" id="p-images-sec">
-        <summary>Images <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — a banner across the top, plus any images you want to drop into the text.</span></summary>
+        <summary>Images <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. A banner, plus images for the text.</span></summary>
         <div class="sb-details-body">
           <div class="sb-fld">
             <label for="p-header">Banner <span class="opt">(wide image across the top of the page)</span></label>
@@ -197,14 +197,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <div class="sb-fld">
             <label for="p-image-add">Images for the text</label>
             <input type="file" id="p-image-add" accept="image/*">
-            <p class="sub" id="p-image-note" style="margin:6px 0 0">Pick an image and it uploads straight away. A brand-new page is saved as a draft first, so the image has somewhere to be filed.</p>
+            <p class="sub" id="p-image-note" style="margin:6px 0 0">Images upload as soon as you pick them. A new page is saved as a draft first.</p>
             <ul class="img-list" id="p-image-list"></ul>
           </div>
         </div>
       </details>
 
       <details class="sb-details" id="p-side-sec">
-        <summary>Side boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — a fact box and any number of custom boxes down the right-hand side.</span></summary>
+        <summary>Side boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. A fact box and custom boxes down the right-hand side.</span></summary>
         <div class="sb-details-body">
           <div class="sb-fld-row">
             <div class="sb-fld">
@@ -230,7 +230,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </details>
 
       <details class="sb-details" id="p-appearance">
-        <summary>Page appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — background image, heading font and colors, exactly like the script and collection pages.</span></summary>
+        <summary>Page appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Background image, heading font and colors.</span></summary>
         <div class="sb-details-body">
           <div class="sb-fld">
             <label for="p-bg">Page background <span class="opt">(large image, shown behind the page)</span></label>
@@ -259,21 +259,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
 
       <div class="pub-actions">
-        <button type="button" class="sb-btn sb-btn-publish" id="p-publish">★ Publish Page</button>
+        <button type="button" class="sb-btn sb-btn-publish" id="p-publish"><span class="ico ico-star" aria-hidden="true"></span> Publish Page</button>
         <button type="button" class="sb-btn sb-btn-draft" id="p-draft">Save as Draft</button>
         <button type="button" class="sb-btn sb-btn-delete" id="p-delete" style="display:none">Delete Page</button>
         <span class="pub-status-pill" id="p-pill"></span>
         <a class="pub-back" id="p-parent-link" href="#">← Back to the page it belongs to</a>
       </div>
       <p class="sb-publish-blurb" style="font-size:.82rem;color:rgba(236,225,200,.82);margin:4px 0 0;line-height:1.5">
-        Published pages are linked from your script or collection page and from your author page — and nowhere else.
-        They never appear in search, on the homepage, in the browse lists or in the sitemap.
+        Published pages stay out of search and the browse lists.
       </p>
       <div id="p-status"></div>
 
       <div class="sb-details" id="p-sibling-wrap" style="margin-top:22px;display:none">
         <h2>Other pages here</h2>
-        <p class="sub">Every page attached to this script or collection. Click one to edit it.</p>
+        <p class="sub">Click a page to edit it.</p>
         <ul class="page-list" id="p-siblings"></ul>
       </div>
     </div>
@@ -378,7 +377,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!editorMode) return;
       $('p-delete').style.display = 'none';
       $('p-draft').style.display = 'none';
-      $('p-publish').textContent = '★ Save Changes';
+      $('p-publish').innerHTML = '<span class="ico ico-star" aria-hidden="true"></span> Save Changes';
     }
 
     function setPill(status){
@@ -386,7 +385,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var pill = $('p-pill');
       pill.className = 'pub-status-pill ' + (status === 'published' ? 'published' : 'draft');
       pill.textContent = status === 'published' ? 'Published' : 'Draft';
-      $('p-publish').textContent = status === 'published' ? '★ Save Changes' : '★ Publish Page';
+      $('p-publish').innerHTML = status === 'published' ? '<span class="ico ico-star" aria-hidden="true"></span> Save Changes' : '<span class="ico ico-star" aria-hidden="true"></span> Publish Page';
       $('p-draft').textContent = status === 'published' ? 'Move to Draft' : 'Save as Draft';
       applyEditorMode();
     }
@@ -397,7 +396,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     function showParent(){
       $('p-parent').innerHTML = parentName
-        ? 'This page belongs to <a href="' + parentHref() + '" style="color:var(--maroon);font-weight:600">' + esc(parentName) + '</a>. It is linked from there and from your author page — nowhere else on the wiki.'
+        ? 'This page belongs to <a href="' + parentHref() + '" style="color:var(--maroon);font-weight:600">' + esc(parentName) + '</a>.'
         : 'Loading…';
       $('p-parent-link').href = parentHref();
       $('p-parent-link').textContent = '← Back to ' + (parentName || 'the page it belongs to');
@@ -406,10 +405,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function showUrl(){
       if (!slug) return;
       $('p-url').style.display = '';
-      $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> — <a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>';
+      $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> (<a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>)';
       $('p-delete').style.display = editorMode ? 'none' : '';
       $('page-title').textContent = 'Edit Page';
-      imgSay('', 'Uploads are stored under this page and can be dropped straight into the text.');
+      imgSay('', 'Uploaded images can be inserted into the text.');
       try { history.replaceState(null, '', 'publish-page?p=' + encodeURIComponent(slug)); } catch(e){}
     }
 
@@ -456,14 +455,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     $('p-header-remove').addEventListener('click', function(){
       headerData = null; removeHeader = true; headerPath = '';
       $('p-header-prev').style.display = 'none';
-      $('p-header-note').textContent = 'Banner removed — save to apply.';
+      $('p-header-note').textContent = 'Banner removed. Save to apply.';
       this.style.display = 'none';
       preview();
     });
     $('p-bg-remove').addEventListener('click', function(){
       bgData = null; removeBg = true;
       $('p-bg-prev').style.display = 'none';
-      $('p-bg-note').textContent = 'Background removed — save to apply.';
+      $('p-bg-note').textContent = 'Background removed. Save to apply.';
       this.style.display = 'none';
     });
 
@@ -484,12 +483,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function ensureSlug(){
       if (slug) return Promise.resolve(slug);
       if (!$('p-title').value.trim())
-        return Promise.reject(new Error('Give the page a title first — images are filed under the page’s name.'));
+        return Promise.reject(new Error('Give the page a title before adding images.'));
       if (!$('p-body').value.trim())
-        return Promise.reject(new Error('Write something in the page body first, then the image has a page to live on.'));
+        return Promise.reject(new Error('Write something in the page body before adding images.'));
       imgSay('work', 'Saving this page as a draft first…');
       return save('draft').then(function(){
-        if (!slug) throw new Error('The page could not be saved, so there is nowhere to file the image yet.');
+        if (!slug) throw new Error('The page could not be saved, so the image was not uploaded.');
         return slug;
       });
     }
@@ -525,7 +524,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           rd.readAsDataURL(f);
         });
       }).catch(function(err){
-        imgSay('err', '✗ ' + esc(err.message));
+        imgSay('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
       });
     });
 
@@ -569,17 +568,17 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var url = 'p/' + encodeURIComponent(slug);
         if (editorMode) {
           say('ok', res.status === 'published'
-            ? '✓ Saved. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a>'
-            : '✓ Saved as a draft — the owner of ' + esc(parentName || 'the parent page') + ' decides when it goes live. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+            ? '<span class="ico ico-check" aria-hidden="true"></span> Saved. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a>'
+            : '<span class="ico ico-check" aria-hidden="true"></span> Saved as a draft. The owner of ' + esc(parentName || 'the parent page') + ' decides when it goes live. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
           $('p-publish').disabled = false; $('p-draft').disabled = false;
           return;
         }
         say('ok', res.status === 'published'
-          ? '✓ Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
-          : '✓ Draft saved — only you (and admins) can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+          ? '<span class="ico ico-check" aria-hidden="true"></span> Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
+          : '<span class="ico ico-check" aria-hidden="true"></span> Draft saved. Only you can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       }).catch(function(err){
-        say('err', '✗ ' + esc(err.message));
+        say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       });
     }
@@ -588,10 +587,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     $('p-delete').addEventListener('click', function(){
       if (!slug) return;
-      if (!confirm('Delete "' + ($('p-title').value.trim() || slug) + '" for good?\n\nIts comments go with it. This one cannot be restored from the dashboard.')) return;
+      if (!confirm('Delete "' + ($('p-title').value.trim() || slug) + '" for good?\n\nIts comments are deleted too. This cannot be undone.')) return;
       api('/api/wiki-page', { action: 'delete', slug: slug }).then(function(){
         location.href = parentHref();
-      }).catch(function(err){ say('err', '✗ ' + esc(err.message)); });
+      }).catch(function(err){ say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message)); });
     });
 
     // ── the other pages on the same script/collection ──
@@ -606,7 +605,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (d && d.parent) { parentName = d.parent.name; showParent(); }
           if (d && d.canEdit && d.isOwner === false && !slug) {
             editorMode = true; applyEditorMode();
-            say('work', 'You were named an editor of <strong>' + esc(parentName) + '</strong>, so you can add pages to it. New pages are saved as drafts for its owner to publish.');
+            say('work', 'You are an editor of <strong>' + esc(parentName) + '</strong>. New pages are saved as drafts for its owner to publish.');
           }
           // Say so up front rather than at the end of a long write-up.
           if (d && d.canEdit === false && !slug) {
@@ -663,14 +662,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           theme = p.theme || {};
           if (headerPath) {
             var hv = $('p-header-prev'); hv.src = 'assets/' + headerPath; hv.style.display = 'block';
-            $('p-header-note').textContent = 'Current banner — choose a file to replace it.';
+            $('p-header-note').textContent = 'Current banner. Choose a file to replace it.';
             $('p-header-remove').style.display = '';
             $('p-images-sec').open = true;
           }
           if (theme.background) {
             bgPath = theme.background;
             var bv = $('p-bg-prev'); bv.src = 'assets/' + bgPath; bv.style.display = 'block';
-            $('p-bg-note').textContent = 'Current background — choose a file to replace it.';
+            $('p-bg-note').textContent = 'Current background. Choose a file to replace it.';
             $('p-bg-remove').style.display = '';
           }
           if (p.infobox) {
@@ -690,9 +689,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             editorMode = true;
             var viaName = esc((res.editVia && res.editVia.name) || parentName || 'its script or collection');
             say('work', res.access === 'all'
-              ? 'You can edit this page because <strong>' + viaName + '</strong> is open for anyone with an ' +
-                'account to edit, and that covers its owner’s pages on it. Publishing, moving to draft and ' +
-                'deleting stay with its owner, and your change is recorded in the page’s history.'
+              ? 'You can edit this page because <strong>' + viaName + '</strong> is open to anyone with an ' +
+                'account. Publishing, moving to draft and deleting stay with its owner.'
               : 'You can edit this page because you were named an editor of <strong>' + viaName +
                 '</strong>. Publishing, moving to draft and deleting stay with its owner.');
           }
@@ -725,7 +723,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           preview();
         } else {
           gate('Nothing to attach to',
-            'Open a script or collection you own and use <strong>+ Write a page</strong> in its Pages section — a page always belongs to one of them. ' +
+            'Open a script or collection you own and use <strong>+ Write a page</strong> in its Pages section. ' +
             '<a href="account" style="color:var(--maroon);font-weight:600">Your pages →</a>');
         }
       })

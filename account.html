@@ -94,6 +94,7 @@
   .badge.warn  { background: rgba(154,110,20,.12); color: #7a5c18; border: 1px solid rgba(154,110,20,.35); }
   .profile-meta { font-size: .85rem; opacity: .85; margin-top: 10px; }
   .profile-meta span { margin-right: 18px; white-space: nowrap; }
+  .profile-meta .ico { margin-right: 0; }
 
   /* ---- page/draft lists ---- */
   .row-list { width: 100%; border-collapse: collapse; font-size: .92rem; }
@@ -310,7 +311,7 @@
             <div class="uname">@<span id="p-username"></span></div>
             <div class="bio" id="p-bio"></div>
             <a id="p-public-link" href="#" style="display:none;font-size:.85rem;margin-top:4px">View public profile →</a>
-            <a id="p-messages-link" href="messages" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">✉ Messages →</a>
+            <a id="p-messages-link" href="messages" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700"><span class="ico ico-mail" aria-hidden="true"></span> Messages →</a>
             <a id="p-admin-link" href="dashboard" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">Admin Dashboard →</a>
           </div>
         </div>
@@ -327,14 +328,14 @@
         <h3>Your Drafts <span class="count-pill" id="n-drafts">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">Drafts are hidden from the public wiki until you publish them. Only you (and admins) can view or edit them. <a href="drafts" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a></p>
         <table class="row-list" id="drafts-table"></table>
-        <div class="empty-note" id="drafts-empty" style="display:none">No drafts. When creating a character you can choose <em>Save as Draft</em> instead of publishing.</div>
+        <div class="empty-note" id="drafts-empty" style="display:none">No drafts. Choose <em>Save as Draft</em> in the editor to keep a page private.</div>
       </div>
 
       <!-- pages other people made you an editor of (approved editing) -->
       <div class="panel" id="shared-panel" style="display:none">
         <h3>Shared With You <span class="count-pill" id="n-shared">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Pages whose creator named you as an editor. You can change them exactly as they would &mdash; publishing, deleting and the editor list stay with them.
+          Pages whose creator made you an editor. Only the creator can publish, delete or change the editor list.
         </p>
         <table class="row-list" id="shared-table"></table>
       </div>
@@ -343,9 +344,7 @@
       <div class="panel" id="fav-panel" style="display:none">
         <h3>Your Favorites <span class="count-pill" id="n-fav">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Characters, scripts and collections you saved with the heart button on their pages. The <strong>Favorites</strong> filter on
-          <a href="all-characters?favorites=1" style="color:var(--maroon);font-weight:700">All Characters</a> shows these characters
-          and every character on a saved script or collection. <a href="favorites" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a>
+          Pages you saved with the heart button. <a href="favorites" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a>
         </p>
         <table class="row-list" id="fav-table"></table>
       </div>
@@ -354,7 +353,7 @@
       <div class="panel" id="sug-panel" style="display:none">
         <h3>Suggested Edits <span class="count-pill" id="n-sug">0</span></h3>
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
-          Changes other people have proposed to your pages. Nothing is live until you approve it.
+          Changes others suggested for your pages. Nothing goes live until you approve it.
         </p>
         <table class="row-list" id="sug-table"></table>
       </div>
@@ -468,7 +467,7 @@
       <div class="panel" id="contact">
         <h3>Contact the Admins</h3>
         <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
-          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. You can attach a screenshot, and every message is a conversation: when they answer, you can write straight back here.
+          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. Replies show up here.
         </p>
         <div class="settings-grid">
           <section>
@@ -483,7 +482,7 @@
             </div>
             <div class="set-field">
               <label for="c-body">Message</label>
-              <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up — the more detail the better."></textarea>
+              <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up. The more detail the better."></textarea>
             </div>
             <!-- A screenshot settles most of what reaches this inbox. -->
             <div id="c-attach"></div>
@@ -551,7 +550,7 @@
       var p = new URLSearchParams(location.search);
       var note = null, cls = 'ok';
       if (p.get('welcome') === '1') note = 'Welcome! Your account is ready.';
-      else if (p.get('verified') === '1') note = 'Email verified — thank you!';
+      else if (p.get('verified') === '1') note = 'Email verified. Thank you!';
       else if (p.get('verified') === '0') { note = 'That verification link is invalid or expired. You can resend one below.'; cls = 'err'; }
       else if (p.get('linked') === '1') note = 'Discord account linked.';
       else if (p.get('error')) { note = p.get('error'); cls = 'err'; }
@@ -590,11 +589,11 @@
           ? '<span class="badge ok">verified</span>'
           : '<span class="badge warn">unverified</span> <a href="#" id="resend-verify" style="color:var(--maroon)">resend link</a>');
       } else {
-        emailLine = '<span class="badge warn">no email set</span> — add one below so you can recover your account';
+        emailLine = '<span class="badge warn">no email set</span> Add one below for password resets.';
       }
-      $('p-email-line').innerHTML = '✉ ' + emailLine;
+      $('p-email-line').innerHTML = '<span class="ico ico-mail" aria-hidden="true"></span> ' + emailLine;
       $('p-discord-line').innerHTML = p.discordLinked
-        ? '🎮 Discord: ' + esc(p.discordUsername || 'linked') + ' <span class="badge ok">linked</span>'
+        ? '<span class="ico ico-gamepad" aria-hidden="true"></span> Discord: ' + esc(p.discordUsername || 'linked') + ' <span class="badge ok">linked</span>'
         : '';
       $('p-created').textContent = 'Member since ' + fmtDate(p.createdAt);
 
@@ -622,11 +621,11 @@
       if (!p.hasPassword) {
         $('pw-title').textContent = 'Set a Password';
         $('cur-pw-field').style.display = 'none';
-        $('discord-desc').textContent = 'You signed up with Discord. Set a password if you also want to log in with your username.';
+        $('discord-desc').textContent = 'You signed up with Discord. Set a password to also log in with your username.';
       }
       if (p.discordLinked) {
         $('discord-unlink-btn').style.display = 'inline-block';
-        if (!$('discord-desc').textContent) $('discord-desc').textContent = 'Your Discord account is linked — you can log in with either method.';
+        if (!$('discord-desc').textContent) $('discord-desc').textContent = 'Your Discord account is linked. You can log in with either method.';
       } else {
         $('discord-link-btn').style.display = 'inline-block';
         $('discord-desc').textContent = 'Link your Discord account to log in with one click.';
@@ -706,7 +705,7 @@
             (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
           '<button type="button" data-move="down" aria-label="Move down"' +
             (i === PINNED.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
-          '<button type="button" class="pin-drop" data-move="off" aria-label="Unpin">&#10005;</button>' +
+          '<button type="button" class="pin-drop" data-move="off" aria-label="Unpin"><span class="ico ico-x" aria-hidden="true"></span></button>' +
           '</li>';
       }).join('');
     }
@@ -943,7 +942,7 @@
       var slug = btn.getAttribute('data-slug');
       if (act === 'edit') { location.href = editUrl(type, slug); return; }
       if (act === 'delete') {
-        if (!confirm('Delete this ' + type + '? It will be removed from the site. An admin can restore it if this was a mistake.')) return;
+        if (!confirm('Delete this ' + type + '? It will be removed from the site. An admin can restore it.')) return;
         btn.disabled = true;
         postJSON('/api/delete', { type: type, slug: slug }).then(function(res){
           if (res.ok && res.body.ok) load();
@@ -1124,7 +1123,7 @@
               shotsHtml(m.images) +
               (m.replied_at
                 ? '<div class="msg-reply">The admins replied ' + esc(fmtDate(m.replied_at)) +
-                  '. Open the conversation to read it and write back.</div>'
+                  '. Open the conversation to read and reply.</div>'
                 : '') +
               '<div class="msg-thread-slot"></div>' +
             '</div>';
@@ -1202,7 +1201,7 @@
       postJSON('/api/contact/reply', { id: id, body: body, images: images }).then(function(res){
         btn.disabled = false;
         if (res.ok && res.body.ok) loadMyMessages(id);
-        else setInline('c-reply-msg', 'err', (res.body && res.body.error) || 'Could not send — try again.');
+        else setInline('c-reply-msg', 'err', (res.body && res.body.error) || 'Could not send. Try again.');
       });
     }
 
@@ -1226,7 +1225,7 @@
           setInline('c-msg', 'ok', res.body.message || 'Message sent!');
           loadMyMessages();
         } else {
-          setInline('c-msg', 'err', res.body.error || 'Could not send — try again.');
+          setInline('c-msg', 'err', res.body.error || 'Could not send. Try again.');
         }
       });
     });

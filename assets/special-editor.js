@@ -29,12 +29,12 @@
   // Kept short: on a phone this select is barely 250px wide, and a label that
   // runs past the end of the box tells the reader nothing.
   var TYPES = [
-    ['ability',   'Ability — how it behaves'],
-    ['selection', 'Selection — setup & bag'],
-    ['signal',    'Signal — Storyteller sees'],
-    ['reveal',    'Reveal — player sees'],
-    ['vote',      'Vote — how it votes'],
-    ['player',    'Player — the player']
+    ['ability',   'Ability: how it behaves'],
+    ['selection', 'Selection: setup & bag'],
+    ['signal',    'Signal: Storyteller sees'],
+    ['reveal',    'Reveal: player sees'],
+    ['vote',      'Vote: how it votes'],
+    ['player',    'Player: the player']
   ];
 
   // The names in common use, grouped by the type they belong with, purely so
@@ -107,7 +107,7 @@
         '<input class="sp-value" type="number" step="1" placeholder="number" ' +
           'aria-label="Number, if the property takes one" value="' +
           esc(s.value === 0 || s.value ? s.value : '') + '">' +
-        '<button type="button" class="btn btn-ghost btn-sm sp-del" aria-label="Remove this property">✕</button>';
+        '<button type="button" class="btn btn-ghost btn-sm sp-del" aria-label="Remove this property"><span class="ico ico-x" aria-hidden="true"></span></button>';
       row.querySelector('.sp-del').addEventListener('click', function () {
         row.remove();
         changed();

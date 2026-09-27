@@ -132,7 +132,7 @@
       img.onload = function () {
         var iw = img.naturalWidth || img.width;
         var ih = img.naturalHeight || img.height;
-        if (!iw || !ih) { reject(new Error('Image has no dimensions.')); return; }
+        if (!iw || !ih) { reject(new Error('That image has no size.')); return; }
 
         // Locate the figure (trim transparent padding). An unreadable or
         // fully transparent image comes back as the whole frame, contain-fit.
@@ -158,7 +158,7 @@
         try { resolve(out.toDataURL('image/png')); }
         catch (e) { reject(e); }
       };
-      img.onerror = function () { reject(new Error('Could not load image for normalization.')); };
+      img.onerror = function () { reject(new Error('Could not load the image to resize it.')); };
       img.src = src;
     });
   }

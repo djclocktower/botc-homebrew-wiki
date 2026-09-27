@@ -100,8 +100,8 @@
     function renderInbox(rows) {
       $('sg-title').textContent = 'Suggested Edits';
       $('sg-page').textContent = rows.length
-        ? 'People have proposed changes to your pages. Nothing is live until you approve it.'
-        : 'When somebody proposes a change to one of your pages, it waits here.';
+        ? 'Changes others suggested for your pages. Nothing goes live until you approve it.'
+        : 'Suggested changes to your pages will wait here.';
       $('card').style.display = '';
       $('empty').style.display = rows.length ? 'none' : '';
       $('list').innerHTML = rows.map(function (r) {
@@ -173,7 +173,7 @@
 
     function act(id, action, btn) {
       var reply = $('reply' + id) ? $('reply' + id).value.trim() : '';
-      if (action === 'approve' && !confirm('Apply this suggestion to the page?\n\nThe version on the page now is saved to its history first, so you can put it back.')) return;
+      if (action === 'approve' && !confirm('Apply this suggestion?\n\nThe current version is saved to the history first, so you can put it back.')) return;
       if (action === 'decline' && !confirm('Decline this suggestion?')) return;
       if (action === 'withdraw' && !confirm('Withdraw your suggestion?')) return;
       var row = btn.closest('.sg-row');

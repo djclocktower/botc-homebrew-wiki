@@ -161,8 +161,8 @@
     function showResult(c, value) {
       if (!c) { p.result.hidden = true; p.result.innerHTML = ''; return; }
       p.result.innerHTML =
-        'Acts directly after the <b>' + esc(c.name) + '</b> (' + c[key] + ') &mdash; ' +
-        'wake priority <b>' + esc(value) + '</b>. ' +
+        'Acts directly after the <b>' + esc(c.name) + '</b> (' + c[key] + '), so its ' +
+        'night order is <b>' + esc(value) + '</b>. ' +
         '<button type="button" class="no-clear">clear</button>';
       p.result.hidden = false;
       p.result.querySelector('.no-clear').addEventListener('click', function () {
@@ -231,7 +231,7 @@
     .catch(function () {
       pickers.forEach(function (p) {
         p.search.disabled = true;
-        p.search.placeholder = 'Official night order unavailable — type a number below';
+        p.search.placeholder = 'Official night order unavailable. Type a number below';
       });
     });
 })();

@@ -410,7 +410,12 @@ assets/
                        account.html + dashboard.html for modmail. Shrinks to
                        1600px before uploading; GIFs are passed through
                        untouched, or a canvas would keep frame one and throw
-                       the animation away. See "Images on a message" below.
+                       the animation away. The server keeps 5 MB per image,
+                       so a file that cannot be shrunk (a GIF, or a browser
+                       with no createImageBitmap) is held to 5 MB before the
+                       upload starts, a photo may be picked up to 20 MB, and
+                       the shrunk result is measured again before sending (a
+                       PNG still over 5 MB at 1600px goes as JPEG). See "Images on a message" below.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
                        and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
                        one-time "be respectful" agreement modal and the
@@ -1077,8 +1082,8 @@ The export follows the schema at
 - **`background`**: the page background (`theme.background`) as an absolute
   URL. One upload serves both the wiki page and the app.
 - **`hideTitle`**, **`almanac`**, **`bootlegger[]`**: set on publish-script's
-  "In the Official App" panel. Bootlegger rules also show on the script page as
-  *House Rules*, or a reader would only find them inside the JSON.
+  "In the Official App" panel. Bootlegger rules also show on the script page under
+  *Bootlegger Rules*, or a reader would only find them inside the JSON.
 - **`firstNight` / `otherNight`**: the arranged night order as ids. Only written
   when the owner arranged one. Left out, the app orders by each character's own
   number and reaches the same answer, so writing it anyway would freeze today's

@@ -589,7 +589,7 @@ async function createSession(env, userId, isAdmin) {
 // What the six callers of createSession() say when it comes back empty. The
 // account work they did has already happened and is not lost — only the
 // signing-in half failed — so each of them says which it was.
-const SESSION_DOWN_MSG = 'Signing you in failed — the sign-in service is briefly unavailable. Wait a minute and log in.';
+const SESSION_DOWN_MSG = 'Sign-in is briefly unavailable. Wait a minute and log in.';
 // For the callers that put it after a clause of their own ("Your account was
 // created, but ...").
 function lowerFirst(str) { return str.charAt(0).toLowerCase() + str.slice(1); }
@@ -730,14 +730,14 @@ function tooManyResponse(message, retryAfterSec) {
 // The per-image cap (8 MB, and mass-upload re-encodes to 600 px first) is what
 // actually bounds R2, not this counter.
 const WRITE_LIMITS = {
-  upload:     { bucket: 'upload',     limit: 400, window: 3600, msg: 'You have uploaded a lot of images in the last hour. Take a short break and try again.' },
-  character:  { bucket: 'wchar',      limit: 200, window: 3600, msg: 'You have saved a lot of characters in the last hour. Take a short break and try again.' },
-  collection: { bucket: 'wcoll',      limit: 40,  window: 3600, msg: 'You have saved a lot of collections in the last hour. Take a short break and try again.' },
-  script:     { bucket: 'wscript',    limit: 40,  window: 3600, msg: 'You have saved a lot of scripts in the last hour. Take a short break and try again.' },
-  wikipage:   { bucket: 'wpage',      limit: 40,  window: 3600, msg: 'You have saved a lot of pages in the last hour. Take a short break and try again.' },
+  upload:     { bucket: 'upload',     limit: 400, window: 3600, msg: 'Too many image uploads in the last hour. Try again later.' },
+  character:  { bucket: 'wchar',      limit: 200, window: 3600, msg: 'Too many character saves in the last hour. Try again later.' },
+  collection: { bucket: 'wcoll',      limit: 40,  window: 3600, msg: 'Too many collection saves in the last hour. Try again later.' },
+  script:     { bucket: 'wscript',    limit: 40,  window: 3600, msg: 'Too many script saves in the last hour. Try again later.' },
+  wikipage:   { bucket: 'wpage',      limit: 40,  window: 3600, msg: 'Too many page saves in the last hour. Try again later.' },
   // Importing as drafts and then publishing them from the account page is one
   // workflow, so this has to clear the same bar the character limit does.
-  publish:    { bucket: 'wpublish',   limit: 200, window: 3600, msg: 'You have published or deleted a lot of pages in the last hour. Take a short break and try again.' }
+  publish:    { bucket: 'wpublish',   limit: 200, window: 3600, msg: 'Too many publishes or deletes in the last hour. Try again later.' }
 };
 
 /* The permission half of /api/upload, on its own so more than one route can
@@ -751,7 +751,7 @@ const WRITE_LIMITS = {
 async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('media/')) {
     key = mediaSource(key);
-    if (!key) return jsonResponse({ error: 'Invalid responsive image path' }, { status: 400 });
+    if (!key) return jsonResponse({ error: 'That image address is not valid.' }, { status: 400 });
   }
   if (sess.isAdmin) return null;
   // A thumbnail's slot is its art's slot (see THUMB_PREFIX): the same page,
@@ -771,7 +771,7 @@ async function uploadSlotDenied(env, sess, key) {
   // tokens/ is reserved for admin tooling; news/ for the news editor,
   // which is admin-only anyway.
   if (key.startsWith('tokens/') || key.startsWith('news/')) {
-    return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+    return jsonResponse({ error: 'You can\'t upload images there.' }, { status: 403 });
   }
   // Wiki-page images follow pages/{page-slug}-*.{ext}. If that page
   // exists, only its owner may put images in its slot.
@@ -826,7 +826,7 @@ async function uploadSlotDenied(env, sess, key) {
       // slot is named after the character's identity, which is derived
       // from its name, and that one is already someone else's page.
       // Say so, so the fix (a different name) is obvious.
-      return jsonResponse({ error: 'The art slot for "' + slug + '"' + (slug === named ? '' : ' (its extra art)') + ' already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
+      return jsonResponse({ error: 'The art for "' + slug + '"' + (slug === named ? '' : ' (its extra art)') + ' belongs to another account\'s character. Give yours a different name and save again.' }, { status: 403 });
     }
     if (row && await isProtected(env, 'character', row.slug)) {
       return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -863,7 +863,7 @@ async function uploadSlotDenied(env, sess, key) {
   if (existing) {
     const owner = existing.customMetadata && existing.customMetadata.owner;
     if (owner !== String(sess.userId)) {
-      return jsonResponse({ error: 'A file already exists at that path and belongs to another account.' }, { status: 403 });
+      return jsonResponse({ error: 'An image with that name already belongs to another account.' }, { status: 403 });
     }
   }
   return null;
@@ -886,7 +886,7 @@ function emailShell(title, bodyHtml) {
   return `<div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;padding:24px;color:#241a12;background:#f7f0e0;border:1px solid #cdbfa0">
   <h2 style="color:#5b1f21;margin:0 0 12px">${title}</h2>
   ${bodyHtml}
-  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} — fan-made content for Blood on the Clocktower.<br>
+  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} is a fan-made wiki for Blood on the Clocktower.<br>
   If you didn't request this email you can safely ignore it.</p>
 </div>`;
 }
@@ -917,10 +917,10 @@ async function sendVerificationEmail(env, origin, user) {
   const token = randomToken();
   await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
   const link = origin + '/api/verify-email?token=' + token;
-  return sendEmail(env, user.email, 'Verify your email — ' + APP_NAME, emailShell(
+  return sendEmail(env, user.email, 'Verify your email for ' + APP_NAME, emailShell(
     'Verify your email',
     `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
-     <p>Click the link below to verify the email address on your ${APP_NAME} account:</p>
+     <p>Click the link below to verify your email address:</p>
      <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Verify my email</a></p>
      <p>This link expires in 24 hours.</p>`
   ));
@@ -1207,6 +1207,12 @@ const FIELD_LABELS = {
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
   respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
   edition: 'edition', publicEdit: 'who may edit',
+  flavor: 'flavour text', attribution: 'credit', artScale: 'icon display size',
+  token: 'printable token', tokenImage: 'printable token', tokenArt: 'token in the icon gallery',
+  jinxDisplay: 'jinx display', jsonId: 'script JSON id', released: 'release',
+  editors: 'editors', creditUnlinked: 'credit link', curata: 'Curata', starlight: 'Curata',
+  curataOptOut: 'Curata mark', status: 'published or draft', _draftNote: 'admin note',
+  _deleted: 'deleted',
   // scripts + collections
   displayName: 'name', author: 'author', description: 'description',
   tagline: 'tagline', version: 'version', difficulty: 'difficulty',
@@ -1214,11 +1220,12 @@ const FIELD_LABELS = {
   strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
   header: 'header image', theme: 'appearance', match: 'membership rules',
   include: 'members added', exclude: 'members removed', order: 'roster order',
-  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'house rules',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'bootlegger rules',
   almanac: 'almanac link', hideTitle: 'app title setting',
   // wiki pages
   title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
-  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box'
+  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box',
+  comments: 'comments', parentType: 'parent page', parentSlug: 'parent page'
 };
 const DIFF_VALUE_MAX = 1200;   // per side, per field
 const DIFF_LABEL_MAX = 6;
@@ -1242,7 +1249,7 @@ function diffFieldValues(beforeJSON, afterJSON) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = [];
   for (const k of keys) {
-    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    if (k === 'slug' || k === 'page' || k === 'id' || k === 'tagsBy') continue;
     const x = a[k] === undefined ? null : a[k];
     const y = b[k] === undefined ? null : b[k];
     if (JSON.stringify(x) === JSON.stringify(y)) continue;
@@ -1258,11 +1265,12 @@ function diffFieldLabels(beforeJSON, afterJSON) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = [];
   for (const k of keys) {
-    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    if (k === 'slug' || k === 'page' || k === 'id' || k === 'tagsBy') continue;
     const x = a[k] === undefined ? null : a[k];
     const y = b[k] === undefined ? null : b[k];
     if (JSON.stringify(x) === JSON.stringify(y)) continue;
-    out.push(FIELD_LABELS[k] || k);
+    const label = FIELD_LABELS[k] || k;
+    if (!out.includes(label)) out.push(label);
   }
   out.sort();
   if (out.length > DIFF_LABEL_MAX) {
@@ -2639,8 +2647,7 @@ async function notifyEditorsAdded(env, opts) {
     for (const e of added) {
       if (e.id == null || Number(e.id) === Number(fromId)) continue;
       const text = who + ' added you as an editor of \u201c' + (name || 'a page') + '\u201d.' +
-        ' You can now edit it exactly as they would \u2014 publishing, deleting and the editor' +
-        ' list itself stay with them.' +
+        ' You can edit it, but only they can publish or delete it.' +
         (path ? '\n\n' + (origin || '') + path : '');
       await env.DB.prepare(
         'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
@@ -2954,7 +2961,7 @@ async function waterfallOwner(env, sess, type, row, ownerId, cache) {
    text, so nothing legitimate comes near this; it stops somebody parking a
    megabyte in a row they do not own. */
 const PUBLIC_EDIT_MAX_BYTES = 120000;
-const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits. Send yours for the creator to approve.';
+const SUGGEST_INSTEAD = 'This page only takes suggested edits. Send yours for the creator to approve.';
 const PUBLIC_EDIT_TAGS_MAX = 400;
 function publicEditTooBig(o) {
   try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
@@ -3091,10 +3098,9 @@ async function notifyPageEdit(env, opts) {
       'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
     ).bind(ownerId, fromId).first().catch(() => null);
     if (blocked) return;
-    const text = what + ' \u201c' + (name || '') + '\u201d, which you have open for edits.\n\n' +
-      (origin || '') + path + '\n\nEvery change is listed at ' + (origin || '') + '/history?type=' +
-      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug) +
-      ', where you can put back any earlier version.';
+    const text = what + ' \u201c' + (name || '') + '\u201d.\n\n' +
+      (origin || '') + path + '\n\nSee or undo changes in the page history: ' + (origin || '') + '/history?type=' +
+      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug);
     await env.DB.prepare(
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
     ).bind(fromId, ownerId, text).run();
@@ -3226,7 +3232,7 @@ async function notifyDrafted(env, opts) {
     // longer public, and a block list must not be able to hide that.
     const text = 'An admin moved \u201c' + (name || '') + '\u201d to drafts, so it is no longer public.' +
       (reason ? '\n\n\u201c' + reason + '\u201d' : '') +
-      '\n\nNothing is lost — the page is still yours and still there. Fix it and publish it again: ' +
+      '\n\nNothing is lost. Fix it and publish it again: ' +
       (origin || '') + opts.editHref;
     await env.DB.prepare(
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
@@ -3320,9 +3326,8 @@ function editConflict(existing, body) {
   const current = existing.updated_at;
   if (!current || String(base) === String(current)) return null;
   return jsonResponse({
-    error: 'Somebody else saved changes to this page while you had it open. ' +
-           'Reload the editor to get their version — your unsaved changes are still ' +
-           'in this tab, so copy anything you need before reloading.',
+    error: 'Someone else saved this page while you had it open. ' +
+           'Copy your changes, then reload the editor to see theirs.',
     conflict: true,
     savedAt: current
   }, { status: 409 });
@@ -4859,7 +4864,7 @@ ${o.draftBanner || ''}
         <img class="brand-header-text" src="${R}assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="${R}assets/ccc-parchment.webp" alt="Community Created Content">
-      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+      <a class="edit-link" id="edit-btn" style="display:none" href="#"><span class="ico ico-edit" aria-hidden="true"></span> Edit</a>
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="${R}all-characters">All Characters</a>
@@ -5413,7 +5418,7 @@ async function charsBySlug(env, slugs) {
 async function pageJsonResponse(env, ctx, request, url) {
   const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
   const slug = String(url.searchParams.get('slug') || '');
-  if (!slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+  if (!slug) return jsonResponse({ error: 'No page given.' }, { status: 400 });
   const isScript = type === 'script';
   const table = isScript ? 'scripts' : 'collections';
   let row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
@@ -7224,7 +7229,7 @@ export default {
       // same collision and the remedy is the same.
       if (await usernameTaken(env, username)) {
         return jsonResponse({
-          error: 'That username is taken, or is too close to one that already exists. Try adding something to it.'
+          error: 'That username is taken or too close to an existing one. Try adding something to it.'
         }, { status: 409 });
       }
       const emailTaken = await env.DB.prepare('SELECT 1 FROM users WHERE email IS NOT NULL AND lower(email)=lower(?)')
@@ -7354,7 +7359,7 @@ export default {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
       if (!sess.isAdmin && await rateLimited(env, request, 'bloodstar', 60, 3600, { sess })) {
-        return tooManyResponse('You have read a lot of Bloodstar projects in the last hour. Take a short break and try again.', 3600);
+        return tooManyResponse('Too many Bloodstar projects read in the last hour. Try again later.', 3600);
       }
       const src = Bloodstar.bloodstarSource(url.searchParams.get('url'));
       if (src.error) return jsonResponse({ error: src.error }, { status: 400 });
@@ -7397,7 +7402,7 @@ export default {
       const bundle = Bloodstar.buildBundle(scriptJson, almanac, src, official);
       bundle.hasAlmanac = !!almanacHtml;
       if (!almanacHtml) {
-        bundle.warnings.unshift('That project has no readable almanac.html, so only what is in script.json could be read — no flavour text, overviews, examples, how-to-run or tips.');
+        bundle.warnings.unshift('That project has no readable almanac, so flavour text, overviews, examples, how-to-run and tips are missing.');
       }
       return jsonResponse(bundle);
     }
@@ -7537,14 +7542,14 @@ export default {
         const token = randomToken();
         await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
         const link = url.origin + '/reset-password?token=' + token;
-        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
+        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password for ' + APP_NAME, emailShell(
           'Reset your password',
           // Half the people who ask for a reset are stuck on the OTHER field:
           // their display name is the only name the site shows them, so this
           // is the one message that can tell them what to type.
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
            <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
-           <p>Your username is <b>@${escapeHtml(user.username)}</b>. That, or this email address, is what goes in the log-in box.</p>
+           <p>Your username is <b>@${escapeHtml(user.username)}</b>. You can log in with it or with this email address.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
         )));
@@ -7556,7 +7561,7 @@ export default {
       const body = await request.json().catch(() => ({}));
       const token = String(body.token || '');
       const password = String(body.password || '');
-      if (!token) return jsonResponse({ error: 'Missing reset token.' }, { status: 400 });
+      if (!token) return jsonResponse({ error: 'That reset link is incomplete. Request a new one.' }, { status: 400 });
       if (!password || password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters.' }, { status: 400 });
       const userId = await env.SESSIONS.get('pwreset:' + token);
       if (!userId) return jsonResponse({ error: 'That reset link is invalid or has expired. Request a new one.' }, { status: 400 });
@@ -7691,7 +7696,7 @@ export default {
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state') || '';
       const stateRaw = state && await env.SESSIONS.get('oauth:' + state);
-      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in failed (the sign-in took too long, or the link was reused). Please try again.');
+      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in timed out or the link was already used. Please try again.');
       await env.SESSIONS.delete('oauth:' + state);
       let linkUserId = 0;
       try { linkUserId = (JSON.parse(stateRaw).link | 0); } catch {}
@@ -7727,7 +7732,7 @@ export default {
       if (!userRes.ok) {
         const detail = await discordErrorCode(userRes);
         console.log('discord-oauth: profile fetch failed', userRes.status, detail);
-        return loginErrorRedirect(url.origin, 'Discord sign-in failed (profile fetch: ' + detail + '). Please try again.');
+        return loginErrorRedirect(url.origin, 'Discord sign-in failed (could not load your profile: ' + detail + '). Please try again.');
       }
       const du = await userRes.json();
       const discordId = String(du.id);
@@ -7770,7 +7775,7 @@ export default {
         if (byEmail) {
           if (byEmail.banned) return loginErrorRedirect(url.origin, 'This account has been suspended.');
           if (!byEmail.email_verified) {
-            return loginErrorRedirect(url.origin, 'An account with your Discord email already exists but its email is unverified. Log in with your password, verify your email, then link Discord from your account page.');
+            return loginErrorRedirect(url.origin, 'An account with your Discord email already exists but isn\'t verified. Log in with your password, verify your email, then link Discord from your account page.');
           }
           await env.DB.prepare(
             `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
@@ -8012,7 +8017,7 @@ export default {
     if (method === 'GET' && path === '/api/page') {
       const type = url.searchParams.get('type') || 'character';
       const slug = url.searchParams.get('slug') || '';
-      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
       let row = await getEntityRow(env, type, slug);
       // Legacy collection rows have display-string PK slugs; resolve by id too.
       if (!row && type === 'collection') row = await findCollectionRow(env, slug);
@@ -8506,8 +8511,8 @@ export default {
     if (method === 'GET' && path === '/api/page-history') {
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
-      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      if (!slugParam) return jsonResponse({ error: 'No page given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
@@ -8578,7 +8583,7 @@ export default {
 
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
-      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'Missing type or slug' }, { status: 400 });
+      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'No page given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const owns = canEditRow(sess, row);
@@ -8611,8 +8616,8 @@ export default {
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
       const id = parseInt(url.searchParams.get('id'), 10) || 0;
-      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      if (!slugParam || !id) return jsonResponse({ error: 'Missing slug or id' }, { status: 400 });
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      if (!slugParam || !id) return jsonResponse({ error: 'No page or version given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
@@ -9318,7 +9323,7 @@ export default {
     if (method === 'POST' && path === '/api/report-broken-link') {
       const sess = await getSession(env, request);
       if (await rateLimited(env, request, 'brokenlink', 4, 3600, { sess })) {
-        return tooManyResponse('Thanks. That is enough reports from here for now; try again in an hour.', 3600);
+        return tooManyResponse('Thanks. That\'s enough reports for now. Try again in an hour.', 3600);
       }
       const b = await request.json().catch(() => ({}));
       const brokenPath = String(b.path || '').trim().slice(0, 300);
@@ -9433,7 +9438,7 @@ export default {
       // initial-letter avatar. The key is derived from the session, so users
       // can only ever touch their own avatar slot.
       if (path === '/api/account/avatar') {
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'avatar', 20, 3600)) {
           return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
@@ -9450,7 +9455,7 @@ export default {
           return jsonResponse({ ok: true, avatarUrl: null });
         }
         let data = String(b.data || '');
-        if (!data.startsWith('data:')) return jsonResponse({ error: 'Send the image as a data URL.' }, { status: 400 });
+        if (!data.startsWith('data:')) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
         const contentType = data.slice(5, data.indexOf(';'));
         const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[contentType];
         if (!ext) return jsonResponse({ error: 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
@@ -9494,7 +9499,7 @@ export default {
         // Sends a Resend email every time it succeeds, so without a limit any
         // account is a free mail cannon pointed at any address.
         if (!sess.isAdmin && await rateLimited(env, request, 'emailchange', 5, 3600, { sess })) {
-          return tooManyResponse('You have changed your email several times in the last hour. Try again later.', 3600);
+          return tooManyResponse('Too many email changes in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const email = String(b.email || '').trim();
@@ -9523,14 +9528,14 @@ export default {
           const limited = await writeLimited(env, request, sess, 'upload');
           if (limited) return limited;
         }
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
         let key, bytes, contentType, sourceETag, baseUpdatedAt = null;
         if (ct.includes('application/json')) {
           const b = await request.json().catch(() => ({}));
           key = b.key; sourceETag = cleanETag(b.sourceETag);
           if (b.baseUpdatedAt) baseUpdatedAt = String(b.baseUpdatedAt);
-          if (!key || !b.data) return jsonResponse({ error: 'Missing key or data' }, { status: 400 });
+          if (!key || !b.data) return jsonResponse({ error: 'No image was sent.' }, { status: 400 });
           let data = String(b.data);
           if (data.startsWith('data:')) {
             contentType = data.slice(5, data.indexOf(';'));
@@ -9544,7 +9549,7 @@ export default {
         }
         key = String(key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
-          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+          return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
         if (bytes.length > 8 * 1024 * 1024) {
           return jsonResponse({ error: 'Image is too large (8 MB max).' }, { status: 413 });
@@ -9606,7 +9611,7 @@ export default {
         if (!contentType) contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
         const mediaKey = key.startsWith('media/') ? mediaSource(key) : '';
         if (key.startsWith('media/') && (!mediaKey || !sourceETag || sourceETag !== await mediaOriginalETag(env, url.origin, mediaKey))) {
-          return jsonResponse({ error: 'The original image changed; regenerate this variant.' }, { status: 409 });
+          return jsonResponse({ error: 'The original image has changed, so this resized copy is out of date.' }, { status: 409 });
         }
         const stored = await env.ART.put(key, bytes, {
           httpMetadata: { contentType },
@@ -9645,13 +9650,13 @@ export default {
          SVG is a script-execution format wearing an image extension, and
          these files are served from the site's own origin. */
       if (path === '/api/attachment') {
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'attach', 60, 3600)) {
-          return tooManyResponse('That is a lot of images in an hour. Try again later.', 3600);
+          return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         let data = String(b.data || '');
-        if (!data) return jsonResponse({ error: 'Missing image data.' }, { status: 400 });
+        if (!data) return jsonResponse({ error: 'No image was sent.' }, { status: 400 });
         let declared = '';
         if (data.startsWith('data:')) {
           declared = data.slice(5, data.indexOf(';'));
@@ -9700,16 +9705,16 @@ export default {
           const limited = await writeLimited(env, request, sess, 'upload');
           if (limited) return limited;
         }
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const b = await request.json().catch(() => ({}));
         let key = String(b.key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (!key || key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
-          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+          return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
         let srcUrl;
         try { srcUrl = new URL(String(b.src || '')); } catch { srcUrl = null; }
         if (!srcUrl || srcUrl.protocol !== 'https:' || !Bloodstar.isBloodstarHost(srcUrl.hostname)) {
-          return jsonResponse({ error: 'That image is not on Bloodstar. Upload it through /api/upload instead.' }, { status: 400 });
+          return jsonResponse({ error: 'That image is not on Bloodstar.' }, { status: 400 });
         }
         // Both spellings of each Bloodstar host are accepted and only one of
         // them answers (see BLOODSTAR_HOST_CANON), so the image is asked for
@@ -9772,7 +9777,7 @@ export default {
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if ((row.status || 'published') !== 'published') {
@@ -9810,7 +9815,7 @@ export default {
         delete data.renameFrom;
         delete data.appearsInFrom;
         if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
-          return jsonResponse({ error: 'That is the page exactly as it stands, so there is nothing to suggest.' }, { status: 400 });
+          return jsonResponse({ error: 'Nothing has changed, so there is nothing to suggest.' }, { status: 400 });
         }
         await ensureSuggestTable(env);
         const open = await env.DB.prepare(
@@ -9848,7 +9853,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10) || 0;
         const action = String(b.action || '');
-        if (!id) return jsonResponse({ error: 'Missing suggestion id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No suggestion given.' }, { status: 400 });
         await ensureSuggestTable(env);
         const sug = await env.DB.prepare('SELECT * FROM suggestions WHERE id=?')
           .bind(id).first().catch(() => null);
@@ -9923,12 +9928,12 @@ export default {
       if (path === '/api/page-rollback') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
         if (row.status === 'deleted') {
-          return jsonResponse({ error: 'That page is in the trash. It has to be restored before it can be rolled back.' }, { status: 400 });
+          return jsonResponse({ error: 'That page is in the trash. Restore it first.' }, { status: 400 });
         }
         if (!sess.isAdmin && await isProtected(env, type, row.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -9965,7 +9970,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot post comments.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'comment', 30, 3600)) {
-          return tooManyResponse('Slow down — too many comments from this connection. Try again later.', 3600);
+          return tooManyResponse('Too many comments from this connection. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -10035,7 +10040,7 @@ export default {
         await ensureCommentTables(env);
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const target = await commentTarget(env, row.entity_type, row.slug);
@@ -10056,7 +10061,7 @@ export default {
         await ensureCommentTables(env);
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const target = await commentTarget(env, row.entity_type, row.slug);
@@ -10082,7 +10087,7 @@ export default {
         }
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT id FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row) return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const already = await env.DB.prepare(
@@ -10170,7 +10175,7 @@ export default {
         // to do.
         const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
         if (existing && !perm) {
-          return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
+          return jsonResponse({ error: 'Another account already has a character with that name. Pick a different name.' }, { status: 403 });
         }
         if (existing && !permCanWrite(perm)) {
           return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
@@ -10291,8 +10296,8 @@ export default {
         // live page by clearing one field. Refuse that save instead.
         if (existing && perm !== 'owner' && status === 'published' && needed.length) {
           return jsonResponse({
-            error: 'That edit would leave the page without ' + Classify.listPhrase(needed) +
-              ', which a published page needs. Put that back and save again.',
+            error: 'A published page needs ' + Classify.listPhrase(needed) +
+              '. Put that back and save again.',
             missingForPublish: needed
           }, { status: 400 });
         }
@@ -10372,8 +10377,8 @@ export default {
           iconBlocked,
           missingForPublish: needed,
           notice: iconBlocked
-            ? 'Saved as a draft: a character needs ' + Classify.listPhrase(needed) +
-              ' before it can be published. Add that and publish again.'
+            ? 'Saved as a draft. Add ' + Classify.listPhrase(needed) +
+              ' to publish it.'
             : undefined
         });
       }
@@ -10391,7 +10396,7 @@ export default {
       // no activity is logged — a bookmark is not an edit.
       if (path === '/api/favorite') {
         if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
-          return tooManyResponse('You have changed a lot of favorites in the last hour. Take a short break and try again.', 3600);
+          return tooManyResponse('Too many favorite changes in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => null);
         if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
@@ -10529,7 +10534,7 @@ export default {
         const kebab = s => String(s || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
         c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
-        if (!c.id) return jsonResponse({ error: 'Could not derive a collection id from that name.' }, { status: 400 });
+        if (!c.id) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         const pkSlug = existing ? existing.slug : c.id;
         if (!existing) {
           // creating: the id must not collide with another collection's id
@@ -10622,9 +10627,9 @@ export default {
           if (limited) return limited;
         }
         const s = await request.json();
-        if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+        if (!s || !s.slug) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
-          return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
+          return jsonResponse({ error: 'Invalid script URL.' }, { status: 400 });
         }
         const existing = await getEntityRow(env, 'script', s.slug);
         const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
@@ -10854,7 +10859,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         let row = await getEntityRow(env, type, String(b.slug || ''));
         // Legacy collections have display-string PK slugs; the URL uses the id.
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
@@ -10873,8 +10878,8 @@ export default {
         const pubMissing = type === 'character' ? Classify.missingForPublish(pubData) : [];
         if (status === 'published' && pubMissing.length) {
           return jsonResponse({
-            error: 'This character needs ' + Classify.listPhrase(pubMissing) +
-                   ' before it can be published. Open the editor and add that.',
+            error: 'Add ' + Classify.listPhrase(pubMissing) +
+                   ' in the editor before publishing this character.',
             needsIcon: true, missingForPublish: pubMissing
           }, { status: 400 });
         }
@@ -10910,7 +10915,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         let row = await getEntityRow(env, type, String(b.slug || ''));
         // Legacy collections have display-string PK slugs; the URL uses the id.
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
@@ -11173,7 +11178,7 @@ export default {
         await logActivity(env, sess, 'contact', 'message', null, category);
         return jsonResponse({
           ok: true, id: (ins.meta && ins.meta.last_row_id) || null,
-          message: 'Message sent — the admins will see it on their dashboard.'
+          message: 'Message sent. The admins will see it on their dashboard.'
         });
       }
 
@@ -11212,7 +11217,7 @@ export default {
         const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM modmail_replies WHERE message_id=?')
           .bind(id).first().catch(() => ({ n: 0 }));
         if ((Number(n && n.n) || 0) >= 200) {
-          return jsonResponse({ error: 'This conversation is very long — please start a new message instead.' }, { status: 400 });
+          return jsonResponse({ error: 'This conversation is too long to continue. Please start a new message.' }, { status: 400 });
         }
         const ins = await env.DB.prepare(
           'INSERT INTO modmail_replies (message_id, user_id, is_staff, body, images) VALUES (?,?,0,?,?)'
@@ -11227,7 +11232,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot send messages. You can contact the admins from your account page.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'dm', 20, 300)) {
-          return tooManyResponse('You are sending messages very quickly — wait a minute and try again.', 300);
+          return tooManyResponse('You are sending messages very quickly. Wait a minute and try again.', 300);
         }
         const b = await request.json().catch(() => ({}));
         const to = String(b.to || '').trim();

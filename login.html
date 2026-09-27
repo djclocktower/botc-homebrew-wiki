@@ -218,7 +218,7 @@
           <div class="login-field">
             <label for="username">Username or Email</label>
             <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false">
-            <div class="login-hint">Your username is the @name on your account page. The name shown on your profile works too, and so does your email address.</div>
+            <div class="login-hint">Your @username, display name or email address all work.</div>
           </div>
           <div class="login-field">
             <label for="password">Password</label>
@@ -403,8 +403,8 @@
       postJSON('/api/forgot-password', { email: email })
         .then(function(res){
           if (res.ok && res.body.ok) {
-            setMsg('success', res.body.message || 'Reset link sent — check your email.');
-            btn.textContent = 'Sent ✓';
+            setMsg('success', res.body.message || 'Reset link sent. Check your email.');
+            btn.innerHTML = 'Sent <span class="ico ico-check" aria-hidden="true"></span>';
           } else {
             setMsg('error', res.body.error || 'Could not send reset email.');
             btn.disabled = false; btn.textContent = 'Send Reset Link';
@@ -428,7 +428,7 @@
           if (res.ok && res.body.ok) {
             out.style.color = '#2a6e2a';
             out.textContent = 'Loaded ' + res.body.characters + ' characters, ' + res.body.collections + ' collections, ' + res.body.scripts + ' scripts.';
-            btn.textContent = 'Seed complete ✓';
+            btn.innerHTML = 'Seed complete <span class="ico ico-check" aria-hidden="true"></span>';
           } else {
             out.style.color = '#9a2c2c';
             out.textContent = res.body.error || 'Seed failed.';

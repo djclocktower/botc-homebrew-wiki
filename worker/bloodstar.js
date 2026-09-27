@@ -95,7 +95,7 @@ export function bloodstarSource(input) {
   try { u = new URL(raw); } catch { return { error: 'That does not look like a link.' }; }
   const host = bloodstarHost(u.hostname);
   if (!host) {
-    return { error: 'That is not a Bloodstar link. This tool reads projects on bloodstar.clocktica.com and bloodstar.xyz only.' };
+    return { error: 'That is not a Bloodstar link. Use a link from bloodstar.clocktica.com or bloodstar.xyz.' };
   }
   // /p/{user}/{project}/[file]
   const parts = u.pathname.split('/').filter(Boolean);
