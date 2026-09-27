@@ -5,10 +5,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bloodstar Import — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Paste a Bloodstar almanac link and bring the whole project onto the wiki: every character, its art, its almanac text, the jinxes, the night order and the script or collection page.">
+<meta name="description" content="Paste a Bloodstar link to import a project onto the wiki: its characters, art, almanac text, jinxes, night order and a script or collection page.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Bloodstar Import">
-<meta property="og:description" content="Bring a whole Bloodstar project onto the wiki in one go — art, almanacs, jinxes and all.">
+<meta property="og:description" content="Import a Bloodstar project onto the wiki with its art, almanac text and jinxes.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -162,15 +162,14 @@
     <!-- ── 1. the link ── -->
     <div class="bs-card">
       <h2>Import from Bloodstar</h2>
-      <p class="bs-sub">Paste a link to a Bloodstar project and the whole thing comes across:
-        every character with its art, its flavour text, its overview, its examples, its how-to-run
-        and its tips, plus the jinxes, the night order, and the synopsis and changelog as a script
-        or collection page here. Both of the project's published files are read — the
-        <code>script.json</code> for the mechanics and the <code>almanac.html</code> for everything
-        a reader actually comes to an almanac for.</p>
+      <p class="bs-sub">Paste a link to a Bloodstar project to import it. Every character comes
+        across with its art, flavour text, overview, examples, how to run and tips, plus the jinxes,
+        the night order, and the synopsis and changelog as a script or collection page. The importer
+        reads the project's <code>script.json</code> for the mechanics and its
+        <code>almanac.html</code> for the almanac text.</p>
       <div class="bs-fld">
         <label for="bs-url">Bloodstar link
-          <span class="hint">— the almanac, the script.json or the project folder, any of them, from either bloodstar.clocktica.com or the old bloodstar.xyz</span></label>
+          <span class="hint">(the almanac, the script.json or the project folder, on bloodstar.clocktica.com or the old bloodstar.xyz)</span></label>
         <input type="url" id="bs-url" placeholder="https://bloodstar.clocktica.com/p/Author/ProjectName/almanac.html" autocomplete="off">
       </div>
       <button type="button" class="btn btn-blue" id="bs-read">Read project</button>
@@ -196,11 +195,11 @@
         <h2>Where it goes</h2>
         <div class="bs-dest" id="bs-dest">
           <label data-for="script"><input type="radio" name="bs-dest" value="script" checked><span class="t">A script page</span>
-            <span class="d">A <code>/s/</code> page with the roster, the night order, the jinxes and the synopsis. What a Bloodstar project usually is.</span></label>
+            <span class="d">A <code>/s/</code> page with the roster, the night order, the jinxes and the synopsis. Most Bloodstar projects are scripts.</span></label>
           <label data-for="collection"><input type="radio" name="bs-dest" value="collection"><span class="t">A collection page</span>
-            <span class="d">A <code>/collection/</code> page holding the characters as a set. Right when the project is a character pack rather than one script.</span></label>
+            <span class="d">A <code>/collection/</code> page holding the characters as a set. Use this for a character pack.</span></label>
           <label data-for="characters"><input type="radio" name="bs-dest" value="characters"><span class="t">Characters only</span>
-            <span class="d">Make the character pages and nothing else. No script or collection page, no night order, no synopsis.</span></label>
+            <span class="d">Only the character pages, with no script or collection page, night order or synopsis.</span></label>
         </div>
 
         <h3>The pages themselves</h3>
@@ -211,7 +210,7 @@
               <option value="draft">Save everything as drafts (recommended)</option>
               <option value="published">Publish immediately</option>
             </select>
-            <span class="hint">Drafts are yours alone until you publish them, which is worth having for an import this size.</span>
+            <span class="hint">Drafts are yours alone until you publish them.</span>
           </div>
           <div class="bs-fld">
             <label for="bs-creator">Creator <span class="hint">(on every page)</span></label>
@@ -226,11 +225,9 @@
 
       <div class="bs-card">
         <h2>Official characters</h2>
-        <p class="bs-sub">Scripts carry official characters alongside homebrew ones, and Bloodstar
-          exports them as ordinary entries. This wiki is for homebrew, so an official character
-          <strong>never gets a page here</strong> — it already has one on the official wiki, and its
-          art is not ours to host. The script keeps it: the roster points at the official character
-          and its name on the page links straight through. That is not a setting.</p>
+        <p class="bs-sub">Bloodstar exports official characters as ordinary entries. This wiki is
+          for homebrew, so an official character <strong>never gets a page here</strong>. It stays on
+          the script, and its name links to its page on the official wiki.</p>
         <div class="bs-fld">
           <label for="bs-reworked">Characters with an official NAME but a different ability</label>
           <select id="bs-reworked">
@@ -238,14 +235,14 @@
             <option value="link">Point the roster at the official character</option>
             <option value="skip">Leave it out</option>
           </select>
-          <span class="hint">A reworked character is a different character wearing a familiar name — pointing at the official one would put an ability on the script that the author did not write.</span>
+          <span class="hint">A reworked character is a different character with a familiar name. Pointing it at the official one would put the wrong ability on the script.</span>
         </div>
       </div>
 
       <div class="bs-card">
         <h2>What the almanac becomes</h2>
-        <p class="bs-sub">Every line of this is what a character page here ends up saying. The
-          defaults line each Bloodstar section up with the wiki section that does the same job.</p>
+        <p class="bs-sub">Choose where each almanac section goes on the character pages. The
+          defaults put each one in the wiki section that does the same job.</p>
         <div class="bs-row2">
           <div class="bs-fld">
             <label for="bs-flavour">Flavour text</label>
@@ -275,20 +272,20 @@
         </div>
         <label class="bs-check"><input type="checkbox" id="bs-examples" checked><span>Examples<span class="hint">Bloodstar's Examples section becomes the page's Examples.</span></span></label>
         <label class="bs-check"><input type="checkbox" id="bs-howtorun" checked><span>How to Run<span class="hint">The storyteller instructions, as they are written.</span></span></label>
-        <label class="bs-check"><input type="checkbox" id="bs-credit" checked><span>Credit lines<span class="hint">Bloodstar's attribution field. An art credit fills in "Icon by"; anything else becomes a Credit box on the page. It is somebody's name, and it is the one thing an import cannot put back.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-credit" checked><span>Credit lines<span class="hint">Bloodstar's attribution field. An art credit fills in "Icon by"; anything else becomes a Credit box on the page.</span></span></label>
       </div>
 
       <div class="bs-card">
         <h2>Art</h2>
-        <label class="bs-check"><input type="checkbox" id="bs-art" checked><span>Copy the character icons<span class="hint">Each icon is copied into this wiki's own storage, so the pages do not depend on Bloodstar staying up. Without this the pages point at Bloodstar's copy.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-art" checked><span>Copy the character icons<span class="hint">Each icon is copied to this wiki, so the pages keep their art if Bloodstar goes down. Without this, the pages link to the icons on Bloodstar.</span></span></label>
         <label class="bs-check"><input type="checkbox" id="bs-logo-opt" checked><span>The project logo<span class="hint">Becomes the script or collection page's logo.</span></span></label>
-        <label class="bs-check"><input type="checkbox" id="bs-bg" checked><span>The almanac's background image<span class="hint">If the project set one in its own styling, it becomes the page background here.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-bg" checked><span>The almanac's background image<span class="hint">If the project has one, it becomes the script or collection page's background.</span></span></label>
       </div>
 
       <div class="bs-card" id="bs-pagecard">
         <h2>The project's own pages</h2>
-        <p class="bs-sub">The synopsis, the overview and the changelog are pages in the Bloodstar
-          almanac. Here they belong on the script or collection page.</p>
+        <p class="bs-sub">The almanac's synopsis, overview and changelog pages go on the script or
+          collection page.</p>
         <div class="bs-row2">
           <div class="bs-fld">
             <label for="bs-synopsis">Synopsis</label>
@@ -315,7 +312,7 @@
             <option value="box">A Changelog box on the page</option>
             <option value="skip">Leave it out</option>
           </select>
-          <span class="hint">A changelog is long and text-first, which is what wiki pages are for. It is linked from the script page's Pages section.</span>
+          <span class="hint">As a wiki page, it is linked from the Pages section of the script or collection page.</span>
         </div>
         <h3>Everything else</h3>
         <div class="bs-fld">
@@ -325,11 +322,11 @@
             <option value="script">Keep them on this script only</option>
             <option value="skip">Leave them out</option>
           </select>
-          <span class="hint">A jinx on a character travels with it to every script that holds both ends. A jinx between two official characters can only ever be a script rule, and is stored that way whatever this says.</span>
+          <span class="hint">A jinx written onto a character shows on every script that has both characters. A jinx between two official characters always stays on this script, whatever you pick here.</span>
         </div>
-        <label class="bs-check"><input type="checkbox" id="bs-nightorder" checked><span>The almanac's night order<span class="hint">Bloodstar prints the two night lists in the order the author arranged them. Without this the page falls back to each character's own wake number.</span></span></label>
-        <label class="bs-check"><input type="checkbox" id="bs-mechanics" checked><span>Reminder tokens, setup flags and night positions<span class="hint">Everything the official app needs to actually run the script.</span></span></label>
-        <label class="bs-check"><input type="checkbox" id="bs-nightreminders" checked><span>Night reminder text<span class="hint">What the Storyteller reads at each wake. Notes an author left to themselves — a bare link, a "this is not the script" notice — are dropped either way.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-nightorder" checked><span>The almanac's night order<span class="hint">Keeps the author's order for the two night lists. Without this, the page orders them by each character's own wake number.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-mechanics" checked><span>Reminder tokens, setup flags and night positions<span class="hint">What the official app needs to run the script.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-nightreminders" checked><span>Night reminder text<span class="hint">What the Storyteller reads at each wake. Notes the author left for themselves, such as a bare link or a "this is not the script" notice, are always dropped.</span></span></label>
         <label class="bs-check"><input type="checkbox" id="bs-bootlegger" checked><span>House rules (bootlegger)<span class="hint">Shown on the script page as House Rules and carried into its export.</span></span></label>
         <label class="bs-check"><input type="checkbox" id="bs-almanaclink" checked><span>Link back to the Bloodstar almanac<span class="hint">Kept on the script so the official app can still open the original.</span></span></label>
 
@@ -351,10 +348,10 @@
 
       <div class="bs-card">
         <h2>Tags</h2>
-        <p class="bs-sub">Bloodstar has no tags and this wiki leans on them — a character
-          with none reads as <strong>Partial</strong> and is hidden from the browse pages until
-          someone adds one. Pick the characters a tag is true of, then give it to all of them
-          at once. <span id="bs-tag-untagged"></span></p>
+        <p class="bs-sub">Bloodstar has no tags. On this wiki, a character with none is
+          <strong>Partial</strong> and hidden from the browse pages until someone adds one. Tick
+          the characters a tag fits, then give it to all of them at once.
+          <span id="bs-tag-untagged"></span></p>
 
         <div class="bs-fld" style="margin-bottom:9px">
           <input type="text" id="bs-tag-search" placeholder="Search characters by name, team or ability&hellip;" autocomplete="off">
@@ -635,7 +632,7 @@
         (bundle.background ? ' &middot; a background image' : '');
 
       $('bs-warnings').innerHTML = (bundle.warnings && bundle.warnings.length)
-        ? '<div class="bs-warn"><strong>Worth knowing:</strong><ul>' +
+        ? '<div class="bs-warn"><strong>Notes:</strong><ul>' +
           bundle.warnings.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>'
         : '';
 
@@ -760,7 +757,7 @@
       if (plan.dropped.length) {
         bits.push('<li><b>' + plan.dropped.length + '</b> jinx' +
           (plan.dropped.length === 1 ? '' : 'es') +
-          ' cannot be stored at all, neither character comes across: ' +
+          ' cannot be stored because neither character is being imported: ' +
           esc(plan.dropped.slice(0, 8).join(', ')) +
           (plan.dropped.length > 8 ? ', and ' + (plan.dropped.length - 8) + ' more' : '') + '.</li>');
       }
@@ -1113,7 +1110,7 @@
             });
           }).then(function () { i++; return next(); })
             .catch(function (err) {
-              if (err && err.rateLimited) { halted = err; rowState(at, 'err', '&#10007; stopped — hourly limit'); return; }
+              if (err && err.rateLimited) { halted = err; rowState(at, 'err', '&#10007; stopped: hourly limit'); return; }
               failed++;
               rowState(at, 'err', '&#10007; ' + esc(err.message));
               i++; return next();
@@ -1162,7 +1159,7 @@
           runSay('err', esc(halted.message) +
             '<br>Stopped after <b>' + made.length + '</b> of ' + creating.length +
             ' character pages. Leave this page open, come back ' + waitPhrase(halted.retryAfter) +
-            ' and press Import again — the pages already made are skipped and the rest carry on.');
+            ' and press Import again. The pages already made are skipped and the rest carry on.');
           return;
         }
         var href = opts.destination === 'collection' ? '/collection/' + pageSlug
@@ -1174,9 +1171,9 @@
         if (extras.changelogError) msg += '<br>The changelog page could not be made: ' + esc(extras.changelogError);
         if (extras.jinxDropped && extras.jinxDropped.length) {
           msg += '<br>' + extras.jinxDropped.length + ' jinx' + (extras.jinxDropped.length === 1 ? '' : 'es') +
-            ' could not be placed (neither character came across): ' + esc(extras.jinxDropped.join(', ')) + '.';
+            ' could not be placed because neither character was imported: ' + esc(extras.jinxDropped.join(', ')) + '.';
         }
-        if (failed) msg += '<br><b>' + failed + '</b> character page' + (failed === 1 ? '' : 's') + ' failed — see the table above.';
+        if (failed) msg += '<br><b>' + failed + '</b> character page' + (failed === 1 ? '' : 's') + ' failed. See the table above.';
         if (opts.status === 'draft') msg += '<br>Everything is a draft. Find it under <a href="/drafts">Your Drafts</a> when you are ready to publish.';
         runSay(failed ? 'err' : 'ok', msg);
       }

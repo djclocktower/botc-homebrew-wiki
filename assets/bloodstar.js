@@ -524,7 +524,7 @@
     if (opts.changelog !== 'wikipage' || !prose.changelog || !prose.changelog.wiki) return null;
     var meta = bundle.meta || {};
     return {
-      title: (meta.name ? meta.name + ' — Changelog' : 'Changelog'),
+      title: (meta.name ? meta.name + ' Changelog' : 'Changelog'),
       subtitle: 'Imported from the Bloodstar almanac',
       author: opts.creator || meta.author || '',
       body: prose.changelog.wiki,
