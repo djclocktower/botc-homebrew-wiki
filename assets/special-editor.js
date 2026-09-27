@@ -107,7 +107,7 @@
         '<input class="sp-value" type="number" step="1" placeholder="number" ' +
           'aria-label="Number, if the property takes one" value="' +
           esc(s.value === 0 || s.value ? s.value : '') + '">' +
-        '<button type="button" class="btn btn-ghost btn-sm sp-del" aria-label="Remove this property">✕</button>';
+        '<button type="button" class="btn btn-ghost btn-sm sp-del" aria-label="Remove this property"><span class="ico ico-x" aria-hidden="true"></span></button>';
       row.querySelector('.sp-del').addEventListener('click', function () {
         row.remove();
         changed();

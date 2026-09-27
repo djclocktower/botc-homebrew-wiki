@@ -119,7 +119,8 @@
         var controls = el('div', 'aa-controls');
         controls.appendChild(size.row);
         controls.appendChild(rot.row);
-        var reset = el('button', 'aa-mini', '↺ Start over');
+        var reset = el('button', 'aa-mini');
+        reset.innerHTML = '<span class="ico ico-reset" aria-hidden="true"></span> Start over';
         reset.type = 'button';
         var btnRow = el('div', 'aa-btns');
         btnRow.appendChild(reset);

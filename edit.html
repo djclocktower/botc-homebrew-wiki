@@ -166,7 +166,7 @@
       <div class="fld">
         <label for="name">Character name *</label>
         <input type="text" id="name">
-        <div class="sub" style="margin-top:5px">Slug: <span class="slug-pill" id="slug-display">&hellip;</span></div>
+        <div class="sub" style="margin-top:5px">Page name: <span class="slug-pill" id="slug-display">&hellip;</span></div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -191,7 +191,7 @@
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(also the JSON ability)</span></label>
         <textarea id="ability"></textarea>
-        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge ↗</a>
+        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge <span class="ico ico-external" aria-hidden="true"></span></a>
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
@@ -289,12 +289,12 @@
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="current art">
         <div id="artStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
           <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame. Resize restores that fit; Adjust lets you move and size it by hand.</div>
         </div>
         <div class="sub" style="margin-top:6px">
-          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
+          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing <span class="ico ico-external" aria-hidden="true"></span></a>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
         <!-- Display size: how big the icon is DRAWN on the character page, and
@@ -319,20 +319,20 @@
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAltStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove alternate art</button>
       </div>
       <div class="fld" data-art-slot="alt2">
         <label for="artAlt2">Evil art</label>
         <input type="file" id="artAlt2" accept="image/*">
         <img id="artAlt2Thumb" class="artthumb" alt="evil art">
         <div id="artAlt2StdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAlt2Std">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAlt2Adjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Std"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Adjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove evil art</button>
       </div>
       <!-- The printable token — the Token Tool's finished token for this
            character, saved to art/{identity}-token.png. The tick puts it in
@@ -348,8 +348,8 @@
         <img id="tokenThumb" class="artthumb" alt="printable token">
         <div class="sub" id="tokenHint" style="margin-top:6px"></div>
         <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm" id="tokenEdit">&#9998; Edit in the Token Tool &#8599;</button>
-          <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none">&#10005; Remove token image</button>
+          <button type="button" class="btn btn-sm" id="tokenEdit"><span class="ico ico-edit" aria-hidden="true"></span> Edit in the Token Tool <span class="ico ico-external" aria-hidden="true"></span></button>
+          <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none"><span class="ico ico-x" aria-hidden="true"></span> Remove token image</button>
         </div>
         <label for="tokenFile" class="sub" style="display:block;margin-top:8px">Or upload a finished token image to replace it:</label>
         <input type="file" id="tokenFile" accept="image/*">
@@ -370,11 +370,11 @@
         </div>
         <div class="row2">
           <div class="fld">
-            <label for="firstNight">First-night wake priority <span class="hint">(0 = doesn&rsquo;t wake)</span></label>
+            <label for="firstNight">First-night order <span class="hint">(0 = doesn&rsquo;t wake)</span></label>
             <input type="number" id="firstNight" value="0" min="0" step="0.0001">
           </div>
           <div class="fld">
-            <label for="otherNight">Other-nights wake priority</label>
+            <label for="otherNight">Other-nights order</label>
             <input type="number" id="otherNight" value="0" min="0" step="0.0001">
           </div>
         </div>
@@ -462,7 +462,7 @@
 
       <fieldset>
         <legend>Custom JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 10px">Replaces the auto-generated JSON on the character page. Leave blank to keep it.</p>
+        <p class="sub" style="margin:0 0 10px">Replaces the automatic JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
       </fieldset>
 
@@ -628,7 +628,7 @@
           warn.className = 'jx-conflict';
           row.appendChild(warn);
         }
-        warn.innerHTML = '\u26a0 <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
+        warn.innerHTML = '<span class="ico ico-warning" aria-hidden="true"></span> <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
           jxEsc(String(hit.text).slice(0, 140)) + '\u201d. Their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + jxEsc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
@@ -665,7 +665,7 @@
       row.innerHTML =
         '<input type="text" class="jx-name" placeholder="Jinxed character">' +
         '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
-        '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm jx-del" aria-label="Remove jinx"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
@@ -692,7 +692,7 @@
       var row = document.createElement('div'); row.className = 'box-row';
       row.innerHTML =
         '<input type="text" class="bx-title" placeholder="Box title">' +
-        '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm bx-del" aria-label="Remove box"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
       if(title)   row.querySelector('.bx-title').value   = title;
@@ -1043,15 +1043,15 @@
     // art AND art already on the character (loaded same-origin on edit).
     function standardizeArt(thumbId, btnId, onDone) {
       var th = $(thumbId); if (!th || !th.src || typeof normalizeArtDataURL !== 'function') return;
-      var btn = $(btnId), label = btn.textContent;
+      var btn = $(btnId), label = btn.innerHTML;
       btn.disabled = true; btn.textContent = 'Resizing…';
       normalizeArtDataURL(th.src).then(function(out){
         th.src = out; onDone(out);
-        btn.textContent = '✓ Resized'; update();
-        setTimeout(function(){ btn.textContent = label; btn.disabled = false; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Resized'; update();
+        setTimeout(function(){ btn.innerHTML = label; btn.disabled = false; }, 1400);
       }).catch(function(){
         btn.textContent = 'Could not resize'; btn.disabled = false;
-        setTimeout(function(){ btn.textContent = label; }, 2200);
+        setTimeout(function(){ btn.innerHTML = label; }, 2200);
       });
     }
     $('artStd').addEventListener('click', function(){
@@ -1065,14 +1065,14 @@
     function adjustArt(getSrc, thumbId, btnId, title, onDone) {
       var src = getSrc();
       if (!src || !window.ArtAdjust) return;
-      var btn = $(btnId), label = btn.textContent;
+      var btn = $(btnId), label = btn.innerHTML;
       btn.disabled = true;
       window.ArtAdjust.open(src, { title: title }).then(function(out){
         btn.disabled = false;
         if (!out) return;               // cancelled; leave the art alone
         $(thumbId).src = out; onDone(out); update();
-        btn.textContent = '✓ Adjusted';
-        setTimeout(function(){ btn.textContent = label; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Adjusted';
+        setTimeout(function(){ btn.innerHTML = label; }, 1400);
       }).catch(function(err){
         btn.disabled = false;
         alert((err && err.message) || 'That image could not be adjusted here.');
@@ -1147,7 +1147,7 @@
         .then(function(r){ return r.json(); })
         .then(function(res){
           if (!res || res.error) throw new Error((res && res.error) || 'Could not send that suggestion.');
-          setStatus('ok', '\u2713 Sent. ' + esc(originalEntry && originalEntry.creator || 'The creator') +
+          setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Sent. ' + esc(originalEntry && originalEntry.creator || 'The creator') +
             ' will review it on <a href="suggestions?type=character&slug=' + encodeURIComponent(originalSlug) +
             '">the suggestions page</a>. You\u2019ll get a message with the answer.');
         })
@@ -1853,7 +1853,7 @@
       }
 
       function writeRow(){
-        setStatus('work','Saving&hellip; updating database');
+        setStatus('work','Saving&hellip; updating the page');
         // Build the full character entry, preserving any fields from the original
         var base = originalEntry || {};
         var entry = Object.assign({}, base, {
@@ -1981,14 +1981,14 @@
           ? ' This page moved to <strong>/' + page + '</strong>; the old link still redirects here.'
           : '';
         if (currentStatus === 'draft') {
-          setStatus('ok','&#10003; Draft saved (not public).' + movedNote + ' <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
+          setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public).' + movedNote + ' <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
         } else {
-          setStatus('ok','&#10003; Saved! Live now.' + movedNote + ' <a href="'+url+'" target="_blank">View character &rarr;</a>');
+          setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Saved! Live now.' + movedNote + ' <a href="'+url+'" target="_blank">View character &rarr;</a>');
         }
         $('save').disabled = false;
         $('save-publish').disabled = false;
       }).catch(function(err){
-        setStatus('err','&#10007; '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
         $('save').disabled = false;
         $('save-publish').disabled = false;
       });
@@ -2014,16 +2014,16 @@
       .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
       .then(function(res){
         if(res.status === 200 && res.body.ok){
-          setStatus('ok','&#10003; Deleted. Redirecting&hellip;');
+          setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
-          setStatus('err','&#10007; '+((res.body && res.body.error) || 'Delete failed.'));
+          setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+((res.body && res.body.error) || 'Delete failed.'));
           del.disabled = false; del.textContent = 'Delete Character';
           $('save').disabled = false; $('save-publish').disabled = false;
         }
       })
       .catch(function(err){
-        setStatus('err','&#10007; '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
         del.disabled = false; del.textContent = 'Delete Character';
         $('save').disabled = false; $('save-publish').disabled = false;
       });
@@ -2042,7 +2042,7 @@
 
     // ── on load: fetch character data (drafts included if you own them) ──
     if(!originalSlug){
-      $('loading').textContent = 'No character specified. Add ?c=slug to the URL.';
+      $('loading').textContent = 'No character chosen. Open this page from a character\u2019s Edit button.';
     } else {
       fetch('/api/page?type=character&slug='+encodeURIComponent(originalSlug), { credentials: 'same-origin' })
         .then(function(r){

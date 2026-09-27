@@ -165,7 +165,7 @@
       <!-- import from JSON -->
       <fieldset class="import">
         <legend>Import from JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 8px">Upload or paste a character&rsquo;s official-schema JSON to fill in the form.</p>
+        <p class="sub" style="margin:0 0 8px">Upload or paste a character&rsquo;s script JSON to fill in the form.</p>
         <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
         <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
         <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
@@ -200,7 +200,7 @@
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(bold line at top of Summary; also the JSON ability)</span></label>
         <textarea id="ability" placeholder="Each night, choose a player: &hellip;"></textarea>
-        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge ↗</a>
+        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge <span class="ico ico-external" aria-hidden="true"></span></a>
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
@@ -298,12 +298,12 @@
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="art preview">
         <div id="artStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
           <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame. Resize restores that fit; Adjust lets you move and size it by hand.</div>
         </div>
         <div class="sub" style="margin-top:6px">
-          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
+          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing <span class="ico ico-external" aria-hidden="true"></span></a>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
         <!-- Display size: how big the icon is DRAWN on the character page, and
@@ -328,20 +328,20 @@
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAltStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove alternate art</button>
       </div>
       <div class="fld" data-art-slot="alt2">
         <label for="artAlt2">Evil art</label>
         <input type="file" id="artAlt2" accept="image/*">
         <img id="artAlt2Thumb" class="artthumb" alt="evil art preview">
         <div id="artAlt2StdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAlt2Std">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAlt2Adjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Std"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Adjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove evil art</button>
       </div>
       <!-- The printable token — the Token Tool's finished token, saved to
            art/{identity}-token.png. The tick puts it in the page's icon
@@ -356,7 +356,7 @@
         </div>
         <input type="file" id="tokenFile" accept="image/*">
         <img id="tokenThumb" class="artthumb" alt="printable token preview">
-        <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px">&#10005; Remove token image</button>
+        <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove token image</button>
         <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box to draw a default token from your art, or upload your own. After saving, you can fine-tune it in the Token Tool.</div>
       </div>
 
@@ -376,11 +376,11 @@
         </div>
         <div class="row2">
           <div class="fld">
-            <label for="firstNight">First-night wake priority <span class="hint">(0 = doesn't wake; higher = later)</span></label>
+            <label for="firstNight">First-night order <span class="hint">(0 = doesn't wake; higher = later)</span></label>
             <input type="number" id="firstNight" value="0" min="0" step="0.0001">
           </div>
           <div class="fld">
-            <label for="otherNight">Other-nights wake priority <span class="hint">(0 = doesn't wake)</span></label>
+            <label for="otherNight">Other-nights order <span class="hint">(0 = doesn't wake)</span></label>
             <input type="number" id="otherNight" value="0" min="0" step="0.0001">
           </div>
         </div>
@@ -456,7 +456,7 @@
 
       <fieldset>
         <legend>Custom JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 10px">Replaces the auto-generated JSON on the character page. Leave blank to keep it.</p>
+        <p class="sub" style="margin:0 0 10px">Replaces the automatic JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
       </fieldset>
 
@@ -612,7 +612,7 @@
           warn.className = 'jx-conflict';
           row.appendChild(warn);
         }
-        warn.innerHTML = '\u26a0 <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
+        warn.innerHTML = '<span class="ico ico-warning" aria-hidden="true"></span> <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
           esc(String(hit.text).slice(0, 140)) + '\u201d. Their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + esc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
@@ -666,7 +666,7 @@
       row.innerHTML =
         '<input type="text" class="jx-name" placeholder="Jinxed character (e.g. Goon)">' +
         '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
-        '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm jx-del" aria-label="Remove jinx"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
@@ -694,7 +694,7 @@
       row.className = 'box-row';
       row.innerHTML =
         '<input type="text" class="bx-title" placeholder="Box title">' +
-        '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm bx-del" aria-label="Remove box"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
       if (title)   row.querySelector('.bx-title').value   = title;
@@ -1050,15 +1050,15 @@
     // ── opt-in: standardize icon to the 591x591 frame ──────────────
     function standardizeInto(getUrl, setUrl, thumbId, btnId) {
       var url = getUrl(); if (!url || typeof normalizeArtDataURL !== 'function') return;
-      var btn = $(btnId), label = btn.textContent, th = $(thumbId);
+      var btn = $(btnId), label = btn.innerHTML, th = $(thumbId);
       btn.disabled = true; btn.textContent = 'Resizing…';
       normalizeArtDataURL(url).then(function (out) {
         setUrl(out); th.src = out;
-        btn.textContent = '✓ Resized'; update();
-        setTimeout(function () { btn.textContent = label; btn.disabled = false; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Resized'; update();
+        setTimeout(function () { btn.innerHTML = label; btn.disabled = false; }, 1400);
       }).catch(function () {
         btn.textContent = 'Could not resize'; btn.disabled = false;
-        setTimeout(function () { btn.textContent = label; }, 2200);
+        setTimeout(function () { btn.innerHTML = label; }, 2200);
       });
     }
     $('artStd').addEventListener('click', function () {
@@ -1073,14 +1073,14 @@
     function adjustInto(getSrc, setUrl, thumbId, btnId, title) {
       var src = getSrc();
       if (!src || !window.ArtAdjust) return;
-      var btn = $(btnId), label = btn.textContent;
+      var btn = $(btnId), label = btn.innerHTML;
       btn.disabled = true;
       window.ArtAdjust.open(src, { title: title }).then(function (out) {
         btn.disabled = false;
         if (!out) return;                 // cancelled; leave the art alone
         setUrl(out); $(thumbId).src = out; update();
-        btn.textContent = '✓ Adjusted';
-        setTimeout(function () { btn.textContent = label; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Adjusted';
+        setTimeout(function () { btn.innerHTML = label; }, 1400);
       }).catch(function (err) {
         btn.disabled = false;
         alert((err && err.message) || 'That image could not be adjusted here.');
@@ -1157,7 +1157,7 @@
           $('arturl').textContent = ''; msg.className = 'ok'; msg.textContent = 'Imported successfully (icon loaded).'; update();
         }).catch(function () {
           artDataURL = null;
-          $('arturl').innerHTML = 'Icon could not be auto-loaded (the host blocks it). Original URL: <a href="' + imgUrl + '" target="_blank">' + imgUrl + '</a><br>Please upload the art manually above.';
+          $('arturl').innerHTML = 'Icon could not be loaded (the host blocks it). Original URL: <a href="' + imgUrl + '" target="_blank">' + imgUrl + '</a><br>Please upload the art manually above.';
           msg.className = 'ok'; msg.textContent = 'Imported. Icon must be uploaded manually (see note under Character art).'; update();
         });
       } else {
@@ -1175,7 +1175,7 @@
           var obj = data;
           if (Array.isArray(data)) {
             obj = data.filter(function (x) { return x && typeof x === 'object' && x.id !== '_meta' && x.ability; })[0];
-            if (!obj) throw new Error('No character with an ability found in that array.');
+            if (!obj) throw new Error('No character with an ability found in that JSON.');
           }
           if (!obj || !obj.ability) throw new Error('That JSON has no "ability" field.');
           applyImport(obj);
@@ -1269,7 +1269,7 @@
         })
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
-          setStatus('work', verb + '&hellip; saving to database');
+          setStatus('work', verb + '&hellip; saving the page');
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
             art: d.art, image: d.image, creator: d.creator,
@@ -1330,9 +1330,9 @@
           // The Worker downgrades a publish to a draft when there is no icon,
           // so trust what came back rather than what we asked for.
           if (saved && saved.status === 'draft') {
-            setStatus('ok', '&#10003; Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account">your account page</a>.');
+            setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account">your account page</a>.');
           } else {
-            setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
+            setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
           }
           // Partial-page warning / missing-icon explanation.
           if (window.showSaveNotice) window.showSaveNotice(saved, slug);
@@ -1347,7 +1347,7 @@
           $('save-draft').disabled = false;
         })
         .catch(function (err) {
-          setStatus('err', '&#10007; ' + err.message);
+          setStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
           $('publish').disabled = false;
           $('save-draft').disabled = false;
         });

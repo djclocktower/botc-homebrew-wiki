@@ -44,7 +44,7 @@
     try {
       worker = new Worker(ROOT + 'assets/token-worker.js');
     } catch (e) {
-      bootErr = 'The token engine could not start.';
+      bootErr = 'The token maker could not start.';
       return;
     }
     worker.postMessage({
@@ -55,13 +55,13 @@
     worker.onmessage = function (e) {
       var m = e.data || {};
       if (m.type === 'status') {
-        if (m.state === 'error') failAll(m.message || 'The token engine failed to load.');
+        if (m.state === 'error') failAll(m.message || 'The token maker failed to load.');
         return;
       }
       var p = pending[m.id]; if (!p) return; delete pending[m.id];
-      if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Render failed'));
+      if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Could not draw the token.'));
     };
-    worker.onerror = function (e) { failAll((e && e.message) || 'The token engine failed to load.'); };
+    worker.onerror = function (e) { failAll((e && e.message) || 'The token maker failed to load.'); };
   }
   function failAll(msg) {
     bootErr = msg;
@@ -73,7 +73,7 @@
     return new Promise(function (res, rej) {
       if (bootErr) return rej(new Error(bootErr));
       ensureWorker();
-      if (bootErr || !worker) return rej(new Error(bootErr || 'The token engine could not start.'));
+      if (bootErr || !worker) return rej(new Error(bootErr || 'The token maker could not start.'));
       var id = ++reqSeq;
       pending[id] = { res: res, rej: rej };
       msg.type = type; msg.id = id;
@@ -90,7 +90,7 @@
       return Promise.resolve(src.slice(i + 1));
     }
     return fetch(src).then(function (r) {
-      if (!r.ok) throw new Error('The art could not be fetched.');
+      if (!r.ok) throw new Error('The art could not be loaded.');
       return r.blob();
     }).then(function (blob) {
       return new Promise(function (res, rej) {
@@ -126,7 +126,7 @@
         });
       })
       .then(function (res) {
-        if (res.error) throw new Error('The art could not be rendered onto a token.');
+        if (res.error) throw new Error('The art could not be drawn onto a token.');
         return 'data:image/png;base64,' + res.png;
       });
   }
@@ -176,7 +176,7 @@
       }, function (e) {
         busy = false;
         again = false;
-        opts.hint('Could not draw a token: ' + ((e && e.message) || 'render failed') + ' You can upload a token image instead.');
+        opts.hint('Could not draw a token: ' + ((e && e.message) || 'drawing failed.') + ' You can upload a token image instead.');
       });
     }
 
