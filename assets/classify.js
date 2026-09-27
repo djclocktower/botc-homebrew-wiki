@@ -255,8 +255,8 @@
     curata: 'Curata'
   };
   var DESCRIPTIONS = {
-    partial: 'Unfinished: still missing part of its almanac entry. Hidden ' +
-             'from browsing unless the “Partial” filter is on.',
+    partial: 'Unfinished. Hidden from browsing unless the “Partial” ' +
+             'filter is on.',
     standard: 'A normal, complete page.',
     curata: 'Awarded by the wiki admins. Shown more often on the homepage ' +
                'and in Featured picks.'

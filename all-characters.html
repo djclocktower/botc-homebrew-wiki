@@ -270,13 +270,13 @@
       if (nPartial || nCurata || wantFav){
         html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
         if (nPartial){
-          html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: an ability and an icon, but no tags and no almanac text. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
+          html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages, missing tags or almanac text. Hidden unless ticked.">Show Partial (' + nPartial + ')</button>';
         }
         if (nCurata){
           html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
         }
         if (wantFav){
-          html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, and every character on a script or collection you saved.">' + window.Favorites.heartSVG() + ' Favorites</button>';
+          html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' + window.Favorites.heartSVG() + ' Favorites</button>';
         }
         html += '</div></div>';
       }
@@ -702,7 +702,7 @@
                 .catch(function () {
                   collJsonLoad = null;
                   var code = stack.querySelector('.collection-json code');
-                  if (code) code.textContent = 'The character data could not be loaded. Please try again.';
+                  if (code) code.textContent = 'Could not load the character data. Try again.';
                 });
               return collJsonLoad;
             }

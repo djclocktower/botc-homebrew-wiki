@@ -447,7 +447,7 @@
           (aka.length ? '<p class="profile-aka">Also credited as ' + esc(aka.join(', ')) + '</p>' : '') +
           (claimed
             ? (p.bio ? '<p class="profile-bio">' + esc(p.bio) + '</p>' : '')
-            : '<p class="profile-unclaimed">No wiki account is linked to this name yet. If these pages are yours, sign up and an admin can attach them to your account.</p>') +
+            : '<p class="profile-unclaimed">No account is linked to this name yet. If these pages are yours, sign up and an admin can link them to you.</p>') +
           (claimed && p.joined ? '<p class="profile-joined">Member since ' + esc(fmtDate(p.joined)) + '</p>' : '') +
           linksHTML +
           (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
@@ -535,7 +535,7 @@
       // unpublished page for a live one.
       var nDrafts = drafts.characters.length + drafts.scripts.length + drafts.collections.length;
       if (nDrafts) {
-        var inner = '<p class="draft-note">Not visible to anyone but their owner.</p>';
+        var inner = '<p class="draft-note">Only their owner can see these.</p>';
         if (drafts.characters.length) {
           inner += '<div>' + PR.renderRosterCards(drafts.characters, '/') + '</div>';
         }

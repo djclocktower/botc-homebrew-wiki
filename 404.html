@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Page Not Found — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
-<meta name="description" content="That page isn't on the wiki. Search, browse, or tell the admins if a link brought you here by mistake.">
+<meta name="description" content="That page isn't on the wiki. Search, browse, or report the broken link.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Page Not Found">
 <meta property="og:type" content="website">
@@ -199,8 +199,8 @@
 
     <h1 class="nf-head">This character isn&rsquo;t in play</h1>
     <p class="nf-sub">
-      Nothing lives at <span class="nf-url" data-nf-url></span>. The page may have been renamed,
-      it may still be a draft, or the link may simply be wrong.
+      Nothing lives at <span class="nf-url" data-nf-url></span>. It may have been renamed or
+      unpublished, or the link is wrong.
       <span class="nf-url-note" data-nf-note hidden></span>
     </p>
 
@@ -210,7 +210,7 @@
 
     <div class="nf-report">
       <h2 class="nf-report-head">Think this is a mistake?</h2>
-      <p class="nf-report-note">If a link on the wiki brought you here, or a page you know exists has gone missing, tell the admins and they&rsquo;ll look into it.</p>
+      <p class="nf-report-note">If a wiki link brought you here or a page has gone missing, tell the admins.</p>
       <p class="nf-report-who" data-nf-who hidden></p>
       <label class="nf-field">
         <span>What were you looking for?</span>
@@ -420,7 +420,7 @@
   if (previewing) {
     var note = document.querySelector('[data-nf-note]');
     note.hidden = false;
-    note.textContent = 'That address is only an example. You opened this page directly, so nothing is broken.';
+    note.textContent = 'You opened this page directly, so that address is only an example.';
   }
 
   // quick links
