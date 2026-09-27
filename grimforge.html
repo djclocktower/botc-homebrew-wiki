@@ -5,10 +5,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grimoire Forge — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Check the terminology, casing, numbering, structure and length of a homebrew Blood on the Clocktower ability, and get a corrected version.">
+<meta name="description" content="Check the terminology, capitals, numbering, structure and length of a homebrew Blood on the Clocktower ability, and get a corrected version.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Grimoire Forge">
-<meta property="og:description" content="Blood on the Clocktower ability syntax checker. Paste an ability, see what breaks official style.">
+<meta property="og:description" content="Blood on the Clocktower ability wording checker. Paste an ability, see what breaks official style.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -427,7 +427,7 @@
       <img class="gf-hero-icon" src="assets/grimforge.png" alt="">
       <h1>Grimoire Forge</h1>
     </div>
-    <p>Paste a homebrew ability. The Forge checks it against official card syntax and hands back a clean line.</p>
+    <p>Paste a homebrew ability. The Forge checks it against official card wording and hands back a clean line.</p>
     <p class="gf-credit">A tool by <a href="author?a=Ma'ayan">Ma'ayan</a></p>
   </section>
 
@@ -584,7 +584,7 @@
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
-  <p class="gf-foot-note">Grimoire Forge by Ma'ayan · ruleset drawn from the official corpus, the Main Rulebook and the Homebrewer's Field Guide</p>
+  <p class="gf-foot-note">Grimoire Forge by Ma'ayan · rules drawn from the official cards, the Main Rulebook and the Homebrewer's Field Guide</p>
 
   <script src="assets/grimforge.js"></script>
   <!-- resolveCollectionMembers(): the one rule for what a collection contains -->
@@ -602,8 +602,8 @@
     /* One colour per category, keyed to the parchment palette rather than the
        neon set the original tool used on its dark background. */
     var COLOR = {
-      Terminology: '#6b3fa0', Spelling: '#9A0D12', Casing: '#a9761a',
-      Numbering: '#2f6fb8', Structure: '#8a3526', Typography: '#0f6f79',
+      Terminology: '#6b3fa0', Spelling: '#9A0D12', Capitals: '#a9761a',
+      Numbering: '#2f6fb8', Structure: '#8a3526', Punctuation: '#0f6f79',
       Contraction: '#1c6b3a', Style: '#7a6a1e', 'May/Might': '#b25a12'
     };
     function color(cat) { return COLOR[cat] || '#5B1F21'; }
@@ -991,7 +991,7 @@
         var otherType = taken.filter(function (c) { return c.team !== team; });
         var lines = [];
         if (official) {
-          lines.push('<p class="gf-official">⚠ ' + esc(official) +
+          lines.push('<p class="gf-official"><span class="ico ico-warning" aria-hidden="true"></span> ' + esc(official) +
             ' is an official Blood on the Clocktower character.</p>');
         }
         if (sameType.length) {
@@ -1537,7 +1537,7 @@
           // The page has moved on, so the stale rows go: what is on screen is
           // now a scan of a version that no longer exists.
           delete scanPicked[slug];
-          scanState(ri, 'ok', '✓ ' + n + (n === 1 ? ' fix' : ' fixes') + ' saved. ' +
+          scanState(ri, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> ' + n + (n === 1 ? ' fix' : ' fixes') + ' saved. ' +
             '<a href="' + esc(scanCharHref(r.char)) + '">View page</a>');
           return 'ok';
         })

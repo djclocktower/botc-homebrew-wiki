@@ -390,7 +390,7 @@ function draw(supersample) {
     ctx.drawImage(out, 0, 0);
     sizeStage();
   } catch (e) {
-    toast('The forge could not render that: ' + (e && e.message ? e.message : e), 'err');
+    toast('The forge could not draw that: ' + (e && e.message ? e.message : e), 'err');
   }
 }
 
@@ -562,7 +562,7 @@ function maybeRunAI() {
       }
       toast(
         'Smart remove could not run: ' +
-          (e && e.message ? e.message : 'the model could not be downloaded') +
+          (e && e.message ? e.message : 'the files it needs could not be downloaded') +
           '. Falling back to Keep.',
         'err'
       );
@@ -743,7 +743,7 @@ function renderFinal(size) {
 
 function canvasToBlob(canvas) {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the PNG'))), 'image/png');
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not make the PNG'))), 'image/png');
   });
 }
 
@@ -930,11 +930,11 @@ $('if-save').addEventListener('click', async () => {
 
     setSaveMsg(
       'ok',
-      '✓ Saved to <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
+      '<span class="ico ico-check" aria-hidden="true"></span> Saved to <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
         '. Refresh if you still see the old icon.'
     );
   } catch (e) {
-    setSaveMsg('err', '✗ ' + (e && e.message ? e.message : 'Something went wrong.'));
+    setSaveMsg('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + (e && e.message ? e.message : 'Something went wrong.'));
   } finally {
     btn.textContent = 'Save as its icon';
     syncControls();

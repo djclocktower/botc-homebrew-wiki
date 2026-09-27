@@ -248,7 +248,7 @@ export function openEditor(o) {
     } catch (e) {
       apply.disabled = false;
       apply.textContent = 'Use this artwork';
-      loadMsg.textContent = 'Could not read the canvas back: ' + (e && e.message ? e.message : e);
+      loadMsg.textContent = 'Could not bring the drawing back: ' + (e && e.message ? e.message : e);
       loading.hidden = false;
     }
   });

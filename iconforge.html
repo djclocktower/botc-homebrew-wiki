@@ -209,6 +209,10 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-pad button:hover { background: #fffdf8; }
 .if-pad .if-pad-mid { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
 .if-pad .if-pad-mid:hover { filter: brightness(1.15); background: var(--maroon); }
+/* Up and down reuse the right chevron, turned, so all four match. */
+.if-pad .ico { font-size: 1rem; }
+.if-pad .if-ico-up { transform: rotate(-90deg); }
+.if-pad .if-ico-down { transform: rotate(90deg); }
 .if-place-sliders { flex: 1 1 auto; min-width: 0; }
 .if-place-sliders .if-row:last-child { margin-bottom: 0; }
 
@@ -723,13 +727,13 @@ details.if-sec > summary:hover { color: #8a3526; }
               <div class="if-place">
                 <div class="if-pad">
                   <span></span>
-                  <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up">▲</button>
+                  <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up"><span class="ico ico-right if-ico-up" aria-hidden="true"></span></button>
                   <span></span>
-                  <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left">◀</button>
-                  <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop">⚄</button>
-                  <button type="button" data-nudge="0.03,0" aria-label="Pan texture right">▶</button>
+                  <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left"><span class="ico ico-left" aria-hidden="true"></span></button>
+                  <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop"><span class="ico ico-dice" aria-hidden="true"></span></button>
+                  <button type="button" data-nudge="0.03,0" aria-label="Pan texture right"><span class="ico ico-right" aria-hidden="true"></span></button>
                   <span></span>
-                  <button type="button" data-nudge="0,0.03" aria-label="Pan texture down">▼</button>
+                  <button type="button" data-nudge="0,0.03" aria-label="Pan texture down"><span class="ico ico-right if-ico-down" aria-hidden="true"></span></button>
                   <span></span>
                 </div>
                 <div class="if-place-sliders">
