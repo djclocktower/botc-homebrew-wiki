@@ -576,7 +576,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         }
         say('ok', res.status === 'published'
           ? '✓ Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
-          : '✓ Draft saved. Only you (and admins) can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+          : '✓ Draft saved. Only you can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       }).catch(function(err){
         say('err', '✗ ' + esc(err.message));

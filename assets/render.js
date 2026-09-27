@@ -272,13 +272,13 @@
      '' is a page nobody has opened, which the owner still wants to see stated:
      the bar is the page's status, not only a notice when it is unusual. */
   var EDIT_STATUS = {
-    '':        ['yours alone', 'only you and the wiki admins can edit this page.'],
-    closed:    ['yours alone', 'only you and the wiki admins can edit this page.'],
+    '':        ['yours alone', 'only you can edit this page.'],
+    closed:    ['yours alone', 'only you can edit this page.'],
     /* A script or collection whose owner has chosen nothing. The page itself
        is closed like '' above, but the difference matters and is said: a
        CHOSEN mode on a set governs the owner's characters and wiki pages on
        it, and "not set" leaves each of them on its own setting. */
-    unset:     ['not set', 'only you and the wiki admins can edit this page; each character and wiki page on it keeps its own setting.'],
+    unset:     ['not set', 'only you can edit this page; each character and wiki page on it keeps its own setting.'],
     /* A character whose owner chose nothing keeps its tags open until the
        owner tags it (the Worker's defaultTagsOpen). The editor asks for this
        key when that default is what the next save will leave in force, and

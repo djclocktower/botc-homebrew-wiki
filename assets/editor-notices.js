@@ -72,7 +72,7 @@
         '<ul class="rules-list"><li>Add that in the editor above.</li>' +
         '<li>Then press Publish again and it goes live straight away.</li></ul>' +
         '<p class="rules-modal-intro" style="margin-top:14px">Drafts are visible ' +
-        'only to you and the wiki admins. You can find yours any time on your ' +
+        'only to you. You can find yours any time on your ' +
         '<a href="drafts">drafts page</a>.</p>',
         'Fix it');
       return;

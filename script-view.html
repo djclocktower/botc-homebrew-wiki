@@ -153,7 +153,7 @@
       if (sc.author) countLine += ' · by ' + esc(sc.author);
 
       var draftBanner = isDraft
-        ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;margin-bottom:16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em;overflow-wrap:anywhere">DRAFT: only you (and admins) can see this script. Publish it from <a href="publish-script?s=' + encodeURIComponent(sc.slug) + '" style="color:#ffe9ad">the publish page</a> or <a href="account" style="color:#ffe9ad">your account</a>.</div>'
+        ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;margin-bottom:16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em;overflow-wrap:anywhere">DRAFT: only you can see this script. Publish it from <a href="publish-script?s=' + encodeURIComponent(sc.slug) + '" style="color:#ffe9ad">the publish page</a> or <a href="account" style="color:#ffe9ad">your account</a>.</div>'
         : '';
 
       content.innerHTML =

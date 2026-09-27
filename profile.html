@@ -535,7 +535,7 @@
       // unpublished page for a live one.
       var nDrafts = drafts.characters.length + drafts.scripts.length + drafts.collections.length;
       if (nDrafts) {
-        var inner = '<p class="draft-note">Not visible to anyone but their owner and the admins.</p>';
+        var inner = '<p class="draft-note">Not visible to anyone but their owner.</p>';
         if (drafts.characters.length) {
           inner += '<div>' + PR.renderRosterCards(drafts.characters, '/') + '</div>';
         }

@@ -84,7 +84,7 @@
 
     function render() {
       if (!list.length) {
-        chips.innerHTML = '<p class="ae-empty">Nobody yet. Only you and the wiki admins can edit this page.</p>';
+        chips.innerHTML = '<p class="ae-empty">Nobody yet. Only you can edit this page.</p>';
       } else {
         chips.innerHTML = list.map(function (e, i) {
           return '<span class="ae-chip">' +
