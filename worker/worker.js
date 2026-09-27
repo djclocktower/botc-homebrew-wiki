@@ -751,7 +751,7 @@ const WRITE_LIMITS = {
 async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('media/')) {
     key = mediaSource(key);
-    if (!key) return jsonResponse({ error: 'Invalid responsive image path' }, { status: 400 });
+    if (!key) return jsonResponse({ error: 'That image address is not valid.' }, { status: 400 });
   }
   if (sess.isAdmin) return null;
   // A thumbnail's slot is its art's slot (see THUMB_PREFIX): the same page,
@@ -771,7 +771,7 @@ async function uploadSlotDenied(env, sess, key) {
   // tokens/ is reserved for admin tooling; news/ for the news editor,
   // which is admin-only anyway.
   if (key.startsWith('tokens/') || key.startsWith('news/')) {
-    return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+    return jsonResponse({ error: 'You can\'t upload images there.' }, { status: 403 });
   }
   // Wiki-page images follow pages/{page-slug}-*.{ext}. If that page
   // exists, only its owner may put images in its slot.
@@ -863,7 +863,7 @@ async function uploadSlotDenied(env, sess, key) {
   if (existing) {
     const owner = existing.customMetadata && existing.customMetadata.owner;
     if (owner !== String(sess.userId)) {
-      return jsonResponse({ error: 'A file already exists at that path and belongs to another account.' }, { status: 403 });
+      return jsonResponse({ error: 'An image with that name already belongs to another account.' }, { status: 403 });
     }
   }
   return null;
@@ -4856,7 +4856,7 @@ ${o.draftBanner || ''}
         <img class="brand-header-text" src="${R}assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="${R}assets/ccc-parchment.webp" alt="Community Created Content">
-      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+      <a class="edit-link" id="edit-btn" style="display:none" href="#"><span class="ico ico-edit" aria-hidden="true"></span> Edit</a>
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="${R}all-characters">All Characters</a>
@@ -5410,7 +5410,7 @@ async function charsBySlug(env, slugs) {
 async function pageJsonResponse(env, ctx, request, url) {
   const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
   const slug = String(url.searchParams.get('slug') || '');
-  if (!slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+  if (!slug) return jsonResponse({ error: 'No page given.' }, { status: 400 });
   const isScript = type === 'script';
   const table = isScript ? 'scripts' : 'collections';
   let row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
@@ -7553,7 +7553,7 @@ export default {
       const body = await request.json().catch(() => ({}));
       const token = String(body.token || '');
       const password = String(body.password || '');
-      if (!token) return jsonResponse({ error: 'Missing reset token.' }, { status: 400 });
+      if (!token) return jsonResponse({ error: 'That reset link is incomplete. Request a new one.' }, { status: 400 });
       if (!password || password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters.' }, { status: 400 });
       const userId = await env.SESSIONS.get('pwreset:' + token);
       if (!userId) return jsonResponse({ error: 'That reset link is invalid or has expired. Request a new one.' }, { status: 400 });
@@ -7724,7 +7724,7 @@ export default {
       if (!userRes.ok) {
         const detail = await discordErrorCode(userRes);
         console.log('discord-oauth: profile fetch failed', userRes.status, detail);
-        return loginErrorRedirect(url.origin, 'Discord sign-in failed (profile fetch: ' + detail + '). Please try again.');
+        return loginErrorRedirect(url.origin, 'Discord sign-in failed (could not load your profile: ' + detail + '). Please try again.');
       }
       const du = await userRes.json();
       const discordId = String(du.id);
@@ -8009,7 +8009,7 @@ export default {
     if (method === 'GET' && path === '/api/page') {
       const type = url.searchParams.get('type') || 'character';
       const slug = url.searchParams.get('slug') || '';
-      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
       let row = await getEntityRow(env, type, slug);
       // Legacy collection rows have display-string PK slugs; resolve by id too.
       if (!row && type === 'collection') row = await findCollectionRow(env, slug);
@@ -8503,8 +8503,8 @@ export default {
     if (method === 'GET' && path === '/api/page-history') {
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
-      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      if (!slugParam) return jsonResponse({ error: 'No page given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
@@ -8575,7 +8575,7 @@ export default {
 
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
-      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'Missing type or slug' }, { status: 400 });
+      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'No page given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const owns = canEditRow(sess, row);
@@ -8608,8 +8608,8 @@ export default {
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
       const id = parseInt(url.searchParams.get('id'), 10) || 0;
-      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      if (!slugParam || !id) return jsonResponse({ error: 'Missing slug or id' }, { status: 400 });
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      if (!slugParam || !id) return jsonResponse({ error: 'No page or version given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
@@ -9430,7 +9430,7 @@ export default {
       // initial-letter avatar. The key is derived from the session, so users
       // can only ever touch their own avatar slot.
       if (path === '/api/account/avatar') {
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'avatar', 20, 3600)) {
           return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
@@ -9447,7 +9447,7 @@ export default {
           return jsonResponse({ ok: true, avatarUrl: null });
         }
         let data = String(b.data || '');
-        if (!data.startsWith('data:')) return jsonResponse({ error: 'Send the image as a data URL.' }, { status: 400 });
+        if (!data.startsWith('data:')) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
         const contentType = data.slice(5, data.indexOf(';'));
         const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[contentType];
         if (!ext) return jsonResponse({ error: 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
@@ -9520,14 +9520,14 @@ export default {
           const limited = await writeLimited(env, request, sess, 'upload');
           if (limited) return limited;
         }
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
         let key, bytes, contentType, sourceETag, baseUpdatedAt = null;
         if (ct.includes('application/json')) {
           const b = await request.json().catch(() => ({}));
           key = b.key; sourceETag = cleanETag(b.sourceETag);
           if (b.baseUpdatedAt) baseUpdatedAt = String(b.baseUpdatedAt);
-          if (!key || !b.data) return jsonResponse({ error: 'Missing key or data' }, { status: 400 });
+          if (!key || !b.data) return jsonResponse({ error: 'No image was sent.' }, { status: 400 });
           let data = String(b.data);
           if (data.startsWith('data:')) {
             contentType = data.slice(5, data.indexOf(';'));
@@ -9541,7 +9541,7 @@ export default {
         }
         key = String(key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
-          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+          return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
         if (bytes.length > 8 * 1024 * 1024) {
           return jsonResponse({ error: 'Image is too large (8 MB max).' }, { status: 413 });
@@ -9603,7 +9603,7 @@ export default {
         if (!contentType) contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
         const mediaKey = key.startsWith('media/') ? mediaSource(key) : '';
         if (key.startsWith('media/') && (!mediaKey || !sourceETag || sourceETag !== await mediaOriginalETag(env, url.origin, mediaKey))) {
-          return jsonResponse({ error: 'The original image changed; regenerate this variant.' }, { status: 409 });
+          return jsonResponse({ error: 'The original image has changed, so this resized copy is out of date.' }, { status: 409 });
         }
         const stored = await env.ART.put(key, bytes, {
           httpMetadata: { contentType },
@@ -9642,13 +9642,13 @@ export default {
          SVG is a script-execution format wearing an image extension, and
          these files are served from the site's own origin. */
       if (path === '/api/attachment') {
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'attach', 60, 3600)) {
           return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         let data = String(b.data || '');
-        if (!data) return jsonResponse({ error: 'Missing image data.' }, { status: 400 });
+        if (!data) return jsonResponse({ error: 'No image was sent.' }, { status: 400 });
         let declared = '';
         if (data.startsWith('data:')) {
           declared = data.slice(5, data.indexOf(';'));
@@ -9697,11 +9697,11 @@ export default {
           const limited = await writeLimited(env, request, sess, 'upload');
           if (limited) return limited;
         }
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const b = await request.json().catch(() => ({}));
         let key = String(b.key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (!key || key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
-          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+          return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
         let srcUrl;
         try { srcUrl = new URL(String(b.src || '')); } catch { srcUrl = null; }
@@ -9769,7 +9769,7 @@ export default {
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if ((row.status || 'published') !== 'published') {
@@ -9845,7 +9845,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10) || 0;
         const action = String(b.action || '');
-        if (!id) return jsonResponse({ error: 'Missing suggestion id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No suggestion given.' }, { status: 400 });
         await ensureSuggestTable(env);
         const sug = await env.DB.prepare('SELECT * FROM suggestions WHERE id=?')
           .bind(id).first().catch(() => null);
@@ -9920,7 +9920,7 @@ export default {
       if (path === '/api/page-rollback') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
@@ -10032,7 +10032,7 @@ export default {
         await ensureCommentTables(env);
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const target = await commentTarget(env, row.entity_type, row.slug);
@@ -10053,7 +10053,7 @@ export default {
         await ensureCommentTables(env);
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const target = await commentTarget(env, row.entity_type, row.slug);
@@ -10079,7 +10079,7 @@ export default {
         }
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT id FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row) return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const already = await env.DB.prepare(
@@ -10619,9 +10619,9 @@ export default {
           if (limited) return limited;
         }
         const s = await request.json();
-        if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+        if (!s || !s.slug) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
-          return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
+          return jsonResponse({ error: 'Invalid script URL.' }, { status: 400 });
         }
         const existing = await getEntityRow(env, 'script', s.slug);
         const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
@@ -10851,7 +10851,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         let row = await getEntityRow(env, type, String(b.slug || ''));
         // Legacy collections have display-string PK slugs; the URL uses the id.
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
@@ -10907,7 +10907,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         let row = await getEntityRow(env, type, String(b.slug || ''));
         // Legacy collections have display-string PK slugs; the URL uses the id.
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
