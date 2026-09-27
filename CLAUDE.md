@@ -1077,8 +1077,8 @@ The export follows the schema at
 - **`background`**: the page background (`theme.background`) as an absolute
   URL. One upload serves both the wiki page and the app.
 - **`hideTitle`**, **`almanac`**, **`bootlegger[]`**: set on publish-script's
-  "In the Official App" panel. Bootlegger rules also show on the script page as
-  *House Rules*, or a reader would only find them inside the JSON.
+  "In the Official App" panel. Bootlegger rules also show on the script page under
+  *Bootlegger Rules*, or a reader would only find them inside the JSON.
 - **`firstNight` / `otherNight`**: the arranged night order as ids. Only written
   when the owner arranged one. Left out, the app orders by each character's own
   number and reaches the same answer, so writing it anyway would freeze today's

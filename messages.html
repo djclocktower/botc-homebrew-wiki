@@ -594,7 +594,7 @@
     $('block-btn').addEventListener('click', function(){
       if (!current) return;
       var blocking = !youBlockedThem;
-      if (blocking && !confirm('Block @' + current + '? They won\'t be able to message you.')) return;
+      if (blocking && !confirm('Block @' + current + '? They won\'t be able to message you. (Admins can always reach you.)')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/messages/block', { user: current, blocked: blocking }).then(function(res){
         btn.disabled = false;

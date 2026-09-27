@@ -506,7 +506,7 @@
       page.jinxEdits = extra.jinxEdits;
     }
     // What the official app reads back out of an exported script, carried
-    // straight across: house rules, and the link to the almanac this all came
+    // straight across: bootlegger rules, and the link to the almanac this all came
     // from, which is the honest thing to keep pointing at.
     if (opts.bootlegger && meta.bootlegger && meta.bootlegger.length) {
       page.bootlegger = meta.bootlegger;

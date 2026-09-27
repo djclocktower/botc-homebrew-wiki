@@ -460,14 +460,14 @@
     return out;
   }
 
-  /* Bootlegger rules: the official schema's `_meta.bootlegger`, house rules
+  /* Bootlegger rules: the official schema's `_meta.bootlegger`, the rules
      the app prints with the script. On the page too, or a reader would only
      find them by opening the JSON. */
   function renderBootlegger(rules) {
     var list = (rules || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
     if (!list.length) return '';
     return '<div class="sv-section sv-bootlegger" id="sec-bootlegger">' +
-      sech('sec-bootlegger', 'House Rules') +
+      sech('sec-bootlegger', 'Bootlegger Rules') +
       '<ul class="sv-boot-list">' + list.map(function (r) {
         return '<li>' + tok(r) + '</li>';
       }).join('') + '</ul></div>';

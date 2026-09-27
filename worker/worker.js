@@ -1214,7 +1214,7 @@ const FIELD_LABELS = {
   strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
   header: 'header image', theme: 'appearance', match: 'membership rules',
   include: 'members added', exclude: 'members removed', order: 'roster order',
-  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'house rules',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'bootlegger rules',
   almanac: 'almanac link', hideTitle: 'app title setting',
   // wiki pages
   title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
