@@ -242,7 +242,7 @@
           <button class="sb-btn sb-btn-randomize" id="sb-randomize" type="button"><span class="ico ico-dice" aria-hidden="true"></span> Randomize</button>
           <button class="sb-btn sb-btn-sort" id="sb-sort" type="button"><span class="ico ico-sort" aria-hidden="true"></span> SAO Sort</button>
           <button class="sb-btn sb-btn-export" id="sb-export" type="button"><span class="ico ico-download" aria-hidden="true"></span> Export JSON</button>
-          <button class="sb-btn sb-btn-copy" id="sb-copy" type="button">Copy JSON</button>
+          <button class="sb-btn sb-btn-copy" id="sb-copy" type="button"><span class="ico ico-copy" aria-hidden="true"></span> Copy JSON</button>
           <button class="sb-btn sb-btn-share" id="sb-share" type="button"><span class="ico ico-link" aria-hidden="true"></span> Share Link</button>
           <button class="sb-btn sb-btn-import" id="sb-import" type="button"><span class="ico ico-upload" aria-hidden="true"></span> Import</button>
           <button class="sb-btn sb-btn-clear" id="sb-clear" type="button"><span class="ico ico-x" aria-hidden="true"></span> Clear</button>
@@ -654,7 +654,7 @@
       if (navigator.clipboard) {
         navigator.clipboard.writeText(buildExport()).then(function () {
           btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Copied!';
-          setTimeout(function () { btn.innerHTML = 'Copy JSON'; }, 1500);
+          setTimeout(function () { btn.innerHTML = '<span class="ico ico-copy" aria-hidden="true"></span> Copy JSON'; }, 1500);
         });
       }
     });
