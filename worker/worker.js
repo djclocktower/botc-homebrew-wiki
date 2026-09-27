@@ -589,7 +589,7 @@ async function createSession(env, userId, isAdmin) {
 // What the six callers of createSession() say when it comes back empty. The
 // account work they did has already happened and is not lost — only the
 // signing-in half failed — so each of them says which it was.
-const SESSION_DOWN_MSG = 'Signing you in failed — the sign-in service is briefly unavailable. Wait a minute and log in.';
+const SESSION_DOWN_MSG = 'Signing you in failed because the sign-in service is briefly unavailable. Wait a minute and log in.';
 // For the callers that put it after a clause of their own ("Your account was
 // created, but ...").
 function lowerFirst(str) { return str.charAt(0).toLowerCase() + str.slice(1); }
@@ -886,7 +886,7 @@ function emailShell(title, bodyHtml) {
   return `<div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;padding:24px;color:#241a12;background:#f7f0e0;border:1px solid #cdbfa0">
   <h2 style="color:#5b1f21;margin:0 0 12px">${title}</h2>
   ${bodyHtml}
-  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} — fan-made content for Blood on the Clocktower.<br>
+  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} is a fan-made wiki for Blood on the Clocktower.<br>
   If you didn't request this email you can safely ignore it.</p>
 </div>`;
 }
@@ -917,7 +917,7 @@ async function sendVerificationEmail(env, origin, user) {
   const token = randomToken();
   await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
   const link = origin + '/api/verify-email?token=' + token;
-  return sendEmail(env, user.email, 'Verify your email — ' + APP_NAME, emailShell(
+  return sendEmail(env, user.email, 'Verify your email for ' + APP_NAME, emailShell(
     'Verify your email',
     `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
      <p>Click the link below to verify the email address on your ${APP_NAME} account:</p>
@@ -2639,8 +2639,7 @@ async function notifyEditorsAdded(env, opts) {
     for (const e of added) {
       if (e.id == null || Number(e.id) === Number(fromId)) continue;
       const text = who + ' added you as an editor of \u201c' + (name || 'a page') + '\u201d.' +
-        ' You can now edit it exactly as they would \u2014 publishing, deleting and the editor' +
-        ' list itself stay with them.' +
+        ' You can now edit it as they would. Publishing, deleting and the editor list stay with them.' +
         (path ? '\n\n' + (origin || '') + path : '');
       await env.DB.prepare(
         'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
@@ -2954,7 +2953,7 @@ async function waterfallOwner(env, sess, type, row, ownerId, cache) {
    text, so nothing legitimate comes near this; it stops somebody parking a
    megabyte in a row they do not own. */
 const PUBLIC_EDIT_MAX_BYTES = 120000;
-const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits. Send yours for the creator to approve.';
+const SUGGEST_INSTEAD = 'This page only takes suggested edits. Send yours for the creator to approve.';
 const PUBLIC_EDIT_TAGS_MAX = 400;
 function publicEditTooBig(o) {
   try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
@@ -3226,7 +3225,7 @@ async function notifyDrafted(env, opts) {
     // longer public, and a block list must not be able to hide that.
     const text = 'An admin moved \u201c' + (name || '') + '\u201d to drafts, so it is no longer public.' +
       (reason ? '\n\n\u201c' + reason + '\u201d' : '') +
-      '\n\nNothing is lost — the page is still yours and still there. Fix it and publish it again: ' +
+      '\n\nThe page is still yours and nothing is lost. Fix it and publish it again: ' +
       (origin || '') + opts.editHref;
     await env.DB.prepare(
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
@@ -3321,7 +3320,7 @@ function editConflict(existing, body) {
   if (!current || String(base) === String(current)) return null;
   return jsonResponse({
     error: 'Somebody else saved changes to this page while you had it open. ' +
-           'Reload the editor to get their version — your unsaved changes are still ' +
+           'Reload the editor to get their version. Your unsaved changes are still ' +
            'in this tab, so copy anything you need before reloading.',
     conflict: true,
     savedAt: current
@@ -7397,7 +7396,7 @@ export default {
       const bundle = Bloodstar.buildBundle(scriptJson, almanac, src, official);
       bundle.hasAlmanac = !!almanacHtml;
       if (!almanacHtml) {
-        bundle.warnings.unshift('That project has no readable almanac.html, so only what is in script.json could be read — no flavour text, overviews, examples, how-to-run or tips.');
+        bundle.warnings.unshift('That project has no readable almanac.html, so only script.json could be read. Flavour text, overviews, examples, how-to-run and tips are missing.');
       }
       return jsonResponse(bundle);
     }
@@ -7537,14 +7536,14 @@ export default {
         const token = randomToken();
         await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
         const link = url.origin + '/reset-password?token=' + token;
-        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
+        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password for ' + APP_NAME, emailShell(
           'Reset your password',
           // Half the people who ask for a reset are stuck on the OTHER field:
           // their display name is the only name the site shows them, so this
           // is the one message that can tell them what to type.
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
            <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
-           <p>Your username is <b>@${escapeHtml(user.username)}</b>. That, or this email address, is what goes in the log-in box.</p>
+           <p>Your username is <b>@${escapeHtml(user.username)}</b>. You can log in with it or with this email address.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
         )));
@@ -9965,7 +9964,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot post comments.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'comment', 30, 3600)) {
-          return tooManyResponse('Slow down — too many comments from this connection. Try again later.', 3600);
+          return tooManyResponse('Too many comments from this connection. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -11173,7 +11172,7 @@ export default {
         await logActivity(env, sess, 'contact', 'message', null, category);
         return jsonResponse({
           ok: true, id: (ins.meta && ins.meta.last_row_id) || null,
-          message: 'Message sent — the admins will see it on their dashboard.'
+          message: 'Message sent. The admins will see it on their dashboard.'
         });
       }
 
@@ -11212,7 +11211,7 @@ export default {
         const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM modmail_replies WHERE message_id=?')
           .bind(id).first().catch(() => ({ n: 0 }));
         if ((Number(n && n.n) || 0) >= 200) {
-          return jsonResponse({ error: 'This conversation is very long — please start a new message instead.' }, { status: 400 });
+          return jsonResponse({ error: 'This conversation is too long to continue. Please start a new message.' }, { status: 400 });
         }
         const ins = await env.DB.prepare(
           'INSERT INTO modmail_replies (message_id, user_id, is_staff, body, images) VALUES (?,?,0,?,?)'
@@ -11227,7 +11226,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot send messages. You can contact the admins from your account page.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'dm', 20, 300)) {
-          return tooManyResponse('You are sending messages very quickly — wait a minute and try again.', 300);
+          return tooManyResponse('You are sending messages very quickly. Wait a minute and try again.', 300);
         }
         const b = await request.json().catch(() => ({}));
         const to = String(b.to || '').trim();
