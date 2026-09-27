@@ -392,7 +392,7 @@
     <main class="sb-main" id="content">
       <div class="home-hero" style="padding-bottom:14px">
         <h1>Token Tool</h1>
-        <p>Build a set of characters and render print-ready token sheets. It uses the same renderer as the official homebrew sets and runs in your browser.</p>
+        <p>Build a set of characters and print their token sheets.</p>
       </div>
 
       <div class="tt-load" id="tt-load"><span class="tt-load-bar"></span><span id="tt-load-text">Loading…</span></div>
@@ -468,7 +468,7 @@
             <span class="tt-adj-caret" id="tt-assets-caret">&#9662;</span>
           </div>
           <div id="tt-assets-body" style="display:none">
-            <p class="tt-assets-hint">Swap in your own art for parts of the token. PNG with transparency works best; images are session-based and small ones are remembered on this device.</p>
+            <p class="tt-assets-hint">Swap in your own art for parts of the token. Transparent PNGs work best.</p>
             <div id="tt-assets-panel"></div>
           </div>
         </section>
@@ -492,7 +492,7 @@
         <h2>Import Script JSON</h2>
         <button type="button" class="tte-close" id="tt-import-close" aria-label="Close">✕</button>
       </div>
-      <p class="tt-assets-hint">Official script-tool format. Characters referenced by id use this wiki's copy; full character definitions in the JSON are kept as-is (even if a wiki character shares the name) and fetch art from their <code>image</code> URL. You'll be warned about any that can't be fetched. Importing replaces your current set.</p>
+      <p class="tt-assets-hint">Official script-tool format. Importing replaces your current set.</p>
       <div class="tt-row" style="justify-content:flex-start">
         <input type="file" accept=".json,application/json" id="tt-import-file">
       </div>

@@ -255,7 +255,7 @@ function syncControls() {
   const aiBtn = $('if-bgmode').querySelector('button[data-value=ai]');
   aiBtn.disabled = !source || sourceKind !== 'raster';
   aiBtn.title = aiBtn.disabled
-    ? 'Smart remove is for photos and scans. Vector art already has a transparent background.'
+    ? 'Smart remove is for photos and scans. Vector art is already transparent.'
     : '';
 
   const swatch = $('if-chroma-swatch');
@@ -276,10 +276,10 @@ function syncControls() {
     bucketMode === 'off'
       ? 'Fill enclosed spaces by hand: pick Colour or Parchment, then tap a space in the preview. Unlike “Fill enclosed spaces”, you choose each region and its fill. Hatch adds shading lines to whatever you tap instead.'
       : bucketMode === 'hatch'
-        ? 'Now tap an ink area or an enclosed space in the preview to give it hand-drawn hatching. Tune the lines under Hatching.'
-        : 'Now tap an enclosed space in the preview to fill it with ' +
+        ? 'Tap ink or an enclosed space in the preview to hatch it.'
+        : 'Tap an enclosed space in the preview to fill it with ' +
           (bucketMode === 'color' ? 'the colour texture' : 'parchment') +
-          '. Only spaces fully surrounded by ink can be filled.';
+          '.';
 
   $('if-split').hidden = colorTexId !== TRAVELLER_SPLIT_ID;
   document.querySelectorAll('.if-tex').forEach((b) => {
@@ -478,7 +478,7 @@ function openArtEditor(mode) {
     title: mode === 'edit' ? 'Edit artwork' : 'Draw your own',
     hint:
       mode === 'edit'
-        ? 'Use the pen, eraser, lasso and move tools, then bring it straight back to the forge.'
+        ? 'Make your changes, then bring it back to the forge.'
         : 'A blank page. Black ink on white works best in the forge.',
     onApply: (img) => {
       const name = mode === 'draw' ? 'drawing' : sourceName ? sourceName + ' (edited)' : 'edited';
@@ -532,7 +532,7 @@ function maybeRunAI() {
         fraction,
         'Removing',
         phase === 'fetch'
-          ? 'Fetching what it needs: about 45 MB, once per browser. It is kept for next time.'
+          ? 'Downloading about 45 MB. This happens once per browser.'
           : 'Keep using the page. This runs in the background.'
       );
     },
@@ -642,7 +642,7 @@ $('if-stage-inner').addEventListener('pointerdown', (e) => {
     toast('That spot is ink. Tap an empty enclosed space to fill it.');
     return;
   } else if (probe === 'open') {
-    toast('That space is not enclosed. It connects to the outside, so it cannot be filled.');
+    toast('That space is open to the outside, so it cannot be filled.');
     return;
   }
   setOpts({ bucketFills: opts.bucketFills.concat([{ x: fx, y: fy, fill: bucketMode }]) });
@@ -790,7 +790,7 @@ function showExportDialog(url, fileName) {
   const hint = document.createElement('p');
   hint.className = 'if-hint';
   hint.textContent =
-    'The download should have started. If it did not, press and hold the image (or right-click it) to save, or use the button below.';
+    'The download should have started. If not, long-press or right-click the image, or use the button below.';
   const shot = document.createElement('div');
   shot.className = 'if-shot';
   const img = document.createElement('img');
@@ -851,7 +851,7 @@ fetch('/api/me', { credentials: 'same-origin' })
       setSaveMsg(
         '',
         'Download the PNG and add it in the <a href="create">character editor</a>. ' +
-          '<a href="login?next=iconforge">Sign in</a> and you can put it straight onto a character you already have.'
+          '<a href="login?next=iconforge">Sign in</a> to save it straight onto one of your characters.'
       );
       return;
     }
@@ -874,7 +874,7 @@ fetch('/api/me', { credentials: 'same-origin' })
           savePick.appendChild(o);
         });
         $('if-save-body').hidden = false;
-        setSaveMsg('', 'Saved icons are 591 px, the size the wiki uses everywhere.');
+        setSaveMsg('', 'Saved icons are 591 px.');
         syncControls();
       });
   })
@@ -930,8 +930,8 @@ $('if-save').addEventListener('click', async () => {
 
     setSaveMsg(
       'ok',
-      '✓ Saved. It is live on <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
-        '. Give it a refresh if you still see the old icon.'
+      '✓ Saved to <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
+        '. Refresh if you still see the old icon.'
     );
   } catch (e) {
     setSaveMsg('err', '✗ ' + (e && e.message ? e.message : 'Something went wrong.'));

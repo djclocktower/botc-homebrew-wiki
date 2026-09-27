@@ -347,7 +347,7 @@
         if (setSlugs.indexOf(ed) < 0) setSlugs.push(ed);
         pendingEdit = ed;
       } else if (ed) {
-        showMsg('err', 'Could not open that character for token editing. A draft is only visible to its owner, so make sure you are logged in on the account that made it.');
+        showMsg('err', 'Could not open that character. If it is a draft, log in on the account that made it.');
       }
     });
   }
@@ -643,8 +643,8 @@
     if (!c || c.ext) { box.style.display = 'none'; return; }
     box.style.display = '';
     $('tte-save-msg').textContent = c.token
-      ? 'This character already has a saved token, and the sheets print it. Saving replaces it.'
-      : 'Saves this token onto the character’s wiki page. From then on the Token Tool prints it instead of generating one.';
+      ? 'This character already has a saved token. Saving replaces it.'
+      : 'Saves this token to the character’s page. The Token Tool prints it from then on.';
     $('tte-save-go').disabled = false;
     $('tte-save-go').textContent = 'Save to page';
   }
@@ -696,7 +696,7 @@
         // previews and sheets print the new token without refetching it.
         callWorker('artBytes', { slug: sl + '-premade', b64: pngB64 }).catch(function () {});
         btn.disabled = false; btn.textContent = 'Save to page';
-        msg.textContent = '✓ Saved. The character’s page now carries this token, and the sheets will print it.';
+        msg.textContent = '✓ Saved to the character’s page.';
         schedulePreview();
       })
       .catch(function (e) {
@@ -1193,7 +1193,7 @@
     var box = $('tt-art-warn');
     if (!failed.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     var html = '<p><strong>Art couldn\u2019t be fetched for ' + failed.length + ' character' + (failed.length === 1 ? '' : 's') + '.</strong> ' +
-      'Those tokens will render with a blank centre unless you upload art manually:</p>';
+      'Upload art for them, or their tokens print with a blank centre:</p>';
     failed.forEach(function (sl) {
       html += '<div class="tt-warn-row"><span>' + esc(charBySlug[sl].name) + '</span>' +
         '<input type="file" accept="image/png,image/jpeg,image/webp" id="wf-' + esc(sl) + '" hidden>' +
