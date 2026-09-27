@@ -32,7 +32,8 @@
   'use strict';
 
   var MAX = 4;
-  var MAX_BYTES = 5 * 1024 * 1024;
+  var MAX_BYTES = 5 * 1024 * 1024;        // what the server stores, per image
+  var MAX_PICK_BYTES = 20 * 1024 * 1024;  // a photo this big is shrunk before it is sent
   var ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
   function esc(s) {
@@ -48,11 +49,26 @@
      passed through untouched: a canvas would keep the first frame and throw
      away the animation, which is usually the whole point of the image. */
   var MAX_EDGE = 1600;
+
+  /* Only a file that can be shrunk may be picked above the server's limit.
+     The limit is on what is SENT, so a GIF (never shrunk) or a file in a
+     browser that cannot resize images is held to it before any upload
+     starts, instead of failing on the server after the whole file went up. */
+  function canShrink(file) {
+    return file.type !== 'image/gif' && typeof createImageBitmap === 'function';
+  }
+
+  // Decoded size of a base64 data URL: what the server will count.
+  function dataBytes(dataUrl) {
+    var i = dataUrl.indexOf(',');
+    var b64 = i < 0 ? '' : dataUrl.slice(i + 1);
+    var pad = /==$/.test(b64) ? 2 : (/=$/.test(b64) ? 1 : 0);
+    return Math.floor(b64.length * 3 / 4) - pad;
+  }
+
   function shrink(file) {
     return new Promise(function (resolve) {
-      if (file.type === 'image/gif' || typeof createImageBitmap !== 'function') {
-        return resolve(null);
-      }
+      if (!canShrink(file)) return resolve(null);
       createImageBitmap(file).then(function (bmp) {
         var scale = Math.min(1, MAX_EDGE / Math.max(bmp.width, bmp.height));
         if (scale >= 1 && file.size <= 1024 * 1024) { bmp.close && bmp.close(); return resolve(null); }
@@ -64,7 +80,11 @@
         // PNG keeps transparency, which a screenshot of the wiki's own UI
         // often has; everything else is far smaller as JPEG.
         var type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        resolve(c.toDataURL(type, 0.85));
+        var out = c.toDataURL(type, 0.85);
+        // A detailed PNG can still be over the limit at 1600px. JPEG loses
+        // the transparency but gets it sent, which beats refusing it.
+        if (type === 'image/png' && dataBytes(out) > MAX_BYTES) out = c.toDataURL('image/jpeg', 0.85);
+        resolve(out);
       }).catch(function () { resolve(null); });
     });
   }
@@ -146,12 +166,21 @@
       if (files.length > room) say('Only ' + max + ' images per message. The rest were skipped.', true);
       list.forEach(function (file) {
         if (!/^image\//.test(file.type)) { say('Only images can be attached.', true); return; }
-        if (file.size > MAX_BYTES * 4) { say('That image is far too large (5 MB max).', true); return; }
+        if (file.size > (canShrink(file) ? MAX_PICK_BYTES : MAX_BYTES)) {
+          say(canShrink(file) ? 'That image is too large (20 MB max).'
+                              : 'That image is too large (5 MB max).', true);
+          return;
+        }
         pending++;
         paint();
         shrink(file)
           .then(function (small) { return small || readAsDataURL(file); })
-          .then(upload)
+          .then(function (dataUrl) {
+            if (dataBytes(dataUrl) > MAX_BYTES) {
+              throw new Error('That image is too large to send (5 MB max). Try a smaller one.');
+            }
+            return upload(dataUrl);
+          })
           .then(function (p) {
             pending--;
             items.push({ path: p });
