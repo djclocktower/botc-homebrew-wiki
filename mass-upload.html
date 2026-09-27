@@ -97,8 +97,8 @@
   <div class="mu-wrap">
     <div class="formcard">
       <h2>Mass Upload Characters</h2>
-      <p class="sub">Upload a whole script JSON or a master list of characters (official schema) and create a wiki page for every character in it. Characters need at least a <code>name</code>, <code>team</code> and <code>ability</code>. If a character's <code>image</code> is an array, the second entry is saved as its alternate art.</p>
-      <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? <a href="bloodstar">Bloodstar Import</a> reads its almanac as well as its JSON, so the pages arrive with their flavour text, overviews, examples, how-to-run and tips already written.</p>
+      <p class="sub">Upload a script JSON or character list (official schema) to make a page for every character in it. Each needs a <code>name</code>, <code>team</code> and <code>ability</code>.</p>
+      <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? Use <a href="bloodstar">Bloodstar Import</a> to bring its almanac text too.</p>
 
       <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
       <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" class="no-autosize" placeholder="&hellip;or paste the JSON here"></textarea></div>
@@ -124,7 +124,7 @@
         </div>
         <div class="fld">
           <label class="mu-check" for="replaceart"><input type="checkbox" id="replaceart"> Replace the art on pages that already exist</label>
-          <p class="hint" style="margin:6px 0 0">A character in this file that lands on a page you already made <strong>updates</strong> that page: the name, team, ability, night order, reminders and jinxes come from the file, and everything else on the page is kept, including its icon, tags, almanac text, printable token and publish state. Tick this to replace those pages&rsquo; icons with the file&rsquo;s pictures as well.</p>
+          <p class="hint" style="margin:6px 0 0">If a character matches a page you already made, that page is <strong>updated</strong>: the file replaces its name, team, ability, night order, reminders and jinxes, and everything else is kept. Tick this to replace its icon too.</p>
         </div>
         <div id="mu-jinx-warn"></div>
         <table class="mu-table" id="mu-table">
@@ -325,7 +325,7 @@
       // The URL shown here is only the one the name asks for. A name somebody
       // else already used gets its own address when the batch runs, and the
       // cell is rewritten then.
-      var exists = existingSlugs[slug] ? ' <span class="hint">(that URL is taken, so this updates your page or takes a free one)</span>' : '';
+      var exists = existingSlugs[slug] ? ' <span class="hint">(URL taken: updates your page, or gets a free one)</span>' : '';
       var img = Array.isArray(c.image) ? c.image[0] : c.image;
       var alt = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
       return '<tr id="mu-row-' + i + '">' +
@@ -640,10 +640,8 @@
           var left = parsed.length - ok;
           setStatus('err',
             esc(halted.message) +
-            '<br>Stopped after ' + ok + ' of ' + parsed.length + ', with ' + left +
-            ' still to go. Leave this page open, come back ' + waitPhrase(halted.retryAfter) +
-            ' and press Create All Pages again. The ' + ok +
-            ' already made are skipped and the rest carry on from here.');
+            '<br>Stopped after ' + ok + ' of ' + parsed.length + '. Keep this page open and press Create All Pages again ' +
+            waitPhrase(halted.retryAfter) + ' to make the other ' + left + '.');
           return;
         }
         if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
