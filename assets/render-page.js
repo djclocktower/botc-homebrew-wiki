@@ -381,7 +381,7 @@
         (hasCurata
           ? '<span class="curata-mark" role="img" title="' +
             (c.curataFrom
-              ? 'Curata — part of the ' + esc(c.curataFrom) + ' collection.'
+              ? 'Curata: part of the ' + esc(c.curataFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
             '" aria-label="Curata"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +

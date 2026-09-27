@@ -58,7 +58,7 @@
        selection the way bold does — select the T, press the button. The
        character editors have no toolbar (they never load this file), so
        there it is documented in the .fmt-help callout instead. */
-    { label: 'Drop cap', title: 'Big almanac initial \u2014 select the first letter of a paragraph', wrap: ['{{drop|', '}}'] },
+    { label: 'Drop cap', title: 'Big almanac initial (select the first letter of a paragraph)', wrap: ['{{drop|', '}}'] },
     { label: 'Rule', title: 'Horizontal rule', block: '---' },
     { label: 'Contents', title: 'Put the contents box here', block: '[toc]' }
   ];
@@ -256,7 +256,7 @@
           var pv = opts.preview && document.getElementById(opts.preview);
           if (pv) { pv.src = dataURL; pv.style.display = 'block'; }
           var note = opts.note && document.getElementById(opts.note);
-          if (note) note.textContent = 'New image ready — it uploads when you save.';
+          if (note) note.textContent = 'New image ready. It uploads when you save.';
           opts.onReady(dataURL);
         };
         img.src = ev.target.result;

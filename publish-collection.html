@@ -166,7 +166,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <main class="pub-main">
     <div class="home-hero" style="padding-bottom:14px">
       <h1 id="pub-page-title">Create a Collection</h1>
-      <p>A collection groups your characters into one wiki page — name it, pick its characters, and publish.</p>
+      <p>A collection groups your characters into one wiki page. Name it, pick its characters, and publish.</p>
     </div>
 
     <div id="gate" class="sb-details" style="display:none">
@@ -192,7 +192,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s collection. The name in the Author box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
       </div>
       <div class="sb-fld">
-        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
+        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional: one line shown under the title)</span></label>
         <input type="text" id="pc-tagline" maxlength="140" placeholder="e.g. Class is in session.">
       </div>
       <div class="sb-fld-row">
@@ -234,7 +234,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <h2>Characters</h2>
       <p class="sub">Characters whose <em>Appears in</em> matches one of the match terms join automatically. You can also add or remove characters by hand.</p>
       <div class="sb-fld">
-        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(comma-separated — e.g. "The Academy, Academy")</span></label>
+        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(comma-separated, e.g. "The Academy, Academy")</span></label>
         <input type="text" id="pc-match" placeholder="The Academy">
       </div>
       <div class="sb-fld pc-add-wrap">
@@ -249,17 +249,17 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <button type="button" class="sb-btn sb-btn-export" id="pc-order-reset" title="Back to alphabetical within each team">↺ Reset order</button>
       </div>
       <div class="pc-member-list" id="pc-member-list">
-        <p class="pub-empty" style="padding:10px">No characters yet — set a match term or add characters above.</p>
+        <p class="pub-empty" style="padding:10px">No characters yet. Set a match term or add characters above.</p>
       </div>
       <div class="pc-excluded" id="pc-excluded"></div>
     </div>
 
     <!-- Optional wiki-page text sections -->
     <details class="sb-details" id="sb-sections">
-      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — synopsis, gameplay overview and strategy notes, shown on the collection page like the official wiki.</span></summary>
+      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Synopsis, gameplay overview and strategy notes, shown on the collection page like the official wiki.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro — blank line = new paragraph)</span></label>
+          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro; a blank line starts a new paragraph)</span></label>
           <textarea id="pc-synopsis" rows="4" maxlength="4000"></textarea>
         </div>
         <div class="sb-fld">
@@ -281,7 +281,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Optional custom boxes on the collection page -->
     <details class="sb-details" id="sb-boxes-sec">
-      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — extra boxes on your collection page, the same as the ones on character pages.</span></summary>
+      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Extra boxes on your collection page, like the ones on character pages.</span></summary>
       <div class="sb-details-body">
         <div id="pc-boxes"></div>
         <button type="button" class="th-clear" id="pc-box-add">+ Add a box</button>
@@ -296,7 +296,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Text-first pages attached to this collection (edit mode only) -->
     <details class="sb-details" id="sb-pages-sec" style="display:none">
-      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — full text pages (rules, lore, a storyteller guide) linked from your collection page and nowhere else.</span></summary>
+      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Full text pages (rules, lore, a storyteller guide) linked only from your collection page.</span></summary>
       <div class="sb-details-body">
         <ul class="article-list" id="pc-pages-list"><li class="sub">No pages yet.</li></ul>
         <a class="th-clear" id="pc-page-new" href="#" style="display:inline-block;margin-top:10px;text-decoration:none">+ Write a page</a>
@@ -316,12 +316,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <option value="suggest">Suggestions: anyone can propose an edit, I approve it</option>
             <option value="all">Anyone with an account can edit</option>
           </select>
-          <p class="sub" style="margin:8px 0 0">Whatever you choose here applies to this collection <strong>and to every character and wiki page on it that belongs to you</strong>, so one choice covers the whole set. Pages belonging to anyone else are not yours to share, so those keep their own settings.</p>
+          <p class="sub" style="margin:8px 0 0">Whatever you choose here applies to this collection <strong>and to every character and wiki page on it that belongs to you</strong>. Pages belonging to anyone else keep their own settings.</p>
         </div>
         <div class="sb-fld" id="sb-editors-fld" style="display:none">
           <label>Approved editors</label>
           <div id="sb-editors-box"></div>
-          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this collection exactly as you would, drafts included — and the character pages and wiki pages on it that belong to you, so they can fix the roster and the rules as well as the page. They can add new wiki pages too, which stay drafts until you publish them. Pages belonging to anyone else are not yours to share, so those stay untouched.</p>
+          <p class="sub" style="margin:8px 0 0">The accounts you name here can edit this collection as you would, drafts included, along with the character pages and wiki pages on it that belong to you. They can also add new wiki pages, which stay drafts until you publish them. Pages belonging to anyone else are not included.</p>
         </div>
         <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
       </div>
@@ -329,7 +329,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
-      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for the collection's wiki page.</span></summary>
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Logo, background image, fonts and colors for the collection's wiki page.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
@@ -374,11 +374,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <div class="pub-actions">
       <button class="sb-btn sb-btn-publish" id="pc-publish" type="button">★ Publish to Wiki</button>
-      <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account and hidden from the wiki until you publish">Save as Draft</button>
       <button class="sb-btn sb-btn-delete" id="pc-delete" type="button" style="display:none" title="Remove this collection from the site (an admin can restore it)">Delete Collection</button>
       <span class="pub-status-pill" id="pub-status-pill"></span>
     </div>
-    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account — only you (and admins) can see a draft. A name is required, and you must be logged in.</p>
+    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account. Only you can see a draft. A name is required.</p>
     <div id="sb-publish-status"></div>
 
     </div><!-- /editor -->
@@ -536,7 +536,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (hint && hint.classList.contains('credit-unlink-hint')) hint.style.display = 'none';
       if (mode === 'approved'){
         pubStatus('ok', currentStatus === 'draft'
-          ? 'The creator made you an editor of this collection. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
+          ? 'The creator made you an editor of this collection. It is still a draft, and only they can put it live. Everything else here is yours to change.'
           : 'The creator made you an editor of this collection. Everything here is yours to change; publishing and deleting stay with them.');
         $('pc-draft').style.display = 'none';
         updateButtons();   // relabel now that editRole is set
@@ -553,7 +553,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('pc-publish').disabled = true;
       $('pc-draft').disabled = true;
       pubStatus('err', mode === 'suggest'
-        ? 'This collection takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
+        ? 'This collection only takes suggested edits, and they cannot be sent from this page yet. Message the creator instead.'
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
@@ -583,7 +583,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var inc = {}; include.forEach(function(s){ inc[s] = 1; });
       $('pc-member-count').textContent = members.length + ' character' + (members.length===1?'':'s');
       if (!members.length){
-        $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">No characters yet — set a match term or add characters above.</p>';
+        $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">No characters yet. Set a match term or add characters above.</p>';
       } else {
         // A character can only move within its own team: the page draws one
         // section per team, so the team headings here mirror what a reader
@@ -764,7 +764,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             cv.getContext('2d').drawImage(img, 0, 0, w, h);
             var dataURL = cv.toDataURL('image/png');
             var pv = $(prevId); pv.src = dataURL; pv.style.display = 'block';
-            $(noteId).textContent = 'New image ready — will be uploaded when you save.';
+            $(noteId).textContent = 'New image ready. It uploads when you save.';
             if (removeId) $(removeId).style.display = '';
             onReady(dataURL);
           };
@@ -784,7 +784,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         onRemove();
         var pv = $(prevId); pv.src = ''; pv.style.display = 'none';
         $(fileId).value = '';
-        $(noteId).textContent = 'Removed — will be cleared when you save.';
+        $(noteId).textContent = 'Removed. It is cleared when you save.';
         this.style.display = 'none';
       });
     }
@@ -853,7 +853,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var desc = $('pc-desc').value.trim();
       if (!name){ pubStatus('err', 'Please give the collection a name.'); return; }
       var wanted = EDIT_KEY || slugify(name);
-      if (!wanted){ pubStatus('err', 'Could not derive a collection id from that name.'); return; }
+      if (!wanted){ pubStatus('err', 'Could not make a page address from that name.'); return; }
       var id = wanted, bumped = false;
 
       $('pc-publish').disabled = true;
@@ -1018,20 +1018,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (c.header){
             existingHeader = c.header;
             var pv = $('pc-header-prev'); pv.src = PageRender.imgSrc('', c.header); pv.style.display = 'block';
-            $('pc-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
+            $('pc-header-note').textContent = 'Current header. Choose a file to replace it, or remove it.';
             $('pc-header-remove').style.display = '';
           }
           if (c.logo){
             existingLogo = c.logo;
             var lv = $('pc-logo-prev'); lv.src = PageRender.imgSrc('', c.logo); lv.style.display = 'block';
-            $('pc-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
+            $('pc-logo-note').textContent = 'Current logo. Choose a file to replace it, or remove it.';
             $('pc-logo-remove').style.display = '';
             $('sb-appearance').open = true;
           }
           if (theme.background){
             existingBg = theme.background;
             var bv = $('pc-bg-prev'); bv.src = PageRender.imgSrc('', theme.background); bv.style.display = 'block';
-            $('pc-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
+            $('pc-bg-note').textContent = 'Current background. Choose a file to replace it, or remove it.';
             $('pc-bg-remove').style.display = '';
           }
           updateUrlPreview(); updateButtons(); renderMembers();
