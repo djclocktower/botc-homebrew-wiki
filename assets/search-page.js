@@ -17,6 +17,7 @@
   var bar = document.getElementById('filter-bar');
   var toggle = document.getElementById('filter-toggle');
   var sortbar = document.getElementById('sp-sortbar');
+  var otherToggle = document.getElementById('sp-filter-toggle');
   var countEl = document.getElementById('sp-count');
   var out = document.getElementById('sp-results');
   if (!input || !out || !S) return;
@@ -46,9 +47,6 @@
     return { q: p.get('q') || '', tab: TAB_TYPE[tab] !== undefined ? tab : 'all' };
   }
   var state = readURL();
-  // Sort and Curata-only for the tabs that are not Characters (which has the
-  // whole filter box of its own).
-  var other = { sort: 'relevance', curataOnly: false };
   input.value = state.q;
 
   function writeURL(push) {
@@ -223,35 +221,263 @@
     if (top < 0) window.scrollTo(0, window.pageYOffset + top - 70);
   }
 
-  /* ── the list for the open tab ── */
-  function sortOther(list) {
-    var l = other.curataOnly ? list.filter(function (r) { return r.item.curata; }) : list.slice();
-    if (other.sort === 'name-asc' || other.sort === 'name-desc') {
-      l.sort(function (a, b) {
-        var x = a.item.name.toLowerCase(), y = b.item.name.toLowerCase();
-        return x < y ? -1 : x > y ? 1 : 0;
-      });
-      if (other.sort === 'name-desc') l.reverse();
+  /* ── filters for the tabs that are not Characters ──
+     Characters have the whole All Characters box (char-filters.js). Every
+     other kind gets a smaller box built from TAB_FILTERS: an Author chip list
+     where the kind has authors (include, then exclude, then off, like the
+     Creator chips), yes/no chips, and the sorts that mean something for it.
+     Each tab keeps its own choices while the page is open. */
+  var SORT_LABEL = {
+    relevance: 'Best match', newest: 'Newest first', oldest: 'Oldest first',
+    updated: 'Recently updated', 'name-asc': 'Name (A–Z)', 'name-desc': 'Name (Z–A)',
+    count: 'Most characters', pages: 'Most pages'
+  };
+  var DATE_SORTS = ['newest', 'oldest', 'updated'];
+  var NAME_SORTS = ['name-asc', 'name-desc'];
+  var TAB_FILTERS = {
+    script: { author: true, chips: ['curata', 'teensy'], sorts: ['relevance'].concat(DATE_SORTS, NAME_SORTS, ['count']) },
+    collection: { author: true, chips: ['curata'], sorts: ['relevance'].concat(DATE_SORTS, NAME_SORTS, ['count']) },
+    creator: { chips: ['account'], sorts: ['relevance', 'pages'].concat(NAME_SORTS) },
+    user: { chips: ['published'], sorts: ['relevance', 'newest', 'oldest'].concat(NAME_SORTS) },
+    wikipage: { author: true, sorts: ['relevance'].concat(DATE_SORTS, NAME_SORTS) },
+    news: { sorts: ['relevance', 'newest', 'oldest'].concat(NAME_SORTS) },
+    tag: { kinds: [['tag', 'Tags'], ['team', 'Teams']], sorts: ['relevance', 'count'].concat(NAME_SORTS) },
+    site: { kinds: [['Browse', 'Browse'], ['Tool', 'Tools'], ['Your account', 'Your account']], sorts: ['relevance'].concat(NAME_SORTS) }
+  };
+  // Same size rule as the Teensyville chip on /scripts.
+  var TEENSY_MAX = 15;
+  var CHIP = {
+    curata: { group: 'Status', label: 'Curata only', cls: ' filter-chip-curata',
+      title: 'Curata: pages the wiki admins have picked out.',
+      test: function (r) { return r.item.curata; } },
+    teensy: { group: 'Size', label: 'Teensyville', cls: '',
+      title: 'Teensyville: small scripts of 15 characters or fewer.',
+      test: function (r) { return (r.item.data.characters || []).length <= TEENSY_MAX; } },
+    account: { group: 'Show', label: 'Has an account', cls: '',
+      test: function (r) { return !!r.item.data.username; } },
+    published: { group: 'Show', label: 'Has published', cls: '',
+      title: 'People with at least one published character, script or collection.',
+      test: function (r) { return !!publishedUsers()[r.item.data.username]; } }
+  };
+  var AUTHOR_CAP = 40;
+  var tabState = {}, authorCache = {}, published = null, barType = null;
+  function stateFor(type) {
+    return tabState[type] || (tabState[type] = {
+      sort: 'relevance', on: {}, kinds: {}, inAuthors: [], exAuthors: [], authorQuery: ''
+    });
+  }
+  function publishedUsers() {
+    if (published) return published;
+    published = {};
+    (index.data.extra.creators || []).forEach(function (c) { if (c.username) published[c.username] = 1; });
+    return published;
+  }
+  function authorsOf(item) { return window.splitCreators(item.data.author || ''); }
+  // Every author of this kind on the wiki, not only in the current results,
+  // so the list does not shift while somebody types.
+  function allAuthors(type) {
+    if (authorCache[type]) return authorCache[type];
+    var seen = {};
+    index.items.forEach(function (it) {
+      if (it.type === type) authorsOf(it).forEach(function (n) { seen[n] = 1; });
+    });
+    return (authorCache[type] = Object.keys(seen).sort(function (a, b) {
+      return a.toLowerCase() < b.toLowerCase() ? -1 : 1;
+    }));
+  }
+  function countOf(r) {
+    var d = r.item.data;
+    if (r.item.type === 'script') return (d.characters || []).length;
+    if (r.item.type === 'collection') return membersOf(d).length;
+    if (r.item.type === 'creator') return (d.characters || 0) + (d.scripts || 0) + (d.collections || 0);
+    return d.count || 0;
+  }
+  function byItemName(a, b) {
+    var x = a.item.name.toLowerCase(), y = b.item.name.toLowerCase();
+    return x < y ? -1 : x > y ? 1 : 0;
+  }
+  // "Best match" means nothing with nothing typed: the list is then A to Z.
+  function sortFor(type) {
+    var st = stateFor(type), sorts = TAB_FILTERS[type].sorts;
+    var sort = sorts.indexOf(st.sort) === -1 ? 'relevance' : st.sort;
+    return sort === 'relevance' && !state.q.trim() ? 'name-asc' : sort;
+  }
+  var UNKNOWN = 9e15;   // a page with no date sorts after every dated one
+  var SORTS = {
+    newest: function (a, b) { return (b.item.created - a.item.created) || byItemName(a, b); },
+    oldest: function (a, b) { return ((a.item.created || UNKNOWN) - (b.item.created || UNKNOWN)) || byItemName(a, b); },
+    updated: function (a, b) { return (b.item.updated - a.item.updated) || byItemName(a, b); },
+    'name-asc': byItemName,
+    'name-desc': function (a, b) { return byItemName(b, a); },
+    count: function (a, b) { return (countOf(b) - countOf(a)) || byItemName(a, b); },
+    pages: function (a, b) { return (countOf(b) - countOf(a)) || byItemName(a, b); }
+  };
+  function activeCount(type) {
+    var st = stateFor(type), n = st.inAuthors.length + st.exAuthors.length, k;
+    for (k in st.on) if (st.on[k]) n++;
+    for (k in st.kinds) if (st.kinds[k]) n++;
+    return n;
+  }
+  function applyOther(type, list) {
+    var st = stateFor(type);
+    var chips = Object.keys(st.on).filter(function (k) { return st.on[k]; });
+    var kinds = Object.keys(st.kinds).filter(function (k) { return st.kinds[k]; });
+    var out = list.filter(function (r) {
+      for (var i = 0; i < chips.length; i++) if (!CHIP[chips[i]].test(r)) return false;
+      if (kinds.length && kinds.indexOf(r.item.data.kind) === -1) return false;
+      if (st.inAuthors.length || st.exAuthors.length) {
+        var names = authorsOf(r.item);
+        if (st.inAuthors.length && !names.some(function (n) { return st.inAuthors.indexOf(n) !== -1; })) return false;
+        if (names.some(function (n) { return st.exAuthors.indexOf(n) !== -1; })) return false;
+      }
+      return true;
+    });
+    var sort = sortFor(type);
+    // 'relevance' keeps the engine's order, best match first.
+    if (SORTS[sort]) out.sort(SORTS[sort]);
+    return out;
+  }
+
+  function groupHTML(label, inner) {
+    return '<div class="filter-group"><span class="filter-group-label">' + esc(label) + '</span>' + inner + '</div>';
+  }
+  function sortOptions(type) {
+    var q = state.q.trim(), current = sortFor(type);
+    return TAB_FILTERS[type].sorts.filter(function (s) { return q || s !== 'relevance'; }).map(function (s) {
+      return '<option value="' + s + '"' + (s === current ? ' selected' : '') + '>' + esc(SORT_LABEL[s]) + '</option>';
+    }).join('');
+  }
+  // Built once per tab, then only its counts and chips change, so the author
+  // search box keeps its focus and the bar does not jump while typing.
+  function buildOtherBar(type) {
+    var cfg = TAB_FILTERS[type], st = stateFor(type), html = '', groups = [], byGroup = {};
+    if (cfg.kinds) {
+      html += groupHTML('Kind', '<div class="filter-chips">' + cfg.kinds.map(function (k) {
+        return '<button type="button" class="filter-chip' + (st.kinds[k[0]] ? ' active' : '') + '" data-kind="' + esc(k[0]) + '">' +
+          esc(k[1]) + ' <span class="sp-chip-n"></span></button>';
+      }).join('') + '</div>');
     }
-    return l;
+    (cfg.chips || []).forEach(function (k) {
+      var c = CHIP[k];
+      if (!byGroup[c.group]) { byGroup[c.group] = []; groups.push(c.group); }
+      byGroup[c.group].push('<button type="button" class="filter-chip' + c.cls + (st.on[k] ? ' active' : '') + '" data-chip="' + k + '"' +
+        (c.title ? ' title="' + esc(c.title) + '"' : '') + '>' + esc(c.label) + ' <span class="sp-chip-n"></span></button>');
+    });
+    groups.forEach(function (g) { html += groupHTML(g, '<div class="filter-chips">' + byGroup[g].join('') + '</div>'); });
+    var authors = cfg.author ? allAuthors(type) : [];
+    if (authors.length > 1) {
+      html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">Author</span>' +
+        '<div class="filter-chip-selected-row" id="sp-au-selected"></div>' +
+        '<input type="search" class="filter-search" id="sp-au-search" value="' + esc(st.authorQuery) + '" ' +
+          'placeholder="Search ' + authors.length + ' authors…" autocomplete="off" aria-label="Search authors">' +
+        '<div class="filter-chips-scroll" id="sp-au-list"></div></div>';
+    }
+    html += groupHTML('Sort', '<select class="filter-select" id="sp-sort">' + sortOptions(type) + '</select>');
+    html += groupHTML(' ', '<button type="button" class="filter-reset" id="sp-other-reset">Reset filters</button>');
+    sortbar.innerHTML = html;
+    sortbar.setAttribute('data-type', type);
+    barType = type;
+    drawAuthorChips(type);
   }
-  function drawSortbar(type, list) {
-    if (!type || type === 'character' || list.length < 2) { sortbar.hidden = true; return; }
-    var hasCurata = (type === 'script' || type === 'collection') && res.byType[type].some(function (r) { return r.item.curata; });
-    var sorts = [['relevance', 'Best match'], ['name-asc', 'Name (A–Z)'], ['name-desc', 'Name (Z–A)']];
-    sortbar.innerHTML =
-      (hasCurata ? '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips">' +
-        '<button type="button" class="filter-chip filter-chip-curata' + (other.curataOnly ? ' active' : '') + '" id="sp-curata">Curata only</button></div></div>' : '') +
-      '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="sp-sort">' +
-      sorts.map(function (s) { return '<option value="' + s[0] + '"' + (other.sort === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') +
-      '</select></div>';
-    sortbar.hidden = false;
+  function matchingAuthors(type) {
+    var st = stateFor(type), q = S.fold(st.authorQuery.trim());
+    return allAuthors(type).filter(function (n) {
+      if (st.inAuthors.indexOf(n) !== -1 || st.exAuthors.indexOf(n) !== -1) return false;
+      return !q || S.fold(n).indexOf(q) !== -1;
+    });
   }
+  function authorChip(name, cls) {
+    return '<button type="button" class="filter-chip' + (cls ? ' ' + cls : '') + '" data-author="' + esc(name) + '">' + esc(name) + '</button>';
+  }
+  function drawAuthorChips(type) {
+    var selected = document.getElementById('sp-au-selected'), listEl = document.getElementById('sp-au-list');
+    if (!selected || !listEl) return;
+    var st = stateFor(type), matches = matchingAuthors(type), shown = matches.slice(0, AUTHOR_CAP);
+    selected.innerHTML = st.inAuthors.map(function (n) { return authorChip(n, 'active'); }).join('') +
+      st.exAuthors.map(function (n) { return authorChip(n, 'active-exclude'); }).join('');
+    listEl.innerHTML = shown.map(function (n) { return authorChip(n, ''); }).join('') +
+      (matches.length > shown.length ? '<span class="filter-more">+' + (matches.length - shown.length) + ' more (keep typing)</span>' : '') +
+      (!matches.length && st.authorQuery.trim() ? '<span class="filter-more">No author matches “' + esc(st.authorQuery.trim()) + '”</span>' : '');
+  }
+  // unset -> include -> exclude -> unset, like the Creator chips.
+  function cycleAuthor(type, name) {
+    var st = stateFor(type), ii = st.inAuthors.indexOf(name), ei = st.exAuthors.indexOf(name);
+    if (ii === -1 && ei === -1) st.inAuthors.push(name);
+    else if (ii !== -1) { st.inAuthors.splice(ii, 1); st.exAuthors.push(name); }
+    else st.exAuthors.splice(ei, 1);
+  }
+  // Counts on the chips, against what the search found (before the chips).
+  function refreshOtherBar(type, found) {
+    sortbar.querySelectorAll('[data-chip]').forEach(function (b) {
+      var test = CHIP[b.getAttribute('data-chip')].test;
+      b.querySelector('.sp-chip-n').textContent = '(' + found.filter(test).length + ')';
+    });
+    sortbar.querySelectorAll('[data-kind]').forEach(function (b) {
+      var k = b.getAttribute('data-kind');
+      b.querySelector('.sp-chip-n').textContent = '(' + found.filter(function (r) { return r.item.data.kind === k; }).length + ')';
+    });
+    var sel = document.getElementById('sp-sort');
+    if (sel) sel.innerHTML = sortOptions(type);
+    var n = activeCount(type);
+    otherToggle.innerHTML = 'Filters' + (n ? ' (' + n + ')' : '') + ' <span class="filter-toggle-arrow">&#9662;</span>';
+  }
+  function showOtherBar(type, found) {
+    // Nothing to sort or narrow, unless a filter is what emptied it.
+    var show = !!type && type !== 'character' && (found.length > 1 || activeCount(type) > 0);
+    sortbar.hidden = !show;
+    otherToggle.hidden = !show;
+    if (!show) return;
+    if (barType !== type) buildOtherBar(type);
+    refreshOtherBar(type, found);
+  }
+  otherToggle.addEventListener('click', function () {
+    var open = sortbar.classList.toggle('open');
+    otherToggle.classList.toggle('open', open);
+    otherToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
   sortbar.addEventListener('change', function (e) {
-    if (e.target.id === 'sp-sort') { other.sort = e.target.value; drawBody(); }
+    if (e.target.id !== 'sp-sort' || !barType) return;
+    stateFor(barType).sort = e.target.value;
+    drawBody();
   });
   sortbar.addEventListener('click', function (e) {
-    if (e.target.id === 'sp-curata') { other.curataOnly = !other.curataOnly; drawBody(); }
+    var t = e.target.closest ? e.target.closest('button') : null, type = barType;
+    if (!t || !type) return;
+    var st = stateFor(type);
+    if (t.hasAttribute('data-chip')) {
+      var k = t.getAttribute('data-chip');
+      st.on[k] = !st.on[k];
+      t.classList.toggle('active', st.on[k]);
+    } else if (t.hasAttribute('data-kind')) {
+      var kind = t.getAttribute('data-kind');
+      st.kinds[kind] = !st.kinds[kind];
+      t.classList.toggle('active', st.kinds[kind]);
+    } else if (t.hasAttribute('data-author')) {
+      cycleAuthor(type, t.getAttribute('data-author'));
+      drawAuthorChips(type);
+    } else if (t.id === 'sp-other-reset') {
+      tabState[type] = null;
+      buildOtherBar(type);
+    } else return;
+    drawBody();
+  });
+  sortbar.addEventListener('input', function (e) {
+    if (e.target.id !== 'sp-au-search' || !barType) return;
+    stateFor(barType).authorQuery = e.target.value;
+    drawAuthorChips(barType);
+  });
+  // Enter picks the only match, as in the Creator box on All Characters.
+  sortbar.addEventListener('keydown', function (e) {
+    if (e.target.id !== 'sp-au-search' || e.key !== 'Enter' || e.isComposing || !barType) return;
+    e.preventDefault();
+    var matches = matchingAuthors(barType);
+    if (matches.length === 1) {
+      cycleAuthor(barType, matches[0]);
+      stateFor(barType).authorQuery = '';
+      e.target.value = '';
+    }
+    drawAuthorChips(barType);
+    drawBody();
   });
 
   function ensureFilters() {
@@ -286,14 +512,20 @@
     bar.hidden = !showFilters;
     toggle.hidden = !showFilters;
 
-    if (!type) { sortbar.hidden = true; drawAll(q); return; }
+    var found = type ? res.byType[type] : [];
+    showOtherBar(type, found);
+    if (!type) { drawAll(q); return; }
     if (type === 'character') { drawCharacters(q); return; }
-    var list = sortOther(res.byType[type]);
-    drawSortbar(type, res.byType[type]);
+    var list = applyOther(type, found);
     countEl.hidden = false;
-    countEl.textContent = noun(type, list.length) + (q ? ' for “' + q + '”' : '');
-    out.innerHTML = list.length ? gridHTML(type, list)
+    countEl.textContent = noun(type, list.length) +
+      (found.length !== list.length ? ' (of ' + found.length + ')' : '') + (q ? ' for “' + q + '”' : '');
+    if (list.length) { out.innerHTML = gridHTML(type, list); return; }
+    out.innerHTML = found.length
+      ? emptyHTML('No ' + NOUN[type][1] + ' match these filters. <button type="button" class="filter-reset" id="sp-reset">Reset</button>')
       : emptyHTML(q ? 'No ' + NOUN[type][1] + ' match “' + esc(q) + '”.' : 'Nothing here yet.');
+    var rb = document.getElementById('sp-reset');
+    if (rb) rb.addEventListener('click', function () { tabState[type] = null; barType = null; drawBody(); });
   }
 
   function drawAll(q) {

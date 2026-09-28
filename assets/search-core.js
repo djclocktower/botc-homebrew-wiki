@@ -196,9 +196,36 @@
     var extra = data.extra || {};
     var items = [];
 
+    // When each item was created and last changed, as unix seconds (0 when
+    // unknown), for the date sorts on /search. The browse feeds carry `v`,
+    // the row's last save in base 36; creation dates for scripts and
+    // collections come in the search index's `dates`.
+    var dates = extra.dates || {};
+    function seconds(ts) {
+      var t = Date.parse(String(ts || '').replace(' ', 'T') + (/[zZ]$/.test(String(ts || '')) ? '' : 'Z'));
+      return isFinite(t) ? Math.floor(t / 1000) : 0;
+    }
+    function fromV(v) { var n = v ? parseInt(v, 36) : 0; return isFinite(n) ? n : 0; }
+    function stamp(item) {
+      var d = item.data || {}, t = item.type, created = 0, updated = 0;
+      if (t === 'script') { created = (dates.script || {})[d.slug] || 0; updated = fromV(d.v); }
+      else if (t === 'collection') {
+        var cd = dates.collection || {};
+        created = cd[d.id] || cd[d.slug] || 0;
+        updated = fromV(d.v);
+      }
+      else if (t === 'character') updated = fromV(d.v);
+      else if (t === 'user') created = d.created || 0;
+      else if (t === 'wikipage') { created = d.created || 0; updated = d.updated || 0; }
+      else if (t === 'news') created = updated = seconds(d.publishedAt);
+      item.created = created;
+      item.updated = updated || created;
+    }
+
     // fields: [text, weight, typo?, compact?]
     function add(item, fields) {
       item.fields = fields;
+      stamp(item);
       items.push(item);
     }
 

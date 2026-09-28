@@ -91,6 +91,30 @@ test('a creator with an account is one result in the mixed list, and both tabs k
   assert.equal(res.counts.user, 1);
 });
 
+test('every result knows when it was created and last changed, for the date sorts', () => {
+  const idx = S.createIndex({
+    characters: [{ slug: 'a', page: 'c/a', name: 'A', v: (1700000000).toString(36) }],
+    scripts: [{ slug: 'fall', name: 'Fall', v: (1790000000).toString(36) }],
+    collections: [{ id: 'odyssey', slug: 'Odyssey PK', displayName: 'Odyssey' }, { slug: 'Legacy', displayName: 'Legacy' }],
+    extra: {
+      dates: { script: { fall: 1600000000 }, collection: { odyssey: 1650000000, Legacy: 1500000000 } },
+      users: [{ username: 'lurker', created: 1720000000 }],
+      pages: [{ slug: 'p', title: 'P', created: 1710000000, updated: 1730000000 }],
+      news: [{ slug: 'n', title: 'N', publishedAt: '2026-08-21 02:42:04' }]
+    }
+  }, '');
+  const at = name => idx.items.find(it => it.name === name);
+  assert.deepEqual([at('Fall').created, at('Fall').updated], [1600000000, 1790000000]);
+  assert.equal(at('Odyssey').created, 1650000000);
+  assert.equal(at('Legacy').created, 1500000000);
+  assert.equal(at('A').updated, 1700000000);
+  assert.equal(at('lurker').created, 1720000000);
+  assert.deepEqual([at('P').created, at('P').updated], [1710000000, 1730000000]);
+  assert.equal(at('N').created, Date.UTC(2026, 7, 21, 2, 42, 4) / 1000);
+  // Nothing known is 0, never NaN, so a sort can put it last.
+  assert.equal(at('Tools').created, 0);
+});
+
 test('an empty query lists every item of a kind, A to Z', () => {
   const res = index.search('', { types: ['character'] });
   assert.equal(res.total, chars.length);
@@ -147,8 +171,9 @@ test('/api/search-index lists people, published wiki pages and news, and answers
   assert.equal(res.headers.get('cache-control'), 'private, max-age=0, must-revalidate');
   const body = await res.json();
   assert.deepEqual(body.users.map(u => u.username).sort(), ['lurker', 'tir-far-thóinn']);
-  assert.deepEqual(body.users.find(u => u.username === 'tir-far-thóinn'),
-    { username: 'tir-far-thóinn', displayName: 'Tir-far-thóinn', avatarUrl: '/assets/avatars/u1.png' });
+  const { created: joined, ...tir } = body.users.find(u => u.username === 'tir-far-thóinn');
+  assert.deepEqual(tir, { username: 'tir-far-thóinn', displayName: 'Tir-far-thóinn', avatarUrl: '/assets/avatars/u1.png' });
+  assert.ok(joined > 0, 'the join date the profile page already shows');
   assert.ok(!JSON.stringify(body).includes('@x.y'), 'no email address ever leaves');
   assert.deepEqual(body.pages.map(p => p.slug).sort(), ['by-id', 'odyssey-attack']);
   const attack = body.pages.find(p => p.slug === 'odyssey-attack');
@@ -157,6 +182,14 @@ test('/api/search-index lists people, published wiki pages and news, and answers
   assert.equal(body.pages.find(p => p.slug === 'by-id').blurb, 'Long body text here.');
   assert.deepEqual(body.news.map(n => n.slug), ['live']);
   assert.ok(Array.isArray(body.creators));
+  // Creation dates for the Newest / Oldest sorts: scripts by slug,
+  // collections by their kebab id and PK slug, pages and accounts on the row.
+  assert.ok(body.dates.script.fall > 0);
+  assert.equal(body.dates.script['hidden-script'], undefined, 'no date for a draft');
+  assert.ok(body.dates.collection.odyssey > 0);
+  assert.equal(body.dates.collection['Odyssey PK'], body.dates.collection.odyssey);
+  assert.ok(body.users.every(u => u.created > 0));
+  assert.ok(attack.created > 0 && attack.updated > 0);
   const again = await f.request('/api/search-index', { headers: { 'If-None-Match': res.headers.get('etag') } });
   assert.equal(again.status, 304);
   // A content edit rolls the ETag.

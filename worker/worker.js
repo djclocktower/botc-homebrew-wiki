@@ -4305,9 +4305,14 @@ function browseRow(d) {
    Deliberately a short opaque token rather than the timestamp itself: it is
    in every card's HTML, 1,800 times over. */
 function rowVersion(updatedAt) {
-  if (!updatedAt) return '';
-  const t = Date.parse(String(updatedAt).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(updatedAt)) ? '' : 'Z'));
-  return isFinite(t) ? Math.floor(t / 1000).toString(36) : '';
+  const t = rowSeconds(updatedAt);
+  return t ? t.toString(36) : '';
+}
+// A D1 timestamp ('2026-09-09 12:00:00', UTC) as unix seconds, 0 when absent.
+function rowSeconds(ts) {
+  if (!ts) return 0;
+  const t = Date.parse(String(ts).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(ts)) ? '' : 'Z'));
+  return isFinite(t) ? Math.floor(t / 1000) : 0;
 }
 
 // ---- build the three JSON files from D1 (published pages only) ----
@@ -4526,10 +4531,14 @@ async function cachedCreatorsBody(env, ctx) {
 //             published too. They stay out of the sitemap and search engines
 //             (noindex); the owner asked for them in the site's own search.
 //   news      published articles
+//   dates     when each published script and collection was created, as unix
+//             seconds (the browse feeds carry only `v`, the last save), for
+//             the Newest / Oldest sorts on /search
+// Pages and accounts carry their own `created` (and a page its `updated`).
 // Versioned on every content type it draws from, like the feeds, and also on
 // a half-hour bucket: a new account or a changed avatar bumps no version, and
 // half an hour is the same ceiling PEOPLE_CACHE_CONTROL puts on a bio.
-const SEARCH_INDEX_V = 1;
+const SEARCH_INDEX_V = 2;
 const SEARCH_DEPS = ['character', 'script', 'collection', 'wikipage', 'news'];
 const SEARCH_PEOPLE_MS = 30 * 60 * 1000;
 const _searchIndexPending = new Map();
@@ -4539,36 +4548,68 @@ async function searchIndexUsers(env) {
   let rows;
   try {
     rows = (await env.DB.prepare(
-      'SELECT username, display_name, avatar_url FROM users WHERE COALESCE(banned,0)=0 ORDER BY username'
+      'SELECT username, display_name, avatar_url, created_at FROM users WHERE COALESCE(banned,0)=0 ORDER BY username'
     ).all()).results;
   } catch {
-    rows = (await env.DB.prepare('SELECT username, display_name, avatar_url FROM users ORDER BY username').all()).results;
+    rows = (await env.DB.prepare('SELECT username, display_name, avatar_url, created_at FROM users ORDER BY username').all()).results;
   }
   return (rows || []).filter(u => u.username).map(u => {
     const out = { username: u.username };
     if (u.display_name && u.display_name !== u.username) out.displayName = u.display_name;
     if (u.avatar_url) out.avatarUrl = u.avatar_url;
+    // Public already: the profile page says "Member since".
+    const joined = rowSeconds(u.created_at);
+    if (joined) out.created = joined;
     return out;
   });
 }
-async function searchIndexPages(env) {
-  await ensurePagesTable(env);
-  // The parent's slug comes off the row, not out of the JSON: legacy rows do
-  // not all carry it in their data blob.
-  const [rows, scripts, colls] = await Promise.all([
-    env.DB.prepare(
-      `SELECT slug, title, parent_type, parent_slug, author, data FROM pages WHERE status='published'`
-    ).all().then(r => r.results || []),
-    env.DB.prepare(`SELECT slug, name FROM scripts WHERE status='published'`).all().then(r => r.results || []),
-    env.DB.prepare(`SELECT slug, display_name, data FROM collections WHERE status='published'`).all().then(r => r.results || [])
+// The published scripts and collections, read once for both the wiki pages'
+// parents and the creation dates. The slug comes off the row, not out of the
+// JSON: legacy rows do not all carry it in their data blob.
+async function searchIndexSets(env) {
+  const read = async (withDate, table, cols) => {
+    try {
+      return (await env.DB.prepare(`SELECT ${cols}${withDate ? ', created_at' : ''} FROM ${table} WHERE status='published'`).all()).results || [];
+    } catch (err) {
+      if (!withDate) throw err;
+      return read(false, table, cols);   // a table from before created_at
+    }
+  };
+  const [scripts, colls] = await Promise.all([
+    read(true, 'scripts', 'slug, name'),
+    read(true, 'collections', 'slug, display_name, data')
   ]);
+  return { scripts, colls: colls.map(c => ({ ...c, d: parseData(c) })) };
+}
+function searchIndexDates(sets) {
+  const dates = { script: {}, collection: {} };
+  for (const sc of sets.scripts) {
+    const t = rowSeconds(sc.created_at);
+    if (t) dates.script[sc.slug] = t;
+  }
+  for (const c of sets.colls) {
+    const t = rowSeconds(c.created_at);
+    if (!t) continue;
+    // The browser knows a collection by its kebab id, or its PK slug when it
+    // has none.
+    dates.collection[c.d.id || c.slug] = t;
+    if (c.d.id && c.d.id !== c.slug) dates.collection[c.slug] = t;
+  }
+  return dates;
+}
+async function searchIndexPages(env, sets) {
+  await ensurePagesTable(env);
+  const rows = (await env.DB.prepare(
+    `SELECT slug, title, parent_type, parent_slug, author, data, created_at, updated_at FROM pages WHERE status='published'`
+  ).all()).results || [];
   if (!rows.length) return [];
+  const { scripts, colls } = sets;
   // Only published parents are looked up, so a page under a draft or a
   // deleted script or collection finds no parent and is left out.
   const parents = { script: new Map(), collection: new Map() };
   for (const sc of scripts) parents.script.set(sc.slug, { name: sc.name || sc.slug, key: sc.slug });
   for (const c of colls) {
-    const d = parseData(c);
+    const d = c.d;
     const entry = { name: d.displayName || c.display_name || c.slug, key: d.id || c.slug };
     parents.collection.set(c.slug, entry);
     if (d.id) parents.collection.set(d.id, entry);
@@ -4584,18 +4625,26 @@ async function searchIndexPages(env) {
     if (d.subtitle) page.subtitle = String(d.subtitle).slice(0, 200);
     const blurb = d.blurb || WikiRender.autoSummary(d.body, 160);
     if (blurb) page.blurb = blurb;
+    const created = rowSeconds(r.created_at), updated = rowSeconds(r.updated_at);
+    if (created) page.created = created;
+    if (updated) page.updated = updated;
     out.push(page);
   }
   return out;
 }
 async function buildSearchIndex(env, ctx) {
-  const [creatorsBody, users, pages, news] = await Promise.all([
+  // A set list that cannot be read costs the wiki pages and the dates, never
+  // the whole index.
+  const sets = searchIndexSets(env).catch(() => null);
+  const [creatorsBody, users, pages, news, setRows] = await Promise.all([
     cachedCreatorsBody(env, ctx),
     searchIndexUsers(env).catch(() => []),
-    searchIndexPages(env).catch(() => []),
-    newsList(env, 100, false).then(r => r.articles).catch(() => [])
+    sets.then(s => s ? searchIndexPages(env, s) : []).catch(() => []),
+    newsList(env, 100, false).then(r => r.articles).catch(() => []),
+    sets
   ]);
   return {
+    dates: setRows ? searchIndexDates(setRows) : { script: {}, collection: {} },
     creators: JSON.parse(creatorsBody).creators.map(c => {
       const out = { name: c.name, characters: c.characters, scripts: c.scripts, collections: c.collections };
       if (c.username) {

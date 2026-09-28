@@ -1147,6 +1147,8 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sp-tab-n { opacity: .6; margin-left: 2px; font-variant-numeric: tabular-nums; }
 .sp-tab.active .sp-tab-n { opacity: .8; }
 .sp-sortbar { justify-content: flex-start; }
+.sp-chip-n { opacity: .65; font-variant-numeric: tabular-nums; }
+.filter-chip.active .sp-chip-n { opacity: .85; }
 .sp-section { margin-bottom: 40px; }
 .sp-section-head {
   display: flex; align-items: baseline; justify-content: space-between;

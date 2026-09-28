@@ -3379,7 +3379,11 @@ is focused, hovered or touched (and preloaded in `search.html`'s head):
   uses), every account **that is not suspended** (handle, display name and
   picture only — the owner chose every account, not only the ones that have
   published), published wiki pages whose script or collection is published,
-  and published news. ETag + 304 like the feeds, versioned on
+  published news, and `dates` — when each published script and collection
+  was created (unix seconds), since the browse feeds carry only `v`, the last
+  save. Pages and accounts carry their own `created` (a page its `updated`
+  too); an account's is the "Member since" its profile already shows.
+  ETag + 304 like the feeds, versioned on
   `SEARCH_DEPS` and on a half-hour bucket, because a new account or avatar
   bumps no content version. Bump `SEARCH_INDEX_V` if its shape changes.
   `data.js` shares it per page like the feeds.
@@ -3420,6 +3424,22 @@ together" as the default group, and **Show Partial on**, as on the creator
 pages: somebody searching for a page by name must find it. On `/search` the
 top-bar box hands its query to the page (`window.SearchPage.set`) instead of
 reloading it. Enter never searches while an input method is composing.
+
+**Every other tab has a filter box too** (`TAB_FILTERS` in search-page.js,
+one row per kind): an **Author** chip list where the kind has authors
+(scripts, collections, wiki pages; include, then exclude, then off, like the
+Creator chips, with a search box over every author of that kind on the wiki
+rather than only the current results), yes/no chips (Curata only,
+Teensyville, Has an account, Has published) and a **Sort** of Best match,
+Newest / Oldest first, Recently updated, Name A–Z / Z–A, and Most characters
+or Most pages where those mean something. With nothing typed, "Best match" is
+not offered and the list is A–Z. `createIndex()` in search-core.js stamps every item
+with `created` / `updated` (0 when unknown, sorted last) from the feeds' `v`
+and the index's dates. Each tab keeps its own choices while the page is
+open; the box is built once per tab and only its counts change as you type,
+so the author search keeps its focus. It carries its own **Filters** button
+(`#sp-filter-toggle`) because a `.filter-bar` is hidden under 640px until
+opened: without one the box simply did not exist on a phone.
 
 ## Caching (and why the site is fast on a phone)
 
