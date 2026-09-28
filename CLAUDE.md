@@ -435,12 +435,10 @@ assets/
                        doors on one set of path data: UIIcons.svg(name) for
                        markup built in JS, and UIIcons.paint(root), which
                        fills the <i class="sbi-i" data-icon="name"> the
-                       static pages write. NO EMOJI anywhere in the
-                       interface: an emoji is drawn by the reader's font in
-                       the font's own colours, so it never takes the site's
-                       ink. Content is a different matter — the credit marks
-                       in creators.js and the ♊︎ in a character's name are
-                       somebody's page, not our furniture.
+                       static pages write. Used by the Script Builder and
+                       its widgets; the rest of the site uses the CSS
+                       .ico-{name} set in styles.css (see "Frontend
+                       conventions"). NO EMOJI anywhere in the interface.
   script-builder.js    The Script Builder's controller (script.html is the
                        markup). Selection, the roster, undo/redo, the shape,
                        the Analyse tab, the saved-script library,
@@ -4483,24 +4481,26 @@ seeded with whole collections whose characters all arrived unowned.
   every tool. `python3 migration/ui-strings.py <file>` lists the strings that
   break it; the page `<title>` separator ("Page — BOTC HomeBrew Wiki") is the
   one dash left, because forty pages share it.
-- **Interface marks are SVG, never emoji.** `assets/ui-icons.js` is the set;
-  it draws in `currentColor`, so an icon is the colour of the text around it
-  on every background the wiki has — an emoji is painted by the reader's font
-  in that font's colours and takes no theme at all. A page that needs one
-  loads that file and writes `<i class="sbi-i" data-icon="download"></i>`
-  (`UIIcons.paint()` fills it on load), or asks `UIIcons.svg('download')` for
-  the markup. It is loaded by `script.html`, `publish-script.html`,
-  `all-characters.html`, `profile.html`, `account.html`, `dashboard.html`,
-  `tokens.html`, `script-view.html`, and by `reading-lazy.js` ahead of the
-  deferred comment widget on every SSR page (the pinned badge). Shared widgets ask
-  for it through `window.UIIcons ? … : '&#…;'` so a page that has not loaded
-  it keeps the old glyph rather than a hole. The Worker's own renderers have
-  no global to reach: `render-page.js` carries its one download mark inline,
-  with a comment pointing back here. This is about the furniture only — the
-  creator symbols in `creators.js` and the credit marks inside character
-  names are content (gotcha 7), and the plain text dingbats elsewhere
-  (`&#10003;` on a save, `&#10007;` on a failure) are glyphs in the site's
-  own ink, not emoji.
+- **Interface marks are SVG, never emoji.** An emoji is painted by the
+  reader's font in that font's colours and takes no theme at all; both icon
+  sets below draw in `currentColor`, so an icon is the colour of the text
+  around it on every background the wiki has.
+  - **`.ico ico-{name}` in styles.css** is the site-wide set: an empty
+    `<span class="ico ico-download" aria-hidden="true"></span>`, painted as a
+    mask like the Curata wreath. It needs no script, so it is what markup
+    outside the Script Builder uses, the Worker's renderers included.
+  - **`assets/ui-icons.js`** is the Script Builder's set (it has marks the CSS
+    set lacks: menu, save, plus, up, down, clipboard and more). Static markup
+    writes `<i class="sbi-i" data-icon="download"></i>` and
+    `UIIcons.paint()` fills it; generated markup asks
+    `UIIcons.svg('download')`. It is loaded by `script.html` and
+    `publish-script.html`, and `night-order-editor.js` asks for its up/down
+    arrows through `window.UIIcons ? … : '&#…;'`, so a page without it keeps
+    the old glyph rather than a hole.
+  This is about the furniture only. The creator symbols in `creators.js` and
+  the credit marks inside character names are content (gotcha 7), and the
+  plain text dingbats elsewhere (`&#10003;` on a save, `&#10007;` on a
+  failure) are glyphs in the site's own ink, not emoji.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
   — so it runs past its panel, past the viewport, and widens the whole
