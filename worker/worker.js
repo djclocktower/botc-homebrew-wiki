@@ -132,6 +132,7 @@
  *                                name): owned + credited pages, drafts for the
  *                                owner/admins
  *   GET  /api/creators        -> every creator with counts + linked account
+ *   GET  /api/search-index    -> the site search's creators, users, wiki pages and news
  *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
@@ -4396,6 +4397,239 @@ async function buildPublicJSON(env, table, opts = {}) {
   return gridOnly ? out.map(gridRow) : opts.fields === 'browse' ? out.map(browseRow) : out;
 }
 
+// ---- every creator name with its counts and linked account ----
+// The /creators index and the site search both read this. Building it reads
+// five tables end to end, so it is only ever reached through
+// cachedCreatorsBody(), keyed on the content version like the feeds.
+async function buildCreatorsList(env) {
+  const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
+  // One credit string can name several people; each of them gets their own
+  // row here, the same way each of them gets their own creator page.
+  function bump(raw, kind) {
+    for (const name of Creators.splitCreators(raw)) {
+      const key = normCreator(name);
+      if (!key) continue;
+      let row = tally.get(key);
+      if (!row) { row = { name: name.trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
+      row[kind]++;
+    }
+  }
+  try {
+    const [chars, scripts, colls] = await Promise.all([
+      env.DB.prepare(`SELECT creator AS n FROM characters WHERE status='published'`).all(),
+      env.DB.prepare(`SELECT author AS n FROM scripts WHERE status='published'`).all(),
+      env.DB.prepare(`SELECT data FROM collections WHERE status='published'`).all()
+    ]);
+    for (const r of chars.results || []) bump(r.n, 'characters');
+    for (const r of scripts.results || []) bump(r.n, 'scripts');
+    for (const r of colls.results || []) bump(parseData(r).author, 'collections');
+  } catch { /* partial tally is better than none */ }
+
+  // Attach accounts. One pass over the alias table and one over the users
+  // that own published pages, rather than a resolve call per name.
+  const aliases = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%'`
+    ).all();
+    for (const r of results || []) {
+      aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
+    }
+  } catch { /* none set */ }
+  // lower(name) -> owner_id, the account that owns the most published
+  // pages credited to that name (proof by ownership, in bulk). Counted in
+  // JS rather than SQL because a credit can name several people.
+  const owners = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
+         FROM characters
+        WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
+        GROUP BY creator, owner_id`
+    ).all();
+    const perName = new Map();   // name -> Map(owner_id -> count)
+    const off = new Map();       // name -> Set(owner_id that disowned it)
+    for (const r of results || []) {
+      for (const key of creditNames(r.n)) {
+        if (Number(r.dis) > 0) {
+          if (!off.has(key)) off.set(key, new Set());
+          off.get(key).add(r.owner_id);
+        }
+        if (!perName.has(key)) perName.set(key, new Map());
+        const m = perName.get(key);
+        m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
+      }
+    }
+    for (const [key, m] of perName) {
+      // Same rule as resolveCreatorAccount, or the index would show an
+      // account beside a name whose page no longer links to it.
+      const dis = off.get(key);
+      let best = null, bestN = 0;
+      for (const [ownerId, n] of m) {
+        if (dis && dis.has(ownerId)) continue;
+        if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
+      }
+      if (best != null) owners.set(key, best);
+    }
+  } catch { /* no owned pages */ }
+  let users = [];
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT id, username, display_name, avatar_url FROM users'
+    ).all();
+    users = results || [];
+  } catch { /* users unreadable */ }
+  const byId = new Map(users.map(x => [x.id, x]));
+  const byName = new Map(users.map(x => [String(x.username).toLowerCase(), x]));
+
+  const out = [];
+  for (const [key, row] of tally) {
+    let acct = null;
+    if (aliases.has(key)) {
+      const v = aliases.get(key);
+      acct = v ? byName.get(v.toLowerCase()) || null : null;
+    } else if (owners.has(key)) {
+      acct = byId.get(owners.get(key)) || null;
+    }
+    out.push({
+      name: row.name,
+      characters: row.characters, scripts: row.scripts, collections: row.collections,
+      total: row.characters + row.scripts + row.collections,
+      username: acct ? acct.username : null,
+      displayName: acct ? (acct.display_name || acct.username) : null,
+      avatarUrl: acct ? acct.avatar_url : null
+    });
+  }
+  out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  return out;
+}
+async function cachedCreatorsBody(env, ctx) {
+  // Cached per content version (with the PEOPLE ttl — the rows carry
+  // avatars and display names, which bump nothing when they change).
+  const key = 'https://feed.internal/creators.json?v=' + (await contentVersion(env)) +
+    '&r=' + CREDIT_RULE_V;
+  const hit = await edgeCacheGet(key);
+  if (hit !== null) return hit;
+  const body = JSON.stringify({ creators: await buildCreatorsList(env) });
+  edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
+  return body;
+}
+
+// ---- the site search's second half ----
+// assets/search-core.js searches the three public feeds the browse pages
+// already download (characters grid, scripts and collections browse), plus
+// this: everything else the search box finds, in one small response.
+//   creators  the /creators list (name, counts, linked account)
+//   users     every account that is not suspended: handle, display name and
+//             picture only, the three things its /u/ page shows anyway
+//   pages     published custom wiki pages (/p/) whose script or collection is
+//             published too. They stay out of the sitemap and search engines
+//             (noindex); the owner asked for them in the site's own search.
+//   news      published articles
+// Versioned on every content type it draws from, like the feeds, and also on
+// a half-hour bucket: a new account or a changed avatar bumps no version, and
+// half an hour is the same ceiling PEOPLE_CACHE_CONTROL puts on a bio.
+const SEARCH_INDEX_V = 1;
+const SEARCH_DEPS = ['character', 'script', 'collection', 'wikipage', 'news'];
+const SEARCH_PEOPLE_MS = 30 * 60 * 1000;
+const _searchIndexPending = new Map();
+let _searchIndexMemo = null;   // { key, body }
+async function searchIndexUsers(env) {
+  await ensureBanColumn(env);
+  let rows;
+  try {
+    rows = (await env.DB.prepare(
+      'SELECT username, display_name, avatar_url FROM users WHERE COALESCE(banned,0)=0 ORDER BY username'
+    ).all()).results;
+  } catch {
+    rows = (await env.DB.prepare('SELECT username, display_name, avatar_url FROM users ORDER BY username').all()).results;
+  }
+  return (rows || []).filter(u => u.username).map(u => {
+    const out = { username: u.username };
+    if (u.display_name && u.display_name !== u.username) out.displayName = u.display_name;
+    if (u.avatar_url) out.avatarUrl = u.avatar_url;
+    return out;
+  });
+}
+async function searchIndexPages(env) {
+  await ensurePagesTable(env);
+  // The parent's slug comes off the row, not out of the JSON: legacy rows do
+  // not all carry it in their data blob.
+  const [rows, scripts, colls] = await Promise.all([
+    env.DB.prepare(
+      `SELECT slug, title, parent_type, parent_slug, author, data FROM pages WHERE status='published'`
+    ).all().then(r => r.results || []),
+    env.DB.prepare(`SELECT slug, name FROM scripts WHERE status='published'`).all().then(r => r.results || []),
+    env.DB.prepare(`SELECT slug, display_name, data FROM collections WHERE status='published'`).all().then(r => r.results || [])
+  ]);
+  if (!rows.length) return [];
+  // Only published parents are looked up, so a page under a draft or a
+  // deleted script or collection finds no parent and is left out.
+  const parents = { script: new Map(), collection: new Map() };
+  for (const sc of scripts) parents.script.set(sc.slug, { name: sc.name || sc.slug, key: sc.slug });
+  for (const c of colls) {
+    const d = parseData(c);
+    const entry = { name: d.displayName || c.display_name || c.slug, key: d.id || c.slug };
+    parents.collection.set(c.slug, entry);
+    if (d.id) parents.collection.set(d.id, entry);
+  }
+  const out = [];
+  for (const r of rows) {
+    const parent = (parents[r.parent_type] || new Map()).get(r.parent_slug);
+    if (!parent) continue;
+    const d = parseData(r);
+    const page = { slug: r.slug, title: r.title || r.slug, parentType: r.parent_type, parentKey: parent.key, parentName: parent.name };
+    const author = r.author || d.author;
+    if (author) page.author = author;
+    if (d.subtitle) page.subtitle = String(d.subtitle).slice(0, 200);
+    const blurb = d.blurb || WikiRender.autoSummary(d.body, 160);
+    if (blurb) page.blurb = blurb;
+    out.push(page);
+  }
+  return out;
+}
+async function buildSearchIndex(env, ctx) {
+  const [creatorsBody, users, pages, news] = await Promise.all([
+    cachedCreatorsBody(env, ctx),
+    searchIndexUsers(env).catch(() => []),
+    searchIndexPages(env).catch(() => []),
+    newsList(env, 100, false).then(r => r.articles).catch(() => [])
+  ]);
+  return {
+    creators: JSON.parse(creatorsBody).creators.map(c => {
+      const out = { name: c.name, characters: c.characters, scripts: c.scripts, collections: c.collections };
+      if (c.username) {
+        out.username = c.username;
+        if (c.displayName && c.displayName !== c.username) out.displayName = c.displayName;
+        if (c.avatarUrl) out.avatarUrl = c.avatarUrl;
+      }
+      return out;
+    }),
+    users, pages,
+    news: news.map(a => ({ slug: a.slug, title: a.title, summary: a.summary || '', publishedAt: a.publishedAt || a.updatedAt }))
+  };
+}
+async function cachedSearchIndex(env, ctx) {
+  const version = await contentVersion(env, SEARCH_DEPS);
+  const bucket = Math.floor(Date.now() / SEARCH_PEOPLE_MS);
+  const tag = `${version}-${bucket}-${CREDIT_RULE_V}-${SEARCH_INDEX_V}`;
+  const etag = `W/"search-${tag}"`;
+  if (_searchIndexMemo && _searchIndexMemo.tag === tag) return { etag, body: _searchIndexMemo.body };
+  const key = 'https://feed.internal/search-index.json?t=' + tag;
+  if (!_searchIndexPending.has(key)) {
+    _searchIndexPending.set(key, (async () => {
+      let body = await edgeCacheGet(key);
+      if (body === null) {
+        body = JSON.stringify(await buildSearchIndex(env, ctx));
+        edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
+      }
+      _searchIndexMemo = { tag, body };
+      return body;
+    })().finally(() => _searchIndexPending.delete(key)));
+  }
+  return { etag, body: await _searchIndexPending.get(key) };
+}
+
 // ---- version-keyed edge cache plumbing ----
 // One synthetic URL per (thing, content version). caches.default is shared by
 // every isolate in the colo, so a fresh isolate — the normal case on a
@@ -4873,7 +5107,7 @@ ${o.draftBanner || ''}
       <a href="${R}script">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
     <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
   </div>
   <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -4882,7 +5116,7 @@ ${o.draftBanner || ''}
 </header>
 <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
   <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
   </div>
   <a href="${R}">Home</a>
   <a href="${R}all-characters">All Characters</a>
@@ -7008,118 +7242,17 @@ export default {
       });
     }
 
+    // The site search's people, wiki pages and news (see buildSearchIndex).
+    // Same client caching as the feeds: an ETag, and a 304 when it matches.
+    if (method === 'GET' && path === '/api/search-index') {
+      const idx = await cachedSearchIndex(env, ctx);
+      const headers = { ...JSON_HEADERS, ETag: idx.etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if ((request.headers.get('If-None-Match') || '') === idx.etag) return new Response(null, { status: 304, headers });
+      return new Response(idx.body, { headers });
+    }
+
     if (method === 'GET' && path === '/api/creators') {
-      // Cached per content version (with the PEOPLE ttl — the rows carry
-      // avatars and display names, which bump nothing when they change).
-      // Building this list reads five tables end to end.
-      const creatorsKey = 'https://feed.internal/creators.json?v=' + (await contentVersion(env)) +
-        '&r=' + CREDIT_RULE_V;
-      const creatorsHit = await edgeCacheGet(creatorsKey);
-      if (creatorsHit !== null) {
-        return new Response(creatorsHit, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
-      }
-      const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
-      // One credit string can name several people; each of them gets their own
-      // row here, the same way each of them gets their own creator page.
-      function bump(raw, kind) {
-        for (const name of Creators.splitCreators(raw)) {
-          const key = normCreator(name);
-          if (!key) continue;
-          let row = tally.get(key);
-          if (!row) { row = { name: name.trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
-          row[kind]++;
-        }
-      }
-      try {
-        const [chars, scripts, colls] = await Promise.all([
-          env.DB.prepare(`SELECT creator AS n FROM characters WHERE status='published'`).all(),
-          env.DB.prepare(`SELECT author AS n FROM scripts WHERE status='published'`).all(),
-          env.DB.prepare(`SELECT data FROM collections WHERE status='published'`).all()
-        ]);
-        for (const r of chars.results || []) bump(r.n, 'characters');
-        for (const r of scripts.results || []) bump(r.n, 'scripts');
-        for (const r of colls.results || []) bump(parseData(r).author, 'collections');
-      } catch { /* partial tally is better than none */ }
-
-      // Attach accounts. One pass over the alias table and one over the users
-      // that own published pages, rather than a resolve call per name.
-      const aliases = new Map();
-      try {
-        const { results } = await env.DB.prepare(
-          `SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%'`
-        ).all();
-        for (const r of results || []) {
-          aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
-        }
-      } catch { /* none set */ }
-      // lower(name) -> owner_id, the account that owns the most published
-      // pages credited to that name (proof by ownership, in bulk). Counted in
-      // JS rather than SQL because a credit can name several people.
-      const owners = new Map();
-      try {
-        const { results } = await env.DB.prepare(
-          `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
-             FROM characters
-            WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
-            GROUP BY creator, owner_id`
-        ).all();
-        const perName = new Map();   // name -> Map(owner_id -> count)
-        const off = new Map();       // name -> Set(owner_id that disowned it)
-        for (const r of results || []) {
-          for (const key of creditNames(r.n)) {
-            if (Number(r.dis) > 0) {
-              if (!off.has(key)) off.set(key, new Set());
-              off.get(key).add(r.owner_id);
-            }
-            if (!perName.has(key)) perName.set(key, new Map());
-            const m = perName.get(key);
-            m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
-          }
-        }
-        for (const [key, m] of perName) {
-          // Same rule as resolveCreatorAccount, or the index would show an
-          // account beside a name whose page no longer links to it.
-          const dis = off.get(key);
-          let best = null, bestN = 0;
-          for (const [ownerId, n] of m) {
-            if (dis && dis.has(ownerId)) continue;
-            if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
-          }
-          if (best != null) owners.set(key, best);
-        }
-      } catch { /* no owned pages */ }
-      let users = [];
-      try {
-        const { results } = await env.DB.prepare(
-          'SELECT id, username, display_name, avatar_url FROM users'
-        ).all();
-        users = results || [];
-      } catch { /* users unreadable */ }
-      const byId = new Map(users.map(x => [x.id, x]));
-      const byName = new Map(users.map(x => [String(x.username).toLowerCase(), x]));
-
-      const out = [];
-      for (const [key, row] of tally) {
-        let acct = null;
-        if (aliases.has(key)) {
-          const v = aliases.get(key);
-          acct = v ? byName.get(v.toLowerCase()) || null : null;
-        } else if (owners.has(key)) {
-          acct = byId.get(owners.get(key)) || null;
-        }
-        out.push({
-          name: row.name,
-          characters: row.characters, scripts: row.scripts, collections: row.collections,
-          total: row.characters + row.scripts + row.collections,
-          username: acct ? acct.username : null,
-          displayName: acct ? (acct.display_name || acct.username) : null,
-          avatarUrl: acct ? acct.avatar_url : null
-        });
-      }
-      out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-      const creatorsBody = JSON.stringify({ creators: out });
-      edgeCachePut(ctx, creatorsKey, creatorsBody, PEOPLE_CACHE_CONTROL);
-      return new Response(creatorsBody, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
+      return new Response(await cachedCreatorsBody(env, ctx), { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
     }
 
     // ---------- SITEMAP (built live from D1) ----------

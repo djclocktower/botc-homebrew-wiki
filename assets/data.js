@@ -5,7 +5,8 @@
   function json(path) {
     var url = new URL(path, document.baseURI);
     var shared = url.origin === location.origin &&
-      (/^\/(characters|scripts|collections)\.json$/.test(url.pathname) || url.pathname === '/api/home') &&
+      (/^\/(characters|scripts|collections)\.json$/.test(url.pathname) || url.pathname === '/api/home' ||
+        url.pathname === '/api/search-index') &&
       !url.searchParams.has('drafts');
     var key = url.href;
     if (shared && pending.has(key)) return pending.get(key);

@@ -51,7 +51,7 @@
     '/creators', '/drafts', '/account', '/dashboard', '/login',
     '/reset-password', '/messages', '/news', '/profile', '/tools', '/tokens',
     '/grimforge', '/rules', '/steven-approved-order', '/script-view',
-    '/normalize-icons',
+    '/normalize-icons', '/search',
     // Nothing links to the 404 page, so the crawl would never find it.
     '/404'
   ];
@@ -70,7 +70,8 @@
     'assets/night-order-picker.js', 'assets/redesign-create.js',
     'assets/rules.js', 'assets/rules-gate.js', 'assets/sao.js',
     'assets/theme-editor.js', 'assets/token-tool.js', 'assets/wiki-editor.js',
-    'assets/wikipage.js', 'assets/art-normalize.js'
+    'assets/wikipage.js', 'assets/art-normalize.js',
+    'assets/search-core.js', 'assets/search-page.js', 'assets/char-filters.js'
   ];
 
   /* Server-rendered / dynamic paths. Their text is somebody's page content,
