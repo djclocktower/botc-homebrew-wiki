@@ -35,15 +35,15 @@
     var m = e.data || {};
     if (m.type === 'status') {
       if (m.state === 'ready') { pyReady = true; hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
-      else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The renderer failed to load — try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
+      else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
       return;
     }
     var p = pending[m.id]; if (!p) return; delete pending[m.id];
-    if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Render failed'));
+    if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Something went wrong.'));
   };
   worker.onerror = function (e) {
     engineErr = e.message; hideLoad();
-    showMsg('err', 'The renderer failed to load — try a refresh, or tell DJ.');
+    showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ.');
   };
 
   /* ---- tiny DOM helpers ---- */
@@ -355,7 +355,7 @@
         if (setSlugs.indexOf(ed) < 0) setSlugs.push(ed);
         pendingEdit = ed;
       } else if (ed) {
-        showMsg('err', 'Could not open that character for token editing. A draft is only visible to its owner &mdash; make sure you are logged in on the account that made it.');
+        showMsg('err', 'Could not open that character. If it is a draft, log in on the account that made it.');
       }
     });
   }
@@ -462,8 +462,8 @@
           '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
           versionChipsHTML(c) + '</div>' +
           stepperHTML('tt-step-char', c.slug, charCount(c.slug)) +
-          '<button type="button" class="tt-edit-btn" data-slug="' + esc(c.slug) + '" aria-label="Edit token">&#9998;</button>' +
-          '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove">✕</button>' +
+          '<button type="button" class="tt-edit-btn" data-slug="' + esc(c.slug) + '" aria-label="Edit token"><span class="ico ico-edit" aria-hidden="true"></span></button>' +
+          '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove"><span class="ico ico-x" aria-hidden="true"></span></button>' +
           '</div>';
       });
       html += '</div>';
@@ -502,43 +502,43 @@
   var ADJ_FIELDS = [
     { section: 'Token Background' },
     { k: 'bg_scale', label: 'Size', min: 0.5, max: 1.8, step: 0.02, fmt: pctFmt },
-    { k: 'bg_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
-    { k: 'bg_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'bg_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'bg_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
     { k: 'bg_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Icon' },
     { k: 'icon_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
-    { k: 'icon_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
-    { k: 'icon_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'icon_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'icon_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
     { k: 'icon_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Name' },
     { k: 'name_size', label: 'Size', min: 0.6, max: 1.3, step: 0.02, fmt: pctFmt },
-    { k: 'name_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
-    { k: 'name_dy', label: 'Position &#8597;', min: -80, max: 80, step: 2, fmt: pxFmt },
+    { k: 'name_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'name_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -80, max: 80, step: 2, fmt: pxFmt },
     { k: 'name_arc', label: 'Arc', min: 0.4, max: 2.2, step: 0.02, fmt: pctFmt },
     { section: 'Ability Text' },
     { k: 'abil_size', label: 'Size', min: 0.7, max: 1.3, step: 0.02, fmt: pctFmt },
-    { k: 'abil_dy', label: 'Position &#8597;', min: -60, max: 60, step: 2, fmt: pxFmt },
+    { k: 'abil_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -60, max: 60, step: 2, fmt: pxFmt },
     { section: 'Leaves' },
     { k: 'leaves', label: 'Show', seg: [['auto', 'Auto'], ['off', 'Off']] },
     { k: 'leaf_scale', label: 'Size', min: 0.5, max: 1.6, step: 0.02, fmt: pctFmt },
-    { k: 'leaf_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
-    { k: 'leaf_dy', label: 'Position &#8597;', min: -60, max: 120, step: 2, fmt: pxFmt },
+    { k: 'leaf_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'leaf_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -60, max: 120, step: 2, fmt: pxFmt },
     { k: 'leaf_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'First-Night Leaf' },
     { k: 'fn_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
-    { k: 'fn_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
-    { k: 'fn_dy', label: 'Position &#8597;', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'fn_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'fn_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
     { k: 'fn_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Other-Nights Leaf' },
     { k: 'on_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
-    { k: 'on_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
-    { k: 'on_dy', label: 'Position &#8597;', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'on_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'on_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
     { k: 'on_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Flower' },
     { k: 'flower', label: 'Show', seg: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
     { k: 'flower_scale', label: 'Size', min: 0.5, max: 1.6, step: 0.02, fmt: pctFmt },
-    { k: 'flower_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
-    { k: 'flower_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'flower_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'flower_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
     { k: 'flower_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Reminder Tokens' },
     { k: 'rem_icon_scale', label: 'Icon size', min: 0.5, max: 1.5, step: 0.02, fmt: pctFmt },
@@ -634,7 +634,7 @@
     renderEditorSave(sl);
     $('tt-editor').classList.add('open');
     document.body.style.overflow = 'hidden';
-    $('tte-preview').innerHTML = '<span class="ph">Rendering…</span>';
+    $('tte-preview').innerHTML = '<span class="ph">Drawing…</span>';
     if (editorGizmo) editorGizmo.setAsset(null);
     refreshEditorTf();
     scheduleEditorPreview();
@@ -651,8 +651,8 @@
     if (!c || c.ext) { box.style.display = 'none'; return; }
     box.style.display = '';
     $('tte-save-msg').textContent = c.token
-      ? 'This character already has a saved token — the sheets print it. Saving replaces it.'
-      : 'Saves this token onto the character’s wiki page. From then on the Token Tool prints it instead of generating one.';
+      ? 'This character already has a saved token. Saving replaces it.'
+      : 'Saves this token to the character’s page. The Token Tool prints it from then on.';
     $('tte-save-go').disabled = false;
     $('tte-save-go').textContent = 'Save to page';
   }
@@ -661,13 +661,13 @@
     var c = charBySlug[sl]; if (!c || c.ext || !pyReady) return;
     var btn = $('tte-save-go'), msg = $('tte-save-msg');
     btn.disabled = true; btn.textContent = 'Saving…';
-    msg.textContent = 'Rendering the token at full size…';
+    msg.textContent = 'Drawing the token at full size…';
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
     o.preview_scale = 1; o.ignore_premade = true;
     var pngB64 = null, key = 'art/' + sl + '-token.png';
     callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
       .then(function (res) {
-        if (res.error) throw new Error('This character has no art to render a token from.');
+        if (res.error) throw new Error('This character has no art to make a token from.');
         pngB64 = res.png;
         msg.textContent = 'Uploading…';
         return fetch(ROOT + 'api/page?type=character&slug=' + encodeURIComponent(sl), { credentials: 'same-origin' })
@@ -704,12 +704,12 @@
         // previews and sheets print the new token without refetching it.
         callWorker('artBytes', { slug: sl + '-premade', b64: pngB64 }).catch(function () {});
         btn.disabled = false; btn.textContent = 'Save to page';
-        msg.textContent = '✓ Saved. The character’s page now carries this token, and the sheets will print it.';
+        msg.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Saved to the character’s page.';
         schedulePreview();
       })
       .catch(function (e) {
         btn.disabled = false; btn.textContent = 'Save to page';
-        msg.textContent = '✗ ' + (e && e.message ? e.message : 'Save failed.');
+        msg.innerHTML = '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(e && e.message ? e.message : 'Save failed.');
       });
   }
   function closeEditor() {
@@ -790,7 +790,7 @@
         else { box.innerHTML = '<img alt="token preview" src="data:image/png;base64,' + res.png + '">'; }
         if (editorGizmo) editorGizmo.sync();
       })
-      .catch(function (e) { if (mySeq === edPrevSeq) box.innerHTML = '<span class="ph">Preview error</span>'; console.error(e); });
+      .catch(function (e) { if (mySeq === edPrevSeq) box.innerHTML = '<span class="ph">Could not show a preview.</span>'; console.error(e); });
   }
 
   /* ---- interactive transform tool (drag/scale/rotate on the preview) ---- */
@@ -998,13 +998,13 @@
     return new Promise(function (res, rej) {
       var r = new FileReader();
       r.onload = function () { res(String(r.result).split(',', 2)[1]); };
-      r.onerror = function () { rej(new Error('read failed')); };
+      r.onerror = function () { rej(new Error('the file could not be read')); };
       r.readAsDataURL(file);
     });
   }
   function assetStatusHTML(kind) {
     return customAssets[kind]
-      ? '<span class="tt-asset-on">Custom &#10003;</span>'
+      ? '<span class="tt-asset-on">Custom <span class="ico ico-check" aria-hidden="true"></span></span>'
       : '<span class="tt-asset-off">Default</span>';
   }
   function renderAssets() {
@@ -1051,7 +1051,7 @@
     ASSET_SLOTS.forEach(function (s) {
       $('af-' + s[0]).addEventListener('change', function () {
         var f = this.files && this.files[0]; if (!f) return;
-        if (f.size > 4 * 1024 * 1024) { showMsg('err', 'That image is over 4&nbsp;MB — please use a smaller file.'); this.value = ''; return; }
+        if (f.size > 4 * 1024 * 1024) { showMsg('err', 'That image is over 4&nbsp;MB. Please use a smaller file.'); this.value = ''; return; }
         var kind = s[0], input = this;
         fileToB64(f).then(function (b64) { return applyAsset(kind, b64); })
           .catch(function (e) { showMsg('err', 'Could not apply that image: ' + esc(e.message)); })
@@ -1091,7 +1091,7 @@
   }
   function parseScriptJson(text) {
     var data = JSON.parse(text);
-    if (!Array.isArray(data)) throw new Error('Expected a JSON array (official script format).');
+    if (!Array.isArray(data)) throw new Error('it is not a script JSON file.');
     var meta = null, wiki = [], ext = [], official = [], unknown = [];
     var byNorm = {}, extSlugs = {};
     allChars.forEach(function (c) { byNorm[norm(c.slug)] = c.slug; byNorm[norm(c.name)] = c.slug; });
@@ -1200,8 +1200,8 @@
     var failed = setSlugs.filter(function (sl) { return charBySlug[sl] && charBySlug[sl].ext && extArtStatus[sl] === 'failed'; });
     var box = $('tt-art-warn');
     if (!failed.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-    var html = '<p><strong>Art couldn\u2019t be fetched for ' + failed.length + ' character' + (failed.length === 1 ? '' : 's') + '.</strong> ' +
-      'Those tokens will render with a blank centre unless you upload art manually:</p>';
+    var html = '<p><strong>Art couldn\u2019t be loaded for ' + failed.length + ' character' + (failed.length === 1 ? '' : 's') + '.</strong> ' +
+      'Upload art for them, or their tokens print with a blank centre:</p>';
     failed.forEach(function (sl) {
       html += '<div class="tt-warn-row"><span>' + esc(charBySlug[sl].name) + '</span>' +
         '<input type="file" accept="image/png,image/jpeg,image/webp" id="wf-' + esc(sl) + '" hidden>' +
@@ -1252,8 +1252,8 @@
       var extCount = parsed.ext.length - parsed.official.length;
       if (extCount > 0) bits.push(extCount + ' external');
       var title = parsed.meta && parsed.meta.name ? ' \u201C' + esc(parsed.meta.name) + '\u201D' : '';
-      var msg = 'Imported' + title + ' \u2014 ' + setSlugs.length + ' characters (' + bits.join(', ') + ').';
-      if (parsed.unknown.length) msg += ' Skipped ' + parsed.unknown.length + ' unrecognised (official/off-wiki) id' + (parsed.unknown.length === 1 ? '' : 's') + '.';
+      var msg = 'Imported' + title + ': ' + setSlugs.length + ' characters (' + bits.join(', ') + ').';
+      if (parsed.unknown.length) msg += ' Skipped ' + parsed.unknown.length + ' unknown character' + (parsed.unknown.length === 1 ? '' : 's') + '.';
       showMsg('ok', msg);
       fetchExtArt(parsed.ext).then(function () { schedulePreview(); });
     };
@@ -1377,7 +1377,7 @@
         else { box.innerHTML = '<img alt="token preview" src="data:image/png;base64,' + res.png + '">'; }
         if (mainGizmo) mainGizmo.sync();
       })
-      .catch(function (e) { if (mySeq === previewSeq) box.innerHTML = '<span class="ph">Preview error (see console)</span>'; console.error(e); });
+      .catch(function (e) { if (mySeq === previewSeq) box.innerHTML = '<span class="ph">Could not show a preview.</span>'; console.error(e); });
   }
 
   /* ---- generate ---- */
@@ -1398,19 +1398,19 @@
       callWorker('render', { payloads: payloads, opts: opts, art: artList(slugs) })
         .then(function (res) {
           hideGenLoad(); showOutput(res);
-          showMsg('ok', 'Done — ' + res.counts.char + ' character + ' + res.counts.rem + ' reminder tokens.');
+          showMsg('ok', 'Done: ' + res.counts.char + ' character + ' + res.counts.rem + ' reminder tokens.');
         })
-        .catch(function (e) { hideGenLoad(); console.error(e); showMsg('err', 'Render error: ' + esc(e.message)); })
+        .catch(function (e) { hideGenLoad(); console.error(e); showMsg('err', 'Could not make the sheets: ' + esc(e.message)); })
         .then(function () { btn.disabled = false; refreshGenerate(); });
     };
   }
   function showOutput(res) {
     var out = $('output'), thumbs = $('thumbs');
-    if (!res.files.length) { showMsg('err', 'Nothing to render — check your sheet selections.'); return; }
+    if (!res.files.length) { showMsg('err', 'Nothing to print. Check which sheets are ticked.'); return; }
     res.files.forEach(function (f) {
       var url = 'data:' + f.mime + ';base64,' + f.b64;
       var a = document.createElement('a'); a.href = url; a.download = f.name;
-      a.innerHTML = (window.UIIcons ? UIIcons.svg('download') : '') + ' ' + esc(f.name);
+      a.innerHTML = '<span class="ico ico-download" aria-hidden="true"></span> ' + esc(f.name);
       out.appendChild(a);
     });
     (res.thumbs || []).forEach(function (t) {

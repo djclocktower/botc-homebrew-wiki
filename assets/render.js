@@ -71,6 +71,22 @@
      against it (jinx-graph.js, dashboard.html). */
   function isTraveller(team) { return /^travell?er$/i.test(String(team == null ? '' : team)); }
 
+  /* The owner's wiki-only display size for the /c/ emblem, as a whole
+     percentage. 100 is "the true size" and is never stored; anything
+     outside the range, or not a number, is the default too. Shared with the
+     Worker's sanitizer through Render.ART_SCALE_MIN/MAX so the editor's
+     slider, the save and the page cannot disagree about the range. */
+  var ART_SCALE_MIN = 50, ART_SCALE_MAX = 200;
+  function artScaleValue(v) {
+    var n = Math.round(Number(v));
+    if (!isFinite(n) || n < ART_SCALE_MIN || n > ART_SCALE_MAX || n === 100) return 0;
+    return n;
+  }
+  function artScaleCSS(v) {
+    var n = artScaleValue(v);
+    return n ? ' style="--art-scale:' + (n / 100) + '"' : '';
+  }
+
   function artVersions(d, root) {
     d = d || {};
     var arr = Array.isArray(d.image) ? d.image : [];
@@ -256,20 +272,20 @@
      '' is a page nobody has opened, which the owner still wants to see stated:
      the bar is the page's status, not only a notice when it is unusual. */
   var EDIT_STATUS = {
-    '':        ['yours alone', 'only you and the wiki admins can edit this page.'],
-    closed:    ['yours alone', 'only you and the wiki admins can edit this page.'],
+    '':        ['yours alone', 'only you can edit this page.'],
+    closed:    ['yours alone', 'only you can edit this page.'],
     /* A script or collection whose owner has chosen nothing. The page itself
        is closed like '' above, but the difference matters and is said: a
        CHOSEN mode on a set governs the owner's characters and wiki pages on
        it, and "not set" leaves each of them on its own setting. */
-    unset:     ['not set', 'only you and the wiki admins can edit this page; each character and wiki page on it keeps its own setting.'],
+    unset:     ['not set', 'only you can edit this page; each character and wiki page on it keeps its own setting.'],
     /* A character whose owner chose nothing keeps its tags open until the
        owner tags it (the Worker's defaultTagsOpen). The editor asks for this
        key when that default is what the next save will leave in force, and
        for '' once the owner's own tags have switched it off. */
-    'default': ['tags open for now', 'anyone with an account can add tags until you tag the page yourself or pick another option.'],
+    'default': ['tags open for now', 'anyone with an account can add tags until you tag the page yourself.'],
     all:       ['open to all', 'anyone with an account can edit this page.'],
-    'all-but-ability': ['open except the ability', 'anyone with an account can edit this page, but the ability text stays yours.'],
+    'all-but-ability': ['open except the ability', 'anyone with an account can edit this page except the ability.'],
     tags:      ['tags open to all', 'anyone with an account can change the tags.'],
     suggest:   ['suggestions welcome', 'anyone with an account can propose an edit for you to approve.'],
     /* Approved editing names accounts rather than opening the page. It is not
@@ -334,8 +350,7 @@
       '<strong>An admin moved this page to drafts.</strong>' +
       (note.by ? ' <span class="db-who">' + esc(note.by) + (when ? ', ' + esc(when) : '') + '</span>' : '') +
       '<span class="db-reason">' + esc(note.reason) + '</span>' +
-      '<span class="db-fix">Fix that and publish it again \u2014 this note goes away when the page goes back up. ' +
-      'Nothing was deleted.</span>' +
+      '<span class="db-fix">Fix that and publish it again. Nothing was deleted.</span>' +
     '</div>';
   }
 
@@ -872,7 +887,14 @@
      credited still gets the Fabled, just without the "by:" half. */
   var CREDITS_FABLED_ID = 'botchomebrewwiki';
   var CREDITS_FABLED_NAME = 'botchomebrew.wiki';
-  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull.png';
+  /* The padded copy, not the topbar's logo_skull.png: that one is cropped
+     to the ink (149×190) and the script tool draws whatever it is handed
+     into the same box as its own icons, so the skull printed half again the
+     size of the Bootlegger beside it. logo_skull_icon.png is the same
+     pixels on a transparent 320px square, the figure at the standard
+     ART_FILL of art-normalize.js. Regenerate it the same way if the skull
+     ever changes. */
+  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull_icon.png';
   var CREDITS_FABLED_LEAD = 'This script was made on botchomebrew.wiki';
 
   /* [{ creator, characters[] }] in order of first appearance on the script.
@@ -1334,9 +1356,28 @@
     // and its own address depth), so let it win where it has an answer.
     if (artVers.length && artSrc) artVers[0].src = artSrc;
     else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, url: '' }];
+    /* The owner's "display size": how big the icon is DRAWN on this page,
+       and nowhere else. It is a CSS variable on the emblem, which the
+       stylesheet multiplies into the transform every emblem already has, so
+       the picture file, the JSON export (buildSchema never reads it), the
+       cards, the search rows and the jinx boxes all stay at the true size.
+       Absent, or 100, is the default: the variable is only written when it
+       says something. artScaleCSS() is the one place the number becomes a
+       style, and it re-validates, since a row can carry anything. */
+    var scaleAttr = artScaleCSS(d.artScale);
+    /* The printable token is marked, because it is not drawn like the icons.
+       The emblem box is 7/6 of what it was and then scaled 8/7 (see .emblem
+       in styles.css), and both steps assume a picture that is mostly
+       transparent margin: an icon on the 60% standard grows into room it
+       already had. A token is a full-bleed disc with no margin at all, so
+       the same growth put it a seventh past the card on a phone. The class
+       lets styles.css draw it at the size the box was before, unscaled, and
+       keep the owner's --art-scale off it — that setting is how big the
+       ICON is displayed, and a token is not an icon. */
+    function emblemClass(v) { return 'emblem' + (v.key === 'token' ? ' emblem-token' : ''); }
     var emblem = '';
     if (artVers.length === 1) {
-      emblem = '<img class="emblem" src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
+      emblem = '<img class="' + emblemClass(artVers[0]) + '"' + scaleAttr + ' src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
     } else if (artVers.length) {
       /* Every version is its own <img>, stacked — see the icon gallery
          above for why swapping one src is not good enough. Only the one on
@@ -1344,10 +1385,10 @@
          is quiet, so the picture a reader came for is never held up by
          three they may never ask for. Marked `is-on` in the HTML so the
          right one is showing before a line of script has run. */
-      emblem = '<div class="emblem-stack" data-at="0"' +
+      emblem = '<div class="emblem-stack" data-at="0"' + scaleAttr +
         ' title="Swipe or click to see the other versions of this icon">' +
         artVers.map(function (v, i) {
-          return '<img class="emblem' + (i === 0 ? ' is-on' : '') + '" ' +
+          return '<img class="' + emblemClass(v) + (i === 0 ? ' is-on' : '') + '" ' +
             (i === 0 ? 'src' : 'data-src') + '="' + esc(v.src) +
             '" alt="' + (i === 0 ? esc(d.name) : '') + '"' +
             (i === 0 ? '' : ' aria-hidden="true"') +
@@ -1498,6 +1539,7 @@
     window.splitCreators = splitCreators;
     window.editStatusHTML = editStatusHTML;
     window.draftedNoticeHTML = draftedNoticeHTML;
+    window.artScaleValue = artScaleValue;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1512,6 +1554,7 @@
       exportId: exportId, idSegment: idSegment, characterSet: characterSet,
       schemaJinxId: schemaJinxId, EXPORT_ID_MODES: EXPORT_ID_MODES,
       artVersions: artVersions, artVersion: artVersion,
+      artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,

@@ -33,9 +33,9 @@
 
   var TARGET_HINTS = {
     char: 'Search characters…',
-    page: 'Page address or slug (e.g. /p/odyssey-attack)',
-    script: 'Script address or slug (e.g. /s/my-script)',
-    collection: 'Collection address or id (e.g. /collection/odyssey)',
+    page: 'Page address (e.g. /p/odyssey-attack)',
+    script: 'Script address (e.g. /s/my-script)',
+    collection: 'Collection address (e.g. /collection/odyssey)',
     url: 'https://…'
   };
 
@@ -87,10 +87,10 @@
         '<input type="text" class="rl-char" placeholder="' + TARGET_HINTS.char + '">' +
         '<input type="text" class="rl-target">' +
         '</span>' +
-        '<button type="button" class="btn btn-del btn-sm rl-del" title="Remove">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm rl-del" title="Remove" aria-label="Remove"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<input type="text" class="rl-name" placeholder="Link text (e.g. The Withering)">' +
         '<input type="text" class="rl-image" placeholder="Preview image URL (optional, https)">' +
-        '<textarea class="rl-note" placeholder="How they relate (optional) — e.g. Plants the Seed token on them" rows="2"></textarea>';
+        '<textarea class="rl-note" placeholder="How they relate (optional, e.g. Plants the Seed token on them)" rows="2"></textarea>';
       listEl.appendChild(row);
 
       var charField = row.querySelector('.rl-char');

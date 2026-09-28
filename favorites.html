@@ -60,7 +60,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -69,7 +69,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -80,7 +80,7 @@
 
   <div class="home-hero">
     <h1>My Favorites</h1>
-    <p class="fav-sub">The characters, scripts and collections you saved. Only you can see this list.</p>
+    <p class="fav-sub">The pages you saved. Only you can see this list.</p>
     <a class="fav-back" href="account">← Back to my account</a>
   </div>
 
@@ -103,16 +103,14 @@
       <div id="via-section" class="fav-via" style="display:none">
         <h2 class="type-header">On your saved scripts &amp; collections</h2>
         <div class="type-rule"></div>
-        <p class="fav-section-note">These count as favorites too: the <strong>Favorites</strong> filter on
-          <a href="all-characters?favorites=1" style="color:#9fc4ee">All Characters</a> and in the Script Builder shows them alongside the characters above.</p>
+        <p class="fav-section-note">The <strong>Favorites</strong> filter on
+          <a href="all-characters?favorites=1" style="color:#9fc4ee">All Characters</a> and in the Script Builder includes these too.</p>
         <div id="via-grid"></div>
       </div>
     </div>
     <div class="fav-empty" id="empty" style="display:none">
       <p>Nothing saved yet.</p>
-      <p>Every character, script and collection page has an <strong>Add to Favorites</strong> button.
-         Save the ones you want to find again and they will show up here — and behind the
-         Favorites filter on <a href="all-characters">All Characters</a>.</p>
+      <p>Use the <strong>Add to Favorites</strong> button on any character, script or collection page.</p>
     </div>
   </main>
 
@@ -123,6 +121,7 @@
   <script src="assets/render-page.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/favorites.js"></script>
+  <script src="assets/card-actions.js"></script>
   <script src="assets/card-filters.js"></script>
   <script>
   /* My Favorites — the same cards the browse pages and /drafts use.

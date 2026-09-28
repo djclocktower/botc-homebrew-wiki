@@ -121,9 +121,8 @@
      editor, the API and the importer word it the same way. */
   function officialRefusal(role) {
     return '"' + (role && role.name ? role.name : 'That character') +
-      '" is an official Blood on the Clocktower character, so it cannot have a page on this wiki. ' +
-      'Scripts can still use it — it is on the official wiki, and a script page here links straight to it. ' +
-      'If yours is a different character that happens to share the name, change the ability so it is not word-for-word the official one.';
+      '" is an official Blood on the Clocktower character and cannot have a page here (scripts can still use it). ' +
+      'If yours just shares the name, change the ability so it is not word-for-word the official one.';
   }
 
   var api = {

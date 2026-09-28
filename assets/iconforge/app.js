@@ -255,7 +255,7 @@ function syncControls() {
   const aiBtn = $('if-bgmode').querySelector('button[data-value=ai]');
   aiBtn.disabled = !source || sourceKind !== 'raster';
   aiBtn.title = aiBtn.disabled
-    ? 'Smart remove is for photos and scans — vector art already has a transparent background'
+    ? 'Smart remove is for photos and scans. Vector art is already transparent.'
     : '';
 
   const swatch = $('if-chroma-swatch');
@@ -276,10 +276,10 @@ function syncControls() {
     bucketMode === 'off'
       ? 'Fill enclosed spaces by hand: pick Colour or Parchment, then tap a space in the preview. Unlike “Fill enclosed spaces”, you choose each region and its fill. Hatch adds shading lines to whatever you tap instead.'
       : bucketMode === 'hatch'
-        ? 'Now tap an ink area or an enclosed space in the preview — it gets hand-drawn hatching. Tune the lines under Hatching.'
-        : 'Now tap an enclosed space in the preview — it fills with ' +
+        ? 'Tap ink or an enclosed space in the preview to hatch it.'
+        : 'Tap an enclosed space in the preview to fill it with ' +
           (bucketMode === 'color' ? 'the colour texture' : 'parchment') +
-          '. Only spaces fully surrounded by ink can be filled.';
+          '.';
 
   $('if-split').hidden = colorTexId !== TRAVELLER_SPLIT_ID;
   document.querySelectorAll('.if-tex').forEach((b) => {
@@ -390,7 +390,7 @@ function draw(supersample) {
     ctx.drawImage(out, 0, 0);
     sizeStage();
   } catch (e) {
-    toast('The forge could not render that: ' + (e && e.message ? e.message : e), 'err');
+    toast('The forge could not draw that: ' + (e && e.message ? e.message : e), 'err');
   }
 }
 
@@ -478,7 +478,7 @@ function openArtEditor(mode) {
     title: mode === 'edit' ? 'Edit artwork' : 'Draw your own',
     hint:
       mode === 'edit'
-        ? 'Pen, eraser, lasso, move — then bring it straight back to the forge.'
+        ? 'Make your changes, then bring it back to the forge.'
         : 'A blank page. Black ink on white works best in the forge.',
     onApply: (img) => {
       const name = mode === 'draw' ? 'drawing' : sourceName ? sourceName + ' (edited)' : 'edited';
@@ -519,7 +519,7 @@ function maybeRunAI() {
   const req = ++aiReq;
   aiBusy = true;
   syncControls();
-  busy(true, 0, 'Removing', 'Keep using the page — this runs in the background.');
+  busy(true, 0, 'Removing', 'Keep using the page. This runs in the background.');
   removeImageBackground(
     source,
     (fraction, phase) => {
@@ -532,8 +532,8 @@ function maybeRunAI() {
         fraction,
         'Removing',
         phase === 'fetch'
-          ? 'Fetching what it needs — about 45 MB, once per browser. It is kept for next time.'
-          : 'Keep using the page — this runs in the background.'
+          ? 'Downloading about 45 MB. This happens once per browser.'
+          : 'Keep using the page. This runs in the background.'
       );
     },
     (cancel) => {
@@ -562,7 +562,7 @@ function maybeRunAI() {
       }
       toast(
         'Smart remove could not run: ' +
-          (e && e.message ? e.message : 'the model could not be downloaded') +
+          (e && e.message ? e.message : 'the files it needs could not be downloaded') +
           '. Falling back to Keep.',
         'err'
       );
@@ -635,14 +635,14 @@ $('if-stage-inner').addEventListener('pointerdown', (e) => {
   const probe = probeBucket(src, opts, fx, fy);
   if (bucketMode === 'hatch') {
     if (probe === 'open') {
-      toast('That spot is outside the artwork — tap ink or an enclosed space to hatch it.');
+      toast('That spot is outside the artwork. Tap ink or an enclosed space to hatch it.');
       return;
     }
   } else if (probe === 'solid') {
     toast('That spot is ink. Tap an empty enclosed space to fill it.');
     return;
   } else if (probe === 'open') {
-    toast('That space is not enclosed — it connects to the outside, so it cannot be filled.');
+    toast('That space is open to the outside, so it cannot be filled.');
     return;
   }
   setOpts({ bucketFills: opts.bucketFills.concat([{ x: fx, y: fy, fill: bucketMode }]) });
@@ -656,7 +656,7 @@ COLOR_TEXTURES.forEach((t) => {
   b.type = 'button';
   b.className = 'if-tex';
   b.dataset.tex = t.id;
-  b.title = t.label + ' — ' + t.sub;
+  b.title = t.label + ': ' + t.sub;
   b.setAttribute('aria-pressed', String(t.id === colorTexId));
   const sw = document.createElement('div');
   sw.className = 'if-tex-swatch';
@@ -743,7 +743,7 @@ function renderFinal(size) {
 
 function canvasToBlob(canvas) {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the PNG'))), 'image/png');
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not make the PNG'))), 'image/png');
   });
 }
 
@@ -790,7 +790,7 @@ function showExportDialog(url, fileName) {
   const hint = document.createElement('p');
   hint.className = 'if-hint';
   hint.textContent =
-    'The download should have started. If it did not, press and hold the image (or right-click it) to save, or use the button below.';
+    'The download should have started. If not, long-press or right-click the image, or use the button below.';
   const shot = document.createElement('div');
   shot.className = 'if-shot';
   const img = document.createElement('img');
@@ -851,7 +851,7 @@ fetch('/api/me', { credentials: 'same-origin' })
       setSaveMsg(
         '',
         'Download the PNG and add it in the <a href="create">character editor</a>. ' +
-          '<a href="login?next=iconforge">Sign in</a> and you can put it straight onto a character you already have.'
+          '<a href="login?next=iconforge">Sign in</a> to save it straight onto one of your characters.'
       );
       return;
     }
@@ -874,7 +874,7 @@ fetch('/api/me', { credentials: 'same-origin' })
           savePick.appendChild(o);
         });
         $('if-save-body').hidden = false;
-        setSaveMsg('', 'Saved icons are 591 px, the size the wiki uses everywhere.');
+        setSaveMsg('', 'Saved icons are 591 px.');
         syncControls();
       });
   })
@@ -930,11 +930,11 @@ $('if-save').addEventListener('click', async () => {
 
     setSaveMsg(
       'ok',
-      '✓ Saved. It is live on <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
-        ' — give it a refresh if you still see the old icon.'
+      '<span class="ico ico-check" aria-hidden="true"></span> Saved to <a href="/c/' + page.slug + '" target="_blank">/c/' + page.slug + '</a>' +
+        '. Refresh if you still see the old icon.'
     );
   } catch (e) {
-    setSaveMsg('err', '✗ ' + (e && e.message ? e.message : 'Something went wrong.'));
+    setSaveMsg('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + (e && e.message ? e.message : 'Something went wrong.'));
   } finally {
     btn.textContent = 'Save as its icon';
     syncControls();

@@ -576,83 +576,70 @@
     }).catch(function () {});
   })();
 
-  /* ── Search ── */
+  /* ── Search ──
+     The box in the top bar. As you type it shows the best few matches of
+     every kind (characters, scripts, collections, creators, users, wiki
+     pages, news, tags and the site's own pages), grouped; Enter or the last
+     row opens /search with everything and the filters. The matching is
+     assets/search-core.js, the same engine /search uses, fetched with its
+     data the first time the box is touched. */
   (function () {
     var input = document.getElementById('search-input');
     var drop  = document.getElementById('search-drop');
     if (!input || !drop) return;
-    var allChars = null, allScripts = [], allCollections = [], fetchPromise = null;
+    var index = null, loading = null;
 
-    function fetchList(path) {
-      return window.BotcData.json(ROOT + path).then(function (rows) {
-        if (!Array.isArray(rows)) throw new Error('Invalid search data');
-        return rows;
-      });
+    // The Favorites / Add to Script buttons under each character result's
+    // icon (assets/card-actions.js, which needs favorites.js for the heart).
+    // Most pages have neither, so they are fetched alongside the feeds the
+    // first time the box warms up — never twice, since a second copy of
+    // favorites.js would be a second list. A failure costs the buttons only.
+    function ensureQuickActions() {
+      if (window.CardActions) return Promise.resolve();
+      var B = window.BotcData;
+      return (window.Favorites ? Promise.resolve() : B.script('favorites.js'))
+        .then(function () { return window.CardActions ? null : B.script('card-actions.js'); })
+        .catch(function () { /* results draw without the buttons */ });
     }
 
     function ensureData() {
-      if (allChars) return Promise.resolve(allChars);
-      if (fetchPromise) return fetchPromise;
-      fetchPromise = Promise.all([
-        // `grid` is the smallest feed tier — what a card or a search result
-        // needs and nothing else (a third of `card`; see GRID_FIELDS in
-        // worker.js). The browse pages fetch the same URL, so on most visits
-        // this is already in the browser's cache.
-        fetchList('characters.json?fields=grid'),
-        fetchList('scripts.json?fields=browse').catch(function () { return []; }),
-        fetchList('collections.json?fields=browse').catch(function () { return []; })
+      if (index) return Promise.resolve(index);
+      if (loading) return loading;
+      var B = window.BotcData;
+      // When the engine is already on the page (/search loads it), the feeds
+      // start downloading in this same tick.
+      loading = Promise.all([
+        window.BotcSearch ? window.BotcSearch.load(ROOT)
+          : B.script('search-core.js').then(function () { return window.BotcSearch.load(ROOT); }),
+        ensureQuickActions()
       ]).then(function (res) {
-        allChars = res[0] || [];
-        allScripts = res[1] || [];
-        allCollections = res[2] || [];
-        return allChars;
-      }).catch(function (err) {
-        // A failed promise must not poison every subsequent search this visit.
-        fetchPromise = null;
+        index = res[0];
+        loading = null;
+        return index;
+      }, function (err) {
+        // A failed load must not poison every later search this visit.
+        loading = null;
         throw err;
       });
-      return fetchPromise;
+      return loading;
     }
 
-    // Returns {type, item, field} entries — characters first, then scripts,
-    // then collections. Caps at 8 results total, but scripts and collections
-    // keep up to PAGE_SLOTS of them: every character on "Fall of Rome" matches
-    // the words "fall of rome" through its Appears-in field, and filling the
-    // list with characters first meant the script's own page — the thing being
-    // searched for — never appeared at all.
-    var MAX_RESULTS = 8, PAGE_SLOTS = 3;
-    function search(q) {
-      q = q.trim().toLowerCase();
-      if (!q || !allChars) return [];
-      var out = [];
-      for (var i = 0; i < allChars.length && out.length < MAX_RESULTS; i++) {
-        var c = allChars[i];
-        var field = null;
-        if ((c.name || '').toLowerCase().indexOf(q) !== -1) field = 'name';
-        else if ((c.ability || '').toLowerCase().indexOf(q) !== -1) field = 'ability';
-        else if ((c.tags || '').toLowerCase().indexOf(q) !== -1) field = 'tag';
-        else if ((c.appearsIn || '').toLowerCase().indexOf(q) !== -1) field = 'collection';
-        else if ((c.creator || '').toLowerCase().indexOf(q) !== -1) field = 'creator';
-        else if ((c.lede || '').toLowerCase().indexOf(q) !== -1) field = 'flavor';
-        if (field) out.push({ type: 'character', c: c, field: field });
+    // How many of each kind the preview may show, and in all. The kinds are
+    // drawn in the order of their best match, so a set's own page is never
+    // pushed out by the characters whose "Appears in" repeats its name.
+    var GROUP_LIMIT = { character: 5, script: 3, collection: 3, creator: 3, user: 3, wikipage: 2, news: 2, tag: 3, site: 2 };
+    var MAX_ROWS = 10;
+    function preview(res) {
+      var groups = {}, order = [], rows = 0;
+      for (var i = 0; i < res.mixed.length && rows < MAX_ROWS; i++) {
+        var r = res.mixed[i], t = r.item.type;
+        if (!groups[t]) groups[t] = [];
+        if (groups[t].length >= GROUP_LIMIT[t]) continue;
+        if (!groups[t].length) order.push(t);
+        groups[t].push(r);
+        rows++;
       }
-      function matchPage(p) {
-        return (p.name || p.displayName || '').toLowerCase().indexOf(q) !== -1 ||
-               (p.tagline || '').toLowerCase().indexOf(q) !== -1 ||
-               (p.description || '').toLowerCase().indexOf(q) !== -1 ||
-               (p.author || '').toLowerCase().indexOf(q) !== -1;
-      }
-      var pages = [];
-      for (var s = 0; s < allScripts.length && pages.length < PAGE_SLOTS; s++) {
-        if (matchPage(allScripts[s])) pages.push({ type: 'script', c: allScripts[s] });
-      }
-      for (var k = 0; k < allCollections.length && pages.length < PAGE_SLOTS; k++) {
-        if (matchPage(allCollections[k])) pages.push({ type: 'collection', c: allCollections[k] });
-      }
-      // Give the pages their slots back by trimming characters, never the
-      // other way round.
-      if (pages.length) out = out.slice(0, Math.max(0, MAX_RESULTS - pages.length));
-      return out.concat(pages);
+      return order.map(function (t) { return { type: t, rows: groups[t] }; });
     }
 
     // On mobile the topbar dropdown (.search-wrap) is display:none, so the
@@ -671,12 +658,19 @@
       return navResults;
     }
 
-    function render(results, q) {
+    function resultsPage(q) { return ROOT + 'search?q=' + encodeURIComponent(q); }
+
+    function render(res, q) {
       var html;
-      if (!results.length) {
-        html = '<div class="search-empty">Nothing found for \u201c' + esc(q) + '\u201d</div>';
+      if (!res.total) {
+        html = '<div class="search-empty">Nothing found for “' + esc(q) + '”</div>';
       } else {
-        html = resultsHTML(results);
+        html = preview(res).map(function (g) {
+          return '<div class="search-group-label" role="presentation">' + esc(window.BotcSearch.TYPE_LABEL[g.type]) + '</div>' +
+            g.rows.map(function (r) { return rowHTML(r.item, res.tokens); }).join('');
+        }).join('') +
+          '<a class="search-all" href="' + esc(resultsPage(q)) + '" role="option">See all ' + res.mixed.length +
+          ' result' + (res.mixed.length === 1 ? '' : 's') + ' for “' + esc(q) + '” →</a>';
       }
       drop.innerHTML = html;
       var nb = navResultsBox();
@@ -709,40 +703,70 @@
         ? (img.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(p.v)) : '';
       return img ? assetSrc(img) + ver : (ROOT + 'assets/favicon.png');
     }
-    function resultsHTML(results) {
-      return results.map(function (r) {
-        if (r.type === 'script' || r.type === 'collection') {
-          var p = r.c;
-          var pname = p.name || p.displayName || '';
-          var phref = r.type === 'script'
-            ? ROOT + 's/' + encodeURIComponent(p.slug)
-            : ROOT + 'collection/' + encodeURIComponent(p.id || p.slug);
-          var psub = p.tagline || p.description || '';
-          if (psub.length > 80) psub = psub.slice(0, 80) + '\u2026';
-          return '<a class="search-result" href="' + esc(phref) + '" role="option">' +
-            '<img class="search-result-thumb" src="' + esc(pageThumb(p)) + '" alt="" ' +
-            'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
+    function clip(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
+    function thumbHTML(src, round) {
+      return '<img class="search-result-thumb' + (round ? ' round' : '') + '" src="' + esc(src) + '" alt="" ' +
+        'onerror="this.onerror=null;this.src=\'' + ROOT + 'assets/favicon.png\'">';
+    }
+    function iconHTML(glyph, cls) {
+      return '<span class="search-result-icon' + (cls ? ' ' + cls : '') + '" aria-hidden="true">' + glyph + '</span>';
+    }
+    function countLabel(d) {
+      var bits = [];
+      if (d.characters) bits.push(d.characters + ' character' + (d.characters === 1 ? '' : 's'));
+      if (d.scripts) bits.push(d.scripts + ' script' + (d.scripts === 1 ? '' : 's'));
+      if (d.collections) bits.push(d.collections + ' collection' + (d.collections === 1 ? '' : 's'));
+      return bits.join(' · ');
+    }
+    function rowHTML(item, tokens) {
+      var mark = function (t) { return window.BotcSearch.mark(t, tokens); };
+      var d = item.data, pic = '', name = mark(item.name), sub = '', subClass = '';
+      switch (item.type) {
+        case 'character':
+          subClass = GOOD[d.team] ? ' good' : '';
+          return '<a class="search-result" href="' + esc(item.href) + '" role="option">' +
+            '<span class="card-side">' + thumbHTML(charThumb(d)) +
+            (window.CardActions ? window.CardActions.slotHTML(d) : '') + '</span>' +
             '<div class="search-result-info">' +
-            '<span class="search-result-name">' + esc(pname) +
-            '<span class="search-match">' + (r.type === 'script' ? 'Script' : 'Collection') + '</span></span>' +
-            '<span class="search-result-ability">' + esc(psub) + '</span>' +
+            '<span class="search-result-name">' + name + '</span>' +
+            '<span class="search-result-type' + subClass + '">' + esc(TEAM_LABEL[d.team] || d.team || '') + '</span>' +
+            '<span class="search-result-ability">' + mark(clip(d.ability, 90)) + '</span>' +
             '</div></a>';
-        }
-        var c = r.c;
-        var typeClass = GOOD[c.team] ? ' good' : '';
-        var ability = c.ability || '';
-        if (ability.length > 80) ability = ability.slice(0, 80) + '…';
-        var fieldTag = r.field !== 'name'
-          ? '<span class="search-match">matched ' + esc(r.field) + '</span>' : '';
-        return '<a class="search-result" href="' + esc(ROOT + c.page) + '" role="option">' +
-          '<img class="search-result-thumb" src="' + esc(charThumb(c)) + '" alt="" ' +
-          'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
-          '<div class="search-result-info">' +
-          '<span class="search-result-name">' + esc(c.name) + fieldTag + '</span>' +
-          '<span class="search-result-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</span>' +
-          '<span class="search-result-ability">' + esc(ability) + '</span>' +
-          '</div></a>';
-      }).join('');
+        case 'script':
+        case 'collection':
+          pic = thumbHTML(pageThumb(d));
+          sub = mark(clip(d.tagline || d.description || d.author || '', 90));
+          break;
+        case 'creator':
+          pic = d.avatarUrl ? thumbHTML(d.avatarUrl, true)
+            : iconHTML(esc((window.CreatorSymbols && window.CreatorSymbols.creatorSymbol(d.name)) || '\u00b7'), 'round');
+          sub = esc(countLabel(d)) + (d.username ? ' · @' + mark(d.username) : '');
+          break;
+        case 'user':
+          pic = d.avatarUrl ? thumbHTML(d.avatarUrl, true) : iconHTML('@', 'round');
+          sub = '@' + mark(d.username);
+          break;
+        case 'wikipage':
+          pic = iconHTML('<span class="ico ico-book"></span>');
+          sub = mark(clip([d.parentName, d.author ? 'by ' + d.author : ''].filter(Boolean).join(' · '), 90));
+          break;
+        case 'news':
+          pic = thumbHTML(ROOT + 'assets/favicon.png');
+          sub = mark(clip(d.summary, 90));
+          break;
+        case 'tag':
+          pic = d.kind === 'team' ? iconHTML('', 'search-team-dot search-team-' + esc(d.team)) : iconHTML('#');
+          sub = (d.kind === 'team' ? 'Team' : 'Tag') + ' · ' + d.count + ' character' + (d.count === 1 ? '' : 's');
+          break;
+        default:
+          pic = thumbHTML(ROOT + 'assets/favicon.png');
+          sub = esc(d.desc || d.kind || '');
+      }
+      return '<a class="search-result" href="' + esc(item.href) + '" role="option">' + pic +
+        '<div class="search-result-info">' +
+        '<span class="search-result-name">' + name + '</span>' +
+        (sub ? '<span class="search-result-ability">' + sub + '</span>' : '') +
+        '</div></a>';
     }
 
     function open() { drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
@@ -760,16 +784,26 @@
       var token = ++searchToken;
       function show() {
         if (token !== searchToken || input.value.trim() !== q) return;
-        render(search(q), q);
+        render(index.search(q), q);
         open();
       }
-      // A local scan of this bounded index needs no artificial typing delay.
-      // While loading, ensureData shares one request and only the latest
-      // query may paint; clearing, Escape and outside clicks cancel it too.
-      if (allChars) show();
+      // A search of the local index takes a millisecond or two, so there is
+      // no typing delay. While loading, ensureData shares one request and
+      // only the latest query may paint; clearing, Escape and outside clicks
+      // cancel it too.
+      if (index) show();
       else ensureData().then(show).catch(function () {
         if (token === searchToken) close();
       });
+    }
+    // Enter: the full results. On /search itself the page takes the query
+    // rather than reloading.
+    function goToResults(q) {
+      q = String(q || '').trim();
+      if (!q) return;
+      close();
+      if (window.SearchPage) { window.SearchPage.set(q); return; }
+      location.href = resultsPage(q);
     }
     function warmSearch() { ensureData().catch(function () {}); }
     input.addEventListener('input', updateSearch);
@@ -778,7 +812,7 @@
       if (input.value.trim()) updateSearch();
     });
     // The phone's field mirrors input into the hidden topbar field, but
-    // focus and Escape are separate events and need the same handling.
+    // focus, Enter and Escape are separate events and need the same handling.
     var mobileInput = document.getElementById('nav-search-input');
     if (mobileInput) {
       mobileInput.addEventListener('focus', function () {
@@ -786,18 +820,30 @@
         warmSearch();
         if (input.value.trim()) updateSearch();
       });
-      mobileInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+      mobileInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
+        else if (e.key === 'Enter' && !e.isComposing) { if (e.preventDefault) e.preventDefault(); goToResults(mobileInput.value); }
+      });
     }
     var menuButton = document.getElementById('hamburger');
     if (menuButton) menuButton.addEventListener('click', close);
+    function links() { return Array.prototype.slice.call(drop.querySelectorAll('a.search-result, a.search-all')); }
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { close(); input.blur(); return; }
-      if (e.key === 'ArrowDown') { var f = drop.querySelector('.search-result'); if (f) { e.preventDefault(); f.focus(); } }
+      // Not while an input method is still composing (Chinese, Japanese…):
+      // that Enter picks the characters, it does not search.
+      if (e.key === 'Enter' && !e.isComposing) { if (e.preventDefault) e.preventDefault(); goToResults(input.value); return; }
+      if (e.key === 'ArrowDown') { var f = links()[0]; if (f) { e.preventDefault(); f.focus(); } }
     });
     drop.addEventListener('keydown', function (e) {
+      // Arrow keys move between results, also from a result's quick-action
+      // buttons (card-actions.js), which sit inside the result's link. The
+      // group labels are skipped.
       var cur = document.activeElement;
-      if (e.key === 'ArrowDown') { e.preventDefault(); var n = cur.nextElementSibling; if (n) n.focus(); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); var p = cur.previousElementSibling; if (p) p.focus(); else input.focus(); }
+      if (cur && cur.closest && cur.closest('.search-result')) cur = cur.closest('.search-result');
+      var all = links(), at = all.indexOf(cur);
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (all[at + 1]) all[at + 1].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (at > 0) all[at - 1].focus(); else input.focus(); }
       else if (e.key === 'Escape') { close(); input.focus(); }
     });
     document.addEventListener('click', function (e) {
@@ -848,9 +894,16 @@
       var h = (a.getAttribute('href') || '').replace(/\.html$/, '');
       if (h === here || (here === 'index' && (h === '/' || h === '../' || h === './'))) a.classList.add('active');
     });
+    // The menu is position:fixed, so it hangs at the bar's BOTTOM edge in
+    // viewport terms — not at the bar's height. The two agree only while
+    // the bar is at the top of the screen; a DRAFT bar, the Partial notice
+    // or the announcement banner sits above it in the flow, and until that
+    // scrolls away the bar's bottom is lower by exactly that much. Measured
+    // by height, the open menu covered the whole bar, hamburger included,
+    // on every draft page.
     function positionDrop() {
       var tb = document.querySelector('.topbar');
-      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
+      if (tb) drop.style.top = Math.max(0, tb.getBoundingClientRect().bottom) + 'px';
     }
     btn.addEventListener('click', function () {
       positionDrop();
@@ -873,12 +926,32 @@
       });
     }
     window.addEventListener('resize', positionDrop);
+    // The bar moves while whatever sits above it scrolls away; keep the
+    // open menu hanging off it.
+    window.addEventListener('scroll', function () {
+      if (drop.classList.contains('open')) positionDrop();
+    }, { passive: true });
     document.addEventListener('click', function (e) {
       if (!btn.contains(e.target) && !drop.contains(e.target)) {
         drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
       }
     });
   })();
+
+  /* ── Site chrome is never machine-translated ──
+     Chrome's translator (and every other one that honours the standard
+     attribute) rewrites the DOM it translates: text nodes are re-wrapped in
+     <font> elements, and a run of inline siblings is re-emitted as ONE
+     sentence with its inline tags moved to wherever the translation put
+     them. The menu's links are inline while it is closed (display:none
+     blockifies nothing), and the ones this file adds — Random Character
+     with its dice, the Edit clone, My Account — came back as one wrapped
+     row, the dice on a line of its own and an empty bordered Edit box. The
+     top bar's crumb row is the same shape. Nothing in either needs
+     translating for the menu to work, so both are left alone. */
+  document.querySelectorAll('.topbar, .nav-dropdown').forEach(function (el) {
+    el.setAttribute('translate', 'no');
+  });
 })();
 
 /* ── Redesigned top bar: solid/scrolled state past 24px of scroll ── */

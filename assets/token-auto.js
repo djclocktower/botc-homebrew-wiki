@@ -44,7 +44,7 @@
     try {
       worker = new Worker(ROOT + 'assets/token-worker.js');
     } catch (e) {
-      bootErr = 'The token engine could not start.';
+      bootErr = 'The token maker could not start.';
       return;
     }
     worker.postMessage({
@@ -55,13 +55,13 @@
     worker.onmessage = function (e) {
       var m = e.data || {};
       if (m.type === 'status') {
-        if (m.state === 'error') failAll(m.message || 'The token engine failed to load.');
+        if (m.state === 'error') failAll(m.message || 'The token maker failed to load.');
         return;
       }
       var p = pending[m.id]; if (!p) return; delete pending[m.id];
-      if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Render failed'));
+      if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Could not draw the token.'));
     };
-    worker.onerror = function (e) { failAll((e && e.message) || 'The token engine failed to load.'); };
+    worker.onerror = function (e) { failAll((e && e.message) || 'The token maker failed to load.'); };
   }
   function failAll(msg) {
     bootErr = msg;
@@ -73,7 +73,7 @@
     return new Promise(function (res, rej) {
       if (bootErr) return rej(new Error(bootErr));
       ensureWorker();
-      if (bootErr || !worker) return rej(new Error(bootErr || 'The token engine could not start.'));
+      if (bootErr || !worker) return rej(new Error(bootErr || 'The token maker could not start.'));
       var id = ++reqSeq;
       pending[id] = { res: res, rej: rej };
       msg.type = type; msg.id = id;
@@ -90,7 +90,7 @@
       return Promise.resolve(src.slice(i + 1));
     }
     return fetch(src).then(function (r) {
-      if (!r.ok) throw new Error('The art could not be fetched.');
+      if (!r.ok) throw new Error('The art could not be loaded.');
       return r.blob();
     }).then(function (blob) {
       return new Promise(function (res, rej) {
@@ -126,7 +126,7 @@
         });
       })
       .then(function (res) {
-        if (res.error) throw new Error('The art could not be rendered onto a token.');
+        if (res.error) throw new Error('The art could not be drawn onto a token.');
         return 'data:image/png;base64,' + res.png;
       });
   }
@@ -152,31 +152,31 @@
       // token drawn for them would only make their save fail — say so
       // instead of rendering one.
       if (opts.allowed && !opts.allowed()) {
-        opts.hint('The printable token is the page owner’s (or an approved editor’s) to change.');
+        opts.hint('Only the page owner or an approved editor can change the printable token.');
         return;
       }
       // A real token already stands — saved on the row, or uploaded by hand
       // this visit. Only a token this mount drew itself is redrawn.
       if (opts.hasToken() && !auto) return;
       var art = opts.art();
-      if (!art) { opts.hint('Upload character art first — the default token is drawn from it.'); return; }
+      if (!art) { opts.hint('Add character art to draw the token.'); return; }
       var entry = opts.gather();
-      if (!entry.name) { opts.hint('Give the character a name first — it is written around the token.'); return; }
-      if (!entry.ability) { opts.hint('Write the ability first — it is printed on the token.'); return; }
+      if (!entry.name) { opts.hint('Add a name to draw the token.'); return; }
+      if (!entry.ability) { opts.hint('Add the ability to draw the token.'); return; }
       var k = payloadKey(entry, art);
       if (k === lastKey) return;
       if (busy) { again = true; return; }
       busy = true; lastKey = k;
-      opts.hint(worker ? 'Drawing the default token…' : 'Drawing the default token… (the first one loads the token engine, so it takes a moment)');
+      opts.hint(worker ? 'Drawing the default token…' : 'Drawing the default token… (the first one takes a moment)');
       render(entry, art).then(function (url) {
         busy = false; auto = true;
         opts.apply(url);
-        opts.hint('Default token, drawn from this page — it updates as you edit, and saves with the character. Fine-tune it in the Token Tool if you like.');
+        opts.hint('Default token. It updates as you edit and saves with the character.');
         if (again) { again = false; maybe(); }
       }, function (e) {
         busy = false;
         again = false;
-        opts.hint('Could not draw a token: ' + ((e && e.message) || 'render failed') + ' You can still upload a finished token image below.');
+        opts.hint('Could not draw a token: ' + ((e && e.message) || 'drawing failed.') + ' You can upload a token image instead.');
       });
     }
 

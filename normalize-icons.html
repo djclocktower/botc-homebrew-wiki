@@ -61,7 +61,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -70,7 +70,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -92,8 +92,13 @@
       <p class="norm-sub">
         Re-fits every published character's art onto the standard <strong>591&times;591</strong> frame:
         it trims the empty transparent space around each figure, then scales and centers it so every icon
-        appears at a consistent size — matching the official wiki. The original art is replaced with the
-        standardized version in storage; the site updates as soon as the run finishes.
+        appears at the size the official icons do &mdash; on the wiki, and in the official script tool,
+        which prints a script's icons at whatever size the file's own margin gives them. Art already on
+        the standard is skipped, so a re-run only touches what has changed. <strong>Icons somebody placed
+        by hand are left alone</strong> &mdash; art already on the 591 frame at a size or position the wiki's
+        automatic fitting never produced (Adjust by hand, Icon Forge) counts as a choice, not a mistake.
+        The original art is replaced with the standardized version in storage; the site updates as soon
+        as the run finishes.
       </p>
 
       <div class="warn">
@@ -104,6 +109,10 @@
 
       <section class="panel">
         <h3>Run</h3>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;cursor:pointer">
+          <input type="checkbox" id="resetPlaced" style="width:17px;height:17px;margin:2px 0 0;flex:none">
+          <span>Also reset icons placed by hand to the standard <span class="norm-sub" style="display:block;margin:2px 0 0">Off, every icon a person sized or positioned themselves keeps that. On, everything is re-fitted, which undoes those choices.</span></span>
+        </label>
         <div class="btn-row">
           <button class="btn" id="start" type="button">Standardize all icons</button>
           <button class="btn btn-ghost" id="cancel" type="button" style="display:none">Cancel</button>
@@ -131,7 +140,13 @@
       return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch];
     }); }
 
-    var THROTTLE_MS = 150;   // brief pause between images to be gentle on storage
+    // Several icons in flight at once. One at a time with a pause between
+    // each put a full run of ~2,100 icons at the best part of an hour; the
+    // slow part is the round trip (fetch, upload, thumbnail), not the CPU,
+    // so a handful in parallel finishes in a fraction of that. Admins are
+    // exempt from the upload limiter. Kept modest so the tab stays
+    // responsive and storage is not hammered.
+    var PARALLEL = 6;
     var cancelled = false;
     var running = false;
 
@@ -153,8 +168,6 @@
         return { status: r.status, body: j };
       }); });
     }
-
-    function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
 
     // Build the flat work list: one job per art / artAlt image under art/.
     function buildJobs(chars){
@@ -178,9 +191,20 @@
 
     function processOne(job){
       if (job.skip) { logRow('skip', job.name, job.skip); return Promise.resolve('skip'); }
-      return normalizeArtDataURL(job.url)
-        .then(function(dataUrl){ return apiUpload(job.key, dataUrl); })
+      // ifNeeded: art already on the standard frame at the standard size
+      // comes back null and is left exactly as it is. Every pass resamples
+      // and every upload retires a thumbnail, so a re-run only touches what
+      // moved — a fresh upload, or a standard that changed.
+      // keepPlaced: art a person placed on the frame themselves comes back
+      // false and is left alone too, unless the box above asks for it.
+      return normalizeArtDataURL(job.url, { ifNeeded: true, keepPlaced: !$('resetPlaced').checked })
+        .then(function(dataUrl){
+          if (dataUrl === null) { logRow('skip', job.name, 'already standard'); return 'skip'; }
+          if (dataUrl === false) { logRow('skip', job.name, 'placed by hand — left as is'); return 'skip'; }
+          return apiUpload(job.key, dataUrl);
+        })
         .then(function(res){
+          if (res === 'skip') return res;
           if (res.status === 200 && res.body && res.body.ok) { logRow('ok', job.name); return 'ok'; }
           logRow('err', job.name, (res.body && res.body.error) || ('HTTP ' + res.status)); return 'err';
         })
@@ -205,18 +229,25 @@
           $('c-total').textContent = jobs.length;
           if (!jobs.length) { logRow('skip', 'Nothing to do', 'no character art found'); return null; }
 
-          return jobs.reduce(function(chain, job){
-            return chain.then(function(){
-              if (cancelled) return;
-              return processOne(job).then(function(result){
-                done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
-                $('c-done').textContent = done; $('c-ok').textContent = ok;
-                $('c-skip').textContent = skip; $('c-err').textContent = err;
-                $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
-                return sleep(THROTTLE_MS);
-              });
-            });
-          }, Promise.resolve()).then(function(){ return jobs.length; });
+          // A small pool: each lane takes the next job when it finishes one,
+          // so PARALLEL icons are in flight until the list runs dry or the run
+          // is cancelled (a lane then stops picking up work; what is already
+          // in flight completes, which is why the log may add a few lines
+          // after Cancel).
+          var next = 0;
+          function lane() {
+            if (cancelled || next >= jobs.length) return Promise.resolve();
+            var job = jobs[next++];
+            return processOne(job).then(function(result){
+              done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
+              $('c-done').textContent = done; $('c-ok').textContent = ok;
+              $('c-skip').textContent = skip; $('c-err').textContent = err;
+              $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
+            }).then(lane);
+          }
+          var lanes = [];
+          for (var i = 0; i < Math.min(PARALLEL, jobs.length); i++) lanes.push(lane());
+          return Promise.all(lanes).then(function(){ return jobs.length; });
         })
         .then(function(){
           running = false;

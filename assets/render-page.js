@@ -17,6 +17,16 @@
     return null;
   }
 
+  /* The quick-action slot under a card's icon (assets/card-actions.js). The
+     Worker hands the module in through setCardActions(); in the browser it is
+     window.CardActions. Without either, cards simply draw no slot. */
+  var cardActions = null;
+  function setCardActions(ca) { cardActions = ca || null; }
+  function quickSlot(c) {
+    var ca = cardActions || (typeof window !== 'undefined' ? window.CardActions : null);
+    return ca && ca.slotHTML ? ca.slotHTML(c) : '';
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -279,7 +289,7 @@
     return c && c.official ? ' target="_blank" rel="noopener"' : '';
   }
   function offMark(c) {
-    return c && c.official ? ' <span class="script-char-off" title="Official character; opens the official wiki">&#8599;</span>' : '';
+    return c && c.official ? ' <span class="script-char-off" title="Official character; opens the official wiki"><span class="ico ico-external" aria-hidden="true"></span></span>' : '';
   }
 
   function sech(id, title) {
@@ -307,7 +317,9 @@
         '<div class="script-char-list">';
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+          '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+          quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -321,7 +333,9 @@
       html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+          '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="">' +
+          quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -376,7 +390,7 @@
         (hasCurata
           ? '<span class="curata-mark" role="img" title="' +
             (c.curataFrom
-              ? 'Curata — part of the ' + esc(c.curataFrom) + ' collection.'
+              ? 'Curata: part of the ' + esc(c.curataFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
             '" aria-label="Curata"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
@@ -395,7 +409,11 @@
         (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
         (hasCurata ? ' data-curata="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
+        // The icon and, under it, the two quick actions (Favorites, Add to
+        // Script — assets/card-actions.js). A draft gets no slot.
+        '<span class="card-side">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        quickSlot(c) + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
         '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
@@ -451,14 +469,14 @@
     return out;
   }
 
-  /* Bootlegger rules: the official schema's `_meta.bootlegger`, house rules
+  /* Bootlegger rules: the official schema's `_meta.bootlegger`, the rules
      the app prints with the script. On the page too, or a reader would only
      find them by opening the JSON. */
   function renderBootlegger(rules) {
     var list = (rules || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
     if (!list.length) return '';
     return '<div class="sv-section sv-bootlegger" id="sec-bootlegger">' +
-      sech('sec-bootlegger', 'House Rules') +
+      sech('sec-bootlegger', 'Bootlegger Rules') +
       '<ul class="sv-boot-list">' + list.map(function (r) {
         return '<li>' + tok(r) + '</li>';
       }).join('') + '</ul></div>';
@@ -532,14 +550,14 @@
     jinxes.forEach(function (j) {
       html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
         '<span class="script-char-name jx-pair">' +
-          side(j.a) + '<span class="jx-pair-link">&harr;</span>' + side(j.b) +
+          side(j.a) + '<span class="jx-pair-link"><span class="ico ico-swap" aria-hidden="true"></span></span>' + side(j.b) +
         '</span>' +
         '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
     });
     official.forEach(function (j) {
       html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
         '<span class="script-char-name jx-pair">' +
-          side(j.a) + '<span class="jx-pair-link">&harr;</span>' +
+          side(j.a) + '<span class="jx-pair-link"><span class="ico ico-swap" aria-hidden="true"></span></span>' +
           '<a class="jx-pair-side" href="' + esc(j.target.href) + '" target="_blank" rel="noopener noreferrer">' +
             (j.target.iconSrc ? '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' +
               esc(j.target.iconSrc) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
@@ -993,7 +1011,7 @@
   function ownerBar(editHref, label) {
     if (!editHref) return '<div id="page-owner-controls"></div>';
     return '<p id="page-owner-controls" class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
-      esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
+      esc(editHref) + '"><span class="ico ico-edit" aria-hidden="true"></span> ' + esc(label) + '</a></p>';
   }
 
   /* The "who may edit this page" line used to sit here too, as a Status-box
@@ -1040,7 +1058,7 @@
     main += renderBootlegger(cfg.bootlegger);
     main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
     if (cfg.missing && cfg.missing.length) {
-      main += '<p class="script-missing">⚠ ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
+      main += '<p class="script-missing"><span class="ico ico-warning" aria-hidden="true"></span> ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
         (cfg.missing.length === 1 ? 'is' : 'are') + ' not in the wiki: ' + cfg.missing.map(esc).join(', ') + '</p>';
     }
 
@@ -1116,11 +1134,6 @@
   }
 
   /* ── public renderers ── */
-  /* The download mark. This file is imported by the WORKER, which has no
-     window and so no UIIcons — the one shape it needs is written out here
-     instead, and it is the same path data as ui-icons.js's `download`. */
-  var DOWNLOAD_ICON = '<svg class="sbi" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v11M12 14.5L7.5 10M12 14.5L16.5 10"/><path d="M4 16v3.5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V16"/></svg>';
-
   function renderScriptPage(sc, allChars, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
@@ -1138,7 +1151,7 @@
       // "save link as", and cannot fail silently. See pageJsonResponse().
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
-        label: DOWNLOAD_ICON + ' Download JSON' },
+        label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' },
       { href: root + 'fancyscripts?s=' + encodeURIComponent(sc.slug || ''), label: 'Fancy Sheet' }
@@ -1175,7 +1188,7 @@
     var actions = [
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=collection&slug=' + encodeURIComponent(coll.id || coll.slug || ''),
-        label: DOWNLOAD_ICON + ' Download JSON' },
+        label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' },
       { href: root + 'fancyscripts?c=' + encodeURIComponent(coll.id || coll.slug || ''), label: 'Fancy Sheet' }
     ];
@@ -1196,6 +1209,7 @@
     renderScriptPage: renderScriptPage,
     renderCollectionPage: renderCollectionPage,
     renderRosterCards: renderRosterCards,
+    setCardActions: setCardActions,
     nightItems: nightItems,
     filterBoxHTML: filterBoxHTML,
     scriptJinxes: scriptJinxes,

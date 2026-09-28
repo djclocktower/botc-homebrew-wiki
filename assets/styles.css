@@ -456,7 +456,39 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .json-head { display:block; width:100%; max-width:280px; height:auto; margin:4px auto 12px; }
 .json-qr   { display:block; width:min(90%,230px); height:auto; margin:0 auto 4px; border-radius:0; }
 .char-side { display: flex; flex-direction: column; gap: clamp(16px,2.2vw,26px); }
-.emblem { display: block; width: min(86%, 286px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); }
+/* The emblem draws at 8/6 of its original size. Two pieces make that up:
+   the BOX is 7/6 of what it was (86% -> 100%, 286px -> 334px), which is
+   0.70 / 0.60, the old icon standard over the new one (ART_FILL in
+   art-normalize.js, see "Icon size in the official script tool" in
+   CLAUDE.md) — the standard shrank so exported icons print at the official
+   size, and the box grows by the same factor so the figure on a character
+   page would have stayed the size it was. Then the owner asked for a touch
+   more, so the box is SCALED by a further 8/7. A transform rather than a
+   wider box because on a phone the box is already the full card width:
+   more percent buys nothing there, and a box wider than its column pushes
+   the page sideways. A transform costs no layout, and only transparent
+   margin reaches past the column (the figure is 60% of the picture, 69%
+   of the column after scaling), so nothing is cut off and nothing scrolls.
+   Keep .emblem-stack below in step; its child images carry only their own
+   dip (reader.js's emPaint writes it as --em-s) and must not inherit this
+   one. The printable token is the exception to all of it: see .emblem-token
+   just below. */
+/* --art-scale is the owner's wiki-only display size (render.js writes it
+   inline as a fraction, 0.5..2, only when one was chosen). It multiplies
+   the 8/7 above rather than replacing it, so "100%" on the slider is
+   exactly the page as drawn with the box switched off. */
+.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
+/* The printable token (render.js marks it) is the one version that is NOT
+   mostly transparent margin: it is a full-bleed disc, edge to edge. Every
+   step above assumes the margin — the 7/6 box grows into room an icon on
+   the 60% standard already had, the 8/7 pushes only that margin past the
+   column — so on the token both steps were real growth, and on a phone it
+   ran a seventh past the card. It is drawn at exactly the size the box was
+   before any of this (6/7 of the box: 86%, 286px) and unscaled, and the
+   owner's --art-scale stays off it: that setting is how big the ICON is
+   displayed, and a token is not an icon. The .75 in the stack rule below
+   is this 6/7 with the stack's own 8/7 divided back out. */
+.emblem.emblem-token { transform: scale(.8571); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 /* How to say the name — a quiet labelled line tucked under the flavour quote.
    Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
@@ -1032,6 +1064,129 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   .topbar { flex-wrap: wrap; }
 }
 
+/* The dropdown's groups (one per kind of result) and its last row, which
+   opens the full results page. */
+.search-group-label {
+  padding: 8px 14px 4px;
+  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(236,225,200,.5);
+  border-top: 1px solid rgba(214,196,150,.12);
+}
+.search-group-label:first-child { border-top: none; }
+.search-group-label + .search-result { border-top: none; }
+.search-result-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: serif; font-size: 1.2rem; color: var(--parch);
+  border: 1px solid rgba(214,196,150,.3);
+}
+.search-result-icon.round { border-radius: 50%; }
+.search-team-dot::after { content: ''; width: 16px; height: 16px; border-radius: 50%; background: var(--good); }
+.search-team-outsider::after { background: var(--outsider); }
+.search-team-minion::after { background: var(--minion); }
+.search-team-demon::after { background: var(--evil); }
+.search-team-traveller::after { background: linear-gradient(90deg, var(--good) 50%, var(--evil) 50%); }
+.search-team-fabled::after { background: var(--fabled); }
+.search-team-loric::after { background: var(--loric); }
+img.search-result-thumb.round { border-radius: 50%; object-fit: cover; }
+.search-drop .search-all, .nav-search-results .search-all {
+  display: block; padding: 11px 14px;
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .06em;
+  text-transform: uppercase; text-decoration: none;
+  color: var(--parch); background: #331532;
+  border-top: 1px solid rgba(214,196,150,.2);
+  outline: none;
+  /* Both lists scroll, so the way to the full results stays pinned at the
+     bottom of the box instead of below the fold of it. */
+  position: sticky; bottom: 0;
+}
+.nav-search-results .search-all { padding: 12px clamp(14px,4vw,40px); }
+.search-drop .search-all:hover, .search-drop .search-all:focus,
+.nav-search-results .search-all:hover { background: #47233f; }
+.search-drop { max-height: min(76vh, 640px); overflow-y: auto; }
+/* The matched letters, on the dark dropdown and on the parchment cards. */
+mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border-radius: 2px; }
+.search-drop mark.sr-hl, .nav-search-results mark.sr-hl {
+  background: none; color: #fff; text-decoration: underline;
+  text-decoration-color: rgba(236,225,200,.55); text-underline-offset: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SEARCH PAGE (/search)
+   ════════════════════════════════════════════════════════════════ */
+.sp-hero { padding-top: clamp(18px, 3.5vw, 40px); padding-bottom: clamp(10px, 2vw, 18px); }
+.sp-hero h1 { font-size: clamp(1.7rem, 4.5vw, 2.8rem); margin-bottom: 0; }
+.sp-panel { padding-bottom: 0; }
+.sp-panel .filter-count { text-align: center; }
+.sp-form { max-width: 760px; margin: 0 auto 16px; }
+.sp-input {
+  width: 100%; box-sizing: border-box;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: 1.08rem;
+  padding: 13px 16px 13px 44px;
+  border-radius: 0;
+  border: 2px solid var(--parch-frame);
+  background: rgba(255,255,255,.1) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23c8b98a' stroke-width='2.5' stroke-linecap='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 15px center;
+  color: var(--parch);
+  outline: none;
+  transition: border-color .2s, background-color .2s;
+}
+.sp-input::placeholder { color: rgba(200,185,138,.55); }
+.sp-input:focus { border-color: var(--parch); background-color: rgba(255,255,255,.14); }
+.sp-tabs {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  max-width: 1000px; margin: 0 auto 20px;
+}
+.sp-tabs[hidden] { display: none; }
+.sp-tab { padding: 5px 12px; font-size: .82rem; }
+/* The chips' own hover tint is see-through, made for the parchment filter
+   box; on the page background it would leave dark text on dark purple. */
+.sp-tab:hover { background: #fff; }
+.sp-tab.active, .sp-tab.active:hover { background: var(--maroon); border-color: var(--parch); }
+.sp-tab-n { opacity: .6; margin-left: 2px; font-variant-numeric: tabular-nums; }
+.sp-tab.active .sp-tab-n { opacity: .8; }
+.sp-sortbar { justify-content: flex-start; }
+.sp-chip-n { opacity: .65; font-variant-numeric: tabular-nums; }
+.filter-chip.active .sp-chip-n { opacity: .85; }
+.sp-section { margin-bottom: 40px; }
+.sp-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.sp-more {
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .05em;
+  cursor: pointer; background: none; border: none; padding: 4px 0;
+  color: rgba(236,225,200,.8); text-decoration: underline; text-underline-offset: 3px;
+}
+.sp-more:hover { color: #fff; }
+.sp-empty {
+  text-align: center; color: rgba(236,225,200,.7);
+  padding: 36px 16px; margin: 0; font-size: .98rem; line-height: 1.5;
+}
+.sp-empty .filter-reset { color: var(--parch); font-size: .9rem; }
+.sp-people { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.sp-tags { padding-bottom: 0; }
+.sp-pill-kind {
+  font-family: 'Oswald', sans-serif; font-weight: 400; font-size: .7rem;
+  letter-spacing: .08em; text-transform: uppercase; opacity: .65;
+}
+.sp-team-pill { border-left: 4px solid var(--good); }
+.sp-team-outsider { border-left-color: var(--outsider); }
+.sp-team-minion { border-left-color: var(--minion); }
+.sp-team-demon { border-left-color: var(--evil); }
+/* Traveller is the team's half-blue, half-red split, as everywhere else. */
+.sp-team-traveller { position: relative; border-left-color: transparent; }
+.sp-team-traveller::before {
+  content: ''; position: absolute; left: -4px; top: -1px; bottom: -1px; width: 4px;
+  background: linear-gradient(var(--good) 50%, var(--evil) 50%);
+}
+.sp-team-fabled { border-left-color: var(--fabled); }
+.sp-team-loric { border-left-color: var(--loric); }
+@media (max-width: 640px) {
+  .sp-tabs { justify-content: flex-start; }
+}
+
 /* ── Tag links (in character info card) ─────────────────────────── */
 .tag-link {
   color: var(--good-name);
@@ -1457,6 +1612,75 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    is a <button> with its own display rules elsewhere. */
 .filter-chip[hidden] { display: none !important; }
 
+/* ── Card quick actions (assets/card-actions.js) ──
+   Two small buttons on every card and row a character is drawn as — the
+   heart (Favorites) and the page (Add to Script): the browse grids, rosters,
+   a script page's list, the homepage's Featured and Recently Added, the
+   search results. The glyphs and the swell are the info card's (.tog-ico:
+   an outline that fills in when on; .tog-pop), so the card and the page
+   read as one control.
+   Everywhere but the search box they are bare icons, stacked one above the
+   other under the character's icon — no box, no background: the owner
+   wanted just the icons, a little larger than the first boxed version. The
+   fill IS the state, so nothing else has to change when one is switched on.
+   .card-side is the icon's column; the renderers wrap the icon and the slot
+   in it. The slot is printed EMPTY (the browser fills it) and carries its
+   height from the start, so filling it moves nothing. */
+.card-side {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.cq {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 62px;                 /* two 30px buttons and the gap */
+  position: relative; z-index: 1;
+}
+.cq-btn {
+  box-sizing: border-box;
+  width: 30px; height: 30px; margin: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 20px; line-height: 1;
+  color: var(--maroon); background: none; border: 0; border-radius: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .15s;
+}
+/* Hover shifts the colour rather than fading it, and only with a real
+   pointer: a phone keeps :hover on the last thing tapped, which left a heart
+   that had just been filled in looking half-faded. */
+@media (hover: hover) { .cq-btn:hover { color: var(--evil); } }
+.cq-btn:focus-visible { outline: 2px solid var(--good-name); outline-offset: 0; }
+.cq-btn .tog-ico { display: block; margin: 0; vertical-align: 0; }
+.cq-btn.on .tog-ico path { fill: currentColor; }
+/* A script page's roster rows and a creator's pinned strip are compact
+   lists, so their icons are a size down. */
+.script-char-row .card-side, .pin-card .card-side { gap: 3px; }
+.script-char-row .cq, .pin-card .cq { min-height: 54px; }
+.script-char-row .cq-btn, .pin-card .cq-btn { width: 26px; height: 26px; font-size: 17px; }
+/* Recently Added: the same bare icons, but side by side under the team name
+   (the owner's call for this strip — stacked under the icon, every card grew
+   twice as tall). */
+.recent-card .cq { flex-direction: row; min-height: 30px; gap: 8px; margin-top: 6px; }
+/* Featured: the buttons sit side by side on the credit line, right after
+   "by {creator}", rather than under the big picture. */
+.featured-meta { align-items: center; }
+.featured-meta .cq { flex-direction: row; min-height: 26px; gap: 2px; }
+.featured-meta .cq-btn { width: 26px; height: 26px; font-size: 18px; }
+/* The search results keep the first version: two small boxed buttons side by
+   side under the result's icon, outlined in parchment on the dark box and
+   filled parchment when on. */
+.search-result .card-side { gap: 5px; }
+.search-result .cq { flex-direction: row; min-height: 24px; gap: 4px; }
+.search-result .cq-btn {
+  width: 24px; height: 24px; font-size: 13px;
+  background: transparent; color: var(--parch);
+  border: 2px solid rgba(214,196,150,.45);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.search-result .cq-btn:hover { background: rgba(255,255,255,.1); color: var(--parch); }
+.search-result .cq-btn.on { background: var(--parch); border-color: var(--parch); color: var(--maroon); }
+.search-result .cq-btn.on:hover { background: #fff; border-color: #fff; }
+
 /* ── Hamburger menu (mobile nav) ──────────────────────────────── */
 .hamburger {
   display: none;
@@ -1755,8 +1979,20 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .featured-art {
   width: 100%; max-width: 220px; aspect-ratio: 1;
+  /* The markup carries width/height="260" so the space is reserved before
+     the picture arrives; without this the height attribute wins over the
+     aspect ratio and the box is 180x260 on a phone, with the icon floating
+     in the empty top and bottom of it. */
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(91,31,33,.25));
+  /* Scaled 8/6 for the same reason the /c/ emblem is (see .emblem): the
+     icon standard shrank from 70% to 60% fill so exports print at the
+     official size, and this card shows one icon on its own with nothing
+     official beside it to match. A transform rather than a wider box so
+     the grid column and the phone layout stay as they are; only
+     transparent margin reaches past the box. */
+  transform: scale(1.3333);
 }
 .featured-body { min-width: 0; }
 .featured-type {
@@ -1782,10 +2018,13 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .featured-meta {
   font-family: 'Oswald', sans-serif; font-size: .76rem;
   letter-spacing: .04em;
-  color: var(--ink); opacity: .75;
+  color: var(--ink);
   margin-bottom: 10px;
   display: flex; gap: 6px; flex-wrap: wrap;
 }
+/* The words are faded, not the line: the quick-action buttons ride it too
+   (after the creator's name) and must stay full strength. */
+.featured-meta > span:not(.cq) { opacity: .75; }
 .featured-link {
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .08em;
@@ -2282,7 +2521,8 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    so a picture cut off here would only look like a bug. */
 .emblem-stack {
   position: relative;
-  width: min(86%, 286px);
+  width: min(100%, 334px);   /* 7/6 of the old box, then 8/7 again: see .emblem above */
+  transform: scale(calc(1.1429 * var(--art-scale, 1)));
   aspect-ratio: 1;
   margin: 4px auto 6px;
   cursor: pointer;
@@ -2299,10 +2539,30 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   margin: 0;
+  /* The stack is scaled; each image carries only its own dip, which
+     emPaint (reader.js) writes as --em-s rather than as the transform, so
+     the token below can fold a base scale of its own into the same rule.
+     Before a line of script has run --em-s is unset and this is scale(1). */
+  transform: scale(var(--em-s, 1));
   opacity: 0;
   transition: opacity .18s ease, transform .18s ease;
   -webkit-user-drag: none;
+  /* Invisible is not the same as absent: the versions all sit in one box
+     and the LAST one in the markup is on top, so a long-press or a
+     right-click on the icon landed on a picture nobody could see, and
+     "Open image in new tab" opened the alternate art (or the token) every
+     time, whichever version was showing. Only the version on screen is
+     hit-testable; the stack's own listeners resolve the stack from
+     whatever was hit, so a tap or a swipe still works — and in the margin
+     around the smaller token they land on the stack itself, which is right:
+     there is no picture there to open. */
+  pointer-events: none;
 }
+.emblem-stack .emblem.is-on { pointer-events: auto; }
+/* The token inside a stack: undo the stack's 8/7 and the owner's display
+   size, then 6/7 of the box — see .emblem-token above. --art-scale is
+   inherited from the stack, where render.js writes it. */
+.emblem-stack .emblem.emblem-token { transform: scale(calc(var(--em-s, 1) * .75 / var(--art-scale, 1))); }
 /* Which one is showing before a line of script has run. Once the gallery is
    working these are inline styles, and a version part-way through a drag is
    part-way between the two. */
@@ -2859,6 +3119,37 @@ a:hover .curata-mark { opacity: .9; }
   color: rgba(236,225,200,.85); text-decoration: none;
 }
 .news-admin-edit:hover { color: #fff; text-decoration: underline; }
+/* Featured Articles (admin controls): the Remove button under a card on
+   /news, the paste-a-link box above the grid, and the toggle an admin sees in
+   a custom page's head. */
+button.news-admin-edit { background: none; border: 0; padding: 0; cursor: pointer; }
+button.news-admin-edit:disabled { opacity: .5; cursor: default; }
+.feature-add { margin: 0 0 16px; }
+.feature-add-label {
+  display: block; margin: 0 0 6px;
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.8);
+}
+.feature-add-row { display: flex; gap: 8px; }
+.feature-add-input {
+  flex: 1; min-width: 0; padding: 8px 10px; font-size: 16px;
+  border: 2px solid var(--parch-frame); background: #f4ead2; color: var(--ink);
+}
+.feature-add-btn { flex: none; margin-top: 0; padding: 8px 18px; border: 0; cursor: pointer; font-size: .9rem; }
+.feature-add-msg {
+  margin: 6px 0 0; min-height: 1.2em;
+  font-size: .86rem; color: rgba(236,225,200,.8); overflow-wrap: anywhere;
+}
+.wiki-feature { margin: 10px 0 0; }
+.wiki-feature-btn {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .04em;
+  padding: 5px 12px; cursor: pointer;
+  background: rgba(122,92,24,.12); color: var(--maroon);
+  border: 1px solid var(--parch-frame);
+  -webkit-tap-highlight-color: transparent;
+}
+.wiki-feature-btn[aria-pressed="true"] { background: rgba(122,92,24,.28); }
+.wiki-feature-btn:disabled { opacity: .6; cursor: default; }
 @media (max-width: 640px) {
   .news-article { padding: 16px 14px; border-width: 2px; }
   .news-article h1 { font-size: 1.35rem; }
@@ -3537,6 +3828,7 @@ a:hover .curata-mark { opacity: .9; }
   border-radius: 50%;
 }
 .att-drop:hover { background: #7a2c2e; }
+.att-drop .ico { font-size: 11px; vertical-align: middle; }
 
 /* The posted images, under a comment or a message. A row that wraps, each
    one capped so a tall screenshot cannot push the rest of the conversation
@@ -4699,3 +4991,87 @@ button.sbx-counts:empty { display: none; }
 .sbx-lib-acts .sbi, .sbx-team-tools .sbi, .sbx-add-die .sbi { vertical-align: -.2em; }
 .card-load-more { display:block; margin:12px auto 24px; padding:10px 18px; cursor:pointer; font:inherit; color:var(--maroon); background:var(--parch); border:1px solid var(--parch-frame); }
 .card-load-more[hidden] { display:none; }
+
+/* ---- UI icons ----------------------------------------------------------
+   Every icon the site draws in its own text, as SVG masks painted with
+   currentColor (the Curata wreath's technique), so an icon takes the colour
+   of the text around it and one class draws it on every page and in the
+   Worker's HTML alike. Markup: <span class="ico ico-check" aria-hidden="true"></span>
+   followed by a normal space when a word comes after it. Generated from one
+   list; each SVG is a 24x24 canvas and carries no \", # or %. */
+:root {
+  --ico-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M20 6 9 17l-5-5'/></svg>");
+  --ico-x: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M18 6 6 18M6 6l12 12'/></svg>");
+  --ico-edit: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/></svg>");
+  --ico-star: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z'/></svg>");
+  --ico-star-outline: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z'/></svg>");
+  --ico-external: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M7 17 17 7M8 7h9v9'/></svg>");
+  --ico-swap: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4'/></svg>");
+  --ico-swap-v: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4'/></svg>");
+  --ico-download: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 3v12M7 10l5 5 5-5M5 21h14'/></svg>");
+  --ico-upload: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 21V9M7 14l5-5 5 5M5 3h14'/></svg>");
+  --ico-link: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7'/></svg>");
+  --ico-mail: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2.5' y='5' width='19' height='14' rx='2'/><path d='M3 7l9 6 9-6'/></g></svg>");
+  --ico-warning: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'/><path d='M12 9v4M12 17h.01'/></g></svg>");
+  --ico-globe: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9.5'/><path d='M2.5 12h19M12 2.5a14.5 14.5 0 0 1 0 19M12 2.5a14.5 14.5 0 0 0 0 19'/></g></svg>");
+  --ico-cloud: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M17.5 19H8a6 6 0 1 1 5.7-7.9A4.5 4.5 0 1 1 17.5 19Z'/></svg>");
+  --ico-chat: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2Z'/></svg>");
+  --ico-dashboard: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='9' rx='1'/><rect x='14' y='3' width='7' height='5' rx='1'/><rect x='14' y='12' width='7' height='9' rx='1'/><rect x='3' y='16' width='7' height='5' rx='1'/></g></svg>");
+  --ico-left: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M15 18l-6-6 6-6'/></svg>");
+  --ico-right: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M9 18l6-6-6-6'/></svg>");
+  --ico-dice: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g><rect fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' x='3' y='3' width='18' height='18' rx='3.5'/><g fill='black'><circle cx='8' cy='8' r='1.6'/><circle cx='16' cy='8' r='1.6'/><circle cx='12' cy='12' r='1.6'/><circle cx='8' cy='16' r='1.6'/><circle cx='16' cy='16' r='1.6'/></g></g></svg>");
+  --ico-book: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 5h6a3.5 3.5 0 0 1 3.5 3.5V20a2.5 2.5 0 0 0-2.5-2.5h-7ZM21.5 5h-6A3.5 3.5 0 0 0 12 8.5V20a2.5 2.5 0 0 1 2.5-2.5h7Z'/></svg>");
+  --ico-gamepad: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 7h12a4 4 0 0 1 4 4v2a4 4 0 0 1-7 2.6H9A4 4 0 0 1 2 13v-2a4 4 0 0 1 4-4Z'/><path d='M6.5 11h3M8 9.5v3'/><path d='M15.5 10.5h.01M17.5 12.5h.01'/></g></svg>");
+  --ico-pin: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 16v6M8.5 4h7l-1 5.5 3 3.5h-11l3-3.5Z'/></svg>");
+  --ico-resize: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3'/><rect x='8.5' y='8.5' width='7' height='7' rx='1'/></g></svg>");
+  --ico-sort: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4'/></svg>");
+  --ico-reset: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5'/></svg>");
+  --ico-grip: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='black'><circle cx='9' cy='6' r='1.7'/><circle cx='15' cy='6' r='1.7'/><circle cx='9' cy='12' r='1.7'/><circle cx='15' cy='12' r='1.7'/><circle cx='9' cy='18' r='1.7'/><circle cx='15' cy='18' r='1.7'/></g></svg>");
+  --ico-copy: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='8.5' y='8.5' width='12.5' height='12.5' rx='2'/><path d='M15.5 8.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8.5a2 2 0 0 0 2 2h3.5'/></g></svg>");
+  --ico-quote: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M4 20c3.5-.5 6-3 6-7.5V5H3v7h3.8c-.2 2.7-1.4 4.2-3.3 4.8ZM14 20c3.5-.5 6-3 6-7.5V5h-7v7h3.8c-.2 2.7-1.4 4.2-3.3 4.8Z'/></svg>");
+}
+.ico {
+  display: inline-block; width: 1em; height: 1em; flex: none;
+  vertical-align: -.14em; line-height: 1;
+  -webkit-mask-image: var(--ico); mask-image: var(--ico);
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+@supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+  .ico { background-color: currentColor; }
+}
+/* A flex or grid parent drops the space typed after an icon ("★ Publish"
+   came out "★Publish"). column-gap does nothing to ordinary inline text,
+   so this only acts where the space was lost, and :where() keeps its
+   specificity at zero, so a parent's own gap always wins. */
+:where(:has(> .ico)) { column-gap: .3em; }
+.ico-check { --ico: var(--ico-check); }
+.ico-x { --ico: var(--ico-x); }
+.ico-edit { --ico: var(--ico-edit); }
+.ico-star { --ico: var(--ico-star); }
+.ico-star-outline { --ico: var(--ico-star-outline); }
+.ico-external { --ico: var(--ico-external); }
+.ico-swap { --ico: var(--ico-swap); }
+.ico-swap-v { --ico: var(--ico-swap-v); }
+.ico-download { --ico: var(--ico-download); }
+.ico-upload { --ico: var(--ico-upload); }
+.ico-link { --ico: var(--ico-link); }
+.ico-mail { --ico: var(--ico-mail); }
+.ico-warning { --ico: var(--ico-warning); }
+.ico-globe { --ico: var(--ico-globe); }
+.ico-cloud { --ico: var(--ico-cloud); }
+.ico-chat { --ico: var(--ico-chat); }
+.ico-dashboard { --ico: var(--ico-dashboard); }
+.ico-left { --ico: var(--ico-left); }
+.ico-right { --ico: var(--ico-right); }
+.ico-dice { --ico: var(--ico-dice); }
+.ico-book { --ico: var(--ico-book); }
+.ico-gamepad { --ico: var(--ico-gamepad); }
+.ico-pin { --ico: var(--ico-pin); }
+.ico-resize { --ico: var(--ico-resize); }
+.ico-sort { --ico: var(--ico-sort); }
+.ico-reset { --ico: var(--ico-reset); }
+.ico-grip { --ico: var(--ico-grip); }
+.ico-copy { --ico: var(--ico-copy); }
+.ico-quote { --ico: var(--ico-quote); }

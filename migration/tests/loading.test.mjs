@@ -386,6 +386,65 @@ test('uploading derivatives requires the current original ETag and replacing ori
   assert.deepEqual(removed, [[320, 640, 1280].map(width => 'media/' + width + '/scripts/demo.png.webp')]);
 });
 
+test('writing character art into its slot rolls the row version so cached icons refresh', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.db.prepare('UPDATE users SET is_admin=1 WHERE id=1').run();
+  f.insert('characters', 'demo-char', { name: 'Demo Char', team: 'townsfolk', ability: 'x', art: 'art/demo-char.png' });
+  f.insert('characters', 'legacy', { name: 'Legacy', team: 'townsfolk', ability: 'x', art: 'art/legacy-good.png' });
+  f.insert('characters', 'bystander', { name: 'Bystander', team: 'townsfolk', ability: 'x', art: 'art/bystander.png' });
+  f.env.ART.put = async () => ({ etag: 'e' }); f.env.ART.delete = async () => {};
+  const stamps = () => Object.fromEntries(f.db.prepare('SELECT slug, updated_at FROM characters').all().map(r => [r.slug, r.updated_at]));
+  const version = () => f.db.prepare("SELECT value FROM settings WHERE key='content_version'").get().value;
+  const upload = key => f.request('/api/upload', { method: 'POST', headers: { ...member(1).headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, data: 'data:image/png;base64,' + Buffer.alloc(1000, 1).toString('base64') }) });
+  const v0 = version(), t0 = stamps();
+  // The slot names the identity, alternates included: one row moves, the feeds roll.
+  assert.equal((await upload('art/demo-char-alt.png')).status, 200);
+  const t1 = stamps();
+  assert.notEqual(t1['demo-char'], t0['demo-char']); assert.equal(t1.bystander, t0.bystander);
+  assert.notEqual(version(), v0);
+  // A legacy row names a path that is not its slug: found by the path.
+  assert.equal((await upload('art/legacy-good.png')).status, 200);
+  assert.notEqual(stamps().legacy, t0.legacy);
+  // Art for a page that does not exist yet: nothing to touch, nothing bumped.
+  const v1 = version();
+  assert.equal((await upload('art/brand-new.png')).status, 200);
+  assert.equal(version(), v1); assert.equal(stamps().bystander, t0.bystander);
+});
+
+test('an art upload carries the edit stamp forward, so the save that follows it is not refused', async t => {
+  // The editors upload the icon and then save the row with the stamp they
+  // loaded; writing the icon moves that stamp (touchArtRow), so every save
+  // that came with new art was refused as somebody else's edit.
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.insert('characters', 'demo-char', { slug: 'demo-char', name: 'Demo Char', team: 'townsfolk',
+    ability: 'Each night, wake.', art: 'art/demo-char.png', tags: 'Information' });
+  f.db.prepare("UPDATE characters SET owner_id=1 WHERE slug='demo-char'").run();
+  const stored = []; f.env.ART.put = async key => { stored.push(key); return { etag: 'e' }; }; f.env.ART.delete = async () => {};
+  const post = (path, body) => f.request(path, { method: 'POST',
+    headers: { ...member(1).headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const png = 'data:image/png;base64,' + Buffer.alloc(1000, 1).toString('base64');
+  const stamp = () => f.db.prepare("SELECT updated_at FROM characters WHERE slug='demo-char'").get().updated_at;
+  const loaded = stamp();
+  // The editor's flow: upload with the stamp it loaded, save with the one the upload answered.
+  const upload = await post('/api/upload', { key: 'art/demo-char.png', data: png, baseUpdatedAt: loaded });
+  assert.equal(upload.status, 200);
+  const { updatedAt } = await upload.json();
+  assert.ok(updatedAt && updatedAt !== loaded, 'the upload moved the row and says so');
+  assert.equal(updatedAt, stamp());
+  const row = { slug: 'demo-char', name: 'Demo Char', team: 'townsfolk', ability: 'Each night, wake.',
+    art: 'art/demo-char.png', tags: 'Information', status: 'published' };
+  assert.equal((await post('/api/character', { ...row, baseUpdatedAt: loaded })).status, 409, 'the loaded stamp is stale now');
+  assert.equal((await post('/api/character', { ...row, baseUpdatedAt: updatedAt })).status, 200);
+  // A stale tab's icon is refused before any bytes land.
+  stored.length = 0;
+  const stale = await post('/api/upload', { key: 'art/demo-char-alt.png', data: png, baseUpdatedAt: '2020-01-01 00:00:00' });
+  assert.equal(stale.status, 409); assert.ok((await stale.json()).conflict); assert.equal(stored.length, 0);
+  // A caller that sends no stamp (Icon Forge, the bulk tools) is unaffected.
+  assert.equal((await post('/api/upload', { key: 'art/demo-char-alt.png', data: png })).status, 200);
+  assert.equal(stored.length, 1);
+});
+
 test('data loader shares parsed public objects, keeps private requests separate, and retries failures', async () => {
   let calls = 0, fail = false;
   const context = vm.createContext({ window: {}, URL, location: { origin: 'https://botchomebrew.wiki' },
@@ -514,6 +573,48 @@ test('assigning a collection claims every character page, within D1 bound-parame
   const over = f.calls.slice(before)
     .filter(call => (call.sql.match(/\?/g) || []).length > 100);
   assert.deepEqual(over.map(call => call.sql.replace(/\s+/g, ' ').slice(0, 60)), []);
+});
+
+test('the wiki-only display size scales the /c/ emblem and reaches neither the export nor the cards', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.env.ART.put = async () => ({ etag: 'e' }); f.env.ART.delete = async () => {};
+  const save = body => f.request('/api/character', { method: 'POST',
+    headers: { ...member(1).headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const base = { slug: 'scaled', name: 'Scaled', team: 'townsfolk', ability: 'Each night, grow.', creator: 'user-1',
+    art: 'art/scaled.png', image: 'https://botchomebrew.wiki/assets/art/scaled.png', tags: 'Information', status: 'published' };
+  const stored = () => JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='scaled'").get().data);
+  // A whole percentage inside the range is kept; 100 and anything outside it are the default and store nothing.
+  assert.equal((await save({ ...base, artScale: 130 })).status, 200);
+  assert.equal(stored().artScale, 130);
+  const page = await (await f.request('/c/user-1/scaled')).text();
+  assert.match(page, /class="emblem" style="--art-scale:1\.3"/);
+  assert.ok(!page.includes('artScale'), 'the JSON box never carries the display size');
+  const card = await (await f.request('/characters.json?fields=card')).json();
+  assert.equal(card.find(c => c.slug === 'scaled').artScale, undefined);
+  for (const bad of [100, 49, 201, 'big']) {
+    assert.equal((await save({ ...base, artScale: bad })).status, 200);
+    assert.equal(stored().artScale, undefined, 'artScale ' + bad + ' is the default');
+  }
+  assert.ok(!(await (await f.request('/c/user-1/scaled')).text()).includes('--art-scale'));
+});
+
+test('the printable token in the /c/ gallery is marked apart from the icons, so the stylesheet can size it', async t => {
+  // The emblem grows 8/6 to make room for an icon's transparent margin; a
+  // token is a full-bleed disc with none, so styles.css draws .emblem-token
+  // at the old size and keeps the owner's display size off it. The markup
+  // is the contract: the class on exactly the token's <img>, nothing else.
+  const f = await fixture(); t.after(() => f.finish());
+  f.insert('characters', 'disc', { slug: 'disc', name: 'Disc', team: 'townsfolk', ability: 'Each night, roll.',
+    art: 'art/disc.png', token: 'art/disc-token.png', tokenArt: true, artScale: 150 });
+  const page = await (await f.request('/c/test-set/disc')).text();
+  assert.match(page, /<div class="emblem-stack" data-at="0" style="--art-scale:1\.5"/, 'the display size rides the stack, where the token can divide it back out');
+  assert.deepEqual(page.match(/<img class="emblem[^"]*"/g), ['<img class="emblem is-on"', '<img class="emblem emblem-token"']);
+  assert.match(page, /class="emblem emblem-token" data-src="[^"]*art\/disc-token\.png/);
+  // A page that never ticked the token, or has no saved image, grows no such version.
+  f.insert('characters', 'plain', { slug: 'plain', name: 'Plain', team: 'townsfolk', ability: 'Each night, roll.', art: 'art/plain.png', token: 'art/plain-token.png' });
+  const plain = await (await f.request('/c/test-set/plain')).text();
+  assert.ok(!plain.includes('emblem-token'));
+  assert.match(plain, /<img class="emblem" src="[^"]*art\/plain\.png/);
 });
 
 test('a custom page background is a root-absolute URL, whatever stylesheet consumes it', async t => {

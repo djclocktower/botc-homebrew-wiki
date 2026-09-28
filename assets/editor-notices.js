@@ -66,14 +66,12 @@
     if (result.iconBlocked) {
       var need = result.missingForPublish || [];
       modal('Saved as a draft',
-        '<p class="rules-modal-intro">Before a character can go live it needs ' +
-        '<strong>' + esc(phrase(need) || 'a name, an icon, an ability and tags') +
-        '</strong>, so this was saved as a <strong>draft</strong>.</p>' +
-        '<ul class="rules-list"><li>Add that in the editor above.</li>' +
-        '<li>Then press Publish again — it goes live straight away.</li></ul>' +
-        '<p class="rules-modal-intro" style="margin-top:14px">Drafts are visible ' +
-        'only to you and the wiki admins. You can find yours any time on your ' +
-        '<a href="drafts">drafts page</a>.</p>',
+        '<p class="rules-modal-intro">A character needs ' +
+        '<strong>' + esc(phrase(need) || 'a name, an icon and an ability') +
+        '</strong> to go live, so this was saved as a <strong>draft</strong>. ' +
+        'Add what is missing, then press Publish again.</p>' +
+        '<p class="rules-modal-intro" style="margin-top:14px">Only you can see drafts. ' +
+        'Find them on your <a href="drafts">drafts page</a>.</p>',
         'Fix it');
       return;
     }
@@ -89,14 +87,12 @@
         }).join('') + '</ul>'
       : '';
 
-    modal('Saved — but this page counts as Partial',
-      '<p class="rules-modal-intro">It is live and its own URL works, but a ' +
-      '<strong>Partial</strong> page doesn\u2019t show on the homepage or in ' +
-      'the All Characters search.</p>' +
+    modal('Saved, but this page is Partial',
+      '<p class="rules-modal-intro">It is live, but <strong>Partial</strong> pages ' +
+      'are hidden from the homepage and All Characters.</p>' +
       '<p class="rules-modal-intro">Still to add:</p>' +
       list +
-      '<p class="rules-modal-intro" style="margin-top:14px">Add them and save ' +
-      'again — the page upgrades itself immediately.</p>',
+      '<p class="rules-modal-intro" style="margin-top:14px">Add them and save again.</p>',
       'Got it');
   }
 

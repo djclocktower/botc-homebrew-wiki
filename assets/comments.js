@@ -142,7 +142,7 @@
     }
     return '<li class="cmt' + (c.pinned ? ' cmt-is-pinned' : '') +
       (isUnseen(c) ? ' cmt-unseen' : '') + '" id="cmt-' + c.id + '"' +
-      (isUnseen(c) ? ' title="New since you last looked at this page"' : '') + '>' +
+      (isUnseen(c) ? ' title="New since your last visit"' : '') + '>' +
       avatarHTML(c) +
       '<div class="cmt-main">' +
         '<div class="cmt-head">' +
@@ -155,7 +155,7 @@
           // worth knowing.
           (c.isOwner ? '<span class="cmt-badge cmt-badge-creator" title="Made this page">Creator</span>' : '') +
           (c.isAdmin ? '<span class="cmt-badge">Admin</span>' : '') +
-          (c.pinned ? '<span class="cmt-badge cmt-badge-pin" title="Pinned by the page owner or an admin">' + (window.UIIcons ? UIIcons.svg('pin') : '') + ' Pinned</span>' : '') +
+          (c.pinned ? '<span class="cmt-badge cmt-badge-pin" title="Pinned by the page owner or an admin"><span class="ico ico-pin" aria-hidden="true"></span> Pinned</span>' : '') +
           '<span class="cmt-when">' + esc(when(c.ts)) + '</span>' +
         '</div>' +
         '<div class="cmt-body">' + bodyHTML(c.body) + '</div>' +
@@ -196,7 +196,7 @@
       var back = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
       var login = ROOT + 'login?next=' + back;
       return '<p class="cmt-login"><a href="' + login + '">Log in</a> or ' +
-        '<a href="' + login + '#signup">create an account</a> to join the conversation.</p>';
+        '<a href="' + login + '#signup">create an account</a> to comment.</p>';
     }
     if (!state.me.canComment) {
       return '<p class="cmt-login">This account is suspended and cannot post comments. ' +
@@ -464,9 +464,9 @@
      can be posted straight afterwards. */
   var TERMS = [
     'Be respectful. Criticise the character, never the person who made it.',
-    'Keep feedback constructive — say what works as well as what doesn’t.',
+    'Keep feedback constructive: say what works as well as what doesn’t.',
     'No harassment, slurs, spam, or self-promotion unrelated to the page.',
-    'Page owners and the wiki admins can remove comments that break these rules.'
+    'Page owners and admins can remove comments that break these rules.'
   ];
 
   function showAgreement() {

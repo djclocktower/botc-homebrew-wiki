@@ -374,7 +374,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -383,7 +383,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -820,6 +820,9 @@
               <option value="starlight">curata (old: starlight)</option>
               <option value="unstarlight">uncurata (old: unstarlight)</option>
               <option>protect</option><option>unprotect</option>
+              <!-- A custom page put on / taken off Featured Articles. -->
+              <option value="feature">featured an article</option>
+              <option value="unfeature">unfeatured an article</option>
               <option value="tags-open">tag editing opened</option>
               <option value="open-editing">editing opened (all but the ability)</option>
               <option>assign-owner</option><option>clean-refs</option>

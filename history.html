@@ -39,7 +39,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -48,7 +48,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -70,7 +70,7 @@
       <p class="hist-open" id="hist-open" style="display:none"></p>
       <ol class="hist-list" id="list"></ol>
       <p class="hist-empty" id="empty" style="display:none">
-        Nothing has changed since this page was published. Every edit from here on is listed on this page.
+        No edits since this page was published.
       </p>
     </div>
   </main>
@@ -109,7 +109,7 @@
     function who(name) {
       return name
         ? '<a class="hist-who" href="u/' + encodeURIComponent(name) + '">' + esc(name) + '</a>'
-        : '<span class="hist-who hist-who-gone">someone whose account has gone</span>';
+        : '<span class="hist-who hist-who-gone">a deleted account</span>';
     }
     function changeList(changed) {
       if (!changed || !changed.length) return '<span class="hist-nochange">no visible change</span>';
@@ -128,16 +128,16 @@
         var open = pe === 'tags'
           ? 'This page’s tags are open to anyone with an account.'
           : pe === 'all-but-ability'
-            ? 'The creator has opened this page to anyone with an account, except its ability.'
+            ? 'Anyone with an account can edit this page, except its ability.'
             : pe === 'suggest'
-              ? 'Anyone with an account can propose an edit to this page; the creator approves it.'
+              ? 'Anyone with an account can suggest edits. The creator approves them.'
               : pe === 'approved'
-                ? 'The creator shares this page with editors they have named.'
-                : 'The creator has opened this page to anyone with an account.';
+                ? 'The creator shares this page with editors they named.'
+                : 'Anyone with an account can edit this page.';
         // A character's setting can come from the script or collection it is
         // on: its owner's choice there covers their pages on it.
         if (data.publicEditVia && data.publicEditVia.name) {
-          open += ' That is the setting on ' + data.publicEditVia.name + ', which covers its creator’s pages on it.';
+          open += ' This follows the setting on ' + data.publicEditVia.name + '.';
         }
         $('hist-open').style.display = '';
         $('hist-open').textContent = open;
@@ -208,7 +208,7 @@
     }
 
     function restore(id, btn) {
-      if (!confirm('Put this version back?\n\nThe version currently on the page is saved to the history first, so this can be undone.')) return;
+      if (!confirm('Put this version back?\n\nThe current version is saved to the history first, so you can undo this.')) return;
       btn.disabled = true;
       btn.textContent = 'Restoring…';
       fetch('/api/page-rollback', {

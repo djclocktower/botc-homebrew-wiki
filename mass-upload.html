@@ -40,6 +40,8 @@
   .mu-warn ul { margin:6px 0 0; padding-left:20px; }
   .mu-warn li { margin:3px 0; }
   .mu-warn .mu-fix { margin:8px 0 0; }
+  .mu-check { display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:.9rem; cursor:pointer; }
+  .mu-check input { width:auto; margin:0; }
   #status { margin-top:10px; padding:10px 13px; border-radius:8px; font-size:.9rem; display:none; }
   #status.ok  { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
   #status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
@@ -74,7 +76,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -83,7 +85,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -95,8 +97,8 @@
   <div class="mu-wrap">
     <div class="formcard">
       <h2>Mass Upload Characters</h2>
-      <p class="sub">Upload a whole script JSON or a master list of characters (official schema) and create a wiki page for every character in it — all at once. Characters need at least a <code>name</code>, <code>team</code> and <code>ability</code>. If a character's <code>image</code> is an array, the second entry is saved as its alternate art.</p>
-      <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? <a href="bloodstar">Bloodstar Import</a> reads its almanac as well as its JSON, so the pages arrive with their flavour text, overviews, examples, how-to-run and tips already written.</p>
+      <p class="sub">Upload a script JSON or character list (official script format) to make a page for every character in it. Each needs a <code>name</code>, <code>team</code> and <code>ability</code>.</p>
+      <p class="sub" style="margin-top:-10px">Importing a <strong>Bloodstar</strong> project? Use <a href="bloodstar">Bloodstar Import</a> to bring its almanac text too.</p>
 
       <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
       <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" class="no-autosize" placeholder="&hellip;or paste the JSON here"></textarea></div>
@@ -120,6 +122,10 @@
             <option value="draft">Save all as drafts (only you can see them)</option>
           </select>
         </div>
+        <div class="fld">
+          <label class="mu-check" for="replaceart"><input type="checkbox" id="replaceart"> Replace the art on pages that already exist</label>
+          <p class="hint" style="margin:6px 0 0">If a character matches a page you already made, that page is <strong>updated</strong>: the file replaces its name, team, ability, night order, reminders and jinxes, and everything else is kept. Tick this to replace its icon too.</p>
+        </div>
         <div id="mu-jinx-warn"></div>
         <table class="mu-table" id="mu-table">
           <thead><tr><th>Character</th><th>Team</th><th>Page</th><th>Art</th><th>Status</th></tr></thead>
@@ -138,7 +144,9 @@
        for the special[] flags this page imports. -->
   <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
+  <script src="assets/art-normalize.js"></script>
   <script src="assets/art-thumb.js"></script>
+  <script src="assets/import-merge.js"></script>
   <script>
   (function(){
     var $ = function(id){ return document.getElementById(id); };
@@ -174,7 +182,7 @@
     // around them into duplicates.
     var halted = null;
     function limitError(r, j){
-      var e = new Error((j && j.error) || 'You have hit the hourly limit. Take a short break and try again.');
+      var e = new Error((j && j.error) || 'Hourly limit reached. Try again later.');
       e.rateLimited = true;
       e.retryAfter = parseInt(r.headers.get('Retry-After') || '3600', 10) || 3600;
       return e;
@@ -224,7 +232,7 @@
       var data = JSON.parse(text);
       if (!Array.isArray(data)) {
         if (data && typeof data === 'object' && data.ability) data = [data];
-        else throw new Error('Expected a JSON array (a script or a master list of characters).');
+        else throw new Error('it is not a script or a list of characters.');
       }
       meta = null;
       var chars = [], skipped = [];
@@ -317,14 +325,13 @@
       // The URL shown here is only the one the name asks for. A name somebody
       // else already used gets its own address when the batch runs, and the
       // cell is rewritten then.
-      var exists = existingSlugs[slug] ? ' <span class="hint">(that URL is taken — updates your page, or takes a free one)</span>' : '';
-      var img = Array.isArray(c.image) ? c.image[0] : c.image;
-      var alt = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
+      var exists = existingSlugs[slug] ? ' <span class="hint">(address taken: updates your page, or gets a free one)</span>' : '';
+      var icons = Array.isArray(c.image) ? c.image.filter(Boolean).length : (c.image ? 1 : 0);
       return '<tr id="mu-row-' + i + '">' +
         '<td><strong>' + esc(c.name) + '</strong>' + exists + '</td>' +
         '<td class="mu-team">' + esc(normTeam(c.team)) + '</td>' +
         '<td class="mu-page">' + esc(slug) + '</td>' +
-        '<td>' + (img ? 'from URL' + (alt ? ' + alt' : '') : '—') + '</td>' +
+        '<td>' + (icons ? icons + ' icon' + (icons === 1 ? '' : 's') : '—') + '</td>' +
         '<td class="mu-state mu-state-wait">waiting</td>' +
         '</tr>';
     }
@@ -349,7 +356,7 @@
       if (meta && meta.name && !$('appears').value) $('appears').value = meta.name;
       if (!$('creator').value) $('creator').value = (meta && meta.author) || (me && (me.displayName || me.username)) || '';
       var msg = 'Found ' + parsed.length + ' character' + (parsed.length===1?'':'s') + (meta && meta.name ? ' in “' + esc(meta.name) + '”' : '') + '.';
-      if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official ids or missing name/ability).';
+      if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official characters, or a missing name or ability).';
       setStatus('ok', msg);
       drawJinxWarnings();
     });
@@ -359,6 +366,11 @@
     $('appears').addEventListener('input', drawJinxWarnings);
 
     // ── art helpers ──
+    // Only ever called for icons, so the copy comes back standardized
+    // (assets/art-normalize.js): an import's art is cropped however its
+    // author's tool cropped it, and the official script tool prints a
+    // tight crop half again the size of the character beside it. A copy
+    // the normalizer cannot handle ships as the plain 600px one.
     function loadImageToCanvas(src){
       return new Promise(function(resolve, reject){
         var img = new Image();
@@ -372,12 +384,22 @@
         };
         img.onerror = function(){ reject(new Error('load failed')); };
         img.src = src;
+      }).then(function(dataUrl){
+        if (typeof normalizeArtDataURL !== 'function') return dataUrl;
+        return normalizeArtDataURL(dataUrl).catch(function(){ return dataUrl; });
       });
     }
-    function apiUpload(key, dataUrl){
+    // `base` is the stamp of the page this art is landing on (a re-import
+    // over your own page reads it back first): the Worker checks it before
+    // the bytes land and answers with the row's new stamp, which the save
+    // that follows has to carry — writing the icon moves the row, so a save
+    // still holding the old stamp is refused as somebody else's edit.
+    function apiUpload(key, dataUrl, base){
+      var body = { key:key, data:dataUrl };
+      if (base) body.baseUpdatedAt = base;
       return fetch('/api/upload', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        credentials:'same-origin', body: JSON.stringify({ key:key, data:dataUrl })
+        credentials:'same-origin', body: JSON.stringify(body)
       }).then(function(r){
         return r.json().catch(function(){ return {}; }).then(function(j){
           // A 429 must not be swallowed by the "keep the remote URL" fallback:
@@ -448,12 +470,36 @@
             }
           }
           usedThisRun[pick] = 1;
-          return pick;
+          // `mine` holds only for the page the check found: a numbered
+          // variant taken to step around a duplicate in this file is new.
+          return { slug: pick, mine: !!(j && j.taken && j.mine && pick === base) };
         });
     }
 
     // ── create one character ──
-    function createOne(c, i, opts, slug){
+    // A page this account already has (`mine`, from the URL check) is
+    // UPDATED, not made again — that is how re-running an import works. It
+    // used to do two things nobody asked for: write the file's picture over
+    // the icon in the page's art slot, and replace the page with only what
+    // the file carries, so an icon made in Icon Forge, the tags, the almanac
+    // text and the printable token all went with it. Now the page is read
+    // first and the file is merged INTO it — assets/import-merge.js says what
+    // the file replaces — and the icon stays unless "Replace the art" is
+    // ticked or the page has none.
+    function loadPage(slug){
+      var failed = new Error('could not read the existing page, so nothing was written');
+      return fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), { credentials:'same-origin' })
+        .then(function(r){
+          // Gone since the check (deleted, say): nothing there to keep, so
+          // this is an ordinary create. Anything else is not an answer, and
+          // writing over a page that could not be read is the one thing this
+          // must never do.
+          if (r.status === 404) return null;
+          if (!r.ok) throw failed;
+          return r.json();
+        }, function(){ throw failed; });
+    }
+    function createOne(c, i, opts, slug, mine){
       var imgUrl = Array.isArray(c.image) ? c.image[0] : c.image;
       /* `image` is the official schema's 1-3 icons — for a traveller its
          unaligned, good and evil tokens (see "A character's three icons"
@@ -461,13 +507,13 @@
          traveller without its evil token. */
       var altUrl = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
       var alt2Url = Array.isArray(c.image) && c.image.length > 2 ? c.image[2] : null;
-      var entry = {
+      // What the file says about the character. For a new page this IS the
+      // page; for one that exists it is merged in below.
+      var fromFile = {
         slug: slug,
         name: String(c.name),
         team: normTeam(c.team),
         ability: String(c.ability),
-        creator: opts.creator,
-        appearsIn: opts.appearsIn,
         quote: String(c.flavor || '').replace(/^["']|["']$/g, ''),
         edition: c.edition || '',
         firstNight: Number(c.firstNight) || 0,
@@ -482,71 +528,88 @@
         // These used to be dropped on the floor here, so a character imported
         // with them came back out of the wiki's own JSON export without them.
         special: window.sanitizeSpecial ? window.sanitizeSpecial(c.special) : [],
-        jinxes: Array.isArray(c.jinxes) ? c.jinxes : [],
-        status: opts.status
+        jinxes: Array.isArray(c.jinxes) ? c.jinxes : []
       };
 
-      rowState(i, 'work', 'fetching art…');
-      var artJob = Promise.resolve('remote');
-      if (imgUrl && /^https?:\/\//.test(imgUrl)) {
-        artJob = loadImageToCanvas(imgUrl).then(function(dataUrl){
-          return apiUpload('art/' + slug + '.png', dataUrl).then(function(){
-            entry.art = 'art/' + slug + '.png';
-            entry.image = ART_BASE + slug + '.png';
-            return 'uploaded';
-          });
-        }).catch(function(err){
-          if (err && err.rateLimited) throw err;
-          // host blocks cross-origin reads — keep the remote URL so the page still shows art
-          entry.image = imgUrl;
-          return 'remote';
-        });
-      }
-      // The second and third icons, each into its own slot, one after the
-      // other so a big import does not fire three uploads per character at
-      // once at the rate limiter.
-      function copyAltInto(prev, url, suffix, relKey, absKey) {
-        return prev.then(function(artHow){
-          if (!(url && /^https?:\/\//.test(url))) return artHow;
-          return loadImageToCanvas(url).then(function(dataUrl){
-            return apiUpload('art/' + slug + suffix + '.png', dataUrl).then(function(){
-              entry[relKey] = 'art/' + slug + suffix + '.png';
-              entry[absKey] = ART_BASE + slug + suffix + '.png';
-              return artHow;
+      rowState(i, 'work', mine ? 'reading your page&hellip;' : 'loading art&hellip;');
+      var pageJob = !window.ImportMerge
+        ? Promise.reject(new Error('the page did not finish loading. Reload and try again'))
+        : mine ? loadPage(slug) : Promise.resolve(null);
+      return pageJob.then(function(page){
+        var entry = window.ImportMerge.merge(page, fromFile, opts);
+        var plan = window.ImportMerge.artPlan(page, opts);
+        var hasArt = !!(entry.art || entry.image);
+        var kept = !!(page && imgUrl && !plan.main);
+        if (mine) rowState(i, 'work', kept ? 'keeping the page&rsquo;s icon&hellip;' : 'loading art&hellip;');
+        var artJob = Promise.resolve(kept ? 'kept' : 'remote');
+        if (plan.main && imgUrl && /^https?:\/\//.test(imgUrl)) {
+          artJob = loadImageToCanvas(imgUrl).then(function(dataUrl){
+            return apiUpload('art/' + slug + '.png', dataUrl, entry.baseUpdatedAt).then(function(j){
+              entry.art = 'art/' + slug + '.png';
+              entry.image = ART_BASE + slug + '.png';
+              if (j && j.updatedAt) entry.baseUpdatedAt = j.updatedAt;
+              return 'uploaded';
             });
           }).catch(function(err){
             if (err && err.rateLimited) throw err;
-            entry[absKey] = url; return artHow;   // keeps the remote URL, as the primary does
+            // host blocks cross-origin reads — keep the remote URL so the
+            // page still shows art (a page with art of its own keeps that)
+            if (!hasArt) entry.image = imgUrl;
+            return hasArt ? 'kept' : 'remote';
           });
-        });
-      }
-      var altJob = copyAltInto(
-        copyAltInto(artJob, altUrl, '-alt', 'artAlt', 'imageAlt'),
-        alt2Url, '-alt2', 'artAlt2', 'imageAlt2');
+        }
+        // The second and third icons, each into its own slot, one after the
+        // other so a big import does not fire three uploads per character at
+        // once at the rate limiter.
+        function copyAltInto(prev, url, wanted, suffix, relKey, absKey) {
+          return prev.then(function(artHow){
+            if (!wanted || !(url && /^https?:\/\//.test(url))) return artHow;
+            return loadImageToCanvas(url).then(function(dataUrl){
+              return apiUpload('art/' + slug + suffix + '.png', dataUrl, entry.baseUpdatedAt).then(function(j){
+                entry[relKey] = 'art/' + slug + suffix + '.png';
+                entry[absKey] = ART_BASE + slug + suffix + '.png';
+                if (j && j.updatedAt) entry.baseUpdatedAt = j.updatedAt;
+                return artHow;
+              });
+            }).catch(function(err){
+              if (err && err.rateLimited) throw err;
+              // keeps the remote URL, as the primary does
+              if (!(entry[relKey] || entry[absKey])) entry[absKey] = url;
+              return artHow;
+            });
+          });
+        }
+        var altJob = copyAltInto(
+          copyAltInto(artJob, altUrl, plan.alt, '-alt', 'artAlt', 'imageAlt'),
+          alt2Url, plan.alt2, '-alt2', 'artAlt2', 'imageAlt2');
 
-      return altJob.then(function(artHow){
-        rowState(i, 'work', 'saving…');
-        return fetch('/api/character', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          credentials:'same-origin', body: JSON.stringify(entry)
-        }).then(function(r){
-          return r.json().then(function(j){
-            if (r.status === 401) throw new Error('not logged in');
-            if (r.status === 429) throw limitError(r, j);
-            if (!r.ok) throw new Error(j.error || 'save failed');
-            var page = (j && j.page) || ('c/' + slug);
-            rowSlug(i, page);
-            rowState(i, 'ok', '&#10003; <a href="' + esc(page) + '" target="_blank">view page</a>' + (artHow==='remote' && imgUrl ? ' (art from remote URL)' : ''));
-            return true;
+        return altJob.then(function(artHow){
+          rowState(i, 'work', 'saving&hellip;');
+          return fetch('/api/character', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            credentials:'same-origin', body: JSON.stringify(entry)
+          }).then(function(r){
+            return r.json().then(function(j){
+              if (r.status === 401) throw new Error('not logged in');
+              if (r.status === 429) throw limitError(r, j);
+              if (!r.ok) throw new Error(j.error || 'save failed');
+              var pageUrl = (j && j.page) || ('c/' + slug);
+              rowSlug(i, pageUrl);
+              var note = artHow === 'remote' && imgUrl ? ' (art linked from another site)'
+                : artHow === 'kept' ? ' (page updated, icon kept)'
+                : page ? ' (page updated)' : '';
+              rowState(i, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> <a href="' + esc(pageUrl) + '" target="_blank">view page</a>' + note);
+              return true;
+            });
           });
         });
       }).catch(function(err){
         if (err && err.rateLimited) {
           halted = err;
-          rowState(i, 'err', '&#10007; stopped &mdash; hourly limit reached');
+          rowState(i, 'err', '<span class="ico ico-x" aria-hidden="true"></span> stopped: hourly limit reached');
           return false;
         }
-        rowState(i, 'err', '&#10007; ' + esc(err.message));
+        rowState(i, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         return false;
       });
     }
@@ -557,7 +620,8 @@
       var opts = {
         creator: $('creator').value.trim(),
         appearsIn: $('appears').value.trim(),
-        status: $('pubstate').value === 'draft' ? 'draft' : 'published'
+        status: $('pubstate').value === 'draft' ? 'draft' : 'published',
+        replaceArt: $('replaceart').checked
       };
       $('go').disabled = true; $('parse').disabled = true;
       // Fresh each run: re-running the same file (after a couple of failures,
@@ -575,25 +639,23 @@
           var left = parsed.length - ok;
           setStatus('err',
             esc(halted.message) +
-            '<br>Stopped after ' + ok + ' of ' + parsed.length + ' &mdash; ' + left +
-            ' still to go. Leave this page open, come back ' + waitPhrase(halted.retryAfter) +
-            ' and press Create All Pages again: the ' + ok +
-            ' already made are skipped and the rest carry on from here.');
+            '<br>Stopped after ' + ok + ' of ' + parsed.length + '. Keep this page open and press Create All Pages again ' +
+            waitPhrase(halted.retryAfter) + ' to make the other ' + left + '.');
           return;
         }
         if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
-        else setStatus('ok', '&#10003; All ' + ok + ' pages created! Find them under <a href="all-characters">All Characters</a>' + (opts.status==='draft' ? ' via <a href="account">your account page</a> (drafts)' : '') + '.');
+        else setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> All ' + ok + ' pages created! Find them ' + (opts.status==='draft' ? 'under drafts on <a href="account">your account page</a>' : 'under <a href="all-characters">All Characters</a>') + '.');
       }
       (function next(){
         if (i >= parsed.length || halted) { finish(); return; }
         if (rowDone(i)) { ok++; i++; next(); return; }
         var c = parsed[i], idx = i;
-        rowState(idx, 'work', 'checking URL&hellip;');
-        resolveSlug(c.name, opts.appearsIn).then(function(slug){
-          rowSlug(idx, slug);
-          return createOne(c, idx, opts, slug);
+        rowState(idx, 'work', 'checking address&hellip;');
+        resolveSlug(c.name, opts.appearsIn).then(function(res){
+          rowSlug(idx, res.slug);
+          return createOne(c, idx, opts, res.slug, res.mine);
         }).catch(function(err){
-          rowState(idx, 'err', '&#10007; ' + esc((err && err.message) || 'failed'));
+          rowState(idx, 'err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc((err && err.message) || 'failed'));
           return false;
         }).then(function(good){
           if (good) ok++; else fail++;

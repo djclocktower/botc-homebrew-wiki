@@ -235,7 +235,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -244,7 +244,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -255,7 +255,7 @@
 
   <main class="dash-wrap">
     <h2 class="dash-h2">Messages</h2>
-    <p class="dash-sub">Private messages between you and other wiki members.</p>
+    <p class="dash-sub">Private messages with other wiki members.</p>
 
     <div id="gate" class="panel" style="display:none">
       <p>You need an account to send and receive messages.
@@ -274,8 +274,8 @@
         <div class="inline-msg" id="new-msg"></div>
         <div id="convo-list"></div>
         <div class="empty-note" id="convo-empty" style="display:none">
-          No conversations yet. Visit a creator's profile and hit
-          <strong>Message</strong>, or start one above with their username.
+          No conversations yet. Use <strong>Message</strong> on a creator's
+          profile, or start one above with their username.
         </div>
         <details class="blocked-box" id="blocked-box" style="display:none">
           <summary>Blocked users (<span id="blocked-count">0</span>)</summary>
@@ -298,7 +298,7 @@
             <button class="mini-btn del" id="delete-btn" type="button">Delete</button>
           </div>
           <div class="thread-note" id="t-blocked-note" style="display:none">
-            You've blocked this user — they can't send you messages. Unblock them to hear back.
+            You've blocked this user, so they can't message you.
           </div>
           <div class="thread-scroll" id="thread-scroll">
             <button class="mini-btn load-older" id="load-older" type="button" style="display:none">Load earlier messages</button>
@@ -479,7 +479,7 @@
 
       $('thread-msgs').innerHTML = msgs.length
         ? threadHtml(msgs)
-        : '<div class="empty-note" style="text-align:center">No messages yet — say hello!</div>';
+        : '<div class="empty-note" style="text-align:center">No messages yet. Say hello!</div>';
 
       $('thread-placeholder').style.display = 'none';
       $('thread').style.display = 'block';
@@ -558,7 +558,7 @@
           scrollToBottom();
           loadList();
         } else {
-          setInline('send-msg', 'err', res.body.error || 'Could not send — try again.');
+          setInline('send-msg', 'err', res.body.error || 'Could not send. Try again.');
         }
       });
     }
@@ -594,7 +594,7 @@
     $('block-btn').addEventListener('click', function(){
       if (!current) return;
       var blocking = !youBlockedThem;
-      if (blocking && !confirm('Block @' + current + '? They will no longer be able to message you. (Admins can always reach you.)')) return;
+      if (blocking && !confirm('Block @' + current + '? They won\'t be able to message you. (Admins can always reach you.)')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/messages/block', { user: current, blocked: blocking }).then(function(res){
         btn.disabled = false;
@@ -607,7 +607,7 @@
     $('report-link').addEventListener('click', function(e){
       e.preventDefault();
       if (!current) return;
-      if (!confirm('Report this conversation to the wiki admins?\n\nThis lets the admins read the messages between you and @' + current + ' so they can look into the problem.')) return;
+      if (!confirm('Report this conversation to the wiki admins?\n\nThey will be able to read your messages with @' + current + '.')) return;
       var reason = prompt('Anything the admins should know? (optional)');
       if (reason === null) return; // cancelled
       postJSON('/api/messages/report', { with: current, reason: reason.trim() }).then(function(res){
@@ -618,7 +618,7 @@
 
     $('delete-btn').addEventListener('click', function(){
       if (!current) return;
-      if (!confirm('Delete this whole conversation from YOUR inbox? @' + current + ' keeps their copy. This cannot be undone.')) return;
+      if (!confirm('Delete this conversation from your inbox? @' + current + ' keeps their copy. This cannot be undone.')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/messages/delete', { with: current }).then(function(res){
         btn.disabled = false;

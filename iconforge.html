@@ -8,7 +8,7 @@
 <meta name="description" content="Turn your own line art into a Blood on the Clocktower character icon: official-style textures, white border, parchment details and a transparent PNG, all in your browser.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Icon Forge">
-<meta property="og:description" content="Turn line art, a scan or a photo into a Blood on the Clocktower character icon — official textures, borders and details, entirely in your browser.">
+<meta property="og:description" content="Turn line art, a scan or a photo into a Blood on the Clocktower character icon with official textures, borders and details, entirely in your browser.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -209,6 +209,10 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-pad button:hover { background: #fffdf8; }
 .if-pad .if-pad-mid { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
 .if-pad .if-pad-mid:hover { filter: brightness(1.15); background: var(--maroon); }
+/* Up and down reuse the right chevron, turned, so all four match. */
+.if-pad .ico { font-size: 1rem; }
+.if-pad .if-ico-up { transform: rotate(-90deg); }
+.if-pad .if-ico-down { transform: rotate(90deg); }
 .if-place-sliders { flex: 1 1 auto; min-width: 0; }
 .if-place-sliders .if-row:last-child { margin-bottom: 0; }
 
@@ -419,7 +423,7 @@ details.if-sec > summary:hover { color: #8a3526; }
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -428,7 +432,7 @@ details.if-sec > summary:hover { color: #8a3526; }
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -505,7 +509,7 @@ details.if-sec > summary:hover { color: #8a3526; }
                 <span class="if-row-head"><span class="if-label">Inner edge</span><output class="if-val"></output></span>
                 <input type="range" min="0" max="3" step="0.1">
               </label>
-              <p class="if-hint">0px is razor sharp. The outer edge shapes the silhouette; the inner edge shapes the white detail lines inside it.</p>
+              <p class="if-hint">Softens the outline and the white details. 0px is sharp.</p>
               <label class="if-row" data-opt="lineThicken">
                 <span class="if-row-head"><span class="if-label">Colour line thickness</span><output class="if-val"></output></span>
                 <input type="range" min="-10" max="10" step="0.5">
@@ -532,20 +536,20 @@ details.if-sec > summary:hover { color: #8a3526; }
               </div>
 
               <div id="if-bg-ai" hidden>
-                <p class="if-hint">Works out where your subject is and cuts everything else away — photos, coloured paper, messy scans, anything the two keys below cannot handle. The first run downloads about 45&nbsp;MB and can take a minute; your browser keeps it for next time. It works away in the background, so the page stays usable and you can stop it whenever you like.</p>
+                <p class="if-hint">Cuts your subject out of a photo or messy scan. The first run downloads about 45&nbsp;MB.</p>
                 <label class="if-row" data-opt="aiTolerance">
                   <span class="if-row-head"><span class="if-label">Cleanup tolerance</span><output class="if-val"></output></span>
                   <input type="range" min="0" max="100" step="1">
                 </label>
-                <p class="if-hint">Lower keeps faint lines and small detached parts; higher strips more leftover smudges.</p>
+                <p class="if-hint">Lower keeps faint lines; higher removes more smudges.</p>
               </div>
 
               <div id="if-bg-key" hidden>
-                <p class="if-hint">Instant brightness key — best for clean black line art on white paper.</p>
+                <p class="if-hint">For black line art on white paper.</p>
               </div>
 
               <div id="if-bg-chroma" hidden>
-                <p class="if-hint">Pick the background colour straight from your artwork — anything near it becomes transparent. Works for black, white, green screen or coloured paper.</p>
+                <p class="if-hint">Pick the background colour from your artwork to make it transparent.</p>
                 <div class="if-btn-row" style="margin-bottom:10px">
                   <button type="button" class="sb-btn if-btn-quiet" id="if-chroma-pick">Pick colour from artwork</button>
                   <span id="if-chroma-swatch" class="if-swatch" hidden></span>
@@ -574,7 +578,7 @@ details.if-sec > summary:hover { color: #8a3526; }
               </label>
               <label class="if-switch" data-opt="whiteUnderlay">
                 <span class="if-switch-text"><span class="if-label">White underlay</span>
-                  <span class="if-hint">Parchment under the entire silhouette with the colour ink on top, so soft edges always have white behind them.</span></span>
+                  <span class="if-hint">Parchment under the whole shape, so soft edges have white behind them.</span></span>
                 <input type="checkbox"><span class="if-track"></span>
               </label>
 
@@ -638,7 +642,7 @@ details.if-sec > summary:hover { color: #8a3526; }
                   <span class="if-row-head"><span class="if-label">Divider thickness</span><output class="if-val"></output></span>
                   <input type="range" min="0" max="30" step="0.5">
                 </label>
-                <p class="if-hint">Good texture left of the white divider, evil right of it — the official Traveller look.</p>
+                <p class="if-hint">Good texture on the left, evil on the right.</p>
               </div>
             </div>
           </details>
@@ -693,7 +697,7 @@ details.if-sec > summary:hover { color: #8a3526; }
                 <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
                 <input type="range" min="0" max="1" step="0.05">
               </label>
-              <p class="if-hint">Vibrance lifts dull tones without blowing out vivid ones; gradient darkens toward the bottom for extra weight.</p>
+              <p class="if-hint">Vibrance lifts dull tones; gradient darkens toward the bottom.</p>
 
               <p class="if-label" style="display:block;margin:16px 0 8px">Parchment texture</p>
               <label class="if-row" data-opt="whiteSat">
@@ -712,7 +716,7 @@ details.if-sec > summary:hover { color: #8a3526; }
                 <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
                 <input type="range" min="0" max="1" step="0.05">
               </label>
-              <p class="if-hint">Grades the parchment used for detail regions, and for the border when it is set to cream.</p>
+              <p class="if-hint">Adjusts the parchment in the details, and in a cream border.</p>
             </div>
           </details>
 
@@ -723,13 +727,13 @@ details.if-sec > summary:hover { color: #8a3526; }
               <div class="if-place">
                 <div class="if-pad">
                   <span></span>
-                  <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up">▲</button>
+                  <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up"><span class="ico ico-right if-ico-up" aria-hidden="true"></span></button>
                   <span></span>
-                  <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left">◀</button>
-                  <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop">⚄</button>
-                  <button type="button" data-nudge="0.03,0" aria-label="Pan texture right">▶</button>
+                  <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left"><span class="ico ico-left" aria-hidden="true"></span></button>
+                  <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop"><span class="ico ico-dice" aria-hidden="true"></span></button>
+                  <button type="button" data-nudge="0.03,0" aria-label="Pan texture right"><span class="ico ico-right" aria-hidden="true"></span></button>
                   <span></span>
-                  <button type="button" data-nudge="0,0.03" aria-label="Pan texture down">▼</button>
+                  <button type="button" data-nudge="0,0.03" aria-label="Pan texture down"><span class="ico ico-right if-ico-down" aria-hidden="true"></span></button>
                   <span></span>
                 </div>
                 <div class="if-place-sliders">
@@ -760,7 +764,7 @@ details.if-sec > summary:hover { color: #8a3526; }
             <div class="if-sec-body">
               <label class="if-switch" data-opt="borderStyle" data-on="white" data-off="cream">
                 <span class="if-switch-text"><span class="if-label">Pure white border</span>
-                  <span class="if-hint">The official clean white stroke. Turn it off for a cream, paper-textured border.</span></span>
+                  <span class="if-hint">Turn off for a cream, paper-textured border.</span></span>
                 <input type="checkbox"><span class="if-track"></span>
               </label>
               <label class="if-row" data-opt="borderWidth">
@@ -803,7 +807,7 @@ details.if-sec > summary:hover { color: #8a3526; }
                 <span class="if-row-head"><span class="if-label">Rotate</span><output class="if-val"></output></span>
                 <input type="range" min="-180" max="180" step="1">
               </label>
-              <p class="if-hint">Applied to the finished icon. It shrinks a little when rotated so the corners never get cropped.</p>
+              <p class="if-hint">Rotating shrinks the icon slightly so nothing is cropped.</p>
             </div>
           </details>
 
@@ -817,7 +821,7 @@ details.if-sec > summary:hover { color: #8a3526; }
           <h2 class="if-card-title">Download</h2>
           <div class="if-export-row">
             <select id="if-size" aria-label="Icon size">
-              <option value="591">591 px — wiki size</option>
+              <option value="591">591 px (wiki size)</option>
               <option value="0">Match my artwork</option>
               <option value="400">400 px</option>
               <option value="1024">1024 px</option>
@@ -885,10 +889,10 @@ details.if-sec > summary:hover { color: #8a3526; }
       <div class="about-card if-tips">
         <ul>
           <li><b>Bold, closed shapes read best.</b> The forge decides what is body and what is detail — thin grey pencil lines give it nothing to hold onto.</li>
-          <li><b>Line art on white paper?</b> Set Background to <em>White key</em>. A photo, or coloured paper? Use <em>Smart remove</em>, which cuts the subject out for you.</li>
-          <li><b>Something filled that should be hollow</b> (or the other way round)? Turn off <em>Fill enclosed spaces</em>, then use the paint bucket to choose each region yourself.</li>
-          <li><b>Every icon is a different crop</b> of the same texture sheet — roll the dice under Texture placement so yours does not look identical to the last one.</li>
-          <li><b>Save at 591&nbsp;px</b> for the wiki, then add it in the <a href="create">character editor</a> — or use “Save to a character” above if the page already exists.</li>
+          <li><b>Line art on white paper?</b> Set Background to <em>White key</em>. A photo, or coloured paper? Use <em>Smart remove</em>.</li>
+          <li><b>Something filled that should be hollow</b>? Turn off <em>Fill enclosed spaces</em> and use the paint bucket.</li>
+          <li><b>Every icon is a different crop</b> of the same texture. Roll the dice under Texture placement for a new one.</li>
+          <li><b>Save at 591&nbsp;px</b> and add it in the <a href="create">character editor</a>, or use “Save to a character” above.</li>
         </ul>
         <p class="about-disclaimer">Fan-made tools. Not affiliated with The Pandemonium Institute.</p>
       </div>

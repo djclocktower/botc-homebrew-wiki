@@ -61,9 +61,11 @@ Key dynamic behavior:
   a glossary, a storyteller guide) belonging to exactly one script or
   collection. SSR from the `pages` table via `assets/render-wiki.js`, same
   `pageShell()`. These are **deliberately unlisted**: `noindex`, no sitemap
-  entry, no search, no browse list, no homepage strip. The only two links in
-  are the "Pages" section on the parent script/collection page and the
-  author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
+  entry, no browse list, no homepage strip. The links in are the "Pages"
+  section on the parent script/collection page and the author's
+  `/author?a=` + `/u/{username}` pages — plus **Featured Articles**, but only
+  for a page an admin picked (see that section) — and the **site search**,
+  which the owner asked to include them (see "Site search"). Only the parent page's owner
   (or an admin) — or an **approved editor of the parent** — can create one;
   the owner's page is owned by whoever wrote it, an editor's is filed under the
   parent's owner as a draft. Who may EDIT one is the parent's "Who can edit"
@@ -85,7 +87,9 @@ Key dynamic behavior:
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
   requests per page view; `/api/site-text` and `/api/announcement` stay for
-  the editors), **`GET /api/admin/thumb-missing`** (the dashboard's "Card
+  the editors), **`GET /api/search-index`** (the site search's creators,
+  users, wiki pages and news — see "Site search"),
+  **`GET /api/admin/thumb-missing`** (the dashboard's "Card
   thumbnails" scan, see "Caching"),
   **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
@@ -137,6 +141,12 @@ Key dynamic behavior:
   never had a login. See "Creator identity" below.
 - `/random`, `/sitemap.xml`, and `/script-view?s=` (OG-meta injection) are also
   Worker routes.
+- **Site search**: the top-bar box on every page previews the best matches of
+  every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
+  results with a tab per kind and the All Characters filter. Both run the same
+  engine, `assets/search-core.js`, in the browser, over the three browse feeds
+  plus **`GET /api/search-index`** (creators, users, wiki pages, news). See
+  "Site search" below.
 
 ## Repo map
 
@@ -165,12 +175,26 @@ assets/
   viewport.js          Bounded character-card batches on viewport approach.
   reading-lazy.js      Comments on approach, click or comment-anchor navigation.
   page-viewer.js       Private editing controls for cached published pages.
-  site.js              Shared topbar behavior: search dropdown, mobile nav,
+  site.js              Shared topbar behavior: search preview, mobile nav,
                        script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
                        change it here and every page's top bar and hamburger
                        follow, because no page hardcodes it.
+                       The hamburger menu is position:fixed and hangs off the
+                       bar's BOTTOM edge (getBoundingClientRect().bottom, re-run
+                       on scroll while open), never its height: a DRAFT bar,
+                       the Partial notice or the announcement sits above the
+                       bar in the flow, and measured by height the open menu
+                       covered the whole bar, hamburger included. It also
+                       stamps `translate="no"` on .topbar and .nav-dropdown:
+                       Chrome's translator re-wraps a run of inline siblings
+                       as one sentence and moves the tags, which turned the
+                       injected Random Character / Edit / My Account rows
+                       into one wrapped line with the dice on its own and an
+                       empty Edit box. Set here rather than in the markup so
+                       every page gets it from one line (the topbar markup
+                       is hand-copied per page).
   render.js            Shared character renderer + official-schema JSON builder.
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
@@ -256,7 +280,39 @@ assets/
                        and the Favorite button — see favorites.js). The three
                        stacked buttons share one skin — .tog-ico (an outline
                        glyph, filled when on) + .tog-pop (the swell) in
-                       styles.css — so they look and move as one set.
+                       styles.css — so they look and move as one set. The
+                       script and token glyphs come from card-actions.js
+                       (CardActions.glyph), which loads before it.
+  card-actions.js      The two small quick-action buttons (heart = Favorites,
+                       page = Add to Script) under the icon of EVERY character
+                       card and row: All Characters, team, tag, collection and
+                       creator rosters (+ pinned characters), /favorites, a
+                       script page's roster, the homepage's Featured Character
+                       and Recently Added, and the top-bar search results.
+                       Bare icons stacked under the card's icon; boxed and
+                       side by side in the search results; on the Featured
+                       card, beside the creator's name; on Recently Added,
+                       side by side under the team name (see "Favorites").
+                       Browser + Worker: slotHTML(c) prints an EMPTY
+                       <span class="cq" data-cq-slug> (nothing for a draft, an
+                       official character or a row with no slug), which the
+                       renderers wrap with the icon in a .card-side column;
+                       render-page.js gets it through PageRender.
+                       setCardActions() in worker.js. The browser half fills
+                       every slot (a MutationObserver — cards arrive in batches,
+                       filters move them, search rebuilds per keystroke),
+                       paints saved/on state and answers clicks with ONE
+                       capture-phase listener that stops the card's link from
+                       following. Same stores as the /c/ info card: botc_script
+                       (localStorage) and the account's favorites through
+                       favorites.js, which it needs for the heart glyph and
+                       fetches itself where a page lacks it. Printed empty
+                       because published /s/ and /collection/ HTML is shared
+                       cache and the heart glyph lives in favorites.js; the
+                       CSS gives the empty slot its height so nothing moves.
+                       site.js fetches favorites.js + card-actions.js with the
+                       search feeds on pages that have neither. Fires
+                       'botc-script-change', which script.html redraws on.
   favorites.js         Favorites, the browser half: ONE module for the button
                        on a character page (charpage.js), the one on a script
                        or collection page (pageview.js), the Favorites chip
@@ -266,7 +322,8 @@ assets/
                        (botc_favs:*) for two minutes and patches the cache on
                        a toggle. Logged-out readers cost no request at all.
                        Loaded BEFORE charpage.js / pageview.js / card-filters.js
-                       wherever those mount something of it. See "Favorites".
+                       / card-actions.js wherever those mount something of it.
+                       See "Favorites".
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
                        A description of '' is a tag with no hover box (Magic),
@@ -301,6 +358,19 @@ assets/
                        list IS the page's list), sanitizeTheme(), FONT_PRESETS.
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
+  search-core.js       THE SEARCH ENGINE — folding (ö ō ø all read as o),
+                       the word index, typo tolerance, ranking, highlighting
+                       (mark()) and load(), which fetches the feeds and builds
+                       once per page. Browser + Node, no DOM at top level.
+                       Used by site.js (the top-bar preview, loaded on first
+                       touch) and search-page.js. See "Site search".
+  search-page.js       The /search page: tabs, sections, tiles, URL state.
+  char-filters.js      The All Characters filter box (team/tag/source/status/
+                       creator chips, Sort, Group) as a module over an ARRAY
+                       of characters, plus the character card itself.
+                       all-characters.html and /search both mount it.
+                       card-filters.js is the other filter box: it filters
+                       cards already in the DOM (collection and creator pages).
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
                        Partial, Curata only, creator, sort). Mounting again
                        over the same grid takes the old box down first
@@ -333,6 +403,15 @@ assets/
                        leaves Partial characters visible (hiding one there
                        would put it out of reach of the script you are
                        building).
+                       A **Group** select (By team / All together) sits beside
+                       Sort on the renderRosterCards grids when there is more
+                       than one team: All together moves every card into one
+                       `.cf-flat` grid built above the team sections, so the
+                       sort runs across the whole roster; By team puts each
+                       card back in its own section. Not offered where the
+                       caller passes its own sectionSel (the Script Builder)
+                       or groupChoice: false. Not remembered between visits,
+                       like Sort.
   jinx-editor.js       One script's jinxes: switch off one the characters
                        carry, or write one only this script has. Stores
                        `jinxEdits{off[],add[]}` and resolves through
@@ -395,7 +474,12 @@ assets/
                        account.html + dashboard.html for modmail. Shrinks to
                        1600px before uploading; GIFs are passed through
                        untouched, or a canvas would keep frame one and throw
-                       the animation away. See "Images on a message" below.
+                       the animation away. The server keeps 5 MB per image,
+                       so a file that cannot be shrunk (a GIF, or a browser
+                       with no createImageBitmap) is held to 5 MB before the
+                       upload starts, a photo may be picked up to 20 MB, and
+                       the shrunk result is measured again before sending (a
+                       PNG still over 5 MB at 1600px goes as JPEG). See "Images on a message" below.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
                        and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
                        one-time "be respectful" agreement modal and the
@@ -453,6 +537,18 @@ assets/
                        /api/collection and /api/wiki-page. No DOM, no fetch —
                        the page owns the form and the progress table, this owns
                        the rules. Same split as grimforge.js.
+  import-merge.js      What a re-import keeps and what it replaces: the rules
+                       behind mass-upload.html landing a file on a page this
+                       account already has. Mechanics (name, team, ability,
+                       night order, reminders, setup flags, jinxes) come from
+                       the file, the empties included; everything else on the
+                       page stays — tags, almanac text, the printable token,
+                       the art slots, who may edit it, its publish state —
+                       and flavour/edition only when the file carries them.
+                       artPlan() says which art slots the file may write:
+                       none the page already fills unless "Replace the art"
+                       is ticked. No DOM, no fetch (same split as
+                       bloodstar.js); the tests run it in a vm.
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   char-preview.js      The live preview iframe on create.html + edit.html.
@@ -463,10 +559,20 @@ assets/
                        preview's scroll position. The in-frame script keeps the
                        JSON box, the jinx dropdown and the title fit working;
                        __cpFit() is re-run after each repaint. Browser only.
-  art-normalize.js     The "Resize icon" button: trims the transparent margin
-                       to find the figure and scales it to 70% of the 591×591
-                       frame. artTrimBox() (the trim on its own) is exported
-                       for art-adjust.js. Browser only (canvas).
+  art-normalize.js     The icon standard: trims the transparent margin to
+                       find the figure and scales it to ART_FILL (60%) of the
+                       591×591 frame — see "Icon size in the official script
+                       tool" for why 60 and not more. Runs on every art pick
+                       in create/edit and in mass-upload; the "Resize icon"
+                       button re-runs it. {ifNeeded:true} answers null for
+                       art already on the standard, which is what lets the
+                       bulk tool (/normalize-icons) be re-run cheaply;
+                       {keepPlaced:true} answers false for art a person
+                       placed on the frame themselves (isPlacedFrame), so
+                       the bulk run never undoes an Adjust by hand.
+                       artTrimBox() (the trim on its own) is exported for
+                       art-adjust.js, which reads ART_FILL rather than
+                       keeping a copy. Browser only (canvas).
   art-adjust.js        "Adjust by hand": the same frame with the art in your
                        hands. Drag to move (pointer events, so mouse and touch
                        are one path), a slider or a pinch for how much of the
@@ -614,7 +720,14 @@ index.html             Homepage (collections grid, scripts, browse cards, sideba
                        Browse cards include Grimoire Forge and Icon Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
                        the "By Creator" card and /tools).
-all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
+all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view).
+                       Its Group select (By team / All together) draws one
+                       grid instead of a section per team. The filter box and
+                       the card are assets/char-filters.js, shared with
+                       /search; the page keeps the ?collection= view and the
+                       drawing.
+search.html            /search?q=&type= — the full site search results. See
+                       "Site search". noindex; not in the sitemap.
 team/tag/tags.html     Browse pages
 creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
@@ -627,7 +740,10 @@ script.html            Script Builder — the markup only; the behaviour is
                        main column do. Tabs: Script, Night Order, Jinxes,
                        Analyse, Details & Export. See "The Script Builder".
 publish-script.html    Script publishing page: name/author/tagline/version/
-                       difficulty/description + wiki sections (synopsis, gameplay,
+                       difficulty/description (only name and author are
+                       required — the description is optional, and on
+                       publish-collection.html only the name is) + wiki
+                       sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
                        SAO sort (localStorage botc_script_meta). The roster
                        summary lists every character with ▲▼ to arrange it by
@@ -658,7 +774,9 @@ jinxes.html            /jinxes: every jinx on the wiki, as a grouped list and an
                        cannot disagree. Creators can add a jinx to a character
                        they own (POST /api/jinx). Linked from tools.html and the
                        homepage browse cards; in the sitemap's staticPages.
-news.html              /news index (client-rendered from /api/news)
+news.html              /news index (client-rendered from /api/news), with the
+                       Featured Articles grid under it (and, for admins, the
+                       paste-a-link box and Remove buttons)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus
                        summary/hero/pin, and preview/publish/delete
@@ -748,6 +866,17 @@ mass-upload.html       Bulk import from official-schema JSON. Warns before it
                        follows the "Appears in" box as it is typed — filling
                        that in is what settles most of them (see "Warning
                        about a jinx before it is written" below).
+                       A character landing on a page this account already
+                       has UPDATES it, through assets/import-merge.js: the
+                       page is read back from /api/page and the file merged
+                       into it, so a re-import cannot strip what the file
+                       does not carry, and the icon is kept unless "Replace
+                       the art on pages that already exist" is ticked (or the
+                       page has none). A page that cannot be read is not
+                       written. It used to replace the page outright and
+                       write the file's picture over the icon slot, which is
+                       how one re-import cost a creator 24 Icon Forge icons,
+                       their tags and their printable tokens.
 bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project link,
                        choose what becomes what, and the whole thing lands: every
                        character with its art and its almanac entry, the jinxes,
@@ -1388,8 +1517,8 @@ The export follows the schema at
 - **`background`**: the page background (`theme.background`) as an absolute
   URL. One upload serves both the wiki page and the app.
 - **`hideTitle`**, **`almanac`**, **`bootlegger[]`**: set on publish-script's
-  "In the Official App" panel. Bootlegger rules also show on the script page as
-  *House Rules*, or a reader would only find them inside the JSON.
+  "In the Official App" panel. Bootlegger rules also show on the script page under
+  *Bootlegger Rules*, or a reader would only find them inside the JSON.
 - **`firstNight` / `otherNight`**: the arranged night order as ids. Only written
   when the owner arranged one. Left out, the app orders by each character's own
   number and reaches the same answer, so writing it anyway would freeze today's
@@ -1995,6 +2124,13 @@ Things worth knowing before touching any of it:
     whichever comes first — so the picture everybody wants is never held up
     by three they may not ask for. The idle fetch is skipped on a metered or
     2g connection; the first tap still works, it just pays for itself.
+  - **Only the version on screen is hit-testable** (`pointer-events: none`
+    on the stack's images, `auto` on `.is-on`). The versions all sit in one
+    box and the last in the markup is on top, so a long-press or right-click
+    on the icon used to land on an invisible picture, and "Open image in new
+    tab" opened the alternate art whichever version was showing. The gallery's
+    listeners are on the document and resolve the stack from whatever was
+    hit, so this costs the tap and the swipe nothing.
   - **`mountEmblemGallery(doc)` takes a document** rather than assuming
     `document`, because the editors' live preview is an iframe with one of
     its own. That copy used to be hand-duplicated inside a string in
@@ -2059,6 +2195,116 @@ Things worth knowing before touching any of it:
   swallows the fetch error and the Python skips any payload whose file is
   missing).
 
+## Icon size in the official script tool
+
+A script exported from here prints its icons in the official script tool
+(script.bloodontheclocktower.com) **at the same box size as the tool's own
+icons**, contain-fit — its Typst print template and its on-screen preview
+both do that — so the transparent margin inside the file IS the icon's size.
+Nothing in the JSON can set it. Three things decided how big a wiki icon
+came out, and all three were pushing the same way:
+
+- **The tool scales every non-bundled image by 1.1×** in the PDF
+  (`(0.1 + iconScale)` in its `data.typ`; the "Custom Icon Size" slider in
+  its Export Options is that number, default 1). It is the tool's choice and
+  applies to homebrew art from anywhere; a reader who wants it exact sets
+  the slider to 0.9.
+- **The wiki's standard was 70% fill and the official icons are not.**
+  Measured by alpha bounding box, longest side over frame: the 191 official
+  icons in `assets/icons/` sit at median 0.63, the tool's own bundled icons
+  at 0.61. So even a standardized wiki icon printed ~25% larger than the
+  character beside it. `ART_FILL` in `art-normalize.js` is now **0.60**,
+  which lands on the tool's own size after its 1.1× and is inside the
+  official spread on the wiki's own pages (the Token Tool trims alpha itself
+  and is unaffected).
+- **Standardizing was opt-in, so a sixth of the live art never was.** A
+  live sample of 139 icons had 24 above 0.75 and 15 at 0.85+ — a figure
+  cropped to its ink, which then printed at half again the official size.
+  Both character editors, `mass-upload.html` and `/bloodstar` now
+  standardize art as it lands (Adjust by hand still opens on the file as
+  picked, so a deliberate crop is one click away). Bloodstar's server-side
+  copy never passes through a canvas, so `copyArt()` reads the copied file
+  back from our own origin, and uploads a standardized version only when
+  `{ifNeeded: true}` says the file is not already on the frame — the thumb
+  is made from whichever version is stored, in that order, so the two
+  cannot race. Only `art/` keys: a logo or a background is not an icon.
+
+**One file serves every surface**, so this is visible on the wiki too:
+cards, the `/c/` emblem, search results, jinx boxes and the Script Builder
+all contain-fit the same PNG, and a re-standardized icon's figure is
+one-seventh smaller than at the old 0.70 (and much smaller than a
+never-standardized one). **The `/c/` emblem is more than compensated**:
+`.emblem` and `.emblem-stack` in styles.css grew by 0.70/0.60 (86% → 100%,
+286px → 334px), which alone would keep the figure on a character page the
+size it always was, and are then **scaled by a further 8/7** (the owner
+wanted the icon a touch larger than before: 8/6 of the original in all).
+The second step is a `transform`, not a wider box, because on a phone the
+box is already the full card width and a wider one would push the page
+sideways; only transparent margin reaches past the column. The stack's
+child images carry only their own dip: `emPaint` writes it as a CSS
+variable (`--em-s`) and `.emblem-stack .emblem` scales by it, so a version
+can fold a base scale of its own into the same rule. **The printable token
+is that version** (`.emblem-token`, a class render.js puts on the token's
+`<img>` in the stack and on a lone one): it is a full-bleed disc with no
+transparent margin, so both growth steps were real growth on it, and on a
+phone it ran a seventh past the card. It is drawn at exactly the size the
+box was before any of this (6/7 of the box: 86%, 286px), and the owner's
+`--art-scale` stays off it, because that setting is how big the **icon** is
+displayed and a token is not an icon. The homepage's **Featured
+Character card** (`.featured-art`) takes the same 8/6 transform: it is the
+other surface that shows one icon on its own. Cards, search rows
+and the jinx boxes are not, deliberately — there a homebrew icon sits
+beside official ones drawn from `assets/icons/`, and matching them is the
+point. The Token Tool is the one consumer that is not affected, because it
+trims alpha itself.
+
+**The bulk tool leaves a hand-placed icon alone.** Nothing in the file
+marks a deliberate crop, so `isPlacedFrame()` in art-normalize.js tells
+one apart by elimination: art already on the 591 frame that is on neither
+the current standard nor a legacy one (`LEGACY_FILLS`, the fills the
+wiki's own tools wrote before — 0.70) was put there by a person, with
+Adjust by hand or Icon Forge's own margin, and `normalizeArtDataURL(src,
+{keepPlaced: true})` resolves **false** for it (null is "already standard",
+a string is the re-fitted picture). A 591 square exported from somebody's
+own tool reads as placed too, which is the side to err on: the run exists
+to catch art that was never fitted, not to undo choices. /normalize-icons
+passes it unless its "Also reset icons placed by hand" box is ticked, which
+is the old behaviour and undoes every one of those choices at once. Only
+the bulk tool asks for it — an editor re-fitting a freshly picked file
+wants the answer either way. Adding a future standard means appending the
+one being retired to `LEGACY_FILLS`, or every icon it fitted will read as
+placed and stay where it is.
+
+**A creator can still make their icon draw bigger (or smaller) on its own
+page: `artScale`**, the "Change how big the icon is displayed on this page"
+box in both character editors. It is a **display setting and nothing else**:
+a whole percentage (`Render.ART_SCALE_MIN`..`ART_SCALE_MAX`, 50–200) that
+`renderCharacter()` writes onto the `/c/` emblem as an inline `--art-scale`
+variable, which styles.css multiplies into the 8/7 transform the emblem
+already has. The file in the art slot, the JSON box (`buildSchema()` never
+reads it), the cards, the search rows, the jinx boxes and the Token Tool all
+keep the true size, and `artScale` is in `CARD_DROP_FIELDS` so it never
+reaches a card feed. The slider is greyed out until the box is ticked, and an
+unticked box posts nothing; 100 is never stored either (`Render.artScaleValue()`
+answers 0 for it and for anything outside the range, and `/api/character` runs
+it on save), so an untouched page grows no key and keeps following the
+stylesheet. The editors' live preview follows it, since the frame carries the
+same stylesheet.
+
+Existing art is fixed by running the admin page **`/normalize-icons`**
+("Standardize Icons") once after deploy: it now skips anything already on
+the standard (`{ifNeeded: true}`) and anything placed by hand (above), so a
+re-run costs only the icons that moved. It writes through `/api/upload`, so the wiki must be unlocked, the
+thumbnails follow by themselves, and — because that route now touches the
+row (see "Caching", Images) — the new picture reaches cards and emblems at
+once instead of hiding behind the year-long versioned cache. About 2,100
+icons from the admin's browser, `PARALLEL` (6) in flight at once: expect
+ten to fifteen minutes, and leave the tab open. It cannot run anywhere
+else — the Worker has no image encoder, so the resize is a canvas job. The credits Fabled the Script Builder
+appends had the same problem for the same reason — `logo_skull.png` is
+cropped to the ink — so `buildCreditsFabled()` points at
+`logo_skull_icon.png`, the same pixels on a padded 320px square.
+
 ## The printable token (`tokenArt` / `token`)
 
 A character can carry the Token Tool's **finished token** as page content, on
@@ -2072,7 +2318,10 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   emblem pips pick it up with no new UI code and 1,600 untouched pages change
   nothing. `buildSchema()` indexes versions by `main`/`alt`/`alt2` and never
   exports it — the official schema's `image` positions mean alignment, and a
-  token is not an icon.
+  token is not an icon. In the gallery it is drawn **smaller than the icons**
+  (`.emblem-token`, see "Icon size in the official script tool"): the emblem's
+  8/6 growth is room for an icon's transparent margin, and a full-bleed disc
+  has none.
 - **The editors have a "Printable token" slot** (create.html + edit.html, same
   form): the tick, a thumb, a direct upload (deliberately no Resize/Adjust —
   those fit art into the 591 frame, which would wreck a full-bleed round
@@ -2312,6 +2561,19 @@ serving the old addresses.
   extension, and tapping "My Account" opened the blocker's own filter list
   instead of the wiki. It also returned early when no stylesheet was found,
   throwing `LINK_ROOT` away and resolving `account` against `/c/{set}/`.
+- **A redirect whose page has been deleted parks nothing.** An address is
+  taken when a live page has it or a redirect for it points at a live page
+  (`LIVE_REDIRECT_SQL`, used by `freeCharAddress()` and the nest-urls sweep).
+  One pointing at a deleted page is a dead end — the `/c/` route 404s it
+  anyway — so the next page whose name and set ask for that address takes it,
+  and `setCharAddress()` replaces the stale row. It was built because a
+  creator renamed Anthropologist to Cryptographer and back within half an
+  hour, which parked `principia-horologica/cryptographer` for the
+  Anthropologist page; the real Cryptographer they made next was pushed to
+  `-2`, and deleting the Anthropologist page turned the parked address into a
+  404 that nothing could reclaim. A page already settled on a numbered
+  address keeps it (`characterAddress()`), so that one live page was moved
+  onto its unnumbered address by hand, with `-2` left as a redirect.
 - `/api/slug-check` is about the **identity** (the PK and the art slot), not the
   URL. Its suffix ladder still looks like a URL and still matters, because
   identities name the art slot. For scripts and collections the slug **is** still
@@ -2664,6 +2926,23 @@ saved characters PLUS those rosters, resolved server-side.
   same on all three. The owner asked for that parity after the heart alone
   had an icon and a pop; the pop itself started at 135% and was toned down
   to barely moving at the owner's request — keep it faint.
+- **On every character card too** (`assets/card-actions.js`): the heart
+  and the Add to Script page, in the same `.tog-ico` / `.tog-pop` skin. The
+  owner asked for them on every card including Featured and the search
+  results, and then settled the look: **bare icons with no box, stacked one
+  above the other under the character's icon**; on the Featured card they
+  sit side by side on the credit line right after "by {creator}"; on the
+  homepage's Recently Added cards they sit side by side under the team
+  name (the last line of the card); and the
+  **search results alone keep the first version** — two small boxed buttons
+  side by side under the result's icon. Change the one without the others
+  only on purpose. They toggle the same two
+  stores the info card does, so a card and the page never disagree; a
+  logged-out heart goes to login and back, like the page's. Toggling a heart
+  fires `onChange`, and the Favorites chips re-count through it — which is
+  why all-characters.html and card-filters.js only re-draw the grid on that
+  when the chip is ON: re-drawing 1,500 cards for one tap threw the reader
+  back to the top of the page. `Favorites.me()` is exported for it.
 - **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
   the creator page, the Script Builder's Add sidebar, `/favorites`);
   all-characters.html, scripts.html and all-collections.html carry their own,
@@ -2874,11 +3153,32 @@ header, images[], boxes[], infobox{}, theme{}, toc, comments}` — all optional
 except title and body, all capped and validated by `sanitizeWikiFields()`.
 
 - **Unlisted by design.** `/p/` sends `noindex`, is absent from
-  `sitemap.xml`, the JSON feeds, site search, `/random`, the homepage strips
-  and every browse page. Exactly two things link to one: the **Pages** section
-  on its parent script/collection page, and its author's `/author?a=` and
+  `sitemap.xml`, the JSON feeds, `/random`, the homepage strips and every
+  browse page. The things that link to one: the **Pages** section on its
+  parent script/collection page, and its author's `/author?a=` and
   `/u/{username}` pages. If you add a new listing anywhere, do **not** add
-  wiki pages to it — being unlisted is the feature.
+  wiki pages to it — being unlisted is the feature. Two exceptions, both
+  asked for: **Featured Articles** (below), only because an admin picked the
+  page, and the **site search**, which the owner decided should find every
+  published wiki page whose parent is published (2026-09; see "Site search").
+  Search is something a reader asks for, which is why it is not a listing.
+- **Featured Articles** — the grid under News on the homepage (3 newest
+  picks) and on `/news` (all of them), drawn with the news card
+  (`NewsRender.renderPageCard()`: byline + parent in place of the date, then
+  title, blurb, "Read more"). **Admin-picked, never automatic**: a toggle in
+  the page's own head (`wikipage.js`, admins only, drawn in the browser
+  because the published HTML is shared) or a paste-a-link box on `/news`, both
+  `POST /api/admin/featured-article {slug, on}` (slug may be the whole
+  address). The picks are ONE `settings` row, `featured_articles` =
+  `[{slug, at}]`, newest first, capped at `FEATURED_ARTICLES_MAX` (24) —
+  nothing is written onto the page, so no owner save can touch it. A pick
+  whose page goes to draft, or whose parent is deleted, is hidden on read and
+  comes back with it; `?all=1` (admins) lists those too with a `hidden`
+  reason. Deleting the page drops the pick (`unfeatureArticle()`), or a new
+  page reusing the slug would inherit it. `GET /api/featured-articles` is
+  cached like `/api/news` on `FEATURED_DEPS` (wikipage, script, collection);
+  `feature`/`unfeature` are in `FEED_CHANGING_ACTIONS`. The page itself stays
+  `noindex` and out of every other list.
 - **Who may write one:** the owner of the parent script/collection (or an
   admin), and the parent's approved editors. The owner's page belongs to the
   writer; an editor's is filed under the parent's owner as a draft, so it
@@ -4154,8 +4454,8 @@ seeded with whole collections whose characters all arrived unowned.
 - Teams: `townsfolk, outsider, minion, demon, traveller, fabled, loric` — always
   in that order. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
-  `render-page.js`, `card-filters.js`, `render.js`, `site.js`,
-  `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
+  `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
+  `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
   and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
@@ -4214,15 +4514,97 @@ seeded with whole collections whose characters all arrived unowned.
   stretched.
 - **A script or collection tile's banner is `header || logo`, then the
   fallback.** That order matches what the `/s/` and `/collection/` pages
-  themselves fall back through, and it is hand-copied into **five** places:
+  themselves fall back through, and it is hand-copied into all of these:
   `scripts.html`, `index.html` (twice — scripts strip and collections grid),
-  `all-collections.html` and `profile.html` (twice). Change one, change all
-  five. The tiles used to read `header` only, so every page with a logo and no
+  `all-collections.html`, `profile.html` (twice) and `assets/search-page.js`
+  (`scriptTile` / `collectionTile`). Change one, change them all. The tiles used to read `header` only, so every page with a logo and no
   header — which is every Bloodstar import — drew the text banner on its card
   while its own page showed the logo. **The feed has to send `logo` for any of
   that to work**: profile.html read `sc.header || sc.logo` correctly for a year
   while `/api/user`'s card builder never put `logo` on the wire, so the second
   half could never fire. Pin cards on the creator page fall back the same way.
+
+## Site search (the top-bar box and `/search`)
+
+One engine, two faces. **`assets/search-core.js`** does all the matching and
+ranking; `site.js` draws the top-bar preview and `assets/search-page.js`
+draws `/search`. Neither has a matching rule of its own, so the preview and
+the results page can never disagree.
+
+**It runs in the browser.** A search is a local index lookup, a millisecond
+or two a keystroke with 2,400 characters, so there is no typing delay and no
+request per keystroke. The data is four requests, made the first time the box
+is focused, hovered or touched (and preloaded in `search.html`'s head):
+
+- `characters.json?fields=grid`, `scripts.json?fields=browse`,
+  `collections.json?fields=browse` — the browse pages' own feeds, so they are
+  often already cached, and a repeat visit is a 304.
+- **`GET /api/search-index`** (`buildSearchIndex()` in worker.js): the
+  creators list (`buildCreatorsList()`, the same builder `/api/creators` now
+  uses), every account **that is not suspended** (handle, display name and
+  picture only — the owner chose every account, not only the ones that have
+  published), published wiki pages whose script or collection is published,
+  published news, and `dates` — when each published script and collection
+  was created (unix seconds), since the browse feeds carry only `v`, the last
+  save. Pages and accounts carry their own `created` (a page its `updated`
+  too); an account's is the "Member since" its profile already shows.
+  ETag + 304 like the feeds, versioned on
+  `SEARCH_DEPS` and on a half-hour bucket, because a new account or avatar
+  bumps no content version. Bump `SEARCH_INDEX_V` if its shape changes.
+  `data.js` shares it per page like the feeds.
+
+`search-core.js` itself is only fetched by `site.js` on first use
+(`BotcData.script`), so a page nobody searches on pays nothing.
+
+**Matching.** Both sides are folded the same way (`fold()`): lower case,
+NFKD with the combining marks dropped, the letters with no decomposition
+named outright (ø æ ß þ ł …), apostrophes deleted. Then, per query word:
+exact word 1, start of a word 0.8+, inside a word 0.45+ (3+ letters, or any
+non-Latin script), times the field's weight (name 10, set/tags/creator 4,
+ability 2). Every word must match somewhere except the small words in
+`STOP`. Whole-name bonuses put an exact name first ("the Drunk" counts as
+"drunk"). Things that are easy to break:
+
+- **Typos are only tried for a word that is nowhere on the wiki**, whole or
+  as the start of a word, and only in the short fields (names, sets, tags,
+  credits). "poison" is a real word here, so it never also means "prison";
+  "poisn" is not, so it finds the Poison tag. Three letters or fewer are
+  never guessed at.
+- **Short fields are a vocabulary; long ones are scanned.** Abilities and
+  descriptions are kept as folded text and searched directly. Putting their
+  50,000 words in the vocabulary doubled the index build for nothing.
+- **Run-together names** ("tirfar", "fallofrome") are extra vocabulary words
+  that only match whole or from the start (`runTogether`), or "imp" would
+  find Grim Peeker.
+- A creator with an account and that account are one result in the mixed
+  list (`mixed`), and each stays in its own tab.
+- Curata has no word on the page, so Curata rows carry a hidden `curata`
+  field and the word finds them.
+
+**`/search?q=&type=`** keeps the query and tab in the URL (typing replaces
+the history entry, changing tab adds one). The Characters tab mounts the All
+Characters filter from `assets/char-filters.js` (the same module
+all-characters.html uses), with "Best match" as the default sort, "All
+together" as the default group, and **Show Partial on**, as on the creator
+pages: somebody searching for a page by name must find it. On `/search` the
+top-bar box hands its query to the page (`window.SearchPage.set`) instead of
+reloading it. Enter never searches while an input method is composing.
+
+**Every other tab has a filter box too** (`TAB_FILTERS` in search-page.js,
+one row per kind): an **Author** chip list where the kind has authors
+(scripts, collections, wiki pages; include, then exclude, then off, like the
+Creator chips, with a search box over every author of that kind on the wiki
+rather than only the current results), yes/no chips (Curata only,
+Teensyville, Has an account, Has published) and a **Sort** of Best match,
+Newest / Oldest first, Recently updated, Name A–Z / Z–A, and Most characters
+or Most pages where those mean something. With nothing typed, "Best match" is
+not offered and the list is A–Z. `createIndex()` in search-core.js stamps every item
+with `created` / `updated` (0 when unknown, sorted last) from the feeds' `v`
+and the index's dates. Each tab keeps its own choices while the page is
+open; the box is built once per tab and only its counts change as you type,
+so the author search keeps its focus. It carries its own **Filters** button
+(`#sp-filter-toggle`) because a `.filter-bar` is hidden under 640px until
+opened: without one the box simply did not exist on a phone.
 
 ## Caching (and why the site is fast on a phone)
 
@@ -4255,7 +4637,16 @@ parsed object per public feed URL in each document. Failed loads retry;
 private `?drafts=` requests are never shared. Browse pages and top-bar search
 use the same URLs. `/api/home` sends counts, compact collection/script tiles,
 eight recent characters and one featured character rather than every
-character. It keeps random tile selection in the browser and keys the daily
+character. The featured lede is flattened by the shared wiki formatter on the
+server. The homepage loads its scripts with `defer` in dependency order, and
+keeps its presentation in the versioned `assets/home.js`; it does not eagerly
+load creators.js or the wiki/news article renderers. News cards come from
+`/api/news?limit=3&format=cards`, rendered with the same NewsRender card helper.
+Public news lists use news-scoped version keys, limit/format/deploy-specific
+ETags, coalesced builds and the internal edge cache. Authorized draft lists
+remain uncached. Failed news reads are never stored as empty lists. Both
+`/api/home` and public news check conditional requests before building bodies.
+It keeps random tile selection in the browser and keys the daily
 featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
 script/collection `?fields=browse` omits editor/export payloads. The character
 `card` feed and full feeds retain export fields. All Characters loads both
@@ -4286,15 +4677,36 @@ fields; authenticated `/api/user` responses remain private and uncached.
 
 **3. Images.** Character icons, roster thumbnails, script/collection banners
 and logos carry their row's `v` stamp. Versioned image URLs use immutable
-browser/edge caching; bare URLs revalidate with ETags. Canonical row addresses
+browser/edge caching; bare URLs revalidate with ETags. **An art upload
+touches its row** (`touchArtRow()` in worker.js, called by `/api/upload` and
+`/api/bloodstar-art`): the bulk standardizer, the thumbnail backfill and a
+Bloodstar re-import all replace the picture without saving the page, and
+until this the wiki kept serving the OLD icon and thumbnail at the old `v`
+for up to a year while only the export's bare URL saw the new file. The
+slot names the identity (`-alt`/`-alt2`/`-token` stripped), so it is one
+primary-key write; a legacy path that is not a slug is found by a JSON
+scan, only on a miss. It moves `updated_at`, so a bulk run reorders the
+account page's and dashboard's "recent edits" lists once. **It also moves
+the stamp the edit-conflict check compares** (`editConflict()`: the editors
+post the `updated_at` they loaded as `baseUpdatedAt`, and a save whose base
+no longer matches the row is refused with a 409 rather than overwriting
+somebody else's work). The editors upload the art and THEN save, so every
+save that came with a new icon was refused as somebody else's edit. So
+`/api/upload` takes `baseUpdatedAt` too — checked through `artRowStamp()`
+BEFORE the bytes land, since a stale tab's icon must not overwrite the live
+one either — and answers with the row's new `updatedAt`, which `edit.html`'s
+`apiUpload()` and `mass-upload.html`'s adopt as the base for the save that
+follows. A client that sends no stamp (Icon Forge, the standardizer, the
+thumbnail backfill, Bloodstar) is left alone, exactly as the save handlers
+leave one. Canonical row addresses
 and versions override old roster JSON. Remote image URLs and exported script
 JSON retain their original URLs.
 
 Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
 (under 512 bytes) fall back to the original; versioned thumbnail fallbacks
 keep their existing one-hour limit. Writing original art retires its thumb,
-and the browser uploader regenerates it. The featured image loads eagerly;
-secondary gallery images load on approach or interaction, respecting Save-Data.
+and the browser uploader regenerates it. The homepage featured image loads
+lazily below the fold; secondary gallery images load on approach or interaction, respecting Save-Data.
 An official character has no `thumb/` twin: `thumbSrc()` draws the bundled
 painted WebP (`assets/fancyscripts/icons/{id}.webp`, ~13 KB, immutable, one
 per roles.json id) for an `off-` row instead of the app's ~24 KB CDN copy,

@@ -639,7 +639,7 @@
         for (var i = 0; i < all.length; i++) {
           if (all[i].el === t) {
             var l = all[i];
-            showTip('<strong>' + escHTML(l.a.d.name) + ' &harr; ' + escHTML(l.b.d.name) + '</strong>' +
+            showTip('<strong>' + escHTML(l.a.d.name) + ' <span class="ico ico-swap" aria-hidden="true"></span> ' + escHTML(l.b.d.name) + '</strong>' +
               '<span class="jg-tip-text">' + escHTML(l.e.text) + '</span>', p.x, p.y);
             return;
           }

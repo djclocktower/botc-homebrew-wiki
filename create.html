@@ -138,7 +138,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -147,7 +147,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -165,12 +165,12 @@
       <!-- import from JSON -->
       <fieldset class="import">
         <legend>Import from JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 8px">Upload or paste an official-schema character JSON to autofill ability, flavour, team, night order, reminders &amp; jinxes.</p>
+        <p class="sub" style="margin:0 0 8px">Upload or paste a character&rsquo;s script JSON to fill in the form.</p>
         <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
         <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
         <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
         <div id="importmsg"></div>
-        <p class="sub" style="margin:10px 0 0">Have a whole script or a master list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Mass-upload them all at once &rarr;</a></p>
+        <p class="sub" style="margin:10px 0 0">Have a whole script or list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Mass-upload them &rarr;</a></p>
       </fieldset>
 
       <div class="fld">
@@ -194,13 +194,13 @@
           <label for="creator">Creator</label>
           <input type="text" id="creator" placeholder="Your name or handle">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
-          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
+          <span class="credit-unlink-hint">Tick this if you’re uploading someone else’s character. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
         </div>
       </div>
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(bold line at top of Summary; also the JSON ability)</span></label>
         <textarea id="ability" placeholder="Each night, choose a player: &hellip;"></textarea>
-        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge ↗</a>
+        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge <span class="ico ico-external" aria-hidden="true"></span></a>
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
@@ -229,16 +229,16 @@
         <div class="fmt-help">
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
-            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em> &mdash; braces rather than <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
+            <li><code>**bold**</code> prints <strong>bold</strong> and <code>{{i|text}}</code> prints <em>italics</em> (single <code>*asterisks*</code> don&rsquo;t work)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
-            <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
-            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens &mdash; and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
+            <li><code>[[Snake Charmer]]</code> links to that character (the official wiki, or its page here); any other name prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> when it is one of this character&rsquo;s own reminders, and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span></li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
-            <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that one that way round only</li>
-            <li>The Ability box takes none of these &mdash; it is the character&rsquo;s rule, printed verbatim on tokens, exports and cards</li>
+            <li><code>{{drop|T}}</code> at the start of a paragraph makes that letter a drop cap</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (only this way round)</li>
+            <li>The Ability box takes none of these</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -250,12 +250,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
-        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is usually for good characters only. Its text still prints on the page; empty the box to remove the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
-        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is usually for evil characters only. Its text still prints on the page; empty the box to remove the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -265,7 +265,7 @@
         <div class="fld">
           <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
-          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
+          <div class="sub" style="margin-top:4px">If blank, a collection that lists this character fills it in.</div>
         </div>
       </div>
       <div class="fld">
@@ -274,15 +274,15 @@
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
-        <label for="pronunciation">Pronunciation <span class="hint">(optional &mdash; a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
+        <label for="pronunciation">Pronunciation <span class="hint">(optional: a line under the flavour quote)</span></label>
         <input type="text" id="pronunciation">
       </div>
       <div class="fld">
-        <label for="ipa">IPA spelling <span class="hint">(optional &mdash; e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
+        <label for="ipa">IPA spelling <span class="hint">(optional, e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
         <input type="text" id="ipa">
       </div>
       <div class="fld">
-        <label for="respelling">Pronunciation respelling <span class="hint">(optional &mdash; e.g. buh-GAIN)</span></label>
+        <label for="respelling">Pronunciation respelling <span class="hint">(optional, e.g. buh-GAIN)</span></label>
         <input type="text" id="respelling">
       </div>
       <div class="fld">
@@ -298,34 +298,50 @@
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="art preview">
         <div id="artStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
-          <div class="sub" style="margin-top:4px">Resize fits your art to the standard 591&times;591 frame. Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
+          <button type="button" class="btn btn-sm" id="artStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame. Resize restores that fit; Adjust lets you move and size it by hand.</div>
         </div>
         <div class="sub" style="margin-top:6px">
-          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
+          <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing <span class="ico ico-external" aria-hidden="true"></span></a>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
+        <!-- Display size: how big the icon is DRAWN on the character page, and
+             nowhere else. The file in the art slot and the JSON export are
+             the "true size" (the standard 591 frame, so the script tool prints
+             it beside official icons); this only scales the emblem on /c/.
+             Off by default, and off means the page follows the stylesheet. -->
+        <div id="artScaleWrap" style="margin-top:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="artScaleOn" style="width:17px;height:17px;margin:0">
+            <label for="artScaleOn" style="margin:0">Change how big the icon is displayed on this page</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <input type="range" id="artScale" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
+            <output id="artScaleOut" for="artScale" style="min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums">100%</output>
+          </div>
+          <div class="sub" style="margin-top:4px">The icon file, export and cards keep the true size.</div>
+        </div>
       </div>
       <div class="fld" data-art-slot="alt">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional: the flipped-alignment icon)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAltStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove alternate art</button>
       </div>
       <div class="fld" data-art-slot="alt2">
         <label for="artAlt2">Evil art</label>
         <input type="file" id="artAlt2" accept="image/*">
         <img id="artAlt2Thumb" class="artthumb" alt="evil art preview">
         <div id="artAlt2StdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAlt2Std">&#9635; Resize icon</button>
-          <button type="button" class="btn btn-sm" id="artAlt2Adjust">&#9998; Adjust by hand</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Std"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Adjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
         </div>
-        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
+        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove evil art</button>
       </div>
       <!-- The printable token — the Token Tool's finished token, saved to
            art/{identity}-token.png. The tick puts it in the page's icon
@@ -333,15 +349,15 @@
            that exists, so here the slot takes an upload and the fine-tuning
            door appears on the edit page after the first save. -->
       <div class="fld" data-art-slot="token">
-        <label>Printable token <span class="hint">(optional &mdash; the Token Tool's finished token for this character)</span></label>
+        <label>Printable token <span class="hint">(optional: a finished token from the Token Tool)</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
           <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
           <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
         </div>
         <input type="file" id="tokenFile" accept="image/*">
         <img id="tokenThumb" class="artthumb" alt="printable token preview">
-        <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px">&#10005; Remove token image</button>
-        <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box and a default token is drawn from your art automatically. You can also upload a finished token image here; fine-tuning lives in the Token Tool, on the edit page once the character is saved.</div>
+        <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px"><span class="ico ico-x" aria-hidden="true"></span> Remove token image</button>
+        <div class="sub" id="tokenHint" style="margin-top:6px">Tick the box to draw a default token from your art, or upload your own. After saving, you can fine-tune it in the Token Tool.</div>
       </div>
 
       <fieldset>
@@ -360,11 +376,11 @@
         </div>
         <div class="row2">
           <div class="fld">
-            <label for="firstNight">First-night wake priority <span class="hint">(0 = doesn't wake; higher = later)</span></label>
+            <label for="firstNight">First-night order <span class="hint">(0 = doesn't wake; higher = later)</span></label>
             <input type="number" id="firstNight" value="0" min="0" step="0.0001">
           </div>
           <div class="fld">
-            <label for="otherNight">Other-nights wake priority <span class="hint">(0 = doesn't wake)</span></label>
+            <label for="otherNight">Other-nights order <span class="hint">(0 = doesn't wake)</span></label>
             <input type="number" id="otherNight" value="0" min="0" step="0.0001">
           </div>
         </div>
@@ -405,25 +421,25 @@
 
       <fieldset id="related-fld">
         <legend>Related Pages</legend>
-        <p class="sub" style="margin:0 0 10px">The pages this character is about: a character its ability names, the wiki page for a condition it uses, a script, a collection, or any web link. They appear on the page after the Summary, each with a coloured edge saying what it links to. Leave this empty and the page shows no Related section.</p>
+        <p class="sub" style="margin:0 0 10px">Links to pages this character relates to: characters, wiki pages, scripts, collections or any website. They show after the Summary.</p>
         <div id="relatedrows"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addrelated">+ Add related page</button>
       </fieldset>
 
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
-        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
+        <p class="sub" style="margin:0 0 10px">Titled boxes for the character's sidebar. A blank line starts a new paragraph.</p>
         <div id="customboxes"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
 
       <fieldset>
         <legend>Who can edit this page</legend>
-        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
+        <p class="sub" style="margin:0 0 10px">You can put back any earlier version from the page's history.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Default: tags open to anyone until I tag the page myself</option>
-            <option value="closed">Only me (and the wiki admins)</option>
+            <option value="closed">Only me</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
@@ -433,19 +449,19 @@
         </div>
         <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
           <label>Approved editors</label>
-          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <p class="sub" style="margin:0 0 8px">People you name can edit this page, drafts included. Publishing, deleting and this list stay with you.</p>
           <div id="editors-box"></div>
         </div>
       </fieldset>
 
       <fieldset>
         <legend>Custom JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
+        <p class="sub" style="margin:0 0 10px">Replaces the automatic JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
       </fieldset>
 
       <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
-      <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account and hidden from the wiki until you publish">Save as Draft</button>
       <div id="status"></div>
     </div>
 
@@ -596,8 +612,8 @@
           warn.className = 'jx-conflict';
           row.appendChild(warn);
         }
-        warn.innerHTML = '\u26a0 <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
-          esc(String(hit.text).slice(0, 140)) + '\u201d \u2014 their page keeps their wording, so the two can disagree. ' +
+        warn.innerHTML = '<span class="ico ico-warning" aria-hidden="true"></span> <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
+          esc(String(hit.text).slice(0, 140)) + '\u201d. Their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + esc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
     }
@@ -650,7 +666,7 @@
       row.innerHTML =
         '<input type="text" class="jx-name" placeholder="Jinxed character (e.g. Goon)">' +
         '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
-        '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm jx-del" aria-label="Remove jinx"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
@@ -678,7 +694,7 @@
       row.className = 'box-row';
       row.innerHTML =
         '<input type="text" class="bx-title" placeholder="Box title">' +
-        '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
+        '<button type="button" class="btn btn-del btn-sm bx-del" aria-label="Remove box"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
       if (title)   row.querySelector('.bx-title').value   = title;
@@ -756,6 +772,7 @@
         respelling: $('respelling').value.trim(),
         translatedBy: $('translatedBy').value.trim(),
         iconBy: $('iconBy').value.trim(),
+        artScale: artScaleSetting(),
         edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value) || 0,
         firstNightReminder: $('fnReminder').value.trim(),
@@ -893,12 +910,27 @@
       });
     }
 
+    /* Picked art lands already standardized (assets/art-normalize.js): the
+       figure trimmed and set to the official icons' size on the 591 frame.
+       It used to wait for the Resize button, and most people never pressed
+       it — so the wiki filled up with icons cropped to the ink, which the
+       official script tool prints half again the size of the character
+       beside them. The file AS PICKED is kept for Adjust by hand, which is
+       still the way to a tighter or looser crop; the plain 600px copy stands
+       in only when the canvas cannot be read. */
+    function standardizedCopy(src) {
+      return loadImageToCanvas(src, false).then(function (url) {
+        if (typeof normalizeArtDataURL !== 'function') return url;
+        return normalizeArtDataURL(url).catch(function () { return url; });
+      });
+    }
+
     $('art').addEventListener('change', function (e) {
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
         artOriginal = ev.target.result;
-        loadImageToCanvas(ev.target.result, false).then(function (url) {
+        standardizedCopy(ev.target.result).then(function (url) {
           artDataURL = url; importedImage = null;
           var th = $('artthumb'); th.src = url; th.style.display = 'block';
           $('artStdWrap').style.display = ''; $('arturl').textContent = ''; update();
@@ -927,7 +959,7 @@
         var reader = new FileReader();
         reader.onload = function (ev) {
           slot.setOrig(ev.target.result);
-          loadImageToCanvas(ev.target.result, false).then(function (url) {
+          standardizedCopy(ev.target.result).then(function (url) {
             slot.set(url);
             var th = $(id + 'Thumb'); th.src = url; th.style.display = 'block';
             $(id + 'StdWrap').style.display = ''; $(id + 'Clear').style.display = ''; update();
@@ -981,6 +1013,24 @@
       $('tokenClear').style.display = 'none'; update();
     });
     $('tokenArt').addEventListener('change', update);
+    /* Display size: the slider is greyed out until the box is ticked, and an
+       unticked box posts nothing — so the page follows the stylesheet and
+       the row grows no key. The value is a whole percentage inside Render's
+       range; the Worker clamps it again on save. */
+    function artScaleSetting() {
+      if (!$('artScaleOn').checked) return 0;
+      var n = Math.round(Number($('artScale').value));
+      return (isFinite(n) && n !== 100) ? n : 0;
+    }
+    function syncArtScale() {
+      var on = $('artScaleOn').checked;
+      $('artScale').disabled = !on;
+      $('artScaleOut').textContent = $('artScale').value + '%';
+      $('artScaleOut').style.opacity = on ? '' : '.5';
+    }
+    $('artScaleOn').addEventListener('change', function () { syncArtScale(); update(); });
+    $('artScale').addEventListener('input', function () { syncArtScale(); update(); });
+    syncArtScale();
     // Ticking the box draws a token with the complete default settings by
     // itself — nobody should have to visit the Token Tool just to have one.
     // The rendered image lands in tokenDataURL exactly as an upload would,
@@ -1006,15 +1056,15 @@
     // ── opt-in: standardize icon to the 591x591 frame ──────────────
     function standardizeInto(getUrl, setUrl, thumbId, btnId) {
       var url = getUrl(); if (!url || typeof normalizeArtDataURL !== 'function') return;
-      var btn = $(btnId), label = btn.textContent, th = $(thumbId);
+      var btn = $(btnId), label = btn.innerHTML, th = $(thumbId);
       btn.disabled = true; btn.textContent = 'Resizing…';
       normalizeArtDataURL(url).then(function (out) {
         setUrl(out); th.src = out;
-        btn.textContent = '✓ Resized'; update();
-        setTimeout(function () { btn.textContent = label; btn.disabled = false; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Resized'; update();
+        setTimeout(function () { btn.innerHTML = label; btn.disabled = false; }, 1400);
       }).catch(function () {
         btn.textContent = 'Could not resize'; btn.disabled = false;
-        setTimeout(function () { btn.textContent = label; }, 2200);
+        setTimeout(function () { btn.innerHTML = label; }, 2200);
       });
     }
     $('artStd').addEventListener('click', function () {
@@ -1029,14 +1079,14 @@
     function adjustInto(getSrc, setUrl, thumbId, btnId, title) {
       var src = getSrc();
       if (!src || !window.ArtAdjust) return;
-      var btn = $(btnId), label = btn.textContent;
+      var btn = $(btnId), label = btn.innerHTML;
       btn.disabled = true;
       window.ArtAdjust.open(src, { title: title }).then(function (out) {
         btn.disabled = false;
         if (!out) return;                 // cancelled; leave the art alone
         setUrl(out); $(thumbId).src = out; update();
-        btn.textContent = '✓ Adjusted';
-        setTimeout(function () { btn.textContent = label; }, 1400);
+        btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Adjusted';
+        setTimeout(function () { btn.innerHTML = label; }, 1400);
       }).catch(function (err) {
         btn.disabled = false;
         alert((err && err.message) || 'That image could not be adjusted here.');
@@ -1113,7 +1163,7 @@
           $('arturl').textContent = ''; msg.className = 'ok'; msg.textContent = 'Imported successfully (icon loaded).'; update();
         }).catch(function () {
           artDataURL = null;
-          $('arturl').innerHTML = 'Icon could not be auto-loaded (the host blocks it). Original URL: <a href="' + imgUrl + '" target="_blank">' + imgUrl + '</a><br>Please upload the art manually above.';
+          $('arturl').innerHTML = 'Icon could not be loaded (the host blocks it). Original URL: <a href="' + imgUrl + '" target="_blank">' + imgUrl + '</a><br>Please upload the art manually above.';
           msg.className = 'ok'; msg.textContent = 'Imported. Icon must be uploaded manually (see note under Character art).'; update();
         });
       } else {
@@ -1131,7 +1181,7 @@
           var obj = data;
           if (Array.isArray(data)) {
             obj = data.filter(function (x) { return x && typeof x === 'object' && x.id !== '_meta' && x.ability; })[0];
-            if (!obj) throw new Error('No character with an ability found in that array.');
+            if (!obj) throw new Error('No character with an ability found in that JSON.');
           }
           if (!obj || !obj.ability) throw new Error('That JSON has no "ability" field.');
           applyImport(obj);
@@ -1228,7 +1278,7 @@
         })
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
-          setStatus('work', verb + '&hellip; saving to database');
+          setStatus('work', verb + '&hellip; saving the page');
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
             art: d.art, image: d.image, creator: d.creator,
@@ -1241,6 +1291,7 @@
             appearsIn: d.appearsIn, tags: d.tags,
             pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
             translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
+            artScale: d.artScale,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
@@ -1263,6 +1314,7 @@
             entry.imageAlt2 = ART_BASE + slug + '-alt2.png';
           }
           if ($('tokenArt').checked) entry.tokenArt = true;
+          if (!entry.artScale) delete entry.artScale;   // off, or 100: the default, stored as nothing
           if (tokenDataURL) {
             entry.token      = 'art/' + slug + '-token.png';
             entry.tokenImage = ART_BASE + slug + '-token.png';
@@ -1287,9 +1339,9 @@
           // The Worker downgrades a publish to a draft when there is no icon,
           // so trust what came back rather than what we asked for.
           if (saved && saved.status === 'draft') {
-            setStatus('ok', '&#10003; Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account">your account page</a>.');
+            setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account">your account page</a>.');
           } else {
-            setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
+            setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
           }
           // Partial-page warning / missing-icon explanation.
           if (window.showSaveNotice) window.showSaveNotice(saved, slug);
@@ -1304,7 +1356,7 @@
           $('save-draft').disabled = false;
         })
         .catch(function (err) {
-          setStatus('err', '&#10007; ' + err.message);
+          setStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
           $('publish').disabled = false;
           $('save-draft').disabled = false;
         });

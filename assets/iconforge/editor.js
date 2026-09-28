@@ -129,7 +129,7 @@ export function openEditor(o) {
   const frameWrap = el('div', 'if-editor-frame');
   const loading = el('div', 'if-editor-load');
   loading.appendChild(el('div', 'if-spin'));
-  const loadMsg = el('p', null, 'Summoning the editor… the first load is a one-time 1.4 MB download, which a phone on a slow connection can take a while over.');
+  const loadMsg = el('p', null, 'Summoning the editor… The first load is a 1.4 MB download.');
   loading.appendChild(loadMsg);
   const frame = document.createElement('iframe');
   frame.title = o.title;
@@ -178,7 +178,7 @@ export function openEditor(o) {
     if (!Layers) {
       loading.innerHTML = '';
       loading.appendChild(el('p', 'err', 'The editor never started.'));
-      loading.appendChild(el('p', null, 'It timed out after two minutes. Close this and try again, or edit your artwork elsewhere and upload the result.'));
+      loading.appendChild(el('p', null, 'It timed out. Close this and try again.'));
       return;
     }
 
@@ -248,7 +248,7 @@ export function openEditor(o) {
     } catch (e) {
       apply.disabled = false;
       apply.textContent = 'Use this artwork';
-      loadMsg.textContent = 'Could not read the canvas back: ' + (e && e.message ? e.message : e);
+      loadMsg.textContent = 'Could not bring the drawing back: ' + (e && e.message ? e.message : e);
       loading.hidden = false;
     }
   });

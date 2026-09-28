@@ -125,10 +125,19 @@
     // and the official roster, and "show me only one of those" is the first
     // thing anyone wants of it.
     var SOURCES = Array.isArray(opts.sourceChips) ? opts.sourceChips : [];
+    // "Group: By team / All together". The cards arrive in one section per
+    // team; All together lifts every card into one grid of its own so the
+    // chosen sort runs across the whole roster instead of within each team.
+    // Offered on the card grids renderRosterCards() draws (the flat grid is
+    // built in that markup) and only when there is more than one team to
+    // lump together. The Script Builder's rows pass their own selectors and
+    // do without it. opts.groupChoice: false switches it off.
+    var GROUP_CHOICE = opts.groupChoice !== false && !opts.sectionSel && sections.length > 1;
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [],
                inSources: [], exSources: [], creator: '',
                showPartial: PARTIAL_ON, curataOnly: false, favOnly: false, sort: DEFAULT_SORT,
+               group: 'team',
                q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
     }
     // The reader's saved characters, once known (a Set), or null: logged out,
@@ -199,13 +208,13 @@
         '><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
       if (wantPartial) {
         html += '<button type="button" class="filter-chip' + (PARTIAL_ON ? ' active' : '') +
-          '" id="cf-partial" title="Unfinished pages: an ability and an icon, but no tags, no almanac text and no mechanics.">Show Partial (' + nPartial + ')</button>';
+          '" id="cf-partial" title="Unfinished pages, missing tags or almanac text.">Show Partial (' + nPartial + ')</button>';
       }
       if (wantCurata) {
         html += '<button type="button" class="filter-chip filter-chip-curata" id="cf-curata" title="Pages the wiki admins have marked as Curata.">Curata only (' + nCurata + ')</button>';
       }
       if (wantFav) {
-        html += '<button type="button" class="filter-chip filter-chip-fav" id="cf-fav" hidden title="Characters you saved, and every character on a script or collection you saved.">' +
+        html += '<button type="button" class="filter-chip filter-chip-fav" id="cf-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' +
           window.Favorites.heartSVG() + ' Favorites</button>';
       }
       html += '</div></div>';
@@ -222,6 +231,12 @@
       '<option value="recent">Recently added</option>' +
       (HAS_SAO ? '<option value="sao">Steven Approved Order</option>' : '') +
       '</select></div>';
+    if (GROUP_CHOICE) {
+      html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="cf-group">' +
+        '<option value="team">By team</option>' +
+        '<option value="none">All together</option>' +
+        '</select></div>';
+    }
     html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="cf-reset">Reset filters</button></div>';
     bar.innerHTML = html;
     // Visibility is governed by the .open class, not the [hidden] attribute
@@ -280,8 +295,13 @@
       // Count what is saved among THESE cards; the chip only shows when that
       // is more than nothing. Re-counted after every toggle on the page (a
       // card's own heart, on pages that draw one) through onChange.
+      // Only re-applies when what is shown depends on the answer: every
+      // heart on the cards (assets/card-actions.js) calls this through
+      // onChange, and re-laying out the grid for one of them would move the
+      // card out from under the reader's finger.
       var favLoad = function () {
         window.Favorites.characterSlugs().then(function (set) {
+          var wasOn = STATE.favOnly;
           FAV_SET = set;
           var n = 0;
           if (set) cards.forEach(function (c) { if (set.has(c.getAttribute('data-slug'))) n++; });
@@ -290,7 +310,7 @@
           var group = bar.querySelector('#cf-status-group');
           if (group && !(partialBtn || curataBtn)) group.hidden = !n;
           if (!n && STATE.favOnly) { STATE.favOnly = false; favBtn.classList.remove('active'); }
-          apply();
+          if (wasOn || STATE.favOnly) apply();
         });
       };
       favLoad();
@@ -301,6 +321,8 @@
     var sortSel = bar.querySelector('#cf-sort');
     sortSel.value = STATE.sort;
     sortSel.addEventListener('change', function () { STATE.sort = sortSel.value; apply(); });
+    var groupSel = bar.querySelector('#cf-group');
+    if (groupSel) groupSel.addEventListener('change', function () { STATE.group = groupSel.value; apply(); });
     bar.querySelector('#cf-reset').addEventListener('click', function () {
       if (searchEl) searchEl.value = '';
       STATE = freshState();
@@ -308,6 +330,7 @@
       if (partialBtn) partialBtn.classList.toggle('active', STATE.showPartial);
       if (crSel) crSel.value = '';
       sortSel.value = STATE.sort;
+      if (groupSel) groupSel.value = STATE.group;
       apply();
     });
     function onSearch() {
@@ -369,43 +392,74 @@
       return { ability: ab ? ab.textContent : '', name: card.getAttribute('data-name') || '' };
     }
 
-    // Which sort the DOM is currently in, so sortCards() can tell whether
-    // there is anything to do.
+    // Which sort and grouping the DOM is currently in, so sortCards() can
+    // tell whether there is anything to do.
     var appliedSort = null;
 
+    function sortArr(arr) {
+      if (STATE.sort === 'name-asc') arr.sort(function (a, b) { return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || ''); });
+      else if (STATE.sort === 'name-desc') arr.sort(function (a, b) { return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || ''); });
+      else if (STATE.sort === 'recent') arr.sort(function (a, b) { return (+b.getAttribute('data-order') || 0) - (+a.getAttribute('data-order') || 0); });
+      // SAO orders within a team, and grouped cards are already one section
+      // per team — so sorting each grid on its own is the whole job there.
+      // All together, it runs across the lot.
+      else if (STATE.sort === 'sao' && HAS_SAO) {
+        arr.sort(function (a, b) { return window.saoCompare(saoSubject(a), saoSubject(b)); });
+      }
+      return arr;
+    }
+
+    // The one grid "All together" uses, built the first time it is asked
+    // for, above the team sections it empties. Not a .coll-team, so nothing
+    // that reads the team sections mistakes it for one.
+    var flat = null;
+    function flatGrid() {
+      if (!flat) {
+        flat = document.createElement('section');
+        flat.className = 'type-section cf-flat';
+        flat.innerHTML = '<div class="char-grid"></div>';
+        sections[0].parentNode.insertBefore(flat, sections[0]);
+      }
+      return flat.querySelector('.char-grid');
+    }
+
     function sortCards() {
-      /* Re-appending every card is the expensive half of apply() — 1,900 DOM
-         moves in the Script Builder's sidebar — and the order only changes
-         when the reader picks a different sort. Typing in the search box, or
-         toggling a chip, changes what is SHOWN and never the order. */
-      if (STATE.sort === appliedSort) return;
-      appliedSort = STATE.sort;
+      /* Re-appending every card is the expensive half of apply(): 1,900 DOM
+         moves in the Script Builder's sidebar. The order only changes when
+         the reader picks a different sort or grouping. Typing in the search
+         box, or toggling a chip, changes what is SHOWN and never the order. */
+      var want = STATE.sort + '|' + (GROUP_CHOICE ? STATE.group : '');
+      if (want === appliedSort) return;
+      appliedSort = want;
+      if (GROUP_CHOICE && STATE.group === 'none') {
+        // _origOrder is the order the server rendered, which IS "page order";
+        // the sections laid end to end keep it.
+        var all = [];
+        sections.forEach(function (sec) { if (sec._origOrder) all = all.concat(sec._origOrder); });
+        var fg = flatGrid();
+        sortArr(all).forEach(function (card) { fg.appendChild(card); });
+        return;
+      }
+      // Grouped: every card goes back to its own team's grid, in order.
       sections.forEach(function (sec) {
         var g = sec.querySelector(SEL.inner);
         if (!g || !sec._origOrder) return;
-        // _origOrder is the order the server rendered, which IS "page order".
-        var arr = sec._origOrder.slice();
-        if (STATE.sort === 'name-asc') arr.sort(function (a, b) { return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || ''); });
-        else if (STATE.sort === 'name-desc') arr.sort(function (a, b) { return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || ''); });
-        else if (STATE.sort === 'recent') arr.sort(function (a, b) { return (+b.getAttribute('data-order') || 0) - (+a.getAttribute('data-order') || 0); });
-        // Cards are already grouped into one section per team, and SAO orders
-        // within a team — so sorting each grid on its own is the whole job.
-        else if (STATE.sort === 'sao' && HAS_SAO) {
-          arr.sort(function (a, b) { return window.saoCompare(saoSubject(a), saoSubject(b)); });
-        }
-        arr.forEach(function (card) { g.appendChild(card); });
+        sortArr(sec._origOrder.slice()).forEach(function (card) { g.appendChild(card); });
       });
     }
 
     function apply() {
       sortCards();
       var shown = 0;
+      // All together, every card sits in the one flat grid and the team
+      // sections are empty, so only the flat grid is counted below.
+      var flatMode = GROUP_CHOICE && STATE.group === 'none';
       sections.forEach(function (sec) {
         var secShown = 0;
         // Writing a style property re-runs style resolution for that element
         // even when the value is unchanged, so only the cards that actually
         // flipped are touched.
-        (sec._cards || []).forEach(function (card) {
+        if (!flatMode) (sec._cards || []).forEach(function (card) {
           var vis = cardVisible(card);
           var want = vis ? '' : 'none';
           if (card.style.display !== want) card.style.display = want;
@@ -416,6 +470,15 @@
         var cnt = sec.querySelector(SEL.count);
         if (cnt) cnt.textContent = '(' + secShown + ')';
       });
+      if (flat) {
+        var flatShown = 0;
+        [].slice.call(flat.querySelectorAll(SEL.card)).forEach(function (card) {
+          var vis = cardVisible(card);
+          card.style.display = vis ? '' : 'none';
+          if (vis) { flatShown++; shown++; }
+        });
+        flat.style.display = flatShown ? '' : 'none';
+      }
       var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
         STATE.exTags.length + STATE.inSources.length + STATE.exSources.length +
         (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +

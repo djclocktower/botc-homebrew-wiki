@@ -75,7 +75,7 @@
       var showRem = v.reminders !== false;
       var icons = !!v.icons && typeof opts.artOf === 'function';
       if (!L.first.length && !L.other.length) {
-        container.innerHTML = '<p class="no-empty">No character on this script wakes at night, so there is no night order to arrange.</p>';
+        container.innerHTML = '<p class="no-empty">No character on this script wakes at night.</p>';
         if (opts.onEmpty) opts.onEmpty(true);
         return;
       }
@@ -85,7 +85,7 @@
         var rows = items.length
           ? items.map(function (it, i) {
             return '<div class="no-row" data-slug="' + esc(it.c.slug) + '" data-i="' + i + '">' +
-              '<span class="no-grip" aria-hidden="true" title="Drag to move">' + (window.UIIcons ? UIIcons.svg('grip') : '&#10247;') + '</span>' +
+              '<span class="no-grip" aria-hidden="true" title="Drag to move"><span class="ico ico-grip" aria-hidden="true"></span></span>' +
               '<span class="no-pos">' + (i + 1) + '</span>' +
               (icons ? '<img class="no-ico" loading="lazy" decoding="async" src="' + esc(opts.artOf(it.c)) +
                 '" alt="" onerror="this.style.visibility=\'hidden\'">' : '') +

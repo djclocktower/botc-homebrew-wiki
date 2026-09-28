@@ -5,10 +5,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Token Tool — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Render print-ready character and reminder token sheets for homebrew Blood on the Clocktower characters, right in your browser.">
+<meta name="description" content="Make print-ready character and reminder token sheets for homebrew Blood on the Clocktower characters, right in your browser.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Token Tool">
-<meta property="og:description" content="Render print-ready character and reminder token sheets for homebrew Blood on the Clocktower characters, right in your browser.">
+<meta property="og:description" content="Make print-ready character and reminder token sheets for homebrew Blood on the Clocktower characters, right in your browser.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -351,7 +351,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -360,7 +360,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -379,7 +379,7 @@
       <div class="sb-add-inner">
         <div class="sb-add-head">
           <h2 class="sb-add-title">All Characters</h2>
-          <button class="sb-close-mobile" id="sb-close-mobile" type="button" aria-label="Close">✕</button>
+          <button class="sb-close-mobile" id="sb-close-mobile" type="button" aria-label="Close"><span class="ico ico-x" aria-hidden="true"></span></button>
         </div>
         <input class="sb-filter" id="sb-filter" type="search" placeholder="Filter…" autocomplete="off">
         <div id="sb-add-list" class="sb-add-list">
@@ -392,7 +392,7 @@
     <main class="sb-main" id="content">
       <div class="home-hero" style="padding-bottom:14px">
         <h1>Token Tool</h1>
-        <p>Build a set of characters and render print-ready token sheets — the same renderer used for the official homebrew sets, running right in your browser.</p>
+        <p>Build a set of characters and print their token sheets.</p>
       </div>
 
       <div class="tt-load" id="tt-load"><span class="tt-load-bar"></span><span id="tt-load-text">Loading…</span></div>
@@ -401,8 +401,8 @@
       <div class="tt-toolbar">
         <span class="sb-count" id="tt-count">0 characters</span>
         <span style="display:inline-flex;gap:8px">
-          <button type="button" class="sb-btn sb-btn-import" id="tt-import-open">&#8613; Import JSON</button>
-          <button type="button" class="sb-btn sb-btn-clear" id="tt-clear">✕ Clear All</button>
+          <button type="button" class="sb-btn sb-btn-import" id="tt-import-open"><span class="ico ico-upload" aria-hidden="true"></span> Import JSON</button>
+          <button type="button" class="sb-btn sb-btn-clear" id="tt-clear"><span class="ico ico-x" aria-hidden="true"></span> Clear All</button>
         </span>
       </div>
 
@@ -464,18 +464,18 @@
 
         <section class="tt-card">
           <div class="tt-adj-head" id="tt-assets-toggle">
-            <h2>Custom Assets</h2>
+            <h2>Custom Art</h2>
             <span class="tt-adj-caret" id="tt-assets-caret">&#9662;</span>
           </div>
           <div id="tt-assets-body" style="display:none">
-            <p class="tt-assets-hint">Swap in your own art for parts of the token. PNG with transparency works best; images are session-based and small ones are remembered on this device.</p>
+            <p class="tt-assets-hint">Swap in your own art for parts of the token. Transparent PNGs work best.</p>
             <div id="tt-assets-panel"></div>
           </div>
         </section>
 
         <div class="tt-actions">
           <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
-          <div class="tt-load done" id="tt-load-gen"><span class="tt-load-bar"></span><span>Rendering…</span></div>
+          <div class="tt-load done" id="tt-load-gen"><span class="tt-load-bar"></span><span>Drawing…</span></div>
         </div>
         <div class="tt-out" id="output"></div>
         <div class="tt-thumbs" id="thumbs"></div>
@@ -490,9 +490,9 @@
     <div class="tt-modal-card">
       <div class="tte-head">
         <h2>Import Script JSON</h2>
-        <button type="button" class="tte-close" id="tt-import-close" aria-label="Close">✕</button>
+        <button type="button" class="tte-close" id="tt-import-close" aria-label="Close"><span class="ico ico-x" aria-hidden="true"></span></button>
       </div>
-      <p class="tt-assets-hint">Official script-tool format. Characters referenced by id use this wiki's copy; full character definitions in the JSON are kept as-is (even if a wiki character shares the name) and fetch art from their <code>image</code> URL — you'll be warned about any that can't be fetched. Importing replaces your current set.</p>
+      <p class="tt-assets-hint">Official script-tool format. Importing replaces your current set.</p>
       <div class="tt-row" style="justify-content:flex-start">
         <input type="file" accept=".json,application/json" id="tt-import-file">
       </div>
@@ -506,7 +506,7 @@
     <div class="tt-modal-card">
       <div class="tte-head">
         <h2 id="tte-title">Edit Token</h2>
-        <button type="button" class="tte-close" id="tte-close" aria-label="Close">✕</button>
+        <button type="button" class="tte-close" id="tte-close" aria-label="Close"><span class="ico ico-x" aria-hidden="true"></span></button>
       </div>
       <div class="tt-tf-bar" id="tte-tf-bar"></div>
       <div class="tte-preview" id="tte-preview"></div>

@@ -39,7 +39,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -48,7 +48,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -100,8 +100,8 @@
     function renderInbox(rows) {
       $('sg-title').textContent = 'Suggested Edits';
       $('sg-page').textContent = rows.length
-        ? 'People have proposed changes to your pages. Nothing is live until you approve it.'
-        : 'When somebody proposes a change to one of your pages, it waits here.';
+        ? 'Changes others suggested for your pages. Nothing goes live until you approve it.'
+        : 'Suggested changes to your pages will wait here.';
       $('card').style.display = '';
       $('empty').style.display = rows.length ? 'none' : '';
       $('list').innerHTML = rows.map(function (r) {
@@ -173,7 +173,7 @@
 
     function act(id, action, btn) {
       var reply = $('reply' + id) ? $('reply' + id).value.trim() : '';
-      if (action === 'approve' && !confirm('Apply this suggestion to the page?\n\nThe version on the page now is saved to its history first, so you can put it back.')) return;
+      if (action === 'approve' && !confirm('Apply this suggestion?\n\nThe current version is saved to the history first, so you can put it back.')) return;
       if (action === 'decline' && !confirm('Decline this suggestion?')) return;
       if (action === 'withdraw' && !confirm('Withdraw your suggestion?')) return;
       var row = btn.closest('.sg-row');

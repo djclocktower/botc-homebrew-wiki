@@ -506,7 +506,7 @@
       page.jinxEdits = extra.jinxEdits;
     }
     // What the official app reads back out of an exported script, carried
-    // straight across: house rules, and the link to the almanac this all came
+    // straight across: bootlegger rules, and the link to the almanac this all came
     // from, which is the honest thing to keep pointing at.
     if (opts.bootlegger && meta.bootlegger && meta.bootlegger.length) {
       page.bootlegger = meta.bootlegger;
@@ -524,7 +524,7 @@
     if (opts.changelog !== 'wikipage' || !prose.changelog || !prose.changelog.wiki) return null;
     var meta = bundle.meta || {};
     return {
-      title: (meta.name ? meta.name + ' — Changelog' : 'Changelog'),
+      title: (meta.name ? meta.name + ' Changelog' : 'Changelog'),
       subtitle: 'Imported from the Bloodstar almanac',
       author: opts.creator || meta.author || '',
       body: prose.changelog.wiki,

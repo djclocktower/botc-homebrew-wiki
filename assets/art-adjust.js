@@ -29,7 +29,11 @@
   'use strict';
 
   var TARGET = 591;   // output canvas, the official icon size
-  var FILL = 0.70;    // the standard: figure spans 70% of the frame
+  // The standard fill is OWNED by art-normalize.js (loaded first by both
+  // editors); the fallback only matters if that file failed to load. A
+  // copy that drifted would open the adjuster on a different answer from
+  // the one Resize gives, and the whole point is that it opens on that.
+  var FILL = global.ART_FILL || 0.60;
   var MIN_FILL = 15;  // slider range, in percent of the frame
   var MAX_FILL = 130;
 
@@ -81,7 +85,7 @@
         var panel = el('div', 'aa-panel');
         panel.appendChild(el('h2', 'aa-title', opts.title || 'Adjust icon'));
         panel.appendChild(el('p', 'aa-hint',
-          'Drag the art to move it. The circle is the token edge; the dashed ring is the size most icons on the wiki are.'));
+          'Drag to move the art. The circle is the token edge; the dashed ring is the usual icon size.'));
 
         var stage = el('div', 'aa-stage');
         var canvas = el('canvas', 'aa-canvas');
@@ -115,7 +119,8 @@
         var controls = el('div', 'aa-controls');
         controls.appendChild(size.row);
         controls.appendChild(rot.row);
-        var reset = el('button', 'aa-mini', '↺ Start over');
+        var reset = el('button', 'aa-mini');
+        reset.innerHTML = '<span class="ico ico-reset" aria-hidden="true"></span> Start over';
         reset.type = 'button';
         var btnRow = el('div', 'aa-btns');
         btnRow.appendChild(reset);
@@ -250,7 +255,7 @@
           var out;
           try { out = canvas.toDataURL('image/png'); }
           catch (e) {
-            close(null, new Error('This art is hosted on another site, so the browser will not let it be edited here. Save the file and upload it instead.'));
+            close(null, new Error('This art is hosted on another site and cannot be edited here. Save the file and upload it instead.'));
             return;
           }
           close(out);

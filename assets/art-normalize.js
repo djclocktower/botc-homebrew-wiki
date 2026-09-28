@@ -18,9 +18,31 @@
   'use strict';
 
   var TARGET = 591;          // output canvas is TARGET x TARGET px (official size)
-  var FILL = 0.70;          // figure's longest side spans FILL * TARGET
-                            // (matches official wiki icons, whose figures fill
-                            // ~62-74% of the 591px frame by their longest side)
+  var FILL = 0.60;           // figure's longest side spans FILL * TARGET
+  /* Why 0.60 and not more: this frame is what every consumer draws the icon
+     INTO, with contain-fit, so the transparent margin IS the icon's size —
+     on the wiki's cards, on the /c/ page, and above all in the official
+     script tool, which prints the file it is handed at the same box size as
+     its own icons. Measured (alpha bounding box, longest side / frame):
+       the 191 official icons in assets/icons/ ....... median 0.63, mean 0.64
+       the script tool's own bundled icons ........... median 0.61, mean 0.62
+     and the tool's PDF then scales every NON-bundled image by a further
+     1.1× (its "Custom Icon Size" default) — so wiki art at the old 0.70
+     printed a quarter larger than the official character beside it, and
+     art that was never standardized (a sixth of the live wiki, some at
+     0.9+) printed at half again the size. 0.60 × 1.1 lands on the tool's
+     own 0.62–0.66, and on the wiki it is within the official icons' own
+     spread. Keep art-adjust.js reading ART_FILL, never a copy of it.
+     ART_FILL_TOLERANCE is how far off the standard an already-square
+     image may be before a re-run of the bulk tool rewrites it. */
+  var FILL_TOLERANCE = 0.02;
+  /* The fills the wiki's OWN tools wrote before FILL was what it is now. An
+     icon sitting on the frame at one of these was put there automatically
+     and can be re-fitted without losing anything anybody chose; one on the
+     frame at any other size or position was placed by a person (Adjust by
+     hand, or Icon Forge with its own margin) and is theirs. */
+  var LEGACY_FILLS = [0.70];
+  var CENTER_TOLERANCE = 4;  // px the figure's centre may sit off the frame's
   var ALPHA_THRESHOLD = 16;  // pixels with alpha above this count as "figure"
 
   // Find the bounding box of non-transparent pixels. Returns null if the image
@@ -64,6 +86,41 @@
     }
   }
 
+  /* Is this image already the standard frame with the figure at the standard
+     size? True only for a target×target image whose figure's longest side is
+     within FILL_TOLERANCE of fill×target and whose centre sits on the frame's.
+     Exported so a bulk re-run can leave standard art alone (every pass
+     resamples, and every upload retires a thumbnail). */
+  function isStandardFrame(iw, ih, box, target, fill) {
+    if (iw !== target || ih !== target) return false;
+    var side = Math.max(box.w, box.h) / target;
+    if (Math.abs(side - fill) > FILL_TOLERANCE) return false;
+    var cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    return Math.abs(cx - target / 2) <= CENTER_TOLERANCE && Math.abs(cy - target / 2) <= CENTER_TOLERANCE;
+  }
+
+  /* Placed by hand: already on the frame, but at a size or a position that
+     none of the wiki's automatic passes ever wrote. Nothing marks a
+     deliberate crop in the file, so this is the whole of how one is told
+     apart from an icon the old standard fitted — and a 591 square somebody
+     exported from their own tool reads as placed too, which is the right
+     side to err on: the point of the bulk run is to catch art that was
+     never fitted, not to undo choices. */
+  function isPlacedFrame(iw, ih, box, target, fill) {
+    if (iw !== target || ih !== target) return false;
+    if (isStandardFrame(iw, ih, box, target, fill)) return false;
+    for (var i = 0; i < LEGACY_FILLS.length; i++) {
+      if (isStandardFrame(iw, ih, box, target, LEGACY_FILLS[i])) return false;
+    }
+    return true;
+  }
+
+  /* opts.ifNeeded: resolve null instead of a data URL when the image is
+     already standard (see isStandardFrame).
+     opts.keepPlaced: resolve FALSE when the image was placed by hand (see
+     isPlacedFrame), so a bulk run can leave it exactly as it is. Only the
+     bulk tool asks for this: an editor re-fitting a freshly picked file
+     wants the answer either way. */
   function normalizeArtDataURL(src, opts) {
     opts = opts || {};
     var target = opts.target || TARGET;
@@ -75,11 +132,13 @@
       img.onload = function () {
         var iw = img.naturalWidth || img.width;
         var ih = img.naturalHeight || img.height;
-        if (!iw || !ih) { reject(new Error('Image has no dimensions.')); return; }
+        if (!iw || !ih) { reject(new Error('That image has no size.')); return; }
 
         // Locate the figure (trim transparent padding). An unreadable or
         // fully transparent image comes back as the whole frame, contain-fit.
         var box = artTrimBox(img);
+        if (opts.ifNeeded && isStandardFrame(iw, ih, box, target, fill)) { resolve(null); return; }
+        if (opts.keepPlaced && isPlacedFrame(iw, ih, box, target, fill)) { resolve(false); return; }
 
         // Scale so the figure's longest side spans fill * target, centered.
         var scale = (fill * target) / Math.max(box.w, box.h);
@@ -99,7 +158,7 @@
         try { resolve(out.toDataURL('image/png')); }
         catch (e) { reject(e); }
       };
-      img.onerror = function () { reject(new Error('Could not load image for normalization.')); };
+      img.onerror = function () { reject(new Error('Could not load the image to resize it.')); };
       img.src = src;
     });
   }
@@ -108,4 +167,6 @@
   global.artTrimBox = artTrimBox;
   global.ART_TARGET = TARGET;
   global.ART_FILL = FILL;
+  global.ART_FILL_TOLERANCE = FILL_TOLERANCE;
+  global.ART_LEGACY_FILLS = LEGACY_FILLS.slice();
 })(typeof window !== 'undefined' ? window : this);

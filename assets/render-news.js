@@ -85,7 +85,8 @@
     '</article>';
   }
 
-  /* One card in the /news list and the homepage panel. */
+  /* One card in the /news list and the homepage panel. renderPageCard() below
+     is the same card for a featured custom page. */
   function renderCard(a, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
@@ -98,10 +99,28 @@
     '</a>';
   }
 
+  /* One Featured Articles card: a custom wiki page (/p/{slug}) an admin
+     picked. It is the news card on purpose, so the two grids read as one set
+     of furniture; the top line names who wrote it and where it lives in place
+     of a date. The blurb is plain text, like everywhere else it is shown. */
+  function renderPageCard(p, opts) {
+    opts = opts || {};
+    var root = opts.linkRoot || '';
+    var byline = [p.author ? 'by ' + p.author : '', p.parentName || '']
+      .filter(Boolean).join(' · ');
+    return '<a class="news-card" href="' + root + 'p/' + encodeURIComponent(p.slug) + '">' +
+      (byline ? '<div class="news-card-date">' + esc(byline) + '</div>' : '') +
+      '<h3 class="news-card-title">' + esc(p.title || 'Untitled') + '</h3>' +
+      (p.blurb ? '<p class="news-card-summary">' + esc(p.blurb) + '</p>' : '') +
+      '<span class="news-card-more">Read more →</span>' +
+    '</a>';
+  }
+
   var API = {
     init: init,
     esc: esc, safeHref: safeHref, inlineFormat: inlineFormat,
     renderBody: renderBody, renderArticle: renderArticle, renderCard: renderCard,
+    renderPageCard: renderPageCard,
     autoSummary: autoSummary, formatDate: formatDate
   };
 

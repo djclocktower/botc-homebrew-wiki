@@ -114,11 +114,11 @@
     { id: 'anticlock', sev: 'fix', cat: 'Terminology', label: 'counterclockwise → anti-clockwise',
       from: /\b(counterclockwise|counter-clockwise|anticlockwise)\b/gi,
       to: function () { return 'anti-clockwise'; },
-      note: 'Shugenja phrasing' },
+      note: 'as on the Shugenja' },
 
     { id: 'learnwhether', sev: 'fix', cat: 'Terminology', label: 'learn whether → learn if',
       from: /\blearn whether\b/gi, to: function () { return 'learn if'; },
-      note: 'Flowergirl precedent' },
+      note: 'as on the Flowergirl' },
 
     { id: 'betold', sev: 'fix', cat: 'Terminology', label: 'are told / find out → learn',
       from: /\b(are told|is told|be told|find out|finds out)\b/gi,
@@ -127,7 +127,7 @@
 
     { id: 'beginlearn', sev: 'fix', cat: 'Terminology', label: 'begin by learning → start knowing',
       from: /\bbegin by learning\b/gi, to: function () { return 'start knowing'; },
-      note: 'Washerwoman precedent' },
+      note: 'as on the Washerwoman' },
 
     { id: 'voteout', sev: 'fix', cat: 'Terminology', label: 'voted out / hanged → executed',
       from: /\b(voted out|vote out|hanged|hang|lynched|lynch)\b/gi,
@@ -151,40 +151,40 @@
 
     { id: 'diffrom', sev: 'fix', cat: 'Terminology', label: 'different from → different to',
       from: /\bdifferent from\b/gi, to: function () { return 'different to'; },
-      note: "Devil's Advocate precedent" },
+      note: "as on the Devil's Advocate" },
 
     { id: 'fromthenon', sev: 'fix', cat: 'Terminology', label: 'from then on → from now on',
       from: /\bfrom then on\b/gi, to: function () { return 'from now on'; },
-      note: 'Sweetheart precedent' },
+      note: 'as on the Sweetheart' },
 
     { id: 'midnight', sev: 'fix', cat: 'Terminology', label: 'midnight → night',
       from: /\bmidnight\b/gi, to: function () { return 'night'; },
-      note: 'the game has no midnight — the night phase is just "night"' },
+      note: 'the game has no midnight, just "night"' },
 
     { id: 'duskorder', sev: 'fix', cat: 'Terminology', label: 'until tomorrow dusk → until dusk tomorrow',
       from: /\buntil tomorrow dusk\b/gi, to: function () { return 'until dusk tomorrow'; },
-      note: 'Minstrel is canonical' },
+      note: 'as on the Minstrel' },
 
     { id: 'yesorno', sev: 'fix', cat: 'Terminology', label: 'yes-or-no → yes/no',
       from: /\byes[- ]or[- ]no\b/gi, to: function () { return 'yes/no'; },
-      note: 'Artist precedent' },
+      note: 'as on the Artist' },
 
     { id: 'ifright', sev: 'fix', cat: 'Terminology', label: 'if right → if correct',
       from: /\bif right\b/gi, to: function () { return 'if correct'; },
-      note: 'Gambler "guess wrong" precedent' },
+      note: 'like the Gambler’s "guess wrong"' },
 
     { id: 'lastday', sev: 'fix', cat: 'Terminology', label: 'the last day → the final day',
       from: /\b(the last day|Judgment Day|Judgement Day)\b/gi,
       to: function () { return 'the final day'; },
-      note: 'the corpus is unanimous on "the final day"' },
+      note: 'the official cards all say "the final day"' },
 
     { id: 'noone', sev: 'fix', cat: 'Spelling', label: 'no one → no-one',
       from: /\bno one\b/gi, to: function () { return 'no-one'; },
-      note: 'Vortox precedent' },
+      note: 'as on the Vortox' },
 
     { id: 'notyou', sev: 'fix', cat: 'Terminology', label: '(not you) → (not yourself)',
       from: /\(not you\)/gi, to: function () { return '(not yourself)'; },
-      note: 'Butler / Exorcist precedent' },
+      note: 'as on the Butler and Exorcist' },
 
     { id: 'thirdperson', sev: 'fix', cat: 'Structure', label: 'the cardholder → you',
       from: /\b(the cardholder|the holder|the player with this ability)\b/gi,
@@ -197,11 +197,11 @@
 
     { id: 'insane', sev: 'fix', cat: 'Terminology', label: 'insane / crazy → mad',
       from: /\b(insane|crazy)\b/gi, to: function () { return 'mad'; },
-      note: 'madness has a fixed template' },
+      note: 'madness has fixed wording' },
 
     { id: 'stleak', sev: 'fix', cat: 'Structure', label: 'the Storyteller tells you → you learn',
       from: /\bthe Storyteller tells you\b/gi, to: function () { return 'you learn'; },
-      note: 'Storyteller-voice leakage' },
+      note: 'cards say "you learn"' },
 
     /* The only asterisk on a card is the one in "night*". `(\w+)?` grabs the
        word in front of it so `to` can wave that case through — returning the
@@ -216,7 +216,7 @@
     { id: 'onceever', sev: 'fix', cat: 'Structure', label: 'once ever → Once per game',
       from: /\b(once ever|1 time per game|one time per game)\b/gi,
       to: function () { return 'Once per game'; },
-      note: 'canonical form' },
+      note: 'the official wording' },
 
     { id: 'power', sev: 'fix', cat: 'Terminology', label: 'power → ability',
       from: /\bpower(s)?\b/gi,
@@ -226,7 +226,7 @@
     { id: 'revive', sev: 'warn', cat: 'Terminology', label: 'revive → rise',
       from: /\b(revive|revived|revival)\b/gi,
       to: function () { return 'rise'; },
-      note: '"rise" is corpus standard; resurrected, regurgitated, reborn and raised are official too and are left alone' },
+      note: '"rise" is the usual official word; resurrected, regurgitated, reborn and raised are official too and are left alone' },
 
     /* ── numbers: split by sense ── */
     { id: 'cardinal', sev: 'fix', cat: 'Numbering', label: 'two, three, four… → 2, 3, 4…',
@@ -246,7 +246,7 @@
       to: function (m) {
         return { first: '1st', second: '2nd', third: '3rd', fourth: '4th', fifth: '5th' }[m.toLowerCase()];
       },
-      note: '1st for an ordinal of occurrence; "first" is correct before a plural count (Buddhist, Hindu)' },
+      note: '"1st" for which time something happens; "first" is correct before a plural count (Buddhist, Hindu)' },
 
     /* ── team vs alignment (Guide §6.4) ── */
     { id: 'teamside', sev: 'fix', cat: 'Terminology', label: 'their team → their alignment',
@@ -270,11 +270,11 @@
     { id: 'contraction', sev: 'warn', cat: 'Contraction', label: "can't, don't, you're…",
       from: /\b(can't|don't|doesn't|won't|isn't|aren't|you're|they're|it's|you'd|they'd|you'll|you've|cannot)\b/gi,
       to: function () { return null; },
-      note: 'the corpus is split — 13 cards contract, Vizier and Deviant expand. Pick one style per set; never autofixed' },
+      note: 'the official cards are split: 13 use contractions, Vizier and Deviant spell them out. Pick one style per set; never autofixed' },
 
-    { id: 'ampersand', sev: 'warn', cat: 'Typography', label: 'and → &',
+    { id: 'ampersand', sev: 'warn', cat: 'Punctuation', label: 'and → &',
       from: /\band\b/gi, to: function () { return '&'; },
-      note: '35 official cards use &, 8 use "and", none mix. Suggestion only — "sober and healthy" and "1 and only 1" are official' },
+      note: '35 official cards use &, 8 use "and", none mix. Suggestion only: "sober and healthy" and "1 and only 1" are official' },
 
     { id: 'maymight', sev: 'off', cat: 'May/Might', label: 'may vs might',
       from: /\b(may|might)\b/gi, to: function () { return null; },
@@ -297,11 +297,11 @@
   }
 
   var STRUCTURAL = [
-    { id: 'semicolon', sev: 'fix', cat: 'Typography', label: 'semicolons',
+    { id: 'semicolon', sev: 'fix', cat: 'Punctuation', label: 'semicolons',
       test: function (t) { return t.indexOf(';') !== -1; },
-      note: 'no official ability uses a semicolon — split into sentences or join with &' },
+      note: 'no official ability uses a semicolon. Split into sentences or join with &' },
 
-    { id: 'symbols', sev: 'warn', cat: 'Typography', label: 'symbols not used on cards',
+    { id: 'symbols', sev: 'warn', cat: 'Punctuation', label: 'symbols not used on cards',
       note: 'official card text uses no < > $ # @ ! _ = ; × ÷',
       scan: function (t, opts) {
         // The semicolon rule already says its piece when it is switched on;
@@ -316,17 +316,17 @@
 
     { id: 'killasterisk', sev: 'fix', cat: 'Structure', label: 'night kill needs the asterisk',
       test: function (t) { return /Each night,[^.]*choose[^.:]*:\s*(they|you) die\b/.test(t); },
-      note: 'a direct night kill must be "Each night*" — no kill ability works on the first night' },
+      note: 'a direct night kill must be "Each night*": no kill ability works on the first night' },
 
     { id: 'nestedcolon', sev: 'fix', cat: 'Structure', label: 'two colons in one sentence',
       test: function (t) {
         return sentences(t).some(function (s) { return (s.match(/:/g) || []).length > 1; });
       },
-      note: 'two colons in one sentence is unparsable — restructure into separate sentences' },
+      note: 'two colons in one sentence is hard to read. Split it into separate sentences' },
 
-    { id: 'timingcomma', sev: 'fix', cat: 'Structure', label: 'comma after the timing prefix',
+    { id: 'timingcomma', sev: 'fix', cat: 'Structure', label: 'comma after the timing',
       test: function (t) { return /^(Each night\*?|Each day|Once per game)\s+[a-z]/.test(t); },
-      note: 'the timing prefix needs a comma after it' },
+      note: 'the timing (e.g. "Each night") needs a comma after it' },
 
     { id: 'setupbrackets', sev: 'fix', cat: 'Structure', label: 'setup changes go in brackets',
       test: function (t) {
@@ -339,7 +339,7 @@
       test: function (t) { return /\][^\]]*[a-zA-Z]{3}/.test(t) && !/\]\s*$/.test(t.trim()); },
       note: 'setup brackets belong at the very end of the text' },
 
-    { id: 'ampmix', sev: 'warn', cat: 'Typography', label: 'mixing & and "and"',
+    { id: 'ampmix', sev: 'warn', cat: 'Punctuation', label: 'mixing & and "and"',
       test: function (t) { return t.indexOf('&') !== -1 && /\band\b/i.test(t); },
       note: 'no official card mixes "&" and "and" — pick one' },
 
@@ -348,20 +348,20 @@
       scan: function (t) {
         var m = t.match(/\b(mysterious|shadowy|ancient|terrible|dark|cursed|wicked|sinister|eerie)\b/gi);
         return m ? m.map(function (x) {
-          return '"' + x + '" — flavour belongs in the almanac quote, not in the ability.';
+          return '"' + x + '": flavour belongs in the almanac quote, not in the ability.';
         }) : [];
       } },
 
     /* Off by default: normalise() silently straightens all of these in the
        suggested output, and the official corpus is itself inconsistent
        (the Sailor uses a straight apostrophe, the Lycanthrope a curly one). */
-    { id: 'encoding', sev: 'off', cat: 'Typography', label: 'curly quotes, dashes, ellipses',
+    { id: 'encoding', sev: 'off', cat: 'Punctuation', label: 'curly quotes, dashes, ellipses',
       scan: function (t) {
         var out = [];
-        if (/[‘’]/.test(t)) out.push('curly apostrophe — normalised to a straight one');
-        if (/[“”]/.test(t)) out.push('curly quotes — normalised to straight ones');
-        if (/[–—]/.test(t)) out.push('en/em dash — official text uses neither');
-        if (/…/.test(t)) out.push('ellipsis glyph — spell it out or cut it');
+        if (/[‘’]/.test(t)) out.push('curly apostrophe: changed to a straight one');
+        if (/[“”]/.test(t)) out.push('curly quotes: changed to straight ones');
+        if (/[–—]/.test(t)) out.push('en/em dash: official text uses neither');
+        if (/…/.test(t)) out.push('the … character: spell it out or cut it');
         return out;
       } }
   ];
@@ -389,7 +389,7 @@
     text.replace(TERM_RX, function (m, w, suf, off) {
       var want = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() + (suf || '');
       if (m !== want) {
-        issues.push({ sev: 'fix', cat: 'Casing', rule: 'casing-term', prio: 1,
+        issues.push({ sev: 'fix', cat: 'Capitals', rule: 'casing-term', prio: 1,
                       found: m, suggest: want, note: want.replace(/[’']s$/, '') + ' is a proper noun',
                       start: off, end: off + m.length });
       }
@@ -410,8 +410,8 @@
         var hit = m[0];
         if (flatApos(hit) === flatApos(name)) continue;         // already correct
         if (!custom[name] && flatApos(hit).toLowerCase() === flatApos(hit)) continue; // ordinary word
-        issues.push({ sev: 'fix', cat: 'Casing', rule: 'casing-name', prio: 1,
-                      found: hit, suggest: name, note: 'official character name casing',
+        issues.push({ sev: 'fix', cat: 'Capitals', rule: 'casing-name', prio: 1,
+                      found: hit, suggest: name, note: 'official character names keep their capitals',
                       start: m.index, end: m.index + hit.length });
         if (rx.lastIndex === m.index) rx.lastIndex++;
       }
@@ -423,7 +423,7 @@
       if (s >= text.length || !/[a-z]/.test(text.charAt(s))) return;
       var w = (text.slice(s).match(/^\w+/) || [''])[0];
       if (!w) return;
-      issues.push({ sev: 'fix', cat: 'Casing', rule: 'casing-sentence', prio: 2,
+      issues.push({ sev: 'fix', cat: 'Capitals', rule: 'casing-sentence', prio: 2,
                     found: w, suggest: w.charAt(0).toUpperCase() + w.slice(1),
                     note: 'a sentence should start capitalised',
                     start: s, end: s + w.length });
@@ -447,7 +447,7 @@
 
   function lengthBadge(text) {
     var n = String(text).length;
-    if (n > 160) return { level: 'error', n: n, note: 'over 160 — hard cap' };
+    if (n > 160) return { level: 'error', n: n, note: 'over 160, the hard limit' };
     // The amber box says it; a sentence repeating it under every long ability
     // was noise. The hard cap still explains itself.
     if (n >= 131) return { level: 'warn', n: n, note: '' };
@@ -461,13 +461,13 @@
   }).concat(STRUCTURAL.map(function (r) {
     return { id: r.id, sev: r.sev, cat: r.cat, label: r.label, note: r.note || '' };
   })).concat([
-    { id: 'casing-term', sev: 'fix', cat: 'Casing', label: 'Demon, Minion, Storyteller…', note: 'team and rules words are proper nouns' },
-    { id: 'casing-name', sev: 'fix', cat: 'Casing', label: 'character name casing', note: 'official (and your own) character names keep their capitals' },
-    { id: 'casing-sentence', sev: 'fix', cat: 'Casing', label: 'sentence capitalisation', note: 'every sentence starts with a capital' }
+    { id: 'casing-term', sev: 'fix', cat: 'Capitals', label: 'Demon, Minion, Storyteller…', note: 'team and rules words are proper nouns' },
+    { id: 'casing-name', sev: 'fix', cat: 'Capitals', label: 'character name capitals', note: 'official (and your own) character names keep their capitals' },
+    { id: 'casing-sentence', sev: 'fix', cat: 'Capitals', label: 'sentence capitalisation', note: 'every sentence starts with a capital' }
   ]);
 
-  var CATEGORIES = ['Terminology', 'Spelling', 'Casing', 'Numbering', 'Structure',
-                    'Typography', 'Contraction', 'Style', 'May/Might'];
+  var CATEGORIES = ['Terminology', 'Spelling', 'Capitals', 'Numbering', 'Structure',
+                    'Punctuation', 'Contraction', 'Style', 'May/Might'];
 
   function defaultEnabled() {
     var out = {};

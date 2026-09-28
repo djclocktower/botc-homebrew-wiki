@@ -23,6 +23,10 @@
      Favorites.onChange(fn)       -> called after every toggle, with the
                                      response — the chips re-count through it
      Favorites.drop()             -> forget the cache (the logout button)
+     Favorites.me()               -> Promise<the /api/me object | null> — who
+                                     is reading, off the same cached entry;
+                                     the card quick actions (card-actions.js)
+                                     ask it before a save
 
    The lists are one request per page for a logged-in reader and none at all
    for anyone else: login is read off the same sessionStorage entry site.js
@@ -250,6 +254,6 @@
   window.Favorites = {
     lists: lists, expanded: expanded, characterSlugs: characterSlugs,
     has: has, toggle: toggle, onChange: onChange,
-    mountButton: mountButton, heartSVG: heartSVG, drop: dropCache
+    mountButton: mountButton, heartSVG: heartSVG, drop: dropCache, me: me
   };
 })();

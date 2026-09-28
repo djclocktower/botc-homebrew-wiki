@@ -83,7 +83,13 @@
  *                                Deliberately unlisted: no sitemap entry, no
  *                                search, no browse list — only the parent
  *                                script/collection page and its author's page
- *                                link to it.
+ *                                link to it, plus Featured Articles when an
+ *                                admin has picked it (below).
+ *   GET  /api/featured-articles -> the pages admins picked for the Featured
+ *                                Articles cards (?limit=, ?format=cards;
+ *                                admin ?all=1 adds the hidden ones)
+ *   POST /api/admin/featured-article -> admin: {slug, on} feature / unfeature
+ *                                one page; slug may be the page's address
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
@@ -126,6 +132,7 @@
  *                                name): owned + credited pages, drafts for the
  *                                owner/admins
  *   GET  /api/creators        -> every creator with counts + linked account
+ *   GET  /api/search-index    -> the site search's creators, users, wiki pages and news
  *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
@@ -280,6 +287,11 @@ import Render from '../assets/render.js';
 // the browser). It receives render.js's exports through init().
 import PageRender from '../assets/render-page.js';
 PageRender.init(Render);
+// The quick-action slot (Favorites + Add to Script) under every card's icon.
+// The server only prints the empty slot; card-actions.js fills it in the
+// browser, where saved/unsaved is known.
+import CardActions from '../assets/card-actions.js';
+PageRender.setCardActions(CardActions);
 // Creator-symbol registry ("credit icons"), single source in creators.js.
 // Injected so SSR /c/ pages show a creator's symbol next to their name.
 import Creators from '../assets/creators.js';
@@ -578,7 +590,7 @@ async function createSession(env, userId, isAdmin) {
 // What the six callers of createSession() say when it comes back empty. The
 // account work they did has already happened and is not lost — only the
 // signing-in half failed — so each of them says which it was.
-const SESSION_DOWN_MSG = 'Signing you in failed — the sign-in service is briefly unavailable. Wait a minute and log in.';
+const SESSION_DOWN_MSG = 'Sign-in is briefly unavailable. Wait a minute and log in.';
 // For the callers that put it after a clause of their own ("Your account was
 // created, but ...").
 function lowerFirst(str) { return str.charAt(0).toLowerCase() + str.slice(1); }
@@ -719,14 +731,14 @@ function tooManyResponse(message, retryAfterSec) {
 // The per-image cap (8 MB, and mass-upload re-encodes to 600 px first) is what
 // actually bounds R2, not this counter.
 const WRITE_LIMITS = {
-  upload:     { bucket: 'upload',     limit: 400, window: 3600, msg: 'You have uploaded a lot of images in the last hour. Take a short break and try again.' },
-  character:  { bucket: 'wchar',      limit: 200, window: 3600, msg: 'You have saved a lot of characters in the last hour. Take a short break and try again.' },
-  collection: { bucket: 'wcoll',      limit: 40,  window: 3600, msg: 'You have saved a lot of collections in the last hour. Take a short break and try again.' },
-  script:     { bucket: 'wscript',    limit: 40,  window: 3600, msg: 'You have saved a lot of scripts in the last hour. Take a short break and try again.' },
-  wikipage:   { bucket: 'wpage',      limit: 40,  window: 3600, msg: 'You have saved a lot of pages in the last hour. Take a short break and try again.' },
+  upload:     { bucket: 'upload',     limit: 400, window: 3600, msg: 'Too many image uploads in the last hour. Try again later.' },
+  character:  { bucket: 'wchar',      limit: 200, window: 3600, msg: 'Too many character saves in the last hour. Try again later.' },
+  collection: { bucket: 'wcoll',      limit: 40,  window: 3600, msg: 'Too many collection saves in the last hour. Try again later.' },
+  script:     { bucket: 'wscript',    limit: 40,  window: 3600, msg: 'Too many script saves in the last hour. Try again later.' },
+  wikipage:   { bucket: 'wpage',      limit: 40,  window: 3600, msg: 'Too many page saves in the last hour. Try again later.' },
   // Importing as drafts and then publishing them from the account page is one
   // workflow, so this has to clear the same bar the character limit does.
-  publish:    { bucket: 'wpublish',   limit: 200, window: 3600, msg: 'You have published or deleted a lot of pages in the last hour. Take a short break and try again.' }
+  publish:    { bucket: 'wpublish',   limit: 200, window: 3600, msg: 'Too many publishes or deletes in the last hour. Try again later.' }
 };
 
 /* The permission half of /api/upload, on its own so more than one route can
@@ -740,7 +752,7 @@ const WRITE_LIMITS = {
 async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('media/')) {
     key = mediaSource(key);
-    if (!key) return jsonResponse({ error: 'Invalid responsive image path' }, { status: 400 });
+    if (!key) return jsonResponse({ error: 'That image address is not valid.' }, { status: 400 });
   }
   if (sess.isAdmin) return null;
   // A thumbnail's slot is its art's slot (see THUMB_PREFIX): the same page,
@@ -760,7 +772,7 @@ async function uploadSlotDenied(env, sess, key) {
   // tokens/ is reserved for admin tooling; news/ for the news editor,
   // which is admin-only anyway.
   if (key.startsWith('tokens/') || key.startsWith('news/')) {
-    return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+    return jsonResponse({ error: 'You can\'t upload images there.' }, { status: 403 });
   }
   // Wiki-page images follow pages/{page-slug}-*.{ext}. If that page
   // exists, only its owner may put images in its slot.
@@ -815,7 +827,7 @@ async function uploadSlotDenied(env, sess, key) {
       // slot is named after the character's identity, which is derived
       // from its name, and that one is already someone else's page.
       // Say so, so the fix (a different name) is obvious.
-      return jsonResponse({ error: 'The art slot for "' + slug + '"' + (slug === named ? '' : ' (its extra art)') + ' already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
+      return jsonResponse({ error: 'The art for "' + slug + '"' + (slug === named ? '' : ' (its extra art)') + ' belongs to another account\'s character. Give yours a different name and save again.' }, { status: 403 });
     }
     if (row && await isProtected(env, 'character', row.slug)) {
       return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -852,7 +864,7 @@ async function uploadSlotDenied(env, sess, key) {
   if (existing) {
     const owner = existing.customMetadata && existing.customMetadata.owner;
     if (owner !== String(sess.userId)) {
-      return jsonResponse({ error: 'A file already exists at that path and belongs to another account.' }, { status: 403 });
+      return jsonResponse({ error: 'An image with that name already belongs to another account.' }, { status: 403 });
     }
   }
   return null;
@@ -875,7 +887,7 @@ function emailShell(title, bodyHtml) {
   return `<div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;padding:24px;color:#241a12;background:#f7f0e0;border:1px solid #cdbfa0">
   <h2 style="color:#5b1f21;margin:0 0 12px">${title}</h2>
   ${bodyHtml}
-  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} — fan-made content for Blood on the Clocktower.<br>
+  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} is a fan-made wiki for Blood on the Clocktower.<br>
   If you didn't request this email you can safely ignore it.</p>
 </div>`;
 }
@@ -906,10 +918,10 @@ async function sendVerificationEmail(env, origin, user) {
   const token = randomToken();
   await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
   const link = origin + '/api/verify-email?token=' + token;
-  return sendEmail(env, user.email, 'Verify your email — ' + APP_NAME, emailShell(
+  return sendEmail(env, user.email, 'Verify your email for ' + APP_NAME, emailShell(
     'Verify your email',
     `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
-     <p>Click the link below to verify the email address on your ${APP_NAME} account:</p>
+     <p>Click the link below to verify your email address:</p>
      <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Verify my email</a></p>
      <p>This link expires in 24 hours.</p>`
   ));
@@ -1124,7 +1136,9 @@ const FEED_CHANGING_ACTIONS = new Set([
   // Approving a suggestion writes the page; 'suggest' itself changes nothing.
   'suggestion-approve',
   // `publicEdit` rides the feeds, and these rewrite it in bulk.
-  'tags-open', 'open-editing'
+  'tags-open', 'open-editing',
+  // A custom page put on (or taken off) the Featured Articles list.
+  'feature', 'unfeature'
 ]);
 
 // ---- activity log helper ----
@@ -1194,6 +1208,12 @@ const FIELD_LABELS = {
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
   respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
   edition: 'edition', publicEdit: 'who may edit',
+  flavor: 'flavour text', attribution: 'credit', artScale: 'icon display size',
+  token: 'printable token', tokenImage: 'printable token', tokenArt: 'token in the icon gallery',
+  jinxDisplay: 'jinx display', jsonId: 'script JSON id', released: 'release',
+  editors: 'editors', creditUnlinked: 'credit link', curata: 'Curata', starlight: 'Curata',
+  curataOptOut: 'Curata mark', status: 'published or draft', _draftNote: 'admin note',
+  _deleted: 'deleted',
   // scripts + collections
   displayName: 'name', author: 'author', description: 'description',
   tagline: 'tagline', version: 'version', difficulty: 'difficulty',
@@ -1201,11 +1221,12 @@ const FIELD_LABELS = {
   strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
   header: 'header image', theme: 'appearance', match: 'membership rules',
   include: 'members added', exclude: 'members removed', order: 'roster order',
-  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'house rules',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'bootlegger rules',
   almanac: 'almanac link', hideTitle: 'app title setting',
   // wiki pages
   title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
-  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box'
+  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box',
+  comments: 'comments', parentType: 'parent page', parentSlug: 'parent page'
 };
 const DIFF_VALUE_MAX = 1200;   // per side, per field
 const DIFF_LABEL_MAX = 6;
@@ -1229,7 +1250,7 @@ function diffFieldValues(beforeJSON, afterJSON) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = [];
   for (const k of keys) {
-    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    if (k === 'slug' || k === 'page' || k === 'id' || k === 'tagsBy') continue;
     const x = a[k] === undefined ? null : a[k];
     const y = b[k] === undefined ? null : b[k];
     if (JSON.stringify(x) === JSON.stringify(y)) continue;
@@ -1245,11 +1266,12 @@ function diffFieldLabels(beforeJSON, afterJSON) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = [];
   for (const k of keys) {
-    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    if (k === 'slug' || k === 'page' || k === 'id' || k === 'tagsBy') continue;
     const x = a[k] === undefined ? null : a[k];
     const y = b[k] === undefined ? null : b[k];
     if (JSON.stringify(x) === JSON.stringify(y)) continue;
-    out.push(FIELD_LABELS[k] || k);
+    const label = FIELD_LABELS[k] || k;
+    if (!out.includes(label)) out.push(label);
   }
   out.sort();
   if (out.length > DIFF_LABEL_MAX) {
@@ -2626,8 +2648,7 @@ async function notifyEditorsAdded(env, opts) {
     for (const e of added) {
       if (e.id == null || Number(e.id) === Number(fromId)) continue;
       const text = who + ' added you as an editor of \u201c' + (name || 'a page') + '\u201d.' +
-        ' You can now edit it exactly as they would \u2014 publishing, deleting and the editor' +
-        ' list itself stay with them.' +
+        ' You can edit it, but only they can publish or delete it.' +
         (path ? '\n\n' + (origin || '') + path : '');
       await env.DB.prepare(
         'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
@@ -2941,7 +2962,7 @@ async function waterfallOwner(env, sess, type, row, ownerId, cache) {
    text, so nothing legitimate comes near this; it stops somebody parking a
    megabyte in a row they do not own. */
 const PUBLIC_EDIT_MAX_BYTES = 120000;
-const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits. Send yours for the creator to approve.';
+const SUGGEST_INSTEAD = 'This page only takes suggested edits. Send yours for the creator to approve.';
 const PUBLIC_EDIT_TAGS_MAX = 400;
 function publicEditTooBig(o) {
   try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
@@ -3078,10 +3099,9 @@ async function notifyPageEdit(env, opts) {
       'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
     ).bind(ownerId, fromId).first().catch(() => null);
     if (blocked) return;
-    const text = what + ' \u201c' + (name || '') + '\u201d, which you have open for edits.\n\n' +
-      (origin || '') + path + '\n\nEvery change is listed at ' + (origin || '') + '/history?type=' +
-      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug) +
-      ', where you can put back any earlier version.';
+    const text = what + ' \u201c' + (name || '') + '\u201d.\n\n' +
+      (origin || '') + path + '\n\nSee or undo changes in the page history: ' + (origin || '') + '/history?type=' +
+      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug);
     await env.DB.prepare(
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
     ).bind(fromId, ownerId, text).run();
@@ -3213,7 +3233,7 @@ async function notifyDrafted(env, opts) {
     // longer public, and a block list must not be able to hide that.
     const text = 'An admin moved \u201c' + (name || '') + '\u201d to drafts, so it is no longer public.' +
       (reason ? '\n\n\u201c' + reason + '\u201d' : '') +
-      '\n\nNothing is lost — the page is still yours and still there. Fix it and publish it again: ' +
+      '\n\nNothing is lost. Fix it and publish it again: ' +
       (origin || '') + opts.editHref;
     await env.DB.prepare(
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
@@ -3307,9 +3327,8 @@ function editConflict(existing, body) {
   const current = existing.updated_at;
   if (!current || String(base) === String(current)) return null;
   return jsonResponse({
-    error: 'Somebody else saved changes to this page while you had it open. ' +
-           'Reload the editor to get their version — your unsaved changes are still ' +
-           'in this tab, so copy anything you need before reloading.',
+    error: 'Someone else saved this page while you had it open. ' +
+           'Copy your changes, then reload the editor to see theirs.',
     conflict: true,
     savedAt: current
   }, { status: 409 });
@@ -3340,6 +3359,24 @@ async function ensureRedirectsTable(env) {
   ).run();
   _redirectsReady = true;
 }
+
+// A redirect row parks its old address — nothing else may take it, so the
+// links posted to it keep reaching the page that moved. That holds only while
+// the page it points at is still a page. Once that page is deleted the
+// redirect is a dead end (the /c/ route 404s it), and an address that nothing
+// can reach must not go on blocking the next page whose name and set ask for
+// it. This is the SQL half of that test, for the two places that build the
+// "taken" set: a redirect counts only when a live row answers to its target,
+// by identity or (the rows written before the identity/address split) by
+// address. setCharAddress() then replaces the stale row when the address is
+// claimed. It was built because a creator renamed Anthropologist to
+// Cryptographer and back within half an hour, which parked
+// principia-horologica/cryptographer for the Anthropologist page; the real
+// Cryptographer they made next was pushed to -2, and deleting the
+// Anthropologist page turned the parked address into a 404 nothing could
+// reclaim.
+const LIVE_REDIRECT_SQL =
+  "EXISTS (SELECT 1 FROM characters c WHERE (c.slug=r.to_slug OR c.url_slug=r.to_slug) AND c.status<>'deleted')";
 
 // Read side: never creates the table (a wiki that has never renamed anything
 // has none), never throws — a missing redirect is just a 404 like before.
@@ -3580,8 +3617,11 @@ async function freeCharAddress(env, qualifier, base, exceptUid) {
     for (const r of results || []) if (r.url_slug) taken.add(String(r.url_slug));
   } catch { /* column not there yet: nothing is taken */ }
   try {
+    // Only a redirect whose page still exists parks its address — see
+    // LIVE_REDIRECT_SQL for the one pointing at a deleted page.
     const { results } = await env.DB.prepare(
-      "SELECT from_slug, to_slug FROM redirects WHERE entity_type='character' AND (from_slug=? OR from_slug LIKE ?)"
+      `SELECT r.from_slug, r.to_slug FROM redirects r
+        WHERE r.entity_type='character' AND (r.from_slug=? OR r.from_slug LIKE ?) AND ${LIVE_REDIRECT_SQL}`
     ).bind(first, first + '-%').all();
     for (const r of results || []) {
       // An address this same page used to live at is not in the way: moving
@@ -4240,7 +4280,7 @@ async function bumpContentVersion(env, entityType) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy', 'creditUnlinked'
+  'related', 'tagsBy', 'creditUnlinked', 'artScale'
 ]);
 
 // ---- owner_id -> username ----
@@ -4316,9 +4356,14 @@ function browseRow(d) {
    Deliberately a short opaque token rather than the timestamp itself: it is
    in every card's HTML, 1,800 times over. */
 function rowVersion(updatedAt) {
-  if (!updatedAt) return '';
-  const t = Date.parse(String(updatedAt).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(updatedAt)) ? '' : 'Z'));
-  return isFinite(t) ? Math.floor(t / 1000).toString(36) : '';
+  const t = rowSeconds(updatedAt);
+  return t ? t.toString(36) : '';
+}
+// A D1 timestamp ('2026-09-09 12:00:00', UTC) as unix seconds, 0 when absent.
+function rowSeconds(ts) {
+  if (!ts) return 0;
+  const t = Date.parse(String(ts).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(ts)) ? '' : 'Z'));
+  return isFinite(t) ? Math.floor(t / 1000) : 0;
 }
 
 // ---- build the three JSON files from D1 (published pages only) ----
@@ -4416,6 +4461,283 @@ async function buildPublicJSON(env, table, opts = {}) {
   return gridOnly ? out.map(gridRow) : opts.fields === 'browse' ? out.map(browseRow) : out;
 }
 
+// ---- every creator name with its counts and linked account ----
+// The /creators index and the site search both read this. Building it reads
+// five tables end to end, so it is only ever reached through
+// cachedCreatorsBody(), keyed on the content version like the feeds.
+async function buildCreatorsList(env) {
+  const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
+  // One credit string can name several people; each of them gets their own
+  // row here, the same way each of them gets their own creator page.
+  function bump(raw, kind) {
+    for (const name of Creators.splitCreators(raw)) {
+      const key = normCreator(name);
+      if (!key) continue;
+      let row = tally.get(key);
+      if (!row) { row = { name: name.trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
+      row[kind]++;
+    }
+  }
+  try {
+    const [chars, scripts, colls] = await Promise.all([
+      env.DB.prepare(`SELECT creator AS n FROM characters WHERE status='published'`).all(),
+      env.DB.prepare(`SELECT author AS n FROM scripts WHERE status='published'`).all(),
+      env.DB.prepare(`SELECT data FROM collections WHERE status='published'`).all()
+    ]);
+    for (const r of chars.results || []) bump(r.n, 'characters');
+    for (const r of scripts.results || []) bump(r.n, 'scripts');
+    for (const r of colls.results || []) bump(parseData(r).author, 'collections');
+  } catch { /* partial tally is better than none */ }
+
+  // Attach accounts. One pass over the alias table and one over the users
+  // that own published pages, rather than a resolve call per name.
+  const aliases = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%'`
+    ).all();
+    for (const r of results || []) {
+      aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
+    }
+  } catch { /* none set */ }
+  // lower(name) -> owner_id, the account that owns the most published
+  // pages credited to that name (proof by ownership, in bulk). Counted in
+  // JS rather than SQL because a credit can name several people.
+  const owners = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
+         FROM characters
+        WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
+        GROUP BY creator, owner_id`
+    ).all();
+    const perName = new Map();   // name -> Map(owner_id -> count)
+    const off = new Map();       // name -> Set(owner_id that disowned it)
+    for (const r of results || []) {
+      for (const key of creditNames(r.n)) {
+        if (Number(r.dis) > 0) {
+          if (!off.has(key)) off.set(key, new Set());
+          off.get(key).add(r.owner_id);
+        }
+        if (!perName.has(key)) perName.set(key, new Map());
+        const m = perName.get(key);
+        m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
+      }
+    }
+    for (const [key, m] of perName) {
+      // Same rule as resolveCreatorAccount, or the index would show an
+      // account beside a name whose page no longer links to it.
+      const dis = off.get(key);
+      let best = null, bestN = 0;
+      for (const [ownerId, n] of m) {
+        if (dis && dis.has(ownerId)) continue;
+        if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
+      }
+      if (best != null) owners.set(key, best);
+    }
+  } catch { /* no owned pages */ }
+  let users = [];
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT id, username, display_name, avatar_url FROM users'
+    ).all();
+    users = results || [];
+  } catch { /* users unreadable */ }
+  const byId = new Map(users.map(x => [x.id, x]));
+  const byName = new Map(users.map(x => [String(x.username).toLowerCase(), x]));
+
+  const out = [];
+  for (const [key, row] of tally) {
+    let acct = null;
+    if (aliases.has(key)) {
+      const v = aliases.get(key);
+      acct = v ? byName.get(v.toLowerCase()) || null : null;
+    } else if (owners.has(key)) {
+      acct = byId.get(owners.get(key)) || null;
+    }
+    out.push({
+      name: row.name,
+      characters: row.characters, scripts: row.scripts, collections: row.collections,
+      total: row.characters + row.scripts + row.collections,
+      username: acct ? acct.username : null,
+      displayName: acct ? (acct.display_name || acct.username) : null,
+      avatarUrl: acct ? acct.avatar_url : null
+    });
+  }
+  out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  return out;
+}
+async function cachedCreatorsBody(env, ctx) {
+  // Cached per content version (with the PEOPLE ttl — the rows carry
+  // avatars and display names, which bump nothing when they change).
+  const key = 'https://feed.internal/creators.json?v=' + (await contentVersion(env)) +
+    '&r=' + CREDIT_RULE_V;
+  const hit = await edgeCacheGet(key);
+  if (hit !== null) return hit;
+  const body = JSON.stringify({ creators: await buildCreatorsList(env) });
+  edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
+  return body;
+}
+
+// ---- the site search's second half ----
+// assets/search-core.js searches the three public feeds the browse pages
+// already download (characters grid, scripts and collections browse), plus
+// this: everything else the search box finds, in one small response.
+//   creators  the /creators list (name, counts, linked account)
+//   users     every account that is not suspended: handle, display name and
+//             picture only, the three things its /u/ page shows anyway
+//   pages     published custom wiki pages (/p/) whose script or collection is
+//             published too. They stay out of the sitemap and search engines
+//             (noindex); the owner asked for them in the site's own search.
+//   news      published articles
+//   dates     when each published script and collection was created, as unix
+//             seconds (the browse feeds carry only `v`, the last save), for
+//             the Newest / Oldest sorts on /search
+// Pages and accounts carry their own `created` (and a page its `updated`).
+// Versioned on every content type it draws from, like the feeds, and also on
+// a half-hour bucket: a new account or a changed avatar bumps no version, and
+// half an hour is the same ceiling PEOPLE_CACHE_CONTROL puts on a bio.
+const SEARCH_INDEX_V = 2;
+const SEARCH_DEPS = ['character', 'script', 'collection', 'wikipage', 'news'];
+const SEARCH_PEOPLE_MS = 30 * 60 * 1000;
+const _searchIndexPending = new Map();
+let _searchIndexMemo = null;   // { key, body }
+async function searchIndexUsers(env) {
+  await ensureBanColumn(env);
+  let rows;
+  try {
+    rows = (await env.DB.prepare(
+      'SELECT username, display_name, avatar_url, created_at FROM users WHERE COALESCE(banned,0)=0 ORDER BY username'
+    ).all()).results;
+  } catch {
+    rows = (await env.DB.prepare('SELECT username, display_name, avatar_url, created_at FROM users ORDER BY username').all()).results;
+  }
+  return (rows || []).filter(u => u.username).map(u => {
+    const out = { username: u.username };
+    if (u.display_name && u.display_name !== u.username) out.displayName = u.display_name;
+    if (u.avatar_url) out.avatarUrl = u.avatar_url;
+    // Public already: the profile page says "Member since".
+    const joined = rowSeconds(u.created_at);
+    if (joined) out.created = joined;
+    return out;
+  });
+}
+// The published scripts and collections, read once for both the wiki pages'
+// parents and the creation dates. The slug comes off the row, not out of the
+// JSON: legacy rows do not all carry it in their data blob.
+async function searchIndexSets(env) {
+  const read = async (withDate, table, cols) => {
+    try {
+      return (await env.DB.prepare(`SELECT ${cols}${withDate ? ', created_at' : ''} FROM ${table} WHERE status='published'`).all()).results || [];
+    } catch (err) {
+      if (!withDate) throw err;
+      return read(false, table, cols);   // a table from before created_at
+    }
+  };
+  const [scripts, colls] = await Promise.all([
+    read(true, 'scripts', 'slug, name'),
+    read(true, 'collections', 'slug, display_name, data')
+  ]);
+  return { scripts, colls: colls.map(c => ({ ...c, d: parseData(c) })) };
+}
+function searchIndexDates(sets) {
+  const dates = { script: {}, collection: {} };
+  for (const sc of sets.scripts) {
+    const t = rowSeconds(sc.created_at);
+    if (t) dates.script[sc.slug] = t;
+  }
+  for (const c of sets.colls) {
+    const t = rowSeconds(c.created_at);
+    if (!t) continue;
+    // The browser knows a collection by its kebab id, or its PK slug when it
+    // has none.
+    dates.collection[c.d.id || c.slug] = t;
+    if (c.d.id && c.d.id !== c.slug) dates.collection[c.slug] = t;
+  }
+  return dates;
+}
+async function searchIndexPages(env, sets) {
+  await ensurePagesTable(env);
+  const rows = (await env.DB.prepare(
+    `SELECT slug, title, parent_type, parent_slug, author, data, created_at, updated_at FROM pages WHERE status='published'`
+  ).all()).results || [];
+  if (!rows.length) return [];
+  const { scripts, colls } = sets;
+  // Only published parents are looked up, so a page under a draft or a
+  // deleted script or collection finds no parent and is left out.
+  const parents = { script: new Map(), collection: new Map() };
+  for (const sc of scripts) parents.script.set(sc.slug, { name: sc.name || sc.slug, key: sc.slug });
+  for (const c of colls) {
+    const d = c.d;
+    const entry = { name: d.displayName || c.display_name || c.slug, key: d.id || c.slug };
+    parents.collection.set(c.slug, entry);
+    if (d.id) parents.collection.set(d.id, entry);
+  }
+  const out = [];
+  for (const r of rows) {
+    const parent = (parents[r.parent_type] || new Map()).get(r.parent_slug);
+    if (!parent) continue;
+    const d = parseData(r);
+    const page = { slug: r.slug, title: r.title || r.slug, parentType: r.parent_type, parentKey: parent.key, parentName: parent.name };
+    const author = r.author || d.author;
+    if (author) page.author = author;
+    if (d.subtitle) page.subtitle = String(d.subtitle).slice(0, 200);
+    const blurb = d.blurb || WikiRender.autoSummary(d.body, 160);
+    if (blurb) page.blurb = blurb;
+    const created = rowSeconds(r.created_at), updated = rowSeconds(r.updated_at);
+    if (created) page.created = created;
+    if (updated) page.updated = updated;
+    out.push(page);
+  }
+  return out;
+}
+async function buildSearchIndex(env, ctx) {
+  // A set list that cannot be read costs the wiki pages and the dates, never
+  // the whole index.
+  const sets = searchIndexSets(env).catch(() => null);
+  const [creatorsBody, users, pages, news, setRows] = await Promise.all([
+    cachedCreatorsBody(env, ctx),
+    searchIndexUsers(env).catch(() => []),
+    sets.then(s => s ? searchIndexPages(env, s) : []).catch(() => []),
+    newsList(env, 100, false).then(r => r.articles).catch(() => []),
+    sets
+  ]);
+  return {
+    dates: setRows ? searchIndexDates(setRows) : { script: {}, collection: {} },
+    creators: JSON.parse(creatorsBody).creators.map(c => {
+      const out = { name: c.name, characters: c.characters, scripts: c.scripts, collections: c.collections };
+      if (c.username) {
+        out.username = c.username;
+        if (c.displayName && c.displayName !== c.username) out.displayName = c.displayName;
+        if (c.avatarUrl) out.avatarUrl = c.avatarUrl;
+      }
+      return out;
+    }),
+    users, pages,
+    news: news.map(a => ({ slug: a.slug, title: a.title, summary: a.summary || '', publishedAt: a.publishedAt || a.updatedAt }))
+  };
+}
+async function cachedSearchIndex(env, ctx) {
+  const version = await contentVersion(env, SEARCH_DEPS);
+  const bucket = Math.floor(Date.now() / SEARCH_PEOPLE_MS);
+  const tag = `${version}-${bucket}-${CREDIT_RULE_V}-${SEARCH_INDEX_V}`;
+  const etag = `W/"search-${tag}"`;
+  if (_searchIndexMemo && _searchIndexMemo.tag === tag) return { etag, body: _searchIndexMemo.body };
+  const key = 'https://feed.internal/search-index.json?t=' + tag;
+  if (!_searchIndexPending.has(key)) {
+    _searchIndexPending.set(key, (async () => {
+      let body = await edgeCacheGet(key);
+      if (body === null) {
+        body = JSON.stringify(await buildSearchIndex(env, ctx));
+        edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
+      }
+      _searchIndexMemo = { tag, body };
+      return body;
+    })().finally(() => _searchIndexPending.delete(key)));
+  }
+  return { etag, body: await _searchIndexPending.get(key) };
+}
+
 // ---- version-keyed edge cache plumbing ----
 // One synthetic URL per (thing, content version). caches.default is shared by
 // every isolate in the colo, so a fresh isolate — the normal case on a
@@ -4503,14 +4825,171 @@ async function appearsInHref(env, ctx, value) {
   return _appearsInLinksCache.links.get(wanted) || '';
 }
 
+// Public news is keyed by its own content version, limit and deploy. Drafts
+// never enter this cache. Failed reads reject so an outage cannot cache emptiness.
+const _newsPending = new Map();
+async function newsList(env, limit, includeDrafts) {
+  await ensureNewsTable(env);
+  const { results } = await env.DB.prepare(
+    includeDrafts
+      ? `SELECT slug, title, status, published_at, updated_at, data FROM news
+         ORDER BY COALESCE(published_at, updated_at) DESC LIMIT ?`
+      : `SELECT slug, title, status, published_at, updated_at, data FROM news
+         WHERE status='published' ORDER BY published_at DESC LIMIT ?`
+  ).bind(limit).all();
+  return {
+    articles: (results || []).map(r => {
+      const d = parseData(r);
+      return {
+        slug: r.slug, title: r.title, status: r.status,
+        publishedAt: r.published_at, updatedAt: r.updated_at,
+        author: d.author || null,
+        summary: d.summary || NewsRender.autoSummary(d.body, 160),
+        image: d.image || null,
+        // Body is only sent on the single-article route — the list stays
+        // small even with a hundred long articles in it.
+        pinned: !!d.pinned
+      };
+    })
+  };
+}
+async function cachedNewsBody(env, ctx, limit, cards, version) {
+  const key = `https://feed.internal/news.json?v=${version}&limit=${limit}&cards=${cards}&build=${BUILD_ID}`;
+  if (_newsPending.has(key)) return _newsPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      const data = await newsList(env, limit, false);
+      if (cards) {
+        const articles = data.articles.slice().sort((a, b) =>
+          Number(b.pinned) - Number(a.pinned) || String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+        body = JSON.stringify({ html: articles.map(a => NewsRender.renderCard(a, { linkRoot: '' })).join('') });
+      } else body = JSON.stringify(data);
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    return body;
+  })();
+  _newsPending.set(key, pending);
+  try { return await pending; } finally { _newsPending.delete(key); }
+}
+
+// ---- featured articles (/news and the homepage) ----
+// Custom wiki pages (/p/) are unlisted by design; this is the one list they
+// can appear on, and only because an admin picked them. The picks are one
+// settings row, [{slug, at}] with the newest pick first, so featuring a page
+// writes nothing onto the page itself and no save by its owner can touch it.
+// A page that goes back to draft, or whose script/collection is deleted,
+// drops out on read and comes back with it; deleting the page removes the
+// pick for good (unfeatureArticle), so a new page that happens to reuse the
+// slug is never featured by accident.
+const FEATURED_ARTICLES_KEY = 'featured_articles';
+const FEATURED_ARTICLES_MAX = 24;
+// The list shows each page's title, blurb and parent name, and drops a page
+// whose parent is deleted — so a save to any of the three rolls the cache.
+const FEATURED_DEPS = ['wikipage', 'script', 'collection'];
+// Deliberately uncaught: a failed read must reject, not cache an empty list.
+async function featuredArticlePicks(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(FEATURED_ARTICLES_KEY).first();
+  let list;
+  try { list = JSON.parse((r && r.value) || '[]'); } catch { list = []; }
+  return (Array.isArray(list) ? list : [])
+    .filter(e => e && typeof e.slug === 'string' && /^[a-z0-9-]{1,80}$/.test(e.slug))
+    .slice(0, FEATURED_ARTICLES_MAX);
+}
+async function writeFeaturedArticlePicks(env, list) {
+  await env.DB.prepare(
+    `INSERT INTO settings (key,value) VALUES (?,?)
+     ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+  ).bind(FEATURED_ARTICLES_KEY, JSON.stringify(list)).run();
+}
+// A pasted link is the likeliest thing an admin types, so take the whole
+// address (…/p/{slug}) as well as the bare slug.
+function featuredSlugFrom(raw) {
+  let s = String(raw || '').trim();
+  const m = s.match(/\/p\/([^/?#\s]+)/);
+  if (m) s = m[1];
+  try { s = decodeURIComponent(s); } catch { /* keep it as typed */ }
+  s = s.replace(/\.html$/i, '').toLowerCase();
+  return /^[a-z0-9-]{1,80}$/.test(s) ? s : '';
+}
+// The picks resolved into card data, in pick order. `all` (admins only) also
+// returns the picks that are hidden right now, each saying why, so an admin
+// can see and remove them.
+async function featuredArticles(env, limit, opts = {}) {
+  const picks = await featuredArticlePicks(env);
+  if (!picks.length) return { articles: [] };
+  await ensurePagesTable(env);
+  const { results } = await env.DB.prepare(
+    `SELECT slug, title, status, parent_type, parent_slug, author, data, updated_at
+     FROM pages WHERE slug IN (${picks.map(() => '?').join(',')})`
+  ).bind(...picks.map(p => p.slug)).all();
+  const bySlug = new Map((results || []).map(r => [r.slug, r]));
+  const articles = [];
+  for (const pick of picks) {
+    if (articles.length >= limit) break;
+    const r = bySlug.get(pick.slug);
+    if (!r) continue;
+    let hidden = r.status === 'published' ? '' : 'draft';
+    if (hidden && !opts.all) continue;
+    const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+    // Same rule as the author listing: a page goes down with its parent.
+    if (!hidden && parent && parent.status === 'deleted') hidden = 'parent-deleted';
+    if (hidden && !opts.all) continue;
+    const d = parseData(r);
+    articles.push({
+      slug: r.slug, title: r.title,
+      author: r.author || d.author || null,
+      blurb: d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 160),
+      parentType: r.parent_type,
+      parentKey: parent ? parent.key : r.parent_slug,
+      parentName: parent ? parent.name : null,
+      featuredAt: pick.at || null,
+      updatedAt: r.updated_at,
+      ...(opts.all ? { hidden } : {})
+    });
+  }
+  return { articles };
+}
+const _featuredPending = new Map();
+async function cachedFeaturedBody(env, ctx, limit, cards, version) {
+  const key = `https://feed.internal/featured-articles.json?v=${version}&limit=${limit}&cards=${cards}&build=${BUILD_ID}`;
+  if (_featuredPending.has(key)) return _featuredPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      const data = await featuredArticles(env, limit);
+      body = cards
+        ? JSON.stringify({ html: data.articles.map(a => NewsRender.renderPageCard(a, { linkRoot: '' })).join('') })
+        : JSON.stringify(data);
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    return body;
+  })();
+  _featuredPending.set(key, pending);
+  try { return await pending; } finally { _featuredPending.delete(key); }
+}
+// Called when a page is deleted for good.
+async function unfeatureArticle(env, slug) {
+  try {
+    const picks = await featuredArticlePicks(env);
+    if (picks.some(p => p.slug === slug)) {
+      await writeFeaturedArticlePicks(env, picks.filter(p => p.slug !== slug));
+    }
+  } catch { /* the pick is filtered out on read anyway */ }
+}
+
 // One compact homepage snapshot per content version and UTC day. Random tile
 // order remains a browser choice, so every collection/script stays eligible.
+const HOME_FORMAT_V = 3;
 const _homePending = new Map();
 let _homeCache = null;
-async function cachedHome(env, ctx) {
+async function cachedHome(env, ctx, request) {
   const version = await contentVersion(env, ['character', 'collection', 'script']);
   const day = Math.floor(Date.now() / 86400000);
-  const key = `https://feed.internal/home.json?v=${version}&day=${day}&f=${FEED_FORMAT_V}`;
+  const key = `https://feed.internal/home.json?v=${version}&day=${day}&f=${HOME_FORMAT_V}`;
+  const etag = `W/"home-${version}-${day}-${HOME_FORMAT_V}"`;
+  // A returning browser already owns the body, even in a cold Worker isolate.
+  if (request?.headers.get('If-None-Match') === etag) return { etag };
   if (_homeCache?.key === key) return _homeCache;
   if (_homePending.has(key)) return _homePending.get(key);
   const pending = (async () => {
@@ -4524,7 +5003,7 @@ async function cachedHome(env, ctx) {
       body = JSON.stringify(homeData(...bodies.map(JSON.parse), day));
       edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
     }
-    return _homeCache = { key, body, etag: `W/"home-${version}-${day}-${FEED_FORMAT_V}"` };
+    return _homeCache = { key, body, etag };
   })();
   _homePending.set(key, pending);
   try { return await pending; } finally { _homePending.delete(key); }
@@ -4727,7 +5206,7 @@ ${o.draftBanner || ''}
         <img class="brand-header-text" src="${R}assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="${R}assets/ccc-parchment.webp" alt="Community Created Content">
-      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+      <a class="edit-link" id="edit-btn" style="display:none" href="#"><span class="ico ico-edit" aria-hidden="true"></span> Edit</a>
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="${R}all-characters">All Characters</a>
@@ -4736,7 +5215,7 @@ ${o.draftBanner || ''}
       <a href="${R}script">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
     <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
   </div>
   <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -4745,7 +5224,7 @@ ${o.draftBanner || ''}
 </header>
 <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
   <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
   </div>
   <a href="${R}">Home</a>
   <a href="${R}all-characters">All Characters</a>
@@ -4941,8 +5420,9 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
       // Favorite button on a draft. Private render; never in the public cache.
       (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
     // favorites.js before charpage.js: the info card's Favorite button is
-    // mounted by charpage.js through window.Favorites.
-    scripts: ['reader.js', 'tags.js', 'favorites.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
+    // mounted by charpage.js through window.Favorites. card-actions.js before
+    // it too: the info card's Add to Script / Token glyphs are drawn from it.
+    scripts: ['reader.js', 'tags.js', 'favorites.js', 'card-actions.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
   });
 }
 
@@ -5290,7 +5770,7 @@ async function charsBySlug(env, slugs) {
 async function pageJsonResponse(env, ctx, request, url) {
   const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
   const slug = String(url.searchParams.get('slug') || '');
-  if (!slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+  if (!slug) return jsonResponse({ error: 'No page given.' }, { status: 400 });
   const isScript = type === 'script';
   const table = isScript ? 'scripts' : 'collections';
   let row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
@@ -5445,10 +5925,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     // sao.js before card-filters.js: the filter box only builds its Steven
     // Approved Order option when window.saoCompare is already there.
     // favorites.js before both pageview.js (which mounts the page's Favorite
-    // button) and card-filters.js (whose Favorites chip asks it for the list).
+    // button) and card-filters.js (whose Favorites chip asks it for the list),
+    // and before card-actions.js, which fills the roster's quick actions.
     scripts: isScript
-      ? ['reader.js', 'favorites.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
-      : ['reader.js', 'favorites.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      ? ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      : ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
 }
@@ -5750,6 +6231,59 @@ function dropThumbFor(env, ctx, key) {
   } catch { /* nothing to do */ }
 }
 
+function artRowSlug(key) {
+  return key.slice(4).replace(/\.[a-z0-9]+$/i, '').replace(/-(alt2|alt|token)$/, '');
+}
+
+/* The row an art key belongs to — its slug and its updated_at — by the same
+   two lookups touchArtRow() writes through: the identity the slot names,
+   then the path inside the JSON for a legacy row. Null for a slot with no
+   row behind it yet (a new character's art is uploaded before its row
+   exists). What /api/upload's edit-conflict check reads, and what it hands
+   back as the stamp the editor should carry into its save. */
+async function artRowStamp(env, key) {
+  if (!key.startsWith('art/')) return null;
+  try {
+    const bySlug = await env.DB.prepare(
+      `SELECT slug, updated_at FROM characters WHERE slug=? AND status IS NOT 'deleted'`
+    ).bind(artRowSlug(key)).first();
+    if (bySlug) return bySlug;
+    return await env.DB.prepare(
+      `SELECT slug, updated_at FROM characters WHERE status IS NOT 'deleted' AND data LIKE ? LIMIT 1`
+    ).bind('%"' + key + '"%').first() || null;
+  } catch { return null; }
+}
+
+/* An icon written straight into its R2 slot — the bulk standardizer
+   (/normalize-icons), the thumbnail backfill, a Bloodstar copy over an
+   existing page — replaced the picture without touching the ROW, and every
+   card and emblem loads the picture at `?v={rowVersion}` (see rowVersion()),
+   which is cached immutable for a year at the edge and in every browser. So
+   the wiki went on showing the old icon, and its old thumbnail, until the
+   page happened to be saved; only the bare URL the JSON export carries saw
+   the new file. Touching the row rolls `v` and the feeds re-serve.
+
+   The slot names the identity (art/{identity}[-alt|-alt2|-token].ext), so
+   the row is one primary-key write. A legacy row whose art field names a
+   path that is not its slug (art/vampire-good.png) is found by that path in
+   its JSON — a scan, so only when the key matched no slug, which is also
+   the case for a NEW character whose art is uploaded before its row exists.
+   Fails soft: a miss here costs a stale picture, never the upload. */
+async function touchArtRow(env, key) {
+  if (!key.startsWith('art/')) return false;
+  const slug = artRowSlug(key);
+  try {
+    let r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE slug=? AND status IS NOT 'deleted'`).bind(slug).run();
+    let n = (r && r.meta && r.meta.changes) || 0;
+    if (!n) {
+      r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE status IS NOT 'deleted' AND data LIKE ?`).bind('%"' + key + '"%').run();
+      n = (r && r.meta && r.meta.changes) || 0;
+    }
+    if (n) await bumpContentVersion(env, 'character');
+    return n > 0;
+  } catch { return false; }
+}
+
 /* Public reading HTML is shared by every viewer. Only cookie-free GET
    builds marked X-Botc-View can enter the edge cache. Owners and approved
    editors fetch private controls separately; drafts and private-parent
@@ -5879,7 +6413,7 @@ export default {
     }
 
     if (method === 'GET' && path === '/api/home') {
-      const home = await cachedHome(env, ctx);
+      const home = await cachedHome(env, ctx, request);
       const headers = { ...JSON_HEADERS, ETag: home.etag, 'Cache-Control': FEED_CACHE_CONTROL };
       return request.headers.get('If-None-Match') === home.etag
         ? new Response(null, { status: 304, headers })
@@ -5948,34 +6482,34 @@ export default {
     // Public list. ?limit=N for the homepage panel; admins can add
     // ?drafts=1 to see unpublished articles in the editor's list.
     if (method === 'GET' && path === '/api/news') {
-      await ensureNewsTable(env);
       const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10) || 30, 1), 100);
-      let includeDrafts = false;
-      if (url.searchParams.get('drafts') === '1') {
-        includeDrafts = !!(await adminSession(env, request));
+      const includeDrafts = url.searchParams.get('drafts') === '1' && !!(await adminSession(env, request));
+      if (includeDrafts) return jsonResponse(await newsList(env, limit, true));
+      const cards = url.searchParams.get('format') === 'cards';
+      const version = await contentVersion(env, ['news']);
+      const etag = `W/"news-${version}-${limit}-${cards}-${BUILD_ID}"`;
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+      return new Response(await cachedNewsBody(env, ctx, limit, cards, version), { headers });
+    }
+
+    // ---------- FEATURED ARTICLES ----------
+    // The custom pages an admin picked, newest pick first — the Featured
+    // Articles cards under News on the homepage and on /news. Cached exactly
+    // like the news list. ?all=1 is for admins: uncached, and it includes the
+    // picks that are hidden right now (a draft, a deleted parent) so they can
+    // be seen and removed. Anybody else asking for it gets the public list.
+    if (method === 'GET' && path === '/api/featured-articles') {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || String(FEATURED_ARTICLES_MAX), 10) || FEATURED_ARTICLES_MAX, 1), FEATURED_ARTICLES_MAX);
+      if (url.searchParams.get('all') === '1' && await adminSession(env, request)) {
+        return jsonResponse(await featuredArticles(env, FEATURED_ARTICLES_MAX, { all: true }));
       }
-      const { results } = await env.DB.prepare(
-        includeDrafts
-          ? `SELECT slug, title, status, published_at, updated_at, data FROM news
-             ORDER BY COALESCE(published_at, updated_at) DESC LIMIT ?`
-          : `SELECT slug, title, status, published_at, updated_at, data FROM news
-             WHERE status='published' ORDER BY published_at DESC LIMIT ?`
-      ).bind(limit).all().catch(() => ({ results: [] }));
-      return jsonResponse({
-        articles: (results || []).map(r => {
-          const d = parseData(r);
-          return {
-            slug: r.slug, title: r.title, status: r.status,
-            publishedAt: r.published_at, updatedAt: r.updated_at,
-            author: d.author || null,
-            summary: d.summary || NewsRender.autoSummary(d.body, 160),
-            image: d.image || null,
-            // Body is only sent on the single-article route — the list stays
-            // small even with a hundred long articles in it.
-            pinned: !!d.pinned
-          };
-        })
-      });
+      const cards = url.searchParams.get('format') === 'cards';
+      const version = await contentVersion(env, FEATURED_DEPS);
+      const etag = `W/"featured-${version}-${limit}-${cards}-${BUILD_ID}"`;
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+      return new Response(await cachedFeaturedBody(env, ctx, limit, cards, version), { headers });
     }
 
     // One article as JSON. Public for published articles; the admin editor
@@ -6193,6 +6727,8 @@ export default {
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
             : '',
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
+            // A draft cannot be featured, so wikipage.js offers admins no button.
+            (isDraft ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
@@ -6845,118 +7381,17 @@ export default {
       });
     }
 
+    // The site search's people, wiki pages and news (see buildSearchIndex).
+    // Same client caching as the feeds: an ETag, and a 304 when it matches.
+    if (method === 'GET' && path === '/api/search-index') {
+      const idx = await cachedSearchIndex(env, ctx);
+      const headers = { ...JSON_HEADERS, ETag: idx.etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if ((request.headers.get('If-None-Match') || '') === idx.etag) return new Response(null, { status: 304, headers });
+      return new Response(idx.body, { headers });
+    }
+
     if (method === 'GET' && path === '/api/creators') {
-      // Cached per content version (with the PEOPLE ttl — the rows carry
-      // avatars and display names, which bump nothing when they change).
-      // Building this list reads five tables end to end.
-      const creatorsKey = 'https://feed.internal/creators.json?v=' + (await contentVersion(env)) +
-        '&r=' + CREDIT_RULE_V;
-      const creatorsHit = await edgeCacheGet(creatorsKey);
-      if (creatorsHit !== null) {
-        return new Response(creatorsHit, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
-      }
-      const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
-      // One credit string can name several people; each of them gets their own
-      // row here, the same way each of them gets their own creator page.
-      function bump(raw, kind) {
-        for (const name of Creators.splitCreators(raw)) {
-          const key = normCreator(name);
-          if (!key) continue;
-          let row = tally.get(key);
-          if (!row) { row = { name: name.trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
-          row[kind]++;
-        }
-      }
-      try {
-        const [chars, scripts, colls] = await Promise.all([
-          env.DB.prepare(`SELECT creator AS n FROM characters WHERE status='published'`).all(),
-          env.DB.prepare(`SELECT author AS n FROM scripts WHERE status='published'`).all(),
-          env.DB.prepare(`SELECT data FROM collections WHERE status='published'`).all()
-        ]);
-        for (const r of chars.results || []) bump(r.n, 'characters');
-        for (const r of scripts.results || []) bump(r.n, 'scripts');
-        for (const r of colls.results || []) bump(parseData(r).author, 'collections');
-      } catch { /* partial tally is better than none */ }
-
-      // Attach accounts. One pass over the alias table and one over the users
-      // that own published pages, rather than a resolve call per name.
-      const aliases = new Map();
-      try {
-        const { results } = await env.DB.prepare(
-          `SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%'`
-        ).all();
-        for (const r of results || []) {
-          aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
-        }
-      } catch { /* none set */ }
-      // lower(name) -> owner_id, the account that owns the most published
-      // pages credited to that name (proof by ownership, in bulk). Counted in
-      // JS rather than SQL because a credit can name several people.
-      const owners = new Map();
-      try {
-        const { results } = await env.DB.prepare(
-          `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
-             FROM characters
-            WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
-            GROUP BY creator, owner_id`
-        ).all();
-        const perName = new Map();   // name -> Map(owner_id -> count)
-        const off = new Map();       // name -> Set(owner_id that disowned it)
-        for (const r of results || []) {
-          for (const key of creditNames(r.n)) {
-            if (Number(r.dis) > 0) {
-              if (!off.has(key)) off.set(key, new Set());
-              off.get(key).add(r.owner_id);
-            }
-            if (!perName.has(key)) perName.set(key, new Map());
-            const m = perName.get(key);
-            m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
-          }
-        }
-        for (const [key, m] of perName) {
-          // Same rule as resolveCreatorAccount, or the index would show an
-          // account beside a name whose page no longer links to it.
-          const dis = off.get(key);
-          let best = null, bestN = 0;
-          for (const [ownerId, n] of m) {
-            if (dis && dis.has(ownerId)) continue;
-            if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
-          }
-          if (best != null) owners.set(key, best);
-        }
-      } catch { /* no owned pages */ }
-      let users = [];
-      try {
-        const { results } = await env.DB.prepare(
-          'SELECT id, username, display_name, avatar_url FROM users'
-        ).all();
-        users = results || [];
-      } catch { /* users unreadable */ }
-      const byId = new Map(users.map(x => [x.id, x]));
-      const byName = new Map(users.map(x => [String(x.username).toLowerCase(), x]));
-
-      const out = [];
-      for (const [key, row] of tally) {
-        let acct = null;
-        if (aliases.has(key)) {
-          const v = aliases.get(key);
-          acct = v ? byName.get(v.toLowerCase()) || null : null;
-        } else if (owners.has(key)) {
-          acct = byId.get(owners.get(key)) || null;
-        }
-        out.push({
-          name: row.name,
-          characters: row.characters, scripts: row.scripts, collections: row.collections,
-          total: row.characters + row.scripts + row.collections,
-          username: acct ? acct.username : null,
-          displayName: acct ? (acct.display_name || acct.username) : null,
-          avatarUrl: acct ? acct.avatar_url : null
-        });
-      }
-      out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-      const creatorsBody = JSON.stringify({ creators: out });
-      edgeCachePut(ctx, creatorsKey, creatorsBody, PEOPLE_CACHE_CONTROL);
-      return new Response(creatorsBody, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
+      return new Response(await cachedCreatorsBody(env, ctx), { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
     }
 
     // ---------- SITEMAP (built live from D1) ----------
@@ -7066,7 +7501,7 @@ export default {
       // same collision and the remedy is the same.
       if (await usernameTaken(env, username)) {
         return jsonResponse({
-          error: 'That username is taken, or is too close to one that already exists. Try adding something to it.'
+          error: 'That username is taken or too close to an existing one. Try adding something to it.'
         }, { status: 409 });
       }
       const emailTaken = await env.DB.prepare('SELECT 1 FROM users WHERE email IS NOT NULL AND lower(email)=lower(?)')
@@ -7196,7 +7631,7 @@ export default {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
       if (!sess.isAdmin && await rateLimited(env, request, 'bloodstar', 60, 3600, { sess })) {
-        return tooManyResponse('You have read a lot of Bloodstar projects in the last hour. Take a short break and try again.', 3600);
+        return tooManyResponse('Too many Bloodstar projects read in the last hour. Try again later.', 3600);
       }
       const src = Bloodstar.bloodstarSource(url.searchParams.get('url'));
       if (src.error) return jsonResponse({ error: src.error }, { status: 400 });
@@ -7239,7 +7674,7 @@ export default {
       const bundle = Bloodstar.buildBundle(scriptJson, almanac, src, official);
       bundle.hasAlmanac = !!almanacHtml;
       if (!almanacHtml) {
-        bundle.warnings.unshift('That project has no readable almanac.html, so only what is in script.json could be read — no flavour text, overviews, examples, how-to-run or tips.');
+        bundle.warnings.unshift('That project has no readable almanac, so flavour text, overviews, examples, how-to-run and tips are missing.');
       }
       return jsonResponse(bundle);
     }
@@ -7379,14 +7814,14 @@ export default {
         const token = randomToken();
         await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
         const link = url.origin + '/reset-password?token=' + token;
-        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
+        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password for ' + APP_NAME, emailShell(
           'Reset your password',
           // Half the people who ask for a reset are stuck on the OTHER field:
           // their display name is the only name the site shows them, so this
           // is the one message that can tell them what to type.
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
            <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
-           <p>Your username is <b>@${escapeHtml(user.username)}</b>. That, or this email address, is what goes in the log-in box.</p>
+           <p>Your username is <b>@${escapeHtml(user.username)}</b>. You can log in with it or with this email address.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
         )));
@@ -7398,7 +7833,7 @@ export default {
       const body = await request.json().catch(() => ({}));
       const token = String(body.token || '');
       const password = String(body.password || '');
-      if (!token) return jsonResponse({ error: 'Missing reset token.' }, { status: 400 });
+      if (!token) return jsonResponse({ error: 'That reset link is incomplete. Request a new one.' }, { status: 400 });
       if (!password || password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters.' }, { status: 400 });
       const userId = await env.SESSIONS.get('pwreset:' + token);
       if (!userId) return jsonResponse({ error: 'That reset link is invalid or has expired. Request a new one.' }, { status: 400 });
@@ -7533,7 +7968,7 @@ export default {
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state') || '';
       const stateRaw = state && await env.SESSIONS.get('oauth:' + state);
-      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in failed (the sign-in took too long, or the link was reused). Please try again.');
+      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in timed out or the link was already used. Please try again.');
       await env.SESSIONS.delete('oauth:' + state);
       let linkUserId = 0;
       try { linkUserId = (JSON.parse(stateRaw).link | 0); } catch {}
@@ -7569,7 +8004,7 @@ export default {
       if (!userRes.ok) {
         const detail = await discordErrorCode(userRes);
         console.log('discord-oauth: profile fetch failed', userRes.status, detail);
-        return loginErrorRedirect(url.origin, 'Discord sign-in failed (profile fetch: ' + detail + '). Please try again.');
+        return loginErrorRedirect(url.origin, 'Discord sign-in failed (could not load your profile: ' + detail + '). Please try again.');
       }
       const du = await userRes.json();
       const discordId = String(du.id);
@@ -7612,7 +8047,7 @@ export default {
         if (byEmail) {
           if (byEmail.banned) return loginErrorRedirect(url.origin, 'This account has been suspended.');
           if (!byEmail.email_verified) {
-            return loginErrorRedirect(url.origin, 'An account with your Discord email already exists but its email is unverified. Log in with your password, verify your email, then link Discord from your account page.');
+            return loginErrorRedirect(url.origin, 'An account with your Discord email already exists but isn\'t verified. Log in with your password, verify your email, then link Discord from your account page.');
           }
           await env.DB.prepare(
             `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
@@ -7854,7 +8289,7 @@ export default {
     if (method === 'GET' && path === '/api/page') {
       const type = url.searchParams.get('type') || 'character';
       const slug = url.searchParams.get('slug') || '';
-      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
       let row = await getEntityRow(env, type, slug);
       // Legacy collection rows have display-string PK slugs; resolve by id too.
       if (!row && type === 'collection') row = await findCollectionRow(env, slug);
@@ -8364,8 +8799,8 @@ export default {
     if (method === 'GET' && path === '/api/page-history') {
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
-      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      if (!slugParam) return jsonResponse({ error: 'No page given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
@@ -8436,7 +8871,7 @@ export default {
 
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
-      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'Missing type or slug' }, { status: 400 });
+      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'No page given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const owns = canEditRow(sess, row);
@@ -8469,8 +8904,8 @@ export default {
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
       const id = parseInt(url.searchParams.get('id'), 10) || 0;
-      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      if (!slugParam || !id) return jsonResponse({ error: 'Missing slug or id' }, { status: 400 });
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      if (!slugParam || !id) return jsonResponse({ error: 'No page or version given.' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
@@ -9176,7 +9611,7 @@ export default {
     if (method === 'POST' && path === '/api/report-broken-link') {
       const sess = await getSession(env, request);
       if (await rateLimited(env, request, 'brokenlink', 4, 3600, { sess })) {
-        return tooManyResponse('Thanks. That is enough reports from here for now; try again in an hour.', 3600);
+        return tooManyResponse('Thanks. That\'s enough reports for now. Try again in an hour.', 3600);
       }
       const b = await request.json().catch(() => ({}));
       const brokenPath = String(b.path || '').trim().slice(0, 300);
@@ -9291,7 +9726,7 @@ export default {
       // initial-letter avatar. The key is derived from the session, so users
       // can only ever touch their own avatar slot.
       if (path === '/api/account/avatar') {
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'avatar', 20, 3600)) {
           return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
@@ -9308,7 +9743,7 @@ export default {
           return jsonResponse({ ok: true, avatarUrl: null });
         }
         let data = String(b.data || '');
-        if (!data.startsWith('data:')) return jsonResponse({ error: 'Send the image as a data URL.' }, { status: 400 });
+        if (!data.startsWith('data:')) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
         const contentType = data.slice(5, data.indexOf(';'));
         const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[contentType];
         if (!ext) return jsonResponse({ error: 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
@@ -9352,7 +9787,7 @@ export default {
         // Sends a Resend email every time it succeeds, so without a limit any
         // account is a free mail cannon pointed at any address.
         if (!sess.isAdmin && await rateLimited(env, request, 'emailchange', 5, 3600, { sess })) {
-          return tooManyResponse('You have changed your email several times in the last hour. Try again later.', 3600);
+          return tooManyResponse('Too many email changes in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const email = String(b.email || '').trim();
@@ -9381,13 +9816,14 @@ export default {
           const limited = await writeLimited(env, request, sess, 'upload');
           if (limited) return limited;
         }
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
-        let key, bytes, contentType, sourceETag;
+        let key, bytes, contentType, sourceETag, baseUpdatedAt = null;
         if (ct.includes('application/json')) {
           const b = await request.json().catch(() => ({}));
           key = b.key; sourceETag = cleanETag(b.sourceETag);
-          if (!key || !b.data) return jsonResponse({ error: 'Missing key or data' }, { status: 400 });
+          if (b.baseUpdatedAt) baseUpdatedAt = String(b.baseUpdatedAt);
+          if (!key || !b.data) return jsonResponse({ error: 'No image was sent.' }, { status: 400 });
           let data = String(b.data);
           if (data.startsWith('data:')) {
             contentType = data.slice(5, data.indexOf(';'));
@@ -9401,7 +9837,7 @@ export default {
         }
         key = String(key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
-          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+          return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
         if (bytes.length > 8 * 1024 * 1024) {
           return jsonResponse({ error: 'Image is too large (8 MB max).' }, { status: 413 });
@@ -9442,12 +9878,28 @@ export default {
           const denied = await uploadSlotDenied(env, sess, key);
           if (denied) return denied;
         }
+        // The character editors upload the art and THEN save the row, and
+        // the save carries the stamp the editor loaded (baseUpdatedAt, see
+        // editConflict). touchArtRow() below moves that stamp, so every save
+        // that came with a new icon was refused as somebody else's edit —
+        // the one editor on the page was being told to reload. So an upload
+        // may carry the same stamp: it is checked HERE, before any bytes
+        // land (a stale tab's picture must not overwrite the live one
+        // either), and the row's new stamp goes back in the response for the
+        // editor to adopt. A caller that sends none — Icon Forge, the
+        // standardizer, the thumbnail backfill — is unaffected, exactly as
+        // the save handlers leave such a client alone.
+        const artRow = baseUpdatedAt && key.startsWith('art/') ? await artRowStamp(env, key) : null;
+        {
+          const conflict = artRow ? editConflict(artRow, { baseUpdatedAt }) : null;
+          if (conflict) return conflict;
+        }
 
         const ext = key.split('.').pop().toLowerCase();
         if (!contentType) contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
         const mediaKey = key.startsWith('media/') ? mediaSource(key) : '';
         if (key.startsWith('media/') && (!mediaKey || !sourceETag || sourceETag !== await mediaOriginalETag(env, url.origin, mediaKey))) {
-          return jsonResponse({ error: 'The original image changed; regenerate this variant.' }, { status: 409 });
+          return jsonResponse({ error: 'The original image has changed, so this resized copy is out of date.' }, { status: 409 });
         }
         const stored = await env.ART.put(key, bytes, {
           httpMetadata: { contentType },
@@ -9459,9 +9911,16 @@ export default {
         }
         // Uploads were never recorded anywhere, so there was no way to answer
         // "who put this image here" or to see a flood while it was happening.
-        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache.
+        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache —
+        // except for character art, where touchArtRow() rolls the row's
+        // version so the year-long image cache lets the new picture through.
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
-        return jsonResponse({ ok: true, path: '/assets/' + key, etag: stored && stored.etag });
+        const touched = await touchArtRow(env, key);
+        const stamp = touched ? await artRowStamp(env, key) : null;
+        return jsonResponse({
+          ok: true, path: '/assets/' + key, etag: stored && stored.etag,
+          ...(stamp && stamp.updated_at ? { updatedAt: stamp.updated_at } : {})
+        });
       }
 
       /* ---- an image on a comment or a modmail message ----
@@ -9479,13 +9938,13 @@ export default {
          SVG is a script-execution format wearing an image extension, and
          these files are served from the site's own origin. */
       if (path === '/api/attachment') {
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'attach', 60, 3600)) {
-          return tooManyResponse('That is a lot of images in an hour. Try again later.', 3600);
+          return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         let data = String(b.data || '');
-        if (!data) return jsonResponse({ error: 'Missing image data.' }, { status: 400 });
+        if (!data) return jsonResponse({ error: 'No image was sent.' }, { status: 400 });
         let declared = '';
         if (data.startsWith('data:')) {
           declared = data.slice(5, data.indexOf(';'));
@@ -9534,16 +9993,16 @@ export default {
           const limited = await writeLimited(env, request, sess, 'upload');
           if (limited) return limited;
         }
-        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const b = await request.json().catch(() => ({}));
         let key = String(b.key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (!key || key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
-          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+          return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
         let srcUrl;
         try { srcUrl = new URL(String(b.src || '')); } catch { srcUrl = null; }
         if (!srcUrl || srcUrl.protocol !== 'https:' || !Bloodstar.isBloodstarHost(srcUrl.hostname)) {
-          return jsonResponse({ error: 'That image is not on Bloodstar. Upload it through /api/upload instead.' }, { status: 400 });
+          return jsonResponse({ error: 'That image is not on Bloodstar.' }, { status: 400 });
         }
         // Both spellings of each Bloodstar host are accepted and only one of
         // them answers (see BLOODSTAR_HOST_CANON), so the image is asked for
@@ -9588,6 +10047,7 @@ export default {
         });
         dropThumbFor(env, ctx, key);
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB (Bloodstar)');
+        await touchArtRow(env, key);   // a re-import over an existing page: see touchArtRow
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
@@ -9605,7 +10065,7 @@ export default {
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if ((row.status || 'published') !== 'published') {
@@ -9643,7 +10103,7 @@ export default {
         delete data.renameFrom;
         delete data.appearsInFrom;
         if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
-          return jsonResponse({ error: 'That is the page exactly as it stands, so there is nothing to suggest.' }, { status: 400 });
+          return jsonResponse({ error: 'Nothing has changed, so there is nothing to suggest.' }, { status: 400 });
         }
         await ensureSuggestTable(env);
         const open = await env.DB.prepare(
@@ -9681,7 +10141,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10) || 0;
         const action = String(b.action || '');
-        if (!id) return jsonResponse({ error: 'Missing suggestion id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No suggestion given.' }, { status: 400 });
         await ensureSuggestTable(env);
         const sug = await env.DB.prepare('SELECT * FROM suggestions WHERE id=?')
           .bind(id).first().catch(() => null);
@@ -9756,12 +10216,12 @@ export default {
       if (path === '/api/page-rollback') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
         if (row.status === 'deleted') {
-          return jsonResponse({ error: 'That page is in the trash. It has to be restored before it can be rolled back.' }, { status: 400 });
+          return jsonResponse({ error: 'That page is in the trash. Restore it first.' }, { status: 400 });
         }
         if (!sess.isAdmin && await isProtected(env, type, row.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -9798,7 +10258,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot post comments.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'comment', 30, 3600)) {
-          return tooManyResponse('Slow down — too many comments from this connection. Try again later.', 3600);
+          return tooManyResponse('Too many comments from this connection. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -9868,7 +10328,7 @@ export default {
         await ensureCommentTables(env);
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const target = await commentTarget(env, row.entity_type, row.slug);
@@ -9889,7 +10349,7 @@ export default {
         await ensureCommentTables(env);
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const target = await commentTarget(env, row.entity_type, row.slug);
@@ -9915,7 +10375,7 @@ export default {
         }
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
-        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT id FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row) return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
         const already = await env.DB.prepare(
@@ -10003,7 +10463,7 @@ export default {
         // to do.
         const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
         if (existing && !perm) {
-          return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
+          return jsonResponse({ error: 'Another account already has a character with that name. Pick a different name.' }, { status: 403 });
         }
         if (existing && !permCanWrite(perm)) {
           return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
@@ -10104,6 +10564,12 @@ export default {
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
         if (!c.related.length) delete c.related;
+        /* The wiki-only display size of the /c/ emblem (render.js draws it,
+           buildSchema never exports it). A whole percentage inside
+           Render's range, or nothing: 100 is the default and is not stored,
+           so an untouched page grows no key. */
+        c.artScale = Render.artScaleValue(c.artScale);
+        if (!c.artScale) delete c.artScale;
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.
@@ -10123,8 +10589,8 @@ export default {
         // live page by clearing one field. Refuse that save instead.
         if (existing && perm !== 'owner' && status === 'published' && needed.length) {
           return jsonResponse({
-            error: 'That edit would leave the page without ' + Classify.listPhrase(needed) +
-              ', which a published page needs. Put that back and save again.',
+            error: 'A published page needs ' + Classify.listPhrase(needed) +
+              '. Put that back and save again.',
             missingForPublish: needed
           }, { status: 400 });
         }
@@ -10204,8 +10670,8 @@ export default {
           iconBlocked,
           missingForPublish: needed,
           notice: iconBlocked
-            ? 'Saved as a draft: a character needs ' + Classify.listPhrase(needed) +
-              ' before it can be published. Add that and publish again.'
+            ? 'Saved as a draft. Add ' + Classify.listPhrase(needed) +
+              ' to publish it.'
             : undefined
         });
       }
@@ -10223,7 +10689,7 @@ export default {
       // no activity is logged — a bookmark is not an edit.
       if (path === '/api/favorite') {
         if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
-          return tooManyResponse('You have changed a lot of favorites in the last hour. Take a short break and try again.', 3600);
+          return tooManyResponse('Too many favorite changes in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => null);
         if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
@@ -10361,7 +10827,7 @@ export default {
         const kebab = s => String(s || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
         c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
-        if (!c.id) return jsonResponse({ error: 'Could not derive a collection id from that name.' }, { status: 400 });
+        if (!c.id) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         const pkSlug = existing ? existing.slug : c.id;
         if (!existing) {
           // creating: the id must not collide with another collection's id
@@ -10454,9 +10920,9 @@ export default {
           if (limited) return limited;
         }
         const s = await request.json();
-        if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+        if (!s || !s.slug) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
-          return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
+          return jsonResponse({ error: 'Invalid script URL.' }, { status: 400 });
         }
         const existing = await getEntityRow(env, 'script', s.slug);
         const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
@@ -10579,6 +11045,7 @@ export default {
           await env.DB.prepare('DELETE FROM pages WHERE slug=?').bind(row.slug).run();
           await ensureCommentTables(env);
           await env.DB.prepare("DELETE FROM comments WHERE entity_type='wikipage' AND slug=?").bind(row.slug).run();
+          await unfeatureArticle(env, row.slug);
           await logActivity(env, sess, 'delete', 'wikipage', row.slug, row.title);
           return jsonResponse({ ok: true, deleted: row.slug });
         }
@@ -10685,7 +11152,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         let row = await getEntityRow(env, type, String(b.slug || ''));
         // Legacy collections have display-string PK slugs; the URL uses the id.
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
@@ -10704,8 +11171,8 @@ export default {
         const pubMissing = type === 'character' ? Classify.missingForPublish(pubData) : [];
         if (status === 'published' && pubMissing.length) {
           return jsonResponse({
-            error: 'This character needs ' + Classify.listPhrase(pubMissing) +
-                   ' before it can be published. Open the editor and add that.',
+            error: 'Add ' + Classify.listPhrase(pubMissing) +
+                   ' in the editor before publishing this character.',
             needsIcon: true, missingForPublish: pubMissing
           }, { status: 400 });
         }
@@ -10741,7 +11208,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
         let row = await getEntityRow(env, type, String(b.slug || ''));
         // Legacy collections have display-string PK slugs; the URL uses the id.
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
@@ -11004,7 +11471,7 @@ export default {
         await logActivity(env, sess, 'contact', 'message', null, category);
         return jsonResponse({
           ok: true, id: (ins.meta && ins.meta.last_row_id) || null,
-          message: 'Message sent — the admins will see it on their dashboard.'
+          message: 'Message sent. The admins will see it on their dashboard.'
         });
       }
 
@@ -11043,7 +11510,7 @@ export default {
         const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM modmail_replies WHERE message_id=?')
           .bind(id).first().catch(() => ({ n: 0 }));
         if ((Number(n && n.n) || 0) >= 200) {
-          return jsonResponse({ error: 'This conversation is very long — please start a new message instead.' }, { status: 400 });
+          return jsonResponse({ error: 'This conversation is too long to continue. Please start a new message.' }, { status: 400 });
         }
         const ins = await env.DB.prepare(
           'INSERT INTO modmail_replies (message_id, user_id, is_staff, body, images) VALUES (?,?,0,?,?)'
@@ -11058,7 +11525,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot send messages. You can contact the admins from your account page.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'dm', 20, 300)) {
-          return tooManyResponse('You are sending messages very quickly — wait a minute and try again.', 300);
+          return tooManyResponse('You are sending messages very quickly. Wait a minute and try again.', 300);
         }
         const b = await request.json().catch(() => ({}));
         const to = String(b.to || '').trim();
@@ -11989,12 +12456,15 @@ export default {
         ).all();
 
         // Addresses already spoken for, plus every address any page has ever
-        // had — taking one of those back would hijack a live redirect.
+        // had — taking one of those back would hijack a live redirect. A
+        // redirect whose page is deleted is not live (LIVE_REDIRECT_SQL), so
+        // the address it held is free again, exactly as freeCharAddress()
+        // sees it on an ordinary save.
         const taken = new Set();
         for (const r of rows || []) if (r.url_slug) taken.add(String(r.url_slug));
         try {
           const { results } = await env.DB.prepare(
-            "SELECT from_slug FROM redirects WHERE entity_type='character'"
+            `SELECT r.from_slug FROM redirects r WHERE r.entity_type='character' AND ${LIVE_REDIRECT_SQL}`
           ).all();
           for (const r of results || []) if (r.from_slug) taken.add(String(r.from_slug));
         } catch { /* nothing has ever moved */ }
@@ -12352,6 +12822,53 @@ export default {
         _announcementCache = null;
         await logActivity(env, sess, 'announce', 'wiki', null, text.slice(0, 60));
         return jsonResponse({ ok: true, announcement: ann });
+      }
+
+      // ---- admin: feature a custom wiki page (Featured Articles) ----
+      // {slug, on}. `slug` may be the page's whole address. Featuring an
+      // already-featured page changes nothing (it keeps its place); only a
+      // published page can be picked. The fresh list comes back in the
+      // response, so the admin's screen never waits on another isolate's
+      // content-version memo to catch up.
+      if (path === '/api/admin/featured-article') {
+        const b = await request.json().catch(() => ({}));
+        const slug = featuredSlugFrom(b.slug);
+        if (!slug) return jsonResponse({ error: 'Paste the address of a page (it has /p/ in it).' }, { status: 400 });
+        await ensurePagesTable(env);
+        const row = await env.DB.prepare('SELECT slug, title, status FROM pages WHERE slug=?')
+          .bind(slug).first().catch(() => null);
+        const on = b.on !== false;
+        let picks = await featuredArticlePicks(env);
+        // Forget picks whose page no longer exists, so they stop counting
+        // towards the cap.
+        if (picks.length) {
+          const { results } = await env.DB.prepare(
+            `SELECT slug FROM pages WHERE slug IN (${picks.map(() => '?').join(',')})`
+          ).bind(...picks.map(p => p.slug)).all();
+          const live = new Set((results || []).map(r => r.slug));
+          picks = picks.filter(p => live.has(p.slug));
+        }
+        const already = picks.some(p => p.slug === slug);
+        if (on && !already) {
+          if (!row) return jsonResponse({ error: 'There is no page at /p/' + slug + '.' }, { status: 404 });
+          if (row.status !== 'published') {
+            return jsonResponse({ error: 'That page is a draft. It can be featured once it is published.' }, { status: 400 });
+          }
+          if (picks.length >= FEATURED_ARTICLES_MAX) {
+            return jsonResponse({ error: 'There are already ' + FEATURED_ARTICLES_MAX + ' featured articles. Remove one first.' }, { status: 400 });
+          }
+          picks.unshift({ slug, at: new Date().toISOString() });
+        } else if (!on) {
+          picks = picks.filter(p => p.slug !== slug);
+        }
+        await writeFeaturedArticlePicks(env, picks);
+        if (on !== already) {
+          await logActivity(env, sess, on ? 'feature' : 'unfeature', 'wikipage', slug, row ? row.title : slug);
+        }
+        return jsonResponse({
+          ok: true, slug, featured: on,
+          articles: (await featuredArticles(env, FEATURED_ARTICLES_MAX, { all: true })).articles
+        });
       }
 
       // ---- admin: rewrite one of the site's own strings (/text-editor) ----

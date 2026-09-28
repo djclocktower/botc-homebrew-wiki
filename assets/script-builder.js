@@ -2902,6 +2902,18 @@
       Object.keys(rowBySlug).forEach(paintRow);
       afterChange();
     });
+    // A search result's Add to Script button (assets/card-actions.js) writes
+    // the same key in THIS tab, where no storage event fires, and says so
+    // with botc-script-change. It goes through replaceOrder so it can be
+    // undone like any other add.
+    window.addEventListener('botc-script-change', function (e) {
+      var arr = readJSON(SCRIPT_KEY, []);
+      var list = Array.isArray(arr) ? arr.filter(function (s) { return typeof s === 'string'; }) : [];
+      if (list.join('\n') === order.join('\n')) return;
+      var d = (e && e.detail) || {};
+      var c = d.slug && bySlug[d.slug];
+      replaceOrder(list, false, (d.on ? 'add ' : 'remove ') + (c ? c.name : 'a character'));
+    });
   }
 
   var ACTIONS = {

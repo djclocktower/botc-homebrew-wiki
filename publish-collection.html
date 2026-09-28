@@ -145,7 +145,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -154,7 +154,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -166,7 +166,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <main class="pub-main">
     <div class="home-hero" style="padding-bottom:14px">
       <h1 id="pub-page-title">Create a Collection</h1>
-      <p>A collection groups your characters into one wiki page — name it, pick its characters, and publish.</p>
+      <p>A collection groups characters into one wiki page.</p>
     </div>
 
     <div id="gate" class="sb-details" style="display:none">
@@ -189,10 +189,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <label for="pc-author">Author / curator</label>
         <input type="text" id="pc-author" placeholder="Your name">
         <label class="credit-unlink" for="pc-credit-unlinked"><input type="checkbox" id="pc-credit-unlinked"> This credit isn’t mine</label>
-        <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s collection. The name in the Author box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
+        <span class="credit-unlink-hint">Tick this if you’re publishing someone else’s collection. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
       </div>
       <div class="sb-fld">
-        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
+        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional: one line shown under the title)</span></label>
         <input type="text" id="pc-tagline" maxlength="140" placeholder="e.g. Class is in session.">
       </div>
       <div class="sb-fld-row">
@@ -211,7 +211,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
       </div>
       <div class="sb-fld">
-        <label for="pc-desc">Description <span class="req">*</span></label>
+        <label for="pc-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
         <textarea id="pc-desc" placeholder="A short blurb about this collection."></textarea>
       </div>
       <div class="sb-fld">
@@ -232,9 +232,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     <!-- Membership -->
     <div class="sb-details">
       <h2>Characters</h2>
-      <p class="sub">Characters whose <em>Appears in</em> matches one of the match terms join automatically. You can also add or remove characters by hand.</p>
+      <p class="sub">Characters whose <em>Appears in</em> matches a match term join automatically. You can also add or remove them by hand.</p>
       <div class="sb-fld">
-        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(comma-separated — e.g. "The Academy, Academy")</span></label>
+        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(comma-separated, e.g. "The Academy, Academy")</span></label>
         <input type="text" id="pc-match" placeholder="The Academy">
       </div>
       <div class="sb-fld pc-add-wrap">
@@ -244,22 +244,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
       <p class="pc-member-count" id="pc-member-count">0 characters</p>
       <div class="pc-order-bar">
-        <span class="pc-order-note">This is the order the collection page shows, within each team. Use ▲▼ to arrange it.</span>
-        <button type="button" class="sb-btn sb-btn-export" id="pc-sao-sort" title="Arrange the roster in Steven Approved Order">⇅ Sort (SAO)</button>
-        <button type="button" class="sb-btn sb-btn-export" id="pc-order-reset" title="Back to alphabetical within each team">↺ Reset order</button>
+        <span class="pc-order-note">Use ▲▼ to reorder within each team.</span>
+        <button type="button" class="sb-btn sb-btn-export" id="pc-sao-sort" title="Arrange the roster in Steven Approved Order"><span class="ico ico-sort" aria-hidden="true"></span> Sort (SAO)</button>
+        <button type="button" class="sb-btn sb-btn-export" id="pc-order-reset" title="Back to alphabetical within each team"><span class="ico ico-reset" aria-hidden="true"></span> Reset order</button>
       </div>
       <div class="pc-member-list" id="pc-member-list">
-        <p class="pub-empty" style="padding:10px">No characters yet — set a match term or add characters above.</p>
+        <p class="pub-empty" style="padding:10px">No characters yet. Set a match term or add characters above.</p>
       </div>
       <div class="pc-excluded" id="pc-excluded"></div>
     </div>
 
     <!-- Optional wiki-page text sections -->
     <details class="sb-details" id="sb-sections">
-      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — synopsis, gameplay overview and strategy notes, shown on the collection page like the official wiki.</span></summary>
+      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Synopsis, gameplay and strategy notes for your collection page.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro — blank line = new paragraph)</span></label>
+          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro; a blank line starts a new paragraph)</span></label>
           <textarea id="pc-synopsis" rows="4" maxlength="4000"></textarea>
         </div>
         <div class="sb-fld">
@@ -281,7 +281,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Optional custom boxes on the collection page -->
     <details class="sb-details" id="sb-boxes-sec">
-      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — extra boxes on your collection page, the same as the ones on character pages.</span></summary>
+      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Extra boxes down the side of your collection page.</span></summary>
       <div class="sb-details-body">
         <div id="pc-boxes"></div>
         <button type="button" class="th-clear" id="pc-box-add">+ Add a box</button>
@@ -296,7 +296,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Text-first pages attached to this collection (edit mode only) -->
     <details class="sb-details" id="sb-pages-sec" style="display:none">
-      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — full text pages (rules, lore, a storyteller guide) linked from your collection page and nowhere else.</span></summary>
+      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Text pages such as rules or lore, linked only from your collection page.</span></summary>
       <div class="sb-details-body">
         <ul class="article-list" id="pc-pages-list"><li class="sub">No pages yet.</li></ul>
         <a class="th-clear" id="pc-page-new" href="#" style="display:inline-block;margin-top:10px;text-decoration:none">+ Write a page</a>
@@ -319,26 +319,26 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <div class="sb-fld">
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
-            <option value="">Not set: my characters and pages on it keep their own settings</option>
-            <option value="closed">Only me (and the wiki admins)</option>
+            <option value="">Not set: my pages on it keep their own settings</option>
+            <option value="closed">Only me</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, I approve it</option>
             <option value="all">Anyone with an account can edit</option>
           </select>
-          <p class="sub" style="margin:8px 0 0">Whatever you choose here applies to this collection <strong>and to every character and wiki page on it that belongs to you</strong>, so one choice covers the whole set. Pages belonging to anyone else are not yours to share, so those keep their own settings.</p>
+          <p class="sub" style="margin:8px 0 0">Applies to this collection <strong>and your own characters and wiki pages on it</strong>. Other people's pages keep their own settings.</p>
         </div>
         <div class="sb-fld" id="sb-editors-fld" style="display:none">
           <label>Approved editors</label>
           <div id="sb-editors-box"></div>
-          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this collection exactly as you would, drafts included — and the character pages and wiki pages on it that belong to you, so they can fix the roster and the rules as well as the page. They can add new wiki pages too, which stay drafts until you publish them. Pages belonging to anyone else are not yours to share, so those stay untouched.</p>
+          <p class="sub" style="margin:8px 0 0">The people you name can edit this collection and your own pages on it, drafts included, and add new wiki pages as drafts.</p>
         </div>
-        <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
+        <p class="sub" style="margin:0">Every edit shows in the page's history, where you can put back an earlier version. Publishing, deleting and this setting stay yours.</p>
       </div>
     </details>
 
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
-      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for the collection's wiki page.</span></summary>
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Logo, background image, fonts and colors for the collection's wiki page.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
@@ -376,18 +376,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <div class="sb-fld">
           <label>Top image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the header if you set one, otherwise the logo)</span></label>
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
-          <p class="sub" style="margin:6px 0 0">Useful when the image was drawn for a light background and gets lost against the wiki's purple. The size of each image is set beside the image itself, and both previews show the result before you publish.</p>
+          <p class="sub" style="margin:6px 0 0">For an image drawn on a light background that gets lost on the wiki's purple.</p>
         </div>
       </div>
     </details>
 
     <div class="pub-actions">
-      <button class="sb-btn sb-btn-publish" id="pc-publish" type="button">★ Publish to Wiki</button>
-      <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button class="sb-btn sb-btn-publish" id="pc-publish" type="button"><span class="ico ico-star" aria-hidden="true"></span> Publish to Wiki</button>
+      <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account and hidden from the wiki until you publish">Save as Draft</button>
       <button class="sb-btn sb-btn-delete" id="pc-delete" type="button" style="display:none" title="Remove this collection from the site (an admin can restore it)">Delete Collection</button>
       <span class="pub-status-pill" id="pub-status-pill"></span>
     </div>
-    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account — only you (and admins) can see a draft. Name and description are required, and you must be logged in.</p>
+    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account. Only you can see a draft. A name is required.</p>
     <div id="sb-publish-status"></div>
 
     </div><!-- /editor -->
@@ -546,8 +546,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (hint && hint.classList.contains('credit-unlink-hint')) hint.style.display = 'none';
       if (mode === 'approved'){
         pubStatus('ok', currentStatus === 'draft'
-          ? 'The creator made you an editor of this collection. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
-          : 'The creator made you an editor of this collection. Everything here is yours to change; publishing and deleting stay with them.');
+          ? 'You are an editor of this collection. It is a draft, and only its creator can publish it.'
+          : 'You are an editor of this collection. Publishing and deleting stay with its creator.');
         $('pc-draft').style.display = 'none';
         updateButtons();   // relabel now that editRole is set
         return;
@@ -555,7 +555,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (mode === 'all'){
         // updateButtons() already labels Publish correctly for the stored
         // status; only the draft and delete buttons have to go.
-        pubStatus('ok', 'This collection is open for anyone with an account to edit. ' +
+        pubStatus('ok', 'Anyone with an account can edit this collection. ' +
           'Publishing and deleting stay with its creator.');
         $('pc-draft').style.display = 'none';
         return;
@@ -563,7 +563,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('pc-publish').disabled = true;
       $('pc-draft').disabled = true;
       pubStatus('err', mode === 'suggest'
-        ? 'This collection takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
+        ? 'This collection only takes suggested edits, which this page cannot send yet. Message the creator instead.'
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
@@ -610,7 +610,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var inc = {}; include.forEach(function(s){ inc[s] = 1; });
       $('pc-member-count').textContent = members.length + ' character' + (members.length===1?'':'s');
       if (!members.length){
-        $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">No characters yet — set a match term or add characters above.</p>';
+        $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">No characters yet. Set a match term or add characters above.</p>';
       } else {
         // A character can only move within its own team: the page draws one
         // section per team, so the team headings here mirror what a reader
@@ -738,8 +738,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!window.sortRosterSAO || !shownMembers.length) return;
       order = window.sortRosterSAO(shownMembers.map(function(c){ return c.slug; }), bySlug);
       renderMembers();
-      var b = this; b.textContent = '✓ Sorted';
-      setTimeout(function(){ b.textContent = '⇅ Sort (SAO)'; }, 1500);
+      var b = this; b.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Sorted';
+      setTimeout(function(){ b.innerHTML = '<span class="ico ico-sort" aria-hidden="true"></span> Sort (SAO)'; }, 1500);
     });
     // Back to no stored order at all, which is alphabetical within each team.
     $('pc-order-reset').addEventListener('click', function(){
@@ -791,7 +791,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             cv.getContext('2d').drawImage(img, 0, 0, w, h);
             var dataURL = cv.toDataURL('image/png');
             var pv = $(prevId); pv.src = dataURL; pv.style.display = 'block';
-            $(noteId).textContent = 'New image ready — will be uploaded when you save.';
+            $(noteId).textContent = 'New image ready. It uploads when you save.';
             if (removeId) $(removeId).style.display = '';
             onReady(dataURL);
           };
@@ -811,7 +811,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         onRemove();
         var pv = $(prevId); pv.src = ''; pv.style.display = 'none';
         $(fileId).value = '';
-        $(noteId).textContent = 'Removed — will be cleared when you save.';
+        $(noteId).textContent = 'Removed. It is cleared when you save.';
         this.style.display = 'none';
       });
     }
@@ -835,8 +835,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // pins the stored status for anyone but the owner. A button reading
       // "Publish to Wiki" on a shared draft would be a promise the save
       // does not keep, so it says what pressing it actually does.
-      pub.textContent   = (editRole === 'approved' || currentStatus === 'published')
-        ? '★ Save Changes' : '★ Publish to Wiki';
+      pub.innerHTML     = (editRole === 'approved' || currentStatus === 'published')
+        ? '<span class="ico ico-star" aria-hidden="true"></span> Save Changes' : '<span class="ico ico-star" aria-hidden="true"></span> Publish to Wiki';
       draft.textContent = currentStatus === 'draft' ? 'Save Draft'
                         : currentStatus === 'published' ? 'Move to Draft' : 'Save as Draft';
       pill.className = 'pub-status-pill' + (currentStatus ? ' ' + currentStatus : '');
@@ -879,9 +879,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var name = $('pc-name').value.trim();
       var desc = $('pc-desc').value.trim();
       if (!name){ pubStatus('err', 'Please give the collection a name.'); return; }
-      if (!desc){ pubStatus('err', 'Please add a short description.'); return; }
       var wanted = EDIT_KEY || slugify(name);
-      if (!wanted){ pubStatus('err', 'Could not derive a collection id from that name.'); return; }
+      if (!wanted){ pubStatus('err', 'Could not make a page address from that name.'); return; }
       var id = wanted, bumped = false;
 
       $('pc-publish').disabled = true;
@@ -956,18 +955,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         // save having failed, and "did it overwrite the other one?" is the
         // first thing anyone would wonder.
         var note = bumped
-          ? ' <em>A page already used <code>/collection/' + esc(wanted) + '</code>, so this one has its own address. ' +
-            'If you meant to change a collection you already made, open it from <a href="account">your account</a>.</em>'
+          ? ' <em><code>/collection/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
+            'To change an existing collection, open it from <a href="account">your account</a>.</em>'
           : '';
         if (isDraft){
-          pubStatus('ok', '✓ Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> Hit <strong>Publish to Wiki</strong> when it’s ready.' + note);
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
         } else {
-          pubStatus('ok', '✓ Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
         }
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '✗ ' + err.message);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       });
@@ -980,7 +979,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var target = EDIT_PK || EDIT_KEY;
       if (!target) return;
       var nm = $('pc-name').value.trim() || target;
-      if (!confirm('Delete "' + nm + '"?\n\nIt will be removed from the site. An admin can restore it from the dashboard if this was a mistake.')) return;
+      if (!confirm('Delete "' + nm + '"?\n\nIt will be removed from the site. An admin can restore it.')) return;
       var del = $('pc-delete');
       del.disabled = true; del.textContent = 'Deleting…';
       $('pc-publish').disabled = true; $('pc-draft').disabled = true;
@@ -991,16 +990,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
       .then(function(res){
         if (res.status === 200 && res.body.ok){
-          pubStatus('ok', '&#10003; Deleted. Redirecting&hellip;');
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
-          pubStatus('err', '&#10007; ' + ((res.body && res.body.error) || 'Delete failed.'));
+          pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + ((res.body && res.body.error) || 'Delete failed.'));
           del.disabled = false; del.textContent = 'Delete Collection';
           $('pc-publish').disabled = false; $('pc-draft').disabled = false;
         }
       })
       .catch(function(err){
-        pubStatus('err', '&#10007; ' + err.message);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
         del.disabled = false; del.textContent = 'Delete Collection';
         $('pc-publish').disabled = false; $('pc-draft').disabled = false;
       });
@@ -1048,20 +1047,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (c.header){
             existingHeader = c.header;
             var pv = $('pc-header-prev'); pv.src = PageRender.imgSrc('', c.header); pv.style.display = 'block';
-            $('pc-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
+            $('pc-header-note').textContent = 'Current header. Choose a file to replace it, or remove it.';
             $('pc-header-remove').style.display = '';
           }
           if (c.logo){
             existingLogo = c.logo;
             var lv = $('pc-logo-prev'); lv.src = PageRender.imgSrc('', c.logo); lv.style.display = 'block';
-            $('pc-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
+            $('pc-logo-note').textContent = 'Current logo. Choose a file to replace it, or remove it.';
             $('pc-logo-remove').style.display = '';
             $('sb-appearance').open = true;
           }
           if (theme.background){
             existingBg = theme.background;
             var bv = $('pc-bg-prev'); bv.src = PageRender.imgSrc('', theme.background); bv.style.display = 'block';
-            $('pc-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
+            $('pc-bg-note').textContent = 'Current background. Choose a file to replace it, or remove it.';
             $('pc-bg-remove').style.display = '';
           }
           updateUrlPreview(); updateButtons(); renderMembers();

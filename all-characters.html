@@ -6,10 +6,10 @@
 <script src="assets/viewport.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>All Characters — BOTC HomeBrew Wiki</title>
-<meta name="description" content="All homebrew characters on the BOTC HomeBrew Wiki — filter fan-made Blood on the Clocktower characters by team, tag, and collection.">
+<meta name="description" content="Every homebrew character on the BOTC HomeBrew Wiki. Filter fan-made Blood on the Clocktower characters by team, tag, and collection.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="All Characters">
-<meta property="og:description" content="All homebrew characters on the BOTC HomeBrew Wiki — filter fan-made Blood on the Clocktower characters by team, tag, and collection.">
+<meta property="og:description" content="Every homebrew character on the BOTC HomeBrew Wiki. Filter fan-made Blood on the Clocktower characters by team, tag, and collection.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -40,7 +40,7 @@
       <a href="script">Script Builder</a>
     </nav>
     <div class="search-wrap" id="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
@@ -49,7 +49,7 @@
   </header>
   <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
     <div class="nav-dropdown-search">
-      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
     </div>
     <a href="/">Home</a>
     <a href="all-characters">All Characters</a>
@@ -93,6 +93,8 @@
   <script src="assets/tags.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/favorites.js"></script>
+  <script src="assets/card-actions.js"></script>
+  <script src="assets/char-filters.js"></script>
   <script>
     var TEAMS = [
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
@@ -109,30 +111,9 @@
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-    // A card's picture: the 192px WebP thumbnail beside the art
-    // (thumb/{file}.webp — the Worker serves the original where there is none
-    // yet), versioned by the row's `v` so it caches for a year. Same order as
-    // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
-    function thumb(c){
-      var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
-      if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
-      if (c.art) return 'assets/' + c.art + ver;
-      if (typeof c.image === 'string' && c.image) return c.image;
-      if (Array.isArray(c.image) && c.image[0]) return c.image[0];
-      return 'assets/favicon.png';
-    }
-    function card(c) {
-      var typeClass = GOOD[c.team] ? ' good' : '';
-      return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
-        '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) +
-          window.classBadgeHTML(window.classifyCharacter(c), { from: c.curataFrom }) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
-        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
-        '<span class="char-card-link">View Character →</span>' +
-        '</div></a>';
-    }
+    // One character card; the markup lives in char-filters.js so the /search
+    // page draws exactly the same card.
+    function card(c) { return window.CharFilters.card(c); }
     function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
     // Collection definitions are loaded from collections.json (built live
     // from D1); a "Standalone" pseudo-collection is appended after the fetch.
@@ -150,11 +131,8 @@
     }
     // Hybrid membership: a character belongs if its "Appears in" matches a
     // collection's match[] OR it's explicitly in include[], minus exclude[].
-    function inCollection(c, coll) {
-      if ((coll.exclude || []).indexOf(c.slug) !== -1) return false;
-      if ((coll.include || []).indexOf(c.slug) !== -1) return true;
-      return coll.match.indexOf(norm(c.appearsIn)) !== -1;
-    }
+    // The rule lives in char-filters.js, which the Source chips use too.
+    function inCollection(c, coll) { return window.CharFilters.inCollection(c, coll); }
     function charMatchesCollection(c, coll) {
       if (!coll) return true;
       if (coll.slug === 'Standalone') {
@@ -166,398 +144,22 @@
       }
       return inCollection(c, coll);
     }
-    // Slugs that appear in at least one homebrew script (scripts.json), for the
-    // "Source" filter. Populated once the data loads.
-    var SCRIPT_SLUGS = {};
-    // A character's source category: a collection (Appears in matches a collection)
-    // takes precedence over a script (listed in a homebrew script). null = neither.
-    function sourceOf(c){
-      for (var i = 0; i < AC_COLLECTIONS.length; i++) {
-        var coll = AC_COLLECTIONS[i];
-        if (coll.standalone) continue;
-        if (inCollection(c, coll)) return 'collection';
-      }
-      if (SCRIPT_SLUGS[norm(c.slug)]) return 'script';
-      return null;
-    }
-    var SOURCE_LABELS = [['collection','From Collection'],['script','From Script']];
-    function sourceLabel(v){ for (var i=0;i<SOURCE_LABELS.length;i++){ if (SOURCE_LABELS[i][0]===v) return SOURCE_LABELS[i][1]; } return v; }
-
     var COLLECTION_PARAM = (function(){
       try { var p = new URLSearchParams(location.search).get('collection'); return p ? decodeURIComponent(p) : null; }
       catch (e) { return null; }
     })();
 
-    // Filter state.
-    // Creators use the same 3-state include/exclude model as tags and teams
-    // (click = include, click again = exclude, third click = off) — there are
-    // far too many creators for a dropdown, so they get a search box instead
-    // of a chip wall. `showPartial` reveals unfinished pages, which are hidden
-    // from browsing by default; `curataOnly` narrows to admin-picked pages.
-    function blankState(){
-      return {
-        includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
-        includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-        creatorQuery: '', showPartial: false, curataOnly: false, favOnly: false, sort: 'name-asc'
-      };
-    }
-    var STATE = blankState();
-    // The reader's saved characters (assets/favorites.js): the ones saved
-    // directly plus every character on a saved script or collection. A Set
-    // once known; null while loading, when logged out, or when nothing here
-    // is saved — and then the chip is simply not shown.
-    var FAV_SET = null;
-    var ALL_CREATORS = [];
+    // The filter box (team, tag, source, status and creator chips, sort and
+    // group) is assets/char-filters.js, shared with the /search page.
+    var FILTERS = null;
     var FULL = [];   // collection-scoped full list
-
-    function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
-
-    function titleCase(s){ return String(s||'').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function(m){ return m.toUpperCase(); }); }
-
-    function buildFilterBar(list){
-      var bar = document.getElementById('filter-bar');
-      // Collect tags & creators (canonical tag list lives in assets/tags.js)
-      // Only offer tag chips for tags that appear in the current list —
-      // on collection views this keeps the bar from being a wall of unused chips.
-      var tagSet = {}, creatorSet = {};
-      list.forEach(function(c){
-        splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
-        // Co-credited pages ("Taiyi (太一), Saki") give every name its own chip.
-        window.splitCreators(c.creator).forEach(function(n){ creatorSet[n] = 1; });
-      });
-      var tags = Object.keys(tagSet).sort();
-      var creators = Object.keys(creatorSet).sort(function(a,b){ return a.toLowerCase()<b.toLowerCase()?-1:1; });
-
-      var html = '';
-      // Teams
-      html += '<div class="filter-group"><span class="filter-group-label">Team</span><div class="filter-chips" id="fc-teams">';
-      TEAMS.forEach(function(t){
-        if (!list.some(function(c){return c.team===t[0];})) return;
-        html += '<button type="button" class="filter-chip" data-team="'+t[0]+'">'+t[1]+'</button>';
-      });
-      html += '</div></div>';
-      // Tags
-      if (tags.length){
-        html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
-        tags.forEach(function(t){ html += '<button type="button" class="filter-chip" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
-        html += '</div></div>';
-      }
-      // Source (From Collection / From Script) — collection takes precedence.
-      // Only offer the chips whose source actually appears in the current list.
-      var srcSet = {};
-      list.forEach(function(c){ var s = sourceOf(c); if (s) srcSet[s] = 1; });
-      var srcPresent = SOURCE_LABELS.filter(function(s){ return srcSet[s[0]]; });
-      if (srcPresent.length){
-        html += '<div class="filter-group"><span class="filter-group-label">Source</span><div class="filter-chips" id="fc-sources">';
-        srcPresent.forEach(function(s){ html += '<button type="button" class="filter-chip" data-source="'+esc(s[0])+'">'+esc(s[1])+'</button>'; });
-        html += '</div></div>';
-      }
-      // Status (Partial / Curata). Partial pages are hidden until the
-      // reader asks for them; Curata is a narrowing filter.
-      var nPartial = list.filter(function(c){ return window.isPartial(c); }).length;
-      var nCurata = list.filter(function(c){ return window.isCurata(c); }).length;
-      // The Favorites chip is built hidden: the saved list arrives after the
-      // bar does, and the chip shows once something on the page is in it.
-      var wantFav = !!window.Favorites;
-      if (nPartial || nCurata || wantFav){
-        html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
-        if (nPartial){
-          html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: an ability and an icon, but no tags and no almanac text. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
-        }
-        if (nCurata){
-          html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata — pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
-        }
-        if (wantFav){
-          html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, and every character on a script or collection you saved.">' + window.Favorites.heartSVG() + ' Favorites</button>';
-        }
-        html += '</div></div>';
-      }
-      // Creator — a search box plus 3-state chips. The full creator list is
-      // hundreds long, so only matches for the current search are shown;
-      // anything already picked stays pinned above the search results.
-      ALL_CREATORS = creators;
-      if (creators.length > 1){
-        html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">Creator</span>' +
-          '<div class="filter-chip-selected-row" id="fc-creator-selected"></div>' +
-          '<input type="search" class="filter-search" id="fc-creator-search" ' +
-            'placeholder="Search ' + creators.length + ' creators…" autocomplete="off" aria-label="Search creators">' +
-          '<div class="filter-chips-scroll" id="fc-creator-list"></div>' +
-          '</div>';
-      }
-      // Sort
-      html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="fc-sort">' +
-        '<option value="name-asc">Name (A–Z)</option>' +
-        '<option value="name-desc">Name (Z–A)</option>' +
-        '<option value="recent">Recently added</option>' +
-        '</select></div>';
-      // Reset
-      html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="fc-reset">Reset filters</button></div>';
-
-      bar.innerHTML = html;
-      bar.hidden = false;
-
-      // Mobile: the bar starts collapsed behind a "Filters" toggle (CSS hides
-      // the bar below 640px unless .open is set; the button is display:none
-      // on desktop, so this changes nothing there).
-      var toggle = document.getElementById('filter-toggle');
-      if (toggle) {
-        toggle.hidden = false;
-        toggle.addEventListener('click', function(){
-          var open = bar.classList.toggle('open');
-          toggle.classList.toggle('open', open);
-          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        });
-      }
-
-      // Wire events
-      bar.querySelectorAll('[data-team]').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          var v = btn.getAttribute('data-team');
-          var ii = STATE.includeTeams.indexOf(v);
-          var ei = STATE.excludeTeams.indexOf(v);
-          if (ii === -1 && ei === -1) {
-            STATE.includeTeams.push(v);
-            btn.classList.add('active');
-            btn.classList.remove('active-exclude');
-          } else if (ii !== -1) {
-            STATE.includeTeams.splice(ii, 1);
-            STATE.excludeTeams.push(v);
-            btn.classList.remove('active');
-            btn.classList.add('active-exclude');
-          } else {
-            STATE.excludeTeams.splice(ei, 1);
-            btn.classList.remove('active-exclude');
-          }
-          render();
-        });
-      });
-      bar.querySelectorAll('[data-tag]').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          var v = btn.getAttribute('data-tag');
-          var ii = STATE.includeTags.indexOf(v);
-          var ei = STATE.excludeTags.indexOf(v);
-          if (ii === -1 && ei === -1) {
-            // unset → include
-            STATE.includeTags.push(v);
-            btn.classList.add('active');
-            btn.classList.remove('active-exclude');
-          } else if (ii !== -1) {
-            // include → exclude
-            STATE.includeTags.splice(ii, 1);
-            STATE.excludeTags.push(v);
-            btn.classList.remove('active');
-            btn.classList.add('active-exclude');
-          } else {
-            // exclude → unset
-            STATE.excludeTags.splice(ei, 1);
-            btn.classList.remove('active-exclude');
-          }
-          render();
-        });
-      });
-      bar.querySelectorAll('[data-source]').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          var v = btn.getAttribute('data-source');
-          var ii = STATE.includeSources.indexOf(v);
-          var ei = STATE.excludeSources.indexOf(v);
-          if (ii === -1 && ei === -1) {          // unset → include
-            STATE.includeSources.push(v);
-            btn.classList.add('active');
-            btn.classList.remove('active-exclude');
-          } else if (ii !== -1) {                // include → exclude
-            STATE.includeSources.splice(ii, 1);
-            STATE.excludeSources.push(v);
-            btn.classList.remove('active');
-            btn.classList.add('active-exclude');
-          } else {                               // exclude → unset
-            STATE.excludeSources.splice(ei, 1);
-            btn.classList.remove('active-exclude');
-          }
-          render();
-        });
-      });
-      // ── Status chips ──
-      var partialBtn = document.getElementById('fc-partial');
-      if (partialBtn) partialBtn.addEventListener('click', function(){
-        STATE.showPartial = !STATE.showPartial;
-        partialBtn.classList.toggle('active', STATE.showPartial);
-        render();
-      });
-      var curataBtn = document.getElementById('fc-curata');
-      if (curataBtn) curataBtn.addEventListener('click', function(){
-        STATE.curataOnly = !STATE.curataOnly;
-        curataBtn.classList.toggle('active', STATE.curataOnly);
-        render();
-      });
-      // ── Favorites chip ──
-      // Counted against THIS list, so a collection-scoped view says how many
-      // of its characters are saved. Re-counted after a toggle elsewhere on
-      // the page through onChange. ?favorites=1 opens the page on the chip;
-      // the account page links here that way.
-      var favBtn = document.getElementById('fc-fav');
-      if (favBtn){
-        favBtn.addEventListener('click', function(){
-          STATE.favOnly = !STATE.favOnly;
-          favBtn.classList.toggle('active', STATE.favOnly);
-          render();
-        });
-        var favLoad = function(){
-          window.Favorites.characterSlugs().then(function(set){
-            FAV_SET = set;
-            var n = set ? list.filter(function(c){ return set.has(c.slug); }).length : 0;
-            favBtn.hidden = !n;
-            favBtn.innerHTML = window.Favorites.heartSVG() + ' Favorites' + (n ? ' (' + n + ')' : '');
-            var group = document.getElementById('fc-status-group');
-            if (group && !partialBtn && !curataBtn) group.hidden = !n;
-            if (!n && STATE.favOnly){ STATE.favOnly = false; favBtn.classList.remove('active'); }
-            if (n && !STATE.favOnly && /[?&]favorites=1(&|$)/.test(location.search) && !favLoad.opened){
-              favLoad.opened = true;
-              STATE.favOnly = true; favBtn.classList.add('active');
-            }
-            render();
-          });
-        };
-        favLoad();
-        window.Favorites.onChange(favLoad);
-      }
-
-      // ── Creator search + 3-state chips ──
-      var crSearch = document.getElementById('fc-creator-search');
-      if (crSearch){
-        crSearch.addEventListener('input', function(){
-          STATE.creatorQuery = crSearch.value;
-          renderCreatorChips();
-        });
-        // Enter picks the only match, which makes the search usable one-handed
-        // on a phone without hunting for the chip.
-        crSearch.addEventListener('keydown', function(e){
-          if (e.key !== 'Enter') return;
-          e.preventDefault();
-          var matches = matchingCreators();
-          if (matches.length === 1) { cycleCreator(matches[0]); crSearch.value = ''; STATE.creatorQuery = ''; }
-          renderCreatorChips();
-          render();
-        });
-        renderCreatorChips();
-      }
-
-      document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
-      document.getElementById('fc-reset').addEventListener('click', function(){
-        STATE = blankState();
-        bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active','active-exclude'); });
-        if (crSearch) crSearch.value = '';
-        renderCreatorChips();
-        document.getElementById('fc-sort').value = 'name-asc';
-        render();
-      });
-    }
-
-    /* Creators matching the search box, capped so a blank search doesn't
-       paint every creator on the wiki. Picked creators are drawn separately. */
-    var CREATOR_LIST_CAP = 40;
-    function matchingCreators(){
-      var q = STATE.creatorQuery.trim().toLowerCase();
-      return ALL_CREATORS.filter(function(c){
-        if (STATE.includeCreators.indexOf(c) !== -1) return false;
-        if (STATE.excludeCreators.indexOf(c) !== -1) return false;
-        return !q || c.toLowerCase().indexOf(q) !== -1;
-      });
-    }
-
-    /* unset → include → exclude → unset, matching the tag chips. */
-    function cycleCreator(name){
-      var ii = STATE.includeCreators.indexOf(name);
-      var ei = STATE.excludeCreators.indexOf(name);
-      if (ii === -1 && ei === -1) STATE.includeCreators.push(name);
-      else if (ii !== -1) { STATE.includeCreators.splice(ii, 1); STATE.excludeCreators.push(name); }
-      else STATE.excludeCreators.splice(ei, 1);
-    }
-
-    function creatorChipHTML(name, cls){
-      return '<button type="button" class="filter-chip' + (cls ? ' ' + cls : '') +
-        '" data-creator="' + esc(name) + '">' + esc(name) + '</button>';
-    }
-
-    function renderCreatorChips(){
-      var selected = document.getElementById('fc-creator-selected');
-      var listEl = document.getElementById('fc-creator-list');
-      if (!selected || !listEl) return;
-      selected.innerHTML =
-        STATE.includeCreators.map(function(c){ return creatorChipHTML(c, 'active'); }).join('') +
-        STATE.excludeCreators.map(function(c){ return creatorChipHTML(c, 'active-exclude'); }).join('');
-      var matches = matchingCreators();
-      var shown = matches.slice(0, CREATOR_LIST_CAP);
-      listEl.innerHTML = shown.map(function(c){ return creatorChipHTML(c, ''); }).join('') +
-        (matches.length > shown.length
-          ? '<span class="filter-more">+' + (matches.length - shown.length) + ' more — keep typing</span>'
-          : '') +
-        (!matches.length && STATE.creatorQuery.trim()
-          ? '<span class="filter-more">No creator matches “' + esc(STATE.creatorQuery.trim()) + '”</span>'
-          : '');
-      // Re-wire: both rows are rebuilt on every keystroke.
-      var wrap = document.getElementById('filter-bar');
-      wrap.querySelectorAll('[data-creator]').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          cycleCreator(btn.getAttribute('data-creator'));
-          renderCreatorChips();
-          render();
-        });
-      });
-    }
-
-    function applyFilters(){
-      var out = FULL.slice();
-      // Partial (unfinished) pages are out of the list unless asked for.
-      if (!STATE.showPartial) out = out.filter(function(c){ return !window.isPartial(c); });
-      if (STATE.curataOnly) out = out.filter(function(c){ return window.isCurata(c); });
-      if (STATE.favOnly) out = out.filter(function(c){ return !!(FAV_SET && FAV_SET.has(c.slug)); });
-      if (STATE.includeTeams.length) out = out.filter(function(c){ return STATE.includeTeams.indexOf(c.team) !== -1; });
-      if (STATE.excludeTeams.length) out = out.filter(function(c){ return STATE.excludeTeams.indexOf(c.team) === -1; });
-      if (STATE.includeTags.length) out = out.filter(function(c){
-        var ct = splitTags(c).map(titleCase);
-        return STATE.includeTags.every(function(t){ return ct.indexOf(t) !== -1; });
-      });
-      if (STATE.excludeTags.length) out = out.filter(function(c){
-        var ct = splitTags(c).map(titleCase);
-        return STATE.excludeTags.every(function(t){ return ct.indexOf(t) === -1; });
-      });
-      if (STATE.includeSources.length) out = out.filter(function(c){ return STATE.includeSources.indexOf(sourceOf(c)) !== -1; });
-      if (STATE.excludeSources.length) out = out.filter(function(c){ return STATE.excludeSources.indexOf(sourceOf(c)) === -1; });
-      // Creators: include = must be one of these; exclude = must be none of them.
-      if (STATE.includeCreators.length) out = out.filter(function(c){
-        return window.splitCreators(c.creator).some(function(n){
-          return STATE.includeCreators.indexOf(n) !== -1; });
-      });
-      if (STATE.excludeCreators.length) out = out.filter(function(c){
-        return !window.splitCreators(c.creator).some(function(n){
-          return STATE.excludeCreators.indexOf(n) !== -1; });
-      });
-      // sort
-      if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
-      else if (STATE.sort === 'name-desc') out.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
-      else if (STATE.sort === 'recent') { /* keep array order reversed = most-recent first */
-        // All preceding operations are filters, which preserve FULL's order.
-        out.reverse();
-      }
-      return out;
-    }
 
     function render(){
       // Disconnect previous batches even when the new result is empty.
       if (cancelCards) cancelCards();
-      var list = applyFilters();
+      var list = FILTERS.apply(FULL);
       var panel = document.getElementById('panel');
       var count = document.getElementById('filter-count');
-      var toggle = document.getElementById('filter-toggle');
-      if (toggle) {
-        var nActive = STATE.includeTeams.length + STATE.excludeTeams.length +
-          STATE.includeTags.length + STATE.excludeTags.length +
-          STATE.includeSources.length + STATE.excludeSources.length +
-          STATE.includeCreators.length + STATE.excludeCreators.length +
-          (STATE.showPartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0) + (STATE.favOnly ? 1 : 0);
-        toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
-          ' <span class="filter-toggle-arrow">&#9662;</span>';
-      }
       count.hidden = false;
       count.textContent = list.length + ' character' + (list.length===1?'':'s') +
         (FULL.length !== list.length ? ' (of ' + FULL.length + ')' : '');
@@ -567,6 +169,13 @@
         return;
       }
       var groups = [];
+      if (FILTERS.state.group === 'none'){
+        // All together: one grid, in the order the sort put them.
+        groups.push({ selector: '.char-grid[data-team="all"]', items: list });
+        panel.innerHTML = '<section class="type-section" id="all"><div class="char-grid" data-team="all"></div></section>';
+        cancelCards = window.mountCardBatches(panel, groups, card);
+        return;
+      }
       panel.innerHTML = TEAMS.map(function(t){
         var chars = list.filter(function(c){ return c.team === t[0]; });
         if (!chars.length) return '';
@@ -583,7 +192,6 @@
       BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
     ]).then(function(res){
       var collData = res[0]||[], list = res[1], scripts = res[2]||[];
-      (scripts||[]).forEach(function(s){ (s.characters||[]).forEach(function(sl){ SCRIPT_SLUGS[norm(sl)] = true; }); });
       AC_COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],description:c.description||'',header:c.header||'',
@@ -629,11 +237,11 @@
             }
             inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '">' + (window.UIIcons ? UIIcons.svg('book') : '') + ' View collection page</a>';
+              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '"><span class="ico ico-book" aria-hidden="true"></span> View collection page</a>';
             }
             inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '">' + (window.UIIcons ? UIIcons.svg('pencil') : '') + ' Edit Collection</a>';
+              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '"><span class="ico ico-edit" aria-hidden="true"></span> Edit Collection</a>';
             }
             // Full collection JSON (official script-tool schema, every character).
             // This page draws from the GRID feed, which has none of the schema
@@ -685,7 +293,7 @@
                 .catch(function () {
                   collJsonLoad = null;
                   var code = stack.querySelector('.collection-json code');
-                  if (code) code.textContent = 'The character data could not be loaded. Please try again.';
+                  if (code) code.textContent = 'Could not load the character data. Try again.';
                 });
               return collJsonLoad;
             }
@@ -698,7 +306,7 @@
                   '</div>' +
                   '<pre class="json-body" hidden><code>Loading the full character data…</code></pre>' +
                 '</div>' +
-                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download">' + (window.UIIcons ? UIIcons.svg('download') : '') + ' Download JSON</a>' +
+                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download"><span class="ico ico-download" aria-hidden="true"></span> Download JSON</a>' +
               '</div>';
             }
             stack.innerHTML = inner;
@@ -739,7 +347,15 @@
           }
         }
         FULL = list;
-        buildFilterBar(list);
+        FILTERS = window.CharFilters.mount({
+          bar: document.getElementById('filter-bar'),
+          toggle: document.getElementById('filter-toggle'),
+          list: list,
+          // A character on a collection counts as From Collection before it
+          // counts as From Script.
+          sourceOf: window.CharFilters.makeSourceOf(AC_COLLECTIONS, scripts),
+          onChange: render
+        });
         render();
       })
       .catch(function () {

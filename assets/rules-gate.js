@@ -38,7 +38,7 @@
       '<div class="rules-modal-card">' +
         '<h2 class="rules-modal-title" id="rules-modal-title">Before you start</h2>' +
         '<p class="rules-modal-intro">Please read the wiki rules. You only need to ' +
-          'do this once — you can read them again any time on the ' +
+          'do this once. They are always on the ' +
           '<a href="' + ROOT + 'rules">rules page</a>.</p>' +
         window.renderRulesHTML() +
         '<label class="rules-agree"><input type="checkbox" id="rules-agree-box">' +

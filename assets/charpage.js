@@ -12,15 +12,13 @@
 
   // One glyph per button, the shape of Favorites.heartSVG(): a 24-box path
   // stroked in currentColor and left unfilled, which styles.css fills in once
-  // the button is on. A page with a folded corner for the script, a disc for
-  // the token. Both subpaths of the page wind the same way, or the fold would
-  // cut a notch out of the filled shape.
-  function glyphSVG(d) {
-    return '<svg class="tog-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">' +
-      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+  // the button is on — a page with a folded corner for the script, a disc for
+  // the token. The paths live in card-actions.js (loaded before this file), the
+  // one copy of them, because the small Add to Script button on every card is
+  // drawn with the same page.
+  function glyphSVG(name) {
+    return window.CardActions ? window.CardActions.glyph(name) : '';
   }
-  var SCRIPT_GLYPH = 'M7 3h7l4 4v14H7Zm7 0l4 4h-4Z';
-  var TOKEN_GLYPH = 'M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 1 1 0-17Z';
 
   // Generic localStorage-backed toggle button appended to the info card.
   // Same markup, state class, aria-pressed and swell as the Favorites button
@@ -52,6 +50,9 @@
       if (onChange) onChange();
     });
     sync();
+    // The small Add to Script button on a search result (card-actions.js)
+    // writes the same list; follow it, so the two never disagree.
+    if (storageKey === 'botc_script') window.addEventListener('botc-script-change', sync);
     infocard.appendChild(btn);
   }
 
@@ -61,9 +62,9 @@
     editBtn.style.display = '';
   }
 
-  mountToggleButton('botc_script', '', glyphSVG(SCRIPT_GLYPH), 'On Your Script', 'Add to Script',
+  mountToggleButton('botc_script', '', glyphSVG('script'), 'On Your Script', 'Add to Script',
     function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
-  mountToggleButton('botc_token_set', 'add-to-token-btn', glyphSVG(TOKEN_GLYPH), 'In Token Tool', 'Add to Token Tool');
+  mountToggleButton('botc_token_set', 'add-to-token-btn', glyphSVG('token'), 'In Token Tool', 'Add to Token Tool');
 
   // Favorite — the third button in the same stack, under the JSON bar with
   // the other two, but this one is stored on the ACCOUNT (assets/favorites.js),

@@ -74,7 +74,13 @@
       var o = i === at ? 1 - p : (i === to ? p : 0);
       imgs[i].style.transition = animate ? '' : 'none';
       imgs[i].style.opacity = o;
-      imgs[i].style.transform = 'scale(' + (1 - EM_DIP * (1 - o)).toFixed(4) + ')';
+      /* The dip is written as a variable, not as the transform itself, so
+         the stylesheet can multiply it into a base scale of its own: the
+         printable token is drawn smaller than the icons (see .emblem-token
+         in styles.css), and an inline `transform` would have overridden
+         that rule. The transition on `transform` still runs — it follows
+         the computed value, wherever the variable came from. */
+      imgs[i].style.setProperty('--em-s', (1 - EM_DIP * (1 - o)).toFixed(4));
     }
   }
   /* Show one version — the single door, so the picture and the pips can
