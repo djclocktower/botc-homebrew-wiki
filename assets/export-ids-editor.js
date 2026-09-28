@@ -69,7 +69,7 @@
         '<p class="sub" style="margin-top:6px">Letters, numbers, spaces, <code>-</code> and <code>_</code>. Anything else is dropped.</p>' +
       '</div>' +
       '<p class="sub" id="xid-sample" style="margin-top:2px"></p>' +
-      '<p class="sub" style="margin-top:8px">Official characters on this script keep their own ids (<code>imp</code>, <code>poisoner</code>) — those are the app’s own keys and are never changed.</p>';
+      '<p class="sub" style="margin-top:8px">Official characters keep their own ids (<code>imp</code>, <code>poisoner</code>), which are the app’s own keys.</p>';
 
     var sel = host.querySelector('#xid-mode');
     var pre = host.querySelector('#xid-prefix');

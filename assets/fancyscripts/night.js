@@ -196,7 +196,7 @@ export function buildJinxSpec(script, options) {
   blocks.push({ heading: '', rows });
   if (cfg.showHouseRules && script.meta.bootlegger && script.meta.bootlegger.length) {
     blocks.push({
-      heading: cfg.houseTitle || 'House Rules',
+      heading: cfg.houseTitle || 'Bootlegger Rules',
       rows: script.meta.bootlegger.map((r, i) => ({
         icons: [STEP_ICONS.rule], kind: 'rule', id: 'rule' + i, name: '', color: cfg.textColor, text: r,
       })),

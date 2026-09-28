@@ -5,10 +5,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script Builder — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, keep up to 15 scripts, export the JSON, share a link or press a print sheet.">
+<meta name="description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, save up to 15 scripts, and export, share or publish them.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Script Builder">
-<meta property="og:description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, keep up to 15 scripts, export the JSON, share a link or press a print sheet.">
+<meta property="og:description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, save up to 15 scripts, and export, share or publish them.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -207,7 +207,7 @@
         <section class="sbx-pane" data-tab="analyse">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Analysis</h2>
-            <p class="sbx-panel-sub">A read of the script as it stands: shape, night activity, tags and anything to check.</p>
+            <p class="sbx-panel-sub">The script&rsquo;s shape, who acts at night, its tags, and anything to check.</p>
             <div id="sbx-analyse-body"></div>
           </div>
         </section>
@@ -238,7 +238,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">In the Official App</h2>
-            <p class="sbx-panel-sub">Settings the official app reads from the script file. House rules also show on the published page.</p>
+            <p class="sbx-panel-sub">Settings the official app reads from the script file. Bootlegger rules also show on the published page.</p>
             <div class="sbx-field" style="margin-bottom:10px">
               <label class="sbx-check" style="align-self:flex-start">
                 <input type="checkbox" id="sb-hidetitle"> Hide the script name on the character sheet
@@ -249,7 +249,7 @@
               <input type="url" id="sb-almanac" placeholder="https://…" maxlength="300">
             </div>
             <div class="sbx-field">
-              <label>House rules (bootlegger)</label>
+              <label>Bootlegger rules</label>
               <div id="sb-boot-list"></div>
               <button type="button" class="sbx-b-sm" id="sb-boot-add" style="align-self:flex-start"><i class="sbi-i" data-icon="plus"></i> Add a rule</button>
             </div>
@@ -285,7 +285,7 @@
                 <label class="sbx-check"><input type="checkbox" id="sb-text-abilities" checked> Abilities</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-text-jinxes"> Jinxes</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-text-night"> Night order</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-text-rules"> House rules</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-text-rules"> Bootlegger rules</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-text-notes"> Notes</label>
               </div>
               <textarea id="sb-text-preview" rows="7" readonly spellcheck="false" aria-label="The script as text"></textarea>

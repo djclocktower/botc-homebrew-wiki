@@ -1186,8 +1186,8 @@
     }
     html += '</div>';
 
-    // at a glance
-    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">At a glance</h3><div class="sbx-an-chips">' +
+    // what the characters do
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">What they do</h3><div class="sbx-an-chips">' +
       chip(a.night.first, 'act on the first night') + chip(a.night.other, 'act on other nights') + chip(a.night.never, 'never wake') +
       chip(a.info, 'learn things') + chip(a.misinfo, 'cause false info') + chip(a.killers, 'kill') + chip(a.protect, 'protect') +
       chip(a.jinxes, 'jinx' + (a.jinxes === 1 ? '' : 'es')) +

@@ -712,13 +712,13 @@
      Worker accepts and a mode the dropdown shows can never drift apart. */
   var EXPORT_ID_MODES = [
     { key: 'full',    label: 'Name + creator + set',
-      hint: 'warden_djclocktower_odyssey — the safest against a clash.' },
+      hint: 'warden_djclocktower_odyssey: the least likely to clash.' },
     { key: 'creator', label: 'Name + creator',
-      hint: 'warden_djclocktower — enough unless one account has two of a name.' },
+      hint: 'warden_djclocktower: fine unless one account has two characters with the same name.' },
     { key: 'set',     label: 'Name + set',
-      hint: 'warden_odyssey — shorter, and clashes if two creators share a set.' },
+      hint: 'warden_odyssey: shorter, but clashes if two creators share a set.' },
     { key: 'name',    label: 'Name only (what the wiki used to write)',
-      hint: 'warden — matches older exports, and is what clashes.' }
+      hint: 'warden: matches older exports, and clashes with any other Warden.' }
   ];
   function idSegment(s) {
     return String(s == null ? '' : s).toLowerCase().normalize('NFD')

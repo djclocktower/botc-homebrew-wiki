@@ -524,7 +524,7 @@ export const DEFAULT_JINX = {
   iconShiftY: 0,
   title: 'Jinxes',
   showHouseRules: true,
-  houseTitle: 'House Rules',
+  houseTitle: 'Bootlegger Rules',
   notes: '', // free text printed under the list
   notesTitle: 'Notes',
   iconSize: 1,
@@ -1084,7 +1084,7 @@ export function parseScript(json, proxyIcons) {
     const name = entry.name || (official && official.name) || entry.id;
     const ability = entry.ability != null ? entry.ability : ((official && official.ability) || '');
     if (!official && typeof raw === 'string') {
-      warnings.push('"' + raw + '" is not a known official character id — rendered as-is.');
+      warnings.push('"' + raw + '" is not a known official character id. Shown as written.');
     }
 
     // icon resolution: custom image > bundled official > engraved placeholder

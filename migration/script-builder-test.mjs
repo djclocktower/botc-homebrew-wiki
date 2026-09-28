@@ -100,7 +100,7 @@ const plain = T.textExport(script.slice(0, 3), meta, { format: 'plain' });
 ok(plain.startsWith('My Script\nby Me\n\nTOWNSFOLK\n- a: x'), 'plain text shape');
 const md = T.textExport(script.slice(0, 3), meta, { format: 'markdown', rules: true, notes: true });
 ok(md.startsWith('# My Script\n*by Me*\n\n## Townsfolk\n• **a**: x'), 'markdown shape');
-ok(/## House rules\n• No Fortune/.test(md) && /## Notes\nbe nice/.test(md), 'markdown carries rules and notes');
+ok(/## Bootlegger rules\n• No Fortune/.test(md) && /## Notes\nbe nice/.test(md), 'markdown carries rules and notes');
 const disc = T.textExport(script.slice(0, 3), meta, { format: 'discord', abilities: false });
 ok(/__TOWNSFOLK__\n• \*\*a\*\*\n/.test(disc), 'discord: bold names, no abilities when off');
 const names = T.textExport(script, meta, { format: 'names' });

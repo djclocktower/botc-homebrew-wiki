@@ -1122,7 +1122,7 @@ function buildPagesCard() {
   makeToggle(box, 'Both nights on one page (two columns)', bindPath('night.combined'), {
     onChange: (on) => { if (on && !options.night.first && !options.night.other) { options.night.first = true; options.night.other = true; syncControls(); } },
   });
-  makeToggle(box, 'Jinxes & house rules page', bindPath('jinxPage.enabled'));
+  makeToggle(box, 'Jinxes & bootlegger rules page', bindPath('jinxPage.enabled'));
   makeToggle(box, 'Back cover', { get: () => options.exportOpts.pages.back, set: (v) => { options.exportOpts.pages.back = v; options.includeBackCover = v; } });
   makeHint(box, 'Ticked pages get a tab above the preview and a page in the PDF.');
 
@@ -1225,7 +1225,7 @@ function buildLayoutCard() {
     // reason the icon proxy toggle does it
     onChange: () => { reparse(); buildCharPanel(); requestRender(); },
   });
-  makeHint(box, 'The Bootlegger is the Fabled that says a script has homebrew characters or house rules. Ticking it puts it on the sheet as a Fabled; unticking takes it off, even if the script you loaded came with one.');
+  makeHint(box, 'The Fabled that says a script has homebrew characters or rules. Untick it to leave it off the sheet, even if the script came with one.');
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, '“*Not the first night” footnote', bindPath('showFootnote'));
   makeToggle(box, 'Team labels', bindPath('showLabels'));
@@ -1469,8 +1469,8 @@ function buildJinxCard() {
   makeSelect(box, 'Page style', [['ribbon', 'Ribbon (like the night sheets)'], ['classic', 'Classic (title at the top)']], bindPath('jinxPage.style'));
   makeText(box, 'Page title', bindPath('jinxPage.title'));
   makeToggle(box, 'Ribbon down the right edge (ribbon style)', bindPath('jinxPage.ribbon'));
-  makeToggle(box, 'House rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
-  makeText(box, 'House rules heading', bindPath('jinxPage.houseTitle'));
+  makeToggle(box, 'Bootlegger rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
+  makeText(box, 'Bootlegger rules heading', bindPath('jinxPage.houseTitle'));
   makeText(box, 'Notes heading', bindPath('jinxPage.notesTitle'));
   makeText(box, 'Notes, printed under the jinxes (blank line = new paragraph)', bindPath('jinxPage.notes'), { multiline: true, rows: 4 });
   makeToggle(box, 'Script logo', bindPath('jinxPage.showLogo'));

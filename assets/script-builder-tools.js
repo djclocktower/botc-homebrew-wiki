@@ -34,7 +34,7 @@
       shape: { townsfolk: 13, outsider: 4, minion: 4, demon: 4, traveller: 3, fabled: 0, loric: 0 } },
     { key: 'teensy', label: 'Teensyville', hint: '6 · 2 · 2 · 1, for five to six players',
       shape: { townsfolk: 6, outsider: 2, minion: 2, demon: 1, traveller: 0, fabled: 0, loric: 0 } },
-    { key: 'big', label: 'Big', hint: '15 · 5 · 5 · 5, for a script with more than usual',
+    { key: 'big', label: 'Big', hint: '15 · 5 · 5 · 5, for a bigger script',
       shape: { townsfolk: 15, outsider: 5, minion: 5, demon: 5, traveller: 0, fabled: 0, loric: 0 } },
     { key: 'none', label: 'No targets', hint: 'just count',
       shape: { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveller: 0, fabled: 0, loric: 0 } }
@@ -364,7 +364,7 @@
       lines.push('');
     }
     if (opts.rules && Array.isArray(meta.bootlegger) && meta.bootlegger.length) {
-      lines.push(h('House rules'));
+      lines.push(h('Bootlegger rules'));
       meta.bootlegger.forEach(function (r) { if (r) lines.push((md ? '• ' : '- ') + r); });
       lines.push('');
     }
