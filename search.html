@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<script src="assets/viewport.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Search the BOTC HomeBrew Wiki: characters, scripts, collections, creators, users, wiki pages and news.">
+<meta name="robots" content="noindex">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Search">
+<meta property="og:description" content="Search the BOTC HomeBrew Wiki: characters, scripts, collections, creators, users, wiki pages and news.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<!-- Everything the search reads starts downloading here, before the scripts
+     at the end of the body have run. The first three are the browse pages'
+     own feeds, so they are often already in the browser's cache.
+     `crossorigin` has to be there for the preload to match a plain fetch(). -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="scripts.json?fields=browse" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json?fields=browse" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="api/search-index" as="fetch" crossorigin="anonymous">
+<link rel="stylesheet" href="assets/header-redesign.css">
+</head>
+<body class="search-page">
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero sp-hero">
+    <h1>Search</h1>
+  </div>
+
+  <div class="home-panel sp-panel">
+    <!-- A real form, so Enter searches even before the scripts arrive. -->
+    <form class="sp-form" id="sp-form" role="search" action="search" method="get">
+      <input class="sp-input" id="sp-input" type="search" name="q" placeholder="Search the wiki…" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Search the wiki" aria-controls="sp-results">
+    </form>
+    <div class="sp-tabs" id="sp-tabs" role="tablist" aria-label="What to show" hidden></div>
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
+    <div id="filter-bar" class="filter-bar" hidden></div>
+    <!-- The other tabs' filters. Phones fold every filter box away behind a
+         button (styles.css hides a .filter-bar under 640px until it opens). -->
+    <button type="button" id="sp-filter-toggle" class="filter-toggle" hidden aria-expanded="false" aria-controls="sp-sortbar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
+    <div id="sp-sortbar" class="filter-bar sp-sortbar" hidden></div>
+    <p id="sp-count" class="filter-count" aria-live="polite" hidden></p>
+  </div>
+  <main class="home-panel" id="sp-results">
+    <div class="char-grid">
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/creators.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/favorites.js"></script>
+  <script src="assets/card-actions.js"></script>
+  <script src="assets/char-filters.js"></script>
+  <script src="assets/search-core.js"></script>
+  <script src="assets/search-page.js"></script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

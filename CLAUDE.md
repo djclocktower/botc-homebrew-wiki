@@ -61,10 +61,11 @@ Key dynamic behavior:
   a glossary, a storyteller guide) belonging to exactly one script or
   collection. SSR from the `pages` table via `assets/render-wiki.js`, same
   `pageShell()`. These are **deliberately unlisted**: `noindex`, no sitemap
-  entry, no search, no browse list, no homepage strip. The only two links in
-  are the "Pages" section on the parent script/collection page and the
-  author's `/author?a=` + `/u/{username}` pages — plus **Featured Articles**,
-  but only for a page an admin picked (see that section). Only the parent page's owner
+  entry, no browse list, no homepage strip. The links in are the "Pages"
+  section on the parent script/collection page and the author's
+  `/author?a=` + `/u/{username}` pages — plus **Featured Articles**, but only
+  for a page an admin picked (see that section) — and the **site search**,
+  which the owner asked to include them (see "Site search"). Only the parent page's owner
   (or an admin) — or an **approved editor of the parent** — can create one;
   the owner's page is owned by whoever wrote it, an editor's is filed under the
   parent's owner as a draft. Who may EDIT one is the parent's "Who can edit"
@@ -86,7 +87,9 @@ Key dynamic behavior:
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
   requests per page view; `/api/site-text` and `/api/announcement` stay for
-  the editors), **`GET /api/admin/thumb-missing`** (the dashboard's "Card
+  the editors), **`GET /api/search-index`** (the site search's creators,
+  users, wiki pages and news — see "Site search"),
+  **`GET /api/admin/thumb-missing`** (the dashboard's "Card
   thumbnails" scan, see "Caching"),
   **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
@@ -138,6 +141,12 @@ Key dynamic behavior:
   never had a login. See "Creator identity" below.
 - `/random`, `/sitemap.xml`, and `/script-view?s=` (OG-meta injection) are also
   Worker routes.
+- **Site search**: the top-bar box on every page previews the best matches of
+  every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
+  results with a tab per kind and the All Characters filter. Both run the same
+  engine, `assets/search-core.js`, in the browser, over the three browse feeds
+  plus **`GET /api/search-index`** (creators, users, wiki pages, news). See
+  "Site search" below.
 
 ## Repo map
 
@@ -166,7 +175,7 @@ assets/
   viewport.js          Bounded character-card batches on viewport approach.
   reading-lazy.js      Comments on approach, click or comment-anchor navigation.
   page-viewer.js       Private editing controls for cached published pages.
-  site.js              Shared topbar behavior: search dropdown, mobile nav,
+  site.js              Shared topbar behavior: search preview, mobile nav,
                        script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
@@ -349,6 +358,19 @@ assets/
                        list IS the page's list), sanitizeTheme(), FONT_PRESETS.
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
+  search-core.js       THE SEARCH ENGINE — folding (ö ō ø all read as o),
+                       the word index, typo tolerance, ranking, highlighting
+                       (mark()) and load(), which fetches the feeds and builds
+                       once per page. Browser + Node, no DOM at top level.
+                       Used by site.js (the top-bar preview, loaded on first
+                       touch) and search-page.js. See "Site search".
+  search-page.js       The /search page: tabs, sections, tiles, URL state.
+  char-filters.js      The All Characters filter box (team/tag/source/status/
+                       creator chips, Sort, Group) as a module over an ARRAY
+                       of characters, plus the character card itself.
+                       all-characters.html and /search both mount it.
+                       card-filters.js is the other filter box: it filters
+                       cards already in the DOM (collection and creator pages).
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
@@ -631,7 +653,12 @@ index.html             Homepage (collections grid, scripts, browse cards, sideba
                        the "By Creator" card and /tools).
 all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view).
                        Its Group select (By team / All together) draws one
-                       grid instead of a section per team.
+                       grid instead of a section per team. The filter box and
+                       the card are assets/char-filters.js, shared with
+                       /search; the page keeps the ?collection= view and the
+                       drawing.
+search.html            /search?q=&type= — the full site search results. See
+                       "Site search". noindex; not in the sitemap.
 team/tag/tags.html     Browse pages
 creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
@@ -2615,12 +2642,15 @@ header, images[], boxes[], infobox{}, theme{}, toc, comments}` — all optional
 except title and body, all capped and validated by `sanitizeWikiFields()`.
 
 - **Unlisted by design.** `/p/` sends `noindex`, is absent from
-  `sitemap.xml`, the JSON feeds, site search, `/random`, the homepage strips
-  and every browse page. Exactly two things link to one: the **Pages** section
-  on its parent script/collection page, and its author's `/author?a=` and
+  `sitemap.xml`, the JSON feeds, `/random`, the homepage strips and every
+  browse page. The things that link to one: the **Pages** section on its
+  parent script/collection page, and its author's `/author?a=` and
   `/u/{username}` pages. If you add a new listing anywhere, do **not** add
-  wiki pages to it — being unlisted is the feature. The one exception is
-  **Featured Articles** (below), and only because an admin picked the page.
+  wiki pages to it — being unlisted is the feature. Two exceptions, both
+  asked for: **Featured Articles** (below), only because an admin picked the
+  page, and the **site search**, which the owner decided should find every
+  published wiki page whose parent is published (2026-09; see "Site search").
+  Search is something a reader asks for, which is why it is not a listing.
 - **Featured Articles** — the grid under News on the homepage (3 newest
   picks) and on `/news` (all of them), drawn with the news card
   (`NewsRender.renderPageCard()`: byline + parent in place of the date, then
@@ -3286,8 +3316,8 @@ seeded with whole collections whose characters all arrived unowned.
 - Teams: `townsfolk, outsider, minion, demon, traveller, fabled, loric` — always
   in that order. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
-  `render-page.js`, `card-filters.js`, `render.js`, `site.js`,
-  `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
+  `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
+  `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
   and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
@@ -3319,15 +3349,97 @@ seeded with whole collections whose characters all arrived unowned.
   stretched.
 - **A script or collection tile's banner is `header || logo`, then the
   fallback.** That order matches what the `/s/` and `/collection/` pages
-  themselves fall back through, and it is hand-copied into **five** places:
+  themselves fall back through, and it is hand-copied into all of these:
   `scripts.html`, `index.html` (twice — scripts strip and collections grid),
-  `all-collections.html` and `profile.html` (twice). Change one, change all
-  five. The tiles used to read `header` only, so every page with a logo and no
+  `all-collections.html`, `profile.html` (twice) and `assets/search-page.js`
+  (`scriptTile` / `collectionTile`). Change one, change them all. The tiles used to read `header` only, so every page with a logo and no
   header — which is every Bloodstar import — drew the text banner on its card
   while its own page showed the logo. **The feed has to send `logo` for any of
   that to work**: profile.html read `sc.header || sc.logo` correctly for a year
   while `/api/user`'s card builder never put `logo` on the wire, so the second
   half could never fire. Pin cards on the creator page fall back the same way.
+
+## Site search (the top-bar box and `/search`)
+
+One engine, two faces. **`assets/search-core.js`** does all the matching and
+ranking; `site.js` draws the top-bar preview and `assets/search-page.js`
+draws `/search`. Neither has a matching rule of its own, so the preview and
+the results page can never disagree.
+
+**It runs in the browser.** A search is a local index lookup, a millisecond
+or two a keystroke with 2,400 characters, so there is no typing delay and no
+request per keystroke. The data is four requests, made the first time the box
+is focused, hovered or touched (and preloaded in `search.html`'s head):
+
+- `characters.json?fields=grid`, `scripts.json?fields=browse`,
+  `collections.json?fields=browse` — the browse pages' own feeds, so they are
+  often already cached, and a repeat visit is a 304.
+- **`GET /api/search-index`** (`buildSearchIndex()` in worker.js): the
+  creators list (`buildCreatorsList()`, the same builder `/api/creators` now
+  uses), every account **that is not suspended** (handle, display name and
+  picture only — the owner chose every account, not only the ones that have
+  published), published wiki pages whose script or collection is published,
+  published news, and `dates` — when each published script and collection
+  was created (unix seconds), since the browse feeds carry only `v`, the last
+  save. Pages and accounts carry their own `created` (a page its `updated`
+  too); an account's is the "Member since" its profile already shows.
+  ETag + 304 like the feeds, versioned on
+  `SEARCH_DEPS` and on a half-hour bucket, because a new account or avatar
+  bumps no content version. Bump `SEARCH_INDEX_V` if its shape changes.
+  `data.js` shares it per page like the feeds.
+
+`search-core.js` itself is only fetched by `site.js` on first use
+(`BotcData.script`), so a page nobody searches on pays nothing.
+
+**Matching.** Both sides are folded the same way (`fold()`): lower case,
+NFKD with the combining marks dropped, the letters with no decomposition
+named outright (ø æ ß þ ł …), apostrophes deleted. Then, per query word:
+exact word 1, start of a word 0.8+, inside a word 0.45+ (3+ letters, or any
+non-Latin script), times the field's weight (name 10, set/tags/creator 4,
+ability 2). Every word must match somewhere except the small words in
+`STOP`. Whole-name bonuses put an exact name first ("the Drunk" counts as
+"drunk"). Things that are easy to break:
+
+- **Typos are only tried for a word that is nowhere on the wiki**, whole or
+  as the start of a word, and only in the short fields (names, sets, tags,
+  credits). "poison" is a real word here, so it never also means "prison";
+  "poisn" is not, so it finds the Poison tag. Three letters or fewer are
+  never guessed at.
+- **Short fields are a vocabulary; long ones are scanned.** Abilities and
+  descriptions are kept as folded text and searched directly. Putting their
+  50,000 words in the vocabulary doubled the index build for nothing.
+- **Run-together names** ("tirfar", "fallofrome") are extra vocabulary words
+  that only match whole or from the start (`runTogether`), or "imp" would
+  find Grim Peeker.
+- A creator with an account and that account are one result in the mixed
+  list (`mixed`), and each stays in its own tab.
+- Curata has no word on the page, so Curata rows carry a hidden `curata`
+  field and the word finds them.
+
+**`/search?q=&type=`** keeps the query and tab in the URL (typing replaces
+the history entry, changing tab adds one). The Characters tab mounts the All
+Characters filter from `assets/char-filters.js` (the same module
+all-characters.html uses), with "Best match" as the default sort, "All
+together" as the default group, and **Show Partial on**, as on the creator
+pages: somebody searching for a page by name must find it. On `/search` the
+top-bar box hands its query to the page (`window.SearchPage.set`) instead of
+reloading it. Enter never searches while an input method is composing.
+
+**Every other tab has a filter box too** (`TAB_FILTERS` in search-page.js,
+one row per kind): an **Author** chip list where the kind has authors
+(scripts, collections, wiki pages; include, then exclude, then off, like the
+Creator chips, with a search box over every author of that kind on the wiki
+rather than only the current results), yes/no chips (Curata only,
+Teensyville, Has an account, Has published) and a **Sort** of Best match,
+Newest / Oldest first, Recently updated, Name A–Z / Z–A, and Most characters
+or Most pages where those mean something. With nothing typed, "Best match" is
+not offered and the list is A–Z. `createIndex()` in search-core.js stamps every item
+with `created` / `updated` (0 when unknown, sorted last) from the feeds' `v`
+and the index's dates. Each tab keeps its own choices while the page is
+open; the box is built once per tab and only its counts change as you type,
+so the author search keeps its focus. It carries its own **Filters** button
+(`#sp-filter-toggle`) because a `.filter-bar` is hidden under 640px until
+opened: without one the box simply did not exist on a phone.
 
 ## Caching (and why the site is fast on a phone)
 

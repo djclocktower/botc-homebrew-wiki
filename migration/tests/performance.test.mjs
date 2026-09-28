@@ -165,7 +165,7 @@ async function searchFixture(fetcher) {
   }
   const input = element('input'), drop = element('drop'), wrap = element('wrap'), mobile = element('mobile'), menu = element('menu');
   const context = vm.createContext({
-    window: {}, URL, location: { origin: 'https://botchomebrew.wiki' },
+    window: {}, URL, location: { origin: 'https://botchomebrew.wiki', href: 'https://botchomebrew.wiki/scripts' },
     document: { baseURI: 'https://botchomebrew.wiki/', getElementById: id => ({ 'search-input': input, 'search-drop': drop, 'search-wrap': wrap, 'nav-search-input': mobile, hamburger: menu })[id] || null,
       addEventListener(event, callback) { handlers.set('document:' + event, callback); } },
     fetch: url => fetcher(new URL(url).pathname.slice(1) + new URL(url).search), ROOT: '', GOOD: { townsfolk: true }, TEAM_LABEL: {},
@@ -173,8 +173,10 @@ async function searchFixture(fetcher) {
     setTimeout, clearTimeout
   });
   vm.runInContext(await read('assets/data.js'), context);
-  vm.runInContext(source.slice(source.indexOf('  /* ── Search ── */'), source.indexOf('  /* ── Mobile nav ── */')), context);
-  return { input, drop, mobile, dispatch(id, event, data = {}) { handlers.get(id + ':' + event)?.(data); } };
+  // The engine is fetched on first use in a browser; here it is simply there.
+  vm.runInContext(await read('assets/search-core.js'), context);
+  vm.runInContext(source.slice(source.indexOf('  /* ── Search ──'), source.indexOf('  /* ── Mobile nav ── */')), context);
+  return { input, drop, mobile, context, dispatch(id, event, data = {}) { handlers.get(id + ':' + event)?.(data); } };
 }
 const ok = rows => ({ ok: true, json: async () => rows });
 
@@ -182,13 +184,32 @@ test('search warms on touch/keyboard focus and cached searches have no 150ms del
   let requests = 0;
   const f = await searchFixture(async path => { requests++; return ok(path.startsWith('characters') ? [{ name: 'Sculptor', page: 'c/set/sculptor' }] : []); });
   f.dispatch('input', 'focus');
-  assert.equal(requests, 3);
+  // The three browse feeds and the search index, once each.
+  assert.equal(requests, 4);
   await flush();
   f.input.value = 'Sculptor';
   f.dispatch('input', 'input');
   assert.equal(f.drop.hidden, false);
   assert.match(f.drop.innerHTML, /Sculptor/);
-  assert.equal(requests, 3);
+  assert.match(f.drop.innerHTML, /href="search\?q=Sculptor"/);
+  assert.equal(requests, 4);
+});
+
+test('Enter in the top-bar box opens the results page, or hands the query to it', async () => {
+  const f = await searchFixture(async path => ok(path.startsWith('characters') ? [{ name: 'Sculptor', page: 'c/set/sculptor' }] : []));
+  f.input.value = '  Øyvind sculptor ';
+  f.dispatch('input', 'keydown', { key: 'Enter' });
+  assert.equal(f.context.location.href, 'search?q=%C3%98yvind%20sculptor');
+  // An input method still composing keeps its Enter.
+  f.context.location.href = 'unchanged';
+  f.dispatch('input', 'keydown', { key: 'Enter', isComposing: true });
+  assert.equal(f.context.location.href, 'unchanged');
+  let handed = null;
+  f.context.window.SearchPage = { set(q) { handed = q; } };
+  f.mobile.value = 'Imp';
+  f.dispatch('mobile', 'keydown', { key: 'Enter' });
+  assert.equal(handed, 'Imp');
+  assert.equal(f.context.location.href, 'unchanged');
 });
 
 test('search retries failed HTTP responses and ignores results after clearing or Escape', async () => {
@@ -232,7 +253,7 @@ test('only the latest query paints after a shared request finishes', async () =>
   gate.resolve(); await flush();
   assert.match(f.drop.innerHTML, /Oracle/);
   assert.doesNotMatch(f.drop.innerHTML, /Sculptor/);
-  assert.equal(requests, 3);
+  assert.equal(requests, 4);
 });
 
 test('the actual mobile field warms data and closing the menu cancels pending results', async () => {
@@ -241,7 +262,7 @@ test('the actual mobile field warms data and closing the menu cancels pending re
   const f = await searchFixture(async () => { requests++; await gate.promise; return ok([]); });
   f.mobile.value = 'Oracle';
   f.dispatch('mobile', 'focus');
-  assert.equal(requests, 3);
+  assert.equal(requests, 4);
   assert.equal(f.input.value, 'Oracle');
   f.dispatch('menu', 'click');
   gate.resolve(); await flush();
@@ -272,8 +293,7 @@ test('empty browse results disconnect the previous viewport renderer', async () 
   let cancelled = 0;
   const panel = { innerHTML: '' };
   let list = Array.from({ length: 200 }, (_, id) => ({ team: 'townsfolk', id }));
-  const state = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [] };
-  const context = vm.createContext({ applyFilters: () => list, STATE: state, FULL: list,
+  const context = vm.createContext({ FILTERS: { apply: () => list, state: { group: 'team' } }, FULL: list,
     TEAMS: [['townsfolk', 'Townsfolk']], card: () => '<a>card</a>',
     window: { mountCardBatches() { return () => { cancelled++; }; } },
     document: { getElementById: id => id === 'panel' ? panel : id === 'filter-count' ? {} : null } });
