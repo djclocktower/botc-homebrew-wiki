@@ -571,6 +571,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('n-delete').addEventListener('click', del);
       setPill('draft');
       // [[Character Name]] resolves in the preview the same way it does live.
+      window.WikiEditor.splitPreview($('editor'), document.querySelector('#editor .news-preview'));
       window.WikiEditor.loadCharLinks().then(preview);
       loadArticle();
       loadList();

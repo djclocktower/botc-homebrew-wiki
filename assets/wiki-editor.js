@@ -13,6 +13,7 @@
      WikiEditor.loadCharLinks()                 feeds [[Name]] links to the
                                                 preview from characters.json
      WikiEditor.imageInput(opts)                pick + downscale an image
+     WikiEditor.splitPreview(editor, preview)   form and preview side by side
 */
 (function () {
   'use strict';
@@ -219,6 +220,69 @@
     };
   }
 
+  /* ── the form and its preview, side by side ──
+     Asked for because writing a long article meant scrolling down to the
+     preview after every change and back up to the box. On a wide screen the
+     form takes the left column and the preview the right, sticky and
+     scrolling on its own, the way the character editors have it. A phone
+     has no room for two columns, so there the preview stays where it was at
+     the bottom of the form AND a floating Preview button opens it over the
+     form; closing it puts you back exactly where you were typing.
+     Nodes are moved, never re-created, so every id and listener survives. */
+  function splitPreview(editor, preview) {
+    if (!editor || !preview || editor.querySelector('.we-split')) return;
+    var split = el('div', 'we-split');
+    var form = el('div', 'we-split-form');
+    var side = el('div', 'we-split-side');
+    while (editor.firstChild) {
+      var n = editor.firstChild;
+      (n === preview ? side : form).appendChild(n);
+    }
+    var close = el('button', 'sb-btn sb-btn-import we-split-close', 'Back to editing');
+    close.type = 'button';
+    side.insertBefore(close, side.firstChild);
+    split.appendChild(form);
+    split.appendChild(side);
+    editor.appendChild(split);
+
+    var fab = el('button', 'sb-btn sb-btn-clear we-split-fab', 'Preview');
+    fab.type = 'button';
+    fab.setAttribute('aria-expanded', 'false');
+    editor.appendChild(fab);
+
+    var main = editor.closest && editor.closest('main');
+    if (main) main.classList.add('we-wide');
+
+    var prevOverflow = '';
+    function setOpen(on) {
+      if (side.classList.contains('open') === on) return;
+      side.classList.toggle('open', on);
+      fab.setAttribute('aria-expanded', on ? 'true' : 'false');
+      if (on) {
+        prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        side.scrollTop = 0;
+        close.focus();
+      } else {
+        document.body.style.overflow = prevOverflow;
+        fab.focus();
+      }
+    }
+    fab.addEventListener('click', function () { setOpen(true); });
+    close.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && side.classList.contains('open')) setOpen(false);
+    });
+    // Widening the window past the breakpoint with the sheet open must not
+    // leave the page unable to scroll.
+    if (window.matchMedia) {
+      var wide = window.matchMedia('(min-width: 1100px)');
+      var onWide = function () { if (wide.matches) setOpen(false); };
+      if (wide.addEventListener) wide.addEventListener('change', onWide);
+      else if (wide.addListener) wide.addListener(onWide);
+    }
+  }
+
   /* ── [[Character Name]] links in the preview ──
      Same two registries the Worker sets for the published page (see
      setWikiTextRegistries), so the preview and the page agree: the official
@@ -291,6 +355,7 @@
 
   window.WikiEditor = {
     toolbar: toolbar, boxes: boxes, infobox: infobox,
-    autoGrow: autoGrow, loadCharLinks: loadCharLinks, imageInput: imageInput
+    autoGrow: autoGrow, loadCharLinks: loadCharLinks, imageInput: imageInput,
+    splitPreview: splitPreview
   };
 })();

@@ -642,6 +642,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $(id).addEventListener('input', preview);
       });
       ['p-toc','p-comments'].forEach(function(id){ $(id).addEventListener('change', preview); });
+      window.WikiEditor.splitPreview($('editor'), document.querySelector('#editor .we-preview'));
       window.WikiEditor.loadCharLinks().then(preview);
     }
 

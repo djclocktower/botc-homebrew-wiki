@@ -44,6 +44,28 @@
   font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
   margin: 0 0 10px; font-size: 1.2rem;
 }
+/* The form and its preview side by side (WikiEditor.splitPreview). Wide
+   screens: two columns, the preview sticky and scrolling on its own. Narrow:
+   one column as before, plus a floating Preview button that opens the
+   preview as a full-screen sheet. */
+.we-split-close, .we-split-fab { display: none; }
+@media (min-width: 1100px) {
+  main.we-wide { max-width: 1480px !important; }
+  .we-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .we-split-side { position: sticky; top: 74px; max-height: calc(100vh - 90px); overflow-y: auto; overscroll-behavior: contain; }
+  .we-split-side > .we-preview, .we-split-side > .news-preview { margin-bottom: 0; }
+}
+@media (max-width: 1099.98px) {
+  .we-split-fab {
+    display: block; position: fixed; right: 16px; bottom: 16px; z-index: 60;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  }
+  .we-split-side.open {
+    position: fixed; inset: 0; z-index: 70; overflow-y: auto;
+    overscroll-behavior: contain; background: #241028; padding: 12px 12px 28px;
+  }
+  .we-split-side.open .we-split-close { display: block; margin: 0 0 10px auto; }
+}
 /* Scale the real page styles down a little inside the preview frame. */
 .we-preview .wiki-page-head, .we-preview .wiki-body { border-width: 2px; }
 .we-preview .wiki-title { font-size: 1.5rem; }
