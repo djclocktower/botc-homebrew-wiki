@@ -565,6 +565,7 @@
     if (b) setTab(b.getAttribute('data-tab'));
   });
 
+  var setOf = null;   // "Group: By script or collection", built once
   function drawCharacters(q) {
     var all = res.byType.character.map(function (r) { return r.item.data; });
     var list = filters.apply(all);
@@ -580,7 +581,8 @@
       return;
     }
     var card = function (c) { return CF.card(c, markFn); };
-    var laid = CF.sections(list, filters.state.group);
+    if (!setOf) setOf = CF.makeSetOf(index.data.collections, index.data.scripts);
+    var laid = CF.sections(list, filters.state.group, setOf);
     out.innerHTML = laid.html;
     var groups = laid.groups;
     cancelCards = window.mountCardBatches(out, groups, card);

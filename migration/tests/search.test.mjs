@@ -275,3 +275,32 @@ test('grouping by author: one section per first-named author, A to Z, uncredited
   assert.equal(CF.sections(list, 'none').groups.length, 1);
   assert.equal(CF.sections(list, 'team').groups.map(g => g.items[0].team).join(), 'townsfolk,outsider,minion,demon');
 });
+
+test('grouping by script or collection files a character where its address is filed', async () => {
+  const context = vm.createContext({ window: {} });
+  vm.runInContext(await read('assets/creators.js'), context);
+  vm.runInContext(await read('assets/char-filters.js'), context);
+  const CF = context.window.CharFilters;
+  const setOf = CF.makeSetOf(
+    [{ id: 'odyssey', slug: 'Odyssey', displayName: 'Odyssey', match: ['odyssey'], include: ['by-hand'], exclude: ['kicked'] },
+     { id: 'standalone', slug: 'Standalone', standalone: true, match: [] }],
+    [{ slug: 'fall-of-rome', name: 'Fall of Rome', characters: ['roster-only', 'by-hand'] }]
+  );
+  const key = c => { const s = setOf(c); return s ? s.name + ' ' + s.href : null; };
+  // 1. A collection named in "Appears in", loosely.
+  assert.equal(key({ slug: 'a', appearsIn: 'ODYSSEY!' }), 'Odyssey collection/odyssey');
+  // 2. A script named there.
+  assert.equal(key({ slug: 'b', appearsIn: 'fall of rome' }), 'Fall of Rome s/fall-of-rome');
+  // 3. A set nobody registered: its name, no link.
+  assert.equal(key({ slug: 'c', appearsIn: 'Master Observatory' }), 'Master Observatory ');
+  // 4. A collection that lists it by hand beats a script roster.
+  assert.equal(key({ slug: 'by-hand' }), 'Odyssey collection/odyssey');
+  // 5. Only a script roster.
+  assert.equal(key({ slug: 'roster-only' }), 'Fall of Rome s/fall-of-rome');
+  // Excluded from the collection it names, and nowhere else: none.
+  assert.equal(key({ slug: 'kicked', appearsIn: 'Odyssey' }), 'Odyssey ');
+  assert.equal(key({ slug: 'loner' }), null);
+  const laid = CF.sections([{ name: 'X', slug: 'loner' }, { name: 'Y', slug: 'roster-only' }, { name: 'Z', slug: 'a', appearsIn: 'Odyssey' }], 'set', setOf);
+  assert.equal(JSON.stringify(laid.groups.map(g => g.items.map(c => c.name))), JSON.stringify([['Y'], ['Z'], ['X']]));
+  assert.match(laid.html, /Not in a script or collection <span class="coll-team-count">\(1\)/);
+});

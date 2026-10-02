@@ -126,10 +126,17 @@
     // card can only be in one grid, and one card per character keeps the
     // counts honest) — the same rule as char-filters.js. Offered when the
     // cards have more than one author between them.
-    var authorNames = {};
-    cards.forEach(function (c) { var n = cardCredits(c)[0]; if (n) authorNames[n.toLowerCase()] = 1; });
-    var MANY_AUTHORS = Object.keys(authorNames).length > 1;
-    var GROUP_CHOICE = opts.groupChoice !== false && !opts.sectionSel && (sections.length > 1 || MANY_AUTHORS);
+    //
+    // "By script or collection" files each card under data-set — the set its
+    // own page's "Appears in" row names (render-page.js writes it). Offered
+    // when the cards fall into more than one; on a collection page they
+    // almost never do, so the option is simply not there.
+    function authorKey(card) { return (cardCredits(card)[0] || '').toLowerCase(); }
+    function setKey(card) { return (card.getAttribute('data-set') || '').trim().toLowerCase(); }
+    function distinct(fn) { var seen = {}; cards.forEach(function (c) { seen[fn(c)] = 1; }); return Object.keys(seen).length; }
+    var MANY_AUTHORS = distinct(authorKey) > 1;
+    var MANY_SETS = distinct(setKey) > 1;
+    var GROUP_CHOICE = opts.groupChoice !== false && !opts.sectionSel && (sections.length > 1 || MANY_AUTHORS || MANY_SETS);
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [],
                inSources: [], exSources: [], creator: '',
@@ -235,6 +242,7 @@
       html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="cf-group">' +
         '<option value="team">By team</option>' +
         (MANY_AUTHORS ? '<option value="author">By author</option>' : '') +
+        (MANY_SETS ? '<option value="set">By script or collection</option>' : '') +
         (sections.length > 1 ? '<option value="none">All together</option>' : '') +
         '</select></div>';
     }
@@ -416,17 +424,23 @@
       return flat.querySelector('.char-grid');
     }
 
-    // "By author": one section per first-named author, A–Z, uncredited last,
-    // built the first time it is asked for, above the team sections. Like
-    // the flat grid, not a .coll-team.
-    var authorSecs = null;
-    function authorGrids() {
-      if (authorSecs) return authorSecs;
-      var by = {}, keys = [];
+    // "By author" / "By script or collection": one section per key, A–Z,
+    // the cards with none last. Built the first time each is asked for,
+    // above the team sections; like the flat grid, not a .coll-team.
+    var KEYED = {
+      author: { key: authorKey, name: function (c) { return cardCredits(c)[0] || ''; },
+                href: function (n) { return '/author?a=' + encodeURIComponent(n); }, none: 'No creator listed' },
+      set: { key: setKey, name: function (c) { return (c.getAttribute('data-set') || '').trim(); },
+             href: null, none: 'Not in a script or collection' }
+    };
+    var keyedSecs = {};   // kind -> {key -> section}
+    function keyedGrids(kind) {
+      if (keyedSecs[kind]) return keyedSecs[kind];
+      var spec = KEYED[kind], by = {}, keys = [];
       sections.forEach(function (sec) {
         (sec._origOrder || []).forEach(function (card) {
-          var name = cardCredits(card)[0] || '', key = name.toLowerCase();
-          if (!by[key]) { by[key] = { name: name }; keys.push(key); }
+          var key = spec.key(card);
+          if (!by[key]) { by[key] = { name: spec.name(card) }; keys.push(key); }
         });
       });
       keys.sort(function (a, b) {
@@ -434,30 +448,29 @@
         return by[a].name.localeCompare(by[b].name, undefined, { sensitivity: 'base' });
       });
       var wrap = document.createElement('div');
-      wrap.className = 'cf-authors';
-      authorSecs = {};
+      wrap.className = 'cf-keyed cf-' + kind;
+      var out = {};
       keys.forEach(function (key) {
-        var sec = document.createElement('section');
+        var sec = document.createElement('section'), name = by[key].name;
         sec.className = 'type-section cf-author-sec';
-        sec.innerHTML = '<h2 class="type-header">' + (by[key].name
-          ? '<a class="team-header-link" href="/author?a=' + encodeURIComponent(by[key].name) + '">' + esc(by[key].name) + '</a>'
-          : 'No creator listed') +
+        sec.innerHTML = '<h2 class="type-header">' + (!name ? spec.none
+          : spec.href ? '<a class="team-header-link" href="' + esc(spec.href(name)) + '">' + esc(name) + '</a>'
+          : esc(name)) +
           ' <span class="cf-author-count"></span></h2><div class="type-rule"></div><div class="char-grid"></div>';
         wrap.appendChild(sec);
-        authorSecs[key] = sec;
+        out[key] = sec;
       });
       sections[0].parentNode.insertBefore(wrap, sections[0]);
-      return authorSecs;
+      keyedSecs[kind] = out;
+      return out;
     }
 
     function sortCards() {
-      if (GROUP_CHOICE && STATE.group === 'author') {
+      if (GROUP_CHOICE && KEYED[STATE.group]) {
         var everyone = [];
         sections.forEach(function (sec) { if (sec._origOrder) everyone = everyone.concat(sec._origOrder); });
-        var secs = authorGrids();
-        sortArr(everyone).forEach(function (card) {
-          secs[(cardCredits(card)[0] || '').toLowerCase()].querySelector('.char-grid').appendChild(card);
-        });
+        var secs = keyedGrids(STATE.group), keyOf = KEYED[STATE.group].key;
+        sortArr(everyone).forEach(function (card) { secs[keyOf(card)].querySelector('.char-grid').appendChild(card); });
         return;
       }
       if (GROUP_CHOICE && STATE.group === 'none') {
@@ -491,8 +504,8 @@
         var cnt = sec.querySelector(SEL.count);
         if (cnt) cnt.textContent = '(' + secShown + ')';
       });
-      if (authorSecs) Object.keys(authorSecs).forEach(function (key) {
-        var sec = authorSecs[key], n = 0;
+      Object.keys(keyedSecs).forEach(function (kind) { Object.keys(keyedSecs[kind]).forEach(function (key) {
+        var sec = keyedSecs[kind][key], n = 0;
         [].slice.call(sec.querySelectorAll(SEL.card)).forEach(function (card) {
           var vis = cardVisible(card);
           card.style.display = vis ? '' : 'none';
@@ -500,7 +513,7 @@
         });
         sec.style.display = n ? '' : 'none';
         sec.querySelector('.cf-author-count').textContent = '(' + n + ')';
-      });
+      }); });
       if (flat) {
         var flatShown = 0;
         [].slice.call(flat.querySelectorAll(SEL.card)).forEach(function (card) {

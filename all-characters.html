@@ -170,11 +170,15 @@
       }
       // Team sections, one grid, or author sections: CharFilters.sections()
       // is the one layout, shared with /search.
-      var laid = window.CharFilters.sections(list, FILTERS.state.group);
+      if (!SET_OF) SET_OF = window.CharFilters.makeSetOf(AC_COLLECTIONS, AC_SCRIPTS);
+      var laid = window.CharFilters.sections(list, FILTERS.state.group, SET_OF);
       panel.innerHTML = laid.html;
       cancelCards = window.mountCardBatches(panel, laid.groups, card);
     }
     var cancelCards = null;
+    // "Group: By script or collection" — built once, from the same two feeds
+    // the Source chips use.
+    var SET_OF = null, AC_SCRIPTS = [];
 
     Promise.all([
       BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
@@ -182,6 +186,7 @@
       BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
     ]).then(function(res){
       var collData = res[0]||[], list = res[1], scripts = res[2]||[];
+      AC_SCRIPTS = scripts;
       AC_COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],description:c.description||'',header:c.header||'',

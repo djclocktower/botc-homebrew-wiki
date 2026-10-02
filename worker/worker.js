@@ -7182,6 +7182,10 @@ const app = {
       // A Curata collection lends its status to its characters here too, so
       // the mark on a profile card agrees with the mark on the character page.
       await applyCollectionCurata(env, characters);
+      // And the collections that list a character by hand, so "Group: By
+      // script or collection" on this page files it where its own page's
+      // "Appears in" row does (data-set, render-page.js).
+      await applyCollectionAppearsIn(env, characters);
 
       const split = list => ({
         live: list.filter(x => x.status !== 'draft'),

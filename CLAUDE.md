@@ -380,8 +380,22 @@ assets/
                        out. Group adds "By author": one section per
                        FIRST-named credit, A–Z, uncredited last, so a
                        co-credited card appears once and counts add up.
-                       CharFilters.sections(list, group) is the one layout
-                       both all-characters.html and /search draw through.
+                       And "By script or collection": CharFilters.makeSetOf()
+                       files a character the way characterQualifier() files
+                       its ADDRESS — a collection named in "Appears in", a
+                       script named there, the typed set even with no page,
+                       a collection listing it by hand, then a script roster
+                       — so the section a card lands in is the set its URL is
+                       under. card-filters.js reads `data-set` instead
+                       (render-page.js writes it from the "Appears in" line,
+                       which is why /api/user now runs
+                       applyCollectionAppearsIn()); it has no script rosters,
+                       so there a roster-only character is "Not in a script
+                       or collection". Each option is offered only when the
+                       cards fall into more than one group.
+                       CharFilters.sections(list, group, setOf) is the one
+                       layout both all-characters.html and /search draw
+                       through.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved

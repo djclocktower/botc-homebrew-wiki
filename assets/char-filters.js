@@ -16,7 +16,7 @@
      opts.sorts              [[value, label]] offered in Sort, in order:
                              'relevance' | 'name' | 'recent' | 'ability'
      opts.defaultSort        defaults to the first sort
-     opts.defaultGroup       'team' (a section per team), 'none' or 'author'
+     opts.defaultGroup       'team' (a section per team), 'none', 'author' or 'set'
      opts.order(c)           the row's feed position, for "Recently added"
      opts.onChange()         called after every change; the page redraws
    controller
@@ -29,9 +29,10 @@
    newest first, shortest ability first), and the second box flips it. Best
    match has one direction, so the box is greyed out for it.
 
-   sections(list, group) lays a filtered list out as the page draws it: one
-   section per team, one grid, or one section per author. Both pages that
-   mount this box draw through it, so the three layouts cannot drift. */
+   sections(list, group, setOf) lays a filtered list out as the page draws
+   it: one section per team, one grid, one section per author, or one per
+   script or collection (makeSetOf() builds `setOf`). Both pages that mount
+   this box draw through it, so the layouts cannot drift. */
 (function () {
   'use strict';
 
@@ -240,6 +241,7 @@
     html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="fc-group">' +
       '<option value="team"' + (DEFAULT_GROUP === 'team' ? ' selected' : '') + '>By team</option>' +
       '<option value="author"' + (DEFAULT_GROUP === 'author' ? ' selected' : '') + '>By author</option>' +
+      '<option value="set"' + (DEFAULT_GROUP === 'set' ? ' selected' : '') + '>By script or collection</option>' +
       '<option value="none"' + (DEFAULT_GROUP === 'none' ? ' selected' : '') + '>All together</option>' +
       '</select></div>';
     // Reset
@@ -515,6 +517,76 @@
     return ctrl;
   }
 
+  /* Which script or collection a character belongs to, for "Group: By script
+     or collection": {key, name, href} or null. The same order the Worker
+     files a character's address in (characterQualifier()), so the section a
+     card lands in is the set its URL is under:
+       1. a collection named in its "Appears in" (id, slug, display name or a
+          match term, ignoring case and punctuation),
+       2. a script named there,
+       3. the set named there even when this wiki has no page for it,
+       4. a collection that lists it by hand (appearsInFrom, or include[]),
+       5. a script whose roster lists it.
+     A character in several is filed under the first, so it appears once. */
+  function makeSetOf(collections, scripts) {
+    var colls = (collections || []).filter(function (c) { return c && !c.standalone; });
+    var scs = scripts || [];
+    function collRef(c) { return { key: 'c:' + (c.id || c.slug), name: c.displayName || c.slug, href: 'collection/' + encodeURIComponent(c.id || c.slug) }; }
+    function scriptRef(s) { return { key: 's:' + s.slug, name: s.name || s.slug, href: 's/' + encodeURIComponent(s.slug) }; }
+    var collByKey = {}, scriptByKey = {}, collById = {}, scriptBySlug = {};
+    colls.forEach(function (c) {
+      [c.id, c.slug, c.displayName].concat(c.match || []).forEach(function (k) {
+        k = norm(k); if (k && !collByKey[k]) collByKey[k] = c;
+      });
+      if (c.id) collById[c.id] = c;
+    });
+    scs.forEach(function (s) {
+      [s.name, s.slug].forEach(function (k) { k = norm(k); if (k && !scriptByKey[k]) scriptByKey[k] = s; });
+      (s.characters || []).forEach(function (sl) { if (!scriptBySlug[sl]) scriptBySlug[sl] = s; });
+    });
+    return function (c) {
+      var segs = String(c.appearsIn || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      var i, hit;
+      for (i = 0; i < segs.length; i++) {
+        hit = collByKey[norm(segs[i])];
+        if (hit && (hit.exclude || []).indexOf(c.slug) === -1) return collRef(hit);
+      }
+      for (i = 0; i < segs.length; i++) { hit = scriptByKey[norm(segs[i])]; if (hit) return scriptRef(hit); }
+      if (segs.length) return { key: 't:' + norm(segs[0]), name: segs[0], href: '' };
+      var from = (c.appearsInFrom || [])[0];
+      if (from && collById[from.id]) return collRef(collById[from.id]);
+      if (from && from.name) return { key: 'c:' + (from.id || norm(from.name)), name: from.name, href: from.id ? 'collection/' + encodeURIComponent(from.id) : '' };
+      for (i = 0; i < colls.length; i++) {
+        if ((colls[i].include || []).indexOf(c.slug) !== -1 && (colls[i].exclude || []).indexOf(c.slug) === -1) return collRef(colls[i]);
+      }
+      hit = scriptBySlug[c.slug];
+      return hit ? scriptRef(hit) : null;
+    };
+  }
+
+  // One heading per group of sections: a name, linked when it has a page.
+  function bucketSections(list, keyOf, groups, emptyLabel) {
+    var by = {}, keys = [], none = [];
+    list.forEach(function (c) {
+      var k = keyOf(c);
+      if (!k) { none.push(c); return; }
+      if (!by[k.key]) { by[k.key] = { name: k.name, href: k.href, items: [] }; keys.push(k.key); }
+      by[k.key].items.push(c);
+    });
+    keys.sort(function (a, b) { return by[a].name.localeCompare(by[b].name, undefined, { sensitivity: 'base' }); });
+    var secs = keys.map(function (k) { return by[k]; });
+    if (none.length) secs.push({ name: '', items: none });
+    return secs.map(function (sec, i) {
+      groups.push({ selector: '.char-grid[data-group="g' + i + '"]', items: sec.items });
+      var head = !sec.name ? emptyLabel
+        : sec.href ? '<a href="' + esc(sec.href) + '" class="team-header-link">' + esc(sec.name) + '</a>'
+        : esc(sec.name);
+      return '<section class="type-section cf-author-sec"><h2 class="type-header">' + head +
+        ' <span class="coll-team-count">(' + sec.items.length + ')</span></h2><div class="type-rule"></div>' +
+        '<div class="char-grid" data-group="g' + i + '"></div></section>';
+    }).join('');
+  }
+
   /* A filtered list laid out the way `group` says: {html, groups}, where
      `groups` is what viewport.js's mountCardBatches() takes. Each section
      keeps the order the list arrived in, so the sort runs inside it.
@@ -522,34 +594,21 @@
      By author, a character credited to several people ("Taiyi, Saki") is
      filed under the FIRST name only: one card per character, and the count
      still adds up to the list. Authors run A–Z, uncredited pages last. */
-  function sections(list, group) {
+  function sections(list, group, setOf) {
     var groups = [], html;
     if (group === 'none') {
       groups.push({ selector: '.char-grid[data-group="all"]', items: list });
       return { html: '<section class="type-section" id="all"><div class="char-grid" data-group="all"></div></section>', groups: groups };
     }
     if (group === 'author') {
-      var by = {}, names = [], none = [];
-      list.forEach(function (c) {
+      var html2 = bucketSections(list, function (c) {
         var first = (window.splitCreators ? window.splitCreators(c.creator) : [String(c.creator || '').trim()])[0];
-        if (!first) { none.push(c); return; }
-        var key = first.toLowerCase();
-        if (!by[key]) { by[key] = { name: first, items: [] }; names.push(key); }
-        by[key].items.push(c);
-      });
-      names.sort(function (a, b) { return by[a].name.localeCompare(by[b].name, undefined, { sensitivity: 'base' }); });
-      var secs = names.map(function (k) { return by[k]; });
-      if (none.length) secs.push({ name: '', items: none });
-      html = secs.map(function (sec, i) {
-        groups.push({ selector: '.char-grid[data-group="a' + i + '"]', items: sec.items });
-        var head = sec.name
-          ? '<a href="author?a=' + encodeURIComponent(sec.name) + '" class="team-header-link">' + esc(sec.name) + '</a>'
-          : 'No creator listed';
-        return '<section class="type-section cf-author-sec"><h2 class="type-header">' + head +
-          ' <span class="coll-team-count">(' + sec.items.length + ')</span></h2><div class="type-rule"></div>' +
-          '<div class="char-grid" data-group="a' + i + '"></div></section>';
-      }).join('');
-      return { html: html, groups: groups };
+        return first ? { key: first.toLowerCase(), name: first, href: 'author?a=' + encodeURIComponent(first) } : null;
+      }, groups, 'No creator listed');
+      return { html: html2, groups: groups };
+    }
+    if (group === 'set' && setOf) {
+      return { html: bucketSections(list, setOf, groups, 'Not in a script or collection'), groups: groups };
     }
     html = TEAMS.map(function (t) {
       var chars = list.filter(function (c) { return c.team === t[0]; });
@@ -561,7 +620,7 @@
   }
 
   window.CharFilters = {
-    mount: mount, card: card, thumb: thumb, makeSourceOf: makeSourceOf, sections: sections,
+    mount: mount, card: card, thumb: thumb, makeSourceOf: makeSourceOf, makeSetOf: makeSetOf, sections: sections,
     inCollection: inCollection, norm: norm, TEAMS: TEAMS, TEAM_LABEL: TEAM_LABEL, GOOD: GOOD
   };
 })();
