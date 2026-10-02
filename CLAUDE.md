@@ -3461,6 +3461,15 @@ ability 2). Every word must match somewhere except the small words in
   list (`mixed`), and each stays in its own tab.
 - Curata has no word on the page, so Curata rows carry a hidden `curata`
   field and the word finds them.
+- **A minus word leaves results out** (`poison -drunk`, or `-"grim peeker"`
+  for a phrase). `parseQuery()` splits them off; `leftOut()` drops any item
+  with that word as a whole word or the start of one in ANY field, ability
+  included. Deliberately stricter than matching: no typos and no
+  middle-of-a-word, because leaving something out by a guess hides things
+  nobody asked to hide. Only a minus at the start of a word counts, so
+  `tir-far` stays one search. Minus words are not highlighted, and a query of
+  nothing but minus words lists everything else A–Z (the /search page then
+  drops "Best match"). The /search page says so under its box.
 
 **`/search?q=&type=`** keeps the query and tab in the URL (typing replaces
 the history entry, changing tab adds one). The Characters tab mounts the All

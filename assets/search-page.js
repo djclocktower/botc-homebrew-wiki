@@ -297,10 +297,13 @@
     return x < y ? -1 : x > y ? 1 : 0;
   }
   // "Best match" means nothing with nothing typed: the list is then A to Z.
+  // Minus words only take things away ("-poison"), so a query of nothing but
+  // those has nothing to rank by either.
+  function hasTerms() { return !!S.parseQuery(state.q).text.trim(); }
   function sortFor(type) {
     var st = stateFor(type), sorts = TAB_FILTERS[type].sorts;
     var sort = sorts.indexOf(st.sort) === -1 ? 'relevance' : st.sort;
-    return sort === 'relevance' && !state.q.trim() ? 'name-asc' : sort;
+    return sort === 'relevance' && !hasTerms() ? 'name-asc' : sort;
   }
   var UNKNOWN = 9e15;   // a page with no date sorts after every dated one
   var SORTS = {
@@ -342,7 +345,7 @@
     return '<div class="filter-group"><span class="filter-group-label">' + esc(label) + '</span>' + inner + '</div>';
   }
   function sortOptions(type) {
-    var q = state.q.trim(), current = sortFor(type);
+    var q = hasTerms(), current = sortFor(type);
     return TAB_FILTERS[type].sorts.filter(function (s) { return q || s !== 'relevance'; }).map(function (s) {
       return '<option value="' + s + '"' + (s === current ? ' selected' : '') + '>' + esc(SORT_LABEL[s]) + '</option>';
     }).join('');

@@ -796,7 +796,9 @@
     var searchToken = 0;
     function updateSearch() {
       var q = input.value.trim();
-      if (!q) { close(); return; }
+      // A lone minus is the start of a word being left out ("-poison"), not
+      // a search for everything.
+      if (!q || /^-+$/.test(q)) { close(); return; }
       var token = ++searchToken;
       function show() {
         if (token !== searchToken || input.value.trim() !== q) return;

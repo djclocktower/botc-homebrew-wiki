@@ -1133,6 +1133,8 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   transition: border-color .2s, background-color .2s;
 }
 .sp-input::placeholder { color: rgba(200,185,138,.55); }
+.sp-hint { margin: 6px 2px 0; font-size: .8rem; color: rgba(236,225,200,.6); }
+.sp-hint code { font-size: .78rem; color: rgba(236,225,200,.85); background: rgba(255,255,255,.08); padding: 1px 5px; }
 .sp-input:focus { border-color: var(--parch); background-color: rgba(255,255,255,.14); }
 .sp-tabs {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;

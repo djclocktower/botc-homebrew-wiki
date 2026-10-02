@@ -231,3 +231,26 @@ test('the shared character card and Source rule match the All Characters page', 
   assert.equal(sourceOf({ slug: 'on-script' }), 'script');
   assert.equal(sourceOf({ slug: 'nowhere' }), null);
 });
+
+test('a minus word leaves results out: whole word or its start, any field, never a typo', () => {
+  // -drunk drops the Drunk (name) and anything tagged Drunkenness (word start).
+  assert.ok(names(index.search('townsfolk'), 'character').includes('the Drunk'));
+  assert.deepEqual(names(index.search('townsfolk -drunk'), 'character').sort(), ['Prisoner', 'Witcher']);
+  // Matched in the ability too: "poisoned" starts with "poison".
+  assert.ok(!names(index.search('player -poison'), 'character').includes('Apothecary'));
+  assert.ok(names(index.search('player -poison'), 'character').includes('Œuvre Collector'));
+  // Never the middle of a word, and never a guess at a typo.
+  assert.ok(names(index.search('drunk -unk'), 'character').includes('the Drunk'));
+  assert.ok(names(index.search('apothecary -poisn'), 'character').includes('Apothecary'));
+  // Accents fold the same way on both sides.
+  assert.ok(!names(index.search('moll -oeuvre'), 'character').includes('Œuvre Collector'));
+  // A phrase in quotes.
+  assert.ok(!names(index.search('grim -"grim peeker"'), 'character').includes('Grim Peeker Two'));
+  // Nothing but minus words: everything else, A to Z.
+  const rest = names(index.search('-moll'), 'character');
+  assert.ok(rest.includes('Witcher') && !rest.includes('Prisoner'));
+  // A hyphen inside a word is not a minus.
+  assert.deepEqual(S.parseQuery('tir-far -drunk'), { text: 'tir-far ', neg: ['drunk'] });
+  // The left-out word is not highlighted as a match.
+  assert.deepEqual(index.search('poison -drunk').tokens, ['poison']);
+});
