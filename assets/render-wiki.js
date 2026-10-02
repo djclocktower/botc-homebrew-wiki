@@ -395,18 +395,36 @@
       .replace(/`([^`\n]{1,300})`/g, '$1');
   }
 
-  /* ── table of contents ── */
+  /* ── table of contents ──
+     Nested lists, one <ol> per level, so each level counts from 1 on its own:
+     1. / a. / i. under every parent. It was one flat <ol> styled per level,
+     which shared a single counter across the whole box — the first sub-entry
+     under item 1 came out as "b.", and one two deep as "iii.". A heading that
+     skips a level (an h1 straight to an h3) nests one step, not two, so a
+     list never opens with no item for it to hang under. */
   function tocHTML(headings, opts) {
     opts = opts || {};
     var items = headings.filter(function (h) { return h.level <= 3; });
     if (items.length < (opts.min || 2)) return '';
     var top = Math.min.apply(null, items.map(function (h) { return h.level; }));
+    var html = '';
+    var depth = -1;
+    items.forEach(function (h) {
+      var want = Math.min(h.level - top, depth + 1);
+      if (want > depth) {
+        html += '<ol class="' + (want === 0 ? 'wiki-toc-list' : 'wiki-toc-sub wiki-toc-l' + want) + '">';
+      } else {
+        html += '</li>';
+        for (; depth > want; depth--) html += '</ol></li>';
+      }
+      depth = want;
+      html += '<li><a href="#' + esc(h.id) + '">' + esc(h.text) + '</a>';
+    });
+    html += '</li>';
+    for (; depth > 0; depth--) html += '</ol></li>';
+    html += '</ol>';
     return '<nav class="wiki-toc" aria-label="Contents">' +
-      '<div class="wiki-toc-head">Contents</div>' +
-      '<ol class="wiki-toc-list">' + items.map(function (h) {
-        return '<li class="wiki-toc-l' + (h.level - top) + '">' +
-          '<a href="#' + esc(h.id) + '">' + esc(h.text) + '</a></li>';
-      }).join('') + '</ol></nav>';
+      '<div class="wiki-toc-head">Contents</div>' + html + '</nav>';
   }
 
   /* ── blocks ── */
