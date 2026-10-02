@@ -220,11 +220,26 @@
   }
 
   /* ── [[Character Name]] links in the preview ──
-     Same map the Worker builds from D1, so the preview and the published
-     page agree on which names are real characters. */
+     Same two registries the Worker sets for the published page (see
+     setWikiTextRegistries), so the preview and the page agree: the official
+     roster first, then this wiki's characters. Without the roster the preview
+     sent [[Nightwatchman]] to a homebrew Nightwatchman while the published
+     page sent it to the official wiki. */
   function loadCharLinks() {
     if (!window.WikiRender) return Promise.resolve({});
-    return fetch('characters.json?fields=card')
+    var roles = fetch('assets/roles.json')
+      .then(function (r) { return r.json(); })
+      .then(function (list) {
+        var names = {};
+        (list || []).forEach(function (r) {
+          if (!r || !r.name) return;
+          if (r.id) names[r.id] = r.name;
+          names[r.name] = r.name;
+        });
+        window.WikiRender.setOfficialNames(names);
+      })
+      .catch(function () {});
+    var chars = fetch('characters.json?fields=card')
       .then(function (r) { return r.json(); })
       .then(function (list) {
         var map = {};
@@ -242,6 +257,7 @@
         return map;
       })
       .catch(function () { return {}; });
+    return Promise.all([chars, roles]).then(function (r) { return r[0]; });
   }
 
   /* ── image picker: reads a file, downscales it, hands back a data URL ── */

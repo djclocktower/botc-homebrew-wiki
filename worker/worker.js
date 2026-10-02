@@ -6276,7 +6276,7 @@ async function ssrRoute(env, ctx, request, url, build) {
   return stripViewHeader(res);
 }
 
-export default {
+const app = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -13073,5 +13073,51 @@ export default {
         catch (e) { console.error(`[cron] prune ${label} failed:`, (e && e.message) || e); }
       }
     })());
+  }
+};
+
+/* The safety net. An exception nothing above caught used to reach Cloudflare,
+   which answers with its own bare "Error 1101" screen: no way back to the
+   wiki, and nothing in the log to say which address did it. Now the error is
+   logged with the method and path, and the reader gets a page that says to
+   try again (or, for /api/, a JSON error the editors already know how to
+   show). Deliberately self-contained: pageShell() and the asset manifest may
+   be exactly what threw. */
+function crashResponse(request) {
+  let path = '/';
+  try { path = new URL(request.url).pathname; } catch { /* keep '/' */ }
+  const headers = { 'Cache-Control': 'no-store' };
+  if (path.startsWith('/api/') || request.method !== 'GET') {
+    return new Response(JSON.stringify({ error: 'Something went wrong on our side. Please try again in a moment.' }),
+      { status: 500, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
+  }
+  const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="robots" content="noindex"><title>Something went wrong</title>' +
+    '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+    'background:#2a1430;font-family:Georgia,serif;color:#2b1d12;padding:16px;box-sizing:border-box}' +
+    '.box{max-width:440px;background:#f1e6cf;border:2px solid #b89a6a;border-radius:6px;padding:22px 24px;text-align:center}' +
+    'h1{font-size:1.3rem;margin:0 0 10px;color:#5b1f21}p{margin:0 0 14px;line-height:1.5}' +
+    'a{color:#5b1f21;font-weight:bold}</style></head><body><div class="box">' +
+    '<h1>Something went wrong</h1>' +
+    '<p>This page hit an error on our side. It is usually gone in a moment.</p>' +
+    '<p><a href="">Try again</a> &middot; <a href="/">Go to the homepage</a></p>' +
+    '</div></body></html>';
+  return new Response(html, { status: 500, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      return await app.fetch(request, env, ctx);
+    } catch (e) {
+      let path = '';
+      try { path = new URL(request.url).pathname; } catch { /* ignore */ }
+      console.error('[fetch] unhandled error', request.method, path, (e && e.stack) || e);
+      return crashResponse(request);
+    }
+  },
+  scheduled(event, env, ctx) {
+    return app.scheduled(event, env, ctx);
   }
 };

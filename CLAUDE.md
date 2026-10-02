@@ -3803,3 +3803,21 @@ keeps `content-visibility: auto`.
    reordering by `order` / `grid-row` on a page with a collapsible box
    needs the same line, or the same report ("the JSON bar jumps the screen
    around") will come back.
+16. **An official traveller's icon in `assets/roles.json` is its UNALIGNED
+   one** (`…/barista.webp`), not the `_g.webp` good version the upstream data
+   ships with. Every official traveller on a script page, in the jinx boxes and
+   in the Token Tool used to show its blue good token. If roles.json is ever
+   regenerated, strip `_g` from the traveller rows again (the CDN serves
+   `{id}.webp`, `{id}_g.webp` and `{id}_e.webp` for every traveller).
+17. **The default export of worker.js is a safety net around `app`.** An
+   exception no route caught used to reach Cloudflare as a bare "Error 1101"
+   screen with nothing in the log naming the address. `crashResponse()` now
+   logs method + path + stack and answers with a self-contained retry page
+   (or a JSON `error` for `/api/`). Route code goes in `app`, never in the
+   wrapper. The test fixture's `request()` calls `app.fetch` so tests still
+   see what a route throws; `safeRequest()` goes through the net.
+18. **The Token Tool bolds setup text** — anything in `[square brackets]`,
+   as the official tokens do — in `render_ability()` (gen.py). There is no
+   Trade Gothic Bold in the toolkit, so it is a stroke in the text colour; the
+   advance is unchanged, so the wrapping still measures right. Touching any
+   `.py` there means bumping `assets/tokens/manifest.json`'s `v`.
