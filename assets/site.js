@@ -478,6 +478,22 @@
     });
   })();
 
+  /* ── Articles link (crumb nav), after Collections ──
+     Standalone articles (/articles) are the wiki-wide writing: guides,
+     essays, design notes. Injected here like Tools so no page's hand-copied
+     top bar has to change. */
+  (function () {
+    document.querySelectorAll('.crumb').forEach(function (crumb) {
+      if (findLinks('articles', crumb).length) return;
+      var co = findLinks('all-collections', crumb)[0];
+      if (!co) return;
+      var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u00b7';
+      var link = document.createElement('a'); link.href = ROOT + 'articles'; link.textContent = 'Articles';
+      crumb.insertBefore(sep, co.nextSibling);
+      crumb.insertBefore(link, sep.nextSibling);
+    });
+  })();
+
   /* ── "Create a Character" link in the crumb nav (desktop top bar) ──
      Injected after Script Builder, i.e. BEFORE Tools, so the Account
      link (added later, anchored on Tools) stays the last child —
@@ -871,6 +887,14 @@
       ttLink.textContent = 'Tools';
       var sb = findLinks('script', drop)[0];
       if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
+    }
+    // Articles after Collections, matching the desktop crumb order.
+    if (!findLinks('articles', drop).length) {
+      var arLink = document.createElement('a');
+      arLink.href = ROOT + 'articles';
+      arLink.textContent = 'Articles';
+      var co = findLinks('all-collections', drop)[0];
+      if (co) drop.insertBefore(arLink, co.nextSibling); else drop.appendChild(arLink);
     }
     // "Create a Character" sits between Script Builder and Tools, matching
     // the desktop crumb order.

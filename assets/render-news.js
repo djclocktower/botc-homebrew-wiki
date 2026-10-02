@@ -106,7 +106,9 @@
   function renderPageCard(p, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
-    var byline = [p.author ? 'by ' + p.author : '', p.parentName || '']
+    // A standalone article's "parent" is the Articles list itself, which
+    // says nothing on a card that is already an article.
+    var byline = [p.author ? 'by ' + p.author : '', p.parentType === 'article' ? '' : (p.parentName || '')]
       .filter(Boolean).join(' · ');
     return '<a class="news-card" href="' + root + 'p/' + encodeURIComponent(p.slug) + '">' +
       (byline ? '<div class="news-card-date">' + esc(byline) + '</div>' : '') +

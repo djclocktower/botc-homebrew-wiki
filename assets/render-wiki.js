@@ -681,11 +681,14 @@
     var root = opts.linkRoot || '';
     var io = { linkRoot: root };
 
-    var parentHref = p.parentType === 'collection'
+    // A standalone article has no set; its way back is the /articles list.
+    var parentHref = p.parentType === 'article' ? root + 'articles'
+      : p.parentType === 'collection'
       ? root + 'collection/' + encodeURIComponent(p.parentKey || p.parentSlug || '')
       : root + 's/' + encodeURIComponent(p.parentKey || p.parentSlug || '');
     var crumb = p.parentName
-      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' + esc(p.parentName) + '</a></p>'
+      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' +
+        esc(p.parentType === 'article' ? 'All articles' : p.parentName) + '</a></p>'
       : '';
 
     var banner = p.header
