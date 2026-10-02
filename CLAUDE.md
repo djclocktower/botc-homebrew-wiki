@@ -371,6 +371,17 @@ assets/
                        all-characters.html and /search both mount it.
                        card-filters.js is the other filter box: it filters
                        cards already in the DOM (collection and creator pages).
+                       Sort is TWO boxes in both filter boxes: what (Name,
+                       Date added, Ability length — plus Best match, Page
+                       order, SAO where they apply) and an Order box,
+                       Ascending / Descending. Picking a sort resets the
+                       direction to how that sort is usually read (A–Z,
+                       newest first, shortest first); Best match greys it
+                       out. Group adds "By author": one section per
+                       FIRST-named credit, A–Z, uncredited last, so a
+                       co-credited card appears once and counts add up.
+                       CharFilters.sections(list, group) is the one layout
+                       both all-characters.html and /search draw through.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved

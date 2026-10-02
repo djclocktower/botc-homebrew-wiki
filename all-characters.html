@@ -168,21 +168,11 @@
         panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
         return;
       }
-      var groups = [];
-      if (FILTERS.state.group === 'none'){
-        // All together: one grid, in the order the sort put them.
-        groups.push({ selector: '.char-grid[data-team="all"]', items: list });
-        panel.innerHTML = '<section class="type-section" id="all"><div class="char-grid" data-team="all"></div></section>';
-        cancelCards = window.mountCardBatches(panel, groups, card);
-        return;
-      }
-      panel.innerHTML = TEAMS.map(function(t){
-        var chars = list.filter(function(c){ return c.team === t[0]; });
-        if (!chars.length) return '';
-        groups.push({ selector: '.char-grid[data-team="' + t[0] + '"]', items: chars });
-        return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-team="' + t[0] + '"></div></section>';
-      }).join('');
-      cancelCards = window.mountCardBatches(panel, groups, card);
+      // Team sections, one grid, or author sections: CharFilters.sections()
+      // is the one layout, shared with /search.
+      var laid = window.CharFilters.sections(list, FILTERS.state.group);
+      panel.innerHTML = laid.html;
+      cancelCards = window.mountCardBatches(panel, laid.groups, card);
     }
     var cancelCards = null;
 

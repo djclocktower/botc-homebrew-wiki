@@ -254,3 +254,24 @@ test('a minus word leaves results out: whole word or its start, any field, never
   // The left-out word is not highlighted as a match.
   assert.deepEqual(index.search('poison -drunk').tokens, ['poison']);
 });
+
+test('grouping by author: one section per first-named author, A to Z, uncredited last', async () => {
+  const context = vm.createContext({ window: {} });
+  vm.runInContext(await read('assets/creators.js'), context);
+  vm.runInContext(await read('assets/char-filters.js'), context);
+  const CF = context.window.CharFilters;
+  const list = [
+    { name: 'One', creator: 'moll', team: 'demon' },
+    { name: 'Two', creator: 'Alex S.', team: 'townsfolk' },
+    { name: 'Three', creator: 'Moll, Saki', team: 'minion' },
+    { name: 'Four', creator: '', team: 'outsider' }
+  ];
+  const laid = CF.sections(list, 'author');
+  // Saki is the second name on Three, so has no section of their own.
+  assert.equal(JSON.stringify(laid.groups.map(g => g.items.map(c => c.name))), JSON.stringify([['Two'], ['One', 'Three'], ['Four']]));
+  assert.match(laid.html, /author\?a=Alex%20S\.[^>]*>Alex S\.<\/a> <span class="coll-team-count">\(1\)/);
+  assert.match(laid.html, /No creator listed <span class="coll-team-count">\(1\)/);
+  // The other two layouts are unchanged in shape.
+  assert.equal(CF.sections(list, 'none').groups.length, 1);
+  assert.equal(CF.sections(list, 'team').groups.map(g => g.items[0].team).join(), 'townsfolk,outsider,minion,demon');
+});

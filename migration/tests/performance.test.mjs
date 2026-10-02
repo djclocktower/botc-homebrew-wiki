@@ -295,7 +295,8 @@ test('empty browse results disconnect the previous viewport renderer', async () 
   let list = Array.from({ length: 200 }, (_, id) => ({ team: 'townsfolk', id }));
   const context = vm.createContext({ FILTERS: { apply: () => list, state: { group: 'team' } }, FULL: list,
     TEAMS: [['townsfolk', 'Townsfolk']], card: () => '<a>card</a>',
-    window: { mountCardBatches() { return () => { cancelled++; }; } },
+    window: { mountCardBatches() { return () => { cancelled++; }; },
+      CharFilters: { sections: () => ({ html: '<section></section>', groups: [] }) } },
     document: { getElementById: id => id === 'panel' ? panel : id === 'filter-count' ? {} : null } });
   vm.runInContext(renderer + '\nrender();', context);
   list = [];

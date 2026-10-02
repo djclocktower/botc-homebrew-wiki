@@ -494,7 +494,7 @@
       // page still shows (the chip hides them on request), as on the creator
       // pages.
       partialOn: true,
-      sorts: [['relevance', 'Best match'], ['name-asc', 'Name (A–Z)'], ['name-desc', 'Name (Z–A)'], ['recent', 'Recently added']],
+      sorts: [['relevance', 'Best match'], ['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']],
       defaultGroup: 'none',
       order: function (c) { return feedPos.get(c) || 0; },
       onChange: drawBody
@@ -580,18 +580,9 @@
       return;
     }
     var card = function (c) { return CF.card(c, markFn); };
-    var groups = [];
-    if (filters.state.group === 'none') {
-      groups.push({ selector: '.char-grid[data-team="all"]', items: list });
-      out.innerHTML = '<section class="type-section" id="all"><div class="char-grid" data-team="all"></div></section>';
-    } else {
-      out.innerHTML = CF.TEAMS.map(function (t) {
-        var chars = list.filter(function (c) { return c.team === t[0]; });
-        if (!chars.length) return '';
-        groups.push({ selector: '.char-grid[data-team="' + t[0] + '"]', items: chars });
-        return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-team="' + t[0] + '"></div></section>';
-      }).join('');
-    }
+    var laid = CF.sections(list, filters.state.group);
+    out.innerHTML = laid.html;
+    var groups = laid.groups;
     cancelCards = window.mountCardBatches(out, groups, card);
   }
 

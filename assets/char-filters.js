@@ -13,15 +13,25 @@
      opts.list               the characters the chips are built from
      opts.sourceOf(c)        'collection' | 'script' | null, for the Source chips
      opts.partialOn          Show Partial starts ticked (the search page)
-     opts.sorts              [[value, label]] offered in Sort, in order
+     opts.sorts              [[value, label]] offered in Sort, in order:
+                             'relevance' | 'name' | 'recent' | 'ability'
      opts.defaultSort        defaults to the first sort
-     opts.defaultGroup       'team' (a section per team) or 'none'
+     opts.defaultGroup       'team' (a section per team), 'none' or 'author'
      opts.order(c)           the row's feed position, for "Recently added"
      opts.onChange()         called after every change; the page redraws
    controller
      state, apply(list), activeCount(), reset(), counts(list)
    counts(list) re-counts the status chips against a new list, which the
-   search page does after every query. */
+   search page does after every query.
+
+   Sort is two boxes: WHAT to sort by, and Ascending / Descending. Picking a
+   sort puts the direction on the way that sort is usually read (names A–Z,
+   newest first, shortest ability first), and the second box flips it. Best
+   match has one direction, so the box is greyed out for it.
+
+   sections(list, group) lays a filtered list out as the page draws it: one
+   section per team, one grid, or one section per author. Both pages that
+   mount this box draw through it, so the three layouts cannot drift. */
 (function () {
   'use strict';
 
@@ -32,7 +42,13 @@
     ['loric', 'Loric']
   ];
   var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
-  var NAME_SORTS = [['name-asc', 'Name (A–Z)'], ['name-desc', 'Name (Z–A)'], ['recent', 'Recently added']];
+  var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
+  // The direction each sort starts in when it is picked.
+  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc' };
+  // Callers from before the direction box passed the direction inside the
+  // sort ('name-desc'); read those as the two halves they now are.
+  var LEGACY_SORT = { 'name-asc': ['name', 'asc'], 'name-desc': ['name', 'desc'] };
+  function cmpName(a, b) { return (a.name || '').localeCompare(b.name || ''); }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
@@ -104,8 +120,13 @@
     var bar = opts.bar, toggle = opts.toggle;
     var list = opts.list || [];
     var sourceOf = opts.sourceOf || function () { return null; };
-    var sorts = opts.sorts || NAME_SORTS;
-    var DEFAULT_SORT = opts.defaultSort || sorts[0][0];
+    var sorts = (opts.sorts || NAME_SORTS).map(function (s) {
+      return LEGACY_SORT[s[0]] ? [LEGACY_SORT[s[0]][0], s[0] === 'name-asc' ? 'Name' : null] : s;
+    }).filter(function (s) { return s[1]; });
+    if (!sorts.some(function (s) { return s[0] === 'ability'; })) sorts.push(['ability', 'Ability length']);
+    var legacyDefault = LEGACY_SORT[opts.defaultSort];
+    var DEFAULT_SORT = legacyDefault ? legacyDefault[0] : (opts.defaultSort || sorts[0][0]);
+    var DEFAULT_DIR = legacyDefault ? legacyDefault[1] : (NATURAL_DIR[DEFAULT_SORT] || 'asc');
     var DEFAULT_GROUP = opts.defaultGroup || 'team';
     var onChange = opts.onChange || function () {};
     var countList = list;
@@ -120,9 +141,10 @@
         includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
         includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
         creatorQuery: '', showPartial: !!opts.partialOn, curataOnly: false, favOnly: false,
-        sort: DEFAULT_SORT,
+        sort: DEFAULT_SORT, dir: DEFAULT_DIR,
         // 'team': one section per team; 'none': every card in one grid, so
-        // the sort runs across all of them at once.
+        // the sort runs across all of them at once; 'author': one section
+        // per creator (see sections()).
         group: DEFAULT_GROUP
       };
     }
@@ -208,9 +230,16 @@
         return '<option value="' + esc(s[0]) + '"' + (s[0] === DEFAULT_SORT ? ' selected' : '') + '>' + esc(s[1]) + '</option>';
       }).join('') +
       '</select></div>';
-    // Group — by team (a section each) or all together in one grid.
+    // Ascending / descending, right beside Sort.
+    html += '<div class="filter-group"><span class="filter-group-label">Order</span><select class="filter-select" id="fc-dir" aria-label="Sort direction"' +
+      (DEFAULT_SORT === 'relevance' ? ' disabled' : '') + '>' +
+      '<option value="asc"' + (DEFAULT_DIR === 'asc' ? ' selected' : '') + '>Ascending</option>' +
+      '<option value="desc"' + (DEFAULT_DIR === 'desc' ? ' selected' : '') + '>Descending</option>' +
+      '</select></div>';
+    // Group — by team (a section each), all together in one grid, or by author.
     html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="fc-group">' +
       '<option value="team"' + (DEFAULT_GROUP === 'team' ? ' selected' : '') + '>By team</option>' +
+      '<option value="author"' + (DEFAULT_GROUP === 'author' ? ' selected' : '') + '>By author</option>' +
       '<option value="none"' + (DEFAULT_GROUP === 'none' ? ' selected' : '') + '>All together</option>' +
       '</select></div>';
     // Reset
@@ -391,8 +420,15 @@
       renderCreatorChips();
     }
 
-    var sortSel = byId('fc-sort'), groupSel = byId('fc-group');
-    sortSel.addEventListener('change', function (e) { ctrl.state.sort = e.target.value; changed(); });
+    var sortSel = byId('fc-sort'), groupSel = byId('fc-group'), dirSel = byId('fc-dir');
+    sortSel.addEventListener('change', function (e) {
+      ctrl.state.sort = e.target.value;
+      ctrl.state.dir = NATURAL_DIR[ctrl.state.sort] || 'asc';
+      dirSel.value = ctrl.state.dir;
+      dirSel.disabled = ctrl.state.sort === 'relevance';
+      changed();
+    });
+    dirSel.addEventListener('change', function (e) { ctrl.state.dir = e.target.value; changed(); });
     groupSel.addEventListener('change', function (e) { ctrl.state.group = e.target.value; changed(); });
     ctrl.reset = function () {
       ctrl.state = blankState();
@@ -401,6 +437,8 @@
       if (crSearch) crSearch.value = '';
       renderCreatorChips();
       sortSel.value = DEFAULT_SORT;
+      dirSel.value = DEFAULT_DIR;
+      dirSel.disabled = DEFAULT_SORT === 'relevance';
       groupSel.value = DEFAULT_GROUP;
       changed();
     };
@@ -447,14 +485,18 @@
         return !window.splitCreators(c.creator).some(function (n) { return st.excludeCreators.indexOf(n) !== -1; });
       });
       // sort ('relevance' keeps the order it was handed, best match first)
-      if (st.sort === 'name-asc') out.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      else if (st.sort === 'name-desc') out.sort(function (a, b) { return (b.name || '').localeCompare(a.name || ''); });
+      var flip = st.dir === 'desc' ? -1 : 1;
+      if (st.sort === 'name') out.sort(function (a, b) { return flip * cmpName(a, b); });
+      else if (st.sort === 'ability') out.sort(function (a, b) {
+        // Ties (and every blank ability) fall back to the name, A–Z.
+        return flip * ((a.ability || '').length - (b.ability || '').length) || cmpName(a, b);
+      });
       else if (st.sort === 'recent') {
         // The feed is oldest first. Without a position function every step
-        // above was a filter, which keeps that order, so reversing it is
-        // newest first.
-        if (opts.order) out.sort(function (a, b) { return opts.order(b) - opts.order(a); });
-        else out.reverse();
+        // above was a filter, which keeps that order, so ascending is the
+        // order as it stands and descending is it reversed.
+        if (opts.order) out.sort(function (a, b) { return flip * (opts.order(a) - opts.order(b)); });
+        else if (flip < 0) out.reverse();
       }
       return out;
     };
@@ -473,8 +515,53 @@
     return ctrl;
   }
 
+  /* A filtered list laid out the way `group` says: {html, groups}, where
+     `groups` is what viewport.js's mountCardBatches() takes. Each section
+     keeps the order the list arrived in, so the sort runs inside it.
+
+     By author, a character credited to several people ("Taiyi, Saki") is
+     filed under the FIRST name only: one card per character, and the count
+     still adds up to the list. Authors run A–Z, uncredited pages last. */
+  function sections(list, group) {
+    var groups = [], html;
+    if (group === 'none') {
+      groups.push({ selector: '.char-grid[data-group="all"]', items: list });
+      return { html: '<section class="type-section" id="all"><div class="char-grid" data-group="all"></div></section>', groups: groups };
+    }
+    if (group === 'author') {
+      var by = {}, names = [], none = [];
+      list.forEach(function (c) {
+        var first = (window.splitCreators ? window.splitCreators(c.creator) : [String(c.creator || '').trim()])[0];
+        if (!first) { none.push(c); return; }
+        var key = first.toLowerCase();
+        if (!by[key]) { by[key] = { name: first, items: [] }; names.push(key); }
+        by[key].items.push(c);
+      });
+      names.sort(function (a, b) { return by[a].name.localeCompare(by[b].name, undefined, { sensitivity: 'base' }); });
+      var secs = names.map(function (k) { return by[k]; });
+      if (none.length) secs.push({ name: '', items: none });
+      html = secs.map(function (sec, i) {
+        groups.push({ selector: '.char-grid[data-group="a' + i + '"]', items: sec.items });
+        var head = sec.name
+          ? '<a href="author?a=' + encodeURIComponent(sec.name) + '" class="team-header-link">' + esc(sec.name) + '</a>'
+          : 'No creator listed';
+        return '<section class="type-section cf-author-sec"><h2 class="type-header">' + head +
+          ' <span class="coll-team-count">(' + sec.items.length + ')</span></h2><div class="type-rule"></div>' +
+          '<div class="char-grid" data-group="a' + i + '"></div></section>';
+      }).join('');
+      return { html: html, groups: groups };
+    }
+    html = TEAMS.map(function (t) {
+      var chars = list.filter(function (c) { return c.team === t[0]; });
+      if (!chars.length) return '';
+      groups.push({ selector: '.char-grid[data-group="' + t[0] + '"]', items: chars });
+      return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-group="' + t[0] + '"></div></section>';
+    }).join('');
+    return { html: html, groups: groups };
+  }
+
   window.CharFilters = {
-    mount: mount, card: card, thumb: thumb, makeSourceOf: makeSourceOf,
+    mount: mount, card: card, thumb: thumb, makeSourceOf: makeSourceOf, sections: sections,
     inCollection: inCollection, norm: norm, TEAMS: TEAMS, TEAM_LABEL: TEAM_LABEL, GOOD: GOOD
   };
 })();

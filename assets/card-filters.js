@@ -93,7 +93,12 @@
     // box leaves the server's order alone until a reader picks something else.
     // A creator page has no such order (the feed is newest-first), so it stays
     // on A–Z and never offers Page order at all.
-    var DEFAULT_SORT = opts.defaultSort === 'page' ? 'page' : 'name-asc';
+    var DEFAULT_SORT = opts.defaultSort === 'page' ? 'page' : 'name';
+    // Sort is two boxes: what to sort by, and Ascending / Descending. Picking
+    // a sort puts the direction on the way it is usually read (names A–Z,
+    // newest first, shortest ability first, page order as arranged); the
+    // second box flips it. Same rule as char-filters.js.
+    var NATURAL_DIR = { page: 'asc', name: 'asc', recent: 'desc', ability: 'asc', sao: 'asc' };
     // SAO needs assets/sao.js. Every page that offers the option loads it, but
     // the option is only built when the function is actually there.
     var HAS_SAO = typeof window !== 'undefined' && typeof window.saoCompare === 'function';
@@ -116,11 +121,20 @@
     // built in that markup) and only when there is more than one team to
     // lump together. The Script Builder's rows pass their own selectors and
     // do without it. opts.groupChoice: false switches it off.
-    var GROUP_CHOICE = opts.groupChoice !== false && !opts.sectionSel && sections.length > 1;
+    //
+    // "By author" files each card under the FIRST name its credit gives (a
+    // card can only be in one grid, and one card per character keeps the
+    // counts honest) — the same rule as char-filters.js. Offered when the
+    // cards have more than one author between them.
+    var authorNames = {};
+    cards.forEach(function (c) { var n = cardCredits(c)[0]; if (n) authorNames[n.toLowerCase()] = 1; });
+    var MANY_AUTHORS = Object.keys(authorNames).length > 1;
+    var GROUP_CHOICE = opts.groupChoice !== false && !opts.sectionSel && (sections.length > 1 || MANY_AUTHORS);
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [],
                inSources: [], exSources: [], creator: '',
-               showPartial: PARTIAL_ON, curataOnly: false, favOnly: false, sort: DEFAULT_SORT,
+               showPartial: PARTIAL_ON, curataOnly: false, favOnly: false,
+               sort: DEFAULT_SORT, dir: NATURAL_DIR[DEFAULT_SORT],
                group: 'team',
                q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
     }
@@ -210,15 +224,18 @@
     }
     html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="cf-sort">' +
       (DEFAULT_SORT === 'page' ? '<option value="page">Page order</option>' : '') +
-      '<option value="name-asc">Name (A–Z)</option>' +
-      '<option value="name-desc">Name (Z–A)</option>' +
-      '<option value="recent">Recently added</option>' +
+      '<option value="name">Name</option>' +
+      '<option value="recent">Date added</option>' +
+      '<option value="ability">Ability length</option>' +
       (HAS_SAO ? '<option value="sao">Steven Approved Order</option>' : '') +
       '</select></div>';
+    html += '<div class="filter-group"><span class="filter-group-label">Order</span><select class="filter-select" id="cf-dir" aria-label="Sort direction">' +
+      '<option value="asc">Ascending</option><option value="desc">Descending</option></select></div>';
     if (GROUP_CHOICE) {
       html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="cf-group">' +
         '<option value="team">By team</option>' +
-        '<option value="none">All together</option>' +
+        (MANY_AUTHORS ? '<option value="author">By author</option>' : '') +
+        (sections.length > 1 ? '<option value="none">All together</option>' : '') +
         '</select></div>';
     }
     html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="cf-reset">Reset filters</button></div>';
@@ -299,9 +316,16 @@
     }
     var crSel = bar.querySelector('#cf-creator');
     if (crSel) crSel.addEventListener('change', function () { STATE.creator = crSel.value; apply(); });
-    var sortSel = bar.querySelector('#cf-sort');
+    var sortSel = bar.querySelector('#cf-sort'), dirSel = bar.querySelector('#cf-dir');
     sortSel.value = STATE.sort;
-    sortSel.addEventListener('change', function () { STATE.sort = sortSel.value; apply(); });
+    dirSel.value = STATE.dir;
+    sortSel.addEventListener('change', function () {
+      STATE.sort = sortSel.value;
+      STATE.dir = NATURAL_DIR[STATE.sort] || 'asc';
+      dirSel.value = STATE.dir;
+      apply();
+    });
+    dirSel.addEventListener('change', function () { STATE.dir = dirSel.value; apply(); });
     var groupSel = bar.querySelector('#cf-group');
     if (groupSel) groupSel.addEventListener('change', function () { STATE.group = groupSel.value; apply(); });
     bar.querySelector('#cf-reset').addEventListener('click', function () {
@@ -311,6 +335,7 @@
       if (partialBtn) partialBtn.classList.toggle('active', STATE.showPartial);
       if (crSel) crSel.value = '';
       sortSel.value = STATE.sort;
+      dirSel.value = STATE.dir;
       if (groupSel) groupSel.value = STATE.group;
       apply();
     });
@@ -353,16 +378,27 @@
       return { ability: ab ? ab.textContent : '', name: card.getAttribute('data-name') || '' };
     }
 
+    function nameOf(card) { return card.getAttribute('data-name') || ''; }
+    function abilityLen(card) {
+      var ab = card.querySelector(SEL.ability);
+      return ab ? ab.textContent.trim().length : 0;
+    }
+    // Every sort is written ascending; Descending reverses the comparison
+    // (page order: the arrangement read backwards).
     function sortArr(arr) {
-      if (STATE.sort === 'name-asc') arr.sort(function (a, b) { return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || ''); });
-      else if (STATE.sort === 'name-desc') arr.sort(function (a, b) { return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || ''); });
-      else if (STATE.sort === 'recent') arr.sort(function (a, b) { return (+b.getAttribute('data-order') || 0) - (+a.getAttribute('data-order') || 0); });
+      var flip = STATE.dir === 'desc' ? -1 : 1;
+      if (STATE.sort === 'name') arr.sort(function (a, b) { return flip * nameOf(a).localeCompare(nameOf(b)); });
+      // data-order is higher for a newer page, so ascending is oldest first.
+      else if (STATE.sort === 'recent') arr.sort(function (a, b) { return flip * ((+a.getAttribute('data-order') || 0) - (+b.getAttribute('data-order') || 0)); });
+      // Ties (and blank abilities) fall back to the name, A–Z.
+      else if (STATE.sort === 'ability') arr.sort(function (a, b) { return flip * (abilityLen(a) - abilityLen(b)) || nameOf(a).localeCompare(nameOf(b)); });
       // SAO orders within a team, and grouped cards are already one section
       // per team — so sorting each grid on its own is the whole job there.
       // All together, it runs across the lot.
       else if (STATE.sort === 'sao' && HAS_SAO) {
-        arr.sort(function (a, b) { return window.saoCompare(saoSubject(a), saoSubject(b)); });
+        arr.sort(function (a, b) { return flip * window.saoCompare(saoSubject(a), saoSubject(b)); });
       }
+      else if (STATE.sort === 'page' && flip < 0) arr.reverse();
       return arr;
     }
 
@@ -380,7 +416,50 @@
       return flat.querySelector('.char-grid');
     }
 
+    // "By author": one section per first-named author, A–Z, uncredited last,
+    // built the first time it is asked for, above the team sections. Like
+    // the flat grid, not a .coll-team.
+    var authorSecs = null;
+    function authorGrids() {
+      if (authorSecs) return authorSecs;
+      var by = {}, keys = [];
+      sections.forEach(function (sec) {
+        (sec._origOrder || []).forEach(function (card) {
+          var name = cardCredits(card)[0] || '', key = name.toLowerCase();
+          if (!by[key]) { by[key] = { name: name }; keys.push(key); }
+        });
+      });
+      keys.sort(function (a, b) {
+        if (!a) return 1; if (!b) return -1;
+        return by[a].name.localeCompare(by[b].name, undefined, { sensitivity: 'base' });
+      });
+      var wrap = document.createElement('div');
+      wrap.className = 'cf-authors';
+      authorSecs = {};
+      keys.forEach(function (key) {
+        var sec = document.createElement('section');
+        sec.className = 'type-section cf-author-sec';
+        sec.innerHTML = '<h2 class="type-header">' + (by[key].name
+          ? '<a class="team-header-link" href="/author?a=' + encodeURIComponent(by[key].name) + '">' + esc(by[key].name) + '</a>'
+          : 'No creator listed') +
+          ' <span class="cf-author-count"></span></h2><div class="type-rule"></div><div class="char-grid"></div>';
+        wrap.appendChild(sec);
+        authorSecs[key] = sec;
+      });
+      sections[0].parentNode.insertBefore(wrap, sections[0]);
+      return authorSecs;
+    }
+
     function sortCards() {
+      if (GROUP_CHOICE && STATE.group === 'author') {
+        var everyone = [];
+        sections.forEach(function (sec) { if (sec._origOrder) everyone = everyone.concat(sec._origOrder); });
+        var secs = authorGrids();
+        sortArr(everyone).forEach(function (card) {
+          secs[(cardCredits(card)[0] || '').toLowerCase()].querySelector('.char-grid').appendChild(card);
+        });
+        return;
+      }
       if (GROUP_CHOICE && STATE.group === 'none') {
         // _origOrder is the order the server rendered, which IS "page order";
         // the sections laid end to end keep it.
@@ -411,6 +490,16 @@
         sec.style.display = secShown ? '' : 'none';
         var cnt = sec.querySelector(SEL.count);
         if (cnt) cnt.textContent = '(' + secShown + ')';
+      });
+      if (authorSecs) Object.keys(authorSecs).forEach(function (key) {
+        var sec = authorSecs[key], n = 0;
+        [].slice.call(sec.querySelectorAll(SEL.card)).forEach(function (card) {
+          var vis = cardVisible(card);
+          card.style.display = vis ? '' : 'none';
+          if (vis) { n++; shown++; }
+        });
+        sec.style.display = n ? '' : 'none';
+        sec.querySelector('.cf-author-count').textContent = '(' + n + ')';
       });
       if (flat) {
         var flatShown = 0;
