@@ -231,3 +231,76 @@ test('the shared character card and Source rule match the All Characters page', 
   assert.equal(sourceOf({ slug: 'on-script' }), 'script');
   assert.equal(sourceOf({ slug: 'nowhere' }), null);
 });
+
+test('a minus word leaves results out: whole word or its start, any field, never a typo', () => {
+  // -drunk drops the Drunk (name) and anything tagged Drunkenness (word start).
+  assert.ok(names(index.search('townsfolk'), 'character').includes('the Drunk'));
+  assert.deepEqual(names(index.search('townsfolk -drunk'), 'character').sort(), ['Prisoner', 'Witcher']);
+  // Matched in the ability too: "poisoned" starts with "poison".
+  assert.ok(!names(index.search('player -poison'), 'character').includes('Apothecary'));
+  assert.ok(names(index.search('player -poison'), 'character').includes('Œuvre Collector'));
+  // Never the middle of a word, and never a guess at a typo.
+  assert.ok(names(index.search('drunk -unk'), 'character').includes('the Drunk'));
+  assert.ok(names(index.search('apothecary -poisn'), 'character').includes('Apothecary'));
+  // Accents fold the same way on both sides.
+  assert.ok(!names(index.search('moll -oeuvre'), 'character').includes('Œuvre Collector'));
+  // A phrase in quotes.
+  assert.ok(!names(index.search('grim -"grim peeker"'), 'character').includes('Grim Peeker Two'));
+  // Nothing but minus words: everything else, A to Z.
+  const rest = names(index.search('-moll'), 'character');
+  assert.ok(rest.includes('Witcher') && !rest.includes('Prisoner'));
+  // A hyphen inside a word is not a minus.
+  assert.deepEqual(S.parseQuery('tir-far -drunk'), { text: 'tir-far ', neg: ['drunk'] });
+  // The left-out word is not highlighted as a match.
+  assert.deepEqual(index.search('poison -drunk').tokens, ['poison']);
+});
+
+test('grouping by author: one section per first-named author, A to Z, uncredited last', async () => {
+  const context = vm.createContext({ window: {} });
+  vm.runInContext(await read('assets/creators.js'), context);
+  vm.runInContext(await read('assets/char-filters.js'), context);
+  const CF = context.window.CharFilters;
+  const list = [
+    { name: 'One', creator: 'moll', team: 'demon' },
+    { name: 'Two', creator: 'Alex S.', team: 'townsfolk' },
+    { name: 'Three', creator: 'Moll, Saki', team: 'minion' },
+    { name: 'Four', creator: '', team: 'outsider' }
+  ];
+  const laid = CF.sections(list, 'author');
+  // Saki is the second name on Three, so has no section of their own.
+  assert.equal(JSON.stringify(laid.groups.map(g => g.items.map(c => c.name))), JSON.stringify([['Two'], ['One', 'Three'], ['Four']]));
+  assert.match(laid.html, /author\?a=Alex%20S\.[^>]*>Alex S\.<\/a> <span class="coll-team-count">\(1\)/);
+  assert.match(laid.html, /No creator listed <span class="coll-team-count">\(1\)/);
+  // The other two layouts are unchanged in shape.
+  assert.equal(CF.sections(list, 'none').groups.length, 1);
+  assert.equal(CF.sections(list, 'team').groups.map(g => g.items[0].team).join(), 'townsfolk,outsider,minion,demon');
+});
+
+test('grouping by script or collection files a character where its address is filed', async () => {
+  const context = vm.createContext({ window: {} });
+  vm.runInContext(await read('assets/creators.js'), context);
+  vm.runInContext(await read('assets/char-filters.js'), context);
+  const CF = context.window.CharFilters;
+  const setOf = CF.makeSetOf(
+    [{ id: 'odyssey', slug: 'Odyssey', displayName: 'Odyssey', match: ['odyssey'], include: ['by-hand'], exclude: ['kicked'] },
+     { id: 'standalone', slug: 'Standalone', standalone: true, match: [] }],
+    [{ slug: 'fall-of-rome', name: 'Fall of Rome', characters: ['roster-only', 'by-hand'] }]
+  );
+  const key = c => { const s = setOf(c); return s ? s.name + ' ' + s.href : null; };
+  // 1. A collection named in "Appears in", loosely.
+  assert.equal(key({ slug: 'a', appearsIn: 'ODYSSEY!' }), 'Odyssey collection/odyssey');
+  // 2. A script named there.
+  assert.equal(key({ slug: 'b', appearsIn: 'fall of rome' }), 'Fall of Rome s/fall-of-rome');
+  // 3. A set nobody registered: its name, no link.
+  assert.equal(key({ slug: 'c', appearsIn: 'Master Observatory' }), 'Master Observatory ');
+  // 4. A collection that lists it by hand beats a script roster.
+  assert.equal(key({ slug: 'by-hand' }), 'Odyssey collection/odyssey');
+  // 5. Only a script roster.
+  assert.equal(key({ slug: 'roster-only' }), 'Fall of Rome s/fall-of-rome');
+  // Excluded from the collection it names, and nowhere else: none.
+  assert.equal(key({ slug: 'kicked', appearsIn: 'Odyssey' }), 'Odyssey ');
+  assert.equal(key({ slug: 'loner' }), null);
+  const laid = CF.sections([{ name: 'X', slug: 'loner' }, { name: 'Y', slug: 'roster-only' }, { name: 'Z', slug: 'a', appearsIn: 'Odyssey' }], 'set', setOf);
+  assert.equal(JSON.stringify(laid.groups.map(g => g.items.map(c => c.name))), JSON.stringify([['Y'], ['Z'], ['X']]));
+  assert.match(laid.html, /Not in a script or collection <span class="coll-team-count">\(1\)/);
+});

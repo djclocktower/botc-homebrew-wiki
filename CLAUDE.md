@@ -371,6 +371,31 @@ assets/
                        all-characters.html and /search both mount it.
                        card-filters.js is the other filter box: it filters
                        cards already in the DOM (collection and creator pages).
+                       Sort is TWO boxes in both filter boxes: what (Name,
+                       Date added, Ability length — plus Best match, Page
+                       order, SAO where they apply) and an Order box,
+                       Ascending / Descending. Picking a sort resets the
+                       direction to how that sort is usually read (A–Z,
+                       newest first, shortest first); Best match greys it
+                       out. Group adds "By author": one section per
+                       FIRST-named credit, A–Z, uncredited last, so a
+                       co-credited card appears once and counts add up.
+                       And "By script or collection": CharFilters.makeSetOf()
+                       files a character the way characterQualifier() files
+                       its ADDRESS — a collection named in "Appears in", a
+                       script named there, the typed set even with no page,
+                       a collection listing it by hand, then a script roster
+                       — so the section a card lands in is the set its URL is
+                       under. card-filters.js reads `data-set` instead
+                       (render-page.js writes it from the "Appears in" line,
+                       which is why /api/user now runs
+                       applyCollectionAppearsIn()); it has no script rosters,
+                       so there a roster-only character is "Not in a script
+                       or collection". Each option is offered only when the
+                       cards fall into more than one group.
+                       CharFilters.sections(list, group, setOf) is the one
+                       layout both all-characters.html and /search draw
+                       through.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
@@ -598,7 +623,13 @@ assets/
   wiki-editor.js       Shared editor widgets: the formatting toolbar, the
                        {title, content} custom-box repeater, the fact-box row
                        repeater, grow-with-content textareas, the image picker
-                       and loadCharLinks() (feeds [[Name]] links to previews).
+                       and loadCharLinks() (feeds [[Name]] links to previews,
+                       the official roster first, as the published page does).
+                       splitPreview(editor, preview) puts the form and its live
+                       preview side by side on a wide screen (the preview
+                       sticky, scrolling on its own) and gives a phone a
+                       floating Preview button that opens it over the form;
+                       publish-page.html and publish-news.html both mount it.
   wikipage.js          Client enhancements for /p/ pages (edit button, offset
                        anchor scrolling from the contents box).
   grimforge.js         Grimoire Forge ruleset + linter (the ability syntax
@@ -731,6 +762,13 @@ jinxes.html            /jinxes: every jinx on the wiki, as a grouped list and an
                        cannot disagree. Creators can add a jinx to a character
                        they own (POST /api/jinx). Linked from tools.html and the
                        homepage browse cards; in the sitemap's staticPages.
+articles.html          /articles — every published STANDALONE ARTICLE (a wiki
+                       page with no script or collection; see "Standalone
+                       articles"), newest first, with a filter box, a sort,
+                       the reader's own drafts and "+ Write an Article"
+                       (publish-page?article=1). The top bar's "Articles"
+                       link is injected by site.js after Collections, like
+                       Tools, so no page's hand-copied markup changed.
 news.html              /news index (client-rendered from /api/news), with the
                        Featured Articles grid under it (and, for admins, the
                        paste-a-link box and Remove buttons)
@@ -2651,6 +2689,9 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   page, and the **site search**, which the owner decided should find every
   published wiki page whose parent is published (2026-09; see "Site search").
   Search is something a reader asks for, which is why it is not a listing.
+  **Standalone articles are the deliberate exception** — a page with no set,
+  listed on `/articles`; see "Standalone articles". All of this bullet is
+  about a set's own pages.
 - **Featured Articles** — the grid under News on the homepage (3 newest
   picks) and on `/news` (all of them), drawn with the news card
   (`NewsRender.renderPageCard()`: byline + parent in place of the date, then
@@ -2706,6 +2747,30 @@ and `publish-page.html` share `render-wiki.js`, `wiki-editor.js` and
 `theme-editor.js`, so a formatting mark added in one place works in both (and
 in custom boxes). News backgrounds live in R2 under `news/{slug}-bg.png`;
 `news/` uploads are admin-only, like `tokens/`.
+
+## Standalone articles (`/articles`)
+
+Writing for the whole wiki (a guide, an essay, a design note) rather than for
+one set. The owner asked for it to be its own kind of page, distinct from a
+set's custom pages, which were meant for that set's own mechanics.
+
+- **An article is a `pages` row with `parent_type 'article'` and an empty
+  `parent_slug`.** Nothing new to store, and the editor
+  (`publish-page.html?article=1`), the renderer, comments, images, history,
+  Featured Articles and search all work unchanged. `wikiParentRow()` answers
+  `articleParent()` for it — a virtual parent named "Articles" with no owner —
+  so every "which set is this under" lookup has an answer without a special
+  case. Its breadcrumb goes to `/articles` (render-wiki.js), and the news-card
+  byline leaves the parent name off (render-news.js).
+- **Any member may write one, and it is theirs alone.** `POST /api/wiki-page`
+  with `parentType: 'article'` makes the writer the owner. Because the virtual
+  parent has no owner, `wikiPageAccess()` admits nobody but the owner (and
+  admins): no set's sharing choice reaches an article.
+- **It is LISTED, unlike a set's page**: `GET /api/articles` (published, plus
+  `?mine=1` for the reader's own drafts), the sitemap, and no `noindex` on its
+  `/p/` page. A set's pages stay unlisted and `noindex` exactly as before.
+- Changing an existing set page into an article (or back) is not offered: the
+  parent is frozen at creation, as for every wiki page.
 
 ## System text (`/text-editor`)
 
@@ -2845,6 +2910,12 @@ uploaded — except for the one opt-in save described below.
   `minipaint/` is likewise sealed — a prebuilt, minified miniPaint bundle with
   a custom lasso tool. It is only re-skinned (CSS variables injected into the
   same-origin iframe by `editor.js`); never hand-patch `js/bundle.js`.
+  Two of its quirks are answered from `editor.js` instead
+  (`watchToolOptions()`): the Fill and Magic Eraser "Contiguous" toggle is
+  wired BACKWARDS in the bundle (off floods one patch, on takes every matching
+  pixel), so the button is relabelled "Whole image" to match what it does; and
+  while the Crop tool is chosen, the hint under the title says to drag a box
+  and then press the Crop button in the top bar.
 - **Save to a character** is the only server call. It uploads the 591 px
   render to `art/{slug}.png` — the same R2 slot the character editor uses —
   and then re-saves the row through `/api/character` with `art`/`image`
@@ -3415,6 +3486,15 @@ ability 2). Every word must match somewhere except the small words in
   list (`mixed`), and each stays in its own tab.
 - Curata has no word on the page, so Curata rows carry a hidden `curata`
   field and the word finds them.
+- **A minus word leaves results out** (`poison -drunk`, or `-"grim peeker"`
+  for a phrase). `parseQuery()` splits them off; `leftOut()` drops any item
+  with that word as a whole word or the start of one in ANY field, ability
+  included. Deliberately stricter than matching: no typos and no
+  middle-of-a-word, because leaving something out by a guess hides things
+  nobody asked to hide. Only a minus at the start of a word counts, so
+  `tir-far` stays one search. Minus words are not highlighted, and a query of
+  nothing but minus words lists everything else A–Z (the /search page then
+  drops "Best match"). The /search page says so under its box.
 
 **`/search?q=&type=`** keeps the query and tab in the URL (typing replaces
 the history entry, changing tab adds one). The Characters tab mounts the All
@@ -3803,3 +3883,21 @@ keeps `content-visibility: auto`.
    reordering by `order` / `grid-row` on a page with a collapsible box
    needs the same line, or the same report ("the JSON bar jumps the screen
    around") will come back.
+16. **An official traveller's icon in `assets/roles.json` is its UNALIGNED
+   one** (`…/barista.webp`), not the `_g.webp` good version the upstream data
+   ships with. Every official traveller on a script page, in the jinx boxes and
+   in the Token Tool used to show its blue good token. If roles.json is ever
+   regenerated, strip `_g` from the traveller rows again (the CDN serves
+   `{id}.webp`, `{id}_g.webp` and `{id}_e.webp` for every traveller).
+17. **The default export of worker.js is a safety net around `app`.** An
+   exception no route caught used to reach Cloudflare as a bare "Error 1101"
+   screen with nothing in the log naming the address. `crashResponse()` now
+   logs method + path + stack and answers with a self-contained retry page
+   (or a JSON `error` for `/api/`). Route code goes in `app`, never in the
+   wrapper. The test fixture's `request()` calls `app.fetch` so tests still
+   see what a route throws; `safeRequest()` goes through the net.
+18. **The Token Tool bolds setup text** — anything in `[square brackets]`,
+   as the official tokens do — in `render_ability()` (gen.py). There is no
+   Trade Gothic Bold in the toolkit, so it is a stroke in the text colour; the
+   advance is unchanged, so the wrapping still measures right. Touching any
+   `.py` there means bumping `assets/tokens/manifest.json`'s `v`.

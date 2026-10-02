@@ -13,7 +13,7 @@ export async function fixture() {
   ) + `\n// isolate ${instance++}\nexport const hooks = {
     contentVersion, bumpContentVersion, cachedFeedBody, renderCharacterPage,
     applyCollectionAppearsIn, charsBySlug, ensurePagesTable, uploadSlotDenied,
-    serveMedia, serveThumb, serveR2Image, ssrRoute, logActivity,
+    serveMedia, serveThumb, serveR2Image, ssrRoute, logActivity, app,
     appearsInHref: typeof appearsInHref === 'function' ? appearsInHref : null
   };\n//# sourceURL=botc-worker-test-${instance}.mjs`;
   const worker = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
@@ -68,7 +68,11 @@ export async function fixture() {
     db.prepare(`INSERT INTO ${table}(slug,${nameCol},data,status,updated_at${teamCol}) VALUES(?,?,?,?,?${teamValues})`).run(...values);
   }
   return { ...worker, env, ctx, db, calls, state, insert, cache, background,
-    request(path, options) { return worker.default.fetch(new Request('https://botchomebrew.wiki' + path, options), env, ctx); },
+    // The router itself, under the top-level safety net, so a test can see
+    // the error a route throws. `safeRequest` goes through the net, as a
+    // reader's request does.
+    request(path, options) { return worker.hooks.app.fetch(new Request('https://botchomebrew.wiki' + path, options), env, ctx); },
+    safeRequest(path, options) { return worker.default.fetch(new Request('https://botchomebrew.wiki' + path, options), env, ctx); },
     async finish() { await Promise.all(background); db.close(); }
   };
 }

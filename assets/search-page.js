@@ -297,10 +297,13 @@
     return x < y ? -1 : x > y ? 1 : 0;
   }
   // "Best match" means nothing with nothing typed: the list is then A to Z.
+  // Minus words only take things away ("-poison"), so a query of nothing but
+  // those has nothing to rank by either.
+  function hasTerms() { return !!S.parseQuery(state.q).text.trim(); }
   function sortFor(type) {
     var st = stateFor(type), sorts = TAB_FILTERS[type].sorts;
     var sort = sorts.indexOf(st.sort) === -1 ? 'relevance' : st.sort;
-    return sort === 'relevance' && !state.q.trim() ? 'name-asc' : sort;
+    return sort === 'relevance' && !hasTerms() ? 'name-asc' : sort;
   }
   var UNKNOWN = 9e15;   // a page with no date sorts after every dated one
   var SORTS = {
@@ -342,7 +345,7 @@
     return '<div class="filter-group"><span class="filter-group-label">' + esc(label) + '</span>' + inner + '</div>';
   }
   function sortOptions(type) {
-    var q = state.q.trim(), current = sortFor(type);
+    var q = hasTerms(), current = sortFor(type);
     return TAB_FILTERS[type].sorts.filter(function (s) { return q || s !== 'relevance'; }).map(function (s) {
       return '<option value="' + s + '"' + (s === current ? ' selected' : '') + '>' + esc(SORT_LABEL[s]) + '</option>';
     }).join('');
@@ -491,7 +494,7 @@
       // page still shows (the chip hides them on request), as on the creator
       // pages.
       partialOn: true,
-      sorts: [['relevance', 'Best match'], ['name-asc', 'Name (A–Z)'], ['name-desc', 'Name (Z–A)'], ['recent', 'Recently added']],
+      sorts: [['relevance', 'Best match'], ['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']],
       defaultGroup: 'none',
       order: function (c) { return feedPos.get(c) || 0; },
       onChange: drawBody
@@ -562,6 +565,7 @@
     if (b) setTab(b.getAttribute('data-tab'));
   });
 
+  var setOf = null;   // "Group: By script or collection", built once
   function drawCharacters(q) {
     var all = res.byType.character.map(function (r) { return r.item.data; });
     var list = filters.apply(all);
@@ -577,18 +581,10 @@
       return;
     }
     var card = function (c) { return CF.card(c, markFn); };
-    var groups = [];
-    if (filters.state.group === 'none') {
-      groups.push({ selector: '.char-grid[data-team="all"]', items: list });
-      out.innerHTML = '<section class="type-section" id="all"><div class="char-grid" data-team="all"></div></section>';
-    } else {
-      out.innerHTML = CF.TEAMS.map(function (t) {
-        var chars = list.filter(function (c) { return c.team === t[0]; });
-        if (!chars.length) return '';
-        groups.push({ selector: '.char-grid[data-team="' + t[0] + '"]', items: chars });
-        return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-team="' + t[0] + '"></div></section>';
-      }).join('');
-    }
+    if (!setOf) setOf = CF.makeSetOf(index.data.collections, index.data.scripts);
+    var laid = CF.sections(list, filters.state.group, setOf);
+    out.innerHTML = laid.html;
+    var groups = laid.groups;
     cancelCards = window.mountCardBatches(out, groups, card);
   }
 

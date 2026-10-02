@@ -76,9 +76,24 @@ def render_ability(text, size_mul=1.0, dy=0):
             break
     # centre the block in the band so it sits lower (moved down) yet clears the art
     y = top + max(0, (bot - top - total)//2)
+    # Setup text — anything in [square brackets], as "[+1 Outsider]" — is bold
+    # on the official tokens. There is no Trade Gothic Bold in the toolkit, so
+    # it is a stroke of the text colour round the same glyphs: the advance is
+    # unchanged, so the wrapping above still measures it correctly.
+    sw = max(1, int(round(f.size * 0.03)))
+    bold = False                     # carries across lines: a bracket can wrap
     for ln in lines:
-        lw = d.textlength(ln, font=f)
-        d.text((DCX - lw/2, y), ln, font=f, fill=FILL)
+        x0 = DCX - d.textlength(ln, font=f)/2
+        runs = []                    # [start, end, bold]
+        for k, ch in enumerate(ln):
+            if ch == '[': bold = True
+            if runs and runs[-1][2] == bold: runs[-1][1] = k + 1
+            else: runs.append([k, k + 1, bold])
+            if ch == ']': bold = False
+        for st, en, b in runs:
+            x = x0 + d.textlength(ln[:st], font=f)
+            if b: d.text((x, y), ln[st:en], font=f, fill=FILL, stroke_width=sw, stroke_fill=FILL)
+            else: d.text((x, y), ln[st:en], font=f, fill=FILL)
         y += lh
     return img
 

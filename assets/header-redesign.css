@@ -190,6 +190,15 @@ html.redesign-on .topbar .topbar-badge {
   html.redesign-on .hamburger { display: none !important; }
 }
 
+/* A narrower desktop (a 1280px laptop) fits the full row only with the
+   links drawn a little tighter: Articles made it one link too many, and the
+   search box dropped to a second row under the bar. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  html.redesign-on .crumb a { padding: 9px 7px; letter-spacing: .03em; }
+  html.redesign-on .crumb a::after { left: 7px; right: 7px; }
+  html.redesign-on .crumb a:last-child { margin-left: 6px; padding: 6px 11px; }
+}
+
 /* ── 3b. Below the 1200px desktop-nav breakpoint the full nav row would
    overflow / squeeze the search, so use the hamburger + dropdown instead.
    The site's base CSS only swaps to the hamburger at ≤880px, so bridge the

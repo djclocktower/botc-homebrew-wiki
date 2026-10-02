@@ -10,6 +10,7 @@
     'Character Change': 'Can change a player’s character, or become another character itself.',
     'Confirmation': 'Can confirm itself or others.',
     'Consult': 'Privately visits the Storyteller to ask questions or make decisions.',
+    'Day Death': 'Can cause or interacts with Day Deaths',
     'Death': 'Kills players, or cares about players dying.',
     'Death Modification': 'Changes how, when, or whether deaths happen.',
     'Demonsbane': 'Benefits from being killed at night or by the Demon.',

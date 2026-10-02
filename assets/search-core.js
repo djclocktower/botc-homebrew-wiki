@@ -32,7 +32,18 @@
    Whole-phrase bonuses then lift an exact or leading name match to the top.
 
    Typos are only looked for in short fields (names, sets, tags, creators):
-   in ability text they would match half the wiki. */
+   in ability text they would match half the wiki.
+
+   Leaving things out
+   ------------------
+   A word typed with a minus in front of it ("poison -drunk") removes every
+   result that has that word ANYWHERE: its name, set, tags, credit, ability
+   or description. It matches a whole word or the start of one, so -drunk also
+   drops "Drunkenness", but never the middle of a word ("-unk" leaves the
+   Drunk alone) and never a typo — leaving something out has to be exact or it
+   hides things nobody asked to hide. -"two words" leaves out a phrase. Only
+   a minus at the START of a word counts, so "tir-far" is still one search.
+   A query of nothing but minus words lists everything else. */
 (function () {
   'use strict';
 
@@ -485,6 +496,27 @@
     return x < y ? -1 : x > y ? 1 : 0;
   }
 
+  /* Splits the minus words off a query: {text, neg}. `text` is what is left
+     to search for; `neg` holds each left-out word or phrase, folded the way
+     the items' own text is, so the two can be compared directly. */
+  var NEG_RE = /(^|\s)-(?:"([^"]*)"?|(\S+))/g;
+  function parseQuery(query) {
+    var neg = [];
+    var text = String(query == null ? '' : query).replace(NEG_RE, function (m, lead, quoted, bare) {
+      var w = words(quoted != null ? quoted : bare).join(' ');
+      if (w && neg.indexOf(w) === -1) neg.push(w);
+      return lead;
+    });
+    return { text: text, neg: neg };
+  }
+  // Whole word or the start of one, in any field; see "Leaving things out".
+  function leftOut(it, neg) {
+    if (!neg.length) return false;
+    var hay = ' ' + it.text + ' ';
+    for (var k = 0; k < neg.length; k++) if (hay.indexOf(' ' + neg[k]) !== -1) return true;
+    return false;
+  }
+
   /* search(query, {types}) -> {query, tokens, results, byType, counts, total}
      results: [{item, score}] best first, across every type. An empty query
      returns every item of the asked-for types, A–Z, with score 0. */
@@ -493,11 +525,12 @@
     var only = opts.types ? {} : null;
     if (opts.types) opts.types.forEach(function (t) { only[t] = 1; });
     var tokens = [], seen = {};
-    words(query).forEach(function (w) { if (!seen[w]) { seen[w] = 1; tokens.push(w); } });
+    var parsed = parseQuery(query), neg = parsed.neg;
+    words(parsed.text).forEach(function (w) { if (!seen[w]) { seen[w] = 1; tokens.push(w); } });
     var items = this.items, out = [], i;
     if (!tokens.length) {
       for (i = 0; i < items.length; i++) {
-        if (!only || only[items[i].type]) out.push({ item: items[i], score: 0 });
+        if ((!only || only[items[i].type]) && !leftOut(items[i], neg)) out.push({ item: items[i], score: 0 });
       }
       out.sort(byName);
       return group(query, tokens, out);
@@ -514,6 +547,7 @@
       if (!first[i]) continue;
       var it = items[i];
       if (only && !only[it.type]) continue;
+      if (leftOut(it, neg)) continue;
       var total = 0, ok = true, r;
       for (r = 0; r < req.length; r++) {
         var s = req[r][i];
@@ -601,7 +635,7 @@
   }
 
   var API = {
-    fold: fold, words: words, osa: osa, createIndex: createIndex, mark: mark, esc: esc,
+    fold: fold, words: words, osa: osa, createIndex: createIndex, mark: mark, esc: esc, parseQuery: parseQuery,
     TYPES: TYPES, TYPE_LABEL: TYPE_LABEL, TYPE_ONE: TYPE_ONE, TEAMS: TEAMS, TEAM_LABEL: TEAM_LABEL,
     SITE_PAGES: SITE_PAGES, titleCase: titleCase
   };

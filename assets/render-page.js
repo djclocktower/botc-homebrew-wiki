@@ -393,6 +393,11 @@
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
+        // The set this character's own "Appears in" row names — the typed
+        // line, else a collection that lists it by hand — for "Group: By
+        // script or collection" in card-filters.js.
+        ' data-set="' + esc(String(c.appearsIn || '').split(',')[0].trim() ||
+          (c.appearsInFrom && c.appearsInFrom[0] && c.appearsInFrom[0].name) || '') + '"' +
         // Curata wins over Partial (same rule as Classify.isPartial): a
         // character can be stamped 'partial' and then inherit the wreath from a
         // Curata collection, and an admin-blessed page is never hidden

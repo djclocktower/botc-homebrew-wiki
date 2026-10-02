@@ -1902,9 +1902,28 @@ async function ensurePagesTable(env) {
   _pagesReady = true;
 }
 
+// ---- standalone articles ----
+// An ARTICLE is a wiki page with no script or collection: anything a member
+// wants to write for the whole wiki (a guide, an essay, a design note). It is
+// a `pages` row like any other, with parent_type 'article' and an empty
+// parent_slug, so the editor, the renderer, comments, images, history and
+// search all work unchanged. Three things differ from a page under a set:
+//   - any member may write one (POST /api/wiki-page with parentType
+//     'article'), and it is theirs alone: no set's sharing choice reaches it;
+//   - it is LISTED — /articles (GET /api/articles), the sitemap, and search
+//     engines may index it — where a set's page is deliberately unlisted;
+//   - its breadcrumb goes back to /articles.
+// The virtual parent below is what every "which set is this under" lookup
+// gets for one, so none of them needed a special case of its own.
+const ARTICLE_PARENT = 'article';
+function articleParent() {
+  return { type: ARTICLE_PARENT, slug: '', key: '', name: 'Articles', ownerId: null, status: 'published', data: {} };
+}
+
 // The parent script/collection row a wiki page hangs off, resolved the same
 // way the SSR routes resolve it (collections may be addressed by kebab id).
 async function wikiParentRow(env, type, key) {
+  if (type === ARTICLE_PARENT) return articleParent();
   if (type === 'collection') {
     const row = await findCollectionRow(env, key);
     if (!row) return null;
@@ -4606,7 +4625,8 @@ async function searchIndexPages(env, sets) {
   const { scripts, colls } = sets;
   // Only published parents are looked up, so a page under a draft or a
   // deleted script or collection finds no parent and is left out.
-  const parents = { script: new Map(), collection: new Map() };
+  const parents = { script: new Map(), collection: new Map(),
+    [ARTICLE_PARENT]: new Map([['', { name: articleParent().name, key: '' }]]) };
   for (const sc of scripts) parents.script.set(sc.slug, { name: sc.name || sc.slug, key: sc.slug });
   for (const c of colls) {
     const d = c.d;
@@ -6276,7 +6296,7 @@ async function ssrRoute(env, ctx, request, url, build) {
   return stripViewHeader(res);
 }
 
-export default {
+const app = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -6500,6 +6520,37 @@ export default {
       });
     }
 
+    // ---------- STANDALONE ARTICLES (the /articles list) ----------
+    // Every published article, newest first. Small (a row per article, no
+    // body), so it is built per request; ?mine=1 adds the reader's own drafts
+    // so the list is where they find their way back to one.
+    if (method === 'GET' && path === '/api/articles') {
+      await ensurePagesTable(env);
+      const sess = await getSession(env, request);
+      const mine = url.searchParams.get('mine') === '1' && sess && sess.userId != null;
+      const { results } = await env.DB.prepare(
+        `SELECT p.slug, p.title, p.author, p.owner_id, p.status, p.data, p.created_at, p.updated_at,
+                u.username AS owner_username
+         FROM pages p LEFT JOIN users u ON u.id = p.owner_id
+         WHERE p.parent_type=? AND (p.status='published'${mine ? ' OR p.owner_id=?' : ''})
+         ORDER BY p.created_at DESC LIMIT 300`
+      ).bind(...(mine ? [ARTICLE_PARENT, sess.userId] : [ARTICLE_PARENT])).all().catch(() => ({ results: [] }));
+      const articles = (results || []).map(r => {
+        const d = parseData(r);
+        return {
+          slug: r.slug, title: r.title,
+          author: r.author || d.author || null,
+          ownerUsername: r.owner_username || null,
+          subtitle: d.subtitle || '',
+          blurb: d.blurb || WikiRender.autoSummary(d.body, 160),
+          header: d.header || '',
+          status: r.status,
+          createdAt: r.created_at, updatedAt: r.updated_at
+        };
+      });
+      return jsonResponse({ articles, loggedIn: !!sess });
+    }
+
     // ---------- CUSTOM WIKI PAGES ----------
     // List the pages hanging off one script/collection, or everything one
     // author has written. These pages are deliberately invisible everywhere
@@ -6636,9 +6687,10 @@ export default {
           desc, canonicalUrl: url.origin + '/p/' + encodeURIComponent(row.slug),
           ogImage: bannerImg || (url.origin + '/assets/logo_skull.png'),
           ogCard: bannerImg ? 'summary_large_image' : 'summary',
-          // These pages are intentionally unlisted: no search engines, no
-          // sitemap entry, no site search — only their parent page links here.
-          noindex: true,
+          // A set's pages are intentionally unlisted: no search engines and no
+          // sitemap entry. A standalone article is listed (/articles), so it
+          // may be indexed like any other public page.
+          noindex: row.parent_type !== ARTICLE_PARENT,
           bodyClass: ta.cls, bodyStyle: ta.style,
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
@@ -7130,6 +7182,10 @@ export default {
       // A Curata collection lends its status to its characters here too, so
       // the mark on a profile card agrees with the mark on the character page.
       await applyCollectionCurata(env, characters);
+      // And the collections that list a character by hand, so "Group: By
+      // script or collection" on this page files it where its own page's
+      // "Appears in" row does (data-set, render-page.js).
+      await applyCollectionAppearsIn(env, characters);
 
       const split = list => ({
         live: list.filter(x => x.status !== 'draft'),
@@ -7347,12 +7403,21 @@ export default {
           ).all()).results;
         } catch { return []; }
       }
-      const [chars, scripts, colls, news] = await Promise.all([
-        pub('characters'), pub('scripts'), pubCollections(), pubNews()
+      // Standalone articles are listed (/articles); a set's own pages are not.
+      async function pubArticles() {
+        try {
+          await ensurePagesTable(env);
+          return (await env.DB.prepare(
+            `SELECT slug, updated_at FROM pages WHERE status='published' AND parent_type=?`
+          ).bind(ARTICLE_PARENT).all()).results || [];
+        } catch { return []; }
+      }
+      const [chars, scripts, colls, news, articles] = await Promise.all([
+        pub('characters'), pub('scripts'), pubCollections(), pubNews(), pubArticles()
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
-        'steven-approved-order', 'rules', 'news', 'jinxes'];
+        'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -7368,6 +7433,9 @@ export default {
       }
       for (const r of news) {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/news/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+      }
+      for (const r of articles) {
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/p/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -10956,8 +11024,11 @@ export default {
           : await wikiParentRow(env, String(b.parentType || ''), String(b.parentSlug || ''));
         // 'owner' | 'approved' — see wikiPageAccess. A new page is the owner's
         // when its writer owns the parent, and an approved editor's otherwise.
+        // A new ARTICLE belongs to whoever writes it: any member may.
+        const newArticle = !existing && parent && parent.type === ARTICLE_PARENT;
         const access = existing
           ? await wikiPageAccess(env, sess, existing, parent)
+          : newArticle ? 'owner'
           : (parent && canEditRow(sess, { owner_id: parent.ownerId }) ? 'owner'
             : (await isParentApprovedEditor(env, sess, parent) ? 'approved' : ''));
         if (existing && !access) {
@@ -10967,7 +11038,7 @@ export default {
         if (!existing && !access) {
           return jsonResponse({ error: 'Only the owner of "' + parent.name + '" (or an editor they named) can add pages to it.' }, { status: 403 });
         }
-        if (!sess.isAdmin && await isProtected(env, parent.type, parent.slug)) {
+        if (!sess.isAdmin && parent.type !== ARTICLE_PARENT && await isProtected(env, parent.type, parent.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
 
@@ -13073,5 +13144,51 @@ export default {
         catch (e) { console.error(`[cron] prune ${label} failed:`, (e && e.message) || e); }
       }
     })());
+  }
+};
+
+/* The safety net. An exception nothing above caught used to reach Cloudflare,
+   which answers with its own bare "Error 1101" screen: no way back to the
+   wiki, and nothing in the log to say which address did it. Now the error is
+   logged with the method and path, and the reader gets a page that says to
+   try again (or, for /api/, a JSON error the editors already know how to
+   show). Deliberately self-contained: pageShell() and the asset manifest may
+   be exactly what threw. */
+function crashResponse(request) {
+  let path = '/';
+  try { path = new URL(request.url).pathname; } catch { /* keep '/' */ }
+  const headers = { 'Cache-Control': 'no-store' };
+  if (path.startsWith('/api/') || request.method !== 'GET') {
+    return new Response(JSON.stringify({ error: 'Something went wrong on our side. Please try again in a moment.' }),
+      { status: 500, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
+  }
+  const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="robots" content="noindex"><title>Something went wrong</title>' +
+    '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+    'background:#2a1430;font-family:Georgia,serif;color:#2b1d12;padding:16px;box-sizing:border-box}' +
+    '.box{max-width:440px;background:#f1e6cf;border:2px solid #b89a6a;border-radius:6px;padding:22px 24px;text-align:center}' +
+    'h1{font-size:1.3rem;margin:0 0 10px;color:#5b1f21}p{margin:0 0 14px;line-height:1.5}' +
+    'a{color:#5b1f21;font-weight:bold}</style></head><body><div class="box">' +
+    '<h1>Something went wrong</h1>' +
+    '<p>This page hit an error on our side. It is usually gone in a moment.</p>' +
+    '<p><a href="">Try again</a> &middot; <a href="/">Go to the homepage</a></p>' +
+    '</div></body></html>';
+  return new Response(html, { status: 500, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      return await app.fetch(request, env, ctx);
+    } catch (e) {
+      let path = '';
+      try { path = new URL(request.url).pathname; } catch { /* ignore */ }
+      console.error('[fetch] unhandled error', request.method, path, (e && e.stack) || e);
+      return crashResponse(request);
+    }
+  },
+  scheduled(event, env, ctx) {
+    return app.scheduled(event, env, ctx);
   }
 };
