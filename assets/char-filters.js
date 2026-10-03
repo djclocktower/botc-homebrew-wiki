@@ -56,10 +56,7 @@
       .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function splitTags(c) { return (c.tags || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean); }
-  function titleCase(s) {
-    return String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); })
-      .replace(/(^|[\s\-\/])St(?=$|[\s\-\/])/g, '$1ST'); // the ST in "ST Decided Info"
-  }
+  function titleCase(s) { return String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); }); }
   function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 
   // Hybrid membership: a character belongs if its "Appears in" matches a

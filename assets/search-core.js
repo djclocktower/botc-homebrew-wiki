@@ -191,8 +191,7 @@
 
   function titleCase(s) {
     return String(s || '').trim().toLowerCase()
-      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); })
-        .replace(/(^|[\s\-\/])St(?=$|[\s\-\/])/g, '$1ST'); // the ST in "ST Decided Info"
+      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
   }
   function splitList(s) {
     return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
