@@ -5,6 +5,7 @@
    data-tag attribute. */
 (function () {
   var TAG_INFO = {
+    'Ability Gain': 'Can gain or causes others to gain an ability.',
     'Alignment Change': 'Can change a player’s alignment, or make good and evil players swap sides.',
     'Binary Info': 'Can only learn 2 things.',
     'Character Change': 'Can change a player’s character, or become another character itself.',
