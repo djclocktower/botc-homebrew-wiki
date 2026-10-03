@@ -26,7 +26,8 @@
   }
   function titleCase(s) {
     return String(s || '').trim().toLowerCase()
-      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
+      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); })
+        .replace(/(^|[\s\-\/])St(?=$|[\s\-\/])/g, '$1ST'); // the ST in "ST Decided Info"
   }
   function cardTags(card) {
     return (card.getAttribute('data-tags') || '').split(',')

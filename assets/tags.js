@@ -10,7 +10,7 @@
     'Character Change': 'Can change a player’s character, or become another character itself.',
     'Confirmation': 'Can confirm itself or others.',
     'Consult': 'Privately visits the Storyteller to ask questions or make decisions.',
-    'Day Death': 'Can cause or interacts with Day Deaths',
+    'Day Deaths': 'This character causes or interacts with deaths during the day.',
     'Death': 'Kills players, or cares about players dying.',
     'Death Modification': 'Changes how, when, or whether deaths happen.',
     'Demonsbane': 'Benefits from being killed at night or by the Demon.',
@@ -52,6 +52,10 @@
     'Single-Kill': 'An evil character that kills one player per night.',
     'Sober & Healthy': 'Cares about being sober and healthy, or makes a player sober and healthy.',
     'Social': 'Affects how players talk, behave, or interact with each other.',
+    /* "ST" stays in capitals: the title-casers that tidy a stored tag
+       (render.js, card-filters.js, char-filters.js, search-core.js, tag.html,
+       tags.html) put it back after lower-casing, or it would read "St". */
+    'ST Decided Info': 'The Storyteller decides on what this character learns.',
     'Subjective Info': 'Its information depends on the Storyteller’s judgement rather than a fixed rule.',
     'Think': 'Thinks it is a different character, or makes other players think they are.',
     'Timer': 'Adds a time limit or countdown to the game.',
@@ -61,7 +65,11 @@
     'You Start Knowing': 'Starts the game knowing information from their ability.'
   };
 
-  var KNOWN_TAGS = Object.keys(TAG_INFO).sort();
+  // A–Z ignoring case, so "ST Decided Info" sits among the S's rather than
+  // before "Safe" (capital T sorts ahead of every lower-case letter).
+  var KNOWN_TAGS = Object.keys(TAG_INFO).sort(function (a, b) {
+    return a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0;
+  });
 
   // case-insensitive description lookup
   var LOWER = {};

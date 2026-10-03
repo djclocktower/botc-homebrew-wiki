@@ -337,10 +337,15 @@ assets/
                        renamed in D1 and the new tags.js reaching the site.
                        Tag names may contain '/' (Win/Loss Condition): the
                        links encodeURIComponent it, and the title-caser is
-                       spelled /(^|[\s\-\/])[a-z]/ in FIVE places (render.js,
-                       card-filters.js, all-characters/tag/tags.html) so
-                       'win/loss condition' comes back as 'Win/Loss Condition'
-                       and still finds its description.
+                       spelled /(^|[\s\-\/])[a-z]/ in SIX places (render.js,
+                       card-filters.js, char-filters.js, search-core.js,
+                       tag.html, tags.html) so 'win/loss condition' comes back
+                       as 'Win/Loss Condition' and still finds its
+                       description. Each also turns a whole word "St" back
+                       into "ST", or 'ST Decided Info' would read 'St Decided
+                       Info'; a new tag with another all-capitals word needs
+                       the same line in all six. KNOWN_TAGS sorts A–Z
+                       ignoring case for the same tag's sake.
                        The chips' CSS (.tag-pick-btn) is in styles.css, not in
                        the pages: it was hand-copied into create.html and
                        edit.html, so /bloodstar — the third page to use the

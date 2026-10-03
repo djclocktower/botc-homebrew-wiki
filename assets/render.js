@@ -1169,7 +1169,8 @@
     // (`sep`), so a Tags row that wraps carries the two down together.
     var tagLinks = (d.tags && d.tags.trim()) ? d.tags.split(',').map(function (t) {
       t = t.trim(); if (!t) return '';
-      var display = t.toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
+      var display = t.toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); })
+        .replace(/(^|[\s\-\/])St(?=$|[\s\-\/])/g, '$1ST'); // the ST in "ST Decided Info"
       return '<a class="tag-link" data-tag="' + esc(display) + '" href="' + root + 'tag?t=' + encodeURIComponent(display) + '">' + esc(display) + '</a>';
     }).filter(Boolean).join('<span class="tag-sep">, </span>') : '';
     var mark = curataMark(d, { sep: true });
