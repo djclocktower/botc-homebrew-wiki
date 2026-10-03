@@ -472,7 +472,10 @@ assets/
                        advances once the section has been on screen).
   render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
                        markup subset (headings, lists, tables, quotes, rules,
-                       images, ::: callouts, [toc], **bold**, *italic*,
+                       images — |left/|right/|center/|wide and a size,
+                       |300, |50% or |small/|medium/|large, which becomes
+                       an inline width only from a number it parsed —
+                       ::: callouts, [toc], **bold**, *italic*,
                        {{i|italic}}, `code`,
                        ~~strike~~, [label](url), [[Character Name]] — which
                        resolves official-first, all-caps as a token pill, see

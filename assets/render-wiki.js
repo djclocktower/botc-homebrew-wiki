@@ -14,7 +14,12 @@
      ---                           horizontal rule
      [toc]                         insert the table of contents here
      | a | b |                     table (an all-dashes row marks the header)
-     ![caption](image.png|right)   image — |left |right |wide are optional
+     ![caption](image.png|right)   image — |left |right |center |wide place it,
+                                   and a size makes it smaller or bigger:
+                                   |300 (pixels, or |300px), |50% (of the
+                                   text column), or |small |medium |large.
+                                   Both together: |right|250. A size never
+                                   lets an image overflow a phone screen.
      ::: note Title                callout box (note/tip/warning/example/lore)
      …text…
      :::
@@ -195,6 +200,30 @@
      folder the site uploads into but doesn't list here goes to R2 fine and
      then renders as nothing, which is how news images were invisible. */
   var IMG_PATH_RE = /^(pages|news|art|scripts|collections|icons|tokens)\/[a-z0-9._ /-]+\.(png|jpe?g|webp|gif|svg)$/i;
+  /* The |options after an image's source: where it sits and how big it is.
+     The size becomes an inline width, but only ever one this function wrote
+     from a number it parsed, so nothing a writer types reaches the style
+     attribute. max-width: 100% in styles.css still caps it, so |900 on a
+     phone fills the column instead of running off the side. */
+  var IMG_OPT_RE = '((?:\\|[A-Za-z0-9.%]{1,8}){0,3})';
+  var IMG_SIZES = { small: '200px', medium: '350px', large: '550px' };
+  function imgOptions(raw) {
+    var o = { align: '', width: '' };
+    String(raw || '').toLowerCase().split('|').forEach(function (t) {
+      t = t.trim();
+      if (!t) return;
+      if (t === 'left' || t === 'right' || t === 'wide' || t === 'center') { o.align = t; return; }
+      if (IMG_SIZES[t]) { o.width = IMG_SIZES[t]; return; }
+      var m = t.match(/^(\d{1,4})(px|%)?$/);
+      if (!m) return;
+      var n = parseInt(m[1], 10);
+      if (m[2] === '%') { if (n >= 5 && n <= 100) o.width = n + '%'; }
+      else if (n >= 16 && n <= 2000) o.width = n + 'px';
+    });
+    return o;
+  }
+  function imgStyle(o) { return o.width ? ' style="width:' + o.width + '"' : ''; }
+
   function safeImg(raw, root) {
     var src = String(raw || '').trim();
     if (!src) return '';
@@ -282,11 +311,12 @@
 
       // ![caption](src) inline — only reached when an image is not on its own
       // line; block images are handled in renderBody.
-      out = out.replace(/!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(\|(?:left|right|wide))?\)/g,
-        function (m, alt, src) {
+      out = out.replace(new RegExp('!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)', 'g'),
+        function (m, alt, src, extra) {
           var url = safeImg(src.replace(/&amp;/g, '&'), root);
           if (!url) return alt;
-          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '" loading="lazy" decoding="async">';
+          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '"' +
+            imgStyle(imgOptions(extra)) + ' loading="lazy" decoding="async">';
         });
     }
 
@@ -459,13 +489,16 @@
   }
 
   function imageBlock(line, opts) {
-    var m = line.match(/^!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(?:\|(left|right|wide))?\)\s*$/);
+    var m = line.match(new RegExp('^!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)\\s*$'));
     if (!m) return null;
     var url = safeImg(m[2], (opts && opts.linkRoot) || '');
     if (!url) return '';
-    var align = m[3] || '';
+    var o = imgOptions(m[3]);
+    var align = o.align;
     var caption = m[1] || '';
-    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + '">' +
+    // The width goes on the FIGURE, so a caption wraps under the picture
+    // rather than running the full column, and a % is of the text column.
+    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + (o.width ? ' wiki-figure-sized' : '') + '"' + imgStyle(o) + '>' +
       '<img src="' + esc(url) + '" alt="' + esc(caption) + '" loading="lazy" decoding="async">' +
       (caption ? '<figcaption>' + inlineFormat(caption, opts) + '</figcaption>' : '') +
       '</figure>';

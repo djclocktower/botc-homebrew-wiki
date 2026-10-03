@@ -3317,7 +3317,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-table tbody tr:nth-child(even) { background: rgba(0,0,0,.03); }
 
 /* Images: full width by default, floated with |left / |right, edge-to-edge
-   with |wide. Floats drop to full width on phones. */
+   with |wide, centred with |center. Floats drop to full width on phones. */
 .wiki-figure { margin: 0 0 16px; }
 .wiki-figure img { display: block; max-width: 100%; height: auto; border: 2px solid var(--parch-frame); }
 .wiki-figure figcaption {
@@ -3327,8 +3327,17 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-figure-right { float: right; max-width: 46%; margin: 0 0 12px 18px; }
 .wiki-figure-left { float: left; max-width: 46%; margin: 0 18px 12px 0; }
 .wiki-figure-wide img { width: 100%; }
+/* |center, and a size (|300, |50%, |small…): the width is an inline style
+   on the figure, set by render-wiki.js from a number it parsed. The picture
+   fills the figure, and max-width keeps it inside the column on a phone. */
+.wiki-figure-center { margin-left: auto; margin-right: auto; }
+.wiki-figure-center img { margin-left: auto; margin-right: auto; }
+.wiki-figure-center figcaption { text-align: center; }
+.wiki-figure.wiki-figure-sized { max-width: 100%; }
+.wiki-figure-sized img { width: 100%; }
 @media (max-width: 620px) {
   .wiki-figure-right, .wiki-figure-left { float: none; max-width: none; margin: 0 0 16px; }
+  .wiki-figure.wiki-figure-sized { max-width: 100%; }
 }
 .wiki-inline-img { max-width: 100%; height: auto; vertical-align: middle; }
 

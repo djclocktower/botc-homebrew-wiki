@@ -52,7 +52,7 @@
     { label: 'Quote', icon: 'quote', title: 'Quote', line: '> ' },
     { label: 'Link', title: 'Link', template: '[label](https://example.com)', select: [1, 6] },
     { label: 'Character', title: 'Link to a character on this wiki', template: '[[Character Name]]', select: [2, 16] },
-    { label: 'Image', title: 'Image (add |left, |right or |wide to place it)', template: '![caption](pages/my-image.png|right)', select: [2, 9] },
+    { label: 'Image', title: 'Image (add |left, |right, |center or |wide to place it, and |300, |50% or |small/|medium/|large to size it)', template: '![caption](pages/my-image.png|right)', select: [2, 9] },
     { label: 'Table', title: 'Table', block: '| Column | Column |\n| --- | --- |\n| value | value |' },
     { label: 'Note', title: 'Callout box (note / tip / warning / example / lore)', block: '::: note Title\nText inside the box.\n:::' },
     /* The drop cap takes the FIRST LETTER of the paragraph, so it wraps the
