@@ -2919,6 +2919,12 @@ uploaded — except for the one opt-in save described below.
   pixel), so the button is relabelled "Whole image" to match what it does; and
   while the Crop tool is chosen, the hint under the title says to drag a box
   and then press the Crop button in the top bar.
+- **Artwork can be pasted**: Ctrl/Cmd+V anywhere on the page takes an image
+  (or copied SVG markup, outside a text field) off the clipboard, and the
+  "Paste image" button does it through `navigator.clipboard.read()` for a
+  phone; the button stays hidden in browsers without that API. A paste while
+  the art editor is open is left to the editor, and a text paste into a field
+  is never intercepted.
 - **Save to a character** is the only server call. It uploads the 591 px
   render to `art/{slug}.png` — the same R2 slot the character editor uses —
   and then re-saves the row through `/api/character` with `art`/`image`
