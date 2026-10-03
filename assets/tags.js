@@ -27,10 +27,7 @@
     'Joke': ';P',
     'Loud': 'Announces information or effects publicly to the whole town.',
     'Madness': 'Creates madness, or interacts with mad players.',
-    /* No description on purpose: an empty string means no hover box
-       (tagEl() only offers one for a tag that describes itself), which is
-       different from the tag being unknown. */
-    'Magic': '',
+    'Magic': 'Has the capability to cause absolutely anything to happen.',
     'Misregistration': 'Can register as another character, team, or alignment.',
     'Multi-Kill': 'An evil character that can kill more than one player per night.',
     'Neighbor': 'Cares about the players sitting next to someone.',

@@ -326,7 +326,7 @@ assets/
                        See "Favorites".
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
-                       A description of '' is a tag with no hover box (Magic),
+                       A description of '' is a tag with no hover box,
                        which is not the same as a tag nothing knows about.
                        A tag NOT in this list is still kept on a page that has
                        one: both editors hold it aside and write it back after
