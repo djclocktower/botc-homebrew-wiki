@@ -12,6 +12,7 @@
   var ROOT = new URL('.', location.href).href;
   var SET_KEY = 'botc_token_set';
   var ADJ_KEY = 'botc_token_adj_v1';
+  var PAPER_KEY = 'botc_token_paper';
 
   /* ---- engine (Web Worker) — start it IMMEDIATELY, before anything else ---- */
   var worker = new Worker('assets/token-worker.js');
@@ -1265,9 +1266,60 @@
       });
     }
     seg('opt-paper', 'paper');
+    wireCustomPaper();
     seg('opt-format', 'format');
     seg('opt-layout', 'layout');
     seg('opt-dpi', 'dpi', Number);
+
+    /* Custom page size. Typed in mm, cm or inches and handed to Python in
+       mm; web_render.py clamps it again, so this is only the reader's side.
+       The last size is remembered, the choice of Custom with it. */
+    function wireCustomPaper() {
+      var row = $('opt-custom-paper'), w = $('opt-paper-w'), h = $('opt-paper-h'),
+          unit = $('opt-paper-unit'), note = $('opt-paper-note');
+      if (!row) return;
+      var PER = { mm: 1, cm: 10, 'in': 25.4 }, MIN = 60, MAX = 432;
+      var noteText = note.innerHTML;
+      var saved = {};
+      try { saved = JSON.parse(localStorage.getItem(PAPER_KEY)) || {}; } catch (e) {}
+      if (PER[saved.unit]) unit.value = saved.unit;
+      function show(mm) { return String(Math.round(mm / PER[unit.value] * 100) / 100); }
+      var wmm = Number(saved.w) > 0 ? Number(saved.w) : 210, hmm = Number(saved.h) > 0 ? Number(saved.h) : 297;
+      w.value = show(wmm); h.value = show(hmm);
+      function clamp(v) { return Math.min(MAX, Math.max(MIN, v)); }
+      // Parse only what was typed: switching the unit re-displays the size
+      // rounded, and reading that back would nudge it (297 mm -> 296.93).
+      function read(which) {
+        var f = PER[unit.value];
+        var v = parseFloat(which.value) * f;
+        if (v > 0) { if (which === w) wmm = v; else hmm = v; }
+        apply(parseFloat(w.value) > 0 && parseFloat(h.value) > 0);
+      }
+      function apply(ok) {
+        var off = ok === false || wmm < MIN || wmm > MAX || hmm < MIN || hmm > MAX;
+        note.classList.toggle('warn', off);
+        note.innerHTML = off
+          ? 'Sides must be 60&nbsp;mm to 432&nbsp;mm (about 2.4 to 17 inches); printing at ' +
+            Math.round(clamp(wmm)) + '&nbsp;&times;&nbsp;' + Math.round(clamp(hmm)) + '&nbsp;mm.'
+          : noteText;
+        opts.paper_w_mm = clamp(wmm);
+        opts.paper_h_mm = clamp(hmm);
+        try { localStorage.setItem(PAPER_KEY, JSON.stringify({ w: wmm, h: hmm, unit: unit.value, custom: opts.paper === 'Custom' })); } catch (e) {}
+      }
+      function sync() { row.hidden = opts.paper !== 'Custom'; }
+      var tm = null;
+      function changed() { read(this); clearTimeout(tm); tm = setTimeout(schedulePreview, 350); }
+      w.oninput = changed; h.oninput = changed;
+      unit.onchange = function () { w.value = show(wmm); h.value = show(hmm); apply(); };
+      $('opt-paper').querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () { sync(); apply(); });
+      });
+      if (saved.custom) {
+        var c = $('opt-paper').querySelector('button[data-v="Custom"]');
+        if (c) c.click();
+      }
+      apply(); sync();
+    }
 
     function rng(id, outId, key, fmt, toVal) {
       var r = $(id), o = $(outId);

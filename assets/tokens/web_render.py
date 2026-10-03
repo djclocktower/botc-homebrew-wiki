@@ -188,10 +188,27 @@ def _scaled(img, disk_now_px, disk_target_px):
     s = disk_target_px / disk_now_px
     return img.resize((max(1, round(img.width * s)), max(1, round(img.height * s))), Image.LANCZOS)
 
+# A custom page ('Custom', with paper_w_mm / paper_h_mm). The floor fits one
+# character token and the page margins; the ceiling is 17 in (432 mm), which
+# takes A3 and Tabloid, and keeps a 400 dpi page inside what the browser can
+# hold in memory (a side much past that and the sheet alone runs to hundreds
+# of megabytes before the PDF copy is made).
+PAPER_MIN_MM, PAPER_MAX_MM = 60.0, 432.0
+
+def paper_mm(o):
+    """(width_mm, height_mm) for the page the options ask for."""
+    if o.get('paper') == 'Custom':
+        def side(v):
+            try: v = float(v)
+            except (TypeError, ValueError): v = 0.0
+            return min(PAPER_MAX_MM, max(PAPER_MIN_MM, v))
+        return side(o.get('paper_w_mm')), side(o.get('paper_h_mm'))
+    return PAPER.get(o.get('paper'), PAPER['A4'])
+
 def pack_sheets(tokens, kind, opts=None):
     """tokens: list of RGBA Images (already margined). kind: 'char'|'reminder'."""
     o = dict(DEFAULTS); o.update(opts or {})
-    pw_mm, ph_mm = PAPER[o['paper']]
+    pw_mm, ph_mm = paper_mm(o)
     px = lambda mm: mm * o['dpi'] / MM_PER_IN
     PW, PH = round(px(pw_mm)), round(px(ph_mm))
     M = px(o['page_margin_mm']); PAD = px(o['pad_mm'])
