@@ -396,7 +396,7 @@ assets/
                        CharFilters.sections(list, group, setOf) is the one
                        layout both all-characters.html and /search draw
                        through.
-  card-filters.js      The collapsed filter box (3-state team/tag chips, Show
+  card-filters.js      The collapsed filter box (3-state team/tag chips, Hide
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not
@@ -413,10 +413,7 @@ assets/
                        rather than cards: sectionSel/innerSel/cardSel/
                        sectionCountSel/abilitySel name the markup, `search`
                        hands it the name box so the chips and the text box
-                       narrow one list instead of fighting, and `partialOn`
-                       leaves Partial characters visible (hiding one there
-                       would put it out of reach of the script you are
-                       building).
+                       narrow one list instead of fighting.
                        A **Group** select (By team / All together) sits beside
                        Sort on the renderRosterCards grids when there is more
                        than one team: All together moves every card into one
@@ -2986,12 +2983,15 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   Partial banner and "needs ___" in the editor. `missingForPublish()` /
   `missingBits()` return the failing labels, `listPhrase()` joins them.
 - **Partial** — characters only: anything short of `STANDARD_REQUIREMENTS`.
-  Hidden from All Characters, the tag/team pages, Featured and the homepage
-  unless the *reader* ticks the "Show Partial" chip. The creator pages
-  (`/u/`, `/author?a=`) are the exception: one person's body of work shows
-  whole, so profile.html passes `partialOn` and the chip starts ticked —
-  there it filters Partial *out* on request instead. Filling the gap
-  upgrades it instantly — nothing is stored.
+  **Listed everywhere** — All Characters, Recently Added on the homepage,
+  the team and tag pages, creator pages, /search, the Script Builder —
+  and taken out only when the *reader* ticks the **"Hide Partial"** chip
+  (both filter boxes, off by default, `hidePartial` in their state). It
+  used to be the other way round, hidden until a "Show Partial" chip was
+  ticked, and the owner asked for it turned around (2026-10). What still
+  leaves Partial pages out is the wiki's own picks: Featured Character and
+  `/random`, through `Classify.eligible()` / `weightedPick()`. Filling the
+  gap upgrades a page instantly — nothing is stored.
   `hasMechanics()` no longer gates Partial (night order alone is not a
   finished almanac entry) but is still exported and still used to describe a
   page; don't delete it.
@@ -3509,8 +3509,8 @@ ability 2). Every word must match somewhere except the small words in
 the history entry, changing tab adds one). The Characters tab mounts the All
 Characters filter from `assets/char-filters.js` (the same module
 all-characters.html uses), with "Best match" as the default sort, "All
-together" as the default group, and **Show Partial on**, as on the creator
-pages: somebody searching for a page by name must find it. On `/search` the
+together" as the default group, and Partial pages shown, as everywhere
+else: somebody searching for a page by name must find it. On `/search` the
 top-bar box hands its query to the page (`window.SearchPage.set`) instead of
 reloading it. Enter never searches while an input method is composing.
 

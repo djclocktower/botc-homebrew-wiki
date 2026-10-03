@@ -486,8 +486,8 @@
     }
 
     // The filter box, mounted on the sidebar once its rows exist. Partial
-    // characters stay visible here (partialOn): this is the list you build a
-    // script from, so hiding one would put it out of reach.
+    // characters show here like everywhere else; "Hide Partial" is a filter
+    // the builder can tick, never a default.
     function mountSidebarFilters() {
       if (!window.mountCardFilters) return;
       window.mountCardFilters({
@@ -495,7 +495,7 @@
         count: 'sb-add-count', search: 'sb-filter',
         sectionSel: '.sb-add-group', innerSel: '.sb-add-rows', cardSel: '.sb-add-row',
         sectionCountSel: '.sb-add-groupcount', abilitySel: '.sb-add-ability',
-        label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
+        label: 'Filters', partialChip: true, curataChip: true,
         // "Add my favorites": the reader's saved characters, and every
         // character on a saved script or collection. Hidden until one of
         // them is in this list.

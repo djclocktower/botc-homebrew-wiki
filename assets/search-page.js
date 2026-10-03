@@ -490,10 +490,6 @@
     filters = CF.mount({
       bar: bar, toggle: toggle, list: index.data.characters,
       sourceOf: CF.makeSourceOf(index.data.collections, index.data.scripts),
-      // A search is looking for something in particular, so an unfinished
-      // page still shows (the chip hides them on request), as on the creator
-      // pages.
-      partialOn: true,
       sorts: [['relevance', 'Best match'], ['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']],
       defaultGroup: 'none',
       order: function (c) { return feedPos.get(c) || 0; },

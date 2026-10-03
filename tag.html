@@ -133,9 +133,8 @@
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No tag specified. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
           return;
         }
-        // Partial pages (no tags, no almanac text) never reach a tag page
-        // anyway, but filter defensively so the rule lives in one place.
-        var chars = window.eligible(list).filter(function(c) { return hasTag(c, rawTag); });
+        // Partial pages are listed like any other, as on All Characters.
+        var chars = list.filter(function(c) { return hasTag(c, rawTag); });
         if (!chars.length) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found with tag <strong>' + esc(displayTag) + '</strong>. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
           return;

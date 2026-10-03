@@ -400,8 +400,8 @@
           (c.appearsInFrom && c.appearsInFrom[0] && c.appearsInFrom[0].name) || '') + '"' +
         // Curata wins over Partial (same rule as Classify.isPartial): a
         // character can be stamped 'partial' and then inherit the wreath from a
-        // Curata collection, and an admin-blessed page is never hidden
-        // behind the Show Partial chip.
+        // Curata collection, and an admin-blessed page is never taken out
+        // by the Hide Partial chip.
         (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
         (hasCurata ? ' data-curata="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +

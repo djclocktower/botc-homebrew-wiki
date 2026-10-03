@@ -4941,7 +4941,7 @@ async function unfeatureArticle(env, slug) {
 
 // One compact homepage snapshot per content version and UTC day. Random tile
 // order remains a browser choice, so every collection/script stays eligible.
-const HOME_FORMAT_V = 3;
+const HOME_FORMAT_V = 4;
 const _homePending = new Map();
 let _homeCache = null;
 async function cachedHome(env, ctx, request) {

@@ -103,12 +103,10 @@
     // the option is only built when the function is actually there.
     var HAS_SAO = typeof window !== 'undefined' && typeof window.saoCompare === 'function';
 
-    // Partial pages are hidden until asked for on the browse pages, because
-    // an unfinished page is not worth a reader's time. The Script Builder
-    // passes partialOn: hiding a character there would stop somebody putting
-    // it on their script, which is a different thing entirely. The creator
-    // page passes it too — see the Status-chips comment below.
-    var PARTIAL_ON = !!opts.partialOn;
+    // Partial pages are shown like any other; the Status group's "Hide
+    // Partial" chip takes them out for a reader who wants only finished
+    // pages. (It used to be the other way round — hidden until a "Show
+    // Partial" chip was ticked — and the owner asked for it turned around.)
     // Optional extra chip group over data-source, for a list that mixes two
     // kinds of thing. The Script Builder's sidebar holds homebrew characters
     // and the official roster, and "show me only one of those" is the first
@@ -140,7 +138,7 @@
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [],
                inSources: [], exSources: [], creator: '',
-               showPartial: PARTIAL_ON, curataOnly: false, favOnly: false,
+               hidePartial: false, curataOnly: false, favOnly: false,
                sort: DEFAULT_SORT, dir: NATURAL_DIR[DEFAULT_SORT],
                group: 'team',
                q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
@@ -197,13 +195,7 @@
       html += '</div></div>';
     }
     // Status chips are opt-in, and only appear when there is something for them
-    // to do. Off by default because turning the Partial chip on also *hides*
-    // Partial cards until it is ticked — right for the browse listings and
-    // wrong for a collection page (which lists whatever its author put in it).
-    // A page that wants Partial cards visible from the start passes partialOn
-    // as well, which starts the chip ticked: the creator page does, because a
-    // person's own body of work going half-hidden read as the wiki losing
-    // their characters. See "Page classification" in CLAUDE.md.
+    // to do. See "Page classification" in CLAUDE.md.
     var wantPartial = !!opts.partialChip && nPartial > 0;
     var wantCurata = !!opts.curataChip && nCurata > 0;
     if (wantPartial || wantCurata || wantFav) {
@@ -212,8 +204,8 @@
       html += '<div class="filter-group" id="cf-status-group"' + (wantPartial || wantCurata ? '' : ' hidden') +
         '><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
       if (wantPartial) {
-        html += '<button type="button" class="filter-chip' + (PARTIAL_ON ? ' active' : '') +
-          '" id="cf-partial" title="Unfinished pages, missing tags or almanac text.">Show Partial (' + nPartial + ')</button>';
+        html += '<button type="button" class="filter-chip" id="cf-partial"' +
+          ' title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
       }
       if (wantCurata) {
         html += '<button type="button" class="filter-chip filter-chip-curata" id="cf-curata" title="Pages the wiki admins have marked as Curata.">Curata only (' + nCurata + ')</button>';
@@ -281,8 +273,8 @@
 
     var partialBtn = bar.querySelector('#cf-partial');
     if (partialBtn) partialBtn.addEventListener('click', function () {
-      STATE.showPartial = !STATE.showPartial;
-      partialBtn.classList.toggle('active', STATE.showPartial);
+      STATE.hidePartial = !STATE.hidePartial;
+      partialBtn.classList.toggle('active', STATE.hidePartial);
       apply();
     });
     var curataBtn = bar.querySelector('#cf-curata');
@@ -340,7 +332,7 @@
       if (searchEl) searchEl.value = '';
       STATE = freshState();
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
-      if (partialBtn) partialBtn.classList.toggle('active', STATE.showPartial);
+      if (partialBtn) partialBtn.classList.toggle('active', STATE.hidePartial);
       if (crSel) crSel.value = '';
       sortSel.value = STATE.sort;
       dirSel.value = STATE.dir;
@@ -355,11 +347,8 @@
     }
 
     function cardVisible(card) {
-      // Partial pages are unfinished and stay out of the listing until the
-      // reader asks for them — the same rule the browse pages use. Only where
-      // the chip exists to turn them back on, though: without it they would be
-      // hidden with no way to reveal them.
-      if (wantPartial && !STATE.showPartial && card.getAttribute('data-partial') === '1') return false;
+      // "Hide Partial" leaves the unfinished pages out.
+      if (STATE.hidePartial && card.getAttribute('data-partial') === '1') return false;
       if (STATE.curataOnly && card.getAttribute('data-curata') !== '1') return false;
       if (STATE.favOnly && !(FAV_SET && FAV_SET.has(card.getAttribute('data-slug')))) return false;
       var team = teamOf(card);
@@ -526,7 +515,7 @@
       var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
         STATE.exTags.length + STATE.inSources.length + STATE.exSources.length +
         (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +
-        (STATE.showPartial !== PARTIAL_ON ? 1 : 0) + (STATE.curataOnly ? 1 : 0) + (STATE.favOnly ? 1 : 0);
+        (STATE.hidePartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0) + (STATE.favOnly ? 1 : 0);
       if (countEl) {
         // At rest, count what the reader can actually see: Partial pages are
         // hidden by default, and "15 of 16" with nothing filtered just reads

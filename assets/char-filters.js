@@ -12,7 +12,6 @@
      opts.bar, opts.toggle   the #filter-bar box and its mobile "Filters" button
      opts.list               the characters the chips are built from
      opts.sourceOf(c)        'collection' | 'script' | null, for the Source chips
-     opts.partialOn          Show Partial starts ticked (the search page)
      opts.sorts              [[value, label]] offered in Sort, in order:
                              'relevance' | 'name' | 'recent' | 'ability'
      opts.defaultSort        defaults to the first sort
@@ -135,13 +134,13 @@
     // Creators use the same 3-state include/exclude model as tags and teams
     // (click = include, click again = exclude, third click = off) — there are
     // far too many creators for a dropdown, so they get a search box instead
-    // of a chip wall. `showPartial` reveals unfinished pages, which are hidden
-    // from browsing by default; `curataOnly` narrows to admin-picked pages.
+    // of a chip wall. `hidePartial` leaves unfinished pages out (they are
+    // shown by default); `curataOnly` narrows to admin-picked pages.
     function blankState() {
       return {
         includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
         includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-        creatorQuery: '', showPartial: !!opts.partialOn, curataOnly: false, favOnly: false,
+        creatorQuery: '', hidePartial: false, curataOnly: false, favOnly: false,
         sort: DEFAULT_SORT, dir: DEFAULT_DIR,
         // 'team': one section per team; 'none': every card in one grid, so
         // the sort runs across all of them at once; 'author': one section
@@ -193,8 +192,8 @@
       srcPresent.forEach(function (s) { html += '<button type="button" class="filter-chip" data-source="' + esc(s[0]) + '">' + esc(s[1]) + '</button>'; });
       html += '</div></div>';
     }
-    // Status (Partial / Curata). Partial pages are hidden until the
-    // reader asks for them; Curata is a narrowing filter.
+    // Status (Partial / Curata). Both are narrowing filters: "Hide Partial"
+    // leaves the unfinished pages out, "Curata only" keeps the picked ones.
     var nPartial = list.filter(function (c) { return window.isPartial(c); }).length;
     var nCurata = list.filter(function (c) { return window.isCurata(c); }).length;
     // The Favorites chip is built hidden: the saved list arrives after the
@@ -203,7 +202,7 @@
     if (nPartial || nCurata || wantFav) {
       html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
       if (nPartial) {
-        html += '<button type="button" class="filter-chip' + (opts.partialOn ? ' active' : '') + '" id="fc-partial" title="Unfinished pages, missing tags or almanac text. Hidden unless ticked.">Show Partial (' + nPartial + ')</button>';
+        html += '<button type="button" class="filter-chip" id="fc-partial" title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
       }
       if (nCurata) {
         html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
@@ -304,8 +303,8 @@
     // ── Status chips ──
     var partialBtn = byId('fc-partial');
     if (partialBtn) partialBtn.addEventListener('click', function () {
-      ctrl.state.showPartial = !ctrl.state.showPartial;
-      partialBtn.classList.toggle('active', ctrl.state.showPartial);
+      ctrl.state.hidePartial = !ctrl.state.hidePartial;
+      partialBtn.classList.toggle('active', ctrl.state.hidePartial);
       changed();
     });
     var curataBtn = byId('fc-curata');
@@ -435,7 +434,6 @@
     ctrl.reset = function () {
       ctrl.state = blankState();
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
-      if (partialBtn && ctrl.state.showPartial) partialBtn.classList.add('active');
       if (crSearch) crSearch.value = '';
       renderCreatorChips();
       sortSel.value = DEFAULT_SORT;
@@ -452,7 +450,7 @@
         st.includeTags.length + st.excludeTags.length +
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
-        (st.showPartial !== !!opts.partialOn ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
+        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {
       if (!toggle) return;
@@ -463,8 +461,8 @@
 
     ctrl.apply = function (input) {
       var st = ctrl.state, out = input.slice();
-      // Partial (unfinished) pages are out of the list unless asked for.
-      if (!st.showPartial) out = out.filter(function (c) { return !window.isPartial(c); });
+      // "Hide Partial" leaves the unfinished pages out.
+      if (st.hidePartial) out = out.filter(function (c) { return !window.isPartial(c); });
       if (st.curataOnly) out = out.filter(function (c) { return window.isCurata(c); });
       if (st.favOnly) out = out.filter(function (c) { return !!(FAV_SET && FAV_SET.has(c.slug)); });
       if (st.includeTeams.length) out = out.filter(function (c) { return st.includeTeams.indexOf(c.team) !== -1; });
@@ -508,7 +506,7 @@
     // jump around while somebody types.
     ctrl.counts = function (next) {
       countList = next;
-      if (partialBtn) partialBtn.textContent = 'Show Partial (' + next.filter(function (c) { return window.isPartial(c); }).length + ')';
+      if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(function (c) { return window.isPartial(c); }).length + ')';
       if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(function (c) { return window.isCurata(c); }).length + ')';
       if (favBtn && FAV_SET) favLoad(true);
     };
