@@ -1,7 +1,7 @@
 {
  "source": "https://github.com/bra1n/townsquare (src/hatred.json), fetched 2026-08-13",
- "note": "Jinxes between two OFFICIAL characters, for the optional base-game layer on /jinxes. Partial: this list predates several recent official jinxes. Homebrew jinxes are not here - they live on the characters themselves in D1.",
- "pairs": 71,
+ "note": "Jinxes between two OFFICIAL characters, for the optional base-game layer on /jinxes. Partial: this list predates several recent official jinxes. Homebrew jinxes are not here - they live on the characters themselves in D1. Riot's jinxes were replaced with the current official ones from github.com/ThePandemoniumInstitute/botc-release (resources/data/jinxes.json), fetched 2026-10-03, after Riot was reworked.",
+ "pairs": 56,
  "jinxes": [
   {
    "a": "chambermaid",
@@ -209,141 +209,6 @@
    "text": "If the Marionette thinks that they are the Huntsman, the Damsel was added."
   },
   {
-   "a": "riot",
-   "b": "engineer",
-   "text": "Riot and the Engineer can not both be in play at the start of the game. \nIf the Engineer creates Riot, the evil players become Riot."
-  },
-  {
-   "a": "riot",
-   "b": "golem",
-   "text": "If The Golem nominates Riot, the Riot player does not die."
-  },
-  {
-   "a": "riot",
-   "b": "snitch",
-   "text": "If the Snitch is in play, each Riot player gets an extra 3 bluffs."
-  },
-  {
-   "a": "riot",
-   "b": "saint",
-   "text": "If a good player nominates and kills the Saint, the Saint's team loses."
-  },
-  {
-   "a": "riot",
-   "b": "butler",
-   "text": "The Butler can not nominate their master."
-  },
-  {
-   "a": "riot",
-   "b": "pithag",
-   "text": "If the Pit-Hag creates Riot, all evil players become Riot. \nIf the Pit-Hag creates Riot after day 3, the game continues for one more day."
-  },
-  {
-   "a": "riot",
-   "b": "mayor",
-   "text": "If the 3rd day begins with just three players alive, the players may choose (as a group) not to nominate at all. If so (and a Mayor is alive) then the Mayor's team wins."
-  },
-  {
-   "a": "riot",
-   "b": "monk",
-   "text": "If a Riot player nominates and kills the Monk-protected-player, the Monk-protected-player does not die."
-  },
-  {
-   "a": "riot",
-   "b": "farmer",
-   "text": "If a Riot player nominates and kills a Farmer, the Farmer uses their ability tonight."
-  },
-  {
-   "a": "riot",
-   "b": "innkeeper",
-   "text": "If a Riot player nominates an Innkeeper-protected-player, the Innkeeper-protected-player does not die."
-  },
-  {
-   "a": "riot",
-   "b": "sage",
-   "text": "If a Riot player nominates and kills a Sage, the Sage uses their ability tonight."
-  },
-  {
-   "a": "riot",
-   "b": "ravenkeeper",
-   "text": "If a Riot player nominates and kills the Ravenkeeper, the Ravenkeeper uses their ability tonight."
-  },
-  {
-   "a": "riot",
-   "b": "soldier",
-   "text": "If a Riot player nominates the Soldier, the Soldier does not die."
-  },
-  {
-   "a": "riot",
-   "b": "grandmother",
-   "text": "If a Riot player nominates and kills the Grandchild, the Grandmother dies too."
-  },
-  {
-   "a": "riot",
-   "b": "king",
-   "text": "If a Riot player nominates and kills the King and the Choirboy is alive, the Choirboy uses their ability tonight."
-  },
-  {
-   "a": "riot",
-   "b": "exorcist",
-   "text": "Only 1 jinxed character can be in play."
-  },
-  {
-   "a": "riot",
-   "b": "minstrel",
-   "text": "Only 1 jinxed character can be in play."
-  },
-  {
-   "a": "riot",
-   "b": "flowergirl",
-   "text": "Only 1 jinxed character can be in play."
-  },
-  {
-   "a": "riot",
-   "b": "undertaker",
-   "text": "Players that die by nomination register as being executed to the Undertaker."
-  },
-  {
-   "a": "riot",
-   "b": "cannibal",
-   "text": "Players that die by nomination register as being executed to the Cannibal."
-  },
-  {
-   "a": "riot",
-   "b": "pacifist",
-   "text": "Players that die by nomination register as being executed to the Pacifist."
-  },
-  {
-   "a": "riot",
-   "b": "devilsadvocate",
-   "text": "Players that die by nomination register as being executed to the Devil's Advocate."
-  },
-  {
-   "a": "riot",
-   "b": "investigator",
-   "text": "Riot registers as a Minion to the Investigator."
-  },
-  {
-   "a": "riot",
-   "b": "clockmaker",
-   "text": "Riot registers as a Minion to the Clockmaker."
-  },
-  {
-   "a": "riot",
-   "b": "towncrier",
-   "text": "Riot registers as a Minion to the Town Crier."
-  },
-  {
-   "a": "riot",
-   "b": "damsel",
-   "text": "Riot registers as a Minion to the Damsel."
-  },
-  {
-   "a": "riot",
-   "b": "preacher",
-   "text": "Riot registers as a Minion to the Preacher."
-  },
-  {
    "a": "lleech",
    "b": "mastermind",
    "text": "If the Mastermind is alive and the Lleech's host dies by execution, the Lleech lives but loses their ability. "
@@ -357,6 +222,66 @@
    "a": "lleech",
    "b": "heretic",
    "text": "If the Lleech has poisoned the Heretic then the Lleech dies, the Heretic remains poisoned."
+  },
+  {
+   "a": "riot",
+   "b": "atheist",
+   "text": "During a riot, if the Storyteller is nominated, players vote. If they are \"about to die\", the game ends. If not, they nominate again."
+  },
+  {
+   "a": "riot",
+   "b": "banshee",
+   "text": "Each night*, Riot chooses an alive good player (different to previous nights): a chosen Banshee dies & gains their ability."
+  },
+  {
+   "a": "riot",
+   "b": "exorcist",
+   "text": "If Riot nominates and executes the Exorcist-chosen player, good wins."
+  },
+  {
+   "a": "riot",
+   "b": "farmer",
+   "text": "Each night*, Riot chooses an alive good player (different to previous nights): a chosen Farmer uses their ability but does not die."
+  },
+  {
+   "a": "riot",
+   "b": "grandmother",
+   "text": "If Riot is in play and the Grandchild dies by execution, evil wins."
+  },
+  {
+   "a": "riot",
+   "b": "innkeeper",
+   "text": "If Riot nominates and executes an Innkeeper-protected player, good wins."
+  },
+  {
+   "a": "riot",
+   "b": "king",
+   "text": "If Riot is in play, and at least 1 player is dead, the King learns an alive character each night."
+  },
+  {
+   "a": "riot",
+   "b": "mayor",
+   "text": "The Mayor may choose to stop the riot. If they do so when only 1 Riot is alive, good wins. Otherwise, evil wins."
+  },
+  {
+   "a": "riot",
+   "b": "monk",
+   "text": "If Riot nominates and executes the Monk-protected player, good wins."
+  },
+  {
+   "a": "riot",
+   "b": "ravenkeeper",
+   "text": "Each night*, Riot chooses an alive good player (different to previous nights): a chosen Ravenkeeper uses their ability but does not die."
+  },
+  {
+   "a": "riot",
+   "b": "sage",
+   "text": "Each night*, Riot chooses an alive good player (different to previous nights): a chosen Sage uses their ability but does not die."
+  },
+  {
+   "a": "riot",
+   "b": "soldier",
+   "text": "If Riot nominates and executes the Soldier, good wins."
   }
  ]
 }

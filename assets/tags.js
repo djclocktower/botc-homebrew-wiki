@@ -24,6 +24,7 @@
     'Grim Peeker': 'Sees part of the Grimoire, or otherwise learns what the Storyteller can see.',
     'Hidden': 'Hides its presence, identity, or other game information from players.',
     'Information': 'The player learns something from their ability.',
+    'Joke': ';P',
     'Loud': 'Announces information or effects publicly to the whole town.',
     'Madness': 'Creates madness, or interacts with mad players.',
     /* No description on purpose: an empty string means no hover box
