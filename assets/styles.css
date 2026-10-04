@@ -489,6 +489,35 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    displayed, and a token is not an icon. The .75 in the stack rule below
    is this 6/7 with the stack's own 8/7 divided back out. */
 .emblem.emblem-token { transform: scale(.8571); }
+/* A display size above 100% (--art-scale, the owner's slider) has to stay
+   inside the info card. The transform above costs no layout, which is fine
+   for the 8/7 it was built for (only transparent margin passes the column)
+   but not for 200%: the picture covered the title and the quote, ran past
+   the card and widened the whole page on a phone. Two parts, both written
+   only when the page carries a size (render.js writes the variable only
+   then), so a page nobody sized draws exactly as before:
+   - the margins grow by the height the scale adds, so the picture pushes
+     the title and the quote apart instead of covering them. The box is
+     min(100%, 334px) wide and square, and a percentage margin is a share of
+     the same width, so (s - 1) x 8/7 / 2 of it is exactly the growth.
+     Below 100% the same sum is negative and closes the gap instead;
+   - sideways the picture is clipped to the width it is drawn at by
+     default, which is the card's own width. In the element's own units
+     that is half the box over s either side of the middle. Taller is free;
+     wider stops at the card, so on a phone a big icon fills the card edge
+     to edge and the page never scrolls sideways. clip-path is in the
+     element's own coordinates, so it scales with the transform. It hides
+   what spills over but does not stop it counting: a transformed box is
+   still part of the page's scrollable width, so the card clips sideways as
+   well (only this card, and only when its icon is sized — tag tooltips hang
+   off <body>, so nothing else in it is cut). overflow-x: clip, unlike
+   hidden, leaves the vertical axis alone and makes no scroll container. */
+.char-infocard:has(> .emblem[style*="--art-scale"], > .emblem-stack[style*="--art-scale"]) { overflow-x: clip; }
+.emblem[style*="--art-scale"]:not(.emblem-token), .emblem-stack[style*="--art-scale"] {
+  margin-top: calc(4px + (var(--art-scale, 1) - 1) * min(57.14%, 190.85px));
+  margin-bottom: calc(6px + (var(--art-scale, 1) - 1) * min(57.14%, 190.85px));
+  clip-path: inset(-25% max(0%, 50% - 50% / var(--art-scale, 1)));
+}
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 /* How to say the name — a quiet labelled line tucked under the flavour quote.
    Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
