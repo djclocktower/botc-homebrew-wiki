@@ -3922,3 +3922,8 @@ keeps `content-visibility: auto`.
    Trade Gothic Bold in the toolkit, so it is a stroke in the text colour; the
    advance is unchanged, so the wrapping still measures right. Touching any
    `.py` there means bumping `assets/tokens/manifest.json`'s `v`.
+   Two more in `deco.py`: there is leaf art for 1–6 reminders only, so 7+
+   draws the 6-leaf top (the loose fallback fan bunched into a clump that
+   poked out of the token), and `_true_circle()` trims `frame_bare.png` to
+   an exact circle on load — the file has a flat patch on its left edge that
+   printed as a nub on every token.

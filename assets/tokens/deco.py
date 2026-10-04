@@ -42,6 +42,30 @@ def _place_tight(canvas, im):
 
 import numpy as _np
 _DCX, _DCY, _R = 467, 464, 437
+
+def _true_circle(im, cx=466.2, cy=463.34, r=437.0):
+    """The token background as an exact circle. frame_bare.png is a hair off
+    round, with a flat patch on its left edge that read as a nub on every
+    printed token. Its own centre and radius (fitted to its edge, in pixel
+    coordinates) set the circle; the edge is anti-aliased, and the few pixels
+    inside it that the art left see-through take their colour from just
+    inside, so nothing dark shows at the rim."""
+    a = _np.array(im).copy()
+    H, W = a.shape[:2]
+    yy, xx = _np.mgrid[0:H, 0:W]
+    d = _np.hypot(xx - cx, yy - cy)
+    m = _np.clip(r - d + 0.5, 0, 1)
+    hole = (m > 0) & (a[:, :, 3] < 250)
+    if hole.any():
+        ys, xs = _np.nonzero(hole)
+        k = 6.0 / _np.maximum(d[ys, xs], 1)
+        sy = _np.clip(_np.round(ys + (cy - ys) * k).astype(int), 0, H - 1)
+        sx = _np.clip(_np.round(xs + (cx - xs) * k).astype(int), 0, W - 1)
+        a[ys, xs, :3] = a[sy, sx, :3]
+    a[:, :, 3] = _np.round(m * 255).astype(_np.uint8)
+    return Image.fromarray(a)
+
+BARE = _true_circle(BARE)
 _DISK = (_np.array(BARE)[:,:,3] > 0)            # token shape, for clipping
 TOP_ANCHOR = -24                                # lifted slightly off the ability text
 
@@ -167,6 +191,11 @@ def _custom_top_scale():
 
 def _reminders(canvas, n, scale_mul=1.0, dy=0, dx=0, rot=0):
     if n <= 0: return
+    # There is leaf art for 1 to 6 reminders. Past that, the most leaves drawn
+    # is still the most leaves: the loose fan below bunched seven or more into
+    # a clump that poked out past the top of the token.
+    have = set(REAL_TOP) | set(NEW_TOP)
+    if have and n > max(have): n = max(have)
     if CUSTOM_TOP is not None:             # user-uploaded leaf art replaces all count variants
         _place_top(canvas, CUSTOM_TOP, _custom_top_scale()*float(scale_mul), dy, dx, rot); return
     if n in REAL_TOP:                      # official asset
