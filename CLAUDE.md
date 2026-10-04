@@ -3922,8 +3922,14 @@ keeps `content-visibility: auto`.
    Trade Gothic Bold in the toolkit, so it is a stroke in the text colour; the
    advance is unchanged, so the wrapping still measures right. Touching any
    `.py` there means bumping `assets/tokens/manifest.json`'s `v`.
-   Two more in `deco.py`: there is leaf art for 1–6 reminders only, so 7+
-   draws the 6-leaf top (the loose fallback fan bunched into a clump that
-   poked out of the token), and `_true_circle()` trims `frame_bare.png` to
-   an exact circle on load — the file has a flat patch on its left edge that
-   printed as a nub on every token.
+   Two more in `deco.py`: **one leaf per reminder up to 12.** The official
+   art stops at six; `assets/tokens/leaf_gen/leaf-top7..12.png` continue its
+   arc round the rim (`migration/make-leaf-tops.py` generates them from the
+   official six-leaf file — copies of its outer leaves, rotated about the
+   token's centre at the same ~8.6° spacing, alternating left then right) and
+   are placed by the token's centre (`GEN_ANCHOR_X`), not by the leaves'
+   extent, so an odd count does not slide sideways. 13+ draws 12; the old
+   loose fallback fan bunched into a clump that poked out of the token. And
+   `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
+   file has a flat patch on its left edge that printed as a nub on every
+   token.

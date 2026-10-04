@@ -22,6 +22,21 @@ for _n in (1,2,3,4,5,6,7):
         _im=Image.open(_g[0]).convert('RGBA')
         _sc=_TOKEN_W/_im.width
         REAL_TOP[_n]=_im.resize((int(_im.width*_sc), int(_im.height*_sc)), Image.LANCZOS)
+# 7 to 12 reminders: the official six-leaf arc continued round the rim by
+# migration/make-leaf-tops.py. Same 539 px canvas as the official art, so the
+# same scale; GEN_ANCHOR_X is where the token's centre falls on it, which is
+# what keeps an odd count (one more leaf on the left) from sliding the whole
+# arc sideways the way centring on the leaves' own extent would.
+GEN_TOP = {}
+GEN_ANCHOR_X = 267.0 * (_TOKEN_W / 539.0)
+for _n in range(7, 13):
+    _p = f'leaf_gen/leaf-top{_n}.png'
+    try:
+        _im = Image.open(_p).convert('RGBA')
+    except (OSError, IOError):
+        continue
+    _sc = _TOKEN_W / _im.width
+    GEN_TOP[_n] = _im.resize((int(_im.width*_sc), int(_im.height*_sc)), Image.LANCZOS)
 
 
 import numpy as _np
@@ -69,7 +84,7 @@ BARE = _true_circle(BARE)
 _DISK = (_np.array(BARE)[:,:,3] > 0)            # token shape, for clipping
 TOP_ANCHOR = -24                                # lifted slightly off the ability text
 
-def _place_top(canvas, asset, scale, dy=0, dx=0, rot=0):
+def _place_top(canvas, asset, scale, dy=0, dx=0, rot=0, anchor_x=None):
     big = asset.resize((int(asset.width*scale), int(asset.height*scale)), Image.LANCZOS)
     if float(rot) != 0:
         big = big.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
@@ -77,6 +92,8 @@ def _place_top(canvas, asset, scale, dy=0, dx=0, rot=0):
     ys, xs = _np.where(a)
     if len(xs)==0: return
     cx = (xs.min()+xs.max())/2.0
+    if anchor_x is not None and float(rot) == 0:
+        cx = anchor_x * float(scale)                 # the token centre, not the leaves' extent
     ox = int(round(_DCX + int(dx) - cx))               # centre on disk centre (+ user offset)
     oy = int(round(TOP_ANCHOR + int(dy) - ys.min()))   # keep leaves high (dy = user offset)
     # render onto a transparent layer at full canvas size
@@ -191,15 +208,17 @@ def _custom_top_scale():
 
 def _reminders(canvas, n, scale_mul=1.0, dy=0, dx=0, rot=0):
     if n <= 0: return
-    # There is leaf art for 1 to 6 reminders. Past that, the most leaves drawn
-    # is still the most leaves: the loose fan below bunched seven or more into
-    # a clump that poked out past the top of the token.
-    have = set(REAL_TOP) | set(NEW_TOP)
+    # Leaf art runs from 1 to 12 reminders. Past that, twelve leaves is the
+    # most the top of the token has room for: the loose fan below bunched
+    # many into a clump that poked out past the top.
+    have = set(REAL_TOP) | set(NEW_TOP) | set(GEN_TOP)
     if have and n > max(have): n = max(have)
     if CUSTOM_TOP is not None:             # user-uploaded leaf art replaces all count variants
         _place_top(canvas, CUSTOM_TOP, _custom_top_scale()*float(scale_mul), dy, dx, rot); return
     if n in REAL_TOP:                      # official asset
         _place_top(canvas, REAL_TOP[n], 1.0*float(scale_mul), dy, dx, rot); return
+    if n in GEN_TOP:                       # 7-12: the official arc, continued
+        _place_top(canvas, GEN_TOP[n], 1.0*float(scale_mul), dy, dx, rot, anchor_x=GEN_ANCHOR_X); return
     if n in NEW_TOP:                       # user-provided leaf (matched scale)
         _place_top(canvas, NEW_TOP[n], S_NEW*float(scale_mul), dy, dx, rot); return
     # last-resort fan (no asset for this count)
