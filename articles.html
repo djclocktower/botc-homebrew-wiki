@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Articles — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Guides, essays and design notes written by the BOTC Homebrew Wiki community.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Articles">
+<meta property="og:description" content="Guides, essays and design notes written by the BOTC Homebrew Wiki community.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Articles</h1>
+    <p>Guides, essays and design notes from the wiki's members.</p>
+    <a class="create-btn" id="write-btn" href="publish-page?article=1" hidden>+ Write an Article</a>
+  </div>
+
+  <main class="home-panel">
+    <!-- The reader's own drafts. Only ever filled for the logged-in writer;
+         nobody else is sent them (GET /api/articles?mine=1). -->
+    <section class="landing-section" id="drafts-sec" hidden>
+      <h2 class="type-header">Your Drafts</h2>
+      <div class="type-rule"></div>
+      <div class="news-grid" id="drafts-grid"></div>
+    </section>
+
+    <section class="landing-section">
+      <div class="art-tools">
+        <input class="art-filter" id="art-filter" type="search" placeholder="Filter articles…" autocomplete="off" aria-label="Filter articles">
+        <label class="art-sort-label">Sort
+          <select id="art-sort" class="art-sort">
+            <option value="new">Newest first</option>
+            <option value="updated">Recently updated</option>
+            <option value="az">Title A–Z</option>
+          </select>
+        </label>
+      </div>
+      <div class="news-grid" id="art-grid">
+        <p class="news-empty" style="grid-column:1/-1">Loading articles…</p>
+      </div>
+    </section>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <style>
+    .art-tools { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 16px; }
+    .art-filter { flex:1 1 220px; min-width:0; padding:9px 12px; border:1px solid var(--parch-frame);
+      background:var(--parch); color:#2b1d12; font-size:.95rem; }
+    .art-sort-label { color:rgba(236,225,200,.85); font-size:.9rem; display:flex; gap:6px; align-items:center; }
+    .art-sort { padding:8px 10px; border:1px solid var(--parch-frame); background:var(--parch); color:#2b1d12; }
+  </style>
+
+  <!-- render-news.js formats through render-wiki.js — load the engine first. -->
+  <script src="assets/render-wiki.js"></script>
+  <script src="assets/render-news.js"></script>
+  <script>
+  (function(){
+    var grid = document.getElementById('art-grid');
+    var all = [];
+
+    function esc(s){
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    // The news card, with the date where a set's page would name its set.
+    function card(a){
+      return window.NewsRender.renderPageCard({
+        slug: a.slug, title: a.title, author: a.author, blurb: a.blurb,
+        parentName: window.NewsRender.formatDate(a.createdAt)
+      }, { linkRoot: '' });
+    }
+    function mineCard(a){
+      return '<div class="news-admin-item">' + card(a) +
+        '<div class="news-admin-row">' +
+          '<span class="news-admin-pill draft">Draft</span>' +
+          '<a class="news-admin-edit" href="publish-page?p=' + encodeURIComponent(a.slug) +
+            '"><span class="ico ico-edit" aria-hidden="true"></span> Edit</a>' +
+        '</div></div>';
+    }
+    function fold(s){ return String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, ''); }
+
+    function draw(){
+      var q = fold(document.getElementById('art-filter').value.trim());
+      var sort = document.getElementById('art-sort').value;
+      var list = all.filter(function(a){
+        return a.status === 'published' &&
+          (!q || fold(a.title + ' ' + (a.author || '') + ' ' + (a.subtitle || '') + ' ' + (a.blurb || '')).indexOf(q) !== -1);
+      });
+      list.sort(function(a, b){
+        if (sort === 'az') return String(a.title).localeCompare(String(b.title));
+        var k = sort === 'updated' ? 'updatedAt' : 'createdAt';
+        return String(b[k] || '').localeCompare(String(a[k] || ''));
+      });
+      if (!list.length){
+        grid.innerHTML = '<p class="news-empty" style="grid-column:1/-1">' +
+          (q ? 'No articles match that.' : 'No articles yet. Be the first to write one.') + '</p>';
+        return;
+      }
+      grid.innerHTML = list.map(card).join('');
+    }
+    document.getElementById('art-filter').addEventListener('input', draw);
+    document.getElementById('art-sort').addEventListener('change', draw);
+
+    fetch('/api/articles?mine=1&_=' + Date.now(), { credentials: 'same-origin' })
+      .then(function(r){ if (!r.ok) throw new Error(); return r.json(); })
+      .then(function(d){
+        all = (d && d.articles) || [];
+        var btn = document.getElementById('write-btn');
+        // Logged out, the button still shows the way: login, then the editor.
+        if (!d.loggedIn) btn.href = 'login?next=' + encodeURIComponent('publish-page?article=1');
+        btn.hidden = false;
+        var drafts = all.filter(function(a){ return a.status !== 'published'; });
+        if (drafts.length){
+          document.getElementById('drafts-sec').hidden = false;
+          document.getElementById('drafts-grid').innerHTML = drafts.map(mineCard).join('');
+        }
+        draw();
+      })
+      .catch(function(){
+        grid.innerHTML = '<p class="news-empty" style="grid-column:1/-1">Could not load articles.</p>';
+      });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

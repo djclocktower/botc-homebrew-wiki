@@ -1133,6 +1133,8 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   transition: border-color .2s, background-color .2s;
 }
 .sp-input::placeholder { color: rgba(200,185,138,.55); }
+.sp-hint { margin: 6px 2px 0; font-size: .8rem; color: rgba(236,225,200,.6); }
+.sp-hint code { font-size: .78rem; color: rgba(236,225,200,.85); background: rgba(255,255,255,.08); padding: 1px 5px; }
 .sp-input:focus { border-color: var(--parch); background-color: rgba(255,255,255,.14); }
 .sp-tabs {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
@@ -3289,10 +3291,12 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
   margin-bottom: 6px;
 }
-.wiki-toc-list { margin: 0; padding-left: 20px; font-size: .92rem; }
+.wiki-toc-list { margin: 0; padding-left: 20px; font-size: .92rem; list-style-type: decimal; }
 .wiki-toc-list li { margin-bottom: 3px; }
-.wiki-toc-l1 { margin-left: 12px; list-style-type: lower-alpha; }
-.wiki-toc-l2 { margin-left: 24px; list-style-type: lower-roman; }
+/* Each level is its own <ol>, so each counts from 1 (a., i.) under its parent. */
+.wiki-toc-sub { margin: 3px 0 0; padding-left: 18px; }
+.wiki-toc-l1 { list-style-type: lower-alpha; }
+.wiki-toc-l2 { list-style-type: lower-roman; }
 .wiki-toc a { color: var(--maroon); text-decoration: none; }
 .wiki-toc a:hover { text-decoration: underline; }
 
@@ -3313,7 +3317,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-table tbody tr:nth-child(even) { background: rgba(0,0,0,.03); }
 
 /* Images: full width by default, floated with |left / |right, edge-to-edge
-   with |wide. Floats drop to full width on phones. */
+   with |wide, centred with |center. Floats drop to full width on phones. */
 .wiki-figure { margin: 0 0 16px; }
 .wiki-figure img { display: block; max-width: 100%; height: auto; border: 2px solid var(--parch-frame); }
 .wiki-figure figcaption {
@@ -3323,8 +3327,17 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-figure-right { float: right; max-width: 46%; margin: 0 0 12px 18px; }
 .wiki-figure-left { float: left; max-width: 46%; margin: 0 18px 12px 0; }
 .wiki-figure-wide img { width: 100%; }
+/* |center, and a size (|300, |50%, |small…): the width is an inline style
+   on the figure, set by render-wiki.js from a number it parsed. The picture
+   fills the figure, and max-width keeps it inside the column on a phone. */
+.wiki-figure-center { margin-left: auto; margin-right: auto; }
+.wiki-figure-center img { margin-left: auto; margin-right: auto; }
+.wiki-figure-center figcaption { text-align: center; }
+.wiki-figure.wiki-figure-sized { max-width: 100%; }
+.wiki-figure-sized img { width: 100%; }
 @media (max-width: 620px) {
   .wiki-figure-right, .wiki-figure-left { float: none; max-width: none; margin: 0 0 16px; }
+  .wiki-figure.wiki-figure-sized { max-width: 100%; }
 }
 .wiki-inline-img { max-width: 100%; height: auto; vertical-align: middle; }
 

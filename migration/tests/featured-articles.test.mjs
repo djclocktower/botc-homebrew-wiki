@@ -119,13 +119,13 @@ test('a draft page tells wikipage.js it cannot be featured; a published one does
   assert.doesNotMatch(await (await f.request('/p/painting')).text(), /WIKI_PAGE_DRAFT/);
 });
 
-test('the homepage draws featured cards under News, and hides the section when nothing is featured', async () => {
+test('the homepage draws the newest article cards under News, and hides the section when there are none', async () => {
   const source = await readFile(new URL('../../assets/home.js', import.meta.url), 'utf8');
   for (const html of ['<a class="news-card" href="p/painting">Painting</a>', '']) {
     const nodes = {};
     const context = { console,
       document: { getElementById: id => (nodes[id] = nodes[id] || { innerHTML: '', textContent: '', hidden: true }) },
-      BotcData: { json: path => path === '/api/featured-articles?limit=3&format=cards'
+      BotcData: { json: path => path === '/api/articles?limit=3&format=cards'
         ? Promise.resolve({ html }) : Promise.reject(new Error('offline')) } };
     context.window = context;
     vm.createContext(context);
@@ -134,4 +134,46 @@ test('the homepage draws featured cards under News, and hides the section when n
     assert.equal(nodes['articles-grid'].innerHTML, html);
     assert.equal(nodes['articles-section'].hidden, !html);
   }
+});
+
+test('admins turn featured set pages into standalone articles; the homepage lists the newest articles', async t => {
+  const f = await fixture(); t.after(() => f.finish()); await seed(f);
+  assert.equal((await feature(f, 'admin', 'painting')).status, 200);
+  const convert = (who, body) => f.request('/api/admin/page-to-article', post(who, body));
+  const cards = async () => (await (await f.request('/api/articles?limit=3&format=cards')).json()).html;
+
+  assert.equal(await cards(), '');
+  assert.equal((await convert('member', { featured: true })).status, 403);
+
+  // Dry run reports and writes nothing.
+  let d = await (await convert('admin', { featured: true, dryRun: true })).json();
+  assert.deepEqual(d.converted.map(p => [p.slug, p.from]), [['painting', 'Travel by the Starlight']]);
+  assert.equal(f.db.prepare("SELECT parent_type FROM pages WHERE slug='painting'").get().parent_type, 'collection');
+  assert.match(await (await f.request('/p/painting')).text(), /noindex/);
+
+  d = await (await convert('admin', { featured: true })).json();
+  assert.equal(d.converted.length, 1);
+  const row = f.db.prepare("SELECT parent_type, parent_slug, owner_id FROM pages WHERE slug='painting'").get();
+  assert.deepEqual({ ...row }, { parent_type: 'article', parent_slug: '', owner_id: 2 });
+
+  // Now an article: listed, indexable, on the homepage panel, still featured.
+  const html = await (await f.request('/p/painting')).text();
+  assert.doesNotMatch(html, /name="robots" content="noindex/);
+  assert.match(html, /WIKI_PAGE_ARTICLE = true/);
+  assert.ok((await (await f.request('/api/articles')).json()).articles.some(a => a.slug === 'painting'));
+  const h = await cards();
+  assert.match(h, /href="p\/painting"/);
+  assert.doesNotMatch(h, /<script>/);
+  assert.doesNotMatch(h, /Travel by the Starlight/);
+  assert.equal((await (await f.request('/api/featured-articles')).json()).articles[0].slug, 'painting');
+
+  // Re-running finds nothing to do; a single page converts by its address.
+  d = await (await convert('admin', { featured: true })).json();
+  assert.equal(d.converted.length, 0);
+  assert.equal(d.already.length, 1);
+  d = await (await convert('admin', { slug: 'https://botchomebrew.wiki/p/orphan' })).json();
+  assert.equal(d.converted[0].slug, 'orphan');
+  // Drafts never reach the homepage panel.
+  await convert('admin', { slug: 'unfinished' });
+  assert.doesNotMatch(await cards(), /unfinished/);
 });

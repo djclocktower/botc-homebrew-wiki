@@ -112,7 +112,7 @@
      "needs ___" in the editor, so they carry their own articles. */
   // Missing tags does NOT hold a page back from publishing — it only makes it
   // Partial. Tags were the sole reason 231 of 619 published pages failed this
-  // bar, and hiding them behind the "Show Partial" chip is the softer answer.
+  // bar, and a "Partial" mark a reader can filter out is the softer answer.
   var PUBLISH_REQUIREMENTS = [
     ['a name',     function (d) { return nonEmpty(d.name); }],
     ['an icon',    hasIcon],
@@ -318,7 +318,10 @@
     return isCurata(d) ? CURATA_WEIGHT : 1;
   }
 
-  /* Everything a reader should see by default: drops Partial pages. Only
+  /* What the wiki's own picks draw from (Featured Character, /random): drops
+     Partial pages, since a page the wiki puts forward should be finished.
+     The listings (All Characters, Recently Added, team and tag pages) show
+     Partial pages and leave hiding them to the reader's chip. Only
      characters are ever dropped — `type` is accepted for clarity at the call
      site, but isPartial() is self-guarding either way. */
   function eligible(list, type) {

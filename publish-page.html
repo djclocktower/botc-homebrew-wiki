@@ -173,7 +173,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <code>[[Snake Charmer]]</code> links to a character on this wiki
             (unknown names show as a reminder token) &middot;
             <code>| a | b |</code> table rows &middot;
-            <code>![caption](pages/my-image.png|right)</code> image &middot;
+            <code>![caption](pages/my-image.png|right)</code> image; add <code>|left</code> <code>|right</code> <code>|center</code> or <code>|wide</code> to place it, and a size to resize it: <code>|300</code> pixels, <code>|50%</code> of the column, or <code>|small</code> <code>|medium</code> <code>|large</code>, e.g. <code>![caption](pages/my-image.png|right|250)</code> &middot;
             <code>::: note Title</code> … <code>:::</code> callout box
             (note, tip, warning, example, lore) &middot;
             <code>[toc]</code> places the contents box.
@@ -265,8 +265,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <span class="pub-status-pill" id="p-pill"></span>
         <a class="pub-back" id="p-parent-link" href="#">← Back to the page it belongs to</a>
       </div>
-      <p class="sb-publish-blurb" style="font-size:.82rem;color:rgba(236,225,200,.82);margin:4px 0 0;line-height:1.5">
-        Published pages stay out of search and the browse lists.
+      <p class="sb-publish-blurb" id="p-publish-blurb" style="font-size:.82rem;color:rgba(236,225,200,.82);margin:4px 0 0;line-height:1.5">
+        Published pages are linked from the page they belong to and from your
+        creator page, and turn up in the site search. They stay out of the
+        browse lists and the sitemap.
       </p>
       <div id="p-status"></div>
 
@@ -294,7 +296,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var qs = new URLSearchParams(location.search);
 
     var slug = qs.get('p') || '';            // set once the page has been saved
-    var parentType = qs.get('parentType') || '';
+    // ?article=1 starts a standalone article: a page with no script or
+    // collection, listed on /articles (see "Standalone articles" in worker.js).
+    var parentType = qs.get('article') === '1' ? 'article' : (qs.get('parentType') || '');
     var parentKey = qs.get('parentSlug') || '';
     var parentName = '';
     var currentStatus = null;
@@ -390,11 +394,29 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       applyEditorMode();
     }
 
+    function isArticle(){ return parentType === 'article'; }
     function parentHref(){
+      if (isArticle()) return 'articles';
       return (parentType === 'collection' ? 'collection/' : 's/') + encodeURIComponent(parentKey);
     }
 
+    // The words around the form for an article, which belongs to no set.
+    function articleWording(){
+      if (!isArticle()) return;
+      document.title = (slug ? 'Edit Article' : 'Write an Article') + ' — BOTC HomeBrew Wiki';
+      $('page-title').textContent = slug ? 'Edit Article' : 'Write an Article';
+      $('page-sub').textContent = 'An article for the whole wiki: a guide, an essay, a design note. Published articles are listed on the Articles page and turn up in the site search.';
+      $('p-publish-blurb').textContent = 'Published articles are listed on the Articles page and your creator page, and turn up in the site search.';
+    }
+
     function showParent(){
+      articleWording();
+      if (isArticle()) {
+        $('p-parent').innerHTML = 'A standalone article, listed on <a href="articles" style="color:var(--maroon);font-weight:600">Articles</a> once it is published.';
+        $('p-parent-link').href = 'articles';
+        $('p-parent-link').textContent = '← All articles';
+        return;
+      }
       $('p-parent').innerHTML = parentName
         ? 'This page belongs to <a href="' + parentHref() + '" style="color:var(--maroon);font-weight:600">' + esc(parentName) + '</a>.'
         : 'Loading…';
@@ -407,7 +429,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('p-url').style.display = '';
       $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> (<a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>)';
       $('p-delete').style.display = editorMode ? 'none' : '';
-      $('page-title').textContent = 'Edit Page';
+      $('page-title').textContent = isArticle() ? 'Edit Article' : 'Edit Page';
       imgSay('', 'Uploaded images can be inserted into the text.');
       try { history.replaceState(null, '', 'publish-page?p=' + encodeURIComponent(slug)); } catch(e){}
     }
@@ -574,7 +596,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           return;
         }
         say('ok', res.status === 'published'
-          ? '<span class="ico ico-check" aria-hidden="true"></span> Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
+          ? '<span class="ico ico-check" aria-hidden="true"></span> Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> ' +
+            (isArticle() ? 'It is listed on <a href="articles">Articles</a>.'
+              : 'It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.')
           : '<span class="ico ico-check" aria-hidden="true"></span> Draft saved. Only you can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       }).catch(function(err){
@@ -640,6 +664,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $(id).addEventListener('input', preview);
       });
       ['p-toc','p-comments'].forEach(function(id){ $(id).addEventListener('change', preview); });
+      window.WikiEditor.splitPreview($('editor'), document.querySelector('#editor .we-preview'));
       window.WikiEditor.loadCharLinks().then(preview);
     }
 
@@ -708,7 +733,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(r){ return r.json(); })
       .then(function(me){
         if (!me || !me.username) {
-          gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="' + loginHref() + '" style="color:var(--maroon);font-weight:600">Log in →</a>');
+          gate('Log in first', (isArticle() ? 'Articles are written by members.' : 'Pages are written by the owner of a script or collection.') + ' <a href="' + loginHref() + '" style="color:var(--maroon);font-weight:600">Log in →</a>');
           return;
         }
         $('editor').style.display = '';
@@ -717,6 +742,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         if (slug) {
           loadPage().then(function(){ loadSiblings(); preview(); })
             .catch(function(){ gate('Page not found', 'That page does not exist, or it is a draft on another account.'); });
+        } else if (isArticle()) {
+          window.WikiEditor.autoGrow($('p-body'));
+          showParent();
+          preview();
         } else if (parentType && parentKey) {
           window.WikiEditor.autoGrow($('p-body'));
           loadSiblings();
@@ -728,7 +757,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         }
       })
       .catch(function(){
-        gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="' + loginHref() + '" style="color:var(--maroon);font-weight:600">Log in →</a>');
+        gate('Log in first', (isArticle() ? 'Articles are written by members.' : 'Pages are written by the owner of a script or collection.') + ' <a href="' + loginHref() + '" style="color:var(--maroon);font-weight:600">Log in →</a>');
       });
   })();
   </script>

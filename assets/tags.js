@@ -5,11 +5,13 @@
    data-tag attribute. */
 (function () {
   var TAG_INFO = {
+    'Ability Gain': 'Can gain or causes others to gain an ability.',
     'Alignment Change': 'Can change a player’s alignment, or make good and evil players swap sides.',
     'Binary Info': 'Can only learn 2 things.',
     'Character Change': 'Can change a player’s character, or become another character itself.',
     'Confirmation': 'Can confirm itself or others.',
     'Consult': 'Privately visits the Storyteller to ask questions or make decisions.',
+    'Day Deaths': 'This character causes or interacts with deaths during the day.',
     'Death': 'Kills players, or cares about players dying.',
     'Death Modification': 'Changes how, when, or whether deaths happen.',
     'Demonsbane': 'Benefits from being killed at night or by the Demon.',
@@ -23,12 +25,10 @@
     'Grim Peeker': 'Sees part of the Grimoire, or otherwise learns what the Storyteller can see.',
     'Hidden': 'Hides its presence, identity, or other game information from players.',
     'Information': 'The player learns something from their ability.',
+    'Joke': ';P',
     'Loud': 'Announces information or effects publicly to the whole town.',
     'Madness': 'Creates madness, or interacts with mad players.',
-    /* No description on purpose: an empty string means no hover box
-       (tagEl() only offers one for a tag that describes itself), which is
-       different from the tag being unknown. */
-    'Magic': '',
+    'Magic': 'Has the capability to cause absolutely anything to happen.',
     'Misregistration': 'Can register as another character, team, or alignment.',
     'Multi-Kill': 'An evil character that can kill more than one player per night.',
     'Neighbor': 'Cares about the players sitting next to someone.',

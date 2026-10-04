@@ -115,8 +115,8 @@
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Unknown team. <a href="all-characters" style="color:#7fb2e6">Back to all characters</a>.</p>';
           return;
         }
-        // Unfinished (Partial) pages stay out of the team listings.
-        var chars = window.eligible(list).filter(function(c) { return c.team === team; });
+        // Partial pages are listed like any other, as on All Characters.
+        var chars = list.filter(function(c) { return c.team === team; });
         if (!chars.length) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No ' + esc(label) + ' characters yet. <a href="create" style="color:#7fb2e6">Create one!</a></p>';
           return;

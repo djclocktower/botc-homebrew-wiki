@@ -12,16 +12,26 @@
      opts.bar, opts.toggle   the #filter-bar box and its mobile "Filters" button
      opts.list               the characters the chips are built from
      opts.sourceOf(c)        'collection' | 'script' | null, for the Source chips
-     opts.partialOn          Show Partial starts ticked (the search page)
-     opts.sorts              [[value, label]] offered in Sort, in order
+     opts.sorts              [[value, label]] offered in Sort, in order:
+                             'relevance' | 'name' | 'recent' | 'ability'
      opts.defaultSort        defaults to the first sort
-     opts.defaultGroup       'team' (a section per team) or 'none'
+     opts.defaultGroup       'team' (a section per team), 'none', 'author' or 'set'
      opts.order(c)           the row's feed position, for "Recently added"
      opts.onChange()         called after every change; the page redraws
    controller
      state, apply(list), activeCount(), reset(), counts(list)
    counts(list) re-counts the status chips against a new list, which the
-   search page does after every query. */
+   search page does after every query.
+
+   Sort is two boxes: WHAT to sort by, and Ascending / Descending. Picking a
+   sort puts the direction on the way that sort is usually read (names A–Z,
+   newest first, shortest ability first), and the second box flips it. Best
+   match has one direction, so the box is greyed out for it.
+
+   sections(list, group, setOf) lays a filtered list out as the page draws
+   it: one section per team, one grid, one section per author, or one per
+   script or collection (makeSetOf() builds `setOf`). Both pages that mount
+   this box draw through it, so the layouts cannot drift. */
 (function () {
   'use strict';
 
@@ -32,7 +42,13 @@
     ['loric', 'Loric']
   ];
   var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
-  var NAME_SORTS = [['name-asc', 'Name (A–Z)'], ['name-desc', 'Name (Z–A)'], ['recent', 'Recently added']];
+  var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
+  // The direction each sort starts in when it is picked.
+  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc' };
+  // Callers from before the direction box passed the direction inside the
+  // sort ('name-desc'); read those as the two halves they now are.
+  var LEGACY_SORT = { 'name-asc': ['name', 'asc'], 'name-desc': ['name', 'desc'] };
+  function cmpName(a, b) { return (a.name || '').localeCompare(b.name || ''); }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
@@ -104,8 +120,13 @@
     var bar = opts.bar, toggle = opts.toggle;
     var list = opts.list || [];
     var sourceOf = opts.sourceOf || function () { return null; };
-    var sorts = opts.sorts || NAME_SORTS;
-    var DEFAULT_SORT = opts.defaultSort || sorts[0][0];
+    var sorts = (opts.sorts || NAME_SORTS).map(function (s) {
+      return LEGACY_SORT[s[0]] ? [LEGACY_SORT[s[0]][0], s[0] === 'name-asc' ? 'Name' : null] : s;
+    }).filter(function (s) { return s[1]; });
+    if (!sorts.some(function (s) { return s[0] === 'ability'; })) sorts.push(['ability', 'Ability length']);
+    var legacyDefault = LEGACY_SORT[opts.defaultSort];
+    var DEFAULT_SORT = legacyDefault ? legacyDefault[0] : (opts.defaultSort || sorts[0][0]);
+    var DEFAULT_DIR = legacyDefault ? legacyDefault[1] : (NATURAL_DIR[DEFAULT_SORT] || 'asc');
     var DEFAULT_GROUP = opts.defaultGroup || 'team';
     var onChange = opts.onChange || function () {};
     var countList = list;
@@ -113,16 +134,17 @@
     // Creators use the same 3-state include/exclude model as tags and teams
     // (click = include, click again = exclude, third click = off) — there are
     // far too many creators for a dropdown, so they get a search box instead
-    // of a chip wall. `showPartial` reveals unfinished pages, which are hidden
-    // from browsing by default; `curataOnly` narrows to admin-picked pages.
+    // of a chip wall. `hidePartial` leaves unfinished pages out (they are
+    // shown by default); `curataOnly` narrows to admin-picked pages.
     function blankState() {
       return {
         includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
         includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-        creatorQuery: '', showPartial: !!opts.partialOn, curataOnly: false, favOnly: false,
-        sort: DEFAULT_SORT,
+        creatorQuery: '', hidePartial: false, curataOnly: false, favOnly: false,
+        sort: DEFAULT_SORT, dir: DEFAULT_DIR,
         // 'team': one section per team; 'none': every card in one grid, so
-        // the sort runs across all of them at once.
+        // the sort runs across all of them at once; 'author': one section
+        // per creator (see sections()).
         group: DEFAULT_GROUP
       };
     }
@@ -170,8 +192,8 @@
       srcPresent.forEach(function (s) { html += '<button type="button" class="filter-chip" data-source="' + esc(s[0]) + '">' + esc(s[1]) + '</button>'; });
       html += '</div></div>';
     }
-    // Status (Partial / Curata). Partial pages are hidden until the
-    // reader asks for them; Curata is a narrowing filter.
+    // Status (Partial / Curata). Both are narrowing filters: "Hide Partial"
+    // leaves the unfinished pages out, "Curata only" keeps the picked ones.
     var nPartial = list.filter(function (c) { return window.isPartial(c); }).length;
     var nCurata = list.filter(function (c) { return window.isCurata(c); }).length;
     // The Favorites chip is built hidden: the saved list arrives after the
@@ -180,7 +202,7 @@
     if (nPartial || nCurata || wantFav) {
       html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
       if (nPartial) {
-        html += '<button type="button" class="filter-chip' + (opts.partialOn ? ' active' : '') + '" id="fc-partial" title="Unfinished pages, missing tags or almanac text. Hidden unless ticked.">Show Partial (' + nPartial + ')</button>';
+        html += '<button type="button" class="filter-chip" id="fc-partial" title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
       }
       if (nCurata) {
         html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
@@ -208,9 +230,17 @@
         return '<option value="' + esc(s[0]) + '"' + (s[0] === DEFAULT_SORT ? ' selected' : '') + '>' + esc(s[1]) + '</option>';
       }).join('') +
       '</select></div>';
-    // Group — by team (a section each) or all together in one grid.
+    // Ascending / descending, right beside Sort.
+    html += '<div class="filter-group"><span class="filter-group-label">Order</span><select class="filter-select" id="fc-dir" aria-label="Sort direction"' +
+      (DEFAULT_SORT === 'relevance' ? ' disabled' : '') + '>' +
+      '<option value="asc"' + (DEFAULT_DIR === 'asc' ? ' selected' : '') + '>Ascending</option>' +
+      '<option value="desc"' + (DEFAULT_DIR === 'desc' ? ' selected' : '') + '>Descending</option>' +
+      '</select></div>';
+    // Group — by team (a section each), all together in one grid, or by author.
     html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="fc-group">' +
       '<option value="team"' + (DEFAULT_GROUP === 'team' ? ' selected' : '') + '>By team</option>' +
+      '<option value="author"' + (DEFAULT_GROUP === 'author' ? ' selected' : '') + '>By author</option>' +
+      '<option value="set"' + (DEFAULT_GROUP === 'set' ? ' selected' : '') + '>By script or collection</option>' +
       '<option value="none"' + (DEFAULT_GROUP === 'none' ? ' selected' : '') + '>All together</option>' +
       '</select></div>';
     // Reset
@@ -273,8 +303,8 @@
     // ── Status chips ──
     var partialBtn = byId('fc-partial');
     if (partialBtn) partialBtn.addEventListener('click', function () {
-      ctrl.state.showPartial = !ctrl.state.showPartial;
-      partialBtn.classList.toggle('active', ctrl.state.showPartial);
+      ctrl.state.hidePartial = !ctrl.state.hidePartial;
+      partialBtn.classList.toggle('active', ctrl.state.hidePartial);
       changed();
     });
     var curataBtn = byId('fc-curata');
@@ -391,16 +421,24 @@
       renderCreatorChips();
     }
 
-    var sortSel = byId('fc-sort'), groupSel = byId('fc-group');
-    sortSel.addEventListener('change', function (e) { ctrl.state.sort = e.target.value; changed(); });
+    var sortSel = byId('fc-sort'), groupSel = byId('fc-group'), dirSel = byId('fc-dir');
+    sortSel.addEventListener('change', function (e) {
+      ctrl.state.sort = e.target.value;
+      ctrl.state.dir = NATURAL_DIR[ctrl.state.sort] || 'asc';
+      dirSel.value = ctrl.state.dir;
+      dirSel.disabled = ctrl.state.sort === 'relevance';
+      changed();
+    });
+    dirSel.addEventListener('change', function (e) { ctrl.state.dir = e.target.value; changed(); });
     groupSel.addEventListener('change', function (e) { ctrl.state.group = e.target.value; changed(); });
     ctrl.reset = function () {
       ctrl.state = blankState();
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
-      if (partialBtn && ctrl.state.showPartial) partialBtn.classList.add('active');
       if (crSearch) crSearch.value = '';
       renderCreatorChips();
       sortSel.value = DEFAULT_SORT;
+      dirSel.value = DEFAULT_DIR;
+      dirSel.disabled = DEFAULT_SORT === 'relevance';
       groupSel.value = DEFAULT_GROUP;
       changed();
     };
@@ -412,7 +450,7 @@
         st.includeTags.length + st.excludeTags.length +
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
-        (st.showPartial !== !!opts.partialOn ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
+        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {
       if (!toggle) return;
@@ -423,8 +461,8 @@
 
     ctrl.apply = function (input) {
       var st = ctrl.state, out = input.slice();
-      // Partial (unfinished) pages are out of the list unless asked for.
-      if (!st.showPartial) out = out.filter(function (c) { return !window.isPartial(c); });
+      // "Hide Partial" leaves the unfinished pages out.
+      if (st.hidePartial) out = out.filter(function (c) { return !window.isPartial(c); });
       if (st.curataOnly) out = out.filter(function (c) { return window.isCurata(c); });
       if (st.favOnly) out = out.filter(function (c) { return !!(FAV_SET && FAV_SET.has(c.slug)); });
       if (st.includeTeams.length) out = out.filter(function (c) { return st.includeTeams.indexOf(c.team) !== -1; });
@@ -447,14 +485,18 @@
         return !window.splitCreators(c.creator).some(function (n) { return st.excludeCreators.indexOf(n) !== -1; });
       });
       // sort ('relevance' keeps the order it was handed, best match first)
-      if (st.sort === 'name-asc') out.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      else if (st.sort === 'name-desc') out.sort(function (a, b) { return (b.name || '').localeCompare(a.name || ''); });
+      var flip = st.dir === 'desc' ? -1 : 1;
+      if (st.sort === 'name') out.sort(function (a, b) { return flip * cmpName(a, b); });
+      else if (st.sort === 'ability') out.sort(function (a, b) {
+        // Ties (and every blank ability) fall back to the name, A–Z.
+        return flip * ((a.ability || '').length - (b.ability || '').length) || cmpName(a, b);
+      });
       else if (st.sort === 'recent') {
         // The feed is oldest first. Without a position function every step
-        // above was a filter, which keeps that order, so reversing it is
-        // newest first.
-        if (opts.order) out.sort(function (a, b) { return opts.order(b) - opts.order(a); });
-        else out.reverse();
+        // above was a filter, which keeps that order, so ascending is the
+        // order as it stands and descending is it reversed.
+        if (opts.order) out.sort(function (a, b) { return flip * (opts.order(a) - opts.order(b)); });
+        else if (flip < 0) out.reverse();
       }
       return out;
     };
@@ -464,7 +506,7 @@
     // jump around while somebody types.
     ctrl.counts = function (next) {
       countList = next;
-      if (partialBtn) partialBtn.textContent = 'Show Partial (' + next.filter(function (c) { return window.isPartial(c); }).length + ')';
+      if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(function (c) { return window.isPartial(c); }).length + ')';
       if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(function (c) { return window.isCurata(c); }).length + ')';
       if (favBtn && FAV_SET) favLoad(true);
     };
@@ -473,8 +515,110 @@
     return ctrl;
   }
 
+  /* Which script or collection a character belongs to, for "Group: By script
+     or collection": {key, name, href} or null. The same order the Worker
+     files a character's address in (characterQualifier()), so the section a
+     card lands in is the set its URL is under:
+       1. a collection named in its "Appears in" (id, slug, display name or a
+          match term, ignoring case and punctuation),
+       2. a script named there,
+       3. the set named there even when this wiki has no page for it,
+       4. a collection that lists it by hand (appearsInFrom, or include[]),
+       5. a script whose roster lists it.
+     A character in several is filed under the first, so it appears once. */
+  function makeSetOf(collections, scripts) {
+    var colls = (collections || []).filter(function (c) { return c && !c.standalone; });
+    var scs = scripts || [];
+    function collRef(c) { return { key: 'c:' + (c.id || c.slug), name: c.displayName || c.slug, href: 'collection/' + encodeURIComponent(c.id || c.slug) }; }
+    function scriptRef(s) { return { key: 's:' + s.slug, name: s.name || s.slug, href: 's/' + encodeURIComponent(s.slug) }; }
+    var collByKey = {}, scriptByKey = {}, collById = {}, scriptBySlug = {};
+    colls.forEach(function (c) {
+      [c.id, c.slug, c.displayName].concat(c.match || []).forEach(function (k) {
+        k = norm(k); if (k && !collByKey[k]) collByKey[k] = c;
+      });
+      if (c.id) collById[c.id] = c;
+    });
+    scs.forEach(function (s) {
+      [s.name, s.slug].forEach(function (k) { k = norm(k); if (k && !scriptByKey[k]) scriptByKey[k] = s; });
+      (s.characters || []).forEach(function (sl) { if (!scriptBySlug[sl]) scriptBySlug[sl] = s; });
+    });
+    return function (c) {
+      var segs = String(c.appearsIn || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      var i, hit;
+      for (i = 0; i < segs.length; i++) {
+        hit = collByKey[norm(segs[i])];
+        if (hit && (hit.exclude || []).indexOf(c.slug) === -1) return collRef(hit);
+      }
+      for (i = 0; i < segs.length; i++) { hit = scriptByKey[norm(segs[i])]; if (hit) return scriptRef(hit); }
+      if (segs.length) return { key: 't:' + norm(segs[0]), name: segs[0], href: '' };
+      var from = (c.appearsInFrom || [])[0];
+      if (from && collById[from.id]) return collRef(collById[from.id]);
+      if (from && from.name) return { key: 'c:' + (from.id || norm(from.name)), name: from.name, href: from.id ? 'collection/' + encodeURIComponent(from.id) : '' };
+      for (i = 0; i < colls.length; i++) {
+        if ((colls[i].include || []).indexOf(c.slug) !== -1 && (colls[i].exclude || []).indexOf(c.slug) === -1) return collRef(colls[i]);
+      }
+      hit = scriptBySlug[c.slug];
+      return hit ? scriptRef(hit) : null;
+    };
+  }
+
+  // One heading per group of sections: a name, linked when it has a page.
+  function bucketSections(list, keyOf, groups, emptyLabel) {
+    var by = {}, keys = [], none = [];
+    list.forEach(function (c) {
+      var k = keyOf(c);
+      if (!k) { none.push(c); return; }
+      if (!by[k.key]) { by[k.key] = { name: k.name, href: k.href, items: [] }; keys.push(k.key); }
+      by[k.key].items.push(c);
+    });
+    keys.sort(function (a, b) { return by[a].name.localeCompare(by[b].name, undefined, { sensitivity: 'base' }); });
+    var secs = keys.map(function (k) { return by[k]; });
+    if (none.length) secs.push({ name: '', items: none });
+    return secs.map(function (sec, i) {
+      groups.push({ selector: '.char-grid[data-group="g' + i + '"]', items: sec.items });
+      var head = !sec.name ? emptyLabel
+        : sec.href ? '<a href="' + esc(sec.href) + '" class="team-header-link">' + esc(sec.name) + '</a>'
+        : esc(sec.name);
+      return '<section class="type-section cf-author-sec"><h2 class="type-header">' + head +
+        ' <span class="coll-team-count">(' + sec.items.length + ')</span></h2><div class="type-rule"></div>' +
+        '<div class="char-grid" data-group="g' + i + '"></div></section>';
+    }).join('');
+  }
+
+  /* A filtered list laid out the way `group` says: {html, groups}, where
+     `groups` is what viewport.js's mountCardBatches() takes. Each section
+     keeps the order the list arrived in, so the sort runs inside it.
+
+     By author, a character credited to several people ("Taiyi, Saki") is
+     filed under the FIRST name only: one card per character, and the count
+     still adds up to the list. Authors run A–Z, uncredited pages last. */
+  function sections(list, group, setOf) {
+    var groups = [], html;
+    if (group === 'none') {
+      groups.push({ selector: '.char-grid[data-group="all"]', items: list });
+      return { html: '<section class="type-section" id="all"><div class="char-grid" data-group="all"></div></section>', groups: groups };
+    }
+    if (group === 'author') {
+      var html2 = bucketSections(list, function (c) {
+        var first = (window.splitCreators ? window.splitCreators(c.creator) : [String(c.creator || '').trim()])[0];
+        return first ? { key: first.toLowerCase(), name: first, href: 'author?a=' + encodeURIComponent(first) } : null;
+      }, groups, 'No creator listed');
+      return { html: html2, groups: groups };
+    }
+    if (group === 'set' && setOf) {
+      return { html: bucketSections(list, setOf, groups, 'Not in a script or collection'), groups: groups };
+    }
+    html = TEAMS.map(function (t) {
+      var chars = list.filter(function (c) { return c.team === t[0]; });
+      if (!chars.length) return '';
+      groups.push({ selector: '.char-grid[data-group="' + t[0] + '"]', items: chars });
+      return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-group="' + t[0] + '"></div></section>';
+    }).join('');
+    return { html: html, groups: groups };
+  }
+
   window.CharFilters = {
-    mount: mount, card: card, thumb: thumb, makeSourceOf: makeSourceOf,
+    mount: mount, card: card, thumb: thumb, makeSourceOf: makeSourceOf, makeSetOf: makeSetOf, sections: sections,
     inCollection: inCollection, norm: norm, TEAMS: TEAMS, TEAM_LABEL: TEAM_LABEL, GOOD: GOOD
   };
 })();

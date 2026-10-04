@@ -825,6 +825,7 @@
               <option value="unfeature">unfeatured an article</option>
               <option value="tags-open">tag editing opened</option>
               <option value="open-editing">editing opened (all but the ability)</option>
+              <option value="to-article">made a standalone article</option>
               <option>assign-owner</option><option>clean-refs</option>
               <option value="bulk-*">any bulk action</option>
             </optgroup>
@@ -964,6 +965,18 @@
         </div>
         <div id="oed-list"></div>
         <div class="toast" id="oed-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Featured Articles &rarr; standalone articles <span class="count-pill" id="f2a-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Turns every page on Featured Articles that still belongs to a script or collection into a standalone article: it leaves that set's Pages section and is listed on <strong>/articles</strong> (and the homepage's Articles panel) instead. Its address, text, images and comments stay the same, and it stays featured. Only its owner (and admins) can edit it afterwards. A single page can also be converted from its own page with "Make this a standalone article". Scan first.
+        </p>
+        <div class="act-filters">
+          <button type="button" class="small-btn" id="f2a-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="f2a-go" style="display:none">Make them articles</button>
+        </div>
+        <div id="f2a-list"></div>
+        <div class="toast" id="f2a-toast"></div>
       </section>
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
@@ -2028,6 +2041,44 @@
         if (!d.ok) { setToast('oed-toast', false, d.error || 'Failed.'); return; }
         setToast('oed-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' opened to editing (all but the ability).');
         $('oed-scan').click();
+        loadActivity(true);
+      });
+    });
+
+    /* ---- featured articles that still belong to a set -> standalone articles ---- */
+    function f2aRows(list, note){
+      return list.map(function(p){
+        return '<div class="adm-row"><span class="grow"><a href="p/' + encodeURIComponent(p.slug) +
+          '" target="_blank">' + esc(p.title || p.slug) + '</a></span>' +
+          (note(p) ? '<span class="note">' + esc(note(p)) + '</span>' : '') + '</div>';
+      }).join('');
+    }
+    $('f2a-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('f2a-list').innerHTML = '<p class="note">Scanning\u2026</p>';
+      postJSON('/api/admin/page-to-article', { featured: true, dryRun: true }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('f2a-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('f2a-go').style.display = 'none'; return; }
+        var n = d.converted.length;
+        $('f2a-count').textContent = n ? n + ' to convert' : '';
+        $('f2a-list').innerHTML =
+          (n ? '<p class="note"><strong>' + n + '</strong> featured page' + (n === 1 ? '' : 's') + ' would become standalone articles:</p>' +
+               f2aRows(d.converted, function(p){ return 'from ' + p.from; })
+             : '<p class="note">Every featured page is already a standalone article.</p>') +
+          (d.already.length ? '<p class="note">Already articles:</p>' + f2aRows(d.already, function(){ return ''; }) : '');
+        $('f2a-go').style.display = n ? '' : 'none';
+      });
+    });
+    $('f2a-go').addEventListener('click', function(){
+      if (!confirm('Make every featured page a standalone article?\n\nEach one leaves its script or collection and is listed on the Articles page instead. Addresses, text and comments stay the same.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/page-to-article', { featured: true }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('f2a-toast', false, d.error || 'Failed.'); return; }
+        setToast('f2a-toast', true, d.converted.length + ' page' + (d.converted.length === 1 ? '' : 's') + ' made standalone articles.');
+        $('f2a-scan').click();
         loadActivity(true);
       });
     });

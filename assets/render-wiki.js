@@ -14,7 +14,12 @@
      ---                           horizontal rule
      [toc]                         insert the table of contents here
      | a | b |                     table (an all-dashes row marks the header)
-     ![caption](image.png|right)   image — |left |right |wide are optional
+     ![caption](image.png|right)   image — |left |right |center |wide place it,
+                                   and a size makes it smaller or bigger:
+                                   |300 (pixels, or |300px), |50% (of the
+                                   text column), or |small |medium |large.
+                                   Both together: |right|250. A size never
+                                   lets an image overflow a phone screen.
      ::: note Title                callout box (note/tip/warning/example/lore)
      …text…
      :::
@@ -195,6 +200,30 @@
      folder the site uploads into but doesn't list here goes to R2 fine and
      then renders as nothing, which is how news images were invisible. */
   var IMG_PATH_RE = /^(pages|news|art|scripts|collections|icons|tokens)\/[a-z0-9._ /-]+\.(png|jpe?g|webp|gif|svg)$/i;
+  /* The |options after an image's source: where it sits and how big it is.
+     The size becomes an inline width, but only ever one this function wrote
+     from a number it parsed, so nothing a writer types reaches the style
+     attribute. max-width: 100% in styles.css still caps it, so |900 on a
+     phone fills the column instead of running off the side. */
+  var IMG_OPT_RE = '((?:\\|[A-Za-z0-9.%]{1,8}){0,3})';
+  var IMG_SIZES = { small: '200px', medium: '350px', large: '550px' };
+  function imgOptions(raw) {
+    var o = { align: '', width: '' };
+    String(raw || '').toLowerCase().split('|').forEach(function (t) {
+      t = t.trim();
+      if (!t) return;
+      if (t === 'left' || t === 'right' || t === 'wide' || t === 'center') { o.align = t; return; }
+      if (IMG_SIZES[t]) { o.width = IMG_SIZES[t]; return; }
+      var m = t.match(/^(\d{1,4})(px|%)?$/);
+      if (!m) return;
+      var n = parseInt(m[1], 10);
+      if (m[2] === '%') { if (n >= 5 && n <= 100) o.width = n + '%'; }
+      else if (n >= 16 && n <= 2000) o.width = n + 'px';
+    });
+    return o;
+  }
+  function imgStyle(o) { return o.width ? ' style="width:' + o.width + '"' : ''; }
+
   function safeImg(raw, root) {
     var src = String(raw || '').trim();
     if (!src) return '';
@@ -282,11 +311,12 @@
 
       // ![caption](src) inline — only reached when an image is not on its own
       // line; block images are handled in renderBody.
-      out = out.replace(/!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(\|(?:left|right|wide))?\)/g,
-        function (m, alt, src) {
+      out = out.replace(new RegExp('!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)', 'g'),
+        function (m, alt, src, extra) {
           var url = safeImg(src.replace(/&amp;/g, '&'), root);
           if (!url) return alt;
-          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '" loading="lazy" decoding="async">';
+          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '"' +
+            imgStyle(imgOptions(extra)) + ' loading="lazy" decoding="async">';
         });
     }
 
@@ -395,18 +425,36 @@
       .replace(/`([^`\n]{1,300})`/g, '$1');
   }
 
-  /* ── table of contents ── */
+  /* ── table of contents ──
+     Nested lists, one <ol> per level, so each level counts from 1 on its own:
+     1. / a. / i. under every parent. It was one flat <ol> styled per level,
+     which shared a single counter across the whole box — the first sub-entry
+     under item 1 came out as "b.", and one two deep as "iii.". A heading that
+     skips a level (an h1 straight to an h3) nests one step, not two, so a
+     list never opens with no item for it to hang under. */
   function tocHTML(headings, opts) {
     opts = opts || {};
     var items = headings.filter(function (h) { return h.level <= 3; });
     if (items.length < (opts.min || 2)) return '';
     var top = Math.min.apply(null, items.map(function (h) { return h.level; }));
+    var html = '';
+    var depth = -1;
+    items.forEach(function (h) {
+      var want = Math.min(h.level - top, depth + 1);
+      if (want > depth) {
+        html += '<ol class="' + (want === 0 ? 'wiki-toc-list' : 'wiki-toc-sub wiki-toc-l' + want) + '">';
+      } else {
+        html += '</li>';
+        for (; depth > want; depth--) html += '</ol></li>';
+      }
+      depth = want;
+      html += '<li><a href="#' + esc(h.id) + '">' + esc(h.text) + '</a>';
+    });
+    html += '</li>';
+    for (; depth > 0; depth--) html += '</ol></li>';
+    html += '</ol>';
     return '<nav class="wiki-toc" aria-label="Contents">' +
-      '<div class="wiki-toc-head">Contents</div>' +
-      '<ol class="wiki-toc-list">' + items.map(function (h) {
-        return '<li class="wiki-toc-l' + (h.level - top) + '">' +
-          '<a href="#' + esc(h.id) + '">' + esc(h.text) + '</a></li>';
-      }).join('') + '</ol></nav>';
+      '<div class="wiki-toc-head">Contents</div>' + html + '</nav>';
   }
 
   /* ── blocks ── */
@@ -441,13 +489,16 @@
   }
 
   function imageBlock(line, opts) {
-    var m = line.match(/^!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(?:\|(left|right|wide))?\)\s*$/);
+    var m = line.match(new RegExp('^!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)\\s*$'));
     if (!m) return null;
     var url = safeImg(m[2], (opts && opts.linkRoot) || '');
     if (!url) return '';
-    var align = m[3] || '';
+    var o = imgOptions(m[3]);
+    var align = o.align;
     var caption = m[1] || '';
-    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + '">' +
+    // The width goes on the FIGURE, so a caption wraps under the picture
+    // rather than running the full column, and a % is of the text column.
+    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + (o.width ? ' wiki-figure-sized' : '') + '"' + imgStyle(o) + '>' +
       '<img src="' + esc(url) + '" alt="' + esc(caption) + '" loading="lazy" decoding="async">' +
       (caption ? '<figcaption>' + inlineFormat(caption, opts) + '</figcaption>' : '') +
       '</figure>';
@@ -663,11 +714,14 @@
     var root = opts.linkRoot || '';
     var io = { linkRoot: root };
 
-    var parentHref = p.parentType === 'collection'
+    // A standalone article has no set; its way back is the /articles list.
+    var parentHref = p.parentType === 'article' ? root + 'articles'
+      : p.parentType === 'collection'
       ? root + 'collection/' + encodeURIComponent(p.parentKey || p.parentSlug || '')
       : root + 's/' + encodeURIComponent(p.parentKey || p.parentSlug || '');
     var crumb = p.parentName
-      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' + esc(p.parentName) + '</a></p>'
+      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' +
+        esc(p.parentType === 'article' ? 'All articles' : p.parentName) + '</a></p>'
       : '';
 
     var banner = p.header

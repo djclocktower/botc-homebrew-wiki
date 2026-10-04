@@ -103,6 +103,12 @@
 .tt-range { display: inline-flex; align-items: center; gap: 10px; }
 .tt-range input[type=range] { width: 150px; accent-color: var(--maroon); }
 .tt-range output { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .82rem; min-width: 48px; text-align: right; color: var(--maroon); }
+.tt-custom-paper[hidden] { display: none; }
+.tt-paper-dims { display: inline-flex; align-items: center; gap: 6px; }
+.tt-paper-dims input { width: 76px; padding: 5px 6px; border: 2px solid var(--parch-frame); background: #fff; color: var(--ink); font: inherit; font-size: .9rem; }
+.tt-paper-dims select { padding: 5px 4px; border: 2px solid var(--parch-frame); background: #fff; color: var(--ink); font: inherit; font-size: .9rem; }
+.tt-paper-note { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--ink); opacity: .75; }
+.tt-paper-note.warn { color: var(--maroon); opacity: 1; }
 .tt-check { display: inline-flex; align-items: center; gap: 8px; font-family: 'Oswald', sans-serif; font-size: .9rem; color: var(--ink); }
 .tt-check input { width: 17px; height: 17px; accent-color: var(--maroon); }
 
@@ -417,8 +423,18 @@
           <h2>Options</h2>
           <div class="tt-row"><label>Paper</label>
             <div class="tt-seg" id="opt-paper" role="group" aria-label="Paper size">
-              <button data-v="A4" aria-pressed="true">A4</button><button data-v="Letter" aria-pressed="false">Letter</button>
+              <button data-v="A4" aria-pressed="true">A4</button><button data-v="Letter" aria-pressed="false">Letter</button><button data-v="Custom" aria-pressed="false">Custom</button>
             </div></div>
+          <div class="tt-row tt-custom-paper" id="opt-custom-paper" hidden>
+            <label for="opt-paper-w">Page size</label>
+            <span class="tt-paper-dims">
+              <input type="number" id="opt-paper-w" inputmode="decimal" min="0" step="any" value="210" aria-label="Page width">
+              <span aria-hidden="true">&times;</span>
+              <input type="number" id="opt-paper-h" inputmode="decimal" min="0" step="any" value="297" aria-label="Page height">
+              <select id="opt-paper-unit" aria-label="Unit"><option value="mm">mm</option><option value="in">in</option><option value="cm">cm</option></select>
+            </span>
+            <p class="tt-paper-note" id="opt-paper-note">Width &times; height. Anything from 60&nbsp;mm to 432&nbsp;mm (about 2.4 to 17 inches) a side.</p>
+          </div>
           <div class="tt-row"><label>Format</label>
             <div class="tt-seg" id="opt-format" role="group" aria-label="Format">
               <button data-v="png" aria-pressed="true">PNG</button><button data-v="pdf" aria-pressed="false">PDF</button>

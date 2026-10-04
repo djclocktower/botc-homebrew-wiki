@@ -428,7 +428,7 @@ function setSource(img, name, kind) {
   $('if-loaded-sub').textContent =
     (img.naturalWidth || img.width) + '×' + (img.naturalHeight || img.height) + ' · before the forge';
   $('if-drop').classList.add('is-compact');
-  $('if-drop').querySelector('b').textContent = 'Drop different artwork, or tap to browse';
+  $('if-drop').querySelector('b').textContent = 'Drop different artwork, tap to browse, or paste';
 
   if (sourceKind !== 'raster' && bgMode === 'ai') setBgMode('keep');
   syncControls();
@@ -466,6 +466,62 @@ $('if-drop').addEventListener('drop', (e) => {
   const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
   if (f) onFile(f);
 });
+
+/* Paste. Ctrl/Cmd+V anywhere on the page takes an image off the clipboard
+   (a screenshot, an image copied from a browser or an art program); the
+   Paste button does the same for a phone, where there is no keyboard to
+   press it on. Text is left alone: pasting into the save box or a number
+   field must still paste text. While the art editor is open the paste is
+   its business, not ours. */
+function clipboardImage(items) {
+  for (const it of items || []) {
+    if (it.kind === 'file' && /^image\//.test(it.type)) {
+      const f = it.getAsFile();
+      if (f) return f;
+    }
+  }
+  return null;
+}
+function pastedFile(blob) {
+  const ext = (blob.type.split('/')[1] || 'png').replace('svg+xml', 'svg');
+  return new File([blob], 'pasted image.' + ext, { type: blob.type });
+}
+document.addEventListener('paste', (e) => {
+  if (document.querySelector('.if-editor')) return;
+  const f = clipboardImage(e.clipboardData && e.clipboardData.items);
+  if (!f) {
+    // Copied SVG markup arrives as text; take it only outside a text field.
+    const t = e.clipboardData && e.clipboardData.getData('text/plain');
+    const field = e.target && e.target.closest && e.target.closest('input, textarea, [contenteditable]');
+    if (!field && t && /^\s*(<\?xml[^>]*>\s*)?<svg[\s>]/i.test(t)) {
+      e.preventDefault();
+      onFile(new File([t], 'pasted image.svg', { type: 'image/svg+xml' }));
+    }
+    return;
+  }
+  e.preventDefault();
+  onFile(f.name && !/^image\.\w+$/i.test(f.name) ? f : pastedFile(f));
+});
+const pasteBtn = $('if-paste');
+if (pasteBtn) {
+  if (navigator.clipboard && navigator.clipboard.read) {
+    pasteBtn.hidden = false;
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const type = item.types.find((t) => /^image\//.test(t));
+          if (type) { onFile(pastedFile(await item.getType(type))); return; }
+        }
+        toast('There is no image on the clipboard. Copy one first, then press Paste.', 'err');
+      } catch (err) {
+        toast(err && err.name === 'NotAllowedError'
+          ? 'The browser did not allow reading the clipboard. Try Ctrl+V (Cmd+V on a Mac) instead.'
+          : 'Could not read the clipboard. Try Ctrl+V (Cmd+V on a Mac) instead.', 'err');
+      }
+    });
+  }
+}
 
 /* Editor */
 $('if-edit').addEventListener('click', () => openArtEditor('edit'));
