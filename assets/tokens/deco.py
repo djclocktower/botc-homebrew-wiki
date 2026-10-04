@@ -128,6 +128,18 @@ def _transform_bg(scale=1.0, dx=0, dy=0, rot=0):
     paste_at(canvas, img, left, top)
     return canvas
 
+def _rim_point(x, y):
+    """The point on the token's edge in the direction of (x, y) from its centre."""
+    dx, dy = x - _DCX, y - _DCY
+    d = math.hypot(dx, dy)
+    if d < 1: return float(_DCX), float(_DCY - _R)
+    return _DCX + dx / d * _R, _DCY + dy / d * _R
+
+def _from_rim(x, y, k):
+    """(x, y) moved as if scaled by k about the rim point nearest it."""
+    px, py = _rim_point(x, y)
+    return px + (x - px) * k, py + (y - py) * k
+
 def _flower_layer(left, top, scale=1.0, rot=0):
     """A full-canvas layer with the flower at (left, top), clipped to the disk."""
     import numpy as _np
@@ -169,23 +181,34 @@ def _flower_pos_for(name_mask):
             kc = k; break
     return bx + FLOWER_DODGE_RIGHT, by - (kc + FLOWER_GAP)
 
-def _place_flower(canvas, name_mask=None, dx=0, dy=0, scale=1.0, rot=0):
+def _place_flower(canvas, name_mask=None, dx=0, dy=0, scale=1.0, rot=0, rim=1.0):
     if int(dx) != 0 or int(dy) != 0 or float(scale) != 1.0 or float(rot) != 0:
         left, top = POS_FLOWER[0] + int(dx), POS_FLOWER[1] + int(dy)   # manual: no auto-dodge
     else:
         left, top = _flower_pos_for(name_mask)
+    rim = float(rim)
+    if rim != 1.0:
+        # Sized about the point where it meets the edge: it stays cut off by
+        # the rim at any size instead of drifting inward or outward.
+        w, h = FLOWER.width * float(scale), FLOWER.height * float(scale)
+        cx, cy = left + w / 2.0, top + h / 2.0
+        px, py = _rim_point(cx, cy)
+        left, top = int(round(px + (left - px) * rim)), int(round(py + (top - py) * rim))
+        scale = float(scale) * rim
     canvas.alpha_composite(_flower_layer(left, top, scale, rot))
 
 S_NIGHT = 0.95
 FN_CENTER = (78, 470)      # first-night sprig (left)
 ON_CENTER = (845, 430)     # other-night leaves (right)
-def _place_night(canvas, asset, center, scale_mul=1.0, dx=0, dy=0, rot=0):
+def _place_night(canvas, asset, center, scale_mul=1.0, dx=0, dy=0, rot=0, rim=1.0):
     import numpy as _np
-    s = S_NIGHT * float(scale_mul)
+    s = S_NIGHT * float(scale_mul) * float(rim)
     big = asset.resize((max(1, int(asset.width*s)), max(1, int(asset.height*s))), Image.LANCZOS)
     if float(rot) != 0:
         big = big.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
     cx, cy = center[0] + int(dx), center[1] + int(dy)
+    if float(rim) != 1.0:                       # sized about where it meets the edge
+        cx, cy = _from_rim(cx, cy, float(rim))
     ox = int(round(cx-big.width/2)); oy = int(round(cy-big.height/2))
     layer = Image.new('RGBA', (canvas.width, canvas.height), (0,0,0,0))
     x0,y0=max(0,ox),max(0,oy); sub=big.crop((x0-ox,y0-oy,big.width,big.height)); layer.alpha_composite(sub,(x0,y0))
@@ -227,11 +250,7 @@ def _reminders(canvas, n, scale_mul=1.0, dy=0, dx=0, rot=0):
     for a in angles: _leaf(canvas, a)
 
 def frame_for(first_night=False, other_night=False, setup=False, reminders=0, name=None,
-              adj=None, name_mask=None, split=False):
-    """The token frame. split=True returns (background, decorations) as two
-    layers instead of one image, for the "Everything" size slider, which
-    scales the decorations with the rest of the contents but never the
-    background they sit on."""
+              adj=None, name_mask=None):
     a = adj or {}
     def g(k, d): v = a.get(k, d); return d if v is None else v
     bg_scale = float(g('bg_scale', 1.0)); bg_dx = int(g('bg_dx', 0))
@@ -240,13 +259,13 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
         f = _transform_bg(bg_scale, bg_dx, bg_dy, bg_rot)
     else:
         f = BARE.copy()
-    bg = f
-    if split:
-        f = Image.new('RGBA', bg.size, (0, 0, 0, 0))
+    # "Everything" size (web_render.py): the rim pieces grow or shrink in
+    # place, each from where it meets the edge, so they stay cut off by it.
+    rim = float(g('all_scale', 1.0))
     if first_night:
-        _place_night(f, L_FIRST, FN_CENTER, g('fn_scale', 1.0), g('fn_dx', 0), g('fn_dy', 0), g('fn_rot', 0))
+        _place_night(f, L_FIRST, FN_CENTER, g('fn_scale', 1.0), g('fn_dx', 0), g('fn_dy', 0), g('fn_rot', 0), rim)
     if other_night:
-        _place_night(f, L_OTHER, ON_CENTER, g('on_scale', 1.0), g('on_dx', 0), g('on_dy', 0), g('on_rot', 0))
+        _place_night(f, L_OTHER, ON_CENTER, g('on_scale', 1.0), g('on_dx', 0), g('on_dy', 0), g('on_rot', 0), rim)
     flower_mode = g('flower', 'auto')                # 'auto' | 'on' | 'off'
     show_flower = setup if flower_mode == 'auto' else (flower_mode == 'on')
     if show_flower:
@@ -256,7 +275,9 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
             nm = _np.array(gen.render_name(name))[:, :, 3] > 40
         _place_flower(f, nm,
                       g('flower_dx', 0), g('flower_dy', 0),
-                      g('flower_scale', 1.0), g('flower_rot', 0))
+                      g('flower_scale', 1.0), g('flower_rot', 0), rim)
     n = 0 if g('leaves', 'auto') == 'off' else reminders
-    _reminders(f, n, g('leaf_scale', 1.0), g('leaf_dy', 0), g('leaf_dx', 0), g('leaf_rot', 0))
-    return (bg, f) if split else f
+    # The top leaves hang from the rim already (_place_top pins their top),
+    # so they need only the size.
+    _reminders(f, n, float(g('leaf_scale', 1.0)) * rim, g('leaf_dy', 0), g('leaf_dx', 0), g('leaf_rot', 0))
+    return f

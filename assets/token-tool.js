@@ -494,12 +494,11 @@
 
   /* ---- adjustment slider panels (shared builder: global card + per-token editor) ---- */
   var ADJ_FIELDS = [
-    // Everything on the token at once (icon, name, ability, leaves, flower,
-    // and a reminder token's icon and text), scaled together about the
-    // centre; the background stays put. 100% at most, so nothing is pushed
-    // past the edge (web_render.py clips to the circle regardless).
+    // Everything on the token at once: each piece keeps its place and
+    // changes size there (the rim pieces stay cut off by the edge), on top of
+    // its own Size slider. The background stays put. See web_render.py.
     { section: 'Everything' },
-    { k: 'all_scale', label: 'Size', min: 0.5, max: 1, step: 0.01, fmt: pctFmt },
+    { k: 'all_scale', label: 'Size', min: 0.5, max: 1.5, step: 0.01, fmt: pctFmt },
     { section: 'Token Background' },
     { k: 'bg_scale', label: 'Size', min: 0.5, max: 1.8, step: 0.02, fmt: pctFmt },
     { k: 'bg_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
@@ -848,18 +847,26 @@
       var bx = g.cx + dx, by = g.cy + dy;
       if (g.space === 'content') { bx += GEO.contentRef[0] * (cm - 1); by += GEO.contentRef[1] * (cm - 1); }
       var ox = ir.left - pr.left, oy = ir.top - pr.top;
-      var left = ox + bx * m, top = oy + by * m;
-      // "Everything" shrinks all but the background about the disk's centre,
-      // so the box follows: drawn smaller and pulled in by the same amount,
-      // and a drag moves the art s times less than the pointer did.
+      // "Everything" resizes each piece where it stands (web_render.py), so
+      // the box follows: the icon about its centre, the top leaves from the
+      // rim down, and the night leaves and flower about the point where they
+      // meet the edge. The background never changes.
       var all = asset === 'bg' ? 1 : (gzNum(ctx.get('all_scale')) || 1);
+      var w = g.w * sc, h = g.h * sc;
       if (all !== 1) {
-        var ccx = ox + GEO.contentRef[0] * sx, ccy = oy + GEO.contentRef[1] * sx;
-        left = ccx + (left - ccx) * all; top = ccy + (top - ccy) * all;
+        if (asset === 'leaves') {
+          by = (by - h / 2) + h * all / 2;
+        } else if (asset === 'fn' || asset === 'on' || asset === 'flower') {
+          var D = GEO.disk || [GEO.contentRef[0], GEO.contentRef[1], 437];
+          var vx = bx - D[0], vy = by - D[1], len = Math.hypot(vx, vy) || 1;
+          var px = D[0] + vx / len * D[2], py = D[1] + vy / len * D[2];
+          bx = px + (bx - px) * all; by = py + (by - py) * all;
+        }
+        w *= all; h *= all;
       }
       return {
-        m: m * all, rot: rot, boxW: g.w * sc * m * all, boxH: g.h * sc * m * all,
-        left: left, top: top
+        m: m, rot: rot, boxW: w * m, boxH: h * m,
+        left: ox + bx * m, top: oy + by * m
       };
     }
     function position() {
