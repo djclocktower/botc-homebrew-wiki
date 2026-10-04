@@ -89,7 +89,8 @@
     flower: 'auto', flower_scale: 1, flower_dx: 0, flower_dy: 0, flower_rot: 0,
     fn_scale: 1, fn_dx: 0, fn_dy: 0, fn_rot: 0,
     on_scale: 1, on_dx: 0, on_dy: 0, on_rot: 0,
-    rem_icon_scale: 1, rem_text_size: 1
+    rem_icon_scale: 1, rem_text_size: 1,
+    all_scale: 1
   };
   var adjState = { global: {}, per: {} };   // per[slug] = {adj:{}, count:1, rems:{text:count}}
   function loadAdj() {
@@ -493,6 +494,12 @@
 
   /* ---- adjustment slider panels (shared builder: global card + per-token editor) ---- */
   var ADJ_FIELDS = [
+    // Everything on the token at once (icon, name, ability, leaves, flower,
+    // and a reminder token's icon and text), scaled together about the
+    // centre; the background stays put. 100% at most, so nothing is pushed
+    // past the edge (web_render.py clips to the circle regardless).
+    { section: 'Everything' },
+    { k: 'all_scale', label: 'Size', min: 0.5, max: 1, step: 0.01, fmt: pctFmt },
     { section: 'Token Background' },
     { k: 'bg_scale', label: 'Size', min: 0.5, max: 1.8, step: 0.02, fmt: pctFmt },
     { k: 'bg_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
@@ -840,9 +847,19 @@
       var sc = gzNum(ctx.get(A.scale)), rot = gzNum(ctx.get(A.rot));
       var bx = g.cx + dx, by = g.cy + dy;
       if (g.space === 'content') { bx += GEO.contentRef[0] * (cm - 1); by += GEO.contentRef[1] * (cm - 1); }
+      var ox = ir.left - pr.left, oy = ir.top - pr.top;
+      var left = ox + bx * m, top = oy + by * m;
+      // "Everything" shrinks all but the background about the disk's centre,
+      // so the box follows: drawn smaller and pulled in by the same amount,
+      // and a drag moves the art s times less than the pointer did.
+      var all = asset === 'bg' ? 1 : (gzNum(ctx.get('all_scale')) || 1);
+      if (all !== 1) {
+        var ccx = ox + GEO.contentRef[0] * sx, ccy = oy + GEO.contentRef[1] * sx;
+        left = ccx + (left - ccx) * all; top = ccy + (top - ccy) * all;
+      }
       return {
-        m: m, rot: rot, boxW: g.w * sc * m, boxH: g.h * sc * m,
-        left: (ir.left - pr.left) + bx * m, top: (ir.top - pr.top) + by * m
+        m: m * all, rot: rot, boxW: g.w * sc * m * all, boxH: g.h * sc * m * all,
+        left: left, top: top
       };
     }
     function position() {

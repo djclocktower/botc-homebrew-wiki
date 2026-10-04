@@ -3933,3 +3933,12 @@ keeps `content-visibility: auto`.
    `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
    file has a flat patch on its left edge that printed as a nub on every
    token.
+   **"Everything" → Size** (`all_scale`, the first slider in both adjustment
+   panels) shrinks everything ON a token as one picture about its centre —
+   icon, name, ability, leaves, night leaves, flower; a reminder token's icon
+   and text — and never the background (`deco.frame_for(split=True)` hands
+   back the two layers; `_zoom_about()` in web_render.py). 50–100%: the leaves
+   already sit on the rim, so anything larger would push them off it; the
+   result is clipped to the circle anyway, and at 100% the path is skipped
+   entirely, so existing tokens are pixel-identical. The transform box
+   (`metrics()` in token-tool.js) shrinks and pulls in by the same factor.

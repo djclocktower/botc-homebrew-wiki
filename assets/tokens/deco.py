@@ -227,7 +227,11 @@ def _reminders(canvas, n, scale_mul=1.0, dy=0, dx=0, rot=0):
     for a in angles: _leaf(canvas, a)
 
 def frame_for(first_night=False, other_night=False, setup=False, reminders=0, name=None,
-              adj=None, name_mask=None):
+              adj=None, name_mask=None, split=False):
+    """The token frame. split=True returns (background, decorations) as two
+    layers instead of one image, for the "Everything" size slider, which
+    scales the decorations with the rest of the contents but never the
+    background they sit on."""
     a = adj or {}
     def g(k, d): v = a.get(k, d); return d if v is None else v
     bg_scale = float(g('bg_scale', 1.0)); bg_dx = int(g('bg_dx', 0))
@@ -236,6 +240,9 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
         f = _transform_bg(bg_scale, bg_dx, bg_dy, bg_rot)
     else:
         f = BARE.copy()
+    bg = f
+    if split:
+        f = Image.new('RGBA', bg.size, (0, 0, 0, 0))
     if first_night:
         _place_night(f, L_FIRST, FN_CENTER, g('fn_scale', 1.0), g('fn_dx', 0), g('fn_dy', 0), g('fn_rot', 0))
     if other_night:
@@ -252,4 +259,4 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
                       g('flower_scale', 1.0), g('flower_rot', 0))
     n = 0 if g('leaves', 'auto') == 'off' else reminders
     _reminders(f, n, g('leaf_scale', 1.0), g('leaf_dy', 0), g('leaf_dx', 0), g('leaf_rot', 0))
-    return f
+    return (bg, f) if split else f

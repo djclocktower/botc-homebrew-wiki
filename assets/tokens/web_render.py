@@ -41,7 +41,18 @@ ADJ_DEFAULTS = dict(
     fn_scale=1.0, fn_dx=0, fn_dy=0, fn_rot=0,
     on_scale=1.0, on_dx=0, on_dy=0, on_rot=0,
     rem_icon_scale=1.0, rem_text_size=1.0,
+    all_scale=1.0,
 )
+
+# "Everything" in the adjustments: one slider that sizes everything ON the
+# token as one picture (icon, name, ability text, leaves, night leaves, the
+# setup flower; on a reminder token its icon and text) about the token's
+# centre, so the layout keeps its shape and only shrinks. The background is
+# the token itself and never moves. It stops at 100%: the leaves already sit
+# on the rim, so anything bigger would push them past the edge. The result is
+# still clipped to the token's circle, and at 100% this whole path is
+# skipped, so the token is pixel-identical to before.
+ALL_SCALE_MIN, ALL_SCALE_MAX = 0.5, 1.0
 
 def _adj(a):
     d = dict(ADJ_DEFAULTS)
@@ -49,6 +60,29 @@ def _adj(a):
         if k in d and v is not None:
             d[k] = v
     return d
+
+def _all_scale(a):
+    try:
+        s = float(a.get('all_scale', 1.0))
+    except (TypeError, ValueError):
+        return 1.0
+    return min(ALL_SCALE_MAX, max(ALL_SCALE_MIN, s))
+
+def _zoom_about(img, s, cx, cy):
+    """img scaled by s about (cx, cy), on a canvas of the same size."""
+    w, h = img.size
+    big = img.resize((max(1, round(w * s)), max(1, round(h * s))), Image.LANCZOS)
+    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    ox, oy = round(cx - cx * s), round(cy - cy * s)
+    x0, y0 = max(0, ox), max(0, oy)
+    out.alpha_composite(big.crop((x0 - ox, y0 - oy, min(big.width, w - ox), min(big.height, h - oy))), (x0, y0))
+    return out
+
+def _clip_to_disk(img, disk):
+    """Cut anything outside the token's circle (a boolean mask, same size)."""
+    a = np.array(img)
+    a[:, :, 3] = np.where(disk, a[:, :, 3], 0)
+    return Image.fromarray(a)
 
 # ----------------------------------------------------------------------------
 # CUSTOM ASSETS (user-uploaded backgrounds / flower / leaves)
@@ -105,10 +139,12 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     nl = gen.render_name(entry['name'], float(a['name_size']), int(a['name_dy']),
                          int(a['name_dx']), float(a['name_arc']))
     nm = np.array(nl)[:, :, 3] > 40
-    frame = deco.frame_for(first_night=fn, other_night=on,
+    s = _all_scale(a)
+    parts = deco.frame_for(first_night=fn, other_night=on,
                            setup=bool(entry.get('setup')),
                            reminders=len(entry.get('reminders', []) or []),
-                           name=entry['name'], adj=a, name_mask=nm)
+                           name=entry['name'], adj=a, name_mask=nm, split=(s != 1.0))
+    frame = parts if s == 1.0 else parts[0]
     content = Image.new('RGBA', frame.size, (0, 0, 0, 0))
     gen.place_art(content, art_path, nm,
                   int(a['icon_dx']), int(a['icon_dy']), float(a['icon_scale']),
@@ -118,8 +154,16 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     content.alpha_composite(nl)
     nw, nh = round(frame.width * char_margin), round(frame.height * char_margin)
     big = frame.resize((nw, nh), Image.LANCZOS)
-    big.alpha_composite(content, (round(gen.DCX * (char_margin - 1)),
-                                  round(gen.DCY * (char_margin - 1))))
+    off = (round(gen.DCX * (char_margin - 1)), round(gen.DCY * (char_margin - 1)))
+    if s == 1.0:
+        big.alpha_composite(content, off)
+        return big
+    # Everything but the background, as one layer at the final size, zoomed
+    # about the disk's centre and clipped to the disk.
+    top = parts[1].resize((nw, nh), Image.LANCZOS)
+    top.alpha_composite(content, off)
+    top = _zoom_about(top, s, gen.DCX * char_margin, gen.DCY * char_margin)
+    big.alpha_composite(_clip_to_disk(top, np.array(big)[:, :, 3] > 0))
     return big
 
 def _premade_token(path, char_margin=1.05):
@@ -141,6 +185,10 @@ def render_reminder_token(art_path, text, rem_margin=1.10, adj=None):
     content = Image.new('RGBA', base.size, (0, 0, 0, 0))
     reminder.place_icon(content, art_path, 0, 0, float(a['rem_icon_scale']))
     reminder._draw_curved(content, text, reminder.REM_SIZE_MAX, float(a['rem_text_size']))
+    s = _all_scale(a)
+    if s != 1.0:
+        content = _clip_to_disk(_zoom_about(content, s, reminder.DCX, reminder.DCY),
+                                np.array(base)[:, :, 3] > 0)
     nw, nh = round(base.width * rem_margin), round(base.height * rem_margin)
     big = base.resize((nw, nh), Image.LANCZOS)
     big.alpha_composite(content, (round(reminder.DCX * (rem_margin - 1)),
