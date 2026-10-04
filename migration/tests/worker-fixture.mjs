@@ -37,7 +37,7 @@ export async function fixture() {
             const written = kind === 'run' ? native.run(...this.values) : null;
             const value = kind === 'all' ? { results: native.all(...this.values) }
               : kind === 'first' ? native.get(...this.values) || null
-              : { ...written, meta: { changes: Number(written.changes) || 0 } };
+              : { ...written, meta: { changes: Number(written.changes) || 0, last_row_id: Number(written.lastInsertRowid) || 0 } };
             return state.intercept ? state.intercept({ sql, kind, value }) : value;
           },
           all() { return this.execute('all'); },

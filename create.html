@@ -1157,7 +1157,16 @@
           $('arturl').textContent = ''; msg.className = 'ok'; msg.textContent = 'Imported successfully (icon loaded).'; update();
         }).catch(function () {
           artDataURL = null;
-          $('arturl').innerHTML = 'Icon could not be loaded (the host blocks it). Original URL: <a href="' + imgUrl + '" target="_blank">' + imgUrl + '</a><br>Please upload the art manually above.';
+          // Built from nodes, not a string: imgUrl comes out of a file
+          // somebody else may have written, and only an http(s) one is a link.
+          var au = $('arturl');
+          au.textContent = 'Icon could not be loaded (the host blocks it). Original URL: ';
+          var ua = document.createElement(/^https?:\/\//i.test(imgUrl) ? 'a' : 'span');
+          ua.textContent = imgUrl;
+          if (ua.tagName === 'A') { ua.href = imgUrl; ua.target = '_blank'; ua.rel = 'noopener'; }
+          au.appendChild(ua);
+          au.appendChild(document.createElement('br'));
+          au.appendChild(document.createTextNode('Please upload the art manually above.'));
           msg.className = 'ok'; msg.textContent = 'Imported. Icon must be uploaded manually (see note under Character art).'; update();
         });
       } else {
@@ -1347,7 +1356,7 @@
           $('save-draft').disabled = false;
         })
         .catch(function (err) {
-          setStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
+          setStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
           $('publish').disabled = false;
           $('save-draft').disabled = false;
         });

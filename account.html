@@ -446,6 +446,10 @@
               <label for="s-email">Email address</label>
               <input type="email" id="s-email" autocomplete="email">
             </div>
+            <div class="set-field" id="email-pw-field">
+              <label for="s-email-pw">Current password <span style="font-weight:normal">(needed to change your email)</span></label>
+              <input type="password" id="s-email-pw" autocomplete="current-password">
+            </div>
             <button class="btn" id="save-email">Update Email</button>
             <div class="inline-msg" id="email-msg"></div>
           </section>
@@ -621,6 +625,7 @@
       if (!p.hasPassword) {
         $('pw-title').textContent = 'Set a Password';
         $('cur-pw-field').style.display = 'none';
+        $('email-pw-field').style.display = 'none';
         $('discord-desc').textContent = 'You signed up with Discord. Set a password to also log in with your username.';
       }
       if (p.discordLinked) {
@@ -984,6 +989,7 @@
       var btn = this;
       var newpw = $('s-newpw').value;
       if (newpw.length < 8) { setInline('password-msg', 'err', 'New password must be at least 8 characters.'); return; }
+      if (newpw.length > 200) { setInline('password-msg', 'err', 'New password must be at most 200 characters.'); return; }
       btn.disabled = true;
       postJSON('/api/account/password', { currentPassword: $('s-curpw').value, newPassword: newpw })
         .then(function(res){
@@ -998,11 +1004,11 @@
       var email = $('s-email').value.trim();
       if (!email) { setInline('email-msg', 'err', 'Enter an email address.'); return; }
       btn.disabled = true;
-      postJSON('/api/account/email', { email: email })
+      postJSON('/api/account/email', { email: email, currentPassword: $('s-email-pw').value })
         .then(function(res){
           btn.disabled = false;
           setInline('email-msg', res.ok ? 'ok' : 'err', res.ok ? (res.body.message || 'Email updated.') : (res.body.error || 'Update failed.'));
-          if (res.ok) load();
+          if (res.ok) { $('s-email-pw').value = ''; load(); }
         });
     });
 

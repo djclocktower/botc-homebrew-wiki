@@ -618,7 +618,7 @@
 
     function showTipFor(n, p) {
       var meta = n.d.official ? 'Official character'
-        : ((n.d.team ? n.d.team.charAt(0).toUpperCase() + n.d.team.slice(1) : '') +
+        : ((n.d.team ? escHTML(n.d.team.charAt(0).toUpperCase() + n.d.team.slice(1)) : '') +
            (n.d.creator ? ' &middot; ' + escHTML(n.d.creator) : ''));
       // Keyboard focus has no cursor to sit beside, so fall back to where the
       // node actually is on screen rather than the corner of the box.

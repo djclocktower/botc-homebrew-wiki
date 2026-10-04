@@ -3303,6 +3303,87 @@ This is the same act with the reason attached.
   moderation take-down is not lost among ordinary unpublishes) and it is in
   `FEED_CHANGING_ACTIONS`.
 
+## Account security
+
+The rules below each exist because of a specific hole. Keep them when changing
+anything near login, email or the API gate. `migration/tests/security.test.mjs`
+covers each one.
+
+- **Passwords are salted AND hashed**: PBKDF2-SHA256, 100,000 rounds (the
+  most Workers will run), 16 random bytes of salt per password.
+  `hashPassword(env, pw)` / `verifyPassword(env, pw, stored)` take `env`
+  because of the **pepper**. `PASSWORD_PEPPER`, a Worker **Secret**
+  (Gotcha 11), is mixed in with HMAC before PBKDF2, so a stolen copy of D1 or
+  of an R2 backup cannot be brute-forced without it. It is opt-in: once set,
+  every account moves onto it at its next login (`upgradePasswordHash`).
+  **Never delete it.** Without it, every peppered password stops matching
+  until that member resets. Comparisons are constant-time, and a login for a
+  name or email that does not exist does the same work as a real one
+  (`burnPasswordCheck`), so response timing says nothing about who is a
+  member.
+- **`passwordProblem()` is the one rule for a new password** (signup, reset,
+  account page): 8–200 characters, not the username or email, and not in a
+  known breach. Breaches are checked against Have I Been Pwned's k-anonymity
+  range API, where only 5 hex characters of the SHA-1 leave the Worker. That
+  check fails OPEN if the service is down.
+- **Failed logins are counted per ACCOUNT as well as per IP**
+  (`LOGIN_FAIL_LIMIT`, 20 an hour, in `rate_limits`). Only failures count. A
+  correct password or a reset clears the count, so the worst a stranger can do
+  is make you use "Forgot your password?".
+- **Reset and verification links**: only their SHA-256 is stored in KV, they
+  are single-use, and each is bound to the account AND to the email it was
+  sent to (`storeEmailToken` / `readEmailToken`). A reset link also carries a
+  fingerprint of the password hash, so any password change kills every
+  outstanding link. A verification link verifies only the address it was sent
+  to. Before this, a member could request a link to their own inbox, switch
+  the account to a stranger's address and click it. Discord sign-in trusts
+  verified emails, so that was a route into account takeover. Links are built
+  from `canonicalOrigin(env)`, never from the request's Host.
+- **Changing the email needs the current password** (Discord-only accounts
+  have none to give). The OLD address is told, with the new one masked
+  (`sendSecurityNotice` / `maskEmail`). A password change or reset is also
+  emailed. Notices are best-effort and never fail the change.
+- **Discord link mode** requires the browser finishing the flow to be signed
+  in as the account that started it. Otherwise a link started by one account
+  could attach somebody else's Discord to it. Login mode is not yet bound to
+  the browser (see the note on `OAUTH_STATE_TTL` about the phone hand-off);
+  binding it with a cookie is a known follow-up.
+- **`crossSiteWrite()` refuses any non-GET `/api/` request** whose `Origin`
+  is another site or whose `Sec-Fetch-Site` is `cross-site`. This is a second
+  lock behind the `SameSite=Lax` cookie. A request with neither header (curl)
+  carries no victim's cookie and passes.
+- **Every admin GET is gated once, at the top of `app.fetch`**, by
+  `adminSession()` (D1's `is_admin`, and not banned). Two admin GETs once
+  forgot their own check, and `/api/admin/new-users` served every new
+  member's email to anyone. Demoting an admin revokes their sessions.
+- **Security headers**: `withSecurityHeaders()` (in the default export) adds
+  HSTS, `X-Frame-Options: SAMEORIGIN`, `nosniff`, a referrer policy and a
+  permissions policy to every Worker response, plus a CSP on HTML
+  (`base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action
+  'self'`). A route's own stricter CSP wins. The `/*` block in `_headers`
+  carries the same set for static files, so keep the two in step. A full
+  script-src CSP is not set: inline scripts and remote art would need an
+  audit first.
+- **Owner-only data stays the owner's**: `/api/page` strips `editors` for
+  anyone but the owner, and `_draftNote` for anyone who cannot edit.
+  `/api/page-revision` filters both (`PRIVATE_DATA_KEYS`). A suggestion has
+  those fields pinned from the stored page and is cleaned by the type's
+  sanitizers, both when sent and when approved (`pinSuggestedFields`).
+- **A character's `team` must be one of the seven** (`CHARACTER_TEAMS`) and
+  is normalised on save. It used to be stored as posted, and it is printed in
+  many places.
+- A soft-deleted page cannot be resaved back to life (only an admin's
+  restore does that). An "anyone can edit" guest cannot change the name. Write
+  errors show a fixed message unless thrown with `public: true`
+  (`publicError`).
+
+**Known and deliberately left:** signup still says when an email is already
+registered (rate-limited to 5 an hour per connection), because the
+alternative is a confusing silent failure. Emails are not encrypted at rest:
+losing that key would make every password reset impossible. Image-slot
+squatting (`uploadSlotDenied` on a page that does not exist yet) is still
+open. Two-factor login is not built yet.
+
 ## Rate limiting (and why the counters are not in KV)
 
 `rateLimited()` in worker.js is the whole limiter: one counter per
@@ -3804,6 +3885,8 @@ keeps `content-visibility: auto`.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+   `PASSWORD_PEPPER` is one of these too, and the one that must never be
+   lost — see "Account security".
    **Never send `prompt=none` to Discord's authorize endpoint.** Discord
    documents it for one case only — a reader who has already authorized the
    app, who is sent straight back — and defines nothing else. A first-time

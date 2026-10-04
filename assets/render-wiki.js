@@ -145,8 +145,10 @@
       String(name).trim().replace(/\s+/g, '_');
   }
 
+  // NUL is dropped first: the engine uses it for its own placeholders (code
+  // spans, the contents box), and text typed through the API could carry one.
   function esc(s) {
-    return String(s == null ? '' : s)
+    return String(s == null ? '' : s).replace(/\u0000/g, '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -181,6 +183,10 @@
   function safeHref(raw) {
     var href = String(raw || '').trim();
     if (!href) return '';
+    // A browser reads a backslash in a link as a slash and silently drops
+    // tabs, newlines and control characters, so "/\\evil.example" goes
+    // off-site while looking like a page here. Nothing honest needs either.
+    if (/[\\\u0000-\u001f\u007f]/.test(href)) return '';
     if (/^https?:\/\//i.test(href)) return href;
     if (/^mailto:[^\s<>]+@[^\s<>]+$/i.test(href)) return href;
     // '//evil.example' is protocol-relative, i.e. off-site in disguise.
@@ -321,7 +327,7 @@
     }
 
     // [label](href)
-    out = out.replace(/\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, function (m, label, href) {
+    out = out.replace(/\[([^\]\n]{1,160})\]\(([^)\s{}\u0000]{1,500})\)/g, function (m, label, href) {
       // esc() already ran, so &amp; inside a URL has to be put back.
       var url = safeHref(href.replace(/&amp;/g, '&'));
       if (!url) return label;
@@ -419,7 +425,7 @@
       .replace(EM_RE, '$1')
       .replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g,
         function (m, target, label) { return (label != null && label !== '') ? label : target; })
-      .replace(/!?\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, '$1')
+      .replace(/!?\[([^\]\n]{1,160})\]\(([^)\s{}\u0000]{1,500})\)/g, '$1')
       .replace(/\*\*([^*\n]{1,300})\*\*/g, '$1')
       .replace(/~~([^~\n]{1,200})~~/g, '$1')
       .replace(/`([^`\n]{1,300})`/g, '$1');

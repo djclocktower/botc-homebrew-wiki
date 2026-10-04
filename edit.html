@@ -1153,7 +1153,7 @@
         })
         .catch(function(err){
           $('save').disabled = false;
-          setStatus('err', err.message);
+          setStatus('err', esc(err.message));
         });
     }
     function suggestMode(entry) {
@@ -1988,7 +1988,7 @@
         $('save').disabled = false;
         $('save-publish').disabled = false;
       }).catch(function(err){
-        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+esc(err.message));
         $('save').disabled = false;
         $('save-publish').disabled = false;
       });
@@ -2023,7 +2023,7 @@
         }
       })
       .catch(function(err){
-        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+esc(err.message));
         del.disabled = false; del.textContent = 'Delete Character';
         $('save').disabled = false; $('save-publish').disabled = false;
       });
