@@ -2692,8 +2692,8 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   **Standalone articles are the deliberate exception** — a page with no set,
   listed on `/articles`; see "Standalone articles". All of this bullet is
   about a set's own pages.
-- **Featured Articles** — the grid under News on the homepage (3 newest
-  picks) and on `/news` (all of them), drawn with the news card
+- **Featured Articles** — the grid on `/news` (all of them), drawn with the
+  news card
   (`NewsRender.renderPageCard()`: byline + parent in place of the date, then
   title, blurb, "Read more"). **Admin-picked, never automatic**: a toggle in
   the page's own head (`wikipage.js`, admins only, drawn in the browser
@@ -2769,8 +2769,20 @@ set's custom pages, which were meant for that set's own mechanics.
 - **It is LISTED, unlike a set's page**: `GET /api/articles` (published, plus
   `?mine=1` for the reader's own drafts), the sitemap, and no `noindex` on its
   `/p/` page. A set's pages stay unlisted and `noindex` exactly as before.
-- Changing an existing set page into an article (or back) is not offered: the
-  parent is frozen at creation, as for every wiki page.
+- **The homepage's Articles panel** (under News, where Featured Articles used
+  to be) is the 3 newest published articles: `GET /api/articles?format=cards
+  &limit=3`, the news card built on the server (`cachedArticleCards()`,
+  cached on the `wikipage` version) so the homepage loads no renderer.
+- **A set's page can be made an article, by an admin only**:
+  `POST /api/admin/page-to-article` with `{slug}` (the "Make this a
+  standalone article" button in a page's head, next to the Featured toggle)
+  or `{featured: true}` (every Featured pick still under a set; dashboard
+  card "Featured Articles → standalone articles", `{dryRun}` first). Only
+  `parent_type`/`parent_slug` change — address, text, images, comments,
+  owner and a Featured pick all stay — so it is safe; the page leaves its
+  set's Pages section and the set's sharing choice stops reaching it. Logs
+  `to-article` (in `FEED_CHANGING_ACTIONS`). There is no way back, and an
+  owner still cannot move a page: the parent is frozen for everyone else.
 
 ## System text (`/text-editor`)
 

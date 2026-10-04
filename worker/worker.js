@@ -90,6 +90,10 @@
  *                                admin ?all=1 adds the hidden ones)
  *   POST /api/admin/featured-article -> admin: {slug, on} feature / unfeature
  *                                one page; slug may be the page's address
+ *   POST /api/admin/page-to-article -> admin: {slug} or {featured:true},
+ *                                {dryRun}: make a set's page a standalone article
+ *   GET  /api/articles?format=cards&limit= -> the newest published articles
+ *                                as news cards (the homepage Articles panel)
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
@@ -1138,7 +1142,9 @@ const FEED_CHANGING_ACTIONS = new Set([
   // `publicEdit` rides the feeds, and these rewrite it in bulk.
   'tags-open', 'open-editing',
   // A custom page put on (or taken off) the Featured Articles list.
-  'feature', 'unfeature'
+  'feature', 'unfeature',
+  // A set's custom page made into a standalone article.
+  'to-article'
 ]);
 
 // ---- activity log helper ----
@@ -4929,6 +4935,40 @@ async function cachedFeaturedBody(env, ctx, limit, cards, version) {
   _featuredPending.set(key, pending);
   try { return await pending; } finally { _featuredPending.delete(key); }
 }
+// The homepage's Articles panel: the newest published standalone articles,
+// as the same news card Featured Articles uses, built on the server so the
+// homepage loads no renderer of its own. Cached on the wiki-page version.
+const ARTICLE_CARDS_MAX = 12;
+const _articleCardsPending = new Map();
+async function cachedArticleCards(env, ctx, limit, version) {
+  const key = `https://feed.internal/article-cards.json?v=${version}&limit=${limit}&build=${BUILD_ID}`;
+  if (_articleCardsPending.has(key)) return _articleCardsPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      await ensurePagesTable(env);
+      const { results } = await env.DB.prepare(
+        `SELECT slug, title, author, data FROM pages
+         WHERE parent_type=? AND status='published'
+         ORDER BY created_at DESC LIMIT ?`
+      ).bind(ARTICLE_PARENT, limit).all();
+      const html = (results || []).map(r => {
+        const d = parseData(r);
+        return NewsRender.renderPageCard({
+          slug: r.slug, title: r.title, parentType: ARTICLE_PARENT,
+          author: r.author || d.author || null,
+          blurb: d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 160)
+        }, { linkRoot: '' });
+      }).join('');
+      body = JSON.stringify({ html });
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    return body;
+  })();
+  _articleCardsPending.set(key, pending);
+  try { return await pending; } finally { _articleCardsPending.delete(key); }
+}
+
 // Called when a page is deleted for good.
 async function unfeatureArticle(env, slug) {
   try {
@@ -6525,6 +6565,15 @@ const app = {
     // body), so it is built per request; ?mine=1 adds the reader's own drafts
     // so the list is where they find their way back to one.
     if (method === 'GET' && path === '/api/articles') {
+      // ?format=cards&limit=3 is the homepage panel: public, cached, cards.
+      if (url.searchParams.get('format') === 'cards') {
+        const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '3', 10) || 3, 1), ARTICLE_CARDS_MAX);
+        const version = await contentVersion(env, ['wikipage']);
+        const etag = `W/"article-cards-${version}-${limit}-${BUILD_ID}"`;
+        const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+        if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+        return new Response(await cachedArticleCards(env, ctx, limit, version), { headers });
+      }
       await ensurePagesTable(env);
       const sess = await getSession(env, request);
       const mine = url.searchParams.get('mine') === '1' && sess && sess.userId != null;
@@ -6699,6 +6748,8 @@ const app = {
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
             // A draft cannot be featured, so wikipage.js offers admins no button.
             (isDraft ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
+            // A set's page gets the admins' "Make it a standalone article" button.
+            (row.parent_type === ARTICLE_PARENT ? ' window.WIKI_PAGE_ARTICLE = true;' : '') +
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
@@ -12829,6 +12880,45 @@ const app = {
           ok: true, slug, featured: on,
           articles: (await featuredArticles(env, FEATURED_ARTICLES_MAX, { all: true })).articles
         });
+      }
+
+      // ---- admin: make a set's custom page a standalone article ----
+      // {slug} for one page (the address works too), or {featured: true} for
+      // every page on the Featured Articles list; {dryRun} first reports
+      // without writing. Only the parent changes: the address, the body, the
+      // images, the comments and the owner all stay, and a Featured pick
+      // stays featured. The page leaves its set's Pages section and joins
+      // /articles, the sitemap and search engines (no more noindex). Who may
+      // edit it becomes its owner alone, as for any article, so the set's
+      // sharing choice stops reaching it.
+      if (path === '/api/admin/page-to-article') {
+        const b = await request.json().catch(() => ({}));
+        await ensurePagesTable(env);
+        const slugs = b.featured
+          ? (await featuredArticlePicks(env)).map(p => p.slug)
+          : [featuredSlugFrom(b.slug)].filter(Boolean);
+        if (!slugs.length) {
+          return jsonResponse({ error: b.featured ? 'Nothing is on Featured Articles.' : 'Paste the address of a page (it has /p/ in it).' }, { status: 400 });
+        }
+        const { results } = await env.DB.prepare(
+          `SELECT slug, title, parent_type, parent_slug FROM pages WHERE slug IN (${slugs.map(() => '?').join(',')})`
+        ).bind(...slugs).all();
+        const bySlug = new Map((results || []).map(r => [r.slug, r]));
+        const converted = [], already = [], missing = [];
+        for (const slug of slugs) {
+          const r = bySlug.get(slug);
+          if (!r) { missing.push(slug); continue; }
+          if (r.parent_type === ARTICLE_PARENT) { already.push({ slug, title: r.title }); continue; }
+          const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+          const item = { slug, title: r.title, from: parent ? parent.name : r.parent_slug };
+          if (!b.dryRun) {
+            await env.DB.prepare(`UPDATE pages SET parent_type=?, parent_slug='' WHERE slug=?`)
+              .bind(ARTICLE_PARENT, slug).run();
+            await logActivity(env, sess, 'to-article', 'wikipage', slug, r.title);
+          }
+          converted.push(item);
+        }
+        return jsonResponse({ ok: true, dryRun: !!b.dryRun, converted, already, missing });
       }
 
       // ---- admin: rewrite one of the site's own strings (/text-editor) ----

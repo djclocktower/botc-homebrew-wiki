@@ -13,7 +13,7 @@
   }
 
   /* Admins: put this page on (or take it off) Featured Articles, the cards
-     under News on the homepage and on /news. It is the one list these pages
+     on /news. (The homepage's panel is the newest standalone articles.) It is the one list these pages
      can appear on, so the button is an admin's and nobody else ever sees it.
      Drawn in the browser, never by the server: the published HTML is one
      shared cache entry for every reader. site.js sets botcMePromise and loads
@@ -52,6 +52,31 @@
             .then(function () { btn.disabled = false; });
         });
         wrap.appendChild(btn);
+        // A set's page can be lifted out of its set into a standalone article:
+        // same address, same text, but listed on /articles instead of under
+        // the set. One tap, after a confirm — there is no button back.
+        if (!window.WIKI_PAGE_ARTICLE) {
+          var conv = document.createElement('button');
+          conv.type = 'button';
+          conv.className = 'wiki-feature-btn';
+          conv.textContent = 'Make this a standalone article';
+          conv.addEventListener('click', function () {
+            if (!confirm('Make this page a standalone article? It leaves its script or collection and is listed on the Articles page instead. Its address, text and comments stay the same.')) return;
+            conv.disabled = true;
+            fetch('/api/admin/page-to-article', {
+              method: 'POST', credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ slug: SLUG })
+            }).then(function (r) {
+              return r.json().catch(function () { return {}; }).then(function (res) {
+                if (!r.ok) throw new Error(res.error || 'That did not save. Try again.');
+                location.reload();
+              });
+            }).catch(function (err) { alert(err.message); conv.disabled = false; });
+          });
+          wrap.appendChild(document.createTextNode(' '));
+          wrap.appendChild(conv);
+        }
         head.appendChild(wrap);
       })
       .catch(function () { /* offline or not an admin after all: no button */ });

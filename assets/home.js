@@ -16,20 +16,20 @@
       .catch(function(){ /* no news, no panel */ });
   })();
 
-  /* ── Featured Articles ───────────────────────────────────────
-     The three most recent custom pages an admin featured, on the same card
-     as the news above. Hidden while there are none. */
+  /* ── Articles ────────────────────────────────────────────────
+     The three newest standalone articles (/articles), on the same card as
+     the news above. Hidden while there are none. */
   (function(){
     var sec = document.getElementById('articles-section');
     var grid = document.getElementById('articles-grid');
     if (!sec || !grid) return;
-    BotcData.json('/api/featured-articles?limit=3&format=cards')
+    BotcData.json('/api/articles?limit=3&format=cards')
       .then(function(d){
         if (!d || !d.html) return;
         grid.innerHTML = d.html;
         sec.hidden = false;
       })
-      .catch(function(){ /* nothing featured, no panel */ });
+      .catch(function(){ /* no articles, no panel */ });
   })();
 
 
