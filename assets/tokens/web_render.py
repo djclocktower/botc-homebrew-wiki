@@ -41,14 +41,44 @@ ADJ_DEFAULTS = dict(
     fn_scale=1.0, fn_dx=0, fn_dy=0, fn_rot=0,
     on_scale=1.0, on_dx=0, on_dy=0, on_rot=0,
     rem_icon_scale=1.0, rem_text_size=1.0,
+    all_scale=1.0,
 )
+
+# "Everything" in the adjustments: one slider that resizes everything ON the
+# token at once; the background is the token itself and never changes.
+#   - every piece stays where it is and changes size there: the icon about
+#     its own centre (still dodging the name), the ability text re-wrapped to
+#     the token's width, the name on its arc, a reminder token's icon and
+#     text; it multiplies each one's own size slider (CONTENT_SCALE_KEYS);
+#   - the rim pieces (top leaves, night leaves, setup flower) are sized about
+#     the point where they meet the edge, so they stay cut off by the rim
+#     (deco.frame_for reads all_scale for those).
+# The content is clipped to the token's circle, and at 100% none of this
+# changes a pixel.
+ALL_SCALE_MIN, ALL_SCALE_MAX = 0.5, 1.5
+CONTENT_SCALE_KEYS = ('icon_scale', 'abil_size', 'name_size', 'rem_icon_scale', 'rem_text_size')
 
 def _adj(a):
     d = dict(ADJ_DEFAULTS)
     for k, v in (a or {}).items():
         if k in d and v is not None:
             d[k] = v
+    try:
+        s = float(d.get('all_scale', 1.0))
+    except (TypeError, ValueError):
+        s = 1.0
+    s = min(ALL_SCALE_MAX, max(ALL_SCALE_MIN, s))
+    d['all_scale'] = s
+    if s != 1.0:
+        for k in CONTENT_SCALE_KEYS:
+            d[k] = float(d[k]) * s
     return d
+
+def _clip_to_disk(img, disk):
+    """Cut anything outside the token's circle (a boolean mask, same size)."""
+    a = np.array(img)
+    a[:, :, 3] = np.where(disk, a[:, :, 3], 0)
+    return Image.fromarray(a)
 
 # ----------------------------------------------------------------------------
 # CUSTOM ASSETS (user-uploaded backgrounds / flower / leaves)
@@ -116,6 +146,8 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     content.alpha_composite(gen.render_ability(entry['ability'],
                                                float(a['abil_size']), int(a['abil_dy'])))
     content.alpha_composite(nl)
+    if float(a['all_scale']) != 1.0:
+        content = _clip_to_disk(content, deco._DISK)
     nw, nh = round(frame.width * char_margin), round(frame.height * char_margin)
     big = frame.resize((nw, nh), Image.LANCZOS)
     big.alpha_composite(content, (round(gen.DCX * (char_margin - 1)),
@@ -141,6 +173,8 @@ def render_reminder_token(art_path, text, rem_margin=1.10, adj=None):
     content = Image.new('RGBA', base.size, (0, 0, 0, 0))
     reminder.place_icon(content, art_path, 0, 0, float(a['rem_icon_scale']))
     reminder._draw_curved(content, text, reminder.REM_SIZE_MAX, float(a['rem_text_size']))
+    if float(a['all_scale']) != 1.0:
+        content = _clip_to_disk(content, np.array(base)[:, :, 3] > 0)
     nw, nh = round(base.width * rem_margin), round(base.height * rem_margin)
     big = base.resize((nw, nh), Image.LANCZOS)
     big.alpha_composite(content, (round(reminder.DCX * (rem_margin - 1)),
@@ -384,7 +418,8 @@ def geometry():
         'fn':     dict(space='frame',   **fn),
         'on':     dict(space='frame',   **on),
     }
-    return json.dumps({'canvas': [W, H], 'contentRef': [float(gen.DCX), float(gen.DCY)], 'assets': assets})
+    return json.dumps({'canvas': [W, H], 'contentRef': [float(gen.DCX), float(gen.DCY)],
+                       'disk': [float(deco._DCX), float(deco._DCY), float(deco._R)], 'assets': assets})
 
 def web_preview(entry_json, opts_json):
     e = json.loads(entry_json); o = json.loads(opts_json)

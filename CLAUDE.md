@@ -3922,3 +3922,25 @@ keeps `content-visibility: auto`.
    Trade Gothic Bold in the toolkit, so it is a stroke in the text colour; the
    advance is unchanged, so the wrapping still measures right. Touching any
    `.py` there means bumping `assets/tokens/manifest.json`'s `v`.
+   Two more in `deco.py`: **one leaf per reminder up to 12.** The official
+   art stops at six; `assets/tokens/leaf_gen/leaf-top7..12.png` continue its
+   arc round the rim (`migration/make-leaf-tops.py` generates them from the
+   official six-leaf file — copies of its outer leaves, rotated about the
+   token's centre at the same ~8.6° spacing, alternating left then right) and
+   are placed by the token's centre (`GEN_ANCHOR_X`), not by the leaves'
+   extent, so an odd count does not slide sideways. 13+ draws 12; the old
+   loose fallback fan bunched into a clump that poked out of the token. And
+   `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
+   file has a flat patch on its left edge that printed as a nub on every
+   token.
+   **"Everything" → Size** (`all_scale`, 50–150%, the first slider in both
+   adjustment panels) resizes every piece ON a token at once, each where it
+   stands; the background never changes. The icon, ability text (re-wrapped
+   to the token), name and a reminder token's icon and text multiply their
+   own Size sliders (`CONTENT_SCALE_KEYS` in web_render.py). The rim pieces
+   are sized about the point where they meet the edge (`_rim_point()` in
+   deco.py: night leaves and flower; the top leaves are pinned to the rim
+   already), so they stay cut off by it at any size — the owner rejected a
+   version that shrank everything as one picture and pulled the leaves off
+   the rim. Content is clipped to the circle; at 100% nothing changes. The
+   transform box (`metrics()` in token-tool.js) follows the same rules.

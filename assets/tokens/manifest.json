@@ -12,6 +12,12 @@
   "fonts/trade-gothic-lt-std.otf",
   "frame_bare.png",
   "gen.py",
+  "leaf_gen/leaf-top10.png",
+  "leaf_gen/leaf-top11.png",
+  "leaf_gen/leaf-top12.png",
+  "leaf_gen/leaf-top7.png",
+  "leaf_gen/leaf-top8.png",
+  "leaf_gen/leaf-top9.png",
   "leaf_left.png",
   "leaf_new/1leaf.png",
   "leaf_new/2leaf.png",
@@ -21,5 +27,5 @@
   "reminder_blank.png",
   "web_render.py"
  ],
- "v": "2026-10-03a"
+ "v": "2026-10-04d"
 }
