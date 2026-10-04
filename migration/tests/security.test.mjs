@@ -53,7 +53,20 @@ async function setup({ pepper, breached = [] } = {}) {
   return { f, kv, mail, post, cookieOf, linkToken, finish };
 }
 
-test('passwords are salted, peppered when configured, and upgraded on login', async () => {
+test('the vendored Argon2id matches the reference implementation', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const dir = new URL('../../worker/vendor/argon2/', import.meta.url);
+  const { argon2id, setWASMModules } = await import(new URL('argon2-edge.js', dir));
+  await setWASMModules({
+    argon2WASM: new WebAssembly.Module(await readFile(new URL('argon2.wasm', dir))),
+    blake2bWASM: new WebAssembly.Module(await readFile(new URL('blake2b.wasm', dir)))
+  });
+  // The published test vector of the Argon2 reference implementation.
+  const out = await argon2id({ password: 'password', salt: 'somesalt', iterations: 2, memorySize: 65536, parallelism: 1, hashLength: 32, outputType: 'hex' });
+  assert.equal(out, '09316115d5cf24ed5a15a31a3ba326e5cf32edc24702987c02b6566f61913cf7');
+});
+
+test('passwords are Argon2id, salted, peppered when configured, and upgraded on login', async () => {
   const t = await setup();
   try {
     let res = await t.post('/api/signup', { username: 'alice', email: 'alice@example.com', password: 'correct horse battery' });
@@ -61,17 +74,18 @@ test('passwords are salted, peppered when configured, and upgraded on login', as
     res = await t.post('/api/signup', { username: 'bob', email: 'bob@example.com', password: 'correct horse battery' });
     assert.equal(res.status, 200);
     const rows = t.f.db.prepare('SELECT username, password_hash FROM users ORDER BY id').all();
-    assert.match(rows[0].password_hash, /^pbkdf2_sha256\$100000\$/);
+    assert.match(rows[0].password_hash, /^\$argon2id\$v=19\$m=19456,t=2,p=1\$[A-Za-z0-9+/]{22}\$[A-Za-z0-9+/]{43}$/);
     assert.notEqual(rows[0].password_hash, rows[1].password_hash, 'same password, different salt');
     assert.ok(!rows[0].password_hash.includes('correct horse'));
 
-    // A pepper added later moves the account onto it at the next login.
+    // A pepper added later moves the account onto it at the next login, and
+    // the unpeppered hash keeps working until then.
     t.f.env.PASSWORD_PEPPER = 'a-long-random-secret';
     res = await t.post('/api/login', { username: 'alice', password: 'correct horse battery' });
     assert.equal(res.status, 200);
     await Promise.all(t.f.background);
     const after = t.f.db.prepare("SELECT password_hash FROM users WHERE username='alice'").get().password_hash;
-    assert.match(after, /^pbkdf2_sha256p\$/);
+    assert.match(after, /^\$argon2id\$v=19\$m=19456,t=2,p=1,keyid=pepper\$/);
     res = await t.post('/api/login', { username: 'alice', password: 'correct horse battery' });
     assert.equal(res.status, 200, 'the upgraded hash still verifies');
     res = await t.post('/api/login', { username: 'alice', password: 'wrong horse battery' });
@@ -80,6 +94,64 @@ test('passwords are salted, peppered when configured, and upgraded on login', as
     delete t.f.env.PASSWORD_PEPPER;
     res = await t.post('/api/login', { username: 'alice', password: 'correct horse battery' });
     assert.equal(res.status, 401);
+  } finally { await t.finish(); }
+});
+
+// The PBKDF2 form every existing account is stored in, built the way the old
+// code built it.
+async function legacyPbkdf2(password, iterations = 100000) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, key, 256));
+  return `pbkdf2_sha256$${iterations}$${Buffer.from(salt).toString('base64')}$${Buffer.from(bits).toString('base64')}`;
+}
+
+test('existing PBKDF2 accounts keep working and move to Argon2id at login', async () => {
+  const t = await setup();
+  try {
+    t.f.db.prepare("INSERT INTO users (username, password_hash, email) VALUES ('olduser',?, 'old@example.com')")
+      .run(await legacyPbkdf2('an-old-password'));
+    let res = await t.post('/api/login', { username: 'olduser', password: 'wrong-password' });
+    assert.equal(res.status, 401);
+    res = await t.post('/api/login', { username: 'olduser', password: 'an-old-password' });
+    assert.equal(res.status, 200);
+    await Promise.all(t.f.background);
+    assert.match(t.f.db.prepare("SELECT password_hash FROM users WHERE username='olduser'").get().password_hash, /^\$argon2id\$/);
+    res = await t.post('/api/login', { username: 'olduser', password: 'an-old-password' });
+    assert.equal(res.status, 200);
+  } finally { await t.finish(); }
+});
+
+test('the nightly job puts Argon2id over hashes nobody has logged in with', async () => {
+  const t = await setup();
+  try {
+    t.f.db.prepare("INSERT INTO users (username, password_hash, email) VALUES ('dormant',?, 'd@example.com')")
+      .run(await legacyPbkdf2('sleepy-password'));
+    t.f.db.prepare("INSERT INTO users (username, password_hash, email) VALUES ('discordonly','', 'x@example.com')").run();
+    const w = await t.f.hooks.wrapLegacyPasswords(t.f.env);
+    assert.equal(w.wrapped, 1);
+    const stored = t.f.db.prepare("SELECT password_hash FROM users WHERE username='dormant'").get().password_hash;
+    assert.match(stored, /^wrap:pbkdf2_sha256\$100000\$[^$|]+\|\$argon2id\$v=19\$/);
+    assert.equal(t.f.db.prepare("SELECT password_hash FROM users WHERE username='discordonly'").get().password_hash, '');
+    assert.equal((await t.f.hooks.wrapLegacyPasswords(t.f.env)).wrapped, 0, 're-running finds nothing');
+    let res = await t.post('/api/login', { username: 'dormant', password: 'nope-nope-nope' });
+    assert.equal(res.status, 401);
+    res = await t.post('/api/login', { username: 'dormant', password: 'sleepy-password' });
+    assert.equal(res.status, 200, 'a wrapped hash verifies');
+    await Promise.all(t.f.background);
+    assert.match(t.f.db.prepare("SELECT password_hash FROM users WHERE username='dormant'").get().password_hash, /^\$argon2id\$/);
+  } finally { await t.finish(); }
+});
+
+test('a stored hash cannot ask for absurd Argon2 costs', async () => {
+  const t = await setup();
+  try {
+    for (const bad of [
+      '$argon2id$v=19$m=4000000,t=2,p=1$c29tZXNhbHRzb21lc2FsdA$aGFzaGhhc2g',
+      '$argon2id$v=19$m=19456,t=999,p=1$c29tZXNhbHRzb21lc2FsdA$aGFzaGhhc2g',
+      '$argon2id$v=19$m=19456,t=2,p=1,keyid=other$c29tZXNhbHRzb21lc2FsdA$aGFzaGhhc2g',
+      'wrap:garbage|$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHRzb21lc2FsdA$aGFzaGhhc2g'
+    ]) assert.equal(await t.f.hooks.verifyPassword(t.f.env, 'anything', bad), false, bad);
   } finally { await t.finish(); }
 });
 

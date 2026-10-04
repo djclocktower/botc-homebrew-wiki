@@ -152,6 +152,9 @@ Key dynamic behavior:
 
 ```
 worker/worker.js       The Worker: data endpoints, auth, SSR, uploads, backup cron
+worker/argon2.js       Argon2id, the password hash: the one door to the vendored
+                       WebAssembly in worker/vendor/argon2/ (see its README,
+                       and "Account security").
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
@@ -3309,18 +3312,37 @@ The rules below each exist because of a specific hole. Keep them when changing
 anything near login, email or the API gate. `migration/tests/security.test.mjs`
 covers each one.
 
-- **Passwords are salted AND hashed**: PBKDF2-SHA256, 100,000 rounds (the
-  most Workers will run), 16 random bytes of salt per password.
-  `hashPassword(env, pw)` / `verifyPassword(env, pw, stored)` take `env`
-  because of the **pepper**. `PASSWORD_PEPPER`, a Worker **Secret**
-  (Gotcha 11), is mixed in with HMAC before PBKDF2, so a stolen copy of D1 or
-  of an R2 backup cannot be brute-forced without it. It is opt-in: once set,
-  every account moves onto it at its next login (`upgradePasswordHash`).
-  **Never delete it.** Without it, every peppered password stops matching
-  until that member resets. Comparisons are constant-time, and a login for a
-  name or email that does not exist does the same work as a real one
-  (`burnPasswordCheck`), so response timing says nothing about who is a
-  member.
+- **Passwords are hashed with Argon2id** (`hashPassword` / `verifyPassword`
+  in worker.js). The settings are OWASP's recommended `m=19456` (19 MiB),
+  `t=2`, `p=1`, with 16 random bytes of salt per password, stored as a
+  standard PHC string `$argon2id$v=19$m=…,t=…,p=…$salt$hash`. A check costs
+  about 80 ms of CPU, which **needs the paid Workers plan** (the free plan
+  allows 10 ms; the site is on Paid). Cloudflare's WebCrypto has no Argon2,
+  so it is WebAssembly: `worker/argon2.js` imports the two vendored `.wasm`
+  files from `worker/vendor/argon2/` (byte-identical to hash-wasm 4.11.0's;
+  provenance and checksums are in that folder's README, and a test checks
+  the reference test vector). It runs **one hash at a time per isolate**,
+  because every run takes its full 19 MiB and an isolate has 128 MB. The
+  test fixture rewrites the `.wasm` imports for Node. `ARGON2_MAX` caps what
+  a stored hash may ask for, so a corrupted row cannot make a login allocate
+  gigabytes.
+  - **The pepper**: `PASSWORD_PEPPER`, a Worker **Secret** (Gotcha 11), is
+    passed to Argon2 as its built-in secret key and marked `keyid=pepper` in
+    the hash. A stolen copy of D1 or of an R2 backup is then useless without
+    the Worker's secrets too. It is opt-in, and accounts move onto it at
+    their next login. **Never delete it**: without it, every peppered
+    password stops matching until that member resets.
+  - **Older hashes are still read and never written.** `pbkdf2_sha256[p]$…`
+    was the format before Argon2id. `wrap:pbkdf2…|$argon2id$…` is an old
+    PBKDF2 hash with Argon2id run over it: the nightly cron
+    (`wrapLegacyPasswords`, after the backup) does this to accounts that
+    have not logged in since the switch, so no stored hash stays PBKDF2-only.
+    Any account on either form moves onto plain Argon2id the next time its
+    password is typed correctly (`needsRehash` / `upgradePasswordHash`),
+    which is also how raising `ARGON2` later would roll out.
+  - Comparisons are constant-time. A login for a name or email that does
+    not exist does the same Argon2 work as a real one (`burnPasswordCheck`),
+    so response timing says nothing about who is a member.
 - **`passwordProblem()` is the one rule for a new password** (signup, reset,
   account page): 8–200 characters, not the username or email, and not in a
   known breach. Breaches are checked against Have I Been Pwned's k-anonymity

@@ -340,6 +340,8 @@ import * as Bloodstar from './bloodstar.js';
 import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 import { homeData } from './home-data.js';
 import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
+// Argon2id, the password hash (see "Account security" in CLAUDE.md).
+import { argon2idRaw } from './argon2.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -473,43 +475,97 @@ const CONTENT = {
 const COMMENTABLE = ['character', 'collection', 'script', 'news', 'wikipage'];
 
 // ---- password hashing ----
-// Every password is SALTED (16 random bytes of its own, so two people with the
-// same password get unrelated hashes and no precomputed table helps) and
-// HASHED with PBKDF2-SHA256 at 100,000 rounds — the most Cloudflare Workers
-// will run; it rejects anything higher. Stored as
+// Every password is hashed with ARGON2ID, the current recommendation for
+// password storage (OWASP, RFC 9106): memory-hard, so the graphics cards and
+// custom chips that make fast work of older hashes gain little. Each password
+// gets 16 random bytes of SALT of its own, so two people with the same
+// password get unrelated hashes. Stored in the standard PHC form:
 //
-//   pbkdf2_sha256$iterations$salt_b64$hash_b64     salted
-//   pbkdf2_sha256p$iterations$salt_b64$hash_b64    salted AND peppered
+//   $argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>              salted
+//   $argon2id$v=19$m=19456,t=2,p=1,keyid=pepper$<salt>$<hash> salted + peppered
+//
+// m=19456 (19 MiB), t=2, p=1 is OWASP's recommended setting. It costs about
+// 80 ms of CPU per check, which the paid Workers plan allows (the free plan's
+// 10 ms would not). Raising ARGON2 later is safe: needsRehash() moves every
+// account onto the new numbers the next time it logs in.
 //
 // The PEPPER is a secret that lives only in the Worker's settings
-// (PASSWORD_PEPPER, set in the Cloudflare dashboard as type "Secret" — see
-// Gotcha 11), never in the database. The password is run through HMAC with it
-// before PBKDF2, so a stolen copy of D1 or of a nightly R2 backup is useless
-// for guessing passwords without ALSO stealing the Worker's secrets. It is
-// opt-in: with no secret set, nothing changes. Once it is set, every account
-// is moved onto the peppered form the next time it logs in
-// (needsRehash/upgradePasswordHash), so nobody has to reset anything.
-// LOSING the secret after that means every peppered password stops matching
-// and those members have to use "Forgot your password?" — never delete it.
-const PBKDF2_ITERATIONS = 100000;
+// (PASSWORD_PEPPER, type "Secret" — Gotcha 11), never in the database. It is
+// passed to Argon2 as its built-in secret key, so a stolen copy of D1 or of a
+// nightly R2 backup is useless for guessing passwords without ALSO stealing
+// the Worker's secrets. Opt-in: with no secret set, nothing changes. LOSING it
+// after it is set means every peppered password stops matching, and those
+// members have to use "Forgot your password?". Never delete it.
+//
+// Two older forms are still READ, never written:
+//   pbkdf2_sha256[p]$iterations$salt$hash   before Argon2id (p = peppered)
+//   wrap:pbkdf2_sha256[p]$iterations$salt|$argon2id$...
+// The second is an old PBKDF2 hash with Argon2id run OVER it, which the
+// nightly job (wrapLegacyPasswords) does to accounts that have not logged in
+// since the switch: nobody's stored hash stays PBKDF2-only waiting for a login
+// that may never come. Any account still on either form is moved onto plain
+// Argon2id the next time its password is typed correctly.
+const ARGON2 = { memoryKiB: 19456, iterations: 2, parallelism: 1, hashLength: 32 };
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 200;
 // What verifyPassword will even look at. Above PASSWORD_MAX so a password set
 // before that cap existed still works, but bounded, so nobody can make the
 // Worker hash a megabyte per request.
 const PASSWORD_VERIFY_MAX = 1024;
+// Ceilings on the numbers a STORED hash may ask for. A hash string is data;
+// one corrupted (or planted) with m=4000000 must not make a login allocate
+// 4 GB and crash the isolate.
+const ARGON2_MAX = { memoryKiB: 65536, iterations: 10, parallelism: 4 };
+const PBKDF2_MAX_ITERATIONS = 100000;
 
-async function passwordKeyBytes(env, password) {
-  const raw = new TextEncoder().encode(password);
-  const pepper = env && env.PASSWORD_PEPPER;
-  if (!pepper) return raw;
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(String(pepper)),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  return new Uint8Array(await crypto.subtle.sign('HMAC', key, raw));
+const enc = s => new TextEncoder().encode(s);
+// PHC strings use standard base64 with the padding left off.
+function b64NoPad(bytes) { return bytesToBase64(bytes).replace(/=+$/, ''); }
+function b64Decode(s) {
+  const t = String(s || '');
+  return base64ToBytes(t + '='.repeat((4 - t.length % 4) % 4));
 }
 
+function pepperBytes(env) {
+  return env && env.PASSWORD_PEPPER ? enc(String(env.PASSWORD_PEPPER)) : new Uint8Array(0);
+}
+
+async function argon2Hash(env, passwordBytes, salt, p = ARGON2) {
+  const out = await argon2idRaw({
+    password: passwordBytes, salt, secret: pepperBytes(env),
+    memoryKiB: p.memoryKiB, iterations: p.iterations, parallelism: p.parallelism,
+    hashLength: p.hashLength || 32
+  });
+  return b64NoPad(out);
+}
+
+// "$argon2id$v=19$m=..,t=..,p=..[,keyid=pepper]$salt$hash" -> its parts, or
+// null for anything that is not exactly that shape within the ceilings.
+function parseArgon2(phc) {
+  const parts = String(phc || '').split('$');
+  if (parts.length !== 6 || parts[0] !== '' || parts[1] !== 'argon2id' || parts[2] !== 'v=19') return null;
+  const params = {};
+  for (const kv of parts[3].split(',')) {
+    const i = kv.indexOf('=');
+    if (i < 1) return null;
+    params[kv.slice(0, i)] = kv.slice(i + 1);
+  }
+  const m = parseInt(params.m, 10), t = parseInt(params.t, 10), p = parseInt(params.p, 10);
+  if (!(m >= 8 && m <= ARGON2_MAX.memoryKiB && t >= 1 && t <= ARGON2_MAX.iterations && p >= 1 && p <= ARGON2_MAX.parallelism)) return null;
+  if (params.keyid !== undefined && params.keyid !== 'pepper') return null;
+  if (!parts[4] || !parts[5]) return null;
+  return {
+    memoryKiB: m, iterations: t, parallelism: p,
+    peppered: params.keyid === 'pepper',
+    salt: parts[4], hash: parts[5]
+  };
+}
+function formatArgon2(env, salt, hash, p = ARGON2) {
+  const keyid = env && env.PASSWORD_PEPPER ? ',keyid=pepper' : '';
+  return `$argon2id$v=19$m=${p.memoryKiB},t=${p.iterations},p=${p.parallelism}${keyid}$${b64NoPad(salt)}$${hash}`;
+}
+
+// ---- the legacy PBKDF2 form (read only) ----
 async function pbkdf2(keyBytes, salt, iterations) {
   const key = await crypto.subtle.importKey(
     'raw', keyBytes, { name: 'PBKDF2' }, false, ['deriveBits']
@@ -519,6 +575,30 @@ async function pbkdf2(keyBytes, salt, iterations) {
     key, 256
   );
   return bytesToBase64(new Uint8Array(bits));
+}
+// What the old PBKDF2 code fed into PBKDF2: the password, or an HMAC of it
+// with the pepper for the 'p' form.
+async function pbkdf2KeyBytes(env, password, peppered) {
+  if (!peppered) return enc(password);
+  const key = await crypto.subtle.importKey(
+    'raw', enc(String(env.PASSWORD_PEPPER)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, enc(password)));
+}
+// "pbkdf2_sha256[p]$iter$salt" (+ optional "$hash") -> its parts, or null.
+function parsePbkdf2(s) {
+  const parts = String(s || '').split('$');
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const peppered = parts[0] === 'pbkdf2_sha256p';
+  if (!peppered && parts[0] !== 'pbkdf2_sha256') return null;
+  const iterations = parseInt(parts[1], 10);
+  if (!(iterations > 0 && iterations <= PBKDF2_MAX_ITERATIONS)) return null;
+  let salt;
+  try { salt = base64ToBytes(parts[2]); } catch { return null; }
+  return { peppered, iterations, salt, hash: parts[3] };
+}
+async function pbkdf2Of(env, password, p) {
+  return pbkdf2(await pbkdf2KeyBytes(env, password, p.peppered), p.salt, p.iterations);
 }
 
 // Compares in time that does not depend on WHERE two strings first differ, so
@@ -533,60 +613,111 @@ function timingSafeEqualStr(a, b) {
 
 // The same work a real check does, for when there is nothing to check against
 // (no such account, or a Discord-only one). Without it "no account has this
-// email" answered in a millisecond and a wrong password took a tenth of a
-// second, which told anyone timing the login form which emails are members.
+// email" answered at once and a wrong password took a tenth of a second,
+// which told anyone timing the login form which emails are members.
 const _dummySalt = new Uint8Array(16);
 async function burnPasswordCheck(password) {
-  try { await pbkdf2(new TextEncoder().encode(String(password || '').slice(0, PASSWORD_VERIFY_MAX)), _dummySalt, PBKDF2_ITERATIONS); }
+  try { await argon2Hash(null, enc(String(password || '').slice(0, PASSWORD_VERIFY_MAX)), _dummySalt); }
   catch { /* timing filler only */ }
   return false;
+}
+
+function missingPepper() {
+  // Loud, because this locks every peppered account out until it is fixed.
+  console.error('[auth] a peppered password hash was found but PASSWORD_PEPPER is not set');
+}
+
+async function verifyArgon2(env, passwordBytes, a) {
+  if (a.peppered && !(env && env.PASSWORD_PEPPER)) { missingPepper(); return false; }
+  // The secret goes in only when the hash was made with one: a hash stored
+  // before the pepper was set must still verify after it is.
+  const useEnv = a.peppered ? env : null;
+  let salt;
+  try { salt = b64Decode(a.salt); } catch { return false; }
+  const got = await argon2Hash(useEnv, passwordBytes, salt, a);
+  return timingSafeEqualStr(got, a.hash);
 }
 
 async function verifyPassword(env, password, stored) {
   password = String(password == null ? '' : password);
   if (!stored || password.length > PASSWORD_VERIFY_MAX) return burnPasswordCheck(password);
-  const parts = String(stored).split('$');
-  if (parts.length !== 4) return burnPasswordCheck(password);
-  const peppered = parts[0] === 'pbkdf2_sha256p';
-  if (!peppered && parts[0] !== 'pbkdf2_sha256') return burnPasswordCheck(password);
-  if (peppered && !(env && env.PASSWORD_PEPPER)) {
-    // Loud, because this locks every peppered account out until it is fixed.
-    console.error('[auth] a peppered password hash was found but PASSWORD_PEPPER is not set');
-    return burnPasswordCheck(password);
+  stored = String(stored);
+  try {
+    if (stored.startsWith('$argon2id$')) {
+      const a = parseArgon2(stored);
+      return a ? await verifyArgon2(env, enc(password), a) : burnPasswordCheck(password);
+    }
+    if (stored.startsWith('wrap:')) {
+      const bar = stored.indexOf('|');
+      const inner = parsePbkdf2(stored.slice(5, bar));
+      const a = parseArgon2(stored.slice(bar + 1));
+      if (bar < 0 || !inner || !a) return burnPasswordCheck(password);
+      if (inner.peppered && !(env && env.PASSWORD_PEPPER)) { missingPepper(); return false; }
+      return await verifyArgon2(env, enc(await pbkdf2Of(env, password, inner)), a);
+    }
+    const p = parsePbkdf2(stored);
+    if (!p || !p.hash) return burnPasswordCheck(password);
+    if (p.peppered && !(env && env.PASSWORD_PEPPER)) { missingPepper(); return false; }
+    return timingSafeEqualStr(await pbkdf2Of(env, password, p), p.hash);
+  } catch (e) {
+    console.error('[auth] password check failed:', (e && e.message) || e);
+    return false;
   }
-  const iterations = parseInt(parts[1], 10);
-  if (!(iterations > 0 && iterations <= PBKDF2_ITERATIONS)) return burnPasswordCheck(password);
-  let salt;
-  try { salt = base64ToBytes(parts[2]); } catch { return burnPasswordCheck(password); }
-  const keyBytes = peppered ? await passwordKeyBytes(env, password) : new TextEncoder().encode(password);
-  return timingSafeEqualStr(await pbkdf2(keyBytes, salt, iterations), parts[3]);
 }
 
 async function hashPassword(env, password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const peppered = !!(env && env.PASSWORD_PEPPER);
-  const hash = await pbkdf2(await passwordKeyBytes(env, password), salt, PBKDF2_ITERATIONS);
-  return `${peppered ? 'pbkdf2_sha256p' : 'pbkdf2_sha256'}$${PBKDF2_ITERATIONS}$${bytesToBase64(salt)}$${hash}`;
+  return formatArgon2(env, salt, await argon2Hash(env, enc(String(password)), salt));
 }
 
-// True when a hash that just verified was made under weaker settings than
-// today's: fewer rounds, or no pepper now that one is configured.
+// True when a hash that just verified is weaker than what would be written
+// today: not plain Argon2id, smaller numbers, or no pepper now that one is set.
 function needsRehash(env, stored) {
-  const parts = String(stored || '').split('$');
-  if (parts.length !== 4) return false;
-  if ((parseInt(parts[1], 10) || 0) < PBKDF2_ITERATIONS) return true;
-  return !!(env && env.PASSWORD_PEPPER) && parts[0] !== 'pbkdf2_sha256p';
+  const a = parseArgon2(stored);
+  if (!a) return true;
+  if (a.memoryKiB < ARGON2.memoryKiB || a.iterations < ARGON2.iterations || a.parallelism < ARGON2.parallelism) return true;
+  return !!(env && env.PASSWORD_PEPPER) && !a.peppered;
 }
 
 // Called right after a successful login, while the plain password is in hand —
 // the only moment an old hash can be moved onto the current settings. The
 // WHERE pins the old hash, so a password change racing it always wins.
 async function upgradePasswordHash(env, userId, password, oldHash) {
-  if (!needsRehash(env, oldHash)) return;
+  if (!oldHash || !needsRehash(env, oldHash)) return;
   try {
     await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=? AND password_hash=?')
       .bind(await hashPassword(env, password), userId, oldHash).run();
   } catch (e) { console.error('[auth] password rehash failed:', (e && e.message) || e); }
+}
+
+// Nightly: put Argon2id over every PBKDF2-only hash still in the table, so the
+// accounts that never log in again are not left on the old algorithm. Needs
+// no password — Argon2id is run over the stored PBKDF2 output, and the login
+// check runs PBKDF2 then Argon2id in the same order. Batched (each one is a
+// full Argon2 run) and re-runnable; the WHERE pins the hash it read, so a
+// login or a password change landing at the same moment always wins.
+const WRAP_BATCH = 200;
+async function wrapLegacyPasswords(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, password_hash FROM users WHERE password_hash LIKE 'pbkdf2_sha256%' LIMIT ?"
+  ).bind(WRAP_BATCH).all();
+  let wrapped = 0;
+  for (const r of results || []) {
+    const p = parsePbkdf2(r.password_hash);
+    if (!p || !p.hash) continue;
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const outer = formatArgon2(env, salt, await argon2Hash(env, enc(p.hash), salt));
+      const inner = r.password_hash.slice(0, r.password_hash.lastIndexOf('$'));
+      const res = await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=? AND password_hash=?')
+        .bind('wrap:' + inner + '|' + outer, r.id, r.password_hash).run();
+      if (res && res.meta && res.meta.changes) wrapped++;
+    } catch (e) {
+      console.error('[auth] wrapping a legacy hash failed:', (e && e.message) || e);
+      break; // the WebAssembly is unavailable; try again tomorrow
+    }
+  }
+  return { wrapped, left: Math.max(0, (results || []).length - wrapped) };
 }
 
 async function sha1Hex(s) {
@@ -13662,6 +13793,16 @@ const app = {
         }
       } catch (e) {
         console.error('[cron] backup threw:', (e && e.message) || e);
+      }
+
+      // Argon2id over any password hash still PBKDF2-only (see
+      // wrapLegacyPasswords). AFTER the backup, so a snapshot of the old
+      // hashes exists if anything here ever went wrong.
+      try {
+        const w = await wrapLegacyPasswords(env);
+        if (w.wrapped || w.left) console.log('[cron] legacy password hashes wrapped:', w.wrapped, 'left in batch:', w.left);
+      } catch (e) {
+        console.error('[cron] password wrapping threw:', (e && e.message) || e);
       }
 
       // Retention. page_views(day) is indexed now, so this is a range delete
