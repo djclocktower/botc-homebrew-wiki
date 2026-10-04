@@ -1922,7 +1922,13 @@ unticked box posts nothing; 100 is never stored either (`Render.artScaleValue()`
 answers 0 for it and for anything outside the range, and `/api/character` runs
 it on save), so an untouched page grows no key and keeps following the
 stylesheet. The editors' live preview follows it, since the frame carries the
-same stylesheet.
+same stylesheet. **A size above 100% stays inside the info card**: the
+emblem's margins grow by the height the scale adds (so it pushes the title
+and the quote apart instead of covering them), sideways it is clipped to the
+width it is drawn at by default, and the card takes `overflow-x: clip` so
+the transformed box no longer widens the page on a phone (`clip-path` alone
+hides the spill but it still counts as scrollable width). All of it is keyed
+on `[style*="--art-scale"]`, so a page nobody sized draws as before.
 
 Existing art is fixed by running the admin page **`/normalize-icons`**
 ("Standardize Icons") once after deploy: it now skips anything already on
