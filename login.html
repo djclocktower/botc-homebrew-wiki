@@ -327,11 +327,20 @@
     // Where to go after a successful log-in. ?next= is a page on THIS site and
     // nothing else: a bare "next=https://…" (or a "javascript:" URL) on a
     // log-in page is how people get bounced somewhere they didn't expect.
+    //
+    // Decided by the browser's own URL parser, never by a pattern over the raw
+    // text: the parser drops tabs, newlines and leading control characters,
+    // so a value a regex reads as harmless could come out the other side as a
+    // script URL or "//another-site". Parsed against this page and required
+    // to land on this origin, nothing can.
     function safeNext() {
       var raw = new URLSearchParams(location.search).get('next') || '';
-      // no scheme, no protocol-relative "//host", no backslash tricks
-      if (!raw || /^[a-z][a-z0-9+.-]*:/i.test(raw) || /^[/\\]{2}/.test(raw)) return 'account';
-      return raw.replace(/^\/+/, '');
+      if (!raw) return 'account';
+      try {
+        var u = new URL(raw, location.href);
+        if (u.origin === location.origin && /^https?:$/.test(u.protocol)) return u.pathname + u.search + u.hash;
+      } catch (e) { /* fall through */ }
+      return 'account';
     }
 
     function postJSON(path, body) {

@@ -340,6 +340,8 @@ import * as Bloodstar from './bloodstar.js';
 import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 import { homeData } from './home-data.js';
 import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
+// Argon2id, the password hash (see "Account security" in CLAUDE.md).
+import { argon2idRaw } from './argon2.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -472,13 +474,101 @@ const CONTENT = {
 // on both.
 const COMMENTABLE = ['character', 'collection', 'script', 'news', 'wikipage'];
 
-// ---- password hashing (PBKDF2, matches the seeded admin hash) ----
-const PBKDF2_ITERATIONS = 100000;
+// ---- password hashing ----
+// Every password is hashed with ARGON2ID, the current recommendation for
+// password storage (OWASP, RFC 9106): memory-hard, so the graphics cards and
+// custom chips that make fast work of older hashes gain little. Each password
+// gets 16 random bytes of SALT of its own, so two people with the same
+// password get unrelated hashes. Stored in the standard PHC form:
+//
+//   $argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>              salted
+//   $argon2id$v=19$m=19456,t=2,p=1,keyid=pepper$<salt>$<hash> salted + peppered
+//
+// m=19456 (19 MiB), t=2, p=1 is OWASP's recommended setting. It costs about
+// 80 ms of CPU per check, which the paid Workers plan allows (the free plan's
+// 10 ms would not). Raising ARGON2 later is safe: needsRehash() moves every
+// account onto the new numbers the next time it logs in.
+//
+// The PEPPER is a secret that lives only in the Worker's settings
+// (PASSWORD_PEPPER, type "Secret" — Gotcha 11), never in the database. It is
+// passed to Argon2 as its built-in secret key, so a stolen copy of D1 or of a
+// nightly R2 backup is useless for guessing passwords without ALSO stealing
+// the Worker's secrets. Opt-in: with no secret set, nothing changes. LOSING it
+// after it is set means every peppered password stops matching, and those
+// members have to use "Forgot your password?". Never delete it.
+//
+// Two older forms are still READ, never written:
+//   pbkdf2_sha256[p]$iterations$salt$hash   before Argon2id (p = peppered)
+//   wrap:pbkdf2_sha256[p]$iterations$salt|$argon2id$...
+// The second is an old PBKDF2 hash with Argon2id run OVER it, which the
+// nightly job (wrapLegacyPasswords) does to accounts that have not logged in
+// since the switch: nobody's stored hash stays PBKDF2-only waiting for a login
+// that may never come. Any account still on either form is moved onto plain
+// Argon2id the next time its password is typed correctly.
+const ARGON2 = { memoryKiB: 19456, iterations: 2, parallelism: 1, hashLength: 32 };
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 200;
+// What verifyPassword will even look at. Above PASSWORD_MAX so a password set
+// before that cap existed still works, but bounded, so nobody can make the
+// Worker hash a megabyte per request.
+const PASSWORD_VERIFY_MAX = 1024;
+// Ceilings on the numbers a STORED hash may ask for. A hash string is data;
+// one corrupted (or planted) with m=4000000 must not make a login allocate
+// 4 GB and crash the isolate.
+const ARGON2_MAX = { memoryKiB: 65536, iterations: 10, parallelism: 4 };
+const PBKDF2_MAX_ITERATIONS = 100000;
 
-async function pbkdf2(password, salt, iterations) {
+const enc = s => new TextEncoder().encode(s);
+// PHC strings use standard base64 with the padding left off.
+function b64NoPad(bytes) { return bytesToBase64(bytes).replace(/=+$/, ''); }
+function b64Decode(s) {
+  const t = String(s || '');
+  return base64ToBytes(t + '='.repeat((4 - t.length % 4) % 4));
+}
+
+function pepperBytes(env) {
+  return env && env.PASSWORD_PEPPER ? enc(String(env.PASSWORD_PEPPER)) : new Uint8Array(0);
+}
+
+async function argon2Hash(env, passwordBytes, salt, p = ARGON2) {
+  const out = await argon2idRaw({
+    password: passwordBytes, salt, secret: pepperBytes(env),
+    memoryKiB: p.memoryKiB, iterations: p.iterations, parallelism: p.parallelism,
+    hashLength: p.hashLength || 32
+  });
+  return b64NoPad(out);
+}
+
+// "$argon2id$v=19$m=..,t=..,p=..[,keyid=pepper]$salt$hash" -> its parts, or
+// null for anything that is not exactly that shape within the ceilings.
+function parseArgon2(phc) {
+  const parts = String(phc || '').split('$');
+  if (parts.length !== 6 || parts[0] !== '' || parts[1] !== 'argon2id' || parts[2] !== 'v=19') return null;
+  const params = {};
+  for (const kv of parts[3].split(',')) {
+    const i = kv.indexOf('=');
+    if (i < 1) return null;
+    params[kv.slice(0, i)] = kv.slice(i + 1);
+  }
+  const m = parseInt(params.m, 10), t = parseInt(params.t, 10), p = parseInt(params.p, 10);
+  if (!(m >= 8 && m <= ARGON2_MAX.memoryKiB && t >= 1 && t <= ARGON2_MAX.iterations && p >= 1 && p <= ARGON2_MAX.parallelism)) return null;
+  if (params.keyid !== undefined && params.keyid !== 'pepper') return null;
+  if (!parts[4] || !parts[5]) return null;
+  return {
+    memoryKiB: m, iterations: t, parallelism: p,
+    peppered: params.keyid === 'pepper',
+    salt: parts[4], hash: parts[5]
+  };
+}
+function formatArgon2(env, salt, hash, p = ARGON2) {
+  const keyid = env && env.PASSWORD_PEPPER ? ',keyid=pepper' : '';
+  return `$argon2id$v=19$m=${p.memoryKiB},t=${p.iterations},p=${p.parallelism}${keyid}$${b64NoPad(salt)}$${hash}`;
+}
+
+// ---- the legacy PBKDF2 form (read only) ----
+async function pbkdf2(keyBytes, salt, iterations) {
   const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(password),
-    { name: 'PBKDF2' }, false, ['deriveBits']
+    'raw', keyBytes, { name: 'PBKDF2' }, false, ['deriveBits']
   );
   const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
@@ -486,21 +576,200 @@ async function pbkdf2(password, salt, iterations) {
   );
   return bytesToBase64(new Uint8Array(bits));
 }
-
-async function verifyPassword(password, stored) {
-  // stored format: pbkdf2_sha256$iterations$salt_b64$hash_b64
-  if (!stored) return false; // Discord-only accounts have no password
-  const parts = stored.split('$');
-  if (parts.length !== 4 || parts[0] !== 'pbkdf2_sha256') return false;
+// What the old PBKDF2 code fed into PBKDF2: the password, or an HMAC of it
+// with the pepper for the 'p' form.
+async function pbkdf2KeyBytes(env, password, peppered) {
+  if (!peppered) return enc(password);
+  const key = await crypto.subtle.importKey(
+    'raw', enc(String(env.PASSWORD_PEPPER)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, enc(password)));
+}
+// "pbkdf2_sha256[p]$iter$salt" (+ optional "$hash") -> its parts, or null.
+function parsePbkdf2(s) {
+  const parts = String(s || '').split('$');
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const peppered = parts[0] === 'pbkdf2_sha256p';
+  if (!peppered && parts[0] !== 'pbkdf2_sha256') return null;
   const iterations = parseInt(parts[1], 10);
-  const salt = base64ToBytes(parts[2]);
-  return (await pbkdf2(password, salt, iterations)) === parts[3];
+  if (!(iterations > 0 && iterations <= PBKDF2_MAX_ITERATIONS)) return null;
+  let salt;
+  try { salt = base64ToBytes(parts[2]); } catch { return null; }
+  return { peppered, iterations, salt, hash: parts[3] };
+}
+async function pbkdf2Of(env, password, p) {
+  return pbkdf2(await pbkdf2KeyBytes(env, password, p.peppered), p.salt, p.iterations);
 }
 
-async function hashPassword(password) {
+// Compares in time that does not depend on WHERE two strings first differ, so
+// response timing cannot be used to recover a stored hash a byte at a time.
+function timingSafeEqualStr(a, b) {
+  a = String(a); b = String(b);
+  let diff = a.length ^ b.length;
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) diff |= (a.charCodeAt(i) | 0) ^ (b.charCodeAt(i) | 0);
+  return diff === 0;
+}
+
+// The same work a real check does, for when there is nothing to check against
+// (no such account, or a Discord-only one). Without it "no account has this
+// email" answered at once and a wrong password took a tenth of a second,
+// which told anyone timing the login form which emails are members.
+const _dummySalt = new Uint8Array(16);
+async function burnPasswordCheck(password) {
+  try { await argon2Hash(null, enc(String(password || '').slice(0, PASSWORD_VERIFY_MAX)), _dummySalt); }
+  catch { /* timing filler only */ }
+  return false;
+}
+
+function missingPepper() {
+  // Loud, because this locks every peppered account out until it is fixed.
+  console.error('[auth] a peppered password hash was found but PASSWORD_PEPPER is not set');
+}
+
+async function verifyArgon2(env, passwordBytes, a) {
+  if (a.peppered && !(env && env.PASSWORD_PEPPER)) { missingPepper(); return false; }
+  // The secret goes in only when the hash was made with one: a hash stored
+  // before the pepper was set must still verify after it is.
+  const useEnv = a.peppered ? env : null;
+  let salt;
+  try { salt = b64Decode(a.salt); } catch { return false; }
+  const got = await argon2Hash(useEnv, passwordBytes, salt, a);
+  return timingSafeEqualStr(got, a.hash);
+}
+
+async function verifyPassword(env, password, stored) {
+  password = String(password == null ? '' : password);
+  if (!stored || password.length > PASSWORD_VERIFY_MAX) return burnPasswordCheck(password);
+  stored = String(stored);
+  try {
+    if (stored.startsWith('$argon2id$')) {
+      const a = parseArgon2(stored);
+      return a ? await verifyArgon2(env, enc(password), a) : burnPasswordCheck(password);
+    }
+    if (stored.startsWith('wrap:')) {
+      const bar = stored.indexOf('|');
+      const inner = parsePbkdf2(stored.slice(5, bar));
+      const a = parseArgon2(stored.slice(bar + 1));
+      if (bar < 0 || !inner || !a) return burnPasswordCheck(password);
+      if (inner.peppered && !(env && env.PASSWORD_PEPPER)) { missingPepper(); return false; }
+      return await verifyArgon2(env, enc(await pbkdf2Of(env, password, inner)), a);
+    }
+    const p = parsePbkdf2(stored);
+    if (!p || !p.hash) return burnPasswordCheck(password);
+    if (p.peppered && !(env && env.PASSWORD_PEPPER)) { missingPepper(); return false; }
+    return timingSafeEqualStr(await pbkdf2Of(env, password, p), p.hash);
+  } catch (e) {
+    console.error('[auth] password check failed:', (e && e.message) || e);
+    return false;
+  }
+}
+
+async function hashPassword(env, password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
-  return `pbkdf2_sha256$${PBKDF2_ITERATIONS}$${bytesToBase64(salt)}$${hash}`;
+  return formatArgon2(env, salt, await argon2Hash(env, enc(String(password)), salt));
+}
+
+// True when a hash that just verified is weaker than what would be written
+// today: not plain Argon2id, smaller numbers, or no pepper now that one is set.
+function needsRehash(env, stored) {
+  const a = parseArgon2(stored);
+  if (!a) return true;
+  if (a.memoryKiB < ARGON2.memoryKiB || a.iterations < ARGON2.iterations || a.parallelism < ARGON2.parallelism) return true;
+  return !!(env && env.PASSWORD_PEPPER) && !a.peppered;
+}
+
+// Called right after a successful login, while the plain password is in hand —
+// the only moment an old hash can be moved onto the current settings. The
+// WHERE pins the old hash, so a password change racing it always wins.
+async function upgradePasswordHash(env, userId, password, oldHash) {
+  if (!oldHash || !needsRehash(env, oldHash)) return;
+  try {
+    await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=? AND password_hash=?')
+      .bind(await hashPassword(env, password), userId, oldHash).run();
+  } catch (e) { console.error('[auth] password rehash failed:', (e && e.message) || e); }
+}
+
+// Nightly: put Argon2id over every PBKDF2-only hash still in the table, so the
+// accounts that never log in again are not left on the old algorithm. Needs
+// no password — Argon2id is run over the stored PBKDF2 output, and the login
+// check runs PBKDF2 then Argon2id in the same order. Batched (each one is a
+// full Argon2 run) and re-runnable; the WHERE pins the hash it read, so a
+// login or a password change landing at the same moment always wins.
+const WRAP_BATCH = 200;
+async function wrapLegacyPasswords(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, password_hash FROM users WHERE password_hash LIKE 'pbkdf2_sha256%' LIMIT ?"
+  ).bind(WRAP_BATCH).all();
+  let wrapped = 0;
+  for (const r of results || []) {
+    const p = parsePbkdf2(r.password_hash);
+    if (!p || !p.hash) continue;
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const outer = formatArgon2(env, salt, await argon2Hash(env, enc(p.hash), salt));
+      const inner = r.password_hash.slice(0, r.password_hash.lastIndexOf('$'));
+      const res = await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=? AND password_hash=?')
+        .bind('wrap:' + inner + '|' + outer, r.id, r.password_hash).run();
+      if (res && res.meta && res.meta.changes) wrapped++;
+    } catch (e) {
+      console.error('[auth] wrapping a legacy hash failed:', (e && e.message) || e);
+      break; // the WebAssembly is unavailable; try again tomorrow
+    }
+  }
+  return { wrapped, left: Math.max(0, (results || []).length - wrapped) };
+}
+
+async function sha1Hex(s) {
+  const d = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+async function sha256Hex(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Has this exact password turned up in a public data breach? Asked of Have I
+// Been Pwned's range API with k-anonymity: only the first 5 characters of the
+// password's SHA-1 ever leave the Worker, never the password and never its full
+// hash, and Add-Padding hides even how many matches came back. A breached
+// password is the first thing an attacker tries against every account, which
+// is why current guidance (NIST SP 800-63B) is to refuse them outright. Fails
+// OPEN: if the service is slow or down, the password is judged on the other
+// rules alone rather than nobody being able to sign up.
+async function passwordBreached(password) {
+  try {
+    const hex = await sha1Hex(password);
+    const res = await fetch('https://api.pwnedpasswords.com/range/' + hex.slice(0, 5), {
+      headers: { 'Add-Padding': 'true', 'User-Agent': 'botchomebrew.wiki' },
+      signal: AbortSignal.timeout(2500)
+    });
+    if (!res.ok) return false;
+    const suffix = hex.slice(5);
+    for (const line of (await res.text()).split('\n')) {
+      const [s, n] = line.trim().split(':');
+      if (s === suffix) return (parseInt(n, 10) || 0) > 0;
+    }
+    return false;
+  } catch { return false; }
+}
+
+// The one answer to "may this be somebody's new password". Signup, reset and
+// the account page all ask it, so the three cannot drift apart. Returns an
+// error message, or null when the password is acceptable.
+async function passwordProblem(password, who = {}) {
+  password = String(password || '');
+  if (password.length < PASSWORD_MIN) return `Password must be at least ${PASSWORD_MIN} characters.`;
+  if (password.length > PASSWORD_MAX) return `Password must be at most ${PASSWORD_MAX} characters.`;
+  const low = password.toLowerCase();
+  const same = [who.username, who.email, who.email && String(who.email).split('@')[0]]
+    .filter(Boolean).map(s => String(s).toLowerCase());
+  if (same.includes(low)) return 'Your password can\'t be your username or email address.';
+  if (/^(.)\1+$/.test(password)) return 'That password is too easy to guess. Please choose a different one.';
+  if (await passwordBreached(password)) {
+    return 'That password has appeared in a known data breach, so attackers try it first. Please choose a different one.';
+  }
+  return null;
 }
 
 function base64ToBytes(b64) {
@@ -675,9 +944,11 @@ async function assetsOrNotFound(env, request) {
 // consistent store, so a concurrent burst overshot the limit; this is one
 // statement and SQLite settles it.
 async function rateLimited(env, request, bucket, limit, windowSec, opts = {}) {
-  const identity = opts.sess && opts.sess.userId
-    ? 'u' + opts.sess.userId
-    : (request.headers.get('CF-Connecting-IP') || 'unknown');
+  const identity = opts.identity
+    ? String(opts.identity)
+    : opts.sess && opts.sess.userId
+      ? 'u' + opts.sess.userId
+      : (request.headers.get('CF-Connecting-IP') || 'unknown');
   const key = `rl:${bucket}:${identity}`;
   const now = Math.floor(Date.now() / 1000);
   const expires = now + windowSec;
@@ -707,6 +978,32 @@ async function rateLimited(env, request, bucket, limit, windowSec, opts = {}) {
     console.error('[ratelimit] counter unavailable, allowing:', (e && e.message) || e);
     return false;
   }
+}
+
+// ---- failed logins, per ACCOUNT ----
+// The login limit above is per connection, which stops one machine guessing
+// but not a botnet spreading guesses for one account over thousands of
+// addresses. This counts FAILED passwords against the account itself, across
+// every connection. Only failures count, a correct password clears it, and a
+// password reset clears it — so the worst somebody hammering your name can do
+// is make you use "Forgot your password?", never lock you out for good.
+const LOGIN_FAIL_LIMIT = 20;
+const LOGIN_FAIL_WINDOW = 60 * 60;
+function loginFailKey(userId) { return 'rl:loginfail:u' + userId; }
+async function loginFailuresExceeded(env, userId) {
+  try {
+    await ensureRateTable(env);
+    const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=? AND expires>?')
+      .bind(loginFailKey(userId), Math.floor(Date.now() / 1000)).first();
+    return !!row && row.n >= LOGIN_FAIL_LIMIT;
+  } catch { return false; }
+}
+async function recordLoginFailure(env, request, userId) {
+  await rateLimited(env, request, 'loginfail', LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, { identity: 'u' + userId });
+}
+async function clearLoginFailures(env, userId) {
+  try { await env.DB.prepare('DELETE FROM rate_limits WHERE key=?').bind(loginFailKey(userId)).run(); }
+  catch { /* housekeeping */ }
 }
 
 // Every 429 the site sends should say when to come back; none of them did.
@@ -917,11 +1214,61 @@ async function sendEmail(env, to, subject, html) {
   }
 }
 
+// ---- one-time email links (verification, password reset) ----
+// The link carries a random 256-bit token; KV stores only its SHA-256, so
+// anyone who can read the SESSIONS namespace still cannot use a link. Each one
+// is bound to the account AND to the email address it was sent to, and
+// consumeEmailToken() deletes it on first use.
+//
+// The email binding closes a real hole. Verification used to remember only the
+// account id, so a member could ask for a link to their own inbox, change the
+// account's email to somebody else's address, then click the old link — and
+// the stranger's address was marked verified. Discord sign-in links a Discord
+// login to an existing account whose verified email matches, so the stranger
+// signing in with Discord later would have been dropped into the attacker's
+// account without knowing it.
+const EMAIL_TOKEN_RE = /^[a-f0-9]{64}$/;
+
+async function storeEmailToken(env, kind, token, value, ttl) {
+  await env.SESSIONS.put(kind + ':' + await sha256Hex(token), JSON.stringify(value), { expirationTtl: ttl });
+}
+async function readEmailToken(env, kind, token) {
+  if (!EMAIL_TOKEN_RE.test(String(token || ''))) return null;
+  const key = kind + ':' + await sha256Hex(token);
+  const raw = await env.SESSIONS.get(key).catch(() => null);
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === 'object' && v.id ? { ...v, _key: key } : null;
+  } catch { return null; }
+}
+async function consumeEmailToken(env, rec) {
+  if (rec && rec._key) await env.SESSIONS.delete(rec._key).catch(() => {});
+}
+function sameEmail(a, b) {
+  return !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+}
+// A fingerprint of the stored password hash, so a reset link dies the moment
+// the password changes by ANY route: the reset it was for, a later one, or the
+// account page. Without it every link requested in the last hour stayed live
+// after the first was used.
+async function passwordFingerprint(hash) {
+  return (await sha256Hex('pwfp:' + String(hash || ''))).slice(0, 32);
+}
+
+// "j•••@gmail.com": enough for the owner to recognise, not enough to harvest.
+function maskEmail(email) {
+  const e = String(email || '');
+  const at = e.lastIndexOf('@');
+  if (at < 1) return '•••';
+  return e.charAt(0) + '•••' + e.slice(at);
+}
+
 async function sendVerificationEmail(env, origin, user) {
   if (!user.email) return { ok: false, error: 'No email on this account.' };
   const token = randomToken();
-  await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
-  const link = origin + '/api/verify-email?token=' + token;
+  await storeEmailToken(env, 'verify', token, { id: user.id, email: user.email }, 60 * 60 * 24);
+  const link = canonicalOrigin(env) + '/api/verify-email?token=' + token;
   return sendEmail(env, user.email, 'Verify your email for ' + APP_NAME, emailShell(
     'Verify your email',
     `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
@@ -931,10 +1278,26 @@ async function sendVerificationEmail(env, origin, user) {
   ));
 }
 
+// Tells the account's owner that something security-relevant just happened to
+// it, at the address that was on file BEFORE it happened. This is what turns a
+// silent takeover into one the real owner hears about within minutes.
+// Best-effort: a failed notice never fails the change itself.
+async function sendSecurityNotice(env, to, user, title, bodyHtml) {
+  if (!to) return;
+  try {
+    await sendEmail(env, to, title + ' — ' + APP_NAME, emailShell(title,
+      `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
+       ${bodyHtml}
+       <p>If this was you, there is nothing to do. <b>If it wasn't</b>, reset your
+       password straight away from the login page (<a href="${canonicalOrigin(env)}/login" style="color:#5b1f21">${escapeHtml(canonicalOrigin(env).replace(/^https?:\/\//, ''))}/login</a>,
+       "Forgot your password?") and contact the admins from your account page.</p>`));
+  } catch { /* never fail the change over the notice */ }
+}
+
 function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ---- accented Latin letters -> their plain letters ----
@@ -1019,8 +1382,11 @@ function validSignup(username, email, password) {
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
     return 'Please enter a valid email address.';
   }
-  if (!password || password.length < 8 || password.length > 200) {
-    return 'Password must be at least 8 characters.';
+  if (!password || password.length < PASSWORD_MIN) {
+    return `Password must be at least ${PASSWORD_MIN} characters.`;
+  }
+  if (password.length > PASSWORD_MAX) {
+    return `Password must be at most ${PASSWORD_MAX} characters.`;
   }
   return null;
 }
@@ -1981,6 +2347,48 @@ function sanitizeBoxes(boxes) {
 // anything that names nobody. `mirrored`/`mirroredFrom` are deliberately NOT
 // kept: those are added on read, and a client must never be able to fake one.
 const JINX_MAX = 60;
+/* A suggestion is the whole page as somebody else would have saved it, and
+   approving one writes it through applyRollback() — which, like a rollback,
+   stores the blob as given. So everything the owner alone decides is pinned
+   back to the stored page here (at submission AND again at approval), and the
+   fields the save handlers clean are cleaned the same way, or approving a
+   suggestion could slip the suggester onto the page's editor list or store
+   a jinx list no save would have accepted. */
+// What a failed write tells the reader. A message written FOR them (an
+// error thrown with `public: true`) is shown; anything else — a D1 error
+// with table and column names in it — goes to the log and the reader gets
+// the plain fallback.
+function publicError(e, fallback) {
+  if (e && e.public && e.message) return e.message;
+  console.error('[write] failed:', (e && (e.stack || e.message)) || e);
+  return fallback;
+}
+
+// The seven teams, in the wiki's order (see "Frontend conventions").
+const CHARACTER_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+
+// Keys inside a page's `data` that only its owner (and admins) may read.
+const PRIVATE_DATA_KEYS = new Set(['editors', '_draftNote']);
+
+function pinSuggestedFields(type, d, stored) {
+  for (const k of ['editors', '_draftNote', 'tagsBy']) {
+    if (stored[k] !== undefined) d[k] = stored[k]; else delete d[k];
+  }
+  if (type === 'character') {
+    d.jinxes = sanitizeJinxes(d.jinxes);
+    if (!d.jinxes.length) delete d.jinxes;
+    d.related = sanitizeRelated(d.related);
+    if (!d.related.length) delete d.related;
+    d.artScale = Render.artScaleValue(d.artScale);
+    if (!d.artScale) delete d.artScale;
+  } else if (type === 'script') {
+    sanitizePageFields(d, 'scripts/' + (stored.slug || d.slug));
+  } else if (type === 'collection') {
+    sanitizePageFields(d, 'collections/' + (stored.id || d.id));
+  }
+  return d;
+}
+
 function sanitizeJinxes(jinxes) {
   if (!Array.isArray(jinxes)) return [];
   return jinxes.slice(0, JINX_MAX).map(j => {
@@ -2253,7 +2661,7 @@ async function adminSession(env, request) {
   const sess = await getSession(env, request);
   if (!sess || !sess.isAdmin) return null;
   const flags = await getAccountFlags(env, sess.userId);
-  if (!flags || !flags.is_admin) return null;
+  if (!flags || !flags.is_admin || flags.banned) return null;
   return sess;
 }
 
@@ -2672,6 +3080,12 @@ async function notifyEditorsAdded(env, opts) {
     const who = from && from.username ? '@' + from.username : 'Someone';
     for (const e of added) {
       if (e.id == null || Number(e.id) === Number(fromId)) continue;
+      // Somebody you blocked cannot reach you this way either: adding and
+      // removing you as an editor over and over would otherwise be a DM
+      // channel the block does not cover.
+      const blocked = await env.DB.prepare('SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?')
+        .bind(e.id, fromId).first().catch(() => null);
+      if (blocked) continue;
       const text = who + ' added you as an editor of \u201c' + (name || 'a page') + '\u201d.' +
         ' You can edit it, but only they can publish or delete it.' +
         (path ? '\n\n' + (origin || '') + path : '');
@@ -3310,7 +3724,7 @@ async function revisableRow(env, type, slug) {
 // the owner-facing version of it are the same operation with different gates.
 async function applyRollback(env, type, row, d) {
   if (type === 'character') {
-    if (!d.name || !d.team) throw new Error('That revision is missing required fields.');
+    if (!d.name || !d.team) throw Object.assign(new Error('That revision is missing required fields.'), { public: true });
     await env.DB.prepare(
       `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
     ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
@@ -5133,6 +5547,15 @@ function redirectResponse(location, cookie, extraHeaders) {
   return new Response(null, { status: 302, headers });
 }
 
+// A value written into an inline <script>. JSON.stringify alone leaves "<"
+// alone, so a "</script>" inside a value would end the script block early and
+// whatever followed would be parsed as HTML; U+2028/2029 end a JS string in
+// older engines. Escaped, any value is inert there whatever it contains.
+function jsStr(v) {
+  return JSON.stringify(v === undefined ? null : v)
+    .replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
 function attr(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -5238,7 +5661,7 @@ ${o.draftBanner || ''}
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-  <script>window.BOTC_ASSETS=${JSON.stringify(ASSET_MANIFEST)}; ${o.bootstrap || ''}</script>
+  <script>window.BOTC_ASSETS=${jsStr(ASSET_MANIFEST)}; ${o.bootstrap || ''}</script>
 ${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + (ASSET_MANIFEST[s] || s) + '"></script>').join('\n')}
 </body>
 </html>`;
@@ -5414,8 +5837,8 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
     // The bar down the side of a Discord unfurl, in the team's own colour.
     themeColor: Render.TEAM_COLOR[String(d.team || '').toLowerCase()] || '',
     body, draftBanner, root,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
-      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};` +
+    bootstrap: `window.SSR = true; window.LINK_ROOT = ${jsStr(root)}; window.CHAR_SLUG = ${jsStr(d.slug)};` +
+      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${jsStr(d.slug)};` +
       (setHref !== undefined ? ' window.APPEARS_IN_RESOLVED = true;' : '') +
       // Only a published page can be saved, so charpage.js draws no
       // Favorite button on a draft. Private render; never in the public cache.
@@ -5897,7 +6320,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
     body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};` +
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${jsStr(type)}; window.PAGE_SLUG = ${jsStr(isScript ? d.slug : (d.id || d.slug))};` +
       // pageview.js draws no Favorite button on a draft (published only).
       (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
     // sao.js before card-filters.js: the filter box only builds its Steven
@@ -6342,6 +6765,19 @@ const app = {
     const path = url.pathname;
     const method = request.method;
 
+    if (crossSiteWrite(request, url, env)) {
+      return jsonResponse({ error: 'That request came from another website, so it was refused.' }, { status: 403 });
+    }
+
+    // ONE gate in front of every admin read. Each /api/admin/* GET was
+    // expected to call adminSession() itself, and two of them never did —
+    // /api/admin/new-users handed every new member's EMAIL ADDRESS to anybody
+    // who asked. Checked here, a route that forgets can no longer leak. (Admin
+    // writes already have the same gate in the POST block.)
+    if (path.startsWith('/api/admin/') && method !== 'POST' && !(await adminSession(env, request))) {
+      return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+    }
+
     // ---------- DATA ENDPOINTS (replace static JSON files) ----------
     // ?drafts=1 includes unpublished pages, for admins only. Anyone else
     // asking for it silently gets the ordinary published-only feed rather
@@ -6552,7 +6988,7 @@ const app = {
           draftBanner: isDraft
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftArticle + ' <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
             : '',
-          bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
+          bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${jsStr(a.slug)};`,
           // newspage.js puts the Edit button in the top bar for admins.
           scripts: ['reading-lazy.js', 'newspage.js', 'site.js']
         });
@@ -6620,7 +7056,8 @@ const app = {
           const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
           // A page whose script/collection has been deleted drops out of the
           // public listings with it.
-          if (parent && parent.status === 'deleted') continue;
+          // A draft parent is somebody's unpublished page: not listed, not named.
+          if (parent && parent.status && parent.status !== 'published') continue;
           pages.push({
             slug: r.slug, title: r.title, author: r.author,
             blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
@@ -6638,6 +7075,9 @@ const app = {
       if (!parent) return jsonResponse({ error: 'Unknown parent page' }, { status: 404 });
       const sess = await getSession(env, request);
       const mayEdit = await mayAddWikiPage(env, sess, parent);
+      if (!mayEdit && parent.status && parent.status !== 'published') {
+        return jsonResponse({ error: 'Unknown parent page' }, { status: 404 });
+      }
       return jsonResponse({
         parent: { type: parent.type, key: parent.key, name: parent.name },
         canEdit: mayEdit,
@@ -6745,12 +7185,12 @@ const app = {
           draftBanner: isDraft
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
             : '',
-          bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
+          bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${jsStr(row.slug)};` +
             // A draft cannot be featured, so wikipage.js offers admins no button.
             (isDraft ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
             // A set's page gets the admins' "Make it a standalone article" button.
             (row.parent_type === ARTICLE_PARENT ? ' window.WIKI_PAGE_ARTICLE = true;' : '') +
-            (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
+            (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${jsStr(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
         return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug);
@@ -7273,7 +7713,7 @@ const app = {
           for (const r of results || []) {
             const d = parseData(r);
             const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-            if (parent && parent.status === 'deleted') continue;
+            if (parent && parent.status && parent.status !== 'published') continue;
             pages.push({
               slug: r.slug, title: r.title,
               blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
@@ -7522,7 +7962,8 @@ const app = {
       const username = normUsername(body.username);
       const email = String(body.email || '').trim();
       const password = String(body.password || '');
-      const bad = validSignup(username, email, password);
+      const bad = validSignup(username, email, password) ||
+        await passwordProblem(password, { username, email });
       if (bad) return jsonResponse({ error: bad }, { status: 400 });
 
       // One message for both cases the key catches — the exact handle, and the
@@ -7537,7 +7978,7 @@ const app = {
         .bind(email).first();
       if (emailTaken) return jsonResponse({ error: 'An account with that email already exists. Try logging in or resetting your password.' }, { status: 409 });
 
-      const hash = await hashPassword(password);
+      const hash = await hashPassword(env, password);
       await ensureUsernameKey(env);
       const res = await env.DB.prepare(
         `INSERT INTO users (username, username_key, password_hash, email, is_admin, last_login)
@@ -7576,13 +8017,19 @@ const app = {
       const isEmailish = identifier.includes('@');
       const vague = 'That email and password don\'t match. Check both, or use "Forgot your password?" below.';
       if (!user) {
+        // Same work as a real check, so the answer time says nothing either.
+        await burnPasswordCheck(password);
         return jsonResponse({
           error: isEmailish ? vague
             : 'No account has that username. It\'s the @name on your account page. You can also log in with your email address.'
         }, { status: 401 });
       }
-      const ok = await verifyPassword(password, user.password_hash);
+      if (await loginFailuresExceeded(env, user.id)) {
+        return tooManyResponse('Too many wrong passwords for this account. Wait an hour, or use "Forgot your password?" below to get back in now.', LOGIN_FAIL_WINDOW);
+      }
+      const ok = await verifyPassword(env, password, user.password_hash);
       if (!ok) {
+        await recordLoginFailure(env, request, user.id);
         if (!user.password_hash && user.discord_id) {
           return jsonResponse({ error: 'This account signs in with Discord. Use the Discord button (you can set a password afterwards on your account page).' }, { status: 401 });
         }
@@ -7594,6 +8041,8 @@ const app = {
       if (user.banned) {
         return jsonResponse({ error: 'This account has been suspended. Contact the admins if you think this is a mistake.' }, { status: 403 });
       }
+      ctx.waitUntil(clearLoginFailures(env, user.id));
+      ctx.waitUntil(upgradePasswordHash(env, user.id, password, user.password_hash));
       const token = await createSession(env, user.id, !!user.is_admin);
       if (!token) return jsonResponse({ error: SESSION_DOWN_MSG }, { status: 503 });
       ctx.waitUntil(env.DB.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").bind(user.id).run());
@@ -7841,8 +8290,10 @@ const app = {
       // Always report success so account existence can't be probed.
       if (user && user.email) {
         const token = randomToken();
-        await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
-        const link = url.origin + '/reset-password?token=' + token;
+        await storeEmailToken(env, 'pwreset', token, {
+          id: user.id, email: user.email, fp: await passwordFingerprint(user.password_hash)
+        }, 3600);
+        const link = canonicalOrigin(env) + '/reset-password?token=' + token;
         ctx.waitUntil(sendEmail(env, user.email, 'Reset your password for ' + APP_NAME, emailShell(
           'Reset your password',
           // Half the people who ask for a reset are stuck on the OTHER field:
@@ -7859,23 +8310,50 @@ const app = {
     }
 
     if (method === 'POST' && path === '/api/reset-password') {
+      if (await rateLimited(env, request, 'resetpw', 10, 3600)) {
+        return tooManyResponse('Too many attempts. Try again later.', 3600);
+      }
       const body = await request.json().catch(() => ({}));
       const token = String(body.token || '');
       const password = String(body.password || '');
       if (!token) return jsonResponse({ error: 'That reset link is incomplete. Request a new one.' }, { status: 400 });
-      if (!password || password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters.' }, { status: 400 });
-      const userId = await env.SESSIONS.get('pwreset:' + token);
-      if (!userId) return jsonResponse({ error: 'That reset link is invalid or has expired. Request a new one.' }, { status: 400 });
-      const hash = await hashPassword(password);
-      await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?').bind(hash, userId).run();
-      await env.SESSIONS.delete('pwreset:' + token);
+      const expired = () => jsonResponse({ error: 'That reset link is invalid or has expired. Request a new one.' }, { status: 400 });
+      const rec = await readEmailToken(env, 'pwreset', token);
+      if (!rec) return expired();
+      // SELECT *: users.banned is added lazily and may not exist yet.
+      const u = await env.DB.prepare('SELECT * FROM users WHERE id=?')
+        .bind(rec.id).first().catch(() => null);
+      // The link is only good for the address it was sent to and the password
+      // it was sent to replace. A changed email or a password changed since
+      // (by this link or any other route) kills it.
+      if (!u || String(u.email || '').trim().toLowerCase() !== String(rec.email || '').trim().toLowerCase() ||
+          rec.fp !== await passwordFingerprint(u.password_hash)) {
+        await consumeEmailToken(env, rec);
+        return expired();
+      }
+      const bad = await passwordProblem(password, { username: u.username, email: u.email });
+      if (bad) return jsonResponse({ error: bad }, { status: 400 });
+      await consumeEmailToken(env, rec);
+      const hash = await hashPassword(env, password);
+      // Following an EMAILED link proves the address works, so it counts as
+      // verifying it. A link an admin handed over proves nothing about email.
+      await env.DB.prepare(
+        'UPDATE users SET password_hash=?, email_verified=CASE WHEN ? THEN 1 ELSE email_verified END WHERE id=?'
+      ).bind(hash, rec.byAdmin || !u.email ? 0 : 1, u.id).run();
+      await clearLoginFailures(env, u.id);
       // Everything signed in under the old password goes. Order matters: the
       // revoke has to happen BEFORE the new session is minted, or it would
       // delete the session it just created and log them straight back out.
       // A reset is the other half of "I think somebody is in my account".
-      await revokeSessions(env, parseInt(userId, 10) || userId);
+      await revokeSessions(env, u.id);
+      ctx.waitUntil(sendSecurityNotice(env, u.email, u, 'Your password was changed',
+        '<p>The password for your account was just reset using a link sent to this address, and every device that was signed in has been signed out.</p>'));
+      // The password is saved either way; a suspended account just isn't
+      // signed in, exactly as /api/login would refuse it.
+      if (u.banned) {
+        return jsonResponse({ error: 'Your new password was saved, but this account is suspended. Contact the admins if you think this is a mistake.' }, { status: 403 });
+      }
       // Log them straight in for convenience.
-      const u = await env.DB.prepare('SELECT id, is_admin FROM users WHERE id=?').bind(userId).first();
       const sessTok = await createSession(env, u.id, !!u.is_admin);
       if (!sessTok) {
         // The new password is already saved. Sending them back to the reset
@@ -7887,12 +8365,17 @@ const app = {
 
     // ---------- AUTH: EMAIL VERIFICATION ----------
     if (method === 'GET' && path === '/api/verify-email') {
-      const token = url.searchParams.get('token') || '';
-      const userId = token && await env.SESSIONS.get('verify:' + token);
-      if (!userId) return redirectResponse(url.origin + '/account?verified=0');
-      await env.DB.prepare('UPDATE users SET email_verified=1 WHERE id=?').bind(userId).run();
-      await env.SESSIONS.delete('verify:' + token);
-      return redirectResponse(url.origin + '/account?verified=1');
+      const rec = await readEmailToken(env, 'verify', url.searchParams.get('token') || '');
+      if (!rec) return redirectResponse(url.origin + '/account?verified=0', null, { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+      await consumeEmailToken(env, rec);
+      // Only the address the link was SENT to can be verified by it. The
+      // account's email may have changed since; then this link proves nothing
+      // about the new one.
+      const res = await env.DB.prepare(
+        'UPDATE users SET email_verified=1 WHERE id=? AND email IS NOT NULL AND lower(email)=lower(?)'
+      ).bind(rec.id, String(rec.email || '')).run().catch(() => null);
+      const ok = !!(res && res.meta && res.meta.changes);
+      return redirectResponse(url.origin + '/account?verified=' + (ok ? '1' : '0'), null, { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
     }
 
     if (method === 'POST' && path === '/api/resend-verification') {
@@ -8046,7 +8529,17 @@ const app = {
       const byDiscord = await env.DB.prepare('SELECT * FROM users WHERE discord_id=?').bind(discordId).first();
 
       // Link mode: attach this Discord identity to the logged-in account.
+      // The account comes out of `state`, so the browser finishing the flow
+      // must be signed in as THAT account. Otherwise somebody could start a
+      // link from their own account, send the Discord authorize link to a
+      // victim, and the victim's click would attach the victim's Discord to
+      // the attacker's account — after which "Sign in with Discord" would
+      // quietly drop the victim into the attacker's account.
       if (linkUserId) {
+        const cur = await getSession(env, request);
+        if (!cur || Number(cur.userId) !== Number(linkUserId)) {
+          return loginErrorRedirect(url.origin, 'That Discord link was started from a different account or browser. Log in, then link Discord from your account page.');
+        }
         if (byDiscord && byDiscord.id !== linkUserId) {
           return redirectResponse(url.origin + '/account?error=' + encodeURIComponent('That Discord account is already linked to a different wiki account.'));
         }
@@ -8353,6 +8846,12 @@ const app = {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       const pageData = foldLegacyCurata(JSON.parse(row.data));
+      // Who else may edit is the owner's administration and holds account ids;
+      // nobody else's editor needs it (a non-owner save carries the stored
+      // list forward on its own). A moderation note is for the people who can
+      // act on it.
+      if (!owns) delete pageData.editors;
+      if (!editable) delete pageData._draftNote;
       /* Curata is admin-only to GRANT and the creator's to decline, so the
          editor has to be told which of the two it is looking at before it
          offers the opt-out — and a character usually has the mark because a
@@ -8938,7 +9437,10 @@ const app = {
       ).bind(type, row.slug, id).first().catch(() => null);
       return jsonResponse({
         id: rev.id, ts: rev.ts, by: rev.edited_by || null,
+        // The editor list (account ids) and moderation notes are the owner's
+        // business even in a public history.
         fields: diffFieldValues(rev.data, next ? next.data : row.data)
+          .filter(f => owns || !PRIVATE_DATA_KEYS.has(f.field))
       });
     }
 
@@ -9778,40 +10280,65 @@ const app = {
       }
 
       if (path === '/api/account/password') {
+        // Bounds guessing the CURRENT password from a stolen session.
+        if (await rateLimited(env, request, 'pwchange', 10, 3600, { sess })) {
+          return tooManyResponse('Too many password changes in the last hour. Try again later.', 3600);
+        }
         const b = await request.json().catch(() => ({}));
         const newPassword = String(b.newPassword || '');
-        if (newPassword.length < 8) return jsonResponse({ error: 'New password must be at least 8 characters.' }, { status: 400 });
-        const u = await env.DB.prepare('SELECT password_hash FROM users WHERE id=?').bind(sess.userId).first();
+        const u = await env.DB.prepare('SELECT id, username, display_name, email, password_hash FROM users WHERE id=?').bind(sess.userId).first();
         if (u.password_hash) {
-          const ok = await verifyPassword(String(b.currentPassword || ''), u.password_hash);
+          const ok = await verifyPassword(env, String(b.currentPassword || ''), u.password_hash);
           if (!ok) return jsonResponse({ error: 'Current password is incorrect.' }, { status: 403 });
         }
         // (no current password on Discord-only accounts: they may set one freely)
+        const bad = await passwordProblem(newPassword, { username: u.username, email: u.email });
+        if (bad) return jsonResponse({ error: bad }, { status: 400 });
         await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?')
-          .bind(await hashPassword(newPassword), sess.userId).run();
+          .bind(await hashPassword(env, newPassword), sess.userId).run();
         // Changing a password is what somebody does when they think their
         // account is compromised, so it has to end the attacker's session too.
         // The tab doing the changing keeps its own.
         await revokeSessions(env, sess.userId, sess.token);
+        ctx.waitUntil(sendSecurityNotice(env, u.email, u, u.password_hash ? 'Your password was changed' : 'A password was added to your account',
+          '<p>' + (u.password_hash ? 'The password for your account was just changed' : 'A password was just set on your account, so it can now log in without Discord') +
+          ' from its account page. Every other device that was signed in has been signed out.</p>'));
         return jsonResponse({ ok: true, otherSessionsEndedProbably: true });
       }
 
       if (path === '/api/account/email') {
         // Sends a Resend email every time it succeeds, so without a limit any
         // account is a free mail cannon pointed at any address.
-        if (!sess.isAdmin && await rateLimited(env, request, 'emailchange', 5, 3600, { sess })) {
+        if (await rateLimited(env, request, 'emailchange', 5, 3600, { sess })) {
           return tooManyResponse('Too many email changes in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const email = String(b.email || '').trim();
         if (!EMAIL_RE.test(email) || email.length > 254) return jsonResponse({ error: 'Please enter a valid email address.' }, { status: 400 });
+        const u = await env.DB.prepare('SELECT id, username, display_name, email, password_hash FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        // The email is where password resets go, so changing it is as good as
+        // owning the account: somebody holding a stolen session (a shared
+        // computer, a tab left open) could point it at their own inbox and
+        // reset the password from there. So it asks for the password, like
+        // every serious site does. A Discord-only account has none to ask for.
+        if (u.password_hash && !(await verifyPassword(env, String(b.currentPassword || ''), u.password_hash))) {
+          return jsonResponse({ error: 'Enter your current password to change your email.', needPassword: true }, { status: 403 });
+        }
+        if (sameEmail(u.email, email)) return jsonResponse({ ok: true, message: 'That is already your email address.' });
         const taken = await env.DB.prepare('SELECT 1 FROM users WHERE id<>? AND email IS NOT NULL AND lower(email)=lower(?)')
           .bind(sess.userId, email).first();
         if (taken) return jsonResponse({ error: 'That email is already in use by another account.' }, { status: 409 });
         await env.DB.prepare('UPDATE users SET email=?, email_verified=0 WHERE id=?')
           .bind(email, sess.userId).run();
-        const u = await env.DB.prepare('SELECT id, username, display_name, email FROM users WHERE id=?').bind(sess.userId).first();
-        ctx.waitUntil(sendVerificationEmail(env, url.origin, u));
+        const nu = { ...u, email };
+        ctx.waitUntil(sendVerificationEmail(env, url.origin, nu));
+        // Told at the OLD address, which is the one an attacker cannot read.
+        if (u.email) {
+          ctx.waitUntil(sendSecurityNotice(env, u.email, u, 'Your email address was changed',
+            '<p>The email address on your account was just changed to <b>' + escapeHtml(maskEmail(email)) +
+            '</b>. Password reset links will go there from now on.</p>'));
+        }
         return jsonResponse({ ok: true, message: 'Email updated. Check your inbox for a verification link.' });
       }
 
@@ -10022,6 +10549,8 @@ const app = {
         // at the one that does — an old project's export writes whichever
         // spelling it was written under.
         srcUrl.hostname = Bloodstar.bloodstarHost(srcUrl.hostname);
+        // Only ever the site's own HTTPS port, and never credentials.
+        srcUrl.port = ''; srcUrl.username = ''; srcUrl.password = '';
         {
           const denied = await uploadSlotDenied(env, sess, key);
           if (denied) return denied;
@@ -10034,6 +10563,11 @@ const app = {
         }
         if (!res.ok) {
           return jsonResponse({ error: 'Bloodstar answered ' + res.status + ' for that image.' }, { status: 502 });
+        }
+        // Refused before the download when the size is announced, rather than
+        // after reading the whole thing into memory.
+        if ((parseInt(res.headers.get('Content-Length'), 10) || 0) > 8 * 1024 * 1024) {
+          return jsonResponse({ error: 'That image is too large (8 MB max).' }, { status: 413 });
         }
         const bytes = new Uint8Array(await res.arrayBuffer());
         if (!bytes.length) return jsonResponse({ error: 'That image came back empty.' }, { status: 502 });
@@ -10115,6 +10649,7 @@ const app = {
         delete data.status;
         delete data.renameFrom;
         delete data.appearsInFrom;
+        pinSuggestedFields(type, data, storedNow);
         if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
           return jsonResponse({ error: 'Nothing has changed, so there is nothing to suggest.' }, { status: 400 });
         }
@@ -10209,9 +10744,10 @@ const app = {
         if (now.curataOptOut) d.curataOptOut = true; else delete d.curataOptOut;
         if (now.creditUnlinked) d.creditUnlinked = true; else delete d.creditUnlinked;
         delete d._deleted;
+        pinSuggestedFields(sug.entity_type, d, now);
         await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
         try { await applyRollback(env, sug.entity_type, row, d); }
-        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not apply that suggestion.' }, { status: 500 }); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not apply that suggestion.') }, { status: 500 }); }
         await env.DB.prepare(
           "UPDATE suggestions SET status='approved', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
         ).bind(reply, by, id).run();
@@ -10251,7 +10787,7 @@ const app = {
         // Snapshot what is being replaced, so the rollback is itself undoable.
         await saveRevision(env, sess, type, row);
         try { await applyRollback(env, type, row, d); }
-        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not restore that revision.' }, { status: 500 }); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: 500 }); }
         await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || d.title || row.name);
         return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
       }
@@ -10413,6 +10949,15 @@ const app = {
         let c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        // The team is one of the seven, and nothing else. It was stored as
+        // posted, and it is printed into class names and tooltips all over the
+        // site — a "team" carrying markup was a way to put HTML on the
+        // /jinxes map. Case and the American spelling are forgiven.
+        c.team = String(c.team).trim().toLowerCase();
+        if (c.team === 'traveler') c.team = 'traveller';
+        if (!CHARACTER_TEAMS.includes(c.team)) {
+          return jsonResponse({ error: 'Pick a team: ' + CHARACTER_TEAMS.join(', ') + '.' }, { status: 400 });
+        }
         // The slug is the character's IDENTITY: the primary key, the art slot
         // in R2, and what every reference to this page is stored as. It is
         // also the one-segment URL that 301s to the page's real address, and
@@ -10475,6 +11020,12 @@ const app = {
         // edit) needs 'owner'. 'all' and 'tags' are what a guest was invited
         // to do.
         const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
+        // A deleted page comes back through an admin's restore, never through a
+        // save: /api/publish already refused it, but saving over the row
+        // quietly republished a page an admin had taken down.
+        if (existing && existing.status === 'deleted' && !sess.isAdmin) {
+          return jsonResponse({ error: 'This page was deleted. An admin can restore it.' }, { status: 400 });
+        }
         if (existing && !perm) {
           return jsonResponse({ error: 'Another account already has a character with that name. Pick a different name.' }, { status: 403 });
         }
@@ -10500,6 +11051,12 @@ const app = {
           const tags = typeof c.tags === 'string' ? c.tags : '';
           c = stored;
           c.tags = tags.slice(0, PUBLIC_EDIT_TAGS_MAX);
+        }
+        if (perm === 'all' || perm === 'all-but-ability') {
+          // The name is the page's address, and moving the address stays with
+          // the creator. The editor locks the field for a guest; this is the
+          // half a hand-written request cannot get around.
+          c.name = stored.name;
         }
         if (perm === 'all-but-ability') {
           // Everything but the rule itself. The ability is what the page IS
@@ -10751,7 +11308,12 @@ const app = {
         let target;
         if (b.toSlug) {
           const t = await getEntityRow(env, 'character', String(b.toSlug));
-          if (!t) return jsonResponse({ error: 'No such character' }, { status: 404 });
+          // A draft or deleted page is "no such character" unless it is one
+          // this account may work on: the reply echoes its name, and the
+          // site never reveals that somebody else's unpublished page exists.
+          if (!t || (t.status !== 'published' && !(await canEditPage(env, sess, 'character', t)))) {
+            return jsonResponse({ error: 'No such character' }, { status: 404 });
+          }
           if (t.slug === row.slug) {
             return jsonResponse({ error: 'A character cannot be jinxed with itself.' }, { status: 400 });
           }
@@ -10817,6 +11379,12 @@ const app = {
         let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
         if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
         const perm = existing ? await editPermission(env, sess, 'collection', existing) : 'owner';
+        // A deleted page comes back through an admin's restore, never through a
+        // save: /api/publish already refused it, but saving over the row
+        // quietly republished a page an admin had taken down.
+        if (existing && existing.status === 'deleted' && !sess.isAdmin) {
+          return jsonResponse({ error: 'This page was deleted. An admin can restore it.' }, { status: 400 });
+        }
         if (existing && !perm) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
         }
@@ -10934,6 +11502,12 @@ const app = {
         }
         const existing = await getEntityRow(env, 'script', s.slug);
         const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
+        // A deleted page comes back through an admin's restore, never through a
+        // save: /api/publish already refused it, but saving over the row
+        // quietly republished a page an admin had taken down.
+        if (existing && existing.status === 'deleted' && !sess.isAdmin) {
+          return jsonResponse({ error: 'This page was deleted. An admin can restore it.' }, { status: 400 });
+        }
         if (existing && !perm) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
         }
@@ -11317,7 +11891,7 @@ const app = {
         delete d._deleted;
         await saveRevision(env, sess, type, row); // make the rollback undoable
         try { await applyRollback(env, type, row, d); }
-        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not restore that revision.' }, { status: 500 }); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: 500 }); }
         await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || d.title || row.name);
         return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
       }
@@ -11688,14 +12262,23 @@ const app = {
           await logActivity(env, sess, 'promote', 'user', null, target.username);
         } else if (action === 'demote') {
           await env.DB.prepare('UPDATE users SET is_admin=0 WHERE id=?').bind(target.id).run();
+          // Their sessions still say "admin", and plenty of read routes trust
+          // that flag (drafts, history). End them so it cannot linger.
+          await revokeSessions(env, target.id);
           await logActivity(env, sess, 'demote', 'user', null, target.username);
         } else if (action === 'reset-link') {
           // One-time password reset link (24 h) the admin can hand to the
           // user directly — works even when email isn't configured.
+          // Same token shape as an emailed link: hashed in KV, single use,
+          // and dead once the password or the email changes. `byAdmin` says
+          // nobody proved they can read the inbox, so it verifies nothing.
+          const full = await env.DB.prepare('SELECT email, password_hash FROM users WHERE id=?').bind(target.id).first();
           const token = randomToken();
-          await env.SESSIONS.put('pwreset:' + token, String(target.id), { expirationTtl: 86400 });
+          await storeEmailToken(env, 'pwreset', token, {
+            id: target.id, email: (full && full.email) || '', fp: await passwordFingerprint(full && full.password_hash), byAdmin: true
+          }, 86400);
           await logActivity(env, sess, 'reset-link', 'user', null, target.username);
-          return jsonResponse({ ok: true, resetLink: url.origin + '/reset-password?token=' + token });
+          return jsonResponse({ ok: true, resetLink: canonicalOrigin(env) + '/reset-password?token=' + token });
         } else {
           return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         }
@@ -13212,6 +13795,16 @@ const app = {
         console.error('[cron] backup threw:', (e && e.message) || e);
       }
 
+      // Argon2id over any password hash still PBKDF2-only (see
+      // wrapLegacyPasswords). AFTER the backup, so a snapshot of the old
+      // hashes exists if anything here ever went wrong.
+      try {
+        const w = await wrapLegacyPasswords(env);
+        if (w.wrapped || w.left) console.log('[cron] legacy password hashes wrapped:', w.wrapped, 'left in batch:', w.left);
+      } catch (e) {
+        console.error('[cron] password wrapping threw:', (e && e.message) || e);
+      }
+
       // Retention. page_views(day) is indexed now, so this is a range delete
       // rather than the nightly full scan of the largest table it used to be.
       const prune = [
@@ -13267,15 +13860,67 @@ function crashResponse(request) {
   return new Response(html, { status: 500, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
+/* ---- cross-site writes ----
+   The session cookie is SameSite=Lax, so a browser already refuses to send it
+   with a POST another website makes. This is the second lock on the same door:
+   any API write whose Origin (or Sec-Fetch-Site) says it came from somewhere
+   else is turned away before a route sees it. A request with neither header
+   (curl, a server) is let through, because it carries no victim's cookie.
+   Same-origin means this exact host or the canonical one. */
+function crossSiteWrite(request, url, env) {
+  const m = request.method;
+  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false;
+  if (!url.pathname.startsWith('/api/')) return false;
+  const site = request.headers.get('Sec-Fetch-Site');
+  if (site === 'cross-site') return true;
+  const origin = request.headers.get('Origin');
+  if (!origin) return false;
+  return origin !== url.origin && origin !== canonicalOrigin(env);
+}
+
+/* ---- security headers on everything the Worker answers ----
+   _headers gives the static files the same set; this covers every response
+   the Worker builds (SSR pages, the API, R2 images, its own 404s).
+   - HSTS: browsers only ever talk to the site over HTTPS from now on.
+   - X-Frame-Options + frame-ancestors: no other site can load the wiki in an
+     invisible frame and trick a click (clickjacking). Same-origin frames —
+     the editors' live preview, Icon Forge's editor — still work.
+   - nosniff: a file is only ever treated as the type it was served as.
+   - Referrer-Policy: other sites see which site a reader came from, never the
+     full address (which can carry a reset or verification token).
+   - CSP (HTML only): no <base> hijacking, no plugins, forms only post here.
+     A route that set a stricter CSP of its own (uploaded images) keeps it. */
+const SECURITY_HEADERS = {
+  'Strict-Transport-Security': 'max-age=31536000',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+};
+const HTML_CSP = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'";
+function withSecurityHeaders(res) {
+  if (!res || res.status === 101 || res.webSocket) return res;
+  let out;
+  try { out = new Response(res.body, res); } catch { return res; }
+  const h = out.headers;
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    if (!h.has(k)) h.set(k, v);
+  }
+  if (!h.has('Content-Security-Policy') && /text\/html/i.test(h.get('Content-Type') || '')) {
+    h.set('Content-Security-Policy', HTML_CSP);
+  }
+  return out;
+}
+
 export default {
   async fetch(request, env, ctx) {
     try {
-      return await app.fetch(request, env, ctx);
+      return withSecurityHeaders(await app.fetch(request, env, ctx));
     } catch (e) {
       let path = '';
       try { path = new URL(request.url).pathname; } catch { /* ignore */ }
       console.error('[fetch] unhandled error', request.method, path, (e && e.stack) || e);
-      return crashResponse(request);
+      return withSecurityHeaders(crashResponse(request));
     }
   },
   scheduled(event, env, ctx) {

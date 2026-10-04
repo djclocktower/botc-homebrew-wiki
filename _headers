@@ -24,6 +24,18 @@
 /assets/*
   Access-Control-Allow-Origin: *
 
+# Security headers on every static file — the Worker adds the same set to the
+# responses it builds (withSecurityHeaders in worker.js). Nothing else here
+# sets these names, so they never combine with another value. See that
+# function for what each one is for; keep the two lists in step.
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'
+
 # HTML / CSS / JS: always revalidate so edits show on a normal refresh.
 # (Clean URLs like /all-characters do not match /*.html, and get the assets
 # platform's identical default — public, max-age=0, must-revalidate.)

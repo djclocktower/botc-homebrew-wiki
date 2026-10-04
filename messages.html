@@ -427,15 +427,21 @@
     // are made clickable. Only https:// and paths on this site, so nothing a
     // sender types can become anything else. Comment notifications carry a
     // link to the page they are about, and a link you can't click is no use.
+    //
+    // ONE pass, on purpose. It used to be two replaces in a row, and the
+    // second (site paths) ran over the first one's output: "https://x.y(/z"
+    // got a second link built INSIDE the first one's href, which closed the
+    // attribute early and let the sender add attributes to a link in
+    // somebody else's chat. A single regex can only ever match the original
+    // text, and parentheses no longer extend a URL.
     function linkify(escaped){
-      return escaped
-        .replace(/https:\/\/[^\s<"']+/g, function(u){
-          var href = u.replace(/&amp;/g, '&');
-          return '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + u + '</a>';
-        })
-        .replace(/(^|[\s(])(\/[A-Za-z0-9][A-Za-z0-9\/_.~%#?=&;-]*)/g, function(m, pre, path){
-          var href = path.replace(/&amp;/g, '&');
-          return pre + '<a href="' + esc(href) + '">' + path + '</a>';
+      return escaped.replace(
+        /(https:\/\/[^\s<>"'()]+)|(^|[\s(])(\/[A-Za-z0-9][A-Za-z0-9\/_.~%#?=&;-]*)/g,
+        function(m, url, pre, path){
+          if (url) {
+            return '<a href="' + esc(url.replace(/&amp;/g, '&')) + '" target="_blank" rel="noopener">' + url + '</a>';
+          }
+          return pre + '<a href="' + esc(path.replace(/&amp;/g, '&')) + '">' + path + '</a>';
         });
     }
     function bubbleHtml(m){
