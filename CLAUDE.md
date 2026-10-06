@@ -3855,6 +3855,12 @@ keeps `content-visibility: auto`.
 6. `/api/seed` refuses to run when the characters table is non-empty; it
    reads the repo's stale JSON backups. Nightly cron also dumps every table
    to R2 `backups/{date}/` (30-day retention) — that's the real backup.
+   Each read and write is retried (`backupRetry`), and the read size adapts to
+   the table's row width so a narrow, huge table (`page_views`) is a handful
+   of parts rather than hundreds. The last run's result, with the reason for
+   any failed table, is under Backups on the dashboard's Health tab, beside a
+   "Back up now" button (POST `/api/backup`, which rewrites today's files and
+   deletes parts a bigger earlier run left behind).
 7. Some character names carry credit marks (`∇`, `♊︎`) in the D1 name field;
    token-tool.js strips them for tokens only. Don't "fix" the names.
 8. **`resolveJinxTarget()` in render.js is the only place a jinx target is

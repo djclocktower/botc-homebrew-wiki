@@ -5456,9 +5456,35 @@ async function readBackupTable(env, date, table) {
   return rows;
 }
 
-// Rows per backup part. Small enough that a chunk of the widest table
-// (characters, ~3 KB of JSON per row) is a few MB rather than a few hundred.
+// Rows per read when a table is first touched. Small enough that a chunk of
+// the widest table (characters, ~3 KB of JSON per row) is a few MB rather
+// than a few hundred. After the first read the size adapts to the table's own
+// row width (BACKUP_PART_BYTES / average row), so a narrow table is not read
+// and written in thousands of tiny pieces: page_views is ~80 bytes a row and
+// hundreds of thousands of rows, which at a flat 2000 a read was hundreds of
+// D1 queries and as many R2 writes inside one cron run.
 const BACKUP_CHUNK = 2000;
+const BACKUP_CHUNK_MAX = 20000;
+// Roughly how much JSON goes into one R2 part before it is written out.
+const BACKUP_PART_BYTES = 4 * 1024 * 1024;
+// Each read and each write is tried this many times. One dropped D1 or R2
+// call used to fail the whole table for the night — the run carried on, but
+// that table had no snapshot until the next day's cron.
+const BACKUP_TRIES = 3;
+
+async function backupRetry(what, fn) {
+  let last;
+  for (let i = 0; i < BACKUP_TRIES; i++) {
+    try { return await fn(); }
+    catch (e) {
+      last = e;
+      // A missing table is an answer, not a blip: asking again changes nothing.
+      if (/no such table/i.test((e && e.message) || '')) break;
+      if (i < BACKUP_TRIES - 1) await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw new Error(what + ': ' + ((last && last.message) || String(last || 'error')));
+}
 
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
@@ -5467,6 +5493,8 @@ async function runBackup(env) {
   const saved = {};
   const failed = {};
   for (const t of tables) {
+    let rows = 0;
+    let written = 0;
     try {
       // Paged by rowid rather than SELECT *. The whole table used to be
       // materialised in the isolate and then stringified — two copies in a
@@ -5475,34 +5503,66 @@ async function runBackup(env) {
       // thousand characters, which cannot be read into a Worker at all.
       let after = 0;
       let part = 0;
-      let rows = 0;
+      let limit = BACKUP_CHUNK;
+      let pieces = [];
+      let pending = 0;
+      let held = 0;
+      const flush = async () => {
+        if (!pieces.length) return;
+        const name = part === 0
+          ? `backups/${stamp}/${t}.json`
+          : `backups/${stamp}/${t}.part${part}.json`;
+        const body = '[' + pieces.join(',') + ']';
+        await backupRetry('writing ' + name.slice(name.lastIndexOf('/') + 1), () =>
+          env.ART.put(name, body, { httpMetadata: { contentType: 'application/json' } }));
+        part++;
+        written += held;
+        pieces = [];
+        pending = 0;
+        held = 0;
+      };
       for (;;) {
-        const { results } = await env.DB.prepare(
-          `SELECT rowid AS _rid, * FROM ${t} WHERE rowid > ? ORDER BY rowid LIMIT ${BACKUP_CHUNK}`
-        ).bind(after).all();
+        const from = after;
+        const { results } = await backupRetry('reading rows after ' + from, () =>
+          env.DB.prepare(
+            `SELECT rowid AS _rid, * FROM ${t} WHERE rowid > ? ORDER BY rowid LIMIT ${limit}`
+          ).bind(from).all());
         const batch = results || [];
         if (!batch.length) break;
         after = batch[batch.length - 1]._rid;
         for (const r of batch) delete r._rid;
-        const name = part === 0
-          ? `backups/${stamp}/${t}.json`
-          : `backups/${stamp}/${t}.part${part}.json`;
-        await env.ART.put(name, JSON.stringify(batch), {
-          httpMetadata: { contentType: 'application/json' }
-        });
+        const json = JSON.stringify(batch);
+        if (json.length > 2) { pieces.push(json.slice(1, -1)); pending += json.length; }
         rows += batch.length;
-        part++;
-        if (batch.length < BACKUP_CHUNK) break;
+        held += batch.length;
+        const last = batch.length < limit;
+        if (pending >= BACKUP_PART_BYTES) await flush();
+        if (last) break;
+        const perRow = Math.max(1, json.length / batch.length);
+        limit = Math.max(200, Math.min(BACKUP_CHUNK_MAX, Math.floor(BACKUP_PART_BYTES / perRow)));
       }
+      await flush();
+      // A second run on the same day (the dashboard's "Back up now") may write
+      // fewer parts than the first did. readBackupTable() reads parts until
+      // one is missing, so a leftover part from the earlier run would be
+      // appended to this one as if it were more of the table.
+      try {
+        if (part === 0) await env.ART.delete(`backups/${stamp}/${t}.json`);
+        for (let n = Math.max(part, 1); ; n++) {
+          const key = `backups/${stamp}/${t}.part${n}.json`;
+          if (!(await env.ART.head(key))) break;
+          await env.ART.delete(key);
+        }
+      } catch { /* tidying is best-effort */ }
       saved[t] = rows;
     } catch (e) {
       // A failure here used to be recorded as "skipped" and returned inside a
       // successful-looking result, so a backup that had silently stopped
       // working looked exactly like one that was fine. Record it as a failure,
       // and let the caller decide how loudly to say so.
-      const msg = (e && e.message) || 'error';
-      saved[t] = 0;
-      failed[t] = msg;
+      const msg = ((e && e.message) || 'error') + (written ? ` (${written} rows were saved before it stopped)` : '');
+      saved[t] = written;
+      failed[t] = msg.slice(0, 500);
       console.error(`[backup] ${stamp} ${t} FAILED: ${msg}`);
     }
   }
@@ -9782,14 +9842,17 @@ const app = {
       do {
         const listed = await env.ART.list({ prefix: 'backups/', cursor, limit: 1000 });
         for (const o of listed.objects) {
-          const m = o.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\/([a-z_]+)\.json$/);
+          // A big table is written in parts ({table}.part1.json …); the size
+          // shown is the whole table's, and the download link reads them all.
+          const m = o.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\/([a-z_]+)(\.part\d+)?\.json$/);
           if (!m) continue;
-          (byDate[m[1]] = byDate[m[1]] || []).push({ table: m[2], size: o.size || 0 });
+          const day = byDate[m[1]] = byDate[m[1]] || {};
+          day[m[2]] = (day[m[2]] || 0) + (o.size || 0);
         }
         cursor = listed.truncated ? listed.cursor : null;
       } while (cursor);
       const backups = Object.keys(byDate).sort().reverse().map(date => ({
-        date, tables: byDate[date].sort((a, b) => a.table < b.table ? -1 : 1)
+        date, tables: Object.keys(byDate[date]).sort().map(table => ({ table, size: byDate[date][table] }))
       }));
       return jsonResponse({ backups });
     }

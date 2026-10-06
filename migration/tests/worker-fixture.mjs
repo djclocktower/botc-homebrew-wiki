@@ -29,7 +29,7 @@ export async function fixture() {
     contentVersion, bumpContentVersion, cachedFeedBody, renderCharacterPage,
     applyCollectionAppearsIn, charsBySlug, ensurePagesTable, uploadSlotDenied,
     serveMedia, serveThumb, serveR2Image, ssrRoute, logActivity, app,
-    hashPassword, verifyPassword, wrapLegacyPasswords,
+    hashPassword, verifyPassword, wrapLegacyPasswords, runBackup, readBackupTable,
     appearsInHref: typeof appearsInHref === 'function' ? appearsInHref : null
   };\n//# sourceURL=botc-worker-test-${instance}.mjs`;
   const worker = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
