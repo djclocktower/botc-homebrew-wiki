@@ -736,7 +736,10 @@
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Nightly snapshots of the whole database (kept 30 days). Download any table as JSON, or restore a single page from a chosen night — the current version is saved to page history first, and even purged pages can be brought back this way.
         </p>
+        <p class="note" id="bk-last" hidden></p>
         <button type="button" class="small-btn" id="bk-load">Load backups</button>
+        <button type="button" class="small-btn" id="bk-run">Back up now</button>
+        <div class="toast" id="bk-run-toast"></div>
         <div id="bk-list"></div>
         <div class="act-filters" id="bk-restore-row" style="display:none;margin-top:12px">
           <select id="bk-date"></select>
@@ -2661,7 +2664,7 @@
         if (!d || !d.backups) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not list backups.') + '</p>'; return; }
         $('bk-count').textContent = d.backups.length || '';
         if (!d.backups.length) {
-          box.innerHTML = '<p class="note">No backups yet — the nightly backup runs at 06:00 UTC, or run one now from your account tools.</p>';
+          box.innerHTML = '<p class="note">No backups yet — the nightly backup runs at 06:00 UTC, or press Back up now.</p>';
           return;
         }
         box.innerHTML = d.backups.map(function(b){
@@ -2673,6 +2676,27 @@
         var sel = $('bk-date');
         sel.innerHTML = d.backups.map(function(b){ return '<option>' + esc(b.date) + '</option>'; }).join('');
         $('bk-restore-row').style.display = '';
+      });
+    });
+    /* Runs the same backup the nightly cron does, for today's date: the way
+       to fill in a table the night's run failed on without waiting a day.
+       It writes over today's files, so a run that already worked loses
+       nothing. */
+    $('bk-run').addEventListener('click', function(){
+      if (!confirm('Back up the whole database now?\n\nThis takes up to a minute and replaces today\'s backup files.')) return;
+      var btn = this; btn.disabled = true;
+      setToast('bk-run-toast', true, 'Backing up…');
+      postJSON('/api/backup', {}).then(function(res){
+        btn.disabled = false;
+        var b = res.body || {};
+        if (b.date) renderBackupWarning({ date: b.date, at: new Date().toISOString(), ok: b.ok, failed: b.failed || {} });
+        if (b.ok) setToast('bk-run-toast', true, 'Backup for ' + b.date + ' finished: every table saved.');
+        else if (b.failed) setToast('bk-run-toast', false, 'Backup finished, but these tables failed: ' + Object.keys(b.failed).join(', ') + '. The reason is shown above.');
+        else setToast('bk-run-toast', false, b.error || 'Backup failed.');
+        if ($('bk-list').innerHTML) $('bk-load').click();
+      }).catch(function(){
+        btn.disabled = false;
+        setToast('bk-run-toast', false, 'The backup request did not come back. It may still have finished: press Load backups to check.');
       });
     });
     $('bk-restore').addEventListener('click', function(){
@@ -3211,13 +3235,30 @@
        last run had failures, say so at the top of every tab. */
     function renderBackupWarning(bk){
       var el = $('backup-warning');
+      var last = $('bk-last');
+      if (last) {
+        /* The Backups card on the Health tab says how the last run went and,
+           when it failed, WHY: the banner used to send you here and there was
+           nothing here to read. */
+        if (!bk) { last.hidden = true; last.textContent = ''; }
+        else {
+          var when = bk.at ? new Date(bk.at).toLocaleString() : (bk.date || 'unknown');
+          var fails = Object.keys(bk.failed || {});
+          last.hidden = false;
+          last.textContent = bk.ok !== false
+            ? 'Last backup: ' + when + ' — every table saved.'
+            : 'Last backup: ' + when + ' — failed for ' + (fails.length
+                ? fails.map(function(t){ return t + ' (' + bk.failed[t] + ')'; }).join('; ')
+                : 'one or more tables') + '. Press Back up now to try again.';
+        }
+      }
       if (!el) return;
       if (!bk || bk.ok !== false) { el.hidden = true; el.textContent = ''; return; }
       var tables = Object.keys(bk.failed || {});
       el.hidden = false;
       el.textContent = 'The nightly backup on ' + (bk.date || 'its last run') +
         ' failed for: ' + (tables.length ? tables.join(', ') : 'one or more tables') +
-        '. Check the Health tab.';
+        '. The reason and a Back up now button are under Backups on the Health tab.';
     }
 
     function setBadge(key, n){
