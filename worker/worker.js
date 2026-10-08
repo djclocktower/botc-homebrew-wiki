@@ -6567,8 +6567,32 @@ function imageHeaders(obj, key, cacheControl) {
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
   headers.set('Cache-Control', cacheControl);
-  headers.set('Access-Control-Allow-Origin', '*');
+  setImageCors(headers);
   if (obj && obj.httpEtag) headers.set('ETag', obj.httpEtag);
+  return headers;
+}
+
+/* Every image is public, so any site may read it: `*` rather than an echoed
+   Origin (which would need Vary: Origin and split the edge cache per site).
+   Cross-Origin-Resource-Policy lets a page that isolates itself (COEP —
+   anything wanting SharedArrayBuffer, which Pyodide-style tools do) still
+   embed one with a plain <img>. Expose-Headers lets a fetch() read the ETag
+   and the length, which is how a tool tells an updated icon from a cached
+   one. Mirrored for the committed files by the /assets/* rule in _headers. */
+function setImageCors(headers) {
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Expose-Headers', 'ETag, Content-Length, Content-Type, Last-Modified');
+  headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  headers.set('Timing-Allow-Origin', '*');
+}
+function corsPreflightHeaders(request) {
+  const headers = new Headers();
+  setImageCors(headers);
+  headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  const asked = request.headers.get('Access-Control-Request-Headers');
+  if (asked) headers.set('Access-Control-Allow-Headers', asked);
+  headers.set('Access-Control-Max-Age', '86400');
+  headers.set('Cache-Control', 'public, max-age=86400');
   return headers;
 }
 
@@ -6600,7 +6624,7 @@ async function committedImageResponse(env, origin, key, request, cacheControl, c
   if (res.status === 404) return null;
   const headers = new Headers(res.headers);
   headers.set('Cache-Control', cacheControl);
-  headers.set('Access-Control-Allow-Origin', '*');
+  setImageCors(headers);
   return new Response(res.status === 304 ? null : res.body, { status: res.status, headers });
 }
 
@@ -7458,17 +7482,35 @@ const app = {
     // See "image serving" above the fetch handler for the three things this
     // route does that a plain R2 read did not: conditional requests, versioned
     // immutable URLs with an edge copy, and the thumbnail fallbacks.
+    // OPTIONS and HEAD are answered here too. A plain cross-origin fetch()
+    // needs neither, but a tool that adds a header of its own (Cache-Control,
+    // say) sends a preflight first, and one that checks an icon exists sends
+    // a HEAD; both used to fall through to a 404 and fail the whole request.
+    if (method === 'OPTIONS' && path.startsWith('/assets/')) {
+      return new Response(null, { status: 204, headers: corsPreflightHeaders(request) });
+    }
+    if (method === 'HEAD' && path.startsWith('/assets/')) {
+      const res = await app.fetch(new Request(request.url, { method: 'GET', headers: request.headers }), env, ctx);
+      try { await res.body?.cancel(); } catch { /* nothing to drain */ }
+      return new Response(null, { status: res.status, headers: res.headers });
+    }
     if (method === 'GET' && path.startsWith('/assets/')) {
       let key;
       try { key = decodeURIComponent(path.slice('/assets/'.length)); }
       catch { return new Response('Invalid image path', { status: 400 }); }
       if (key.includes('..')) return new Response('Not found', { status: 404 });
-      if (key.startsWith('media/')) return serveMedia(env, ctx, request, url, key);
-      if (key.startsWith(THUMB_PREFIX)) return serveThumb(env, ctx, request, url, key);
-      if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
-        return serveR2Image(env, ctx, request, url, key);
-      }
-      return env.ASSETS.fetch(request); // not in R2 -> committed static file
+      let res;
+      if (key.startsWith('media/')) res = await serveMedia(env, ctx, request, url, key);
+      else if (key.startsWith(THUMB_PREFIX)) res = await serveThumb(env, ctx, request, url, key);
+      else if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
+        res = await serveR2Image(env, ctx, request, url, key);
+      } else res = await env.ASSETS.fetch(request); // not in R2 -> committed static file
+      // A 404 needs the headers too, or a tool's fetch() reports a CORS
+      // failure instead of "not found".
+      if (res.headers.get('Access-Control-Allow-Origin') === '*' && res.headers.has('Cross-Origin-Resource-Policy')) return res;
+      res = new Response(res.body, res);
+      setImageCors(res.headers);
+      return res;
     }
 
     // ---------- RANDOM CHARACTER (302 to a random published page) ----------

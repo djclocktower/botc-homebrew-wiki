@@ -23,6 +23,9 @@
 # covers the committed copies (assets/icons/, assets/art/, logo_skull.png …).
 /assets/*
   Access-Control-Allow-Origin: *
+  Access-Control-Expose-Headers: ETag, Content-Length, Content-Type, Last-Modified
+  Cross-Origin-Resource-Policy: cross-origin
+  Timing-Allow-Origin: *
 
 # Security headers on every static file — the Worker adds the same set to the
 # responses it builds (withSecurityHeaders in worker.js). Nothing else here

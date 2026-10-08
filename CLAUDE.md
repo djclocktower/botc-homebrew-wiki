@@ -3803,7 +3803,16 @@ Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 for uploads. The official script tool fetch()es character icons cross-origin
 to embed them in its print preview and PNG/PDF sheet exports; without the
 header, wiki-hosted characters print as generic placeholders while looking
-fine on screen. Keep both halves in step.
+fine on screen. Keep both halves in step. The set is more than that one
+header (`setImageCors()` in worker.js, the `/assets/*` block in `_headers`):
+`Cross-Origin-Resource-Policy: cross-origin` so a COEP-isolated page can
+still `<img>` one, `Access-Control-Expose-Headers` so a fetch() can read the
+ETag, and `Timing-Allow-Origin`. The Worker's image route also answers
+**OPTIONS** (a 204 preflight, for a tool that adds a header of its own) and
+**HEAD**, and puts the headers on its 404s; all three used to fall through to
+a bare 404 and fail as a CORS error. Committed files the Worker does not
+route (`assets/icons/*`) still get a 405 for a preflight from the assets
+platform — a plain GET never sends one. `migration/tests/cors.test.mjs`.
 
 Two things that are NOT done, deliberately: Cloudflare's **Workers Cache**
 (`[cache] enabled = true` in wrangler.toml) would serve cached Worker
