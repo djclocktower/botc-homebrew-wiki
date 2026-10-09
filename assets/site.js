@@ -313,9 +313,13 @@
     var h = (a.getAttribute('href') || '').split(/[?#]/)[0];
     return new RegExp('(^|\\/)' + name + '(\\.html)?$').test(h);
   }
+  // Without a scope, only the site's own navigation (the top bar and the
+  // mobile menu) is searched: page content can hold a link that merely ends
+  // the same way — a script whose slug is "script" is at s/script — and that
+  // is not the Script Builder.
   function findLinks(name, scope) {
     return Array.prototype.filter.call(
-      (scope || document).querySelectorAll('a[href]'),
+      scope ? scope.querySelectorAll('a[href]') : document.querySelectorAll('.topbar a[href], .nav-dropdown a[href]'),
       function (a) { return linkMatches(a, name); }
     );
   }
@@ -443,7 +447,7 @@
   }
   function updateScriptBadge() {
     var n = scriptCount();
-    // Find every link to the Script Builder (root or ../, clean or .html)
+    // Every nav link to the Script Builder (root or ../, clean or .html)
     var links = findLinks('script');
     links.forEach(function (a) {
       var badge = a.querySelector('.script-badge');
@@ -619,7 +623,9 @@
     }
 
     function ensureData() {
-      if (index) return Promise.resolve(index);
+      // A partial index (a feed besides the characters failed) still answers
+      // searches, but the next warm-up asks for the missing parts again.
+      if (index && !index.partial) return Promise.resolve(index);
       if (loading) return loading;
       var B = window.BotcData;
       // When the engine is already on the page (/search loads it), the feeds

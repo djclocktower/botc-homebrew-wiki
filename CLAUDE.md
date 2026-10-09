@@ -3591,6 +3591,12 @@ is focused, hovered or touched (and preloaded in `search.html`'s head):
 
 `search-core.js` itself is only fetched by `site.js` on first use
 (`BotcData.script`), so a page nobody searches on pays nothing.
+Only the character feed is required: if one of the other three fails, the
+index is still built and searched but marked `partial` and **not kept**, so
+the next use (a focus on the box, the next search on /search) fetches the
+missing parts again. Any lookup table keyed by text a person typed (words,
+creator or set names) is `Object.create(null)` or a `Map`: on a plain object
+"constructor" found Object's own and the search dropped the word.
 
 **Matching.** Both sides are folded the same way (`fold()`): lower case,
 NFKD with the combining marks dropped, the letters with no decomposition

@@ -425,7 +425,9 @@
     var keyedSecs = {};   // kind -> {key -> section}
     function keyedGrids(kind) {
       if (keyedSecs[kind]) return keyedSecs[kind];
-      var spec = KEYED[kind], by = {}, keys = [];
+      // Keyed by author and set names, so no prototype: a creator called
+      // "Constructor" found Object's and threw.
+      var spec = KEYED[kind], by = Object.create(null), keys = [];
       sections.forEach(function (sec) {
         (sec._origOrder || []).forEach(function (card) {
           var key = spec.key(card);
@@ -438,7 +440,7 @@
       });
       var wrap = document.createElement('div');
       wrap.className = 'cf-keyed cf-' + kind;
-      var out = {};
+      var out = Object.create(null);
       keys.forEach(function (key) {
         var sec = document.createElement('section'), name = by[key].name;
         sec.className = 'type-section cf-author-sec';

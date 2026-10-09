@@ -44,7 +44,9 @@
   function readURL() {
     var p = new URLSearchParams(location.search);
     var tab = p.get('type');
-    return { q: p.get('q') || '', tab: TAB_TYPE[tab] !== undefined ? tab : 'all' };
+    // Own keys only: ?type=constructor found Object's and blanked the page.
+    var known = tab != null && Object.prototype.hasOwnProperty.call(TAB_TYPE, tab);
+    return { q: p.get('q') || '', tab: known ? tab : 'all' };
   }
   var state = readURL();
   input.value = state.q;
@@ -59,7 +61,7 @@
     document.title = (state.q ? state.q + ' · ' : '') + 'Search — BOTC HomeBrew Wiki';
   }
 
-  var index = null, res = null, filters = null, cancelCards = null, feedPos = null, members = {};
+  var index = null, res = null, filters = null, cancelCards = null, feedPos = null, members = Object.create(null);
 
   function markFn(text) { return S.mark(text, res ? res.tokens : []); }
 
@@ -489,7 +491,11 @@
     index.data.characters.forEach(function (c, i) { feedPos.set(c, i); });
     filters = CF.mount({
       bar: bar, toggle: toggle, list: index.data.characters,
-      sourceOf: CF.makeSourceOf(index.data.collections, index.data.scripts),
+      // Through `index`, so a partial index swapped for the full one is read.
+      sourceOf: function (c) {
+        if (!sourceOf) sourceOf = CF.makeSourceOf(index.data.collections, index.data.scripts);
+        return sourceOf(c);
+      },
       sorts: [['relevance', 'Best match'], ['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']],
       defaultGroup: 'none',
       order: function (c) { return feedPos.get(c) || 0; },
@@ -562,6 +568,7 @@
   });
 
   var setOf = null;   // "Group: By script or collection", built once
+  var sourceOf = null; // the Source chips' answer, built once per index
   function drawCharacters(q) {
     var all = res.byType.character.map(function (r) { return r.item.data; });
     var list = filters.apply(all);
@@ -585,7 +592,25 @@
   }
 
   /* ── running a search ── */
+  // A partial index (scripts, collections or the people/pages index failed
+  // to load) is searched as it is, and every search asks for the missing
+  // parts again until they arrive; S.load() shares one attempt at a time.
+  var refreshing = false;
+  function refresh() {
+    if (refreshing || !index || !index.partial) return;
+    refreshing = true;
+    S.load().then(function (idx) {
+      refreshing = false;
+      if (idx.partial) return;
+      index = idx;
+      members = Object.create(null);
+      setOf = null;
+      sourceOf = null;
+      run();
+    }, function () { refreshing = false; });
+  }
   function run() {
+    refresh();
     res = index.search(state.q);
     drawTabs();
     drawBody();

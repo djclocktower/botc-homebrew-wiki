@@ -187,7 +187,10 @@
     ['My Account', 'account', 'Your account', '', 'settings profile'],
     ['Messages', 'messages', 'Your account', '', 'inbox mail dm']
   ];
-  var STOP = { the: 1, of: 1, a: 1, an: 1, and: 1, to: 1, in: 1, on: 1, for: 1, by: 1, is: 1 };
+  // Looked up with a word somebody typed, so it must not inherit anything:
+  // on a plain object "constructor" read as a small word and was dropped.
+  var STOP = Object.assign(Object.create(null),
+    { the: 1, of: 1, a: 1, an: 1, and: 1, to: 1, in: 1, on: 1, for: 1, by: 1, is: 1 });
 
   function titleCase(s) {
     return String(s || '').trim().toLowerCase()
@@ -333,7 +336,7 @@
 
     // Tags come from the characters themselves, so the list is exactly the
     // tags in use and each can say how many characters carry it.
-    var tagCount = {};
+    var tagCount = Object.create(null);
     (data.characters || []).forEach(function (c) {
       splitList(c && c.tags).forEach(function (t) {
         var k = titleCase(t);
@@ -346,7 +349,7 @@
         data: { kind: 'tag', count: tagCount[t] }
       }, [[t, 10, true, true]]);
     });
-    var teamCount = {};
+    var teamCount = Object.create(null);
     (data.characters || []).forEach(function (c) { if (c && c.team) teamCount[c.team] = (teamCount[c.team] || 0) + 1; });
     TEAMS.forEach(function (t) {
       add({
@@ -524,7 +527,8 @@
     opts = opts || {};
     var only = opts.types ? {} : null;
     if (opts.types) opts.types.forEach(function (t) { only[t] = 1; });
-    var tokens = [], seen = {};
+    // seen is keyed by the typed words, so it has no prototype to collide with.
+    var tokens = [], seen = Object.create(null);
     var parsed = parseQuery(query), neg = parsed.neg;
     words(parsed.text).forEach(function (w) { if (!seen[w]) { seen[w] = 1; tokens.push(w); } });
     var items = this.items, out = [], i;
@@ -579,7 +583,7 @@
     TYPES.forEach(function (t) { byType[t] = []; counts[t] = 0; });
     // A creator with an account and that account are one person with one
     // page. Both stay in their own tab; the mixed list shows the person once.
-    var creatorHref = {};
+    var creatorHref = Object.create(null);
     for (i = 0; i < results.length; i++) {
       var r = results[i];
       byType[r.item.type].push(r);
@@ -644,7 +648,11 @@
      load() fetches the four feeds (the three the browse pages already use,
      so they are often in the browser's cache, plus the people/pages/news
      index) and builds once. A failed load is forgotten so the next call
-     retries. */
+     retries. Only the character feed is required: the other three may fail
+     and the search still works without them, but that index is marked
+     `partial` and NOT kept, so the next call fetches the missing parts again
+     (the ones that loaded come back from BotcData's per-page share) instead
+     of the page searching without scripts or creators until it is reloaded. */
   if (typeof window !== 'undefined') {
     var loading = null, built = null;
     API.ready = function () { return built; };
@@ -659,16 +667,22 @@
           return rows;
         });
       }
+      var partial = false;
+      function optional(p, empty) {
+        return p.catch(function () { partial = true; return empty; });
+      }
       loading = Promise.all([
         list('characters.json?fields=grid'),
-        list('scripts.json?fields=browse').catch(function () { return []; }),
-        list('collections.json?fields=browse').catch(function () { return []; }),
-        B.json(r + 'api/search-index').catch(function () { return {}; })
+        optional(list('scripts.json?fields=browse'), []),
+        optional(list('collections.json?fields=browse'), []),
+        optional(B.json(r + 'api/search-index'), {})
       ]).then(function (res) {
-        built = createIndex({ characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} }, r);
-        built.data = { characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} };
+        var idx = createIndex({ characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} }, r);
+        idx.data = { characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} };
+        idx.partial = partial;
+        if (!partial) built = idx;
         loading = null;
-        return built;
+        return idx;
       }, function (err) { loading = null; throw err; });
       return loading;
     };

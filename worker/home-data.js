@@ -41,8 +41,9 @@ import WikiRender from '../assets/render-wiki.js';
       // their own creator page, so each of them gets their own turn — and the
       // page they share can be drawn under either name. Keyed case-folded so
       // one creator with two spellings is one creator; the display name is
-      // whichever spelling was seen first.
-      var byKey = {}, keys = [];
+      // whichever spelling was seen first. No prototype: a creator called
+      // "Constructor" found Object's own and threw, taking /api/home down.
+      var byKey = Object.create(null), keys = [];
       pool.forEach(function(c){
         Creators.splitCreators(c.creator).forEach(function(nm){
           var k = nm.toLowerCase();
