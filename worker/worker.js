@@ -339,7 +339,7 @@ import * as Bloodstar from './bloodstar.js';
 // Delete this import, the route and the card once the cleanup has been run.
 import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 import { homeData } from './home-data.js';
-import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
+import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
 
@@ -5721,7 +5721,7 @@ ${o.draftBanner || ''}
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-  <script>window.BOTC_ASSETS=${jsStr(ASSET_MANIFEST)}; ${o.bootstrap || ''}</script>
+  <script>window.BOTC_ASSETS=${jsStr(RUNTIME_ASSETS)}; ${o.bootstrap || ''}</script>
 ${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + (ASSET_MANIFEST[s] || s) + '"></script>').join('\n')}
 </body>
 </html>`;
