@@ -801,16 +801,35 @@ function randomToken() {
 }
 
 // ---- sessions (stored in KV) ----
-// KV cannot be queried by value, so revoking "every session belonging to user
-// N" needs an index we maintain ourselves: usess:{id} holds that account's
-// live tokens. Without it, changing a password left every existing 30-day
-// cookie valid — so a stolen session survived the exact thing a worried user
-// would do about it.
+// Revoking "every session belonging to user N" is decided in D1, not KV: each
+// session carries the account's `users.session_gen` from when it was minted,
+// and getSession() refuses one whose number is behind the account's.
+// revokeSessions() bumps the number, so a password change, a reset, a ban or a
+// demotion ends every cookie at once — including ones the KV index below lost
+// track of. That index (usess:{id}) used to be the whole mechanism, and it is
+// a read-modify-write list capped at 40, so two logins racing, or a 41st
+// device, dropped tokens out of it and those sessions quietly survived the
+// exact thing a worried user does about a stolen one. It stays only so the
+// revoked KV entries are deleted rather than left to age out.
 const SESSION_TTL = 60 * 60 * 24 * 30;
-// A cap, because this list is only ever read to revoke. An account with more
-// live sessions than this has bigger problems, and the oldest simply age out
-// on their own TTL as they always did.
+// A cap, because this list is only ever read to tidy up after a revoke. An
+// account with more live sessions than this has bigger problems, and the
+// session_gen check ends the ones that fall off it anyway.
 const SESSION_INDEX_MAX = 40;
+
+// users.session_gen (see above) and users.password_gen (see
+// passwordFingerprint): added lazily, like users.banned — no manual
+// migrations, ever. Both default to 0, which is what a session or a reset link
+// minted before the column existed carries.
+let _authColsReady = false;
+async function ensureAuthColumns(env) {
+  if (_authColsReady) return;
+  for (const col of ['session_gen', 'password_gen']) {
+    try { await env.DB.prepare(`ALTER TABLE users ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`).run(); }
+    catch { /* already there */ }
+  }
+  _authColsReady = true;
+}
 
 // How long a half-finished Discord sign-in stays valid. Ten minutes used to be
 // enough for a desktop consent screen; on a phone the flow can hand off to the
@@ -834,6 +853,29 @@ async function indexSession(env, userId, token) {
 // request (so changing your own password does not log you out of the tab you
 // changed it in).
 async function revokeSessions(env, userId, keepToken) {
+  // The part that actually revokes: every session minted before this number
+  // moved is refused on its next request, whether or not KV still lists it.
+  let gen = null;
+  try {
+    await ensureAuthColumns(env);
+    const r = await env.DB.prepare(
+      'UPDATE users SET session_gen = COALESCE(session_gen, 0) + 1 WHERE id=? RETURNING session_gen'
+    ).bind(userId).first();
+    gen = r ? Number(r.session_gen) || 0 : null;
+  } catch (e) { console.error('[session] could not revoke in D1:', (e && e.message) || e); }
+  // The tab that asked to keep its session is moved onto the new number.
+  // One KV write, on a password change only.
+  if (keepToken && gen !== null) {
+    try {
+      const raw = await env.SESSIONS.get('sess:' + keepToken);
+      const kept = raw ? JSON.parse(raw) : null;
+      if (kept) {
+        const age = Math.floor((Date.now() - (Number(kept.created) || Date.now())) / 1000);
+        await env.SESSIONS.put('sess:' + keepToken, JSON.stringify({ ...kept, gen }),
+          { expirationTtl: Math.max(60, SESSION_TTL - age) });
+      }
+    } catch { /* the reader is asked to log in again; nothing is exposed */ }
+  }
   try {
     const key = 'usess:' + userId;
     const raw = await env.SESSIONS.get(key);
@@ -845,7 +887,7 @@ async function revokeSessions(env, userId, keepToken) {
     }
     if (keepToken) await env.SESSIONS.put(key, JSON.stringify([keepToken]), { expirationTtl: SESSION_TTL });
     else await env.SESSIONS.delete(key).catch(() => {});
-  } catch { /* best-effort: D1 re-checks bans on every write regardless */ }
+  } catch { /* tidying only: the session_gen bump above is the revocation */ }
 }
 
 // Returns the new token, or NULL when the session could not be stored.
@@ -861,7 +903,15 @@ async function revokeSessions(env, userId, keepToken) {
 // than a busy Tuesday.)
 async function createSession(env, userId, isAdmin) {
   const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
-  const session = JSON.stringify({ userId, isAdmin, created: Date.now() });
+  // Read here rather than passed in: a reset revokes and then signs in, and
+  // the row its caller holds still carries the number from before the revoke.
+  let gen = 0;
+  try {
+    await ensureAuthColumns(env);
+    const r = await env.DB.prepare('SELECT session_gen FROM users WHERE id=?').bind(userId).first();
+    gen = r ? Number(r.session_gen) || 0 : 0;
+  } catch { /* 0 is what every pre-column session carries */ }
+  const session = JSON.stringify({ userId, isAdmin, gen, created: Date.now() });
   try {
     // 30-day expiry
     await env.SESSIONS.put('sess:' + token, session, { expirationTtl: SESSION_TTL });
@@ -881,13 +931,40 @@ const SESSION_DOWN_MSG = 'Sign-in is briefly unavailable. Wait a minute and log 
 // created, but ...").
 function lowerFirst(str) { return str.charAt(0).toLowerCase() + str.slice(1); }
 
-async function getSession(env, request) {
+// One answer per request: several routes ask more than once (the admin gate,
+// then the route itself), and each answer now costs a D1 read.
+const _sessionOf = new WeakMap();
+function getSession(env, request) {
+  let p = _sessionOf.get(request);
+  if (!p) { p = readSession(env, request); _sessionOf.set(request, p); }
+  return p;
+}
+async function readSession(env, request) {
   const cookie = request.headers.get('Cookie') || '';
-  const m = cookie.match(/botc_session=([^;]+)/);
+  // Anchored to the start of a cookie, so `xbotc_session=` (any other site's
+  // cookie that happens to end in the name) can never be read as ours.
+  const m = cookie.match(/(?:^|;\s*)botc_session=([^;]+)/);
   if (!m) return null;
   const raw = await env.SESSIONS.get('sess:' + m[1]);
   if (!raw) return null;
-  try { return { token: m[1], ...JSON.parse(raw) }; } catch { return null; }
+  let sess;
+  try { sess = { token: m[1], ...JSON.parse(raw) }; } catch { return null; }
+  if (!sess || !sess.userId) return null;
+  // The account as it is NOW, one primary-key read: a session minted before
+  // the last revoke is over, and isAdmin is D1's answer rather than whatever
+  // the cookie was minted with — so a promotion counts at once and a demotion
+  // cannot linger on a read route that trusts the flag. A logged-out reader
+  // never gets here, so this costs nothing for them. If D1 cannot be reached
+  // the session stands as stored, the way every other check here fails soft.
+  try {
+    await ensureAuthColumns(env);
+    const row = await env.DB.prepare('SELECT is_admin, session_gen FROM users WHERE id=?')
+      .bind(sess.userId).first();
+    if (!row) return null; // the account is gone
+    if ((Number(sess.gen) || 0) !== (Number(row.session_gen) || 0)) return null;
+    sess.isAdmin = !!row.is_admin;
+  } catch { /* fail soft */ }
+  return sess;
 }
 function sessionCookie(token) {
   return `botc_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
@@ -1002,7 +1079,15 @@ async function rateLimited(env, request, bucket, limit, windowSec, opts = {}) {
 // is make you use "Forgot your password?", never lock you out for good.
 const LOGIN_FAIL_LIMIT = 20;
 const LOGIN_FAIL_WINDOW = 60 * 60;
-function loginFailKey(userId) { return 'rl:loginfail:u' + userId; }
+// `userId` is an account id, or — for an identifier no account answers to —
+// the string phantomLoginId() makes of it. Counting those too is what keeps
+// the 429 from being a membership test: without it the 21st wrong password
+// was refused for a real email and kept answering 401 for a made-up one.
+function loginFailKey(userId) { return 'rl:loginfail:' + loginFailIdentity(userId); }
+function loginFailIdentity(userId) { return typeof userId === 'string' ? userId : 'u' + userId; }
+async function phantomLoginId(identifier) {
+  return 'n' + (await sha256Hex('login:' + usernameKey(identifier))).slice(0, 32);
+}
 async function loginFailuresExceeded(env, userId) {
   try {
     await ensureRateTable(env);
@@ -1012,7 +1097,7 @@ async function loginFailuresExceeded(env, userId) {
   } catch { return false; }
 }
 async function recordLoginFailure(env, request, userId) {
-  await rateLimited(env, request, 'loginfail', LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, { identity: 'u' + userId });
+  await rateLimited(env, request, 'loginfail', LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, { identity: loginFailIdentity(userId) });
 }
 async function clearLoginFailures(env, userId) {
   try { await env.DB.prepare('DELETE FROM rate_limits WHERE key=?').bind(loginFailKey(userId)).run(); }
@@ -1261,11 +1346,24 @@ async function consumeEmailToken(env, rec) {
 function sameEmail(a, b) {
   return !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 }
-// A fingerprint of the stored password hash, so a reset link dies the moment
-// the password changes by ANY route: the reset it was for, a later one, or the
+// A fingerprint of the account's PASSWORD, so a reset link dies the moment the
+// password changes by ANY route: the reset it was for, a later one, or the
 // account page. Without it every link requested in the last hour stayed live
 // after the first was used.
-async function passwordFingerprint(hash) {
+//
+// It is `users.password_gen`, which only the two places that set a new
+// password move, and NOT the stored hash. It used to be the hash, and the hash
+// also changes when nothing about the password does: the login upgrade, the
+// nightly wrap and the pepper rollout all rewrite it, and each one killed
+// every outstanding reset link — a member locked out and asking for a link
+// could have it die under them overnight.
+function passwordFingerprint(user) {
+  return 'g' + (Number(user && user.password_gen) || 0);
+}
+// The hash-based fingerprint links minted before password_gen existed carry.
+// Only ever compared against, so those links still work (or still die) for
+// the day they have left; nothing writes this form any more.
+async function legacyPasswordFingerprint(hash) {
   return (await sha256Hex('pwfp:' + String(hash || ''))).slice(0, 32);
 }
 
@@ -1359,11 +1457,29 @@ function foldLatin(s) {
 // cannot do, "type it with or without the accent and you still find the
 // account", and a block on registering the near-identical @tir-far-thoinn
 // next to @tir-far-thóinn.
+//
+// The key also folds the Latin LOOKALIKES, which accents are not the only way
+// to make: fullwidth ａｌｉｃｅ, the Roman numerals ⅰ and ⅼ, ligatures (NFKC
+// takes all of those to their plain letters), and the IPA and small-capital
+// letters below, which NFKC leaves alone. Each is a letter of the Latin
+// script, so mixesScripts() has nothing to object to, and without this
+// @ɑlice registered beside @alice as a different person. Changing what the
+// key folds changes stored keys: USERNAME_KEY_V says which rules the column
+// was last computed with, and ensureUsernameKey() recomputes it when it moves.
+// A plain or accented name comes out exactly as it did before.
+const USERNAME_KEY_V = '2';
+const LATIN_LOOKALIKES = {
+  'ɑ': 'a', 'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ᴇ': 'e', 'ɡ': 'g', 'ɢ': 'g',
+  'ʜ': 'h', 'ɩ': 'i', 'ɪ': 'i', 'ǀ': 'l', 'ʟ': 'l', 'ᴊ': 'j', 'ᴋ': 'k', 'ᴍ': 'm', 'ɴ': 'n',
+  'ᴏ': 'o', 'ᴘ': 'p', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z'
+};
+const LATIN_LOOKALIKE_RE = new RegExp('[' + Object.keys(LATIN_LOOKALIKES).join('') + ']', 'g');
 function normUsername(s) {
   return String(s == null ? '' : s).normalize('NFC').trim();
 }
 function usernameKey(s) {
-  return foldLatin(s).normalize('NFC').trim().toLowerCase();
+  return foldLatin(String(s == null ? '' : s).normalize('NFKC')).normalize('NFC').trim().toLowerCase()
+    .replace(LATIN_LOOKALIKE_RE, ch => LATIN_LOOKALIKES[ch]);
 }
 
 // ---- validation ----
@@ -1415,15 +1531,29 @@ async function ensureUsernameKey(env) {
   try { await env.DB.prepare('ALTER TABLE users ADD COLUMN username_key TEXT').run(); }
   catch { /* already there */ }
   try {
+    // Every row when the folding rules have moved since the column was last
+    // computed (USERNAME_KEY_V), otherwise only the unkeyed ones.
+    const ver = await env.DB.prepare("SELECT value FROM settings WHERE key='username_key_v'")
+      .first().catch(() => null);
+    const stale = !ver || ver.value !== USERNAME_KEY_V;
     const { results } = await env.DB.prepare(
-      'SELECT id, username FROM users WHERE username_key IS NULL'
+      'SELECT id, username, username_key FROM users' + (stale ? '' : ' WHERE username_key IS NULL')
     ).all();
     for (const r of results || []) {
-      // Per row: a key that collides with one already in the table would throw
-      // against the UNIQUE index below, and one unkeyable row must not leave
-      // the rest of the table unkeyed.
-      await env.DB.prepare('UPDATE users SET username_key=? WHERE id=?')
-        .bind(usernameKey(r.username), r.id).run().catch(() => {});
+      const key = usernameKey(r.username);
+      if (key === r.username_key) continue;
+      // Per row: a key that collides with one already in the table is refused
+      // (by the NOT EXISTS, and by the UNIQUE index below where it exists),
+      // and one unkeyable row must not leave the rest of the table unkeyed.
+      // The row that loses keeps the key it had (or none); selectUserByName()
+      // still finds it by its exact handle, and the log names it so an admin
+      // can rename one of the pair.
+      const res = await env.DB.prepare(
+        'UPDATE users SET username_key=?1 WHERE id=?2 AND NOT EXISTS (SELECT 1 FROM users WHERE username_key=?1 AND id<>?2)'
+      ).bind(key, r.id).run().catch(() => null);
+      if (!(res && res.meta && res.meta.changes)) {
+        console.error('[auth] username key collision: user ' + r.id + ' (' + r.username + ') folds to an existing account\'s key "' + key + '"');
+      }
     }
     // UNIQUE is the real guard against two signups racing onto one key. It can
     // only fail if live data already holds a collision, which is why it comes
@@ -1431,6 +1561,18 @@ async function ensureUsernameKey(env) {
     await env.DB.prepare(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_key ON users(username_key)'
     ).run().catch(() => {});
+    // The same guard for email (schema.sql declares it; a database made
+    // before that may lack it). Signup checks first, so this only ever
+    // catches two signups racing; if live data already holds a duplicate the
+    // CREATE fails, harmlessly, and the check before the INSERT is what is left.
+    await env.DB.prepare(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(lower(email)) WHERE email IS NOT NULL'
+    ).run().catch(() => {});
+    if (stale) {
+      await env.DB.prepare(
+        "INSERT INTO settings (key, value) VALUES ('username_key_v', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+      ).bind(USERNAME_KEY_V).run().catch(() => {});
+    }
     _unameKeyReady = true;
   } catch { /* try again on the next request rather than 500 this one */ }
   return _unameKeyReady;
@@ -1439,11 +1581,18 @@ async function ensureUsernameKey(env) {
 // The one way to turn a typed handle into a row. `cols` is always an internal
 // literal, never anything a caller sent. If the key column could not be added
 // this degrades to the old ASCII comparison instead of failing every login.
+//
+// The exact stored handle is tried alongside the key, and wins: an account
+// made before the key folded what it folds now can share its key with an
+// older one, and the backfill above leaves it on its old key (or none). By
+// key alone it could never be reached by its name again; by exact spelling it
+// can, and the key — what a NEW handle is checked against — is unchanged.
 async function selectUserByName(env, cols, name, extraWhere) {
   const ready = await ensureUsernameKey(env);
-  const where = ready ? 'username_key = ?1' : 'lower(username) = lower(?1)';
-  const sql = `SELECT ${cols} FROM users WHERE ${where}${extraWhere ? ' ' + extraWhere : ''}`;
-  return env.DB.prepare(sql).bind(ready ? usernameKey(name) : normUsername(name))
+  const where = ready ? '(username_key = ?1 OR username = ?2)' : 'lower(username) = lower(?2)';
+  const order = ready ? ' ORDER BY (username = ?2) DESC LIMIT 1' : '';
+  const sql = `SELECT ${cols} FROM users WHERE ${where}${extraWhere ? ' ' + extraWhere : ''}${order}`;
+  return env.DB.prepare(sql).bind(usernameKey(name), normUsername(name))
     .first().catch(() => null);
 }
 
@@ -2728,12 +2877,15 @@ async function getAccountFlags(env, userId) {
   }
 }
 
-// Admin gate for GET endpoints: session must exist AND still be admin in D1.
+// Admin gate for GET endpoints: session must exist AND be admin in D1. D1 is
+// asked even when the cookie says not-admin, so a promotion takes effect on
+// the next request rather than at the next login.
 async function adminSession(env, request) {
   const sess = await getSession(env, request);
-  if (!sess || !sess.isAdmin) return null;
+  if (!sess) return null;
   const flags = await getAccountFlags(env, sess.userId);
   if (!flags || !flags.is_admin || flags.banned) return null;
+  sess.isAdmin = true;
   return sess;
 }
 
@@ -8236,14 +8388,28 @@ const app = {
       }
       const emailTaken = await env.DB.prepare('SELECT 1 FROM users WHERE email IS NOT NULL AND lower(email)=lower(?)')
         .bind(email).first();
-      if (emailTaken) return jsonResponse({ error: 'An account with that email already exists. Try logging in or resetting your password.' }, { status: 409 });
+      const EMAIL_TAKEN_MSG = 'An account with that email already exists. Try logging in or resetting your password.';
+      if (emailTaken) return jsonResponse({ error: EMAIL_TAKEN_MSG }, { status: 409 });
 
       const hash = await hashPassword(env, password);
       await ensureUsernameKey(env);
-      const res = await env.DB.prepare(
-        `INSERT INTO users (username, username_key, password_hash, email, is_admin, last_login)
-         VALUES (?,?,?,?,0,datetime('now'))`
-      ).bind(username, usernameKey(username), hash, email).run();
+      let res;
+      try {
+        res = await env.DB.prepare(
+          `INSERT INTO users (username, username_key, password_hash, email, is_admin, last_login)
+           VALUES (?,?,?,?,0,datetime('now'))`
+        ).bind(username, usernameKey(username), hash, email).run();
+      } catch (e) {
+        // Two signups racing past the checks above onto one name or one
+        // email: the UNIQUE indexes stop the second, and it gets the same
+        // answer the check would have given rather than a bare 500.
+        const m = String((e && e.message) || e);
+        if (!/UNIQUE/i.test(m)) throw e;
+        return jsonResponse({
+          error: /email/i.test(m) ? EMAIL_TAKEN_MSG
+            : 'That username is taken or too close to an existing one. Try adding something to it.'
+        }, { status: 409 });
+      }
       const userId = res.meta.last_row_id;
 
       const token = await createSession(env, userId, false);
@@ -8277,8 +8443,15 @@ const app = {
       const isEmailish = identifier.includes('@');
       const vague = 'That email and password don\'t match. Check both, or use "Forgot your password?" below.';
       if (!user) {
+        // Counted and capped exactly like a real account's failures, so the
+        // 429 below cannot tell a member's email from a made-up one.
+        const phantom = await phantomLoginId(identifier);
+        if (await loginFailuresExceeded(env, phantom)) {
+          return tooManyResponse('Too many wrong passwords for this account. Wait an hour, or use "Forgot your password?" below to get back in now.', LOGIN_FAIL_WINDOW);
+        }
         // Same work as a real check, so the answer time says nothing either.
         await burnPasswordCheck(password);
+        await recordLoginFailure(env, request, phantom);
         return jsonResponse({
           error: isEmailish ? vague
             : 'No account has that username. It\'s the @name on your account page. You can also log in with your email address.'
@@ -8290,7 +8463,9 @@ const app = {
       const ok = await verifyPassword(env, password, user.password_hash);
       if (!ok) {
         await recordLoginFailure(env, request, user.id);
-        if (!user.password_hash && user.discord_id) {
+        // Only for a NAME, like the two messages below: said to an email it
+        // would confirm that address belongs to a (Discord) member.
+        if (!user.password_hash && user.discord_id && !isEmailish) {
           return jsonResponse({ error: 'This account signs in with Discord. Use the Discord button (you can set a password afterwards on your account page).' }, { status: 401 });
         }
         return jsonResponse({
@@ -8551,15 +8726,21 @@ const app = {
       if (!env.RESEND_API_KEY) {
         return jsonResponse({ error: 'Password reset email is not configured on this server yet. Contact an admin.' }, { status: 501 });
       }
-      const user = await findUserByLogin(env, identifier);
-      // Always report success so account existence can't be probed.
-      if (user && user.email) {
+      // Always report success so account existence can't be probed — and do
+      // ALL the work after the answer has gone. The lookup, the KV write and
+      // the email used to happen first for a real account and not at all for
+      // an unknown one, so the reply came back measurably slower for members
+      // and a KV failure turned into a 500 only a member's address could
+      // cause. Now every request gets the same reply in the same time.
+      ctx.waitUntil((async () => {
+        const user = await findUserByLogin(env, identifier);
+        if (!user || !user.email) return;
         const token = randomToken();
         await storeEmailToken(env, 'pwreset', token, {
-          id: user.id, email: user.email, fp: await passwordFingerprint(user.password_hash)
+          id: user.id, email: user.email, fp: passwordFingerprint(user)
         }, 3600);
         const link = canonicalOrigin(env) + '/reset-password?token=' + token;
-        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password for ' + APP_NAME, emailShell(
+        await sendEmail(env, user.email, 'Reset your password for ' + APP_NAME, emailShell(
           'Reset your password',
           // Half the people who ask for a reset are stuck on the OTHER field:
           // their display name is the only name the site shows them, so this
@@ -8569,8 +8750,8 @@ const app = {
            <p>Your username is <b>@${escapeHtml(user.username)}</b>. You can log in with it or with this email address.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
-        )));
-      }
+        ));
+      })().catch(e => console.error('[auth] password reset email failed:', (e && e.message) || e)));
       return jsonResponse({ ok: true, message: 'If that account exists, a reset link is on its way to its email address.' });
     }
 
@@ -8592,7 +8773,7 @@ const app = {
       // it was sent to replace. A changed email or a password changed since
       // (by this link or any other route) kills it.
       if (!u || String(u.email || '').trim().toLowerCase() !== String(rec.email || '').trim().toLowerCase() ||
-          rec.fp !== await passwordFingerprint(u.password_hash)) {
+          (rec.fp !== passwordFingerprint(u) && rec.fp !== await legacyPasswordFingerprint(u.password_hash))) {
         await consumeEmailToken(env, rec);
         return expired();
       }
@@ -8600,10 +8781,12 @@ const app = {
       if (bad) return jsonResponse({ error: bad }, { status: 400 });
       await consumeEmailToken(env, rec);
       const hash = await hashPassword(env, password);
+      await ensureAuthColumns(env);
       // Following an EMAILED link proves the address works, so it counts as
       // verifying it. A link an admin handed over proves nothing about email.
+      // password_gen moves: every other outstanding link is for the old one.
       await env.DB.prepare(
-        'UPDATE users SET password_hash=?, email_verified=CASE WHEN ? THEN 1 ELSE email_verified END WHERE id=?'
+        'UPDATE users SET password_hash=?, password_gen=COALESCE(password_gen,0)+1, email_verified=CASE WHEN ? THEN 1 ELSE email_verified END WHERE id=?'
       ).bind(hash, rec.byAdmin || !u.email ? 0 : 1, u.id).run();
       await clearLoginFailures(env, u.id);
       // Everything signed in under the old password goes. Order matters: the
@@ -8632,14 +8815,36 @@ const app = {
     if (method === 'GET' && path === '/api/verify-email') {
       const rec = await readEmailToken(env, 'verify', url.searchParams.get('token') || '');
       if (!rec) return redirectResponse(url.origin + '/account?verified=0', null, { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-      await consumeEmailToken(env, rec);
-      // Only the address the link was SENT to can be verified by it. The
-      // account's email may have changed since; then this link proves nothing
-      // about the new one.
-      const res = await env.DB.prepare(
-        'UPDATE users SET email_verified=1 WHERE id=? AND email IS NOT NULL AND lower(email)=lower(?)'
-      ).bind(rec.id, String(rec.email || '')).run().catch(() => null);
-      const ok = !!(res && res.meta && res.meta.changes);
+      let ok = false;
+      if (rec.used) {
+        // A second visit to a link that already did its job. Mail scanners
+        // (Outlook's Safe Links, corporate filters) open every link in a
+        // message before the person does, so the person's own click was the
+        // second one and used to land on "that link didn't work" for an
+        // address that had in fact just been verified. It changes nothing: it
+        // only reports success when the account is verified AT THE ADDRESS
+        // THE LINK WAS SENT TO, so a changed email still reads as not done.
+        const u = await env.DB.prepare('SELECT email, email_verified FROM users WHERE id=?')
+          .bind(rec.id).first().catch(() => null);
+        ok = !!(u && u.email_verified && sameEmail(u.email, rec.email));
+      } else {
+        // Only the address the link was SENT to can be verified by it. The
+        // account's email may have changed since; then this link proves
+        // nothing about the new one.
+        const res = await env.DB.prepare(
+          'UPDATE users SET email_verified=1 WHERE id=? AND email IS NOT NULL AND lower(email)=lower(?)'
+        ).bind(rec.id, String(rec.email || '')).run().catch(() => null);
+        ok = !!(res && res.meta && res.meta.changes);
+        // Spent either way. A link that worked is kept as a `used` marker
+        // (same key, same KV write a delete would cost) so the visit after a
+        // scanner's can say so; it can never verify anything again.
+        if (ok) {
+          await env.SESSIONS.put(rec._key, JSON.stringify({ id: rec.id, email: rec.email, used: true }),
+            { expirationTtl: 60 * 60 * 24 }).catch(() => consumeEmailToken(env, rec));
+        } else {
+          await consumeEmailToken(env, rec);
+        }
+      }
       return redirectResponse(url.origin + '/account?verified=' + (ok ? '1' : '0'), null, { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
     }
 
@@ -8683,6 +8888,13 @@ const app = {
         const sess = await getSession(env, request);
         if (!sess) return loginErrorRedirect(url.origin, 'Log in first, then link Discord from your account page.');
         linkUserId = sess.userId;
+      }
+      // Every visit here writes a KV entry, and nothing about it needs an
+      // account — so without a limit, a loop of anonymous GETs spends the KV
+      // write quota that createSession() also lives on, and once it is gone
+      // nobody can log in at all. Counted in D1, like every other limit.
+      if (await rateLimited(env, request, 'discordauth', 30, 3600)) {
+        return loginErrorRedirect(url.origin, 'Too many Discord sign-in attempts from this connection. Wait a while and try again.');
       }
       const state = randomToken();
       // put() resolves to undefined on success, so null is unambiguously the
@@ -8743,47 +8955,61 @@ const app = {
       }
 
       const code = url.searchParams.get('code');
+      // Only the shape randomToken() makes is looked up: a KV key has a length
+      // limit, and an over-long `state` made get() throw into the crash page.
       const state = url.searchParams.get('state') || '';
-      const stateRaw = state && await env.SESSIONS.get('oauth:' + state);
+      const stateRaw = EMAIL_TOKEN_RE.test(state)
+        ? await env.SESSIONS.get('oauth:' + state).catch(() => null) : null;
       if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in timed out or the link was already used. Please try again.');
-      await env.SESSIONS.delete('oauth:' + state);
+      await env.SESSIONS.delete('oauth:' + state).catch(() => {});
       let linkUserId = 0;
       try { linkUserId = (JSON.parse(stateRaw).link | 0); } catch {}
 
       // Exchange the code for a token. The redirect_uri here must match the
       // one sent to /authorize character for character, which is why both come
       // from discordRedirectUri(env) and neither is built from this request.
-      const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: env.DISCORD_CLIENT_ID,
-          client_secret: env.DISCORD_CLIENT_SECRET,
-          grant_type: 'authorization_code',
-          code,
-          redirect_uri: discordRedirectUri(env)
-        })
-      });
-      if (!tokenRes.ok) {
-        // Discord's own reason, in the Worker log and in the message. The
-        // three that matter: invalid_client (the secret is wrong or was wiped
-        // by a deploy), invalid_grant (a stale or reused code) and
-        // invalid_request (usually the redirect_uri is not registered).
-        const detail = await discordErrorCode(tokenRes);
-        console.log('discord-oauth: token exchange failed', tokenRes.status, detail);
-        return loginErrorRedirect(url.origin, 'Discord sign-in failed (' + detail + '). Please tell an admin if it keeps happening.');
-      }
-      const tok = await tokenRes.json();
+      //
+      // Both calls to Discord, and reading their bodies, are inside one try:
+      // a network failure or a body that is not JSON used to escape as the
+      // site's crash page, mid-sign-in, instead of a message on /login.
+      let du;
+      try {
+        const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: env.DISCORD_CLIENT_ID,
+            client_secret: env.DISCORD_CLIENT_SECRET,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: discordRedirectUri(env)
+          })
+        });
+        if (!tokenRes.ok) {
+          // Discord's own reason, in the Worker log and in the message. The
+          // three that matter: invalid_client (the secret is wrong or was wiped
+          // by a deploy), invalid_grant (a stale or reused code) and
+          // invalid_request (usually the redirect_uri is not registered).
+          const detail = await discordErrorCode(tokenRes);
+          console.log('discord-oauth: token exchange failed', tokenRes.status, detail);
+          return loginErrorRedirect(url.origin, 'Discord sign-in failed (' + detail + '). Please tell an admin if it keeps happening.');
+        }
+        const tok = await tokenRes.json();
 
-      const userRes = await fetch('https://discord.com/api/users/@me', {
-        headers: { Authorization: 'Bearer ' + tok.access_token }
-      });
-      if (!userRes.ok) {
-        const detail = await discordErrorCode(userRes);
-        console.log('discord-oauth: profile fetch failed', userRes.status, detail);
-        return loginErrorRedirect(url.origin, 'Discord sign-in failed (could not load your profile: ' + detail + '). Please try again.');
+        const userRes = await fetch('https://discord.com/api/users/@me', {
+          headers: { Authorization: 'Bearer ' + tok.access_token }
+        });
+        if (!userRes.ok) {
+          const detail = await discordErrorCode(userRes);
+          console.log('discord-oauth: profile fetch failed', userRes.status, detail);
+          return loginErrorRedirect(url.origin, 'Discord sign-in failed (could not load your profile: ' + detail + '). Please try again.');
+        }
+        du = await userRes.json();
+      } catch (e) {
+        console.log('discord-oauth: could not talk to Discord:', (e && e.message) || e);
+        return loginErrorRedirect(url.origin, 'Discord sign-in failed (Discord could not be reached). Please try again.');
       }
-      const du = await userRes.json();
+      if (!du || !du.id) return loginErrorRedirect(url.origin, 'Discord sign-in failed (could not load your profile). Please try again.');
       const discordId = String(du.id);
       const discordName = du.global_name || du.username || 'user';
       const avatarUrl = du.avatar
@@ -8836,6 +9062,12 @@ const app = {
           if (!byEmail.email_verified) {
             return loginErrorRedirect(url.origin, 'An account with your Discord email already exists but isn\'t verified. Log in with your password, verify your email, then link Discord from your account page.');
           }
+          // That account already signs in with a DIFFERENT Discord. Linking
+          // this one would silently cut the owner off from the Discord they
+          // use, so it is refused; they can switch it from the account page.
+          if (byEmail.discord_id && String(byEmail.discord_id) !== discordId) {
+            return loginErrorRedirect(url.origin, 'The wiki account with your Discord email is already linked to a different Discord account. Log in with that Discord or your password; you can change the linked Discord from your account page.');
+          }
           await env.DB.prepare(
             `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
           ).bind(discordId, du.username || discordName, avatarUrl, byEmail.id).run();
@@ -8849,10 +9081,18 @@ const app = {
       // Brand-new account from Discord. No password yet ('' = Discord-only).
       const username = await uniqueUsername(env, discordName);
       await ensureUsernameKey(env);
-      const ins = await env.DB.prepare(
-        `INSERT INTO users (username, username_key, password_hash, email, is_admin, display_name, discord_id, discord_username, avatar_url, email_verified, last_login)
-         VALUES (?, ?, '', ?, 0, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(username, usernameKey(username), discordEmail, discordName, discordId, du.username || discordName, avatarUrl, discordEmail ? 1 : 0).run();
+      let ins;
+      try {
+        ins = await env.DB.prepare(
+          `INSERT INTO users (username, username_key, password_hash, email, is_admin, display_name, discord_id, discord_username, avatar_url, email_verified, last_login)
+           VALUES (?, ?, '', ?, 0, ?, ?, ?, ?, ?, datetime('now'))`
+        ).bind(username, usernameKey(username), discordEmail, discordName, discordId, du.username || discordName, avatarUrl, discordEmail ? 1 : 0).run();
+      } catch (e) {
+        // A second tab, or another signup, got there first (same Discord,
+        // email or name). Going round again finds whichever it was.
+        if (!/UNIQUE/i.test(String((e && e.message) || e))) throw e;
+        return loginErrorRedirect(url.origin, 'Discord sign-in collided with another one just now. Use the Discord button again.');
+      }
       const newId = ins.meta.last_row_id;
       await logActivity(env, { userId: newId }, 'signup', 'user', null, username);
       const t = await createSession(env, newId, false);
@@ -10570,7 +10810,8 @@ const app = {
         // (no current password on Discord-only accounts: they may set one freely)
         const bad = await passwordProblem(newPassword, { username: u.username, email: u.email });
         if (bad) return jsonResponse({ error: bad }, { status: 400 });
-        await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?')
+        await ensureAuthColumns(env);
+        await env.DB.prepare('UPDATE users SET password_hash=?, password_gen=COALESCE(password_gen,0)+1 WHERE id=?')
           .bind(await hashPassword(env, newPassword), sess.userId).run();
         // Changing a password is what somebody does when they think their
         // account is compromised, so it has to end the attacker's session too.
@@ -10605,8 +10846,15 @@ const app = {
         const taken = await env.DB.prepare('SELECT 1 FROM users WHERE id<>? AND email IS NOT NULL AND lower(email)=lower(?)')
           .bind(sess.userId, email).first();
         if (taken) return jsonResponse({ error: 'That email is already in use by another account.' }, { status: 409 });
-        await env.DB.prepare('UPDATE users SET email=?, email_verified=0 WHERE id=?')
-          .bind(email, sess.userId).run();
+        await ensureUsernameKey(env); // also the email's UNIQUE guard
+        try {
+          await env.DB.prepare('UPDATE users SET email=?, email_verified=0 WHERE id=?')
+            .bind(email, sess.userId).run();
+        } catch (e) {
+          // Another account took the address between the check and here.
+          if (!/UNIQUE/i.test(String((e && e.message) || e))) throw e;
+          return jsonResponse({ error: 'That email is already in use by another account.' }, { status: 409 });
+        }
         const nu = { ...u, email };
         ctx.waitUntil(sendVerificationEmail(env, url.origin, nu));
         // Told at the OLD address, which is the one an attacker cannot read.
@@ -12591,10 +12839,11 @@ const app = {
           // Same token shape as an emailed link: hashed in KV, single use,
           // and dead once the password or the email changes. `byAdmin` says
           // nobody proved they can read the inbox, so it verifies nothing.
-          const full = await env.DB.prepare('SELECT email, password_hash FROM users WHERE id=?').bind(target.id).first();
+          await ensureAuthColumns(env);
+          const full = await env.DB.prepare('SELECT email, password_gen FROM users WHERE id=?').bind(target.id).first();
           const token = randomToken();
           await storeEmailToken(env, 'pwreset', token, {
-            id: target.id, email: (full && full.email) || '', fp: await passwordFingerprint(full && full.password_hash), byAdmin: true
+            id: target.id, email: (full && full.email) || '', fp: passwordFingerprint(full), byAdmin: true
           }, 86400);
           await logActivity(env, sess, 'reset-link', 'user', null, target.username);
           return jsonResponse({ ok: true, resetLink: canonicalOrigin(env) + '/reset-password?token=' + token });

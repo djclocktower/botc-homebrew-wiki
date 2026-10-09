@@ -3375,13 +3375,32 @@ covers each one.
 - **Failed logins are counted per ACCOUNT as well as per IP**
   (`LOGIN_FAIL_LIMIT`, 20 an hour, in `rate_limits`). Only failures count. A
   correct password or a reset clears the count, so the worst a stranger can do
-  is make you use "Forgot your password?".
+  is make you use "Forgot your password?". An identifier no account answers
+  to is counted the same way (`phantomLoginId()`), or the 429 would only ever
+  appear for a member's email. A Discord-only account is only named as one to
+  a login by **name**; an email gets the same vague message as any miss.
+- **Sessions are revoked in D1** (`users.session_gen`, lazily ALTERed).
+  Every session carries the number from when it was minted; `revokeSessions()`
+  (password change, reset, ban, demote) bumps it, and `getSession()` refuses a
+  session whose number is behind. The KV index `usess:{id}` is only tidying
+  now: it is capped at 40 and could lose tokens, which used to let those
+  sessions survive a revoke. `getSession()` also takes `isAdmin` from D1 on
+  every call (one primary-key read per signed-in request, shared within the
+  request), so a promotion counts at once and no read route trusts a stale
+  flag. Logged-out readers cost nothing. No KV write was added per request.
 - **Reset and verification links**: only their SHA-256 is stored in KV, they
   are single-use, and each is bound to the account AND to the email it was
   sent to (`storeEmailToken` / `readEmailToken`). A reset link also carries a
-  fingerprint of the password hash, so any password change kills every
-  outstanding link. A verification link verifies only the address it was sent
-  to. Before this, a member could request a link to their own inbox, switch
+  fingerprint of the password (`users.password_gen`, moved only by a reset or
+  the account page's change), so any password change kills every outstanding
+  link — but the login upgrade, the nightly wrap and the pepper rollout, which
+  rewrite the HASH without changing the password, no longer do. A verification
+  link verifies only the address it was sent to. Once used it stays as a
+  `used` marker, so a second visit (the person's click after a mail scanner's)
+  reports success, but only while that same address is still the account's
+  and verified; it never verifies anything again. `/api/forgot-password` does
+  its lookup, KV write and email after answering (`ctx.waitUntil`), so members
+  and strangers get the same reply in the same time. Before the binding, a member could request a link to their own inbox, switch
   the account to a stranger's address and click it. Discord sign-in trusts
   verified emails, so that was a route into account takeover. Links are built
   from `canonicalOrigin(env)`, never from the request's Host.
@@ -3393,7 +3412,14 @@ covers each one.
   in as the account that started it. Otherwise a link started by one account
   could attach somebody else's Discord to it. Login mode is not yet bound to
   the browser (see the note on `OAUTH_STATE_TTL` about the phone hand-off);
-  binding it with a cookie is a known follow-up.
+  binding it with a cookie is a known follow-up, and needs a decision first:
+  a return that lands in a different browser than the one that started
+  (Discord's app handing back to the phone's default browser) would fail.
+  Starting the flow is rate-limited per IP (30 an hour, D1), because each
+  start is an anonymous KV write. The callback refuses an over-long `state`,
+  turns any failure talking to Discord into a `/login?error=` message, and
+  will not attach a Discord to an email-matched account that already has a
+  different one.
 - **`crossSiteWrite()` refuses any non-GET `/api/` request** whose `Origin`
   is another site or whose `Sec-Fetch-Site` is `cross-site`. This is a second
   lock behind the `SameSite=Lax` cookie. A request with neither header (curl)
@@ -3401,7 +3427,13 @@ covers each one.
 - **Every admin GET is gated once, at the top of `app.fetch`**, by
   `adminSession()` (D1's `is_admin`, and not banned). Two admin GETs once
   forgot their own check, and `/api/admin/new-users` served every new
-  member's email to anyone. Demoting an admin revokes their sessions.
+  member's email to anyone. Demoting an admin revokes their sessions; a
+  promotion takes effect on the next request.
+- **Signup cannot race two accounts onto one name or email.** The UNIQUE
+  indexes (`username_key`, and `idx_users_email` on `lower(email)`, created
+  lazily by `ensureUsernameKey()` if missing — it fails harmlessly if live
+  data already holds a duplicate) catch the second of two racing requests,
+  and the route turns that into the same 409 the pre-check gives.
 - **Security headers**: `withSecurityHeaders()` (in the default export) adds
   HSTS, `X-Frame-Options: SAMEORIGIN`, `nosniff`, a referrer policy and a
   permissions policy to every Worker response, plus a CSP on HTML
@@ -4006,8 +4038,8 @@ keeps `content-visibility: auto`.
    `users.username_key`, never `lower(username)`.** `@tir-far-thóinn` keeps its
    fada; the account code was once ASCII-only and turned it into
    `@tir-far-th-inn`. Three helpers in worker.js: `normUsername()` (NFC + trim,
-   what gets STORED and displayed), `usernameKey()` (`foldLatin()` then
-   lower-case, what gets COMPARED) and `foldLatin()` (NFD minus the combining
+   what gets STORED and displayed), `usernameKey()` (NFKC, `foldLatin()`,
+   lower-case, then `LATIN_LOOKALIKES` — what gets COMPARED) and `foldLatin()` (NFD minus the combining
    marks, plus a small map for ø/æ/ß). `username_key` is a lazily-ALTERed
    UNIQUE column, backfilled in JS, and **every lookup goes through
    `selectUserByName()`** — do not write `lower(username)=lower(?)` again. D1's
@@ -4019,7 +4051,14 @@ keeps `content-visibility: auto`.
    beside `@tir-far-thóinn`. `mixesScripts()` refuses a handle that mixes Latin
    with another alphabet (one Cyrillic `е` inside a Latin name is impersonation
    the key cannot fold away); a wholly Greek or wholly Han handle is fine, and
-   `uniqueUsername()` applies the same rule to Discord display names. Any new
+   `uniqueUsername()` applies the same rule to Discord display names. Latin
+   lookalikes that are still Latin (fullwidth `ａ`, `ɑ`, the numerals `ⅰ`/`ⅼ`,
+   small capitals) are folded into the key instead. **Changing what the key
+   folds means bumping `USERNAME_KEY_V`**: `ensureUsernameKey()` then
+   recomputes every stored key once. Two existing accounts that newly fold
+   together keep their old keys (logged as a collision), and
+   `selectUserByName()` matches the exact stored handle as well as the key,
+   preferring it, so neither is locked out of logging in by name. Any new
    place that turns a typed name into a handle needs all of this, which is why
    it should call the existing helpers rather than roll its own.
    **The handle is not the name people know themselves by.** A Discord signup
