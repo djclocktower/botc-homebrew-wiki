@@ -202,6 +202,61 @@
      news}}; any of them may be missing. root: the link prefix (BotcData.root). */
   var MAX_FIELDS = 16;
   function createIndex(data, root) {
+    var index = Object.create(Index.prototype);
+    index._init(collectItems(data, root));
+    index._addRange(0, index.n);
+    index._finish();
+    return index;
+  }
+  /* The same index, built in slices so a phone's main thread is never held
+     for the whole build (a quarter of a second or more on a mid-range phone,
+     one task, with the page unable to scroll or take a keystroke). The steps
+     and their order are exactly createIndex's, so the result is identical;
+     only the waiting in between differs. opts.yieldFn returns a promise to
+     wait on between slices (default: a macrotask, so input and paint get a
+     turn); opts.budget is the slice length in ms (default 8). */
+  function createIndexAsync(data, root, opts) {
+    opts = opts || {};
+    var budget = opts.budget > 0 ? opts.budget : 8;
+    var wait = opts.yieldFn || defaultYield;
+    var now = typeof performance !== 'undefined' && performance.now
+      ? function () { return performance.now(); } : function () { return Date.now(); };
+    var index = Object.create(Index.prototype), i = 0, first = true;
+    return new Promise(function (resolve, reject) {
+      // The first slice runs at once and also lists the items (a few ms),
+      // so a small index — and every test fixture — is ready without
+      // waiting a turn at all.
+      function slice() {
+        try {
+          var start = now();
+          if (first) { first = false; index._init(collectItems(data, root)); }
+          // A few items at a time between clock reads: reading the clock
+          // per item would cost more than some items do.
+          while (i < index.n) {
+            var to = Math.min(index.n, i + 32);
+            index._addRange(i, to);
+            i = to;
+            if (now() - start >= budget) break;
+          }
+          if (i >= index.n) index._finish();
+          if (opts.onSlice) opts.onSlice(now() - start);
+          if (i >= index.n) resolve(index);
+          else wait().then(slice, reject);
+        } catch (e) { reject(e); }
+      }
+      slice();
+    });
+  }
+  function defaultYield() {
+    // scheduler.yield() where there is one (it resumes ahead of other queued
+    // work, so the build still finishes quickly); otherwise a plain macrotask.
+    if (typeof scheduler !== 'undefined' && scheduler && typeof scheduler.yield === 'function') {
+      return scheduler.yield();
+    }
+    return new Promise(function (resolve) { setTimeout(resolve, 0); });
+  }
+
+  function collectItems(data, root) {
     data = data || {};
     root = root || '';
     var extra = data.extra || {};
@@ -361,10 +416,17 @@
       }, [[p[0], 10, true, true], [p[4], 3, true], [p[3], 1, false]]);
     });
 
-    return new Index(items);
+    return items;
   }
 
+  // Kept as a constructor for anything that ever called `new Index(items)`;
+  // createIndex / createIndexAsync drive the same three steps.
   function Index(items) {
+    this._init(items);
+    this._addRange(0, this.n);
+    this._finish();
+  }
+  Index.prototype._init = function (items) {
     var n = items.length;
     this.items = items;
     this.n = n;
@@ -379,8 +441,14 @@
     // runTogether[wi] marks a word that only exists as a run-together name
     // ("grimpeeker"): it may be matched whole or from its start, never from
     // the middle, or "imp" would find Grim Peeker.
-    var vocab = new Map(), vwords = [], post = [], lastSlot = [], runTogether = [];
-    for (var i = 0; i < n; i++) {
+    this._b = { vocab: new Map(), vwords: [], post: [], lastSlot: [], runTogether: [] };
+  };
+  // Items [from, to) into the vocabulary, in order — the order is what makes
+  // a sliced build come out identical to a single pass.
+  Index.prototype._addRange = function (from, to) {
+    var b = this._b, items = this.items;
+    var vocab = b.vocab, vwords = b.vwords, post = b.post, lastSlot = b.lastSlot, runTogether = b.runTogether;
+    for (var i = from; i < to; i++) {
       var it = items[i], fields = it.fields;
       it.i = i;
       it.fold = words(it.name).join(' ');
@@ -428,10 +496,14 @@
       it.text = all.join(' | ');
       it.fields = null;
     }
-    this.words = vwords;
-    this.post = post;
-    this.runTogether = runTogether;
-  }
+  };
+  Index.prototype._finish = function () {
+    var b = this._b;
+    this.words = b.vwords;
+    this.post = b.post;
+    this.runTogether = b.runTogether;
+    this._b = null;
+  };
 
   // Scores for one query word, per item (the best field wins). Memoised, so
   // the words already typed cost nothing while the last one changes.
@@ -635,7 +707,7 @@
   }
 
   var API = {
-    fold: fold, words: words, osa: osa, createIndex: createIndex, mark: mark, esc: esc, parseQuery: parseQuery,
+    fold: fold, words: words, osa: osa, createIndex: createIndex, createIndexAsync: createIndexAsync, mark: mark, esc: esc, parseQuery: parseQuery,
     TYPES: TYPES, TYPE_LABEL: TYPE_LABEL, TYPE_ONE: TYPE_ONE, TEAMS: TEAMS, TEAM_LABEL: TEAM_LABEL,
     SITE_PAGES: SITE_PAGES, titleCase: titleCase
   };
@@ -665,11 +737,16 @@
         list('collections.json?fields=browse').catch(function () { return []; }),
         B.json(r + 'api/search-index').catch(function () { return {}; })
       ]).then(function (res) {
-        built = createIndex({ characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} }, r);
-        built.data = { characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} };
-        loading = null;
-        return built;
-      }, function (err) { loading = null; throw err; });
+        var data = { characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} };
+        // Built in slices (createIndexAsync), so focusing the box or opening
+        // /search never freezes the page for the whole build.
+        return createIndexAsync(data, r).then(function (index) {
+          index.data = data;
+          built = index;
+          loading = null;
+          return built;
+        });
+      }).then(null, function (err) { loading = null; throw err; });
       return loading;
     };
     window.BotcSearch = API;
