@@ -1855,7 +1855,13 @@ Things worth knowing before touching any of it:
   403 on its alternates. A single hardcoded suffix, **never** the
   longest-prefix match `pages/` uses: character art is uploaded *before* the
   row exists, so a prefix rule would refuse every new character whose name
-  merely starts with an existing one's.
+  merely starts with an existing one's. **A key can name two rows**
+  (`art/imp-alt.png` is "Imp Alt"'s icon and Imp's second one;
+  `scripts/night-logo.png` is script `night-logo`'s header and `night`'s
+  logo), so when both exist both are asked (`slotVerdict()`): yes from both
+  skips the catch-all, no from both refuses, and one of each leaves it to the
+  catch-all — the key is writable only while nobody else's file is in it.
+  `artRowStamp()` / `touchArtRow()` likewise try the exact identity first.
 - **A rename moves whatever the row actually names**, not just the two keys
   the editors write (`v.startsWith('art/' + from + '-')`). `retargetArtPaths`
   rewrites `art/{from}` before any `-` or `.`, so a legacy row pointing at
@@ -2653,7 +2659,10 @@ Three files, one job each:
 - **`GET /api/bloodstar?url=`** fetches both files and returns the bundle.
   Login required, rate-limited, and **the host is pinned to Bloodstar's own
   hosts**: this is the Worker fetching a URL a stranger typed, and the only
-  safe version of that is one that can only ever reach one place. A project
+  safe version of that is one that can only ever reach one place. Redirects
+  are followed by hand (`fetchBloodstar()`, a few hops, each back onto a
+  Bloodstar host) and bodies are read with a cap whether or not a length is
+  announced (`readCapped()`). A project
   with no almanac still imports — the tool says the prose is missing rather
   than looking like it lost it.
 - **`POST /api/bloodstar-art {key, src}`** copies one image straight from
@@ -3299,7 +3308,10 @@ image extension and these files are served from our own origin.
   screenshot would only get "this" typed above the picture.
 - **Nothing garbage-collects these.** An image whose comment was removed stays
   in the bucket, exactly as character art does when a page is deleted; the
-  dashboard's orphan sweep is where that is dealt with.
+  dashboard's orphan sweep is where that is dealt with. It reads the `images`
+  column of comments, modmail messages and replies, sweeps `thumb/` and
+  `media/` with their originals, and re-checks every key at purge time
+  (`imageReferences()` / `imageOrphaned()`).
 - Adding a fifth attachment surface means adding `attachments/` nowhere new:
   the prefix is already in `R2_SERVE_PREFIXES` and in `run_worker_first`. It
   is deliberately **not** in `R2_PREFIXES`, so `/api/upload` cannot write
@@ -3571,6 +3583,11 @@ It is one statement, so SQLite settles the read-modify-write; the KV version
 was two operations against an eventually consistent store and could overshoot.
 Rows are pruned by the nightly cron, which is housekeeping only — the upsert
 ignores an expired row regardless.
+
+A card thumbnail (`thumb/`) or a resized banner (`media/`) is posted by the
+browser right after the image it copies, so it draws on its own allowance
+(`uploadCopy`, `uploadLimitKind()`) rather than the `upload` one an import's
+art is counted against.
 
 **Everything here fails soft.** If the counter cannot be reached the action
 goes through unlimited: a limiter that stops limiting for a few minutes is a
@@ -4015,6 +4032,9 @@ keeps `content-visibility: auto`.
 6. `/api/seed` refuses to run when the characters table is non-empty; it
    reads the repo's stale JSON backups. Nightly cron also dumps every table
    to R2 `backups/{date}/` (30-day retention) — that's the real backup.
+   "Every" is read off `sqlite_master` (`backupTables()`), so a lazily created
+   table is covered from its first night; one never created is empty, not
+   failed.
    Each read and write is retried (`backupRetry`), and the read size adapts to
    the table's row width so a narrow, huge table (`page_views`) is a handful
    of parts rather than hundreds. The last run's result, with the reason for

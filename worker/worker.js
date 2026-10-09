@@ -446,6 +446,70 @@ function parseAttachments(v) {
 function packAttachments(list) {
   return list && list.length ? JSON.stringify(list) : null;
 }
+
+/* ---- the orphan sweep (/api/admin/orphans + /api/admin/purge-images) ----
+   Every prefix the sweep walks. thumb/ and media/ are copies of an art or a
+   banner key and are orphaned exactly when their original is (imageOrphaned);
+   attachments/ are referenced from the images column of comments, modmail
+   messages and modmail replies. */
+const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_PREFIX, 'media/', ATTACH_PREFIX];
+
+/* An image path written anywhere in a row: from its folder to the first image
+   extension after it. Deliberately loose about the file name — a key can hold
+   spaces, brackets, apostrophes and accents, and a reference this misses is a
+   file the sweep offers to delete out from under a page. Matching too much
+   only ever keeps a file. Bounded by a quote, a backslash, a line break or a
+   tag bracket, so a scan never runs past the string it started in. */
+const IMAGE_REF_RE = /(?:art|scripts|collections|attachments)\/[^"\\\n\r<>]*?\.(?:png|jpe?g|webp|gif|svg)/gi;
+
+/* Every image key something on the wiki refers to (lower-cased), and the
+   account ids — what imageOrphaned() judges by. Every page's JSON counts, all
+   statuses (drafts and trashed pages still need their art if restored), and
+   wiki pages and news embed any assets/ path in their body text. A table or
+   column that was never created holds no references; any OTHER failure
+   throws, because an empty answer here would mark every file an orphan. */
+async function imageReferences(env) {
+  await ensurePagesTable(env);
+  await ensureNewsTable(env);
+  const refs = new Set();
+  const sources = [['characters', 'data'], ['collections', 'data'], ['scripts', 'data'], ['pages', 'data'],
+    ['news', 'data'], ['settings', 'value'], ['comments', 'images'], ['messages', 'images'], ['modmail_replies', 'images']];
+  for (const [tbl, col] of sources) {
+    let results;
+    try { ({ results } = await env.DB.prepare(`SELECT ${col} AS v FROM ${tbl}`).all()); }
+    catch (e) {
+      if (/no such (table|column)/i.test((e && e.message) || '')) continue;
+      throw e;
+    }
+    for (const r of results || []) {
+      for (const f of String(r.v || '').match(IMAGE_REF_RE) || []) {
+        refs.add(f.toLowerCase());
+        // A URL in a page carries the name percent-encoded; R2 keys do not.
+        try { refs.add(decodeURIComponent(f).toLowerCase()); } catch { /* not encoded */ }
+      }
+    }
+  }
+  const userIds = new Set(
+    ((await env.DB.prepare('SELECT id FROM users').all()).results || []).map(r => String(r.id))
+  );
+  return { refs, userIds };
+}
+
+function imageOrphaned(key, refs, userIds) {
+  // avatars/u{id}.{ext} is orphaned when that account no longer exists
+  if (key.startsWith('avatars/')) {
+    const m = key.match(/^avatars\/u(\d+)\./);
+    return !!m && !userIds.has(m[1]);
+  }
+  // A copy stands or falls with its original: purging orphaned art used to
+  // leave its thumbnail and its resized banners behind for good.
+  if (key.startsWith(THUMB_PREFIX)) key = 'art/' + key.slice(THUMB_PREFIX.length).replace(/\.webp$/i, '');
+  else if (key.startsWith('media/')) {
+    key = mediaSource(key);
+    if (!key) return true;   // not a copy of anything the route would serve
+  }
+  return !refs.has(key.toLowerCase());
+}
 const EXT_CONTENT_TYPE = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
   gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
@@ -1129,8 +1193,17 @@ function tooManyResponse(message, retryAfterSec) {
 //
 // The per-image cap (8 MB, and mass-upload re-encodes to 600 px first) is what
 // actually bounds R2, not this counter.
+//
+// Every art upload is now followed by its card thumbnail (thumb/), and every
+// script or collection banner and logo by three resized copies (media/) —
+// made by the browser, posted through the same route. Counted against
+// `upload` they turned ~310 uploads into ~620 and a big import died halfway,
+// its thumbnails failing silently. So those derivatives have their own
+// allowance (uploadLimitKind), sized at three per original: still bounded,
+// and never taken out of the budget the art itself is counted against.
 const WRITE_LIMITS = {
   upload:     { bucket: 'upload',     limit: 400, window: 3600, msg: 'Too many image uploads in the last hour. Try again later.' },
+  uploadCopy: { bucket: 'uploadcopy', limit: 1200, window: 3600, msg: 'Too many thumbnail uploads in the last hour. Try again later.' },
   character:  { bucket: 'wchar',      limit: 200, window: 3600, msg: 'Too many character saves in the last hour. Try again later.' },
   collection: { bucket: 'wcoll',      limit: 40,  window: 3600, msg: 'Too many collection saves in the last hour. Try again later.' },
   script:     { bucket: 'wscript',    limit: 40,  window: 3600, msg: 'Too many script saves in the last hour. Try again later.' },
@@ -1216,46 +1289,44 @@ async function uploadSlotDenied(env, sess, key) {
        -token is the saved printable token (the Token Tool's "Save to page"
        and the editors' Printable token slot) and inherits the character's
        own permission check exactly as the alternates do. */
-    if (!row && /-(alt2?|token)$/.test(named)) {
-      slug = named.replace(/-(alt2?|token)$/, '');
-      row = await getEntityRow(env, 'character', slug);
-    }
-    if (row && await canEditPageArt(env, sess, 'character', row)) ownedSlot = true;
-    else if (row && !canEditRow(sess, row)) {
+    /* ...and a key can name TWO pages at once: art/imp-alt.png is the main
+       art of a character called "Imp Alt" and the second icon of "Imp".
+       Answering only for the first row found let whoever made "Imp Alt"
+       write over Imp's alternate art (their own row said yes and the
+       catch-all below was skipped). So both are asked, see slotVerdict. */
+    const stripped = /-(alt2?|token)$/.test(named) ? named.replace(/-(alt2?|token)$/, '') : '';
+    const suffixRow = stripped ? await getEntityRow(env, 'character', stripped) : null;
+    if (!row && suffixRow) { slug = stripped; row = suffixRow; }
+    const verdict = await slotVerdict(env, sess, 'character', [row, row === suffixRow ? null : suffixRow]);
+    if (verdict.denied) {
       // Almost always a name clash on a brand-new character: the art
       // slot is named after the character's identity, which is derived
       // from its name, and that one is already someone else's page.
       // Say so, so the fix (a different name) is obvious.
       return jsonResponse({ error: 'The art for "' + slug + '"' + (slug === named ? '' : ' (its extra art)') + ' belongs to another account\'s character. Give yours a different name and save again.' }, { status: 403 });
     }
-    if (row && await isProtected(env, 'character', row.slug)) {
-      return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
-    }
+    if (verdict.response) return verdict.response;
+    if (verdict.owned) ownedSlot = true;
   }
   // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
   // images collections/{id}[-logo|-bg].{ext}. If that page exists,
-  // only its owner may replace its images.
-  if (key.startsWith('scripts/')) {
-    const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
-    const row = await getEntityRow(env, 'script', base);
-    if (row && await canEditPageArt(env, sess, 'script', row)) ownedSlot = true;
-    else if (row && !canEditRow(sess, row)) {
-      return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
+  // only its owner may replace its images. The exact name is asked first,
+  // as for art/: scripts/night-logo.png is the header of a script called
+  // "night-logo" AND the logo of one called "night", and stripping the
+  // suffix alone handed the key to "night" whoever was asking.
+  if (key.startsWith('scripts/') || key.startsWith('collections/')) {
+    const type = key.startsWith('scripts/') ? 'script' : 'collection';
+    const named = key.slice(type === 'script' ? 8 : 12).replace(/\.[a-z0-9]+$/i, '');
+    const stripped = /-(logo|bg)$/.test(named) ? named.replace(/-(logo|bg)$/, '') : '';
+    const find = k => type === 'script' ? getEntityRow(env, 'script', k) : findCollectionRow(env, k);
+    const exact = await find(named);
+    const base = stripped ? await find(stripped) : null;
+    const verdict = await slotVerdict(env, sess, type, [exact, base && exact && base.slug === exact.slug ? null : base]);
+    if (verdict.denied) {
+      return jsonResponse({ error: 'That image slot belongs to a ' + type + ' owned by another account.' }, { status: 403 });
     }
-    if (row && await isProtected(env, 'script', row.slug)) {
-      return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
-    }
-  }
-  if (key.startsWith('collections/')) {
-    const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
-    const row = await findCollectionRow(env, base);
-    if (row && await canEditPageArt(env, sess, 'collection', row)) ownedSlot = true;
-    else if (row && !canEditRow(sess, row)) {
-      return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
-    }
-    if (row && await isProtected(env, 'collection', row.slug)) {
-      return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
-    }
+    if (verdict.response) return verdict.response;
+    if (verdict.owned) ownedSlot = true;
   }
   // Never allow silently replacing someone else's uploaded file —
   // unless the page that owns this slot has already said yes above.
@@ -1267,6 +1338,37 @@ async function uploadSlotDenied(env, sess, key) {
     }
   }
   return null;
+}
+
+/* Who may write an image key that one or two pages lay claim to (the exact
+   name, and the name with a slot suffix taken off — see uploadSlotDenied).
+   One page: the old rule, unchanged — it says yes (owned), or the upload is
+   refused (denied). Two pages that both say yes: owned. Neither: denied.
+   One of each is a key that genuinely names two pages belonging to two
+   different people, and neither page's yes is allowed to speak for the
+   other's file: `owned` stays false, so the catch-all after it decides —
+   the key may be written only while nobody else's file is in it. Never a
+   page saying yes over somebody else's picture. A protected page anywhere in
+   the pair answers 423 (`response`). */
+async function slotVerdict(env, sess, type, rows) {
+  const found = rows.filter(Boolean);
+  let yes = 0, editable = 0;
+  for (const row of found) {
+    if (await canEditPageArt(env, sess, type, row)) { yes++; editable++; }
+    else if (canEditRow(sess, row)) editable++;
+  }
+  if (found.length && !editable) return { denied: true };
+  for (const row of found) {
+    if (await isProtected(env, type, row.slug)) {
+      return { response: jsonResponse({ error: PROTECTED_MSG }, { status: 423 }) };
+    }
+  }
+  return { owned: found.length > 0 && yes === found.length };
+}
+
+// Which WRITE_LIMITS allowance an upload to `key` draws on.
+function uploadLimitKind(key) {
+  return key.startsWith(THUMB_PREFIX) || key.startsWith('media/') ? 'uploadCopy' : 'upload';
 }
 
 // Admins are exempt: they run the bulk tools, and locking an admin out mid
@@ -4344,12 +4446,12 @@ async function moveR2Object(env, fromKey, toKey) {
 }
 
 // Rewrite art paths that carry the old slug: 'art/old.png',
-// 'art/old-alt.png', 'art/old-alt2.png' and the absolute image URLs built
-// from them. Anchored on the character's own slug so 'art/oldest.png' is
-// never touched.
+// 'art/old-alt.png', 'art/old-alt2.png', 'art/old-token.png' and the absolute
+// image URLs built from them. Anchored on the character's own slug so
+// 'art/oldest.png' is never touched.
 function retargetArtPaths(obj, from, to) {
   const re = new RegExp('art/' + from + '(?=[-.])', 'g');
-  for (const k of ['art', 'image', 'artAlt', 'imageAlt', 'artAlt2', 'imageAlt2', 'token']) {
+  for (const k of ['art', 'image', 'artAlt', 'imageAlt', 'artAlt2', 'imageAlt2', 'token', 'tokenImage']) {
     if (typeof obj[k] === 'string') obj[k] = obj[k].replace(re, 'art/' + to);
   }
 }
@@ -4691,14 +4793,14 @@ async function renameCharacter(env, from, to) {
     // The editors always write .png, but an imported page may carry another
     // extension, so try what the row actually points at as well.
     const keys = new Set(['art/' + from + '.png',
-      'art/' + from + '-alt.png', 'art/' + from + '-alt2.png']);
+      'art/' + from + '-alt.png', 'art/' + from + '-alt2.png', 'art/' + from + '-token.png']);
     /* Any suffixed art file, not just the two the editors write.
        retargetArtPaths below rewrites 'art/{from}' before ANY '-' or '.',
        so a stored path this loop failed to move was rewritten to a file
        that had not moved: a legacy row pointing at 'art/vampire-good.png'
        came out of a rename pointing at 'art/{new}-good.png', which does
        not exist. Move whatever the row actually names. */
-    for (const k of ['art', 'artAlt', 'artAlt2']) {
+    for (const k of ['art', 'artAlt', 'artAlt2', 'token']) {
       const v = typeof entry[k] === 'string'
         ? entry[k].replace(/^\/+/, '').replace(/^assets\//, '') : '';
       if (v.startsWith('art/' + from + '.') || v.startsWith('art/' + from + '-')) keys.add(v);
@@ -6045,10 +6147,30 @@ async function backupRetry(what, fn) {
   throw new Error(what + ': ' + ((last && last.message) || String(last || 'error')));
 }
 
+// The tables a backup always asks for, in the order it asks. Every other table
+// the database actually holds is found at run time (backupTables) and backed
+// up after these, so a table a later feature creates lazily — favorites,
+// suggestions, modmail_replies, redirects, site_text all were — is in the
+// backup from the night it first exists, with nobody having to remember this
+// list. Internal tables (sqlite_*, Cloudflare's _cf_* and d1_*) are not data.
+const BACKUP_TABLES = ['characters', 'collections', 'scripts', 'pages', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'modmail_replies', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports', 'favorites', 'redirects', 'suggestions', 'site_text'];
+
+async function backupTables(env) {
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' AND name NOT LIKE 'd1\\_%' ESCAPE '\\' ORDER BY name"
+    ).all();
+    const found = (results || []).map(r => String(r.name)).filter(n => /^[A-Za-z_][A-Za-z0-9_]*$/.test(n));
+    return BACKUP_TABLES.concat(found.filter(n => !BACKUP_TABLES.includes(n)));
+  } catch {
+    return BACKUP_TABLES.slice();
+  }
+}
+
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'pages', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
+  const tables = await backupTables(env);
   const saved = {};
   const failed = {};
   for (const t of tables) {
@@ -6115,6 +6237,11 @@ async function runBackup(env) {
       } catch { /* tidying is best-effort */ }
       saved[t] = rows;
     } catch (e) {
+      // A table that was never created (they are made lazily, on first use:
+      // a wiki nobody has reported a DM on has no dm_reports) is empty, not
+      // broken. Reporting it as a failure every night is how a real failure
+      // stops being read.
+      if (!written && /no such table/i.test((e && e.message) || '')) { saved[t] = 0; continue; }
       // A failure here used to be recorded as "skipped" and returned inside a
       // successful-looking result, so a backup that had silently stopped
       // working looked exactly like one that was fine. Record it as a failure,
@@ -7254,6 +7381,14 @@ async function serveMedia(env, ctx, request, url, key) {
   const obj = env.ART && await env.ART.get(key);
   if (obj && obj.size >= THUMB_MIN_BYTES && originalETag && obj.customMetadata?.sourceETag === originalETag) {
     const headers = imageHeaders(obj, key, url.searchParams.has('v') ? IMAGE_CACHE_IMMUTABLE : IMAGE_CACHE_REVALIDATE);
+    // The bare URL revalidates (IMAGE_CACHE_REVALIDATE), so a browser asking
+    // with the ETag it holds is told it is current rather than sent it again.
+    const inm = request.headers.get('If-None-Match');
+    if (!url.searchParams.has('v') && inm && obj.httpEtag &&
+        inm.split(',').some(t => cleanETag(t.trim()) === cleanETag(obj.httpEtag))) {
+      try { if (obj.body) await obj.body.cancel(); } catch { /* nothing to free */ }
+      return new Response(null, { status: 304, headers });
+    }
     const res = new Response(obj.body, { headers });
     if (url.searchParams.has('v')) edgeImagePut(ctx, request, res);
     return res;
@@ -7301,8 +7436,17 @@ function dropThumbFor(env, ctx, key) {
   } catch { /* nothing to do */ }
 }
 
-function artRowSlug(key) {
-  return key.slice(4).replace(/\.[a-z0-9]+$/i, '').replace(/-(alt2|alt|token)$/, '');
+/* The identities an art key can belong to: the name exactly as written, then
+   that name with a slot suffix taken off. Exact first, as uploadSlotDenied
+   asks — with characters `foo` and `foo-alt` both on the wiki,
+   art/foo-alt.png is foo-alt's own icon as well as foo's second one, and
+   always stripping the suffix stamped and compared foo's row for it (a false
+   "somebody else saved" for foo-alt's editor, and foo-alt's picture never
+   refreshed). */
+function artRowSlugs(key) {
+  const named = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
+  const stripped = named.replace(/-(alt2|alt|token)$/, '');
+  return stripped === named ? [named] : [named, stripped];
 }
 
 /* The row an art key belongs to — its slug and its updated_at — by the same
@@ -7311,12 +7455,19 @@ function artRowSlug(key) {
    row behind it yet (a new character's art is uploaded before its row
    exists). What /api/upload's edit-conflict check reads, and what it hands
    back as the stamp the editor should carry into its save. */
-async function artRowStamp(env, key) {
+async function artRowStamp(env, key, prefer) {
   if (!key.startsWith('art/')) return null;
   try {
-    const bySlug = await env.DB.prepare(
-      `SELECT slug, updated_at FROM characters WHERE slug=? AND status IS NOT 'deleted'`
-    ).bind(artRowSlug(key)).first();
+    // When the key names two rows, the one the caller is editing: the row
+    // whose stamp it sent, or the slug it already settled on; else exact first.
+    const slugs = artRowSlugs(key);
+    const { results } = await env.DB.prepare(
+      `SELECT slug, updated_at FROM characters WHERE slug IN (${slugs.map(() => '?').join(',')}) AND status IS NOT 'deleted'`
+    ).bind(...slugs).all();
+    const rows = (results || []).sort((a, b) => slugs.indexOf(a.slug) - slugs.indexOf(b.slug));
+    const p = prefer || {};
+    const bySlug = rows.find(r => p.slug && r.slug === p.slug) ||
+      rows.find(r => p.updatedAt && r.updated_at === p.updatedAt) || rows[0];
     if (bySlug) return bySlug;
     return await env.DB.prepare(
       `SELECT slug, updated_at FROM characters WHERE status IS NOT 'deleted' AND data LIKE ? LIMIT 1`
@@ -7341,9 +7492,11 @@ async function artRowStamp(env, key) {
    Fails soft: a miss here costs a stale picture, never the upload. */
 async function touchArtRow(env, key) {
   if (!key.startsWith('art/')) return false;
-  const slug = artRowSlug(key);
+  // Every row the key can name (artRowSlugs): when it names two, both may be
+  // drawing this very file, so both versions roll.
+  const slugs = artRowSlugs(key);
   try {
-    let r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE slug=? AND status IS NOT 'deleted'`).bind(slug).run();
+    let r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE slug IN (${slugs.map(() => '?').join(',')}) AND status IS NOT 'deleted'`).bind(...slugs).run();
     let n = (r && r.meta && r.meta.changes) || 0;
     if (!n) {
       r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE status IS NOT 'deleted' AND data LIKE ?`).bind('%"' + key + '"%').run();
@@ -8088,17 +8241,25 @@ const app = {
     // See "image serving" above the fetch handler for the three things this
     // route does that a plain R2 read did not: conditional requests, versioned
     // immutable URLs with an edge copy, and the thumbnail fallbacks.
-    if (method === 'GET' && path.startsWith('/assets/')) {
-      let key;
-      try { key = decodeURIComponent(path.slice('/assets/'.length)); }
-      catch { return new Response('Invalid image path', { status: 400 }); }
-      if (key.includes('..')) return new Response('Not found', { status: 404 });
-      if (key.startsWith('media/')) return serveMedia(env, ctx, request, url, key);
-      if (key.startsWith(THUMB_PREFIX)) return serveThumb(env, ctx, request, url, key);
-      if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
-        return serveR2Image(env, ctx, request, url, key);
-      }
-      return env.ASSETS.fetch(request); // not in R2 -> committed static file
+    // HEAD is answered exactly as GET, without the body: left to fall through,
+    // an image that lives only in R2 came back 404 to anything that checks
+    // before it downloads.
+    if ((method === 'GET' || method === 'HEAD') && path.startsWith('/assets/')) {
+      const res = await (async request => {
+        let key;
+        try { key = decodeURIComponent(path.slice('/assets/'.length)); }
+        catch { return new Response('Invalid image path', { status: 400 }); }
+        if (key.includes('..')) return new Response('Not found', { status: 404 });
+        if (key.startsWith('media/')) return serveMedia(env, ctx, request, url, key);
+        if (key.startsWith(THUMB_PREFIX)) return serveThumb(env, ctx, request, url, key);
+        if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
+          return serveR2Image(env, ctx, request, url, key);
+        }
+        return env.ASSETS.fetch(request); // not in R2 -> committed static file
+      })(method === 'HEAD' ? new Request(request.url, { method: 'GET', headers: request.headers }) : request);
+      if (method !== 'HEAD' || !res) return res;
+      try { if (res.body) await res.body.cancel(); } catch { /* nothing to free */ }
+      return new Response(null, { status: res.status, statusText: res.statusText, headers: res.headers });
     }
 
     // ---------- RANDOM CHARACTER (302 to a random published page) ----------
@@ -8835,16 +8996,23 @@ const app = {
       const src = Bloodstar.bloodstarSource(url.searchParams.get('url'));
       if (src.error) return jsonResponse({ error: src.error }, { status: 400 });
 
+      // Both files come through fetchBloodstar(), which follows a redirect only
+      // back onto Bloodstar (a followed redirect was a way round the host
+      // pin), and are read with a cap however the size is or is not announced.
       let scriptJson = null;
       try {
-        const res = await fetch(src.scriptUrl, { redirect: 'follow' });
+        const res = await Bloodstar.fetchBloodstar(src.scriptUrl);
         if (res.status === 404) {
           return jsonResponse({ error: 'Bloodstar has no script.json for that project. Check the link, and that the project has been published.' }, { status: 404 });
         }
         if (!res.ok) {
           return jsonResponse({ error: 'Bloodstar answered ' + res.status + ' for that project\'s script.json.' }, { status: 502 });
         }
-        scriptJson = await res.json();
+        const bytes = await Bloodstar.readCapped(res, Bloodstar.BLOODSTAR_FILE_MAX);
+        if (!bytes) {
+          return jsonResponse({ error: 'That project\'s script.json is too large to be a script.' }, { status: 413 });
+        }
+        scriptJson = JSON.parse(new TextDecoder().decode(bytes));
       } catch {
         return jsonResponse({ error: 'Could not read that project\'s script.json. Bloodstar may be down, or the link may be wrong.' }, { status: 502 });
       }
@@ -8858,13 +9026,14 @@ const app = {
       // like it silently lost it.
       let almanacHtml = '';
       try {
-        const res = await fetch(src.almanacUrl, { redirect: 'follow' });
+        const res = await Bloodstar.fetchBloodstar(src.almanacUrl);
         if (res.ok) {
-          const text = await res.text();
           // A generated almanac for a 40-character script is ~180 KB. Anything
           // past a couple of megabytes is not one, and parsing it would spend
-          // the whole request's CPU on a file we are going to reject anyway.
-          if (text.length <= 4 * 1024 * 1024) almanacHtml = text;
+          // the whole request's CPU on a file we are going to reject anyway —
+          // so the read stops at the cap rather than measuring after.
+          const bytes = await Bloodstar.readCapped(res, Bloodstar.BLOODSTAR_FILE_MAX);
+          if (bytes) almanacHtml = new TextDecoder().decode(bytes);
         }
       } catch { /* the script alone is still worth importing */ }
 
@@ -10514,42 +10683,16 @@ const app = {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
       if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
-      // Every image path mentioned anywhere in any page's JSON (all statuses:
-      // drafts and trashed pages still need their art if restored).
-      // Wiki pages and news articles can embed any assets/ path in their body
-      // text, so their tables count as references too — without them an image
-      // a /p/ page uses looks orphaned and could be purged out from under it.
-      await ensurePagesTable(env);
-      await ensureNewsTable(env);
-      const refs = new Set();
-      for (const tbl of ['characters', 'collections', 'scripts', 'pages', 'news']) {
-        const { results } = await env.DB.prepare(`SELECT data FROM ${tbl}`).all()
-          .catch(() => ({ results: [] }));
-        for (const r of results || []) {
-          const found = String(r.data).match(/(?:art|scripts|collections)\/[A-Za-z0-9._ -]+\.(?:png|jpe?g|webp|gif|svg)/gi) || [];
-          for (const f of found) refs.add(f.toLowerCase());
-        }
-      }
-      const userIds = new Set(
-        ((await env.DB.prepare('SELECT id FROM users').all()).results || []).map(r => String(r.id))
-      );
+      const { refs, userIds } = await imageReferences(env);
       const orphans = [];
       let totalBytes = 0;
       let truncated = false;
-      for (const prefix of ['art/', 'scripts/', 'collections/', 'avatars/']) {
+      for (const prefix of ORPHAN_PREFIXES) {
         let cursor;
         do {
           const listed = await env.ART.list({ prefix, cursor, limit: 1000 });
           for (const o of listed.objects) {
-            let orphan;
-            if (prefix === 'avatars/') {
-              // avatars/u{id}.{ext} is orphaned when that account no longer exists
-              const m = o.key.match(/^avatars\/u(\d+)\./);
-              orphan = !!m && !userIds.has(m[1]);
-            } else {
-              orphan = !refs.has(o.key.toLowerCase());
-            }
-            if (!orphan) continue;
+            if (!imageOrphaned(o.key, refs, userIds)) continue;
             totalBytes += o.size || 0;
             if (orphans.length < 500) {
               orphans.push({ key: o.key, size: o.size || 0, uploaded: o.uploaded || null });
@@ -10748,7 +10891,29 @@ const app = {
         if (isBlank) blank++;
         missing.push({ slug: r.slug, name: r.name, art, blank: isBlank });
       }
-      const media = await listAll('media/');
+      // A resized copy counts only while it is a copy of the picture there
+      // NOW: serveMedia skips one whose recorded sourceETag no longer matches
+      // the original's, so a size check alone left stale copies unlisted —
+      // and the page on its original for good.
+      const media = new Map(); {
+        let cursor;
+        do {
+          const page = await env.ART.list({ prefix: 'media/', cursor, limit: 1000, include: ['customMetadata'] });
+          for (const o of page.objects || []) media.set(o.key, { size: o.size, source: (o.customMetadata && o.customMetadata.sourceETag) || '' });
+          cursor = page.truncated ? page.cursor : undefined;
+        } while (cursor);
+      }
+      const originals = new Map();
+      for (const prefix of ['scripts/', 'collections/']) {
+        let cursor;
+        do {
+          const page = await env.ART.list({ prefix, cursor, limit: 1000 });
+          for (const o of page.objects || []) originals.set(o.key, cleanETag(o.etag || o.httpEtag));
+          cursor = page.truncated ? page.cursor : undefined;
+        } while (cursor);
+      }
+      const originalETag = async art => originals.has(art) ? originals.get(art)
+        : await mediaOriginalETag(env, url.origin, art).catch(() => '');
       for (const table of ['scripts', 'collections']) {
         const { results: pages } = await env.DB.prepare(`SELECT slug, data FROM ${table} WHERE status IN ('published','draft')`).all();
         const seen = new Set();
@@ -10757,7 +10922,13 @@ const app = {
           for (const art of [d.header, d.logo]) {
             if (typeof art !== 'string' || !/^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i.test(art) || seen.has(art)) continue;
             seen.add(art); withArt++;
-            if (MEDIA_WIDTHS.some(width => (media.get('media/' + width + '/' + art + '.webp') || 0) < THUMB_MIN_BYTES)) {
+            const copies = MEDIA_WIDTHS.map(width => media.get('media/' + width + '/' + art + '.webp'));
+            let stale = copies.some(c => !c || c.size < THUMB_MIN_BYTES);
+            if (!stale) {
+              const etag = await originalETag(art);
+              stale = !etag || copies.some(c => c.source !== etag);
+            }
+            if (stale) {
               missing.push({ slug: row.slug, name: d.name || d.displayName || row.slug, art, media: true });
             }
           }
@@ -11090,9 +11261,11 @@ const app = {
         }
         const b = await request.json().catch(() => ({}));
         const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
-        async function deleteOwnAvatars() {
+        async function deleteOwnAvatars(keep) {
           for (const e of AVATAR_EXTS) {
-            try { await env.ART.delete('avatars/u' + sess.userId + '.' + e); } catch { /* best-effort */ }
+            const k = 'avatars/u' + sess.userId + '.' + e;
+            if (k === keep) continue;
+            try { await env.ART.delete(k); } catch { /* best-effort */ }
           }
         }
         if (b.remove) {
@@ -11110,12 +11283,15 @@ const app = {
         try { bytes = base64ToBytes(data); } catch { return jsonResponse({ error: 'Could not read that image.' }, { status: 400 }); }
         if (!bytes.length) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
         if (bytes.length > 2 * 1024 * 1024) return jsonResponse({ error: 'Picture is too large (2 MB max).' }, { status: 413 });
-        await deleteOwnAvatars(); // clear any old picture with a different extension
         const key = 'avatars/u' + sess.userId + '.' + ext;
         await env.ART.put(key, bytes, {
           httpMetadata: { contentType },
           customMetadata: { owner: String(sess.userId) }
         });
+        // Only once the new picture is stored is any old one (a different
+        // extension) cleared: deleting first meant a failed put left
+        // avatar_url pointing at nothing.
+        await deleteOwnAvatars(key);
         // ?v= busts any cached copy the browser holds of the previous picture
         const avatarUrl = '/assets/' + key + '?v=' + Date.now();
         await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, sess.userId).run();
@@ -11203,10 +11379,6 @@ const app = {
 
       // ---- image upload (ownership-checked) ----
       if (path === '/api/upload') {
-        {
-          const limited = await writeLimited(env, request, sess, 'upload');
-          if (limited) return limited;
-        }
         if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
         let key, bytes, contentType, sourceETag, baseUpdatedAt = null;
@@ -11220,7 +11392,9 @@ const app = {
             contentType = data.slice(5, data.indexOf(';'));
             data = data.slice(data.indexOf(',') + 1);
           }
-          bytes = base64ToBytes(data);
+          // Bad base64 is a bad request, not a server error.
+          try { bytes = base64ToBytes(data); }
+          catch { return jsonResponse({ error: 'That image could not be read.' }, { status: 400 }); }
         } else {
           key = url.searchParams.get('key');
           bytes = new Uint8Array(await request.arrayBuffer());
@@ -11229,6 +11403,14 @@ const app = {
         key = String(key || '').replace(/^\/+/, '').replace(/^assets\//, '');
         if (key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
           return jsonResponse({ error: 'Images can only be saved in these folders: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+        }
+        // Counted once the key is known: a thumbnail or a resized copy is
+        // made by the browser right after the image it copies, so it draws on
+        // its own allowance rather than the one an import's art is counted
+        // against (see WRITE_LIMITS).
+        {
+          const limited = await writeLimited(env, request, sess, uploadLimitKind(key));
+          if (limited) return limited;
         }
         if (bytes.length > 8 * 1024 * 1024) {
           return jsonResponse({ error: 'Image is too large (8 MB max).' }, { status: 413 });
@@ -11280,7 +11462,7 @@ const app = {
         // editor to adopt. A caller that sends none — Icon Forge, the
         // standardizer, the thumbnail backfill — is unaffected, exactly as
         // the save handlers leave such a client alone.
-        const artRow = baseUpdatedAt && key.startsWith('art/') ? await artRowStamp(env, key) : null;
+        const artRow = baseUpdatedAt && key.startsWith('art/') ? await artRowStamp(env, key, { updatedAt: baseUpdatedAt }) : null;
         {
           const conflict = artRow ? editConflict(artRow, { baseUpdatedAt }) : null;
           if (conflict) return conflict;
@@ -11307,7 +11489,7 @@ const app = {
         // version so the year-long image cache lets the new picture through.
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
         const touched = await touchArtRow(env, key);
-        const stamp = touched ? await artRowStamp(env, key) : null;
+        const stamp = touched ? await artRowStamp(env, key, { slug: artRow && artRow.slug }) : null;
         return jsonResponse({
           ok: true, path: '/assets/' + key, etag: stored && stored.etag,
           ...(stamp && stamp.updated_at ? { updatedAt: stamp.updated_at } : {})
@@ -11415,23 +11597,21 @@ const app = {
         }
         let res;
         try {
-          res = await fetch(srcUrl.toString(), { redirect: 'follow' });
+          // Redirects only back onto Bloodstar (see fetchBloodstar).
+          res = await Bloodstar.fetchBloodstar(srcUrl.toString());
         } catch {
           return jsonResponse({ error: 'Could not reach that image on Bloodstar.' }, { status: 502 });
         }
         if (!res.ok) {
           return jsonResponse({ error: 'Bloodstar answered ' + res.status + ' for that image.' }, { status: 502 });
         }
-        // Refused before the download when the size is announced, rather than
-        // after reading the whole thing into memory.
-        if ((parseInt(res.headers.get('Content-Length'), 10) || 0) > 8 * 1024 * 1024) {
-          return jsonResponse({ error: 'That image is too large (8 MB max).' }, { status: 413 });
-        }
-        const bytes = new Uint8Array(await res.arrayBuffer());
+        // Refused at the cap whether or not the size is announced, rather
+        // than after reading the whole thing into memory.
+        let bytes;
+        try { bytes = await Bloodstar.readCapped(res, 8 * 1024 * 1024); }
+        catch { return jsonResponse({ error: 'Could not read that image from Bloodstar.' }, { status: 502 }); }
+        if (!bytes) return jsonResponse({ error: 'That image is too large (8 MB max).' }, { status: 413 });
         if (!bytes.length) return jsonResponse({ error: 'That image came back empty.' }, { status: 502 });
-        if (bytes.length > 8 * 1024 * 1024) {
-          return jsonResponse({ error: 'That image is too large (8 MB max).' }, { status: 413 });
-        }
         // Same whitelist /api/upload applies, for the same reason: whatever
         // type is stored here is the type /assets/ replays, so an unlisted one
         // is a file served from our own origin under someone else's rules.
@@ -11451,6 +11631,11 @@ const app = {
           customMetadata: { owner: String(sess.userId) }
         });
         dropThumbFor(env, ctx, key);
+        // A logo or a header copied over an existing one retires its resized
+        // copies, exactly as /api/upload does, or the page keeps serving them.
+        if (/^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i.test(key)) {
+          await env.ART.delete(MEDIA_WIDTHS.map(width => 'media/' + width + '/' + key + '.webp')).catch(() => {});
+        }
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB (Bloodstar)');
         await touchArtRow(env, key);   // a re-import over an existing page: see touchArtRow
         return jsonResponse({ ok: true, path: '/assets/' + key });
@@ -14507,14 +14692,20 @@ const app = {
         const b = await request.json().catch(() => ({}));
         const keys = (Array.isArray(b.keys) ? b.keys : []).slice(0, 100).filter(k =>
           typeof k === 'string' && !k.includes('..') &&
-          ['art/', 'scripts/', 'collections/', 'avatars/'].some(p => k.startsWith(p))
+          ORPHAN_PREFIXES.some(p => k.startsWith(p))
         );
         if (!keys.length) return jsonResponse({ error: 'No image keys given.' }, { status: 400 });
+        // The list being purged is from a scan the admin ran a while ago; a
+        // page saved since may have started using one of these. Asked again
+        // here, at delete time, and a key that is referenced now is kept.
+        const { refs, userIds } = await imageReferences(env);
+        let deleted = 0, skipped = 0;
         for (const k of keys) {
-          try { await env.ART.delete(k); } catch { /* best-effort */ }
+          if (!imageOrphaned(k, refs, userIds)) { skipped++; continue; }
+          try { await env.ART.delete(k); deleted++; } catch { /* best-effort */ }
         }
-        await logActivity(env, sess, 'purge-images', 'wiki', null, keys.length + ' images');
-        return jsonResponse({ ok: true, deleted: keys.length });
+        await logActivity(env, sess, 'purge-images', 'wiki', null, deleted + ' images');
+        return jsonResponse({ ok: true, deleted, skipped });
       }
 
       // ---- admin: strip broken character refs from one script/collection ----
