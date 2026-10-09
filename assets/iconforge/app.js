@@ -976,6 +976,17 @@ $('if-save').addEventListener('click', async () => {
       image: 'https://botchomebrew.wiki/assets/' + key,
       status: page.status
     });
+    // An older row may hold its alternate icons only as positions two and
+    // three of an `image` ARRAY (no artAlt/imageAlt fields — see "A
+    // character's three icons" in CLAUDE.md). `image` becomes the new main
+    // icon's string, so those positions move to their own fields first, or
+    // saving an icon would quietly delete a traveller's good and evil art.
+    if (Array.isArray(page.data && page.data.image)) {
+      ['imageAlt', 'imageAlt2'].forEach((field, i) => {
+        const was = page.data.image[i + 1];
+        if (typeof was === 'string' && was && !entry[field]) entry[field] = was;
+      });
+    }
     const saved = await fetch('/api/character', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

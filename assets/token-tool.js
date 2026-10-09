@@ -42,9 +42,23 @@
     var p = pending[m.id]; if (!p) return; delete pending[m.id];
     if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Something went wrong.'));
   };
+  /* A crashed worker never answers again, so every call still waiting on it
+     is failed here — previews and sheets used to sit on "Rendering…" for
+     good. pyReady goes false so nothing new is sent into the dead worker. */
+  function failPending(message) {
+    var ids = Object.keys(pending);
+    ids.forEach(function (id) {
+      var p = pending[id]; delete pending[id];
+      p.rej(new Error(message));
+    });
+  }
   worker.onerror = function (e) {
-    engineErr = e.message; hideLoad();
+    engineErr = (e && e.message) || 'the token maker stopped';
+    pyReady = false;
+    hideLoad();
     showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ.');
+    failPending('The token maker stopped working. Refresh the page to try again.');
+    refreshGenerate();
   };
 
   /* ---- tiny DOM helpers ---- */
@@ -654,16 +668,31 @@
       : 'Saves this token to the character’s page. The Token Tool prints it from then on.';
     $('tte-save-go').disabled = false;
     $('tte-save-go').textContent = 'Save to page';
+    /* The tick says what the page does NOW: a page whose owner turned the
+       token out of the gallery must not have it switched back on just by
+       saving a better token. A first token starts ticked, as before. The
+       stored answer is read again at save time (page.data) unless the reader
+       has touched the box, since the card feed can be a few minutes old. */
+    var show = $('tte-save-show');
+    show.checked = c.token ? !!c.tokenArt : true;
+    show.dataset.touched = '';
   }
   function saveEditorToken() {
     var sl = editorSlug; if (!sl) return;
-    var c = charBySlug[sl]; if (!c || c.ext || !pyReady) return;
+    var c = charBySlug[sl]; if (!c || c.ext) return;
+    // Pressing Save before the engine is up used to do nothing at all.
+    if (!pyReady) {
+      $('tte-save-msg').textContent = engineErr
+        ? 'The token maker failed to load, so nothing can be saved. Try a refresh.'
+        : 'The token maker is still loading. Try again in a moment.';
+      return;
+    }
     var btn = $('tte-save-go'), msg = $('tte-save-msg');
     btn.disabled = true; btn.textContent = 'Saving…';
     msg.textContent = 'Drawing the token at full size…';
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
     o.preview_scale = 1; o.ignore_premade = true;
-    var pngB64 = null, key = 'art/' + sl + '-token.png';
+    var pngB64 = null, key = 'art/' + sl + '-token.png', sentShow = false;
     callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
       .then(function (res) {
         if (res.error) throw new Error('This character has no art to make a token from.');
@@ -689,7 +718,11 @@
             tokenImage: 'https://botchomebrew.wiki/assets/' + key,
             status: page.status
           });
-          if ($('tte-save-show').checked) entry.tokenArt = true;
+          var show = $('tte-save-show');
+          var want = show.dataset.touched ? show.checked
+            : (page.data && page.data.token ? !!page.data.tokenArt : show.checked);
+          if (want) entry.tokenArt = true; else delete entry.tokenArt;
+          sentShow = want;
           return fetch(ROOT + 'api/character', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
             body: JSON.stringify(entry)
@@ -699,6 +732,7 @@
       .then(function (saved) {
         if (!saved || saved.error) throw new Error((saved && saved.error) || 'The character could not be saved.');
         charBySlug[sl].token = key;
+        charBySlug[sl].tokenArt = !!sentShow;
         // The saved bytes go straight into the worker FS, so this session's
         // previews and sheets print the new token without refetching it.
         callWorker('artBytes', { slug: sl + '-premade', b64: pngB64 }).catch(function () {});
@@ -767,6 +801,7 @@
       scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
     };
     $('tte-save-go').onclick = saveEditorToken;
+    $('tte-save-show').onchange = function () { this.dataset.touched = '1'; };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && editorSlug) closeEditor(); });
   }
 
@@ -1126,10 +1161,16 @@
       // Skipped silently — listing it as unknown would be reporting the wiki's
       // own signature back to the reader as a missing character.
       if (isCreditsFabled(item)) return;
+      /* A bare id is how the official schema names one of the GAME's
+         characters, so the official roster is asked first: a homebrew page
+         that happens to share the name (there is more than one) must not
+         take its place — the same order as resolveJinxTarget() in render.js
+         (CLAUDE.md, gotcha 8). A wiki page is reached by its own identity,
+         which no official id shares. */
       if (typeof item === 'string') {
-        if (byNorm[norm(item)]) { wiki.push(byNorm[norm(item)]); return; }
         var offS = officialExt(item, extSlugs);
         if (offS) { official.push(offS); return; }
+        if (byNorm[norm(item)]) { wiki.push(byNorm[norm(item)]); return; }
         unknown.push(item);
         return;
       }
@@ -1141,10 +1182,16 @@
       // character shares its name, so imported characters aren't silently overwritten
       // by a same-named (but different) wiki one.
       if (!item.ability) {
-        var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
-        if (hit) { wiki.push(hit); return; }
-        var offR = officialExt(item.id, extSlugs) || officialExt(item.name, extSlugs);
+        // The id before the name, and at each step official first (above).
+        var offR = officialExt(item.id, extSlugs);
         if (offR) { official.push(offR); return; }
+        var hit = byNorm[norm(item.id)];
+        if (!hit) {
+          offR = officialExt(item.name, extSlugs);
+          if (offR) { official.push(offR); return; }
+          hit = byNorm[norm(item.name)];
+        }
+        if (hit) { wiki.push(hit); return; }
         unknown.push(item.id || item.name || '?'); return;
       }
       if (!item.name) { unknown.push(item.id || '?'); return; }
