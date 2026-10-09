@@ -493,10 +493,13 @@ test('the link root comes from our own stylesheet, never an extension-injected o
 });
 
 test('card batches stop below the viewport, support section jumps, and cancel stale callbacks', async () => {
+  // A grid gets a spacer (the height of the cards still to come) and, under
+  // it, its "Show more" button; see list-pages.test.mjs for the rest.
   let intersect; const observed = new Set(), frames = [];
-  const grids = new Map(['first', 'second'].map(name => [name, { cards: '', insertAdjacentHTML(_, html) { this.cards += html; }, insertAdjacentElement(_, button) { this.button = button; } }]));
-  const context = vm.createContext({ window: {}, requestAnimationFrame: cb => frames.push(cb),
-    document: { createElement() { return { addEventListener(_, cb) { this.click = cb; } }; } },
+  const el = () => ({ addEventListener(_, cb) { this.click = cb; }, insertAdjacentElement(_, next) { this.next = next; } });
+  const grids = new Map(['first', 'second'].map(name => [name, { cards: '', insertAdjacentHTML(_, html) { this.cards += html; }, insertAdjacentElement(_, spacer) { this.spacer = spacer; } }]));
+  const context = vm.createContext({ window: { requestAnimationFrame: cb => frames.push(cb) }, setTimeout: () => 0,
+    document: { createElement: el },
     IntersectionObserver: class { constructor(cb) { intersect = cb; } observe(x) { observed.add(x); } unobserve(x) { observed.delete(x); } disconnect() { observed.clear(); } } });
   vm.runInContext(await read('assets/viewport.js'), context);
   const cancel = context.window.mountCardBatches({ querySelector: s => grids.get(s) },
@@ -504,12 +507,17 @@ test('card batches stop below the viewport, support section jumps, and cancel st
   assert.equal(grids.get('first').cards.length, 48); assert.equal(grids.get('second').cards.length, 0);
   while (frames.length) frames.shift()();
   assert.equal(grids.get('first').cards.length, 48); // idle does not finish the whole list
-  intersect([{ target: grids.get('second').button, isIntersecting: true }]);
-  assert.equal(grids.get('second').cards.length, 48);
-  grids.get('first').button.click(); assert.equal(grids.get('first').cards.length, 96);
+  // Approaching a section draws its first step on the next frame, not inside
+  // the observer callback (one step per frame; out of reach, it stops).
+  intersect([{ target: grids.get('second').spacer, isIntersecting: true }]);
+  assert.equal(grids.get('second').cards.length, 0);
+  while (frames.length) frames.shift()();
+  assert.equal(grids.get('second').cards.length, 24);
+  grids.get('first').spacer.next.click(); assert.equal(grids.get('first').cards.length, 96);
   cancel(); while (frames.length) frames.shift()();
-  intersect([{ target: grids.get('second').button, isIntersecting: true }]);
-  assert.equal(grids.get('second').cards.length, 48); assert.equal(observed.size, 0);
+  intersect([{ target: grids.get('second').spacer, isIntersecting: true }]);
+  while (frames.length) frames.shift()();
+  assert.equal(grids.get('second').cards.length, 24); assert.equal(observed.size, 0);
 });
 
 test('comments wait for proximity or intent; comment anchors and failed-load retries work', async () => {

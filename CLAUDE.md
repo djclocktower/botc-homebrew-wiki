@@ -147,6 +147,21 @@ Key dynamic behavior:
   never had a login. See "Creator identity" below.
 - `/random`, `/sitemap.xml`, and `/script-view?s=` (OG-meta injection) are also
   Worker routes.
+- **`/all-characters`, `/team?t=` and `/tag?t=` arrive with their first screen
+  of cards in the HTML** (`worker/list-pages.js`): the static page, with the
+  first 48 cards, the section headings, the counts and (All Characters) the
+  filter box already drawn, through the SAME functions the browser draws
+  with (`char-filters.js`: `card()`, `barHTML()`, `sections()`,
+  `batchedHTML()`), so the browser adopts the cards instead of redrawing
+  them. The full grid feed is fetched once the page is idle or the reader
+  does anything (`mountCardBatches.whenNeeded`); until then the filter box is
+  greyed out (`cf-loading`) and a chip tapped or a Sort/Group picked is
+  queued and applied when the list lands. What the server cannot reproduce
+  exactly — `?collection=`, `?favorites=1` (the reader's own), an unknown
+  team, a tag with no characters — returns null and the static page is
+  served, which still draws everything in the browser. Team and tag cards
+  are char-filters.js's card, so they carry the Curata wreath / Partial
+  label All Characters always had.
 - **Site search**: the top-bar box on every page previews the best matches of
   every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
   results with a tab per kind and the All Characters filter. Both run the same
@@ -161,6 +176,11 @@ worker/worker.js       The Worker: data endpoints, auth, SSR, uploads, backup cr
 worker/argon2.js       Argon2id, the password hash: the one door to the vendored
                        WebAssembly in worker/vendor/argon2/ (see its README,
                        and "Account security").
+worker/list-pages.js   The first screen of /all-characters, /team and /tag,
+                       drawn into the static page from the grid feed with
+                       char-filters.js (see the architecture notes). Returns
+                       null for anything it cannot draw exactly; the route
+                       then serves the static page.
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
@@ -188,6 +208,18 @@ assets/
   reader.js            Gallery, title fitting, JSON toggle/copy. SSR readers load
                        this without the full rendering/export library.
   viewport.js          Bounded character-card batches on viewport approach.
+                       Under each grid a spacer holds the height of the cards
+                       not drawn yet (measured from the drawn rows), with the
+                       "Show more" button under it, so a batch fills space
+                       that was already there and nothing below moves; and
+                       each section gets a matching contain-intrinsic-size.
+                       Drawn ≤24 cards per animation frame within 1500px,
+                       plus idle look-ahead; never inside an observer
+                       callback (Group changes used to draw several sections
+                       in one long task). `adopt` keeps server-drawn cards;
+                       `.reserve()` sizes server spacers before data;
+                       `.whenNeeded()` decides when a server-drawn page
+                       fetches its list. Shared with /search.
   reading-lazy.js      Comments on approach, click or comment-anchor navigation.
   page-viewer.js       Private editing controls for cached published pages.
   site.js              Shared topbar behavior: search preview, mobile nav,
@@ -347,6 +379,8 @@ assets/
                        tag-picker builder. Adding a tag = edit ONLY this file.
                        A description of '' is a tag with no hover box,
                        which is not the same as a tag nothing knows about.
+                       Browser + Worker (module.exports): the /tag page's
+                       server-drawn hero reads describeTag() from it.
                        A tag NOT in this list is still kept on a page that has
                        one: both editors hold it aside and write it back after
                        the picked tags, because the hidden field is rebuilt
@@ -393,7 +427,15 @@ assets/
   char-filters.js      The All Characters filter box (team/tag/source/status/
                        creator chips, Sort, Group) as a module over an ARRAY
                        of characters, plus the character card itself.
-                       all-characters.html and /search both mount it.
+                       all-characters.html and /search both mount it;
+                       team.html and tag.html draw its card. Browser AND
+                       Worker (no DOM at top level; the Worker passes
+                       Classify/CardActions/splitCreators through init()):
+                       worker/list-pages.js draws the first screen with the
+                       same card(), barHTML(), applyState(), sections() and
+                       batchedHTML(), and the browser adopts it when
+                       layoutSig() matches. Change the card or the bar here
+                       and both halves follow.
                        card-filters.js is the other filter box: it filters
                        cards already in the DOM (collection and creator pages).
                        Sort is TWO boxes in both filter boxes: what (Name,
@@ -730,7 +772,10 @@ all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
                        drawing.
 search.html            /search?q=&type= — the full site search results. See
                        "Site search". noindex; not in the sitemap.
-team/tag/tags.html     Browse pages
+team/tag/tags.html     Browse pages. team.html and tag.html draw one grid
+                       a screen at a time (mountCardBatches over
+                       CharFilters.singleGrid(); a team is up to 1,000+
+                       cards and used to be drawn as 16,000 nodes at once).
 creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
                        from /api/creators. authors.html is a redirect stub to it.
@@ -3606,7 +3651,7 @@ seeded with whole collections whose characters all arrived unowned.
   in that order. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
   `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
-  `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
+  `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/index/author/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
   and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
@@ -4120,6 +4165,15 @@ legacy session its hint, and looks again). site.js sets `botcMePromise`
 from it; favorites.js asks it. On a back/forward-cache restore (`pageshow`
 with `persisted`) site.js repaints the account link if the hint changed,
 and favorites.js/card-actions.js re-read the saved lists.
+
+The character lists (`/all-characters`, `/team`, `/tag`, see the
+architecture notes) are cached the same way but by `worker/list-pages.js`
+itself: one cookie-free copy per normalised query (team id, lower-cased
+tag), keyed on the character + collection (+ script, for All Characters'
+Source chips) versions and `SSR_RENDER_V`; built from the published grid
+feed only, no view counting, `no-store` to the browser. The server copy
+drops the feed `<link rel=preload>`s: the cards are already there, so the
+1 MB feed waits for idle instead of competing with the first screen.
 
 Reading pages load `reader.js` instead of `render.js`. Comments and their CSS
 load near the viewport, on a click or for a comment hash; the attachment

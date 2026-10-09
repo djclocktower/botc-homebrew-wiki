@@ -71,7 +71,11 @@ export async function fixture() {
     ASSETS: { async fetch(request) {
       const path = new URL(request.url).pathname.slice(1);
       try { return new Response(await read(path)); }
-      catch { return new Response('Not found', { status: 404 }); }
+      catch {
+        // Clean URLs (/team serves team.html), as Cloudflare's assets do.
+        try { if (path && !/\.\w+$/.test(path)) return new Response(await read(path + '.html')); } catch { /* 404 below */ }
+        return new Response('Not found', { status: 404 });
+      }
     } }
   };
   globalThis.caches = { default: {

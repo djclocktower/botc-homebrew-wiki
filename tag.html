@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="assets/data.js"></script>
+<script src="assets/viewport.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tag — BOTC HomeBrew Wiki</title>
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
@@ -55,7 +56,7 @@
     <p id="hero-desc">Fan-made additions for Blood on the Clocktower</p>
   </div>
 
-  <main class="home-panel" id="panel">
+  <main class="home-panel list-panel" id="panel">
     <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
   </main>
 
@@ -65,13 +66,8 @@
   <script src="assets/classify.js"></script>
   <script src="assets/favorites.js"></script>
   <script src="assets/card-actions.js"></script>
+  <script src="assets/char-filters.js"></script>
   <script>
-    var GOOD = { townsfolk: 1, outsider: 1 };
-    var TEAM_LABEL = {
-      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
-    };
-
     function toTitleCase(s) {
       // hyphen-aware: "multi-kill" -> "Multi-Kill" (matches the canonical tags)
       return String(s || '').trim().toLowerCase()
@@ -94,61 +90,47 @@
 
     function hasTag(c, tag) {
       return (c.tags || '').split(',').some(function(t) {
-        return t.trim().toLowerCase() === tag.toLowerCase();
+        return t.trim().toLowerCase() === tag.trim().toLowerCase();
       });
     }
 
-    // A card's picture: the 192px WebP thumbnail beside the art
-    // (thumb/{file}.webp — the Worker serves the original where there is none
-    // yet), versioned by the row's `v` so it caches for a year. Same order as
-    // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
-    function thumb(c){
-      var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
-      if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
-      if (c.art) return 'assets/' + c.art + ver;
-      if (typeof c.image === 'string' && c.image) return c.image;
-      if (Array.isArray(c.image) && c.image[0]) return c.image[0];
-      return 'assets/favicon.png';
-    }
-    function card(c) {
-      var typeClass = GOOD[c.team] ? ' good' : '';
-      return '<a class="char-card" href="' + esc(c.page) + '">' +
-        // The icon, and under it the Favorites / Add to Script quick actions
-        // (assets/card-actions.js fills the slot).
-        '<span class="card-side">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art">' +
-        (window.CardActions ? window.CardActions.slotHTML(c) : '') + '</span>' +
-        '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
-        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
-        '<span class="char-card-link">View Character →</span>' +
-        '</div></a>';
-    }
+    // The card is assets/char-filters.js's, the one All Characters and
+    // /search draw, and the one the Worker drew this page's first screen with.
+    function card(c) { return window.CharFilters.card(c); }
+    var PANEL = document.getElementById('panel');
+    // The Worker drew the first screen into this page (worker/list-pages.js);
+    // the full list is fetched once the page is idle or the reader acts.
+    var SSR = PANEL.getAttribute('data-ssr') === '1';
 
-    BotcData.json('characters.json?fields=grid')
-      .then(function(list) {
-        var panel = document.getElementById('panel');
+    function load(clicked) {
+      BotcData.json('characters.json?fields=grid').then(function(list) {
         if (!rawTag) {
-          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No tag specified. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
+          PANEL.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No tag specified. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
           return;
         }
         // Partial pages are listed like any other, as on All Characters.
         var chars = list.filter(function(c) { return hasTag(c, rawTag); });
         if (!chars.length) {
-          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found with tag <strong>' + esc(displayTag) + '</strong>. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
+          PANEL.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found with tag <strong>' + esc(displayTag) + '</strong>. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
           return;
         }
-        panel.innerHTML =
-          '<div class="type-section">' +
-          '<div class="char-grid">' +
-          chars.map(card).join('') +
-          '</div></div>';
+        // One grid, drawn a screen at a time.
+        var laid = window.CharFilters.singleGrid(chars);
+        var adopt = SSR && PANEL.getAttribute('data-ssr-sig') === window.CharFilters.layoutSig(laid.groups);
+        if (!adopt) PANEL.innerHTML = laid.html;
+        window.mountCardBatches(PANEL, laid.groups, card, { adopt: adopt });
+        if (clicked && clicked.isConnected) clicked.click();
       })
       .catch(function() {
-        document.getElementById('panel').innerHTML =
+        if (SSR) return;   // the first screen is still here
+        PANEL.innerHTML =
           '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
       });
+    }
+    // Every card is on the page already: nothing to fetch at all.
+    if (SSR && !PANEL.querySelector('.card-load-more:not([hidden])')) { /* complete */ }
+    else if (SSR) window.mountCardBatches.whenNeeded(PANEL, load);
+    else load();
   </script>
 
   <script src="assets/site.js"></script>

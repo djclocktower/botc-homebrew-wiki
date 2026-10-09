@@ -36,6 +36,9 @@ run_worker_first = [
   # code is compiled ("Invalid routes in `run_worker_first`").
   "/c/*", "/s/*", "/collection/*", "/news/*", "/p/*", "/u/*",
   "/author", "/author.html",
+  # The character lists, drawn with their first screen of cards
+  # (worker/list-pages.js); anything else there falls back to the static page.
+  "/all-characters", "/team", "/tag",
   "/random", "/sitemap.xml", "/script-view.html", "/script-view",
   # The homepage is server-rendered (worker/home-page.js), with index.html as
   # its template and its fallback. /index.html is left to the assets, which
