@@ -172,7 +172,10 @@ assets/
                        plus root() — the page's link prefix, and the single
                        source of truth for it (see "Character identity vs
                        address"). Never trust the first stylesheet in the
-                       document to be ours.
+                       document to be ours. Also boot() (the one /api/boot
+                       request), me() (the one "who is reading" answer, gated
+                       on the botc_li login hint) and the early announcement
+                       bar — see "Caching" (4).
   reader.js            Gallery, title fitting, JSON toggle/copy. SSR readers load
                        this without the full rendering/export library.
   viewport.js          Bounded character-card batches on viewport approach.
@@ -2823,6 +2826,19 @@ How the three pieces fit:
    localStorage cache so a repeat visit never flashes the old wording. Put
    `data-no-text-override` on anything that must show text verbatim (the text
    editor's own results list does).
+   **The observer must stay near-free**, because it runs on every page with
+   a site-wide override, while the page draws hundreds of cards. Three rules
+   keep it linear (before them, one Script Builder load was a 17 s task at
+   4× CPU throttle): the opt-out scan (`document.querySelector` over the whole
+   page) runs **once per batch of records**, never per added node;
+   `rootsOf()` walks only the outermost touched nodes of a batch; and a
+   subtree whose `textContent` contains no rule's literal text (`needlesFor()`:
+   a `{placeholder}` rule contributes its longest literal run) is skipped
+   without walking it. A node it already rewrote and that comes back
+   unchanged (a card moved by a re-sort) is not rewritten twice; that memo
+   resets when the rules change, so Undo still repaints. `card-filters.js`
+   re-sorts through one DocumentFragment per grid and `card-actions.js` fills
+   only the slots it was handed as ADDED nodes, so neither floods the observer.
 
 **Live mode** (`assets/text-live.js`) is the same three pieces worn differently:
 switched on from /text-editor, it lets the owner browse the wiki normally and
@@ -3384,6 +3400,9 @@ covers each one.
   `adminSession()` (D1's `is_admin`, and not banned). Two admin GETs once
   forgot their own check, and `/api/admin/new-users` served every new
   member's email to anyone. Demoting an admin revokes their sessions.
+- **The login hint `botc_li` is not a credential.** It is readable by page
+  JavaScript on purpose and only decides whether a page bothers to ask
+  `/api/me`; nothing on the server trusts it. See "Caching" (4).
 - **Security headers**: `withSecurityHeaders()` (in the default export) adds
   HSTS, `X-Frame-Options: SAMEORIGIN`, `nosniff`, a referrer policy and a
   permissions policy to every Worker response, plus a CSP on HTML
@@ -3780,6 +3799,54 @@ the draft wiki-page links and new-page button. Those two go to the owner and
 to the parent's approved editors (see the wiki-page waterfall under "Approved
 editing"); nobody else receives them, and a reader who cannot edit gets
 nothing. `SSR_RENDER_V` includes generated `BUILD_ID`.
+
+**Every SSR script is `defer`**, `data.js` in the head included
+(`pageShell()`): none blocks parsing, they still run in the listed order, and
+all run before DOMContentLoaded. The inline bootstrap only sets globals and
+nothing in a rendered body calls a script global while parsing — keep it so.
+Static pages keep `data.js` parser-blocking in their head (their inline
+scripts use `BotcData` at once), so `_headers` announces it in the Link
+preload instead. Both Link lists (`PAGE_LINK_HEADER` and the `/` + `/:page`
+lines) also carry the bold condensed face, `parchment.webp` and the phone's
+`bg-m.webp` (media-gated): those are only referenced inside styles.css, so
+without a hint they wait for it. Keep the two lists in step; add nothing more.
+
+**The announcement bar paints before the first frame** on a repeat visit:
+the last copy (`botc_announce`, localStorage, three days) is put in place by
+`earlyAnnouncement()` in data.js (from a `requestAnimationFrame`, which runs
+just before a paint) and, on SSR pages where data.js is deferred, by the
+same few lines inlined right after `<body>` (`EARLY_ANNOUNCEMENT`). site.js
+then reconciles it with `/api/boot` — same message, the bar is swapped in
+place; none, it goes. Change its markup in all three places.
+
+**Prefetching (speculation rules).** Speed Brain only works for pages the CDN
+caches, so site.js injects its own `<script type="speculationrules">`:
+`prefetch` (never `prerender`, which would run page JS), eagerness `moderate`
+(hover or touch), over an ALLOWLIST of same-origin reading addresses — `/c/`,
+`/s/`, `/collection/`, `/p/`, `/news/`, `/u/`, `/author` and the static browse
+pages. Editors, `/random`, `/api/` and account pages are simply never on it;
+`target=_blank`, `rel=nofollow` and `data-no-prefetch` links are skipped.
+Chrome uses the prefetched copy even though SSR HTML is `no-store` (checked:
+`deliveryType` is `navigational-prefetch`). **Views:** `bumpView()` skips any
+request marked `Sec-Purpose`/`Purpose: prefetch`, and a page that is actually
+shown from a prefetch sends one beacon to `POST /api/view {type, slug}` —
+no login, same bot filter and daily counter, published pages only,
+rate-limited per connection, always 204.
+
+**The login hint.** The session cookie is HttpOnly, so every page used to ask
+`/api/me` — logged-out first visits included, and twice on `/c/` and
+`/collection/`. `withLoginHint()` (default export) adds a JS-readable
+`botc_li=1` beside every `botc_session` it sees set and clears it with it;
+adds it to any `no-store`/`private` response for a request that carries a
+session cookie but no hint (sessions from before it existed — never to a
+response a shared cache could keep); and `/api/me` clears both when the
+session behind them is gone. It is not a credential and nothing on the
+server reads it. `BotcData.me()` (data.js) is the one shared answer:
+no hint means no `/api/me` (it waits for `/api/boot`, which may hand a
+legacy session its hint, and looks again). site.js sets `botcMePromise`
+from it; favorites.js asks it. On a back/forward-cache restore (`pageshow`
+with `persisted`) site.js repaints the account link if the hint changed,
+and favorites.js/card-actions.js re-read the saved lists.
 
 Reading pages load `reader.js` instead of `render.js`. Comments and their CSS
 load near the viewport, on a click or for a comment hash; the attachment
