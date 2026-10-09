@@ -30,7 +30,9 @@ test('public news reuses its edge copy and ETag, keeps ordering/escaping, and is
   assert.ok(html.indexOf('&lt;pinned&gt;') < html.indexOf('&lt;latest&gt;'));
   assert.doesNotMatch(html, /draft-secret|deleted-secret|<script>/);
   const rows = (await (await f.request('/api/news?limit=3')).json()).articles;
-  assert.equal(html, [rows[1], rows[0], rows[2]].map(a => NewsRender.renderCard(a)).join(''));
+  // The list is pinned-first too: pinned articles are selected before the limit.
+  assert.deepEqual(rows.map(a => a.slug), ['pinned', 'latest', 'older']);
+  assert.equal(html, rows.map(a => NewsRender.renderCard(a)).join(''));
   await Promise.all(f.background);
   const before = scans(f);
   assert.deepEqual(await (await f.request(path)).json(), { html });

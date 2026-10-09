@@ -1510,7 +1510,9 @@ const FEED_CHANGING_ACTIONS = new Set([
   // A custom page put on (or taken off) the Featured Articles list.
   'feature', 'unfeature',
   // A set's custom page made into a standalone article.
-  'to-article'
+  'to-article',
+  // An admin stripping dead slugs out of a script roster or collection list.
+  'clean-refs'
 ]);
 
 // ---- activity log helper ----
@@ -2313,6 +2315,8 @@ async function wikiParentRow(env, type, key) {
 // [[Character Name]] -> the path segment render-wiki builds `c/{value}` from,
 // so the value is the ADDRESS. Both the identity and the name are keys, so a
 // writer can type either and still get a link.
+// Null when the read fails, never an empty map: an empty map renders every
+// [[Name]] as a plain token, and the page drawn from it must not be cached.
 async function loadCharLinks(env) {
   const map = {};
   try {
@@ -2326,7 +2330,7 @@ async function loadCharLinks(env) {
       if (r.slug) map[norm(r.slug)] = addr;
       if (r.name) map[norm(r.name)] = addr;
     }
-  } catch { /* links just fall back to token pills */ }
+  } catch { return null; /* links fall back to token pills, this once */ }
   return map;
 }
 
@@ -2752,7 +2756,7 @@ const CREDIT_DISOWNED_COUNT = `SUM(CASE WHEN ${CREDIT_UNLINKED_SQL} THEN 1 ELSE 
    per-name fix above looked broken for half an hour after it went live.
    Bump this whenever the rule changes and the old answers die with the
    deploy. */
-const CREDIT_RULE_V = 2;
+const CREDIT_RULE_V = 3;
 
 // The same test against a list of names: one bind per name.
 function creditAnySQL(col, n) {
@@ -4321,7 +4325,7 @@ async function curataCollections(env) {
       "SELECT data FROM collections WHERE status='published'"
     ).all();
     rows = (results || []).map(parseData).filter(d => d && d.curata);
-  } catch { rows = []; }
+  } catch { return []; /* not memoised: the next request reads it again */ }
   _curataCollCache = { version, rows };
   return rows;
 }
@@ -4374,7 +4378,7 @@ async function includeCollections(env) {
         include: d.include.filter(slug => !(d.exclude || []).includes(slug))
       }))
       .filter(c => c.name && c.id);
-  } catch { rows = []; }
+  } catch { return []; /* not memoised: the next request reads it again */ }
   _inclCollCache = { version, rows };
   return rows;
 }
@@ -4776,14 +4780,21 @@ async function buildPublicJSON(env, table, opts = {}) {
   // (what links go to). Twelve pages already link through `page`, which is why
   // this one line is most of the frontend's share of nesting.
   if (chars) await ensureUrlSlugColumn(env);
-  const cols = (chars ? 'data, status, slug, url_slug' : 'data, status') + ', updated_at';
+  const cols = (chars ? 'data, status, slug, url_slug' : 'data, status, slug') + ', updated_at';
   // Fail closed: a transient database error must not retry without the
   // published-only filter and expose drafts in a public, cached response.
   const { results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all();
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
-  const out = results.map(r => {
-    const d = foldLegacyCurata(JSON.parse(r.data));
+  const out = [];
+  for (const r of results) {
+    // One row whose blob is not valid JSON used to throw out of here and take
+    // every feed with it (and /api/home, the search and /random behind them).
+    // It is skipped and logged; the rest of the wiki still loads.
+    let d;
+    try { d = foldLegacyCurata(JSON.parse(r.data)); }
+    catch { console.error('buildPublicJSON: skipped unparseable ' + table + ' row ' + r.slug); continue; }
+    if (!d || typeof d !== 'object') continue;
     // Only the admin feed carries status; the public one must never imply
     // that unpublished pages exist.
     if (drafts) d.status = r.status || 'published';
@@ -4801,6 +4812,9 @@ async function buildPublicJSON(env, table, opts = {}) {
       // editor wrote there years ago and is never trusted for a character.
       d.page = 'c/' + (r.url_slug ? String(r.url_slug) : String(r.slug));
     }
+    // A script or collection's PK, for the legacy rows whose blob never had
+    // one: a tile with no slug is a broken link. The blob's own wins.
+    if (!chars && r.slug && !d.slug) d.slug = String(r.slug);
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
     if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
@@ -4828,8 +4842,8 @@ async function buildPublicJSON(env, table, opts = {}) {
     // rowVersion(). Never stored: it is derived from the column on every read.
     const v = rowVersion(r.updated_at);
     if (v) d.v = v; else delete d.v;
-    return d;
-  });
+    out.push(d);
+  }
   // Characters pick up Curata from any Curata collection they belong to,
   // and an "Appears in" from any collection that lists them by hand.
   if (table === 'characters') {
@@ -4845,7 +4859,9 @@ async function buildPublicJSON(env, table, opts = {}) {
 // The /creators index and the site search both read this. Building it reads
 // five tables end to end, so it is only ever reached through
 // cachedCreatorsBody(), keyed on the content version like the feeds.
-async function buildCreatorsList(env) {
+// `flags.degraded` is set when a read failed and the list is partial, so the
+// caller can serve it without caching it.
+async function buildCreatorsList(env, flags = {}) {
   const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
   // One credit string can name several people; each of them gets their own
   // row here, the same way each of them gets their own creator page.
@@ -4867,7 +4883,7 @@ async function buildCreatorsList(env) {
     for (const r of chars.results || []) bump(r.n, 'characters');
     for (const r of scripts.results || []) bump(r.n, 'scripts');
     for (const r of colls.results || []) bump(parseData(r).author, 'collections');
-  } catch { /* partial tally is better than none */ }
+  } catch { flags.degraded = true; /* partial tally is better than none */ }
 
   // Attach accounts. One pass over the alias table and one over the users
   // that own published pages, rather than a resolve call per name.
@@ -4879,59 +4895,83 @@ async function buildCreatorsList(env) {
     for (const r of results || []) {
       aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
     }
-  } catch { /* none set */ }
+  } catch { flags.degraded = true; /* none set */ }
   // lower(name) -> owner_id, the account that owns the most published
   // pages credited to that name (proof by ownership, in bulk). Counted in
   // JS rather than SQL because a credit can name several people.
+  // Exactly resolveCreatorAccount's rule, or /creators and the search would
+  // name a different account from the one /author?a= redirects to: both
+  // tables are read, one disown on either takes that account out of the
+  // running for the name, and characters still win over scripts.
   const owners = new Map();
   try {
-    const { results } = await env.DB.prepare(
-      `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
-         FROM characters
-        WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
-        GROUP BY creator, owner_id`
-    ).all();
-    const perName = new Map();   // name -> Map(owner_id -> count)
+    const [chars, scripts] = await Promise.all([
+      env.DB.prepare(
+        `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
+           FROM characters
+          WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
+          GROUP BY creator, owner_id`
+      ).all(),
+      env.DB.prepare(
+        `SELECT author AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
+           FROM scripts
+          WHERE owner_id IS NOT NULL AND author IS NOT NULL AND status='published'
+          GROUP BY author, owner_id`
+      ).all()
+    ]);
     const off = new Map();       // name -> Set(owner_id that disowned it)
-    for (const r of results || []) {
-      for (const key of creditNames(r.n)) {
-        if (Number(r.dis) > 0) {
-          if (!off.has(key)) off.set(key, new Set());
-          off.get(key).add(r.owner_id);
+    function count(results) {
+      const perName = new Map(); // name -> Map(owner_id -> count)
+      for (const r of results || []) {
+        for (const key of creditNames(r.n)) {
+          if (Number(r.dis) > 0) {
+            if (!off.has(key)) off.set(key, new Set());
+            off.get(key).add(Number(r.owner_id));
+          }
+          if (!perName.has(key)) perName.set(key, new Map());
+          const m = perName.get(key);
+          m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
         }
-        if (!perName.has(key)) perName.set(key, new Map());
-        const m = perName.get(key);
-        m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
       }
+      return perName;
     }
-    for (const [key, m] of perName) {
-      // Same rule as resolveCreatorAccount, or the index would show an
-      // account beside a name whose page no longer links to it.
+    const byChars = count(chars.results), byScripts = count(scripts.results);
+    function best(m, dis) {
+      let pick = null, pickN = 0;
+      for (const [ownerId, n] of m || []) {
+        if (dis && dis.has(Number(ownerId))) continue;
+        if (n > pickN || (n === pickN && pick != null && ownerId < pick)) { pick = ownerId; pickN = n; }
+      }
+      return pick;
+    }
+    for (const key of new Set([...byChars.keys(), ...byScripts.keys()])) {
       const dis = off.get(key);
-      let best = null, bestN = 0;
-      for (const [ownerId, n] of m) {
-        if (dis && dis.has(ownerId)) continue;
-        if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
-      }
-      if (best != null) owners.set(key, best);
+      const ownerId = best(byChars.get(key), dis) ?? best(byScripts.get(key), dis);
+      if (ownerId != null) owners.set(key, ownerId);
     }
-  } catch { /* no owned pages */ }
+  } catch { flags.degraded = true; /* no owned pages */ }
   let users = [];
   try {
+    await ensureBanColumn(env);
     const { results } = await env.DB.prepare(
-      'SELECT id, username, display_name, avatar_url FROM users'
+      'SELECT id, username, display_name, avatar_url, COALESCE(banned,0) AS banned FROM users'
     ).all();
-    users = results || [];
-  } catch { /* users unreadable */ }
+    // A suspended account keeps its credit row (the pages are still the
+    // name's), but not its handle and picture: the search lists no
+    // suspended account anywhere else either.
+    users = (results || []).filter(x => !Number(x.banned));
+  } catch { flags.degraded = true; /* users unreadable */ }
   const byId = new Map(users.map(x => [x.id, x]));
-  const byName = new Map(users.map(x => [String(x.username).toLowerCase(), x]));
+  // Keyed the way selectUserByName compares handles (usernameKey), so an
+  // alias resolves here to the same account resolveCreatorAccount finds.
+  const byName = new Map(users.map(x => [usernameKey(x.username), x]));
 
   const out = [];
   for (const [key, row] of tally) {
     let acct = null;
     if (aliases.has(key)) {
       const v = aliases.get(key);
-      acct = v ? byName.get(v.toLowerCase()) || null : null;
+      acct = v ? byName.get(usernameKey(v)) || null : null;
     } else if (owners.has(key)) {
       acct = byId.get(owners.get(key)) || null;
     }
@@ -4947,15 +4987,17 @@ async function buildCreatorsList(env) {
   out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   return out;
 }
-async function cachedCreatorsBody(env, ctx) {
+async function cachedCreatorsBody(env, ctx, flags = {}) {
   // Cached per content version (with the PEOPLE ttl — the rows carry
-  // avatars and display names, which bump nothing when they change).
+  // avatars and display names, which bump nothing when they change). A list
+  // built from a failed read is served but never stored, and `flags` passes
+  // that on to the search index, which would otherwise cache it in turn.
   const key = 'https://feed.internal/creators.json?v=' + (await contentVersion(env)) +
-    '&r=' + CREDIT_RULE_V;
+    '&r=' + CREDIT_RULE_V + '&b=' + BUILD_ID;
   const hit = await edgeCacheGet(key);
   if (hit !== null) return hit;
-  const body = JSON.stringify({ creators: await buildCreatorsList(env) });
-  edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
+  const body = JSON.stringify({ creators: await buildCreatorsList(env, flags) });
+  if (!flags.degraded) edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
   return body;
 }
 
@@ -4982,16 +5024,14 @@ const SEARCH_DEPS = ['character', 'script', 'collection', 'wikipage', 'news'];
 const SEARCH_PEOPLE_MS = 30 * 60 * 1000;
 const _searchIndexPending = new Map();
 let _searchIndexMemo = null;   // { key, body }
+// Deliberately no fallback: a read that fails rejects (buildSearchIndex keeps
+// that answer out of the cache) rather than re-reading without the ban filter
+// and putting every suspended account back in the search.
 async function searchIndexUsers(env) {
   await ensureBanColumn(env);
-  let rows;
-  try {
-    rows = (await env.DB.prepare(
-      'SELECT username, display_name, avatar_url, created_at FROM users WHERE COALESCE(banned,0)=0 ORDER BY username'
-    ).all()).results;
-  } catch {
-    rows = (await env.DB.prepare('SELECT username, display_name, avatar_url, created_at FROM users ORDER BY username').all()).results;
-  }
+  const rows = (await env.DB.prepare(
+    'SELECT username, display_name, avatar_url, created_at FROM users WHERE COALESCE(banned,0)=0 ORDER BY username'
+  ).all()).results;
   return (rows || []).filter(u => u.username).map(u => {
     const out = { username: u.username };
     if (u.display_name && u.display_name !== u.username) out.displayName = u.display_name;
@@ -5072,15 +5112,18 @@ async function searchIndexPages(env, sets) {
   }
   return out;
 }
-async function buildSearchIndex(env, ctx) {
+// `flags.degraded` is set when any half failed to load, so cachedSearchIndex
+// serves that index without caching it for half an hour.
+async function buildSearchIndex(env, ctx, flags = {}) {
   // A set list that cannot be read costs the wiki pages and the dates, never
   // the whole index.
-  const sets = searchIndexSets(env).catch(() => null);
+  const soft = fallback => () => { flags.degraded = true; return fallback; };
+  const sets = searchIndexSets(env).catch(soft(null));
   const [creatorsBody, users, pages, news, setRows] = await Promise.all([
-    cachedCreatorsBody(env, ctx),
-    searchIndexUsers(env).catch(() => []),
-    sets.then(s => s ? searchIndexPages(env, s) : []).catch(() => []),
-    newsList(env, 100, false).then(r => r.articles).catch(() => []),
+    cachedCreatorsBody(env, ctx, flags),
+    searchIndexUsers(env).catch(soft([])),
+    sets.then(s => s ? searchIndexPages(env, s) : []).catch(soft([])),
+    newsList(env, 100, false).then(r => r.articles).catch(soft([])),
     sets
   ]);
   return {
@@ -5101,7 +5144,7 @@ async function buildSearchIndex(env, ctx) {
 async function cachedSearchIndex(env, ctx) {
   const version = await contentVersion(env, SEARCH_DEPS);
   const bucket = Math.floor(Date.now() / SEARCH_PEOPLE_MS);
-  const tag = `${version}-${bucket}-${CREDIT_RULE_V}-${SEARCH_INDEX_V}`;
+  const tag = `${version}-${bucket}-${CREDIT_RULE_V}-${SEARCH_INDEX_V}-${BUILD_ID}`;
   const etag = `W/"search-${tag}"`;
   if (_searchIndexMemo && _searchIndexMemo.tag === tag) return { etag, body: _searchIndexMemo.body };
   const key = 'https://feed.internal/search-index.json?t=' + tag;
@@ -5109,14 +5152,19 @@ async function cachedSearchIndex(env, ctx) {
     _searchIndexPending.set(key, (async () => {
       let body = await edgeCacheGet(key);
       if (body === null) {
-        body = JSON.stringify(await buildSearchIndex(env, ctx));
+        const flags = {};
+        body = JSON.stringify(await buildSearchIndex(env, ctx, flags));
+        // A partial index is served once, with no ETag the browser could
+        // revalidate it against, and rebuilt on the next request.
+        if (flags.degraded) return { body, degraded: true };
         edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL);
       }
       _searchIndexMemo = { tag, body };
-      return body;
+      return { body };
     })().finally(() => _searchIndexPending.delete(key)));
   }
-  return { etag, body: await _searchIndexPending.get(key) };
+  const built = await _searchIndexPending.get(key);
+  return { etag: built.degraded ? null : etag, body: built.body };
 }
 
 // ---- version-keyed edge cache plumbing ----
@@ -5153,7 +5201,7 @@ function edgeCachePut(ctx, key, body, cacheControl, contentType) {
 // misses for the same version and projection share one build within an isolate.
 // Separate isolates can still build concurrently on a cold edge cache.
 const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
-const FEED_FORMAT_V = 2;
+const FEED_FORMAT_V = 3;
 const _feedBodyPending = new Map(); // coalesce overlapping misses within this isolate
 async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   const version = knownVersion === undefined ? await contentVersion(env, FEED_DEPS[table]) : knownVersion;
@@ -5215,8 +5263,13 @@ async function newsList(env, limit, includeDrafts) {
     includeDrafts
       ? `SELECT slug, title, status, published_at, updated_at, data FROM news
          ORDER BY COALESCE(published_at, updated_at) DESC LIMIT ?`
+      // Pinned first, THEN the limit: the homepage asks for three, and taking
+      // the newest three before sorting dropped any pinned article older than
+      // them. A substring of the blob, like CREDIT_UNLINKED_SQL: JSON.stringify
+      // spells the key one way, and json_extract() throws on a bad row.
       : `SELECT slug, title, status, published_at, updated_at, data FROM news
-         WHERE status='published' ORDER BY published_at DESC LIMIT ?`
+         WHERE status='published'
+         ORDER BY (data IS NOT NULL AND instr(data, '"pinned":true') > 0) DESC, published_at DESC LIMIT ?`
   ).bind(limit).all();
   return {
     articles: (results || []).map(r => {
@@ -5401,8 +5454,10 @@ let _homeCache = null;
 async function cachedHome(env, ctx, request) {
   const version = await contentVersion(env, ['character', 'collection', 'script']);
   const day = Math.floor(Date.now() / 86400000);
-  const key = `https://feed.internal/home.json?v=${version}&day=${day}&f=${HOME_FORMAT_V}`;
-  const etag = `W/"home-${version}-${day}-${HOME_FORMAT_V}"`;
+  // BUILD_ID: the snapshot is built from the feeds and from home-data.js, so
+  // a deploy that changes either must not keep serving last build's copy.
+  const key = `https://feed.internal/home.json?v=${version}&day=${day}&f=${HOME_FORMAT_V}&b=${BUILD_ID}`;
+  const etag = `W/"home-${version}-${day}-${HOME_FORMAT_V}-${BUILD_ID}"`;
   // A returning browser already owns the body, even in a cold Worker isolate.
   if (request?.headers.get('If-None-Match') === etag) return { etag };
   if (_homeCache?.key === key) return _homeCache;
@@ -5917,6 +5972,15 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
 // Order box. Both are fetched as static assets rather than imported, so
 // neither rides in the Worker bundle, and a night-order.json that fails to
 // load costs the positions and nothing else.
+//
+// A failed load is NEVER memoised. It used to cache [] for the life of the
+// isolate after one bad fetch — and [] is truthy, so it stuck: the "no
+// official characters" guard on /api/character then passed everything,
+// [[Imp]] went to a homebrew Imp and the night's meta steps vanished. So a
+// failure answers [] for this request only (the roster is never really empty,
+// which is how callers tell), and a roles list loaded without its night order
+// answers that list marked `incomplete`, uncached, so the next request tries
+// again and an SSR page drawn from it stays out of the shared cache.
 let _officialRolesCache = null;
 async function loadOfficialRoles(env, origin) {
   if (_officialRolesCache) return _officialRolesCache;
@@ -5925,17 +5989,21 @@ async function loadOfficialRoles(env, origin) {
       env.ASSETS.fetch(new Request(origin + '/assets/roles.json')),
       env.ASSETS.fetch(new Request(origin + '/assets/night-order.json')).catch(() => null)
     ]);
+    if (!rolesRes.ok) return [];
     const roles = await rolesRes.json();
     let night = null;
-    try { night = nightRes ? await nightRes.json() : null; } catch { night = null; }
+    try { night = nightRes && nightRes.ok ? await nightRes.json() : null; } catch { night = null; }
     // The non-character steps of the night (dusk, minion info, demon info,
     // dawn): what an exported script needs to write a night sequence the
     // official app can follow. Without them the export leaves the sequence
     // out rather than publish one those steps are missing from.
     if (night && night.meta) PageRender.setNightMeta(night.meta);
-    _officialRolesCache = OfficialRoles.buildOfficialRoles(roles, night);
+    const built = OfficialRoles.buildOfficialRoles(roles, night);
+    if (!built.length) return [];
+    if (!night) { built.incomplete = true; return built; }
+    _officialRolesCache = built;
   } catch {
-    _officialRolesCache = [];
+    return [];
   }
   return _officialRolesCache;
 }
@@ -5946,13 +6014,15 @@ let _officialIconMapCache = null;
 async function officialIconMap(env, origin) {
   if (_officialIconMapCache) return _officialIconMapCache;
   const m = {};
-  for (const r of await loadOfficialRoles(env, origin)) {
+  const roles = await loadOfficialRoles(env, origin);
+  for (const r of roles) {
     if (r.image && /^https?:\/\//.test(r.image)) {
       m[Render.slugId(r.id)] = r.image;
       if (r.name) m[Render.slugId(r.name)] = r.image;
     }
   }
-  _officialIconMapCache = m;
+  // Only a map built from a fully loaded roster is kept (see loadOfficialRoles).
+  if (roles === _officialRolesCache) _officialIconMapCache = m;
   return m;
 }
 
@@ -5964,12 +6034,14 @@ let _officialNameMapCache = null;
 async function officialNameMap(env, origin) {
   if (_officialNameMapCache) return _officialNameMapCache;
   const m = {};
-  for (const r of await loadOfficialRoles(env, origin)) {
+  const roles = await loadOfficialRoles(env, origin);
+  for (const r of roles) {
     if (!r.name) continue;
     m[Render.slugId(r.id)] = r.name;
     m[Render.slugId(r.name)] = r.name;
   }
-  _officialNameMapCache = m;
+  // Only a map built from a fully loaded roster is kept (see loadOfficialRoles).
+  if (roles === _officialRolesCache) _officialNameMapCache = m;
   return m;
 }
 
@@ -5980,10 +6052,15 @@ async function officialNameMap(env, origin) {
 // whichever homebrew Imp this wiki happens to hold, so they go in one call.
 // The /c/ route is the exception and does not need it: Render.setOfficialNames
 // forwards into the engine, and that route already calls it for the jinx box.
+//
+// Answers false when either registry is missing (links null, or the official
+// roster failed to load): the page still renders, but the caller must keep it
+// out of the shared SSR cache, or the degraded links are served for a week.
 async function setWikiTextRegistries(env, origin, links) {
   const officialNames = await officialNameMap(env, origin).catch(() => ({}));
-  WikiRender.setCharLinks(links);
+  WikiRender.setCharLinks(links || {});
   WikiRender.setOfficialNames(officialNames);
+  return !!links && Object.keys(officialNames).length > 0;
 }
 
 // Jinxes between two OFFICIAL characters (assets/official-jinxes.json). An
@@ -5997,7 +6074,7 @@ async function loadOfficialJinxes(env, origin) {
     const doc = await res.json();
     _officialJinxCache = Array.isArray(doc && doc.jinxes) ? doc.jinxes : [];
   } catch {
-    _officialJinxCache = [];
+    return [];   // this request only; the next one tries again
   }
   return _officialJinxCache;
 }
@@ -6016,7 +6093,7 @@ async function jinxIndex(env, ctx) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
 
-  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}`, { method: 'GET' });
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}&b=${BUILD_ID}`, { method: 'GET' });
   try {
     const hit = await caches.default.match(cacheKey);
     if (hit) {
@@ -6180,7 +6257,11 @@ async function cachedCharLinkMap(env, ctx) {
       map[nkey(r.slug)] = addr;
       if (r.name) map[nkey(r.name)] = addr;
     }
-  } catch { /* an empty map just means [[Name]] renders as a plain token */ }
+  } catch {
+    // Not memoised, and null rather than an empty map: [[Name]] renders as a
+    // plain token this once, and the caller keeps that page out of the cache.
+    return null;
+  }
   _charLinkCache = { version, map };
   return map;
 }
@@ -6207,12 +6288,20 @@ async function charsBySlug(env, slugs) {
           d.page = 'c/' + charAddress(r);
           const v = rowVersion(r.updated_at);
           if (v) d.v = v; else delete d.v;
+          // Classify.isCurata, as in buildPublicJSON: a creator's opt-out
+          // drops the row's own flag, and the curataOptOut it still carries
+          // stops applyCollectionCurata lending the mark back below.
+          if (!Classify.isCurata(d)) delete d.curata;
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
           out.push(d);
         } catch { /* skip an unparseable row rather than 500 the page */ }
       }
-    } catch { /* a transient failure: better a short roster than a 500 */ }
+    } catch {
+      // A transient failure: better a short roster than a 500, but marked,
+      // so the page drawn from it stays out of the shared SSR cache.
+      out.incomplete = true;
+    }
   }
   // buildPublicJSON used to do this for us. A character on a Curata
   // collection carries the mark onto every page it appears on, so a roster
@@ -6320,11 +6409,15 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
     : await cachedCardChars(env, ctx);
+  // Anything below that could only be half-loaded marks the page degraded:
+  // still served, never put in the shared SSR cache (see DEGRADED_HEADER).
+  let degraded = !!chars.incomplete;
   // Scripts can carry imported official roles ('off-' slugs), so resolve them.
   // An arranged night order needs this call on an all-homebrew script too: it
   // is what loads the night's non-character steps.
   if (isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder)) {
     const official = await loadOfficialRoles(env, url.origin);
+    if (!official.length || official.incomplete) degraded = true;
     chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
   }
 
@@ -6343,7 +6436,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // EVERY character's name, not just the ones on this page, so it cannot come
   // from `chars` on a script page — it derives from the shared card cache,
   // which is already warm on a collection page and one edge read on a script.
-  await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env, ctx));
+  if (!(await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env, ctx)))) degraded = true;
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -6369,7 +6462,10 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     (nChars + '-character homebrew ' + (isScript ? 'script' : 'collection') +
      ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
   const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
-  const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
+  // A banner or logo can be an absolute URL (Bloodstar imports, remote art),
+  // which must not be glued onto this origin's /assets/ path.
+  const imgPath = String(d.header || d.logo || 'logo_skull.png');
+  const img = /^https?:\/\//i.test(imgPath) ? imgPath : url.origin + '/assets/' + imgPath;
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>' +
       draftNoteHTML(d)
@@ -6392,7 +6488,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
       ? ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
       : ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
-  return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
+  return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug), degraded);
 }
 
 // Collections: legacy rows have a display-string PK slug (e.g. "The Academy")
@@ -6760,18 +6856,25 @@ const PAGE_LINK_HEADER = versionAssetPaths(
   '</assets/fonts/trade-gothic-lt-std.woff2>; rel=preload; as=font; type=font/woff2; crossorigin, ' +
   '</assets/fonts/dumbledor2.woff2>; rel=preload; as=font; type=font/woff2; crossorigin');
 const VIEW_HEADER = 'X-Botc-View';
+// Marks a public page rendered while one of its shared registries (the
+// [[Name]] link map, the official roster, the jinx index, a roster read)
+// could not be loaded. It is served, but never stored in the shared cache:
+// a week of pages with every link turned into a plain token is far worse
+// than one more render. Internal only; stripped with VIEW_HEADER.
+const DEGRADED_HEADER = 'X-Botc-Degraded';
 
 function hasSessionCookie(request) {
   return /(?:^|;\s*)botc_session=/.test(request.headers.get('Cookie') || '');
 }
 
-function htmlPage(html, viewKey) {
+function htmlPage(html, viewKey, degraded) {
   const headers = {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
     Link: PAGE_LINK_HEADER
   };
   if (viewKey) headers[VIEW_HEADER] = viewKey;
+  if (viewKey && degraded) headers[DEGRADED_HEADER] = '1';
   return new Response(html, { headers });
 }
 
@@ -6779,6 +6882,7 @@ function stripViewHeader(res) {
   if (!res || !res.headers || !res.headers.has(VIEW_HEADER)) return res;
   const headers = new Headers(res.headers);
   headers.delete(VIEW_HEADER);
+  headers.delete(DEGRADED_HEADER);
   headers.set('Cache-Control', 'no-store');
   return new Response(res.body, { status: res.status, headers });
 }
@@ -6809,7 +6913,7 @@ async function ssrRoute(env, ctx, request, url, build) {
     // Draft/private-parent access still uses the original authorization path.
     return stripViewHeader((await build(request)) || await assetsOrNotFound(env, request));
   }
-  if (cacheReq && publicPage && !res.headers.has('Set-Cookie')) {
+  if (cacheReq && publicPage && !res.headers.has('Set-Cookie') && !res.headers.has(DEGRADED_HEADER)) {
     try {
       const storedHeaders = new Headers(res.headers); storedHeaders.set('Cache-Control', SSR_EDGE_CACHE_CONTROL);
       const put = caches.default.put(cacheReq, new Response(res.clone().body, { status: 200, headers: storedHeaders })).catch(() => {});
@@ -7035,7 +7139,7 @@ const app = {
           ? (/^https?:\/\//i.test(a.image) ? a.image : url.origin + '/assets/' + a.image)
           : url.origin + '/assets/logo_skull.png';
         // [[Character Name]] in an article links to that character's page.
-        await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
+        const registriesOk = await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
         const newsTheme = PageRender.sanitizeTheme(a.theme, 'news/' + a.slug);
         const newsThemeAttrs = PageRender.themeAttrs(newsTheme, '../');
         const html = pageShell({
@@ -7052,7 +7156,7 @@ const app = {
           // newspage.js puts the Edit button in the top bar for admins.
           scripts: ['reading-lazy.js', 'newspage.js', 'site.js']
         });
-        return htmlPage(html, isDraft ? '' : 'news|' + row.slug);
+        return htmlPage(html, isDraft ? '' : 'news|' + row.slug, !registriesOk);
       });
     }
 
@@ -7216,7 +7320,7 @@ const app = {
           const sess = await getSession(env, request);
           if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
         }
-        await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
+        const registriesOk = await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
         const page = {
           ...d, slug: row.slug, title: row.title,
           author: row.author || d.author || null,
@@ -7253,7 +7357,7 @@ const app = {
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${jsStr(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
-        return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug);
+        return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug, !registriesOk);
       });
     }
 
@@ -7397,10 +7501,13 @@ const app = {
               setHrefPromise, officialIconMap(env, url.origin), officialNameMap(env, url.origin),
               cachedCharLinkMap(env, ctx), jinxIndex(env, ctx).catch(() => null)
             ]);
+            // A registry that failed to load still renders (plain names, no
+            // mirrored jinxes), but that page must not enter the shared cache.
+            const degraded = !links || !jx || !Object.keys(names).length || !Object.keys(icons).length;
             // No suspension between shared registry assignment and rendering.
             Render.setOfficialIconUrls(icons);
             Render.setOfficialNames(names);
-            WikiRender.setCharLinks(links);
+            WikiRender.setCharLinks(links || {});
             Render.setWikiChars(jx ? jx.chars : {});
             if (jx) d.jinxes = mergeMirroredJinxes(d, String(row.slug), jx);
             // The row's version rides along for the emblem's versioned image
@@ -7408,7 +7515,7 @@ const app = {
             const rv = rowVersion(row.updated_at);
             if (rv) d.v = rv;
             return htmlPage(renderCharacterPage(d, url.origin, isDraft, partialNotice, setHref),
-              isDraft ? '' : 'character|' + String(row.slug));
+              isDraft ? '' : 'character|' + String(row.slug), degraded);
           }
           // Nothing here. resolveCharacterPath already followed the `redirects`
           // table, so an address a renamed page used to live at has been tried.
@@ -7564,7 +7671,7 @@ const app = {
       const anonKey = sess ? null
         : 'https://feed.internal/user.json?' + (uname ? 'u' : 'a') + '=' +
           encodeURIComponent(normCreator(uname || aname)) + '&v=' + (await contentVersion(env)) +
-          '&r=' + CREDIT_RULE_V;
+          '&r=' + CREDIT_RULE_V + '&b=' + BUILD_ID;
       if (anonKey) {
         const hit = await edgeCacheGet(anonKey);
         if (hit !== null) {
@@ -7634,6 +7741,11 @@ const app = {
       // The PK slug comes off the row, not out of the JSON: legacy rows do not
       // all carry `slug` in their data blob, and a card with no slug is a
       // broken link.
+      // A read that fails lists nothing and keeps this answer out of the
+      // cache. The old fallback re-read the owner's rows with no status
+      // filter and called every one of them published, so a single D1 blip
+      // put the creator's drafts on their public page for half an hour.
+      let degraded = false;
       async function pagesFrom(table, nameCol) {
         const w = whereFor(nameCol);
         if (!w) return [];
@@ -7642,13 +7754,7 @@ const app = {
             `SELECT slug, data, status FROM ${table} WHERE ${w.sql} ORDER BY updated_at DESC`
           ).bind(...w.binds).all();
           return results || [];
-        } catch {
-          // status/updated_at not migrated on this row set — legacy fallback
-          const { results } = await env.DB.prepare(
-            `SELECT slug, data FROM ${table} WHERE owner_id=? AND ${CREDIT_LINKED_SQL}`
-          ).bind(u ? u.id : -1).all().catch(() => ({ results: [] }));
-          return results || [];
-        }
+        } catch { degraded = true; return []; }
       }
 
       const [charRows, scriptRows] = await Promise.all([
@@ -7673,7 +7779,7 @@ const app = {
           // A collection can be co-credited too.
           return creditNames(d.author).some(n => names.includes(n));
         });
-      } catch { collRows = []; }
+      } catch { collRows = []; degraded = true; }
 
       // Trim to what a card needs. The old endpoint shipped every page's whole
       // data blob — a creator with forty characters meant a megabyte of almanac
@@ -7719,7 +7825,11 @@ const app = {
           o.header = d.header || '';
           o.logo = d.logo || '';        // header || logo, as above
         }
-        if (d.curata) o.curata = true;
+        // Classify.isCurata, not the raw flag: a creator who declined the mark
+        // must not get it back on their own creator page. The opt-out rides
+        // along so applyCollectionCurata below does not lend it back either.
+        if (Classify.isCurata(d)) o.curata = true;
+        if (d.curataOptOut) o.curataOptOut = true;
         const cls = Classify.classifyPage(d, type);
         if (cls !== 'standard') o.classification = cls;
         // Partial is derived per read, and the page needs the raw ingredients
@@ -7784,7 +7894,7 @@ const app = {
             });
           }
         }
-      } catch { /* the creator page still works without them */ }
+      } catch { degraded = true; /* the creator page still works without them */ }
 
       const payload = {
         profile: u ? {
@@ -7814,7 +7924,7 @@ const app = {
       };
       // Only the anonymous answer is cached (drafts: null by construction);
       // the 404 above never is, so probing can't pin a wrong "no such user".
-      if (anonKey) edgeCachePut(ctx, anonKey, JSON.stringify(payload), PEOPLE_CACHE_CONTROL);
+      if (anonKey && !degraded) edgeCachePut(ctx, anonKey, JSON.stringify(payload), PEOPLE_CACHE_CONTROL);
       return jsonResponse(payload);
     }
 
@@ -7902,6 +8012,7 @@ const app = {
     // Same client caching as the feeds: an ETag, and a 304 when it matches.
     if (method === 'GET' && path === '/api/search-index') {
       const idx = await cachedSearchIndex(env, ctx);
+      if (!idx.etag) return new Response(idx.body, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
       const headers = { ...JSON_HEADERS, ETag: idx.etag, 'Cache-Control': FEED_CACHE_CONTROL };
       if ((request.headers.get('If-None-Match') || '') === idx.etag) return new Response(null, { status: 304, headers });
       return new Response(idx.body, { headers });
@@ -7921,38 +8032,39 @@ const app = {
         return new Response(_sitemapCache.body, { headers: xmlHeaders });
       }
       const smKey = 'https://feed.internal/sitemap.xml?v=' + smVersion +
-        '&o=' + encodeURIComponent(url.origin);
+        '&o=' + encodeURIComponent(url.origin) + '&b=' + BUILD_ID;
       const smHit = await edgeCacheGet(smKey);
       if (smHit !== null) {
         _sitemapCache = { version: smVersion, origin: url.origin, body: smHit };
         return new Response(smHit, { headers: xmlHeaders });
       }
       const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Fail closed. The fallbacks here used to re-query WITHOUT the
+      // published filter, listing every draft's address in a file cached for
+      // a week. A table that cannot be read now lists nothing, and the whole
+      // answer is kept out of both caches so the next request tries again.
+      let degraded = false;
       async function pub(table) {
         // Characters are listed at their address, not their identity, or
         // every URL in the sitemap would be one the site 301s away from.
         const addr = table === 'characters' ? ', url_slug' : '';
-        if (table === 'characters') await ensureUrlSlugColumn(env);
         try {
-          return (await env.DB.prepare(`SELECT slug, updated_at${addr} FROM ${table} WHERE status='published'`).all()).results;
-        } catch {
-          return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table}`).all()).results;
-        }
+          if (table === 'characters') await ensureUrlSlugColumn(env);
+          return (await env.DB.prepare(`SELECT slug, updated_at${addr} FROM ${table} WHERE status='published'`).all()).results || [];
+        } catch { degraded = true; return []; }
       }
       async function pubCollections() {
         try {
-          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections WHERE status='published'`).all()).results;
-        } catch {
-          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections`).all()).results;
-        }
+          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections WHERE status='published'`).all()).results || [];
+        } catch { degraded = true; return []; }
       }
       async function pubNews() {
         try {
           await ensureNewsTable(env);
           return (await env.DB.prepare(
             `SELECT slug, updated_at FROM news WHERE status='published'`
-          ).all()).results;
-        } catch { return []; }
+          ).all()).results || [];
+        } catch { degraded = true; return []; }
       }
       // Standalone articles are listed (/articles); a set's own pages are not.
       async function pubArticles() {
@@ -7961,7 +8073,7 @@ const app = {
           return (await env.DB.prepare(
             `SELECT slug, updated_at FROM pages WHERE status='published' AND parent_type=?`
           ).bind(ARTICLE_PARENT).all()).results || [];
-        } catch { return []; }
+        } catch { degraded = true; return []; }
       }
       const [chars, scripts, colls, news, articles] = await Promise.all([
         pub('characters'), pub('scripts'), pubCollections(), pubNews(), pubArticles()
@@ -7991,6 +8103,9 @@ const app = {
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
         urls.join('\n') + '\n</urlset>';
+      if (degraded) {
+        return new Response(body, { headers: { ...xmlHeaders, 'Cache-Control': 'no-store' } });
+      }
       _sitemapCache = { version: smVersion, origin: url.origin, body };
       edgeCachePut(ctx, smKey, body, INTERNAL_CACHE_CONTROL, 'application/xml; charset=utf-8');
       return new Response(body, { headers: xmlHeaders });
@@ -8208,6 +8323,11 @@ const app = {
       } catch { /* the script alone is still worth importing */ }
 
       const official = await loadOfficialRoles(env, url.origin);
+      // Without the roster every official character in the project would be
+      // planned as a homebrew page, which /api/character then refuses.
+      if (!official.length) {
+        return jsonResponse({ error: "The official character list couldn't be loaded just now. Please try again in a moment." }, { status: 503 });
+      }
       const almanac = almanacHtml ? Bloodstar.parseAlmanac(almanacHtml, src.base) : null;
       const bundle = Bloodstar.buildBundle(scriptJson, almanac, src, official);
       bundle.hasAlmanac = !!almanacHtml;
@@ -11038,9 +11158,18 @@ const app = {
         // A shared NAME is fine and always was (this wiki has a Pope and a
         // Nightwatchman that are nothing like the official ones); it is the
         // name AND the ability together that mean the page is a copy.
+        //
+        // Fail CLOSED: a roster that could not be loaded compares against
+        // nothing, so it would wave every copy through. Refuse and ask for a
+        // retry instead; the next request loads it again.
         {
-          const graded = OfficialRoles.officialMatch(
-            await loadOfficialRoles(env, url.origin), { name: c.name, ability: c.ability });
+          const roster = await loadOfficialRoles(env, url.origin);
+          if (!roster.length) {
+            return jsonResponse({
+              error: "The wiki couldn't check this against the official characters just now. Nothing was saved, so please try again in a moment."
+            }, { status: 503 });
+          }
+          const graded = OfficialRoles.officialMatch(roster, { name: c.name, ability: c.ability });
           if (graded && graded.match === 'exact') {
             return jsonResponse({
               error: OfficialRoles.officialRefusal(graded.role), official: graded.role.id
@@ -12308,6 +12437,12 @@ const app = {
               `UPDATE ${meta.table} SET status='draft' WHERE owner_id=? AND status='published'`
             ).bind(target.id).run().catch(() => {});
           }
+          // 'ban' is logged against a user, which bumps nothing, and these
+          // raw UPDATEs skip every save handler. Without this the pages just
+          // taken down stay in the feeds, the search, the homepage and the
+          // week-long shared SSR cache. Every type at once: one ban can reach
+          // characters, scripts and collections, and the pages that list them.
+          await bumpContentVersion(env, 'all');
           await logActivity(env, sess, 'ban', 'user', null,
             target.username + ' (+ unpublished ' + total + ' page' + (total === 1 ? '' : 's') + ')');
           return jsonResponse({ ok: true, banned: true, counts, total });
@@ -12843,6 +12978,10 @@ const app = {
           }
           made++;
         }
+        // The log line is about the new pages, so it bumps only the wikipage
+        // scope; the characters retired above need theirs too, or the feeds
+        // and the cached /c/, /s/ and /collection/ pages keep serving them.
+        if (made) await bumpContentVersion(env, 'character');
         await logActivity(env, sess, 'create', 'wikipage', null,
           made + ' rules page(s) converted from characters');
         return jsonResponse({ ok: true, made, skipped, parent: parent.name });
@@ -13399,6 +13538,10 @@ const app = {
             "UPDATE characters SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?"
           ).bind(JSON.stringify(d), row.slug).run();
         }
+        // Logged against characters, so only that scope bumps by itself; the
+        // rosters rewritten above are script and collection rows.
+        if (scriptEdits.length) await bumpContentVersion(env, 'script');
+        if (collEdits.length) await bumpContentVersion(env, 'collection');
         await logActivity(env, sess, 'delete', 'character', null,
           exact.length + ' official character page(s) retired');
         return jsonResponse({
