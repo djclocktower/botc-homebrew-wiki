@@ -359,6 +359,7 @@ function loadOdysseyCleanup() {
     import('../migration/odyssey-cleanup.js').then(m => m.default || m));
 }
 import { homeData } from './home-data.js';
+import { renderHomePage, homeRegions } from './home-page.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
@@ -5938,6 +5939,77 @@ async function cachedHome(env, ctx, request) {
   try { return await pending; } finally { _homePending.delete(key); }
 }
 
+/* GET / — the homepage, server-rendered (worker/home-page.js) from the same
+   snapshot /api/home serves plus the News and Articles cards, into the built
+   index.html as its template. One shared copy for every reader, logged in or
+   not: nothing in it is personal (the card buttons are empty slots the
+   browser fills, the announcement and the account link come from site.js).
+   Keyed on the content versions it draws from, the UTC day (Featured
+   rotates daily) and BUILD_ID (template + renderer). A build in which News or
+   Articles failed is served but never stored, so an outage cannot be cached.
+   Any other failure serves the static index.html, which home.js fills from
+   /api/home?format=panels. The homepage never counted page views. */
+const HOME_PAGE_V = 1;
+const HOME_PAGE_DEPS = ['character', 'collection', 'script', 'news', 'wikipage'];
+const HOME_NEWS_LIMIT = 3;
+// The parchment card background is what the first screen's largest element
+// (a News card, a collection tile, the sidebar card) is waiting for once the
+// HTML carries real content; announced here it no longer waits for
+// styles.css to be parsed. Same URL the stylesheet resolves it to.
+const HOME_LINK_HEADER_EXTRA = ', </assets/parchment.webp>; rel=preload; as=image';
+let _homePageCache = null;
+const _homePagePending = new Map();
+let _homeTemplate = null;
+async function homeTemplate(env, origin) {
+  if (_homeTemplate) return _homeTemplate;
+  for (const path of ['/', '/index.html']) {
+    const res = await env.ASSETS.fetch(new Request(origin + path, { method: 'GET' }));
+    if (res.status === 200) return (_homeTemplate = await res.text());
+  }
+  throw new Error('Homepage template unavailable');
+}
+async function homeCards(env, ctx) {
+  const [newsV, articleV] = await Promise.all([contentVersion(env, ['news']), contentVersion(env, ['wikipage'])]);
+  const card = p => p.then(body => ({ html: JSON.parse(body).html || '' }), () => ({ html: '', failed: true }));
+  return Promise.all([
+    card(cachedNewsBody(env, ctx, HOME_NEWS_LIMIT, true, newsV)),
+    card(cachedArticleCards(env, ctx, HOME_NEWS_LIMIT, articleV))
+  ]);
+}
+async function cachedHomePage(env, ctx, origin, version, day) {
+  const key = `https://ssr.internal/?home=${HOME_PAGE_V}&v=${encodeURIComponent(version)}&day=${day}&r=${SSR_RENDER_V}`;
+  if (_homePageCache?.key === key) return _homePageCache.html;
+  if (_homePagePending.has(key)) return _homePagePending.get(key);
+  const pending = (async () => {
+    let html = await edgeCacheGet(key);
+    if (html !== null) return (_homePageCache = { key, html }).html;
+    const [home, [news, articles], template] = await Promise.all([
+      cachedHome(env, ctx).then(h => JSON.parse(h.body)), homeCards(env, ctx), homeTemplate(env, origin)]);
+    html = renderHomePage(template, home, { day, newsHTML: news.html, articlesHTML: articles.html });
+    if (!news.failed && !articles.failed) {
+      edgeCachePut(ctx, key, html, INTERNAL_CACHE_CONTROL, 'text/html; charset=utf-8');
+      _homePageCache = { key, html };
+    }
+    return html;
+  })();
+  _homePagePending.set(key, pending);
+  try { return await pending; } finally { _homePagePending.delete(key); }
+}
+async function homePage(env, ctx, request, url) {
+  try {
+    const version = await contentVersion(env, HOME_PAGE_DEPS);
+    const day = Math.floor(Date.now() / 86400000);
+    const etag = `W/"homepage-${version}-${day}-${HOME_PAGE_V}-${BUILD_ID}"`;
+    const headers = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': FEED_CACHE_CONTROL, ETag: etag, Link: PAGE_LINK_HEADER + HOME_LINK_HEADER_EXTRA };
+    if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+    const html = await cachedHomePage(env, ctx, url.origin, version, day);
+    return new Response(request.method === 'HEAD' ? null : html, { headers });
+  } catch (error) {
+    console.error('homepage SSR failed; serving the static page', error && error.stack || error);
+    return env.ASSETS.fetch(request);
+  }
+}
+
 // The built sitemap, same two layers (crawlers re-fetch it constantly, and it
 // used to read four tables from D1 on every hit). Keyed on origin too, since
 // the URLs inside embed it.
@@ -7683,6 +7755,16 @@ const app = {
 
     if (method === 'GET' && path === '/api/did-you-mean') {
       return jsonResponse({ rows: await didYouMean(env, ctx, url.searchParams.get('path')) });
+    }
+
+    if ((method === 'GET' || method === 'HEAD') && path === '/') return homePage(env, ctx, request, url);
+
+    // The fallback for a static homepage (assets/home.js): every region as
+    // the server would have drawn it, tiles picked fresh per request.
+    if (method === 'GET' && path === '/api/home' && url.searchParams.get('format') === 'panels') {
+      const home = JSON.parse((await cachedHome(env, ctx)).body);
+      const [news, articles] = await homeCards(env, ctx);
+      return jsonResponse({ stats: home.stats, regions: homeRegions(home, { newsHTML: news.html, articlesHTML: articles.html }) });
     }
 
     if (method === 'GET' && path === '/api/home') {

@@ -1,149 +1,45 @@
-/* Homepage presentation. Dependencies are deferred in document order. */
+/* Homepage enhancements.
 
-  /* ── News panel ──────────────────────────────────────────────
-     Shows the three most recent published articles. The whole section
-     stays hidden while there are none. */
-  (function(){
-    var sec = document.getElementById('news-section');
-    var grid = document.getElementById('news-grid');
-    if (!sec || !grid) return;
-    BotcData.json('/api/news?limit=3&format=cards')
-      .then(function(d){
-        if (!d || !d.html) return;
-        grid.innerHTML = d.html;
-        sec.hidden = false;
-      })
-      .catch(function(){ /* no news, no panel */ });
-  })();
+   The page arrives SERVER-RENDERED (worker/home-page.js): the stats, the
+   collection and script tiles (re-picked per visit by the small inline script
+   after each grid), News, Articles, Recently Added and the Featured
+   Character are all in the HTML. Nothing here redraws them. The Favorites /
+   Add to Script buttons on the cards are empty slots that card-actions.js
+   finds and fills by itself, so there is nothing to adopt either.
 
-  /* ── Articles ────────────────────────────────────────────────
-     The three newest standalone articles (/articles), on the same card as
-     the news above. Hidden while there are none. */
-  (function(){
-    var sec = document.getElementById('articles-section');
-    var grid = document.getElementById('articles-grid');
-    if (!sec || !grid) return;
-    BotcData.json('/api/articles?limit=3&format=cards')
-      .then(function(d){
-        if (!d || !d.html) return;
-        grid.innerHTML = d.html;
-        sec.hidden = false;
-      })
-      .catch(function(){ /* no articles, no panel */ });
-  })();
+   What is left is the FALLBACK: if the Worker could not build the page it
+   serves the static index.html, whose regions still say "Loading…". Then
+   this fills them from /api/home?format=panels — the same server-rendered
+   markup as JSON, so there is no second renderer in the browser. */
+(function () {
+  var grid = document.getElementById('collections-grid');
+  // A server-rendered grid always has at least the "All Collections" tile.
+  if (!grid || grid.querySelector('.collection-tile')) return;
+  var IDS = {
+    stats: 'landing-stats', 'bc-team': 'bc-team', 'bc-creator': 'bc-creator', 'bc-tag': 'bc-tag', 'bc-jinx': 'bc-jinx',
+    collections: 'collections-grid', scripts: 'scripts-grid', recent: 'recent-strip', featured: 'featured-wrap',
+    news: 'news-grid', articles: 'articles-grid'
+  };
+  BotcData.json('/api/home?format=panels').then(function (data) {
+    var regions = data.regions || {};
+    Object.keys(IDS).forEach(function (name) {
+      var el = document.getElementById(IDS[name]);
+      if (el && typeof regions[name] === 'string') el.innerHTML = regions[name];
+    });
+    // News and Articles stay hidden while there is nothing in them.
+    [['news', 'news-section'], ['articles', 'articles-section']].forEach(function (p) {
+      var sec = document.getElementById(p[1]);
+      if (sec && regions[p[0]]) sec.hidden = false;
+    });
+  }).catch(function () {
+    var stats = document.getElementById('landing-stats');
+    if (stats) stats.textContent = 'Could not load homepage data. Please refresh to retry.';
+  });
+})();
 
-
-  (function(){
-    var TEAM_LABEL = {
-      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
-    };
-    var GOOD = { townsfolk: 1, outsider: 1 };
-
-    function esc(s){
-      return String(s == null ? '' : s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function collectionTileHTML(name, id, count, icons, header, tagline, coll){
-      var href = 'collection/' + encodeURIComponent(id);
-      // Header image, then the author's logo, then the scatter of member
-      // icons — the logo beats the scatter, and matches what the collection's
-      // own page shows at the top.
-      var banner = header || (coll && coll.logo);
-      var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, PageRender.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
-      return '<a class="collection-tile" href="' + esc(href) + '">' +
-        topHTML +
-        '<h3 class="collection-name">' + esc(name) + '</h3>' +
-        (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
-        '<div class="collection-footer">' +
-          // Same footer shape as the script tiles below: count, then who made
-          // it, then the Curata wreath behind a hairline.
-          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
-            ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
-            ((coll && coll.curata) ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
-          '<span class="collection-arrow">Browse →</span>' +
-        '</div>' +
-      '</a>';
-    }
-
-    // The Favorites / Add to Script quick actions under a card's icon
-    // (assets/card-actions.js fills the slot; index.html loads it).
-    function quickSlot(c){
-      return window.CardActions ? window.CardActions.slotHTML(c) : '';
-    }
-
-    function recentCardHTML(c){
-      var tc = GOOD[c.team] ? ' good' : '';
-      var label = TEAM_LABEL[c.team] || c.team;
-      return '<a class="recent-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
-        '<div class="recent-name">' + esc(c.name) + '</div>' +
-        '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
-        // Side by side under the team name — the owner's layout for this
-        // strip, where stacked under the icon made every card twice as tall.
-        quickSlot(c) +
-      '</a>';
-    }
-
-    // The server picks the daily feature; only presentation happens here.
-    function featuredCardHTML(c){
-      var tc = GOOD[c.team] ? ' good' : '';
-      var label = TEAM_LABEL[c.team] || c.team;
-      var lede = c.plainLede || '';
-      var ability = c.ability || '';
-      var creator = c.creator || '';
-      var appears = c.appearsIn || '';
-      return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.displaySrc(c, '')) + '" alt="' + esc(c.name) + '">' +
-        '<div class="featured-body">' +
-          '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
-          '<h3 class="featured-name">' + esc(c.name) +
-            (c.curata ? window.classBadgeHTML('curata', { from: c.curataFrom }) : '') + '</h3>' +
-          (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
-          (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
-          // The quick actions ride the credit line, right after the name:
-          // here the card's icon is the big picture on the left, and the
-          // owner wanted the buttons beside who made it rather than under it.
-          '<div class="featured-meta">' +
-            (creator ? '<span>by ' + esc(creator) + '</span>' : '') +
-            quickSlot(c) +
-            (appears ? '<span>· ' + esc(appears) + '</span>' : '') +
-          '</div>' +
-          '<span class="featured-link">View Full Page →</span>' +
-        '</div>' +
-      '</a>';
-    }
-
-    BotcData.json('/api/home').then(function(data){
-      var stats = data.stats;
-      document.getElementById('landing-stats').textContent = stats.characters + ' characters · ' + stats.collections + ' collections · ' + stats.creators + ' creators · ' + stats.scripts + ' scripts';
-      document.getElementById('bc-team').textContent = stats.characters + ' characters';
-      document.getElementById('bc-creator').textContent = stats.creators + ' creators';
-      document.getElementById('bc-tag').textContent = stats.tags + ' tags';
-      document.getElementById('bc-jinx').textContent = stats.jinxed ? stats.jinxed + ' jinxed characters' : 'See the map';
-      document.getElementById('recent-strip').innerHTML = data.recent.map(recentCardHTML).join('');
-      document.getElementById('featured-wrap').innerHTML = data.featured ? featuredCardHTML(data.featured) : '<p>No featured character available.</p>';
-      var collections = window.weightedShuffle(data.collections).slice(0, 7);
-      var html = collections.map(function(c){ return collectionTileHTML(c.displayName || c.slug, c.id || c.slug, c.count, c.icons, c.header, c.tagline, c); }).join('');
-      html += '<a class="collection-tile" href="all-collections"><div class="collection-icons">' + data.icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" alt="">'; }).join('') + '</div><h3 class="collection-name">All Collections</h3><div class="collection-footer"><span class="collection-count">' + stats.collections + ' collections</span><span class="collection-arrow">Browse →</span></div></a>';
-      document.getElementById('collections-grid').innerHTML = html;
-      document.getElementById('scripts-grid').innerHTML = window.weightedShuffle(data.scripts).slice(0, 7).map(function(sc){
-        var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
-        var header = sc.header || sc.logo
-          ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('', sc.header || sc.logo, sc.v, PageRender.TILE_SIZES) + ' alt="' + esc(sc.name) + '"></div>'
-          : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
-        return '<a class="collection-tile script-tile" href="s/' + encodeURIComponent(sc.slug) + '">' + header + '<h3 class="collection-name">' + esc(sc.name) + '</h3><div class="collection-footer"><span class="collection-count">' + sc.count + ' characters' + (sc.author ? ' · ' + esc(sc.author) : '') + (sc.curata ? window.classBadgeHTML('curata', {sep: true}) : '') + '</span><span class="collection-arrow">Browse →</span></div></a>';
-      }).join('') + '<a class="collection-tile script-tile" href="scripts"><div class="script-card-header script-card-header-empty"><span>All Scripts</span></div><h3 class="collection-name">All Scripts</h3><div class="collection-footer"><span class="collection-count">' + stats.scripts + ' scripts</span><span class="collection-arrow">Browse →</span></div></a>';
-    }).catch(function(){ document.getElementById('landing-stats').textContent = 'Could not load homepage data. Please refresh to retry.'; });
-  })();
-  
-
-  (function () {
-    var box = document.getElementById('home-rules');
-    if (box && typeof window.renderRulesHTML === 'function') {
-      box.innerHTML = window.renderRulesHTML();
-    }
-  })();
+(function () {
+  var box = document.getElementById('home-rules');
+  if (box && typeof window.renderRulesHTML === 'function') {
+    box.innerHTML = window.renderRulesHTML();
+  }
+})();

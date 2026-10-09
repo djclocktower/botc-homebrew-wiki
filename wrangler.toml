@@ -37,6 +37,10 @@ run_worker_first = [
   "/c/*", "/s/*", "/collection/*", "/news/*", "/p/*", "/u/*",
   "/author", "/author.html",
   "/random", "/sitemap.xml", "/script-view.html", "/script-view",
+  # The homepage is server-rendered (worker/home-page.js), with index.html as
+  # its template and its fallback. /index.html is left to the assets, which
+  # redirect it here.
+  "/",
   # Card thumbnails (thumb/{file}.webp beside art/{file}) — the Worker falls
   # back to the original when a thumbnail does not exist yet. See THUMB_PREFIX.
   "/assets/thumb/*", "/assets/media/*",

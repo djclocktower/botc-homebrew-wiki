@@ -165,6 +165,9 @@ worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
                        See "Importing from Bloodstar" below.
+worker/home-page.js    The server-rendered homepage: tile/card markup and the
+                       region filler over index.html (see "The homepage (SSR)").
+                       worker/home-data.js builds the snapshot it draws from.
 wrangler.toml          Worker config: D1/KV/R2 bindings, run_worker_first, cron
 _headers               Cache rules for static assets. Matching rules COMBINE
                        (same header -> values joined with a comma), so an
@@ -710,6 +713,10 @@ assets/
   fonts/, pyodide/, tokens/     Fonts (Dumbledor2, Trade Gothic, OptimusPrinceps,
                        LHF Unlovable); Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
+                       SERVER-RENDERED at `/`: it is the TEMPLATE the Worker
+                       fills (worker/home-page.js), region by region, between
+                       `<!--home:NAME-->` / `<!--/home:NAME-->` comment pairs,
+                       and the static fallback — see "The homepage (SSR)".
                        Featured Character rotates by CREATOR, daily and with no
                        Curata requirement — see "Featured Character" below.
                        Browse cards include Grimoire Forge and Icon Forge; the old Creator Icons
@@ -3816,16 +3823,16 @@ private `?drafts=` requests are never shared. Browse pages and top-bar search
 use the same URLs. `/api/home` sends counts, compact collection/script tiles,
 eight recent characters and one featured character rather than every
 character. The featured lede is flattened by the shared wiki formatter on the
-server. The homepage loads its scripts with `defer` in dependency order, and
-keeps its presentation in the versioned `assets/home.js`; it does not eagerly
-load creators.js or the wiki/news article renderers. News cards come from
-`/api/news?limit=3&format=cards`, rendered with the same NewsRender card helper.
+server. The homepage itself is server-rendered from that snapshot (see "The
+homepage (SSR)" below); `/api/home` stays for the static fallback and anything
+else that reads it. News cards come from the same cache as
+`/api/news?limit=3&format=cards`, rendered with the NewsRender card helper.
 Public news lists use news-scoped version keys, limit/format/deploy-specific
 ETags, coalesced builds and the internal edge cache. Authorized draft lists
 remain uncached. Failed news reads are never stored as empty lists. Both
 `/api/home` and public news check conditional requests before building bodies.
-It keeps random tile selection in the browser and keys the daily
-featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
+Random tile selection stays per visit (an inline picker on the server-rendered
+page) and the daily featured snapshot is keyed by UTC day. `?fields=grid` now omits lede/quote prose;
 script/collection `?fields=browse` omits editor/export payloads. The character
 `card` feed and full feeds retain export fields. All Characters loads both
 the card feed and export code only when its Collection JSON box is used.
@@ -3923,6 +3930,43 @@ for longer in other colos.
 
 Creator/profile caches retain their existing 30-minute cap for account
 fields; authenticated `/api/user` responses remain private and uncached.
+
+**The homepage (SSR).** `GET /` is in `run_worker_first` and answered by
+`homePage()` in worker.js with `renderHomePage()` from `worker/home-page.js`.
+The template is the BUILT `index.html`, read once per isolate through the
+assets binding, so its head, top bar, browse cards and sidebar are written
+once and every head change (versioned scripts, preloads) flows through. The
+Worker fills each `<!--home:NAME-->…<!--/home:NAME-->` region (stats, the four
+browse-card counts, collection and script tiles, Recently Added, Featured,
+News and Articles cards) and un-hides `id="news-section" hidden` /
+`id="articles-section" hidden` by that exact string when they have cards —
+so the page arrives complete, and the stats line and the two sections no
+longer shift the page when they fill in (that was the homepage's CLS).
+Rules:
+
+- **Everything comes from the existing builders**: `cachedHome()` (the
+  `/api/home` snapshot, featuredPick included), `cachedNewsBody()` and
+  `cachedArticleCards()`. Nothing is computed twice.
+- **One shared copy**, edge-cached under `ssr.internal/?home=` keyed on the
+  character, collection, script, news and wikipage versions, the UTC day and
+  `SSR_RENDER_V` (so BUILD_ID). Cookies are never read: the card quick-action
+  slots are empty spans card-actions.js fills, the account link and the
+  announcement are site.js's. The browser gets an ETag + `private, max-age=0,
+  must-revalidate` (a repeat visit is a 304) and a Link header that also
+  preloads `parchment.webp`, which the first screen's largest element waits
+  on. The homepage never counted page views and still does not.
+- **Tiles are still random per visit.** The cached HTML carries a seeded
+  default pick (for crawlers and no-JS) plus the whole pool in an inert
+  `<template>` right after each grid, and a tiny inline `botcHomePick()` that
+  re-picks 7 with the Curata weighting before first paint. It costs ~6 KB
+  compressed for ~120 tiles; dropping it would make every visitor see the
+  same tiles for a day.
+- **A News or Articles failure is served but not cached; any other failure
+  serves the static `index.html`**, whose `assets/home.js` fills the regions
+  from `GET /api/home?format=panels` — the same server markup as JSON — so the
+  homepage no longer loads render-page.js or classify.js at all. A template
+  missing a region is such a failure: keep every marker pair when editing
+  index.html. `HOME_PAGE_V` rolls the cached page if the regions change.
 
 **3. Images.** Character icons, roster thumbnails, script/collection banners
 and logos carry their row's `v` stamp. Versioned image URLs use immutable

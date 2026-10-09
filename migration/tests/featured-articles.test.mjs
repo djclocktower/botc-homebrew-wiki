@@ -119,14 +119,14 @@ test('a draft page tells wikipage.js it cannot be featured; a published one does
   assert.doesNotMatch(await (await f.request('/p/painting')).text(), /WIKI_PAGE_DRAFT/);
 });
 
-test('the homepage draws the newest article cards under News, and hides the section when there are none', async () => {
+test('the static-fallback homepage draws the article cards from the panels, and hides the section when there are none', async () => {
   const source = await readFile(new URL('../../assets/home.js', import.meta.url), 'utf8');
   for (const html of ['<a class="news-card" href="p/painting">Painting</a>', '']) {
     const nodes = {};
     const context = { console,
-      document: { getElementById: id => (nodes[id] = nodes[id] || { innerHTML: '', textContent: '', hidden: true }) },
-      BotcData: { json: path => path === '/api/articles?limit=3&format=cards'
-        ? Promise.resolve({ html }) : Promise.reject(new Error('offline')) } };
+      document: { getElementById: id => (nodes[id] = nodes[id] || { innerHTML: '', textContent: '', hidden: true, querySelector: () => null }) },
+      BotcData: { json: path => path === '/api/home?format=panels'
+        ? Promise.resolve({ stats: {}, regions: { articles: html } }) : Promise.reject(new Error('offline')) } };
     context.window = context;
     vm.createContext(context);
     vm.runInContext(source, context);
