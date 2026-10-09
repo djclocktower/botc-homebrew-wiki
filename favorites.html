@@ -149,10 +149,12 @@
 
     function tile(d, href, kind) {
       var meta = kind + (d.count != null ? ' · ' + d.count + ' character' + (d.count === 1 ? '' : 's') : '') +
-        (d.status !== 'published' ? ' · not public right now' : '');
-      return '<a class="fav-tile" href="' + esc(href) + '">' +
+        (d.status === 'deleted' ? ' · deleted' : d.status !== 'published' ? ' · not public right now' : '');
+      // A deleted page has nowhere to link to; the account page is where it is removed.
+      var tag = d.status === 'deleted' ? 'span' : 'a';
+      return '<' + tag + ' class="fav-tile"' + (tag === 'a' ? ' href="' + esc(href) + '"' : '') + '>' +
         '<span class="fav-tile-name">' + esc(d.name || d.slug) + '</span>' +
-        '<span class="fav-tile-meta">' + esc(meta) + '</span></a>';
+        '<span class="fav-tile-meta">' + esc(meta) + '</span></' + tag + '>';
     }
 
     // favorites.js answers null both for "not logged in" and for a failed

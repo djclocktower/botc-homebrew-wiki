@@ -986,7 +986,10 @@ attachments), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
 messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
-`/api/admin/dm-thread` — un-reported DMs are never admin-readable. **Comment
+`/api/admin/dm-thread` — un-reported DMs are never admin-readable, and a report
+unlocks only the messages up to the newest report's `ts`, not what the pair
+says afterwards (reporting again while one is open moves that line forward).
+**Comment
 notifications ride this table**: commenting on a page inserts a `dms` row from
 the commenter to the page's owner — and to the author of the comment being
 replied to — so the notification is the one the site already has, the unread
@@ -2412,8 +2415,12 @@ saved characters PLUS those rosters, resolved server-side.
   identity; `/api/admin/purge` deletes them (a soft-deleted page keeps them,
   since it can come back).
 - **`POST /api/favorite {type, slug, on}`** saves or unsaves one page.
-  **Published pages only** — a draft is not a page a reader was shown.
-  Capped at `FAVORITES_MAX` (500) per account, which bounds what `?expand=1`
+  **Published pages only** — a draft is not a page a reader was shown — and
+  a page that is not published answers exactly like one that does not exist
+  (404, no name), or the route would tell anyone a draft's or a deleted
+  page's name. The one exception is un-saving a page this account already
+  saved, which must keep working after it goes to draft; that reply carries
+  no name either. Capped at `FAVORITES_MAX` (500) per account, which bounds what `?expand=1`
   has to resolve. Rate-limited on its own bucket (`fav`, 300/hour). **Not a
   content write**: nothing about the page changes, so it is not in
   `isContentWrite`, bumps no feed version and logs nothing — a bookmark is not
@@ -2427,7 +2434,10 @@ saved characters PLUS those rosters, resolved server-side.
   shared with the owner waterfall, with one character read across every
   collection. A saved page that has gone to draft **stays saved** (it comes
   back with the page) but is out of `characterSlugs` and reported with its
-  `status`; one that no longer exists is dropped from `items`.
+  `status`. One that was deleted, or no longer exists at all, is listed with
+  `status: 'deleted'` and only the key that was saved as its name: it still
+  counts toward the cap, so it has to stay visible and removable (the account
+  page shows it unlinked, with Remove).
 - **`assets/favorites.js` is the whole browser side**, and the reason the
   five places that touch favorites cannot drift. `mountButton()` draws the
   button unsaved at once and corrects it when the list arrives, so no page
@@ -3248,10 +3258,14 @@ Things worth knowing:
   before `modmail_replies` existed. Without that exception every historical
   thread would come back flagged "needs a reply".
 - **Legacy conversations are reconstructed, never back-filled.**
-  `modmailReplies()` synthesises a first turn from `last_reply` /
-  `replied_at` / `replied_by` when a thread has no reply rows, so an old
-  exchange opens with its answer in it. Nothing is written; a thread that
-  gets a real reply later simply gains a turn under it.
+  `modmailReplies()` synthesises a turn from `last_reply` / `replied_at` /
+  `replied_by` when a thread has no staff reply rows, placed by time, so an
+  old exchange opens with its answer in it. A read writes nothing; the next
+  reply from either side first stores that answer as a real turn
+  (`keepLegacyAnswer()`, its original time and admin kept), because the next
+  staff reply overwrites `last_reply` and the answer would otherwise be lost.
+  Both reply routes share the ceiling `MODMAIL_REPLIES_MAX` (200), and the read
+  returns the newest 200.
 - **`/api/admin/message-thread` needs no report**, unlike `/api/admin/dm-thread`.
   A message addressed *to the admins* is not a private conversation between two
   members, and the whole point is that every admin can see it.

@@ -904,9 +904,14 @@
             var view = x.type === 'character' ? 'c/' + (r.page || encodeURIComponent(r.slug))
                      : x.type === 'script'    ? 's/' + encodeURIComponent(r.slug)
                      : 'collection/' + encodeURIComponent(r.key || r.slug);
-            var note = r.status !== 'published' ? ' <span class="row-date">(not public right now)</span>'
+            // A deleted page is listed only so its slot can be freed: no
+            // link (it would 404), and the server sends nothing but its key.
+            var gone = r.status === 'deleted';
+            var note = gone ? ' <span class="row-date">(deleted)</span>'
+                     : r.status !== 'published' ? ' <span class="row-date">(not public right now)</span>'
                      : (x.type !== 'character' && r.count != null ? ' <span class="row-date">· ' + r.count + ' character' + (r.count === 1 ? '' : 's') + '</span>' : '');
-            return '<tr><td><span class="row-name"><a href="' + view + '">' + esc(r.name || r.slug) + '</a></span>' + note + '</td>' +
+            var label = gone ? esc(r.name || r.slug) : '<a href="' + view + '">' + esc(r.name || r.slug) + '</a>';
+            return '<tr><td><span class="row-name">' + label + '</span>' + note + '</td>' +
               '<td class="row-type">' + esc(x.type) + '</td>' +
               '<td class="row-date">' + fmtDate(r.savedAt) + '</td>' +
               '<td class="row-actions"><button type="button" class="mini-btn del" data-fav-type="' + esc(x.type) + '" data-fav-slug="' + esc(r.slug) + '">Remove</button></td></tr>';
@@ -1217,12 +1222,14 @@
 
     $('c-send').addEventListener('click', function(){
       var body = $('c-body').value.trim();
-      if (body.length < 5) { setInline('c-msg', 'err', 'Write a message first.'); return; }
+      // A screenshot on its own is a message, as it is for a reply.
+      var images = cAttach ? cAttach.paths() : [];
       if (cAttach && cAttach.busy()) { setInline('c-msg', 'err', 'Wait for the image to finish uploading.'); return; }
+      if (body.length < 5 && !images.length) { setInline('c-msg', 'err', 'Write a message first, or attach an image.'); return; }
       var btn = this; btn.disabled = true;
       postJSON('/api/contact', {
         category: $('c-category').value, body: body,
-        images: cAttach ? cAttach.paths() : []
+        images: images
       }).then(function(res){
         btn.disabled = false;
         if (res.ok && res.body.ok) {

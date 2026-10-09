@@ -463,6 +463,19 @@ const UPLOAD_CONTENT_TYPES = {
   'image/gif':  { type: 'image/gif',  exts: ['gif'] }
 };
 
+// The image type the BYTES say they are, from their signature, or '' for
+// anything else. A declared type is only what the client wrote in front of
+// the base64; this is what the file actually is.
+function sniffImageType(bytes) {
+  const at = (i, list) => list.every((v, j) => bytes[i + j] === v);
+  if (!bytes || bytes.length < 12) return '';
+  if (at(0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+  if (at(0, [0xff, 0xd8, 0xff])) return 'image/jpeg';
+  if (at(0, [0x47, 0x49, 0x46, 0x38]) && (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61) return 'image/gif';
+  if (at(0, [0x52, 0x49, 0x46, 0x46]) && at(8, [0x57, 0x45, 0x42, 0x50])) return 'image/webp';
+  return '';
+}
+
 // Content-type registry: maps API "type" to its table + display columns.
 const CONTENT = {
   character:  { table: 'characters',  nameCol: 'name' },
@@ -1779,7 +1792,10 @@ async function favoriteTarget(env, type, key) {
    across every collection rather than one per collection. Only pages that are
    still public count toward `characterSlugs`; a saved page that has gone to
    draft, or was deleted, stays in the table (so it comes back if the page
-   does) but is reported with its status, or dropped once it no longer exists. */
+   does) but is reported with its status — 'deleted' for a page that was
+   deleted or no longer exists at all, named only by the key that was saved.
+   Every row counts toward FAVORITES_MAX, so every row has to be listed, or a
+   bookmark nobody can see would hold a slot nobody can free. */
 async function favoritesPayload(env, userId, expand) {
   await ensureFavoritesTable(env);
   const { results } = await env.DB.prepare(
@@ -1808,17 +1824,17 @@ async function favoritesPayload(env, userId, expand) {
   // id. So the ids ride along even on the plain call, read off the few saved
   // rows; the button treats either as "saved".
   const colls = lists.collections.length
-    ? await fetchRows("SELECT slug, display_name AS name, status, data FROM collections WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.collections)
+    ? await fetchRows("SELECT slug, display_name AS name, status, data FROM collections WHERE slug IN (%IN%)", lists.collections)
     : [];
-  out.collectionIds = colls.map(r => { const d = parseData(r); return d.id || r.slug; });
+  out.collectionIds = colls.filter(r => r.status !== 'deleted').map(r => { const d = parseData(r); return d.id || r.slug; });
   if (!expand) return out;
 
   const savedAt = {};
   for (const r of rows) savedAt[r.entity_type + ':' + r.slug] = r.ts;
   if (lists.characters.length) await ensureUrlSlugColumn(env);
   const [chars, scripts] = await Promise.all([
-    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.characters),
-    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.scripts)
+    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%)", lists.characters),
+    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%)", lists.scripts)
   ]);
   const bySlug = list => Object.fromEntries(list.map(r => [r.slug, r]));
   const charMap = bySlug(chars), scriptMap = bySlug(scripts), collMap = bySlug(colls);
@@ -1826,20 +1842,28 @@ async function favoritesPayload(env, userId, expand) {
   const via = new Set();
   const cache = {};
   const items = { characters: [], scripts: [], collections: [] };
+  // A deleted page (or one gone from the table) is listed so it can be
+  // removed, and with nothing but the key this account saved: what it was
+  // called and what it held are not this reader's to see any more.
+  const gone = (list, type, slug, r) => {
+    if (r && r.status !== 'deleted') return false;
+    items[list].push({ slug, key: slug, name: slug, status: 'deleted', savedAt: savedAt[type + ':' + slug] });
+    return true;
+  };
   for (const slug of lists.characters) {
-    const r = charMap[slug]; if (!r) continue;
+    const r = charMap[slug]; if (gone('characters', 'character', slug, r)) continue;
     items.characters.push({ slug, key: slug, page: charAddress(r), name: r.name || slug, team: r.team || '',
       status: r.status, savedAt: savedAt['character:' + slug] });
   }
   for (const slug of lists.scripts) {
-    const r = scriptMap[slug]; if (!r) continue;
+    const r = scriptMap[slug]; if (gone('scripts', 'script', slug, r)) continue;
     const roster = await rosterCharacterSlugs(env, 'script', r, cache);
     if (r.status === 'published') roster.forEach(s => via.add(s));
     items.scripts.push({ slug, key: slug, name: r.name || slug, status: r.status, count: roster.length,
       savedAt: savedAt['script:' + slug] });
   }
   for (const slug of lists.collections) {
-    const r = collMap[slug]; if (!r) continue;
+    const r = collMap[slug]; if (gone('collections', 'collection', slug, r)) continue;
     const d = parseData(r);
     const roster = await rosterCharacterSlugs(env, 'collection', r, cache);
     if (r.status === 'published') roster.forEach(s => via.add(s));
@@ -1908,6 +1932,10 @@ async function ensureRateTable(env) {
    dashboard list shows without opening every thread, and rows written before
    this table existed carry their whole answer there and nowhere else. */
 const MODMAIL_MAX = 3000;
+// How long a thread may run before it has to be a new one, from either side.
+// Without a ceiling a single message id is an unbounded write target; the read
+// returns the newest this many.
+const MODMAIL_REPLIES_MAX = 200;
 let _messagesReady = false;
 async function ensureMessagesTable(env) {
   if (_messagesReady) return;
@@ -1966,9 +1994,13 @@ async function modmailReplies(env, head) {
             u.username, u.display_name, u.avatar_url
        FROM modmail_replies r LEFT JOIN users u ON u.id = r.user_id
       WHERE r.message_id = ?
-      ORDER BY r.id ASC LIMIT 200`
+      ORDER BY r.ts DESC, r.id DESC LIMIT ${MODMAIL_REPLIES_MAX}`
   ).bind(head.id).all().catch(() => ({ results: [] }));
-  const turns = (results || []).map(r => ({
+  // The newest MODMAIL_REPLIES_MAX, read newest-first and turned back round:
+  // trimming from the other end would hide exactly what was just said. By
+  // time, then id, because a pre-thread answer kept by keepLegacyAnswer() is
+  // written after turns that came later than it.
+  const turns = (results || []).reverse().map(r => ({
     id: r.id, ts: r.ts,
     staff: !!r.is_staff,
     username: r.username || null,
@@ -1981,11 +2013,17 @@ async function modmailReplies(env, head) {
      in `last_reply` and no reply row at all. Without this they would open as
      "no replies yet" while the row beside them said the admins had answered —
      that answer went out as a DM and is not lost, but it is not HERE, and the
-     thread is now where everybody is told to look. So it is shown as the
-     first turn, reconstructed rather than back-filled: nothing is written,
-     and a thread that gets a real reply later simply gains a turn under it. */
-  if (!turns.length && head.replied_at && head.last_reply) {
-    turns.push({
+     thread is now where everybody is told to look. So it is shown in its
+     place by time, reconstructed rather than back-filled: nothing is written
+     on a read. The next reply from either side writes it into the thread
+     first (keepLegacyAnswer), because that reply's own last_reply would
+     otherwise be the only copy left. Until then — including a thread whose
+     member wrote back before that rule existed — it is reconstructed
+     whenever no staff turn is stored at all. */
+  if (!turns.some(t => t.staff) && head.replied_at && head.last_reply) {
+    let at = turns.findIndex(t => String(t.ts) > String(head.replied_at));
+    if (at === -1) at = turns.length;
+    turns.splice(at, 0, {
       id: 0, ts: head.replied_at, staff: true, legacy: true,
       username: head.replied_by || null,
       displayName: head.replied_by || null,
@@ -1995,6 +2033,30 @@ async function modmailReplies(env, head) {
     });
   }
   return turns;
+}
+
+/* Before a new turn is written to a thread answered before modmail_replies
+   existed, that answer becomes a stored turn of its own. It lived only in
+   the head's last_reply, which the next staff reply overwrites — and once the
+   thread has a turn, modmailReplies() would stop reconstructing it. One
+   statement, guarded on "no staff turn yet", so running it twice (or two
+   replies at once) writes it once. The admin is resolved from the handle the
+   head recorded, and the turn keeps its original time. */
+async function keepLegacyAnswer(env, id) {
+  await env.DB.prepare(
+    `INSERT INTO modmail_replies (message_id, ts, user_id, is_staff, body, images)
+     SELECT m.id, m.replied_at, (SELECT u.id FROM users u WHERE u.username = m.replied_by LIMIT 1), 1, m.last_reply, NULL
+       FROM messages m
+      WHERE m.id = ? AND m.replied_at IS NOT NULL AND m.last_reply IS NOT NULL AND m.last_reply <> ''
+        AND NOT EXISTS (SELECT 1 FROM modmail_replies r WHERE r.message_id = m.id AND r.is_staff = 1)`
+  ).bind(id).run().catch(() => {});
+}
+
+// Whether a thread has reached MODMAIL_REPLIES_MAX. Both reply routes ask it.
+async function modmailFull(env, id) {
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM modmail_replies WHERE message_id=?')
+    .bind(id).first().catch(() => ({ n: 0 }));
+  return (Number(n && n.n) || 0) >= MODMAIL_REPLIES_MAX;
 }
 
 /* Stamp a thread as just-active. `last_at` sorts the admin inbox and the
@@ -2065,6 +2127,12 @@ async function ensureDmTables(env) {
 const COMMENT_MAX = 2000;
 // Bumping this re-prompts everyone with the "be respectful" agreement.
 const COMMENT_TERMS_VERSION = '1';
+// Open reports the moderation queue can actually show: the queue joins each
+// report to its comment, so a report left behind by a purged comment is
+// nothing an admin could ever resolve. Both the dashboard badge and the
+// queue's own total count through this.
+const OPEN_COMMENT_REPORTS_SQL =
+  "SELECT COUNT(*) AS n FROM comment_reports r WHERE r.status='open' AND EXISTS (SELECT 1 FROM comments c WHERE c.id = r.comment_id)";
 let _commentsReady = false;
 async function ensureCommentTables(env) {
   if (_commentsReady) return;
@@ -3515,6 +3583,13 @@ async function notifySuggestionAnswer(env, sug, row, verdict, reply, fromId, ori
   try {
     if (sug.user_id == null || sug.user_id === fromId) return;
     await ensureDmTables(env);
+    // A block means they don't want to hear from this person at all — the
+    // same rule as every other notification. The answer is still on
+    // /suggestions, where they can look it up.
+    const blocked = await env.DB.prepare(
+      'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+    ).bind(sug.user_id, fromId).first().catch(() => null);
+    if (blocked) return;
     const text = 'Your suggested edit to \u201c' + (row.name || sug.slug) + '\u201d was ' + verdict + '.' +
       (reply ? '\n\n\u201c' + reply + '\u201d' : '') +
       '\n\n' + (origin || '') + '/suggestions?type=' + encodeURIComponent(sug.entity_type) +
@@ -7267,13 +7342,23 @@ const app = {
       // Pinned top-level comments float to the top; everything else is
       // oldest-first so a thread reads in the order it was written. Replies
       // are grouped under their parent by the client.
+      // The cap keeps the NEWEST 500: taking the first 500 in reading order
+      // meant a busy page stopped showing anything new at all, including the
+      // comment its writer had just posted. A reply in that window brings its
+      // thread's opening comment with it (or it would be drawn as an orphan),
+      // and a pinned comment is always there, however old.
       const { results } = await env.DB.prepare(
-        `SELECT c.id, c.ts, c.body, c.user_id, c.parent_id, c.pinned, c.images,
+        `WITH recent AS (
+           SELECT id, parent_id FROM comments
+            WHERE entity_type=? AND slug=? AND status='visible'
+            ORDER BY id DESC LIMIT 500)
+         SELECT c.id, c.ts, c.body, c.user_id, c.parent_id, c.pinned, c.images,
                 u.username, u.display_name, u.avatar_url, u.is_admin
          FROM comments c LEFT JOIN users u ON u.id = c.user_id
          WHERE c.entity_type=? AND c.slug=? AND c.status='visible'
-         ORDER BY c.pinned DESC, c.id ASC LIMIT 500`
-      ).bind(type, target.slug).all().catch(() => ({ results: [] }));
+           AND (c.id IN (SELECT id FROM recent) OR c.id IN (SELECT parent_id FROM recent) OR c.pinned=1)
+         ORDER BY c.pinned DESC, c.id ASC`
+      ).bind(type, target.slug, type, target.slug).all().catch(() => ({ results: [] }));
 
       const sess = await getSession(env, request);
       let me = null;
@@ -9659,7 +9744,10 @@ const app = {
         } catch { return 0; }
       };
       const [reportedComments, reportedDms, openMessages, newUsers] = await Promise.all([
-        one("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'"),
+        // Only reports whose comment still exists: one whose comment was
+        // purged can never be resolved from the queue (the queue joins on the
+        // comment), so counting it would leave the badge stuck for good.
+        one(OPEN_COMMENT_REPORTS_SQL),
         one("SELECT COUNT(*) AS n FROM dm_reports WHERE status='open'"),
         one("SELECT COUNT(*) AS n FROM messages WHERE status='open'"),
         // The new-account cohort is the one worth watching, because signup is
@@ -9704,7 +9792,11 @@ const app = {
 
     // ---------- ADMIN: TRANSCRIPT OF A REPORTED CONVERSATION ----------
     // Privacy guard: only conversations someone reported can be opened, and
-    // only by an admin. ?a= and ?b= are the two usernames.
+    // only by an admin. ?a= and ?b= are the two usernames. A report unlocks
+    // what was REPORTED — the messages up to the newest report — and not the
+    // pair's conversation from then on: two people who settle their argument
+    // and go on talking are not under review forever because of one report.
+    // Reporting again (POST /api/messages/report) moves the line forward.
     if (method === 'GET' && path === '/api/admin/dm-thread') {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
@@ -9713,19 +9805,20 @@ const app = {
       const ub = await findUserByUsername(env, (url.searchParams.get('b') || '').trim());
       if (!ua || !ub) return jsonResponse({ error: 'No such user.' }, { status: 404 });
       const reported = await env.DB.prepare(
-        `SELECT 1 FROM dm_reports
+        `SELECT MAX(ts) AS upto FROM dm_reports
          WHERE (reporter_id=?1 AND reported_id=?2) OR (reporter_id=?2 AND reported_id=?1)`
       ).bind(ua.id, ub.id).first();
-      if (!reported) {
+      if (!reported || !reported.upto) {
         return jsonResponse({ error: 'That conversation has not been reported, so it stays private.' }, { status: 403 });
       }
       const { results } = await env.DB.prepare(
         `SELECT id, ts, sender_id, body FROM dms
-         WHERE (sender_id=?1 AND recipient_id=?2) OR (sender_id=?2 AND recipient_id=?1)
+         WHERE ((sender_id=?1 AND recipient_id=?2) OR (sender_id=?2 AND recipient_id=?1))
+           AND ts <= ?3
          ORDER BY id DESC LIMIT 100`
-      ).bind(ua.id, ub.id).all();
+      ).bind(ua.id, ub.id, reported.upto).all();
       return jsonResponse({
-        a: ua.username, b: ub.username,
+        a: ua.username, b: ub.username, upto: reported.upto,
         messages: (results || []).reverse().map(r => ({
           id: r.id, ts: r.ts,
           from: r.sender_id === ua.id ? ua.username : ub.username,
@@ -9913,7 +10006,7 @@ const app = {
         binds = [limit];
       }
       const { results } = await env.DB.prepare(sql).bind(...binds).all().catch(() => ({ results: [] }));
-      const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'")
+      const open = await env.DB.prepare(OPEN_COMMENT_REPORTS_SQL)
         .first().catch(() => ({ n: 0 }));
       // An image is exactly the kind of comment that gets reported, so the
       // queue has to show what was posted, not just the text beside it.
@@ -10305,7 +10398,7 @@ const app = {
       // can only ever touch their own avatar slot.
       if (path === '/api/account/avatar') {
         if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
-        if (await rateLimited(env, request, 'avatar', 20, 3600)) {
+        if (await rateLimited(env, request, 'avatar', 20, 3600, { sess })) {
           return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
@@ -10542,7 +10635,7 @@ const app = {
          these files are served from the site's own origin. */
       if (path === '/api/attachment') {
         if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
-        if (await rateLimited(env, request, 'attach', 60, 3600)) {
+        if (await rateLimited(env, request, 'attach', 60, 3600, { sess })) {
           return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
@@ -10562,6 +10655,13 @@ const app = {
         if (!bytes.length) return jsonResponse({ error: 'That image is empty.' }, { status: 400 });
         if (bytes.length > ATTACH_BYTES) {
           return jsonResponse({ error: 'Image is too large (5 MB max).' }, { status: 413 });
+        }
+        // The bytes have to BE the type they were declared as. The key's
+        // extension and the stored Content-Type both come from the
+        // declaration, so without this an HTML file labelled image/png would
+        // be kept, and served from our own origin, as a PNG.
+        if (sniffImageType(bytes) !== kind.type) {
+          return jsonResponse({ error: 'That file is not the kind of image it says it is. Images must be PNG, JPEG, WebP, or GIF.' }, { status: 400 });
         }
         // Month folders keep one prefix from growing into a single flat
         // listing of every image ever posted, which is what the orphan sweep
@@ -10869,8 +10969,8 @@ const app = {
         if (acctFlags.banned) {
           return jsonResponse({ error: 'This account is suspended and cannot post comments.' }, { status: 403 });
         }
-        if (await rateLimited(env, request, 'comment', 30, 3600)) {
-          return tooManyResponse('Too many comments from this connection. Try again later.', 3600);
+        if (await rateLimited(env, request, 'comment', 30, 3600, { sess })) {
+          return tooManyResponse('Too many comments in the last hour. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -10982,7 +11082,7 @@ const app = {
       // Report a comment to the admins (shows up in the dashboard queue).
       if (path === '/api/comments/report') {
         await ensureCommentTables(env);
-        if (await rateLimited(env, request, 'comment-report', 20, 3600)) {
+        if (await rateLimited(env, request, 'comment-report', 20, 3600, { sess })) {
           return tooManyResponse('Too many reports. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
@@ -11315,6 +11415,12 @@ const app = {
       // reader was shown), and the table is capped per account. Not a content
       // write: nothing about the page changes, so no feed is invalidated and
       // no activity is logged — a bookmark is not an edit.
+      // A page that is not public answers exactly as a page that does not
+      // exist: a different status, or its name in the reply, would let any
+      // account probe for drafts and deleted pages by slug. The one thing it
+      // still allows is taking back a bookmark this account ALREADY holds —
+      // a saved page that went to draft must stay removable — and that reply
+      // carries no name.
       if (path === '/api/favorite') {
         if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
           return tooManyResponse('Too many favorite changes in the last hour. Try again later.', 3600);
@@ -11322,13 +11428,24 @@ const app = {
         const b = await request.json().catch(() => null);
         if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
         const target = await favoriteTarget(env, b.type, b.slug);
-        if (!target) return jsonResponse({ error: 'No such page' }, { status: 404 });
         await ensureFavoritesTable(env);
         const on = b.on !== false && b.on !== 0 && b.on !== 'false';
-        if (on) {
-          if (target.status !== 'published') {
-            return jsonResponse({ error: 'Only published pages can be added to your favorites.' }, { status: 400 });
+        if (!target || target.status !== 'published') {
+          if (!on) {
+            // The stored key, or the key as sent (a row whose page is gone
+            // altogether resolves to nothing).
+            const keys = [...new Set([target && target.slug, String(b.slug || '').trim()].filter(Boolean))];
+            for (const k of keys) {
+              const res = await env.DB.prepare('DELETE FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
+                .bind(sess.userId, b.type, k).run().catch(() => null);
+              if (res && res.meta && res.meta.changes) {
+                return jsonResponse({ ok: true, on: false, type: b.type, slug: k, key: target && k === target.slug ? target.key : k });
+              }
+            }
           }
+          return jsonResponse({ error: 'No such page' }, { status: 404 });
+        }
+        if (on) {
           const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM favorites WHERE user_id=?')
             .bind(sess.userId).first().catch(() => null);
           const already = await env.DB.prepare('SELECT 1 AS x FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
@@ -12095,19 +12212,21 @@ const app = {
 
       // ---- contact the admins: open a conversation ----
       if (path === '/api/contact') {
-        if (await rateLimited(env, request, 'contact', 5, 3600)) {
+        if (await rateLimited(env, request, 'contact', 5, 3600, { sess })) {
           return tooManyResponse('Too many messages in a row. Try again in a bit.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const category = ['bug', 'suggestion', 'question', 'other'].includes(b.category) ? b.category : 'other';
         const body = String(b.body || '').trim().slice(0, 2000);
-        if (body.length < 5) return jsonResponse({ error: 'Please write a message first.' }, { status: 400 });
-        await ensureMessagesTable(env);
         // A screenshot IS the bug report. Most of what reaches this inbox is
         // "this looks wrong on my phone", which a picture settles and three
         // paragraphs do not — so the opening message takes images too, not
-        // only the replies.
+        // only the replies, and an image on its own is a message.
         const images = sanitizeAttachments(b.images);
+        if (body.length < 5 && !images.length) {
+          return jsonResponse({ error: 'Please write a message first, or attach an image.' }, { status: 400 });
+        }
+        await ensureMessagesTable(env);
         let uname = null;
         try {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
@@ -12135,7 +12254,7 @@ const app = {
          able to continue, and a first message they cannot follow up is not a
          conversation. */
       if (path === '/api/contact/reply') {
-        if (await rateLimited(env, request, 'contact-reply', 30, 3600)) {
+        if (await rateLimited(env, request, 'contact-reply', 30, 3600, { sess })) {
           return tooManyResponse('Too many replies in a row. Try again in a bit.', 3600);
         }
         await ensureMessagesTable(env);
@@ -12151,13 +12270,8 @@ const app = {
         if (!body && !images.length) {
           return jsonResponse({ error: 'Write something, or attach an image.' }, { status: 400 });
         }
-        // How long a thread may run before it has to be a new one. Without a
-        // ceiling a single message id is an unbounded write target, and the
-        // read is capped at 200 anyway — a thread past that would silently
-        // stop showing what was just said.
-        const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM modmail_replies WHERE message_id=?')
-          .bind(id).first().catch(() => ({ n: 0 }));
-        if ((Number(n && n.n) || 0) >= 200) {
+        await keepLegacyAnswer(env, id);
+        if (await modmailFull(env, id)) {
           return jsonResponse({ error: 'This conversation is too long to continue. Please start a new message.' }, { status: 400 });
         }
         const ins = await env.DB.prepare(
@@ -12172,7 +12286,7 @@ const app = {
         if (acctFlags.banned) {
           return jsonResponse({ error: 'This account is suspended and cannot send messages. You can contact the admins from your account page.' }, { status: 403 });
         }
-        if (await rateLimited(env, request, 'dm', 20, 300)) {
+        if (await rateLimited(env, request, 'dm', 20, 300, { sess })) {
           return tooManyResponse('You are sending messages very quickly. Wait a minute and try again.', 300);
         }
         const b = await request.json().catch(() => ({}));
@@ -12237,7 +12351,7 @@ const app = {
       // Creating a report is what unlocks the conversation for admin review
       // (GET /api/admin/dm-thread refuses un-reported pairs).
       if (path === '/api/messages/report') {
-        if (await rateLimited(env, request, 'dmreport', 5, 3600)) {
+        if (await rateLimited(env, request, 'dmreport', 5, 3600, { sess })) {
           return tooManyResponse('Too many reports in a row. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
@@ -12261,6 +12375,13 @@ const app = {
             'INSERT INTO dm_reports (reporter_id, reported_id, reason) VALUES (?,?,?)'
           ).bind(sess.userId, target.id, reason).run();
           await logActivity(env, sess, 'report', 'dm', null, target.username);
+        } else {
+          // A report only unlocks messages up to its own time (see
+          // /api/admin/dm-thread), so reporting again while one is still
+          // open brings what was said since into it.
+          await env.DB.prepare(
+            "UPDATE dm_reports SET ts=datetime('now') WHERE reporter_id=? AND reported_id=? AND status='open'"
+          ).bind(sess.userId, target.id).run();
         }
         return jsonResponse({ ok: true, message: 'Reported. The admins can now review this conversation.' });
       }
@@ -12397,6 +12518,11 @@ const app = {
               .bind(sess.userId).first();
             adminName = a ? a.username : null;
           } catch { /* the record is still worth writing without a name */ }
+          await keepLegacyAnswer(env, id);
+          // The same ceiling the member's side has: one thread, one limit.
+          if (await modmailFull(env, id)) {
+            return jsonResponse({ error: 'This conversation is too long to continue. Ask them to start a new message.' }, { status: 400 });
+          }
           await env.DB.prepare(
             'INSERT INTO modmail_replies (message_id, user_id, is_staff, body, images) VALUES (?,?,1,?,?)'
           ).bind(id, sess.userId, body, packAttachments(images)).run();
