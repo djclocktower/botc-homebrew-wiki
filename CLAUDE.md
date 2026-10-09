@@ -3840,9 +3840,12 @@ goes from ~197 KB to ~120 KB (brotli ~39 KB to ~19 KB); all the JS from
   which then ships as written. The build re-tokenizes every minified file and
   compiles it with `vm.Script`; a mismatch FAILS the build rather than the
   site. CSS it cannot read exactly (an unterminated string) ships as written
-  too — header-redesign.css does today: a `*/` inside its opening comment
-  ends the comment early, and the stray apostrophe that follows is a broken
-  string to a browser (which also drops the rule after it).
+  too. header-redesign.css did until 2026-10: a `*/` inside a code example
+  in its opening comment ended the comment early, and the apostrophe that
+  followed was a broken string to the browser too, which dropped the file's
+  first rule — the bar itself — so on a desktop the top bar wrapped onto two
+  rows for as long as that comment was there. **Never write `/* … */` inside
+  a CSS comment**; the examples there use `//` now.
 - The test suite checks every real asset against Node's own copy of acorn:
   the minified program must have the identical syntax tree.
 - Hashes are of the minified bytes, so changing the minifier re-hashes
