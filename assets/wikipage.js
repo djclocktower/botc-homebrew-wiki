@@ -66,7 +66,7 @@
             fetch('/api/admin/page-to-article', {
               method: 'POST', credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ slug: SLUG })
+              body: JSON.stringify({ slug: SLUG, dryRun: false })
             }).then(function (r) {
               return r.json().catch(function () { return {}; }).then(function (res) {
                 if (!r.ok) throw new Error(res.error || 'That did not save. Try again.');

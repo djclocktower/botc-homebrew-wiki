@@ -2130,7 +2130,11 @@ including ones it vacates, so nothing in a run can hijack another page's
 redirect. Re-runnable: settled rows are skipped, so a second pass after
 registering a collection only moves the pages that collection just claimed.
 It bumps `content_version` (see Gotcha 13) — without that the feeds keep
-serving the old addresses.
+serving the old addresses. It files each page through **`qualifierFrom()`**,
+the same rules `characterQualifier()` applies on a save (only the lookups are
+pre-read: `matchCollectionRow()` / `matchScriptRow()` over rows in hand), so the
+sweep can never file a page somewhere its next save would move it out of. A
+batch that fails to write is counted in `failed`, not swallowed.
 
 ### Other things worth keeping
 
@@ -2221,8 +2225,12 @@ the end instead of jumping the queue.
 
 A credit can name several people ("Taiyi (太一), Saki") and each of them gets
 their own creator page, so every match is done one comma-separated segment at a
-time — `creditMatchSQL()` / `creditNames()` in worker.js, `splitCreators()` in
+time — `creditHas()` / `creditNames()` in worker.js, `splitCreators()` in
 creators.js. Never compare a whole `creator` column against a single name.
+**The match itself is made in JS, never in SQL**: D1's `lower()` folds A–Z and
+nothing else (gotcha 12), so an SQL segment match never found "Ólafur". SQL
+only narrows (`creditProbeSQL()` with `creditProbe()`, the longest run of the
+name SQL's `lower()` agrees on) and `creditHas()` decides.
 
 **Proof by ownership needs pinning where a bulk import owns the pages.** The
 admin account owns most of the imported wiki, so every name credited on those
@@ -2803,7 +2811,7 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   address). The picks are ONE `settings` row, `featured_articles` =
   `[{slug, at}]`, newest first, capped at `FEATURED_ARTICLES_MAX` (24) —
   nothing is written onto the page, so no owner save can touch it. A pick
-  whose page goes to draft, or whose parent is deleted, is hidden on read and
+  whose page goes to draft, or whose parent is deleted or a draft, is hidden on read and
   comes back with it; `?all=1` (admins) lists those too with a `hidden`
   reason. Deleting the page drops the pick (`unfeatureArticle()`), or a new
   page reusing the slug would inherit it. `GET /api/featured-articles` is
@@ -2828,6 +2836,17 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   be switched off per page.
 - Deleting one is **permanent** — unlike scripts/characters there is no soft
   delete, so the account page offers Edit only and the editor owns the rest.
+  It takes its history, comments (and their reports), suggestions, views and
+  protection with it (`dropPageRefs()`, which `/api/admin/purge` and news
+  delete use too): the slug is free for the next page, which must not inherit
+  any of it. Purging a script or collection deletes its pages the same way.
+  An admin's protection (the page's own, or its set's) holds against a
+  non-admin deleting it.
+- **A set's page is public only while its set exists and is published**
+  (`wikiParentPublic()`): the `/p/` route, `/api/wiki-page`, comments, both
+  creator-page listings and Featured Articles all ask it. Its owner, the set's
+  owner, the set's approved editors and admins still reach it
+  (`mayReachHiddenWikiPage()`); an "anyone can edit" guest does not.
 - The first set of these is the **Odyssey glossary**: nine pages (Attack,
   Delay, The Final Day, Variable X, Other (Players), From the Storyteller,
   Use Vote Token / Give Up Vote Token, The Traveller Exclusion Principle,
@@ -2867,6 +2886,11 @@ set's custom pages, which were meant for that set's own mechanics.
   with `parentType: 'article'` makes the writer the owner. Because the virtual
   parent has no owner, `wikiPageAccess()` admits nobody but the owner (and
   admins): no set's sharing choice reaches an article.
+- **Its credit is free text, so it is not proof.** A creator page lists an
+  article by its credited name only when that name resolves to the article's
+  owner, or the article has no owner or an admin's (`articleCreditStands()`);
+  otherwise a member could file an article on somebody else's creator page.
+  Its writer's own page still lists it, by ownership.
 - **It is LISTED, unlike a set's page**: `GET /api/articles` (published, plus
   `?mine=1` for the reader's own drafts), the sitemap, and no `noindex` on its
   `/p/` page. A set's pages stay unlisted and `noindex` exactly as before.
@@ -3258,6 +3282,13 @@ is missing, via `editor-notices.js`), and `/api/publish` refuses.
 `POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages
 that went live before the bar was raised; the dashboard card scans first and
 reports the count and the reasons before anything moves. Always dry-run it.
+**Every one-shot admin sweep is a dry run unless the body says
+`dryRun: false`** — demote-incomplete, curata-owner, official-cleanup,
+cleanup-odyssey, collect-creator, concepts-to-pages, page-to-article, like
+nest-urls and open-editing always were — so a request that forgot the flag
+reports instead of writing. The dashboard's "go" buttons send it explicitly.
+The bulk `publish` action holds the publish bar too: an incomplete character is
+skipped and reported (`incomplete`), as `/api/publish` refuses it.
 `POST /api/admin/curata-owner` ({username, dryRun}) grants Curata to
 every character one account owns. `POST /api/admin/tags-open-owner`
 ({username, dryRun}) is the same shape for the other bulk gap: it sets
@@ -3638,6 +3669,11 @@ seeded with whole collections whose characters all arrived unowned.
 - **Clearing an owner never cascades**: it would orphan every character of the
   set, and the reason to clear one is almost always that the parent was
   assigned wrongly.
+- **The set's custom wiki pages (`/p/`) come along on the same terms** —
+  unowned or admin-owned, never a member's — counted as `wikiPages`. They have
+  to: the set's sharing choice reaches only pages its owner owns
+  (`wikiPageAccess()`), so a new owner without them could not edit the set's
+  own rules page.
 - The roster comes from `rosterCharacterSlugs()`: a script says outright which
   characters it holds (an `off-` slug is an official character and has no page
   here), a collection goes through `resolveCollectionMembers()` rather than a

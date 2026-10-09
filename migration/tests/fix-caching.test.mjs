@@ -55,13 +55,13 @@ test('concepts-to-pages, clean-refs and official-cleanup roll the feeds they rew
   assert.deepEqual(await charSlugs(), ['imp-copy', 'state']);
   assert.deepEqual(await roster(), ['imp-copy', 'gone']);
 
-  assert.equal((await f.request('/api/admin/concepts-to-pages', post('admin', { from: 'Rules', parent: 'rules' }))).status, 200);
+  assert.equal((await f.request('/api/admin/concepts-to-pages', post('admin', { from: 'Rules', parent: 'rules', dryRun: false }))).status, 200);
   assert.deepEqual(await charSlugs(), ['imp-copy'], 'the retired character leaves the feed at once');
 
   assert.equal((await f.request('/api/admin/clean-refs', post('admin', { type: 'script', slug: 'demo', remove: ['gone'] }))).status, 200);
   assert.deepEqual(await roster(), ['imp-copy']);
 
-  assert.equal((await f.request('/api/admin/official-cleanup', post('admin', {}))).status, 200);
+  assert.equal((await f.request('/api/admin/official-cleanup', post('admin', { dryRun: false }))).status, 200);
   assert.deepEqual(await roster(), ['off-imp'], 'the repointed roster reaches the browse feed');
 });
 
@@ -87,7 +87,7 @@ test('/api/user never falls back to unfiltered rows, and a failed read is not ca
   f.insert('characters', 'shown', { name: 'Shown', creator: 'maker', ability: 'x' });
   f.insert('characters', 'hidden', { name: 'Hidden', creator: 'maker', ability: 'x' }, 'draft');
   f.db.prepare('UPDATE characters SET owner_id=2').run();
-  failOn(f, /SELECT slug, data, status FROM characters WHERE/);
+  failOn(f, /SELECT slug, data, status, owner_id,[\s\S]*FROM characters WHERE/);
   const bad = await json(f, '/api/user?u=maker');
   assert.deepEqual(bad.characters, []);
   await settle(f);
