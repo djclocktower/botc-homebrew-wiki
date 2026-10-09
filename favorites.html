@@ -90,6 +90,10 @@
       <p>Log in to see your favorites.</p>
       <p><a href="login?next=favorites">Log in or create an account</a></p>
     </div>
+    <div class="fav-gate" id="error" style="display:none">
+      <p>Your favorites could not be loaded just now.</p>
+      <p><a href="favorites">Try again</a></p>
+    </div>
     <div id="favs" style="display:none">
       <p class="fav-count" id="fav-count"></p>
       <div id="other-favs"></div>
@@ -151,10 +155,18 @@
         '<span class="fav-tile-meta">' + esc(meta) + '</span></a>';
     }
 
-    if (!window.Favorites) { hide('loading'); show('gate'); return; }
+    // favorites.js answers null both for "not logged in" and for a failed
+    // read, so a null asks who is reading before it shows the log-in box:
+    // somebody who is logged in gets told the list failed, not to log in.
+    function failed() {
+      hide('loading');
+      hide('favs');
+      window.Favorites.me().then(function (m) { show(m ? 'error' : 'gate'); });
+    }
+    if (!window.Favorites) { hide('loading'); show('error'); return; }
     window.Favorites.expanded()
       .then(function (fav) {
-        if (!fav) { hide('loading'); show('gate'); return; }
+        if (!fav) { failed(); return; }
         var items = fav.items || { characters: [], scripts: [], collections: [] };
         var total = (fav.characters || []).length + (fav.scripts || []).length + (fav.collections || []).length;
         hide('loading');
@@ -176,7 +188,15 @@
         var admitted = {};
         (fav.characterSlugs || []).forEach(function (s) { admitted[s] = true; });
 
-        return BotcData.json('characters.json?fields=grid').then(function (all) {
+        // The cards are the public feed. If it fails, the list above it still
+        // stands; the card sections say so instead of the page turning into
+        // a log-in prompt.
+        return BotcData.json('characters.json?fields=grid').catch(function () {
+          $('other-favs').insertAdjacentHTML('beforeend',
+            '<p class="fav-section-note">The character cards could not be loaded just now. <a href="favorites" style="color:#9fc4ee">Try again</a></p>');
+          return null;
+        }).then(function (all) {
+          if (!all) return;
           var mine = [], via = [];
           (all || []).forEach(function (c) {
             if (!c || !c.slug) return;
@@ -209,7 +229,7 @@
           }
         });
       })
-      .catch(function () { hide('loading'); show('gate'); });
+      .catch(failed);
   })();
   </script>
   <script src="assets/site.js"></script>

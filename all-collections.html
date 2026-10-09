@@ -62,6 +62,11 @@
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
+    <!-- Below 640px the CSS hides .filter-bar unless it is .open, so without
+         this button the chips were unreachable on a phone. display:none on
+         desktop. Same wiring as scripts.html. -->
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden
+      aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
     <div class="filter-bar" id="filter-bar" hidden>
       <div class="filter-group"><span class="filter-group-label">Status</span>
         <div class="filter-chips">
@@ -193,6 +198,21 @@
           ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections match those filters.</p>'
           : '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>');
       }
+      // A chip only shows up once something matches it, and the bar (with
+      // its phone toggle) only once a chip does.
+      var bar = document.getElementById('filter-bar');
+      var toggle = document.getElementById('filter-toggle');
+      function showBar(){
+        bar.hidden = false;
+        if (toggle) toggle.hidden = false;
+      }
+      if (toggle) {
+        toggle.addEventListener('click', function(){
+          var open = bar.classList.toggle('open');
+          toggle.classList.toggle('open', open);
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
       // Favorites: mounted once the reader's saved list arrives
       // (assets/favorites.js); the chip and its group stay hidden until one
       // of these collections is in it. ?favorites=1 opens the page on it.
@@ -206,7 +226,7 @@
           if (!fb || !n) return;
           fb.closest('.filter-group').hidden = false;
           fb.innerHTML = window.Favorites.heartSVG() + ' Favorites (' + n + ')';
-          document.getElementById('filter-bar').hidden = false;
+          showBar();
           fb.addEventListener('click', function(){
             favOnly = !favOnly;
             fb.classList.toggle('active', favOnly);
@@ -218,12 +238,14 @@
 
       // The chip only appears once something has actually been given the
       // status — an filter that can only ever return nothing is just noise.
+      // With none, its group is hidden too: the bar can still show for a
+      // saved favorite, and a chip with no handler there was a dead button.
       var nCurata = SHOWN.filter(function(x){ return x.coll.curata; }).length;
-      if (nCurata){
-        var bar = document.getElementById('filter-bar');
-        var btn = document.getElementById('fc-curata');
+      var btn = document.getElementById('fc-curata');
+      if (!nCurata) btn.closest('.filter-group').hidden = true;
+      else {
         btn.textContent = 'Curata only (' + nCurata + ')';
-        bar.hidden = false;
+        showBar();
         btn.addEventListener('click', function(){
           curataOnly = !curataOnly;
           btn.classList.toggle('active', curataOnly);

@@ -292,6 +292,19 @@
     }
     return score;
   }
+  // A broken address is exactly where a malformed escape turns up ("/c/foo%"),
+  // and decodeURIComponent throws on one, which took the rest of this script
+  // (the report box included) down with it. Undecodable stays as typed.
+  function decode(s) {
+    try { return decodeURIComponent(s); } catch (e) { return s; }
+  }
+  // An image path from a feed: relative to /assets/, or already a whole URL
+  // (an upload hosted elsewhere), which must not be prefixed.
+  function assetUrl(p) {
+    p = String(p || '');
+    if (!p) return '';
+    return /^https?:\/\//i.test(p) ? p : '/assets/' + p.replace(/^\/+/, '');
+  }
   function slugify(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
@@ -334,7 +347,7 @@
     // Character addresses are nested (/c/{set}/{character}), so the part
     // worth matching suggestions against is the LAST segment, not the set.
     if ((m = location.pathname.match(/^\/c\/(?:[^/]+\/)?([^/]+)/))) {
-      wanted = slugify(decodeURIComponent(m[1]));
+      wanted = slugify(decode(m[1]));
       feed = '/characters.json?fields=grid';
       build = function (rows) {
         return best(rows, wanted, ['slug', 'name']).map(function (c) {
@@ -342,29 +355,29 @@
           // derived by the Worker on every read. c.slug is the identity and
           // only a fallback — it 301s to the same place.
           return sugHTML('/' + String(c.page || ('c/' + c.slug)).replace(/^\//, ''),
-            c.art ? '/assets/' + c.art : '',
+            assetUrl(c.art || c.image),
             c.name,
             (TEAM_LABEL[c.team] || c.team || '') + (c.creator ? ' · ' + c.creator : ''));
         }).join('');
       };
     } else if ((m = location.pathname.match(/^\/s\/([^/]+)/))) {
-      wanted = slugify(decodeURIComponent(m[1]));
+      wanted = slugify(decode(m[1]));
       feed = '/scripts.json?fields=browse';
       build = function (rows) {
         return best(rows, wanted, ['slug', 'name']).map(function (s) {
           return sugHTML('/s/' + encodeURIComponent(s.slug),
-            s.logo || s.header ? '/assets/' + (s.logo || s.header) : '',
+            assetUrl(s.logo || s.header),
             s.name,
             'Script' + (s.author ? ' · ' + s.author : ''));
         }).join('');
       };
     } else if ((m = location.pathname.match(/^\/collection\/([^/]+)/))) {
-      wanted = slugify(decodeURIComponent(m[1]));
+      wanted = slugify(decode(m[1]));
       feed = '/collections.json?fields=browse';
       build = function (rows) {
         return best(rows, wanted, ['id', 'slug', 'name', 'displayName']).map(function (c) {
           return sugHTML('/collection/' + encodeURIComponent(c.id || c.slug),
-            c.logo || c.header ? '/assets/' + (c.logo || c.header) : '',
+            assetUrl(c.logo || c.header),
             c.displayName || c.name,
             'Collection' + (c.author ? ' · ' + c.author : ''));
         }).join('');
@@ -389,7 +402,7 @@
         ['/messages', 'Messages', 'Account'],
         ['/login', 'Log In', 'Account']
       ];
-      wanted = slugify(decodeURIComponent(location.pathname));
+      wanted = slugify(decode(location.pathname));
       if (!wanted) return Promise.resolve('');
       var hits = PAGES.filter(function (p) {
         return similar(wanted, slugify(p[0])) >= 0.62;
