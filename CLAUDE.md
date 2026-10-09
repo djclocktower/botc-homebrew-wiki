@@ -3672,6 +3672,38 @@ artifacts stop deployment. Only the explicit public inputs (assets, root
 HTML/data files and legacy `characters/` redirect stubs) enter the build.
 Worker source, tests, archives, git metadata and docs are excluded.
 
+**The hashed copies are minified; the plain ones never are.**
+`migration/minify.mjs` (no dependencies — the deploy has no npm install)
+removes comments and whitespace and nothing else: no renaming, and the inside
+of a string, template, regex or `url()` is never touched, because site.js's
+text overrides match wording that comes out of string literals. styles.css
+goes from ~197 KB to ~120 KB (brotli ~39 KB to ~19 KB); all the JS from
+~895 KB to ~478 KB. Rules worth keeping:
+- **The plain `/assets/x.js` stays the source.** /text-editor's scanner
+  (text-scan.js) fetches those to list the site's wording, and they are what
+  a missing manifest entry falls back to.
+- **JS keeps every line break ASI could depend on**, and a `/` it cannot
+  classify for certain (after `}`, `++`, `of`…) makes it give up on that file,
+  which then ships as written. The build re-tokenizes every minified file and
+  compiles it with `vm.Script`; a mismatch FAILS the build rather than the
+  site. CSS it cannot read exactly (an unterminated string) ships as written
+  too — header-redesign.css does today: a `*/` inside its opening comment
+  ends the comment early, and the stray apostrophe that follows is a broken
+  string to a browser (which also drops the rule after it).
+- The test suite checks every real asset against Node's own copy of acorn:
+  the minified program must have the identical syntax tree.
+- Hashes are of the minified bytes, so changing the minifier re-hashes
+  everything; `--check` then fails until the build is re-run and committed,
+  exactly as for a source edit.
+
+**`window.BOTC_ASSETS` carries only the runtime lookups** — the names passed
+as literals to `BotcData.asset/script/style` anywhere in assets/, the pages or
+the Worker (`RUNTIME_ASSETS` in the manifest; the SSR shell prints the same).
+Everything loaded by `<script src>`/`<link href>` is rewritten into the HTML
+and needs no entry. A lazy load whose name is built at runtime is not found by
+the scan and loads from its plain, revalidating address: still works, just not
+immutable — so pass a literal.
+
 Matching `_headers` rules **combine**. An immutable block must detach the
 old Cache-Control header with `! Cache-Control`. The static and SSR preload
 headers point to versioned CSS and the self-hosted fonts. Early Hints still
