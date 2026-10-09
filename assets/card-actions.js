@@ -174,21 +174,51 @@
     }
 
     /* Fill the slots nobody has filled yet. The slot keeps its reserved size
-       until the heart glyph is here, so nothing on the card moves. */
-    function scan() {
-      var slots = document.querySelectorAll('.cq:not([data-cq-ready])');
-      if (!slots.length) return;
+       until the heart glyph is here, so nothing on the card moves.
+
+       Slots are collected from what was ADDED (see the observer below), not
+       by re-querying the whole document on every change, and filled in one
+       pass once favorites.js is here — so a grid of 700 cards is one batch
+       of work, not 700 scans of the page. */
+    var pending = [];
+    var waiting = false;
+    function want(slot) {
+      if (!slot.hasAttribute('data-cq-ready') && !slot._cqQueued) { slot._cqQueued = true; pending.push(slot); }
+    }
+    function collect(node) {
+      if (!node || node.nodeType !== 1) return;
+      if (node.classList && node.classList.contains('cq')) want(node);
+      // getElementsByClassName is a live, native lookup: far cheaper than a
+      // selector on every card a filter moves.
+      var inner = node.getElementsByClassName ? node.getElementsByClassName('cq') : [];
+      for (var i = 0; i < inner.length; i++) want(inner[i]);
+    }
+    function fill() {
+      if (waiting || !pending.length) return;
+      waiting = true;
       favoritesReady().then(function (F) {
-        if (!F) return;
-        var fresh = document.querySelectorAll('.cq:not([data-cq-ready])');
-        for (var i = 0; i < fresh.length; i++) {
-          fresh[i].innerHTML = buttonHTML('fav', F.heartSVG()) + buttonHTML('script', glyph('script'));
-          fresh[i].setAttribute('data-cq-ready', '1');
+        waiting = false;
+        var batch = pending; pending = [];
+        if (!F) { batch.forEach(function (s) { s._cqQueued = false; }); return; }
+        var fresh = [];
+        var heart = F.heartSVG(), html = buttonHTML('fav', heart) + buttonHTML('script', glyph('script'));
+        for (var i = 0; i < batch.length; i++) {
+          var slot = batch[i];
+          slot._cqQueued = false;
+          if (slot.hasAttribute('data-cq-ready') || !slot.isConnected) continue;
+          slot.innerHTML = html;
+          slot.setAttribute('data-cq-ready', '1');
+          fresh.push(slot);
         }
         loadFavorites(F);
         paint(null, fresh);     // only the new ones: a batch of cards must not
                                 // repaint the hundreds already on screen
+        if (pending.length) fill();   // more arrived while we waited
       });
+    }
+    function scan() {
+      collect(document.documentElement);
+      fill();
     }
 
     function pop(btn) {
@@ -258,10 +288,28 @@
     // Another tab changed the script; the Back button restored this page
     // from the cache with yesterday's state painted on it.
     window.addEventListener('storage', function (e) { if (e.key === SCRIPT_KEY) paint(); });
-    window.addEventListener('pageshow', function (e) { if (e.persisted) paint(); });
+    // The account's favorites are asked for again too, a tick after
+    // favorites.js has forgotten its copy (it may be somebody else by now).
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      paint();
+      if (!listening || !window.Favorites) return;
+      setTimeout(function () {
+        window.Favorites.lists().then(function (data) {
+          favSet = data ? new Set(data.characters || []) : null;
+          paint();
+        });
+      }, 0);
+    });
 
     if (typeof MutationObserver === 'function') {
-      new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
+      new MutationObserver(function (records) {
+        for (var i = 0; i < records.length; i++) {
+          var added = records[i].addedNodes;
+          for (var j = 0; j < added.length; j++) collect(added[j]);
+        }
+        fill();
+      }).observe(document.documentElement, { childList: true, subtree: true });
     }
     scan();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan);
