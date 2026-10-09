@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="/assets/data.js"></script>
+<script src="/assets/did-you-mean.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Page Not Found — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
@@ -252,67 +253,16 @@
     : location.pathname + (location.search || '');
 
   /* ── "Did you mean…" ─────────────────────────────────────────────
-     Edit distance, not a bigram score: the ways a wiki address actually
-     goes wrong are a dropped letter, a swapped pair, a missing accent
-     and a half-remembered name, and letter-pair scoring reads those as
-     badly as it reads two unrelated words that both contain "er". The
-     feed is only fetched when the address looks like a page address:
-     a stray /favicon.ico must not pull the character list down.
-
-     The prefix rule earns its keep here specifically: half this wiki's
-     slugs carry a disambiguating suffix, so /c/sculptor should find
-     sculptor-fall-of-rome. */
-  function lev(a, b) {
-    var m = a.length, n = b.length, i, j, prev = [], cur = [];
-    for (j = 0; j <= n; j++) prev[j] = j;
-    for (i = 1; i <= m; i++) {
-      cur[0] = i;
-      for (j = 1; j <= n; j++) {
-        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
-          prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
-      }
-      for (j = 0; j <= n; j++) prev[j] = cur[j];
-    }
-    return prev[n];
-  }
-  function similar(wanted, cand) {
-    if (!wanted || !cand) return 0;
-    if (wanted === cand) return 1;
-    // Containment only counts once there is enough of a word to mean
-    // something, or "/c/a" is a prefix of a third of the wiki.
-    if (wanted.length >= 3) {
-      if (cand.indexOf(wanted) === 0 || wanted.indexOf(cand) === 0) return 0.92;
-      if (cand.indexOf(wanted) >= 0 || wanted.indexOf(cand) >= 0) return 0.8;
-    }
-    var score = 1 - lev(wanted, cand) / Math.max(wanted.length, cand.length);
-    // A whole word in common is worth more than the letter maths says.
-    var w = wanted.split('-'), c = cand.split('-');
-    for (var i = 0; i < w.length; i++) {
-      if (w[i].length >= 4 && c.indexOf(w[i]) >= 0) { score = Math.max(score, 0.7); break; }
-    }
-    return score;
-  }
-  function slugify(s) {
-    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  }
-
-  // 0.62 is set where a real typo still lands and an unrelated name does
-  // not: "sculpter" finds the Sculptor, "snake-charmer" (an official
-  // character, not a homebrew one) correctly finds nothing rather than
-  // offering the nearest thing with the same letters in it.
-  function best(rows, wanted, keys) {
-    var scored = [];
-    for (var i = 0; i < rows.length; i++) {
-      var r = rows[i], top = 0;
-      for (var k = 0; k < keys.length; k++) {
-        var sc = similar(wanted, slugify(r[keys[k]]));
-        if (sc > top) top = sc;
-      }
-      if (top >= 0.62) scored.push({ row: r, score: top });
-    }
-    scored.sort(function (x, y) { return y.score - x.score; });
-    return scored.slice(0, 4).map(function (s) { return s.row; });
-  }
+     The matching is assets/did-you-mean.js, shared with the Worker. For a
+     content address (/c/, /s/, /collection/) the Worker runs it over its
+     own cached feed and sends back the four best rows
+     (GET /api/did-you-mean?path=) — this page used to download the whole
+     character list for that. Any other address is matched against the
+     site's own pages here, which costs no fetch at all, so a stray
+     /favicon.ico never asks the server anything. */
+  // Missing only if its script failed to load: then there are simply no
+  // suggestions, and the rest of the page (the report box) still works.
+  var DYM = window.DidYouMean || null;
 
   function sugHTML(href, thumb, name, meta) {
     return '<a class="nf-sug" href="' + esc(href) + '">' +
@@ -329,15 +279,16 @@
   // Resolves to an HTML string (possibly empty). Never rejects: a failed
   // feed just means no suggestions, which is not worth an error message.
   function findSuggestions() {
-    var m, feed, wanted, build;
-
+    if (!DYM) return Promise.resolve('');
+    var wanted, build, similar = DYM.similar, slugify = DYM.slugify;
     // Character addresses are nested (/c/{set}/{character}), so the part
-    // worth matching suggestions against is the LAST segment, not the set.
-    if ((m = location.pathname.match(/^\/c\/(?:[^/]+\/)?([^/]+)/))) {
-      wanted = slugify(decodeURIComponent(m[1]));
-      feed = '/characters.json?fields=grid';
+    // worth matching suggestions against is the LAST segment, not the set
+    // (DidYouMean.target knows each kind's pattern).
+    var hit = DYM.target(location.pathname), kind = hit && hit.kind;
+
+    if (kind === 'c') {
       build = function (rows) {
-        return best(rows, wanted, ['slug', 'name']).map(function (c) {
+        return rows.map(function (c) {
           // The feed's `page` is the character's address (c/{set}/{name}),
           // derived by the Worker on every read. c.slug is the identity and
           // only a fallback — it 301s to the same place.
@@ -347,22 +298,18 @@
             (TEAM_LABEL[c.team] || c.team || '') + (c.creator ? ' · ' + c.creator : ''));
         }).join('');
       };
-    } else if ((m = location.pathname.match(/^\/s\/([^/]+)/))) {
-      wanted = slugify(decodeURIComponent(m[1]));
-      feed = '/scripts.json?fields=browse';
+    } else if (kind === 's') {
       build = function (rows) {
-        return best(rows, wanted, ['slug', 'name']).map(function (s) {
+        return rows.map(function (s) {
           return sugHTML('/s/' + encodeURIComponent(s.slug),
             s.logo || s.header ? '/assets/' + (s.logo || s.header) : '',
             s.name,
             'Script' + (s.author ? ' · ' + s.author : ''));
         }).join('');
       };
-    } else if ((m = location.pathname.match(/^\/collection\/([^/]+)/))) {
-      wanted = slugify(decodeURIComponent(m[1]));
-      feed = '/collections.json?fields=browse';
+    } else if (kind === 'collection') {
       build = function (rows) {
-        return best(rows, wanted, ['id', 'slug', 'name', 'displayName']).map(function (c) {
+        return rows.map(function (c) {
           return sugHTML('/collection/' + encodeURIComponent(c.id || c.slug),
             c.logo || c.header ? '/assets/' + (c.logo || c.header) : '',
             c.displayName || c.name,
@@ -399,8 +346,10 @@
       }).join(''));
     }
 
-    return BotcData.json(feed)
-      .then(function (rows) { return Array.isArray(rows) ? build(rows) : ''; })
+    if (!hit.wanted) return Promise.resolve('');
+    return fetch('/api/did-you-mean?path=' + encodeURIComponent(location.pathname), { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (res) { return res && Array.isArray(res.rows) ? build(res.rows) : ''; })
       .catch(function () { return ''; });
   }
 

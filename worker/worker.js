@@ -137,6 +137,10 @@
  *                                owner/admins
  *   GET  /api/creators        -> every creator with counts + linked account
  *   GET  /api/search-index    -> the site search's creators, users, wiki pages and news
+ *   GET  /api/tag-counts      -> characters per tag, for /tags (see SUMMARIES)
+ *   GET  /api/collection-tiles -> member counts + icons per collection, for
+ *                                /all-collections (see SUMMARIES)
+ *   GET  /api/did-you-mean    -> ?path=: the 404 page's four best suggestions
  *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
@@ -303,6 +307,9 @@ Render.setCreators(Creators);
 // Partial / Standard / Curata rules — shared with every browser page so
 // the badges and filters agree with what the Worker serves.
 import Classify from '../assets/classify.js';
+// The 404 page's "Did you mean…" matcher, shared with 404.html so the two
+// never score an address differently (GET /api/did-you-mean).
+import DidYouMean from '../assets/did-you-mean.js';
 // Lets render.js emit the Curata mark without importing classify.js
 // itself (it is loaded standalone in the browser).
 Render.setCurataMark(Classify.classBadgeHTML);
@@ -4696,8 +4703,10 @@ const CARD_DROP_FIELDS = new Set([
 
 // ---- the GRID feed: only what a card needs ----
 // `?fields=grid` is the third tier, for the pages that only ever DRAW
-// characters — the homepage, All Characters, the team and tag pages, the
-// collections index, the 404 page's "did you mean" and the top-bar search. It
+// characters — All Characters, the team and tag pages, /favorites, the Script
+// Builder's sidebar and the site search — and, read on the server, the small
+// summaries the tags index, the collections index and the 404 page's "did you
+// mean" now get instead of the whole feed (see SUMMARIES). It
 // is an INCLUDE list, the opposite of CARD_DROP_FIELDS, and that is deliberate:
 // these consumers are few, all in this repo, and none of them exports a
 // script, so a field they do not name is a field they cannot miss. Measured on
@@ -4785,8 +4794,11 @@ async function buildPublicJSON(env, table, opts = {}) {
   const out = results.map(r => {
     const d = foldLegacyCurata(JSON.parse(r.data));
     // Only the admin feed carries status; the public one must never imply
-    // that unpublished pages exist.
+    // that unpublished pages exist. A `status` key some old editor or import
+    // wrote INTO the data blob is dropped too: 44 published rows used to leak
+    // a stray "status":"published" onto the public feeds.
     if (drafts) d.status = r.status || 'published';
+    else delete d.status;
     // The approved-editor list is the creator's own administration, not page
     // content, and it stores account ids. Nothing public reads it — the
     // editors load their page through /api/page — so it never goes on the
@@ -5153,7 +5165,8 @@ function edgeCachePut(ctx, key, body, cacheControl, contentType) {
 // misses for the same version and projection share one build within an isolate.
 // Separate isolates can still build concurrently on a cold edge cache.
 const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
-const FEED_FORMAT_V = 2;
+// 3: public feeds stopped carrying a `status` stored inside the data blob.
+const FEED_FORMAT_V = 3;
 const _feedBodyPending = new Map(); // coalesce overlapping misses within this isolate
 async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   const version = knownVersion === undefined ? await contentVersion(env, FEED_DEPS[table]) : knownVersion;
@@ -5174,6 +5187,114 @@ async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   _feedBodyPending.set(key, pending);
   try { return await pending; }
   finally { _feedBodyPending.delete(key); }
+}
+
+/* ---- small summaries of the character feed ----
+   Two browse pages only ever COUNTED characters: /tags (how many carry each
+   tag) and /all-collections (members per collection and four member icons).
+   Both downloaded the whole grid feed for it — 1.1 MB raw, ~190 KB
+   compressed, about a second on a slow phone connection — to print numbers.
+   These are those numbers, worked out once per content version from the
+   cached grid body (cachedFeedBody), with the feeds' ETag/304 pattern.
+
+     GET /api/tag-counts        {tags: {"Information": 512, ...}}
+     GET /api/collection-tiles  {collections: [{id, slug, displayName, author,
+                                  tagline, header, logo, curata, v, count,
+                                  icons: [{art, v}]}]}
+
+   Both are public, published-only and identical for every reader. The rules
+   are the pages' own, moved here unchanged: a tag counts once per occurrence
+   in a character's comma list, keyed title-cased like tags.html always did;
+   a collection's members come from PageRender.resolveCollectionMembers over
+   the grid in feed order, only collections with at least one member are
+   listed, and the icons are one per team first, then the rest, art only.
+   Bump SUMMARY_FORMAT_V if either shape changes. */
+const SUMMARY_FORMAT_V = 1;
+const _summaryCache = new Map();    // name -> { version, body }
+const _summaryPending = new Map();
+function titleCaseTag(s) {
+  return String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, m => m.toUpperCase());
+}
+function tagCounts(chars) {
+  const tags = {};
+  for (const c of chars) {
+    for (const raw of String((c && c.tags) || '').split(',')) {
+      if (!raw.trim()) continue;
+      const key = titleCaseTag(raw);
+      tags[key] = (tags[key] || 0) + 1;
+    }
+  }
+  return { tags };
+}
+function collectionTiles(chars, collections) {
+  const out = [];
+  for (const coll of collections) {
+    const members = PageRender.resolveCollectionMembers(coll, chars);
+    if (!members.length) continue;
+    const art = members.filter(c => c.art), icons = [], teams = new Set();
+    for (const c of art) if (icons.length < 4 && !teams.has(c.team)) { icons.push(c); teams.add(c.team); }
+    for (const c of art) if (icons.length < 4 && !icons.includes(c)) icons.push(c);
+    const tile = {};
+    for (const k of ['id', 'slug', 'displayName', 'author', 'tagline', 'header', 'logo', 'curata', 'v']) {
+      if (coll[k] !== undefined && coll[k] !== '' && coll[k] !== false) tile[k] = coll[k];
+    }
+    tile.count = members.length;
+    tile.icons = icons.map(c => (c.v ? { art: c.art, v: c.v } : { art: c.art }));
+    out.push(tile);
+  }
+  return { collections: out };
+}
+const SUMMARIES = {
+  'tag-counts': {
+    deps: FEED_DEPS.characters,
+    async build(env, ctx) { return tagCounts(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid'))); }
+  },
+  'collection-tiles': {
+    deps: FEED_DEPS.characters,   // characters AND collections
+    async build(env, ctx) {
+      const [chars, colls] = await Promise.all([
+        cachedFeedBody(env, ctx, 'characters', 'grid'),
+        cachedFeedBody(env, ctx, 'collections', 'browse')
+      ]);
+      return collectionTiles(JSON.parse(chars), JSON.parse(colls));
+    }
+  }
+};
+async function cachedSummary(env, ctx, request, name) {
+  const spec = SUMMARIES[name];
+  const version = await contentVersion(env, spec.deps);
+  const etag = `W/"${name}-v${version}-f${SUMMARY_FORMAT_V}"`;
+  if (request && request.headers.get('If-None-Match') === etag) return { etag };
+  const memo = _summaryCache.get(name);
+  if (memo && memo.version === version) return { etag, body: memo.body };
+  const key = `https://feed.internal/summary/${name}.json?v=${version}&f=${SUMMARY_FORMAT_V}`;
+  if (!_summaryPending.has(key)) {
+    _summaryPending.set(key, (async () => {
+      let body = await edgeCacheGet(key);
+      if (body === null) {
+        body = JSON.stringify(await spec.build(env, ctx));
+        edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+      }
+      _summaryCache.set(name, { version, body });
+      return body;
+    })().finally(() => _summaryPending.delete(key)));
+  }
+  return { etag, body: await _summaryPending.get(key) };
+}
+
+// The 404 page's suggestions for a mistyped /c/, /s/ or /collection/
+// address: the four best rows of the matching public feed, cut down to what
+// a suggestion draws. Matched here so the page no longer downloads the whole
+// character list for them. Published pages only (the cached public feeds).
+async function didYouMean(env, ctx, pathname) {
+  const hit = DidYouMean.target(String(pathname || '').slice(0, 300));
+  if (!hit || !hit.wanted) return [];
+  const rows = JSON.parse(await cachedFeedBody(env, ctx, hit.spec.table, hit.spec.fields));
+  return DidYouMean.best(rows, hit.wanted, hit.spec.keys).map(r => {
+    const out = {};
+    for (const k of hit.spec.pick) if (r[k] !== undefined) out[k] = r[k];
+    return out;
+  });
 }
 
 // Resolve the single set link on the server. The browser used to download
@@ -6884,6 +7005,20 @@ const app = {
           'Cache-Control': FEED_CACHE_CONTROL
         }
       });
+    }
+
+    // Counts for /tags and tiles for /all-collections (see SUMMARIES): small
+    // public answers instead of the whole grid feed.
+    if (method === 'GET' && (path === '/api/tag-counts' || path === '/api/collection-tiles')) {
+      const summary = await cachedSummary(env, ctx, request, path.slice(5));
+      const headers = { ...JSON_HEADERS, ETag: summary.etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      return summary.body === undefined
+        ? new Response(null, { status: 304, headers })
+        : new Response(summary.body, { headers });
+    }
+
+    if (method === 'GET' && path === '/api/did-you-mean') {
+      return jsonResponse({ rows: await didYouMean(env, ctx, url.searchParams.get('path')) });
     }
 
     if (method === 'GET' && path === '/api/home') {
