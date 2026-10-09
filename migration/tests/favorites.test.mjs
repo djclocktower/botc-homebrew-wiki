@@ -36,9 +36,11 @@ test('favorites: save by address or id, list, expand through rosters, unsave', a
   let r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'test-set/a', on: true }));
   assert.equal(r.status, 200);
   assert.equal((await r.json()).slug, 'a');
-  // A draft is not a page a reader was shown.
+  // A draft is not a page a reader was shown — and it answers exactly as a
+  // page that does not exist, so nobody can probe for one.
   r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'e', on: true }));
-  assert.equal(r.status, 400);
+  assert.equal(r.status, 404);
+  assert.equal((await r.json()).name, undefined);
   assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'nope', on: true }))).status, 404);
   assert.equal((await f.request('/api/favorite', post(1, { type: 'news', slug: 'a', on: true }))).status, 400);
   // A script by slug, a collection by its kebab id (stored under the PK).

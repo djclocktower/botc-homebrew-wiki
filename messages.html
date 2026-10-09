@@ -553,7 +553,11 @@
       postJSON('/api/messages/send', { to: current, body: body }).then(function(res){
         btn.disabled = false;
         if (res.ok && res.body.ok) {
-          if (res.body.id) newestId = res.body.id;
+          // newestId is NOT moved to the sent id: it stands for the newest
+          // message the thread was last drawn from the server with. Moving it
+          // here hid anything that arrived between that draw and this send —
+          // the poll saw its own sent id as "nothing new", while the server
+          // had already marked the incoming message read.
           $('compose').value = '';
           $('compose').style.height = '';
           // Show it immediately, then let the next poll true things up.
