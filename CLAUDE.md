@@ -216,13 +216,17 @@ assets/
                        (see script.html below) — and artVersions(), the single
                        answer to "what icons does this character have" (see
                        "A character's three icons" below).
-  art-thumb.js         Card thumbnails, browser side: ArtThumb.upload(artKey,
-                       src) makes the 192px WebP twin of a character's art and
-                       uploads it to thumb/{file}.webp right after the art
-                       itself. Mounted by every page that uploads art
-                       (create, edit, mass-upload, bloodstar, normalize-icons,
-                       iconforge) and by the dashboard's backfill card. Fire
-                       and forget; WebP or nothing. See "Caching".
+  art-thumb.js         Card thumbnails and display copies, browser side:
+                       ArtThumb.upload(artKey, src) makes the 192px WebP
+                       twin of a character's art (thumb/{file}.webp) and its
+                       full-size WebP DISPLAY copy (media/full/art/{file}.webp,
+                       bound to the original's ETag, read with one HEAD), and
+                       a banner's 320/640/1280 sizes — never enlarged. Mounted
+                       by every page that uploads art (create, edit,
+                       mass-upload, bloodstar, normalize-icons, iconforge,
+                       publish-script/-collection) and by the dashboard's
+                       backfill card. Fire and forget; WebP or nothing. See
+                       "Caching", part 3.
   thumb/               The committed thumbnails of the committed art
                        (assets/art/x.png -> assets/thumb/x.png.webp) plus
                        manifest.json. Generated, never hand-edited:
@@ -675,7 +679,18 @@ assets/
                        Subfolders textures/ minipaint/ vendor/ are the
                        sealed payload — see the section below, and
                        migration/icon-forge-guide.md for the engine reference.
-  icons/               Official BotC role icons (never change; long-cached)
+  icons/               Official BotC role icons (never change; long-cached).
+                       The OLDER art style — what pages draw is the CDN art in
+                       roles.json, so nothing displays these directly any more.
+  icons-sm/            The official icons pages DRAW: {id}.webp, 192px, ~7 KB,
+                       made from roles.json's CDN art by
+                       `node migration/make-small-icons.js` (re-run when
+                       roles.json gains a character). Display only — exports
+                       and the Token Tool keep the CDN URLs. Used through
+                       PageRender.thumbSrc() (rosters, night order, script
+                       jinxes) and Render.resolveJinxTarget() (jinx boxes,
+                       related cards), with the CDN file as the onerror
+                       fallback (data-fb), and by /api/jinxes.
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts (Dumbledor2, Trade Gothic, OptimusPrinceps,
                        LHF Unlovable); Token Tool engine (Pyodide) + assets
@@ -1811,6 +1826,12 @@ Things worth knowing before touching any of it:
   rewrites `art/{from}` before any `-` or `.`, so a legacy row pointing at
   `art/vampire-good.png` used to come out of a rename pointing at a file that
   had never moved.
+- **The emblem draws each version's DISPLAY copy** (`display`, a WebP of
+  the same picture — see "Caching", part 3), never `src`; `src` and `url`
+  keep the PNG. The printable token has no display copy and draws its PNG.
+  An explicit picture handed to `renderCharacter()` (the editors' preview of
+  a file just picked) replaces both; the `/c/` route passes the art's own
+  address, which keeps the display copy.
 - **`artAlt`/`imageAlt`/`artAlt2`/`imageAlt2` stay in the card feed.** The
   Token Tool reads `characters.json?fields=card` and prints one token per
   version. `CARD_DROP_FIELDS` used to carry a misspelled `'altArt'` matching
@@ -3753,6 +3774,26 @@ keep their existing one-hour limit. Writing original art retires its thumb,
 and the browser uploader regenerates it. The homepage featured image loads
 lazily below the fold; secondary gallery images load on approach or interaction, respecting Save-Data.
 
+**The display copy.** What draws ONE icon large — the `/c/` emblem (every
+version but the printable token) and the homepage's Featured card — loads
+`media/full/art/{file}.webp`: the same picture at its own size (capped at
+`MEDIA_FULL_MAX`, 1024) as WebP q85, ~35 KB against the PNG's ~174 KB
+(measured on 40 live icons). `artVersions()` carries it as `display` beside
+`src`/`url`; `PageRender.displaySrc()` is the Featured card's. **The PNG in
+`art/` stays exactly as it was and stays what everything that LEAVES reads**
+— `buildSchema()`, the official script tool, the Token Tool, `og:image`.
+It is a `media/` variant like the banner sizes (`mediaParts()` in worker.js,
+slot `full`, art/ only, no `-token`, no GIF): same permission as the art, the
+original's ETag on it, served only while that matches, deleted with the
+thumbnail when the art is rewritten (`dropThumbFor`). The editors only hand
+art-thumb.js the picture, so it reads the ETag with **`HEAD
+/assets/art/{file}`** (an R2 head, no body). Until a copy exists the original
+stands in **for an hour at a versioned URL, edge copy included** — not the
+banners' revalidate-every-time, because until the backfill runs that is
+every character page. The emblem carries `width`/`height` 591 (CSS fixes
+the aspect ratio anyway), `decoding="async"`, and `fetchpriority="high"` on
+the version on screen only.
+
 Local script/collection banners and logos use 320/640/1280px WebP `srcset`
 variants under `media/{width}/{source-path}.webp`. The publishing forms generate
 them before saving the row. Variant uploads inherit the source image's
@@ -3762,12 +3803,36 @@ retires all three sizes; an absent/stale variant falls back to the original
 with revalidation and **no immutable edge copy**, so backfill takes effect on
 the next visit. Remote images and GIFs keep their existing source behavior.
 
-**Existing banners need backfill after deployment:** Dashboard → Maintenance
-→ Card thumbnails → scan, then generate the missing images. The existing
-backfill tool now includes banners/logos alongside character icons. It runs
-in the admin browser because the Worker has no image encoder. Until then,
-original-image fallbacks keep every page usable. Nothing in this PR performs
-live R2 writes or automatically starts backfill.
+**A copy is never enlarged, and a srcset only claims true widths.** Each
+slot holds the source at min(slot, source width); the Worker refuses an
+upload wider than that (`imageDims()` reads the header) and stamps every
+stored image's width on it (`customMetadata.w`). The copies used to be
+scaled UP to the slot — a 400px logo became a 77 KB "1280" file against a
+24 KB original. Because a `w` descriptor that lies lays a width:auto logo
+out at the wrong size, a script/collection row carries **`imageW`**
+(`{path: px}` for its own header/logo): measured from the stored original
+on every save (`stampPageImageWidths`, a client's value is discarded) and
+when a variant is uploaded (`stampMediaWidth`, which does not move
+`updated_at`). `PageRender.responsiveAttrs(root, path, v, sizes, imageW)`
+then lists the slots narrower than the source and one at its true width;
+with no `imageW` it lists the three slots as before (copies made by the old
+code really are those widths). Tiles do not pass it: their picture is
+object-fit inside a fixed box, where a descriptor cannot move anything.
+**Tiles use `PageRender.TILE_SIZES`** (`(max-width: 640px) 210px, 320px`),
+deliberately below a phone tile's ~320 CSS px so a 3x phone takes the 640
+copy rather than the 1280 one (measured on live phone pages: homepage tile
+banners 1.18 MB → 0.45 MB, /scripts 3.76 → 1.50 MB, /all-collections 4.05 →
+1.61 MB, with today's copies).
+
+**After deploying any of this, run the backfill:** Dashboard → Maintenance
+→ Card thumbnails → **Scan**, then **Make them**. The scan lists, per item,
+what is missing: a character's thumbnail and/or display copy (missing, or
+made from an older original), and every banner whose sizes are missing,
+stale, made before the no-enlarging rule (no `w` on them), or whose page has
+no `imageW` yet. It runs in the admin's browser because the Worker has no
+image encoder — about 2,100 icons, expect it to take a while and leave the
+tab open; it is re-runnable. Until then every page keeps working on the
+original-image fallbacks.
 
 **4. Public SSR.** `/c/`, `/s/`, `/collection/`, `/news/` and `/p/` share
 published HTML for both anonymous and signed-in readers. Only a cookie-free
@@ -3797,6 +3862,21 @@ Search warms its index on focus/touch, including the separate mobile field.
 Once loaded it searches immediately, without a typing timer. Pending results
 only paint for the current query while the search is still open; failed
 character-feed requests can retry on the next interaction.
+
+**Official icons are drawn from `assets/icons-sm/`** (see the repo map):
+script rosters, the night order, script and `/c/` jinx boxes, related cards
+and the `/jinxes` map. They used to load the 400px CDN file from
+release.botc.app (another origin, cached ten minutes) to draw ~42 px.
+`/jinxes` nodes also take the versioned 192px thumbnail for a wiki
+character (they took the full art, unversioned: ~65 MB for one visit);
+the jinx index rows carry `v` for it (cache key `&s=2`, `/api/jinxes` ETag
+`-i2`). The static pages' inline CSS uses `parchment.webp` (10 KB, same
+`cover` look) instead of `parchment.jpg` (64 KB). The top-bar skull and badge
+WebPs were re-encoded at ~3x their drawn height (16 → 12 KB, 17 → 8 KB) in
+place — the same picture, so a cached old copy looks identical; that is the
+only reason an immutable file could be overwritten. `headertext.png` (the
+wordmark, 82×44 — too small to be sharp on a 3x screen, and there is no
+larger source) now caches for a day instead of revalidating on every page.
 
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route

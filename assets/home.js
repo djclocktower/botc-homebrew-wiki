@@ -52,7 +52,7 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, PageRender.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
@@ -97,7 +97,7 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
+        '<img loading="lazy" decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.displaySrc(c, '')) + '" alt="' + esc(c.name) + '">' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +
@@ -133,7 +133,7 @@
       document.getElementById('scripts-grid').innerHTML = window.weightedShuffle(data.scripts).slice(0, 7).map(function(sc){
         var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
         var header = sc.header || sc.logo
-          ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('', sc.header || sc.logo, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
+          ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('', sc.header || sc.logo, sc.v, PageRender.TILE_SIZES) + ' alt="' + esc(sc.name) + '"></div>'
           : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
         return '<a class="collection-tile script-tile" href="s/' + encodeURIComponent(sc.slug) + '">' + header + '<h3 class="collection-name">' + esc(sc.name) + '</h3><div class="collection-footer"><span class="collection-count">' + sc.count + ' characters' + (sc.author ? ' · ' + esc(sc.author) : '') + (sc.curata ? window.classBadgeHTML('curata', {sep: true}) : '') + '</span><span class="collection-arrow">Browse →</span></div></a>';
       }).join('') + '<a class="collection-tile script-tile" href="scripts"><div class="script-card-header script-card-header-empty"><span>All Scripts</span></div><h3 class="collection-name">All Scripts</h3><div class="collection-footer"><span class="collection-count">' + stats.scripts + ' scripts</span><span class="collection-arrow">Browse →</span></div></a>';

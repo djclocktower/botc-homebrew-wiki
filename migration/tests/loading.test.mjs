@@ -609,12 +609,13 @@ test('the printable token in the /c/ gallery is marked apart from the icons, so 
   const page = await (await f.request('/c/test-set/disc')).text();
   assert.match(page, /<div class="emblem-stack" data-at="0" style="--art-scale:1\.5"/, 'the display size rides the stack, where the token can divide it back out');
   assert.deepEqual(page.match(/<img class="emblem[^"]*"/g), ['<img class="emblem is-on"', '<img class="emblem emblem-token"']);
-  assert.match(page, /class="emblem emblem-token" data-src="[^"]*art\/disc-token\.png/);
+  // The token keeps its own file (no display copy for -token); the icons draw theirs.
+  assert.match(page, /class="emblem emblem-token"[^>]* data-src="[^"]*assets\/art\/disc-token\.png/);
   // A page that never ticked the token, or has no saved image, grows no such version.
   f.insert('characters', 'plain', { slug: 'plain', name: 'Plain', team: 'townsfolk', ability: 'Each night, roll.', art: 'art/plain.png', token: 'art/plain-token.png' });
   const plain = await (await f.request('/c/test-set/plain')).text();
   assert.ok(!plain.includes('emblem-token'));
-  assert.match(plain, /<img class="emblem" src="[^"]*art\/plain\.png/);
+  assert.match(plain, /<img class="emblem"[^>]* src="[^"]*media\/full\/art\/plain\.png\.webp/);
 });
 
 test('a custom page background is a root-absolute URL, whatever stylesheet consumes it', async t => {
