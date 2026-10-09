@@ -33,7 +33,9 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function tok(s) {
-    return esc(s).replace(/\[\[(.+?)\]\]/g, '<span class="tok">$1</span>');
+    // Bounded, like render.js's tok(): a run of '[[' that never closes is
+    // one pass rather than a rescan of the text from every one of them.
+    return esc(s).replace(/\[\[([^\]\n]{1,160})\]\]/g, '<span class="tok">$1</span>');
   }
   function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 
@@ -163,7 +165,7 @@
      match[]), plus explicit include[] slugs, minus explicit exclude[] slugs. */
   function resolveCollectionMembers(coll, allChars) {
     var match = (coll.match || []).map(norm).filter(Boolean);
-    var include = {}, exclude = {};
+    var include = Object.create(null), exclude = Object.create(null);
     (coll.include || []).forEach(function (s) { include[s] = 1; });
     (coll.exclude || []).forEach(function (s) { exclude[s] = 1; });
     return (allChars || []).filter(function (c) {
@@ -192,7 +194,7 @@
   function sortCollectionMembers(coll, members) {
     var teamOrder = {};
     TEAMS.forEach(function (t, i) { teamOrder[t[0]] = i; });
-    var manual = {};
+    var manual = Object.create(null);
     (Array.isArray(coll && coll.order) ? coll.order : []).forEach(function (slug, i) {
       if (manual[slug] == null) manual[slug] = i;
     });
@@ -289,7 +291,10 @@
   }
   function prose(text) {
     return String(text || '').split(/\n{2,}/).map(function (p) {
-      p = p.replace(/\s+$/, '');
+      // By hand: `\s+$` rescans a long run of spaces from each one of them.
+      var e = p.length;
+      while (e > 0 && /\s/.test(p.charAt(e - 1))) e--;
+      p = p.slice(0, e);
       return p.trim() ? '<p>' + tok(p).replace(/\n/g, '<br>') + '</p>' : '';
     }).join('');
   }
@@ -404,7 +409,7 @@
         // by the Hide Partial chip.
         (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
         (hasCurata ? ' data-curata="1"' : '') +
-        ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
+        ' data-order="' + (Object.prototype.hasOwnProperty.call(orderMap, c.slug) && orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         // The icon and, under it, the two quick actions (Favorites, Add to
         // Script — assets/card-actions.js). A draft gets no slot.
         '<span class="card-side">' +
@@ -446,10 +451,10 @@
     var resolve = dep('resolveJinxTarget');
     var normJinxId = dep('normJinxId');
     if (!resolve || !normJinxId) return [];
-    var onScript = {};
+    var onScript = Object.create(null);
     missing.forEach(function (n) { var k = normJinxId(n); if (k) onScript[k] = n; });
 
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     entries.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
         var t = resolve(j, root);
@@ -500,14 +505,14 @@
     var findScriptJinxes = dep('findScriptJinxes');
     var list = findScriptJinxes ? findScriptJinxes(entries || []) : [];
     edits = edits || {};
-    var off = {};
+    var off = Object.create(null);
     (Array.isArray(edits.off) ? edits.off : []).forEach(function (k) { off[k] = 1; });
     var out = list.filter(function (j) {
       return !off[jinxKey(j.a.slug || j.a.name, j.b.slug || j.b.name)];
     }).map(function (j) {
       return { a: j.a, b: j.b, text: j.text, custom: false };
     });
-    var bySlug = {};
+    var bySlug = Object.create(null);
     (entries || []).forEach(function (c) { bySlug[c.slug] = c; });
     (Array.isArray(edits.add) ? edits.add : []).forEach(function (j) {
       var a = bySlug[j && j.a], b = bySlug[j && j.b];
@@ -596,7 +601,7 @@
   }
 
   function sortNightItems(items, orderList) {
-    var idx = {};
+    var idx = Object.create(null);
     (Array.isArray(orderList) ? orderList : []).forEach(function (slug, i) {
       if (idx[slug] == null) idx[slug] = i;
     });
@@ -642,7 +647,7 @@
   }
 
   function renderCredits(entries, root) {
-    var counts = {};
+    var counts = Object.create(null);
     // Co-credited characters count towards each creator separately, so the
     // credits list matches the links on the character pages themselves.
     var split = dep('splitCreators') ||
@@ -747,20 +752,20 @@
     var add = Array.isArray(edits.add) ? edits.add : [];
     if (!off.length && !add.length) return null;
 
-    var bySlug = {}, byId = {};
+    var bySlug = Object.create(null), byId = Object.create(null);
     (entries || []).forEach(function (c) {
       bySlug[c.slug] = c;
       byId[exportId(c)] = c;
       byId[String(c.slug || '').replace(/-/g, '')] = c;
     });
-    var touched = {};
+    var touched = Object.create(null);
     off.forEach(function (k) {
       String(k).split('|').forEach(function (s) { if (bySlug[s]) touched[s] = 1; });
     });
     add.forEach(function (j) { if (j && bySlug[j.a]) touched[j.a] = 1; });
 
     var final = scriptJinxes(entries, edits);
-    var map = {};
+    var map = Object.create(null);
     Object.keys(touched).forEach(function (slug) {
       var c = bySlug[slug];
       // Jinxes this character carries with someone who is NOT on this script
@@ -770,7 +775,10 @@
         var idKey = String(j.id || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         return !byId[idKey];
       }).map(function (j) {
-        return { id: j.id || exportId({ name: j.name }), reason: j.text || j.reason || '' };
+        // The same id the character's own export would write for this jinx
+        // (render.js jinxExportId), so the two cannot disagree.
+        var jid = dep('jinxExportId');
+        return { id: jid ? jid(j, c) : (j.id || exportId({ name: j.name })), reason: j.text || j.reason || '' };
       });
       final.forEach(function (j) {
         if (j.a !== c) return;
@@ -858,19 +866,29 @@
        botchomebrew.wiki credits Fabled (buildCreditsFabled in render.js). Only
        the Script Builder passes it: a published page's JSON box is the
        author's own script and never carries the wiki's signature. */
-  function buildPageExport(name, author, headerPath, entries, sc, opts) {
+  /* An image path as the app needs it: absolute. A URL somebody pasted in
+     goes out untouched; one of ours, with or without its /assets/ prefix,
+     is put on the site's own address. */
+  function exportImageURL(p) {
+    p = String(p || '').trim();
+    if (!p) return '';
+    if (/^https?:\/\//i.test(p)) return p;
+    return 'https://botchomebrew.wiki/assets/' + p.replace(/^\/?assets\//, '');
+  }
+
+  /* `logoPath` is what the app draws as the script's logo. Callers pass the
+     page's `logo` first and fall back to its header banner — `_meta.logo` is
+     the app's logo, and a Bloodstar import, which has a logo and no banner,
+     used to export none at all because only the header was ever read. */
+  function buildPageExport(name, author, logoPath, entries, sc, opts) {
     var buildSchema = dep('buildSchema');
     sc = sc || {};
     opts = opts || {};
     var meta = { id: '_meta', name: name || 'Homebrew Script' };
     if (author) meta.author = author;
-    if (headerPath) {
-      meta.logo = /^https?:\/\//i.test(headerPath)
-        ? headerPath
-        : 'https://botchomebrew.wiki/assets/' + headerPath;
-    }
+    if (logoPath) meta.logo = exportImageURL(logoPath);
     var bg = sc.theme && sc.theme.background;
-    if (bg) meta.background = 'https://botchomebrew.wiki/assets/' + bg;
+    if (bg) meta.background = exportImageURL(bg);
     if (sc.hideTitle) meta.hideTitle = true;
     if (sc.almanac) meta.almanac = sc.almanac;
     var boot = (sc.bootlegger || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
@@ -1043,11 +1061,11 @@
   function renderScriptPage(sc, allChars, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
-    var bySlug = {};
+    var bySlug = Object.create(null);
     (allChars || []).forEach(function (c) { bySlug[c.slug] = c; });
     var entries = (sc.characters || []).map(function (s) { return bySlug[s]; }).filter(Boolean);
     var missing = (sc.characters || []).filter(function (s) { return !bySlug[s]; });
-    var jsonText = buildPageExport(sc.name, sc.author, sc.header, entries, sc);
+    var jsonText = buildPageExport(sc.name, sc.author, sc.logo || sc.header, entries, sc);
 
     var share = b64url(JSON.stringify({ n: sc.name || '', a: sc.author || '', c: (sc.characters || []) }));
     var actions = [
@@ -1079,10 +1097,10 @@
     var root = opts.linkRoot || '';
     var members = sortCollectionMembers(coll, resolveCollectionMembers(coll, allChars || []));
     var name = coll.displayName || coll.slug || 'Collection';
-    var jsonText = buildPageExport(name, coll.author, coll.header, members);
+    var jsonText = buildPageExport(name, coll.author, coll.logo || coll.header, members);
     // orderMap: each slug's index in the full character list, for "recently
     // added" sorting in the on-page filter (higher index = more recent).
-    var orderMap = {};
+    var orderMap = Object.create(null);
     (allChars || []).forEach(function (c, i) { orderMap[c.slug] = i; });
     // Browse/filter now lives on this page, so that action is gone.
     var actions = [

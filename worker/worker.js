@@ -4414,6 +4414,11 @@ function foldLegacyCurata(d) {
     if (d.starlight && d.curata === undefined) d.curata = true;
     delete d.starlight;
   }
+  // Partial/Standard/Curata is derived on every read and stamped by the
+  // Worker alone (Classify.isPartial trusts a stamp), so one a save kept from
+  // the client is never read back — an owner could otherwise post
+  // classification:"standard" and never be Partial.
+  if (d && typeof d === 'object') delete d.classification;
   return d;
 }
 
@@ -6016,7 +6021,10 @@ async function jinxIndex(env, ctx) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
 
-  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}`, { method: 'GET' });
+  // The build rides in the key too: the index's keys are worked out by
+  // render.js (normJinxId), so a deploy that changes how they fold must not
+  // be served an index keyed the old way.
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}&build=${BUILD_ID}`, { method: 'GET' });
   try {
     const hit = await caches.default.match(cacheKey);
     if (hit) {
@@ -6084,6 +6092,9 @@ function buildJinxIndex(chars) {
     slug: c.slug, name: c.name || c.slug, team: c.team || '',
     art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
     creator: c.creator || '',
+    // The id its own export carries, so a jinx naming it exports the same
+    // one (Render.jinxExportId). Only imports have one.
+    ...(c.jsonId ? { jsonId: String(c.jsonId) } : {}),
     // The address. `slug` stays the identity, which is what edges and
     // the mirroring are keyed on; this is only ever used to build a link.
     page: typeof c.page === 'string' ? c.page : ''
@@ -6166,7 +6177,8 @@ async function cachedCharLinkMap(env, ctx) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_charLinkCache && _charLinkCache.version === version) return _charLinkCache.map;
   const map = {};
-  const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  // The engine's own key, so [[Médium]] and a Han name find their page.
+  const nkey = WikiRender.linkKey;
   try {
     // Derived from the card feed: the SSR routes that need this map pull the
     // card rows anyway (jinx index, collection rosters), so the map costs no
@@ -6177,8 +6189,8 @@ async function cachedCharLinkMap(env, ctx) {
       // The ADDRESS: render-wiki turns this into `c/{value}`.
       const addr = (typeof r.page === 'string' && r.page.indexOf('c/') === 0)
         ? r.page.slice(2) : String(r.slug);
-      map[nkey(r.slug)] = addr;
-      if (r.name) map[nkey(r.name)] = addr;
+      if (nkey(r.slug)) map[nkey(r.slug)] = addr;
+      if (r.name && nkey(r.name)) map[nkey(r.name)] = addr;
     }
   } catch { /* an empty map just means [[Name]] renders as a plain token */ }
   _charLinkCache = { version, map };
@@ -6272,7 +6284,7 @@ async function pageJsonResponse(env, ctx, request, url) {
   const entries = isScript
     ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
     : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
-  const text = PageRender.buildPageExport(name, d.author, d.header, entries, isScript ? d : undefined);
+  const text = PageRender.buildPageExport(name, d.author, d.logo || d.header, entries, isScript ? d : undefined);
   const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
   return new Response(text, {
     headers: {
@@ -10712,6 +10724,7 @@ const app = {
         delete data.status;
         delete data.renameFrom;
         delete data.appearsInFrom;
+        delete data.classification;
         pinSuggestedFields(type, data, storedNow);
         if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
           return jsonResponse({ error: 'Nothing has changed, so there is nothing to suggest.' }, { status: 400 });
@@ -11206,7 +11219,9 @@ const app = {
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.
+        // Nor may its classification: that is derived too (see classify.js).
         delete c.appearsInFrom;
+        delete c.classification;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.

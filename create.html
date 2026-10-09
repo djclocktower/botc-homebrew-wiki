@@ -529,7 +529,7 @@
         // (window.jinxCharIndex owns the order).
         window.setWikiChars(window.jinxCharIndex(list, function (c) {
           return { slug: c.slug, name: c.name, art: c.art, image: c.image,
-                   team: c.team, page: c.page };
+                   team: c.team, page: c.page, jsonId: c.jsonId };
         }).byKey);
         // [[Character Name]] in the almanac text becomes a real link on the
         // published page, so the preview needs the same name -> address map
@@ -538,10 +538,9 @@
         // character's ADDRESS with its own c/ prefix taken off, not its
         // identity.
         if (window.WikiRender) {
-          var links = {};
-          var normLink = function (x) {
-            return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-          };
+          var links = Object.create(null);
+          // The engine's own key (render-wiki.js), so both sides agree.
+          var normLink = window.WikiRender.linkKey;
           (list || []).forEach(function (c) {
             if (!c || !c.slug) return;
             var addr = c.page

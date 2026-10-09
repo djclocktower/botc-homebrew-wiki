@@ -595,7 +595,7 @@
       var m = getMeta();
       return window.PageRender.buildPageExport(
         (m.name || '').trim() || 'My Homebrew Script',
-        (m.author || '').trim(), m.header || '', rosterChars(), m,
+        (m.author || '').trim(), m.logo || m.header || '', rosterChars(), m,
         { credits: creditsFabled() });
     }
 
