@@ -456,7 +456,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
-    function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+    function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error){var e=new Error((j&&j.error)||'Save failed. Are you logged in?');e.conflict=!!(j&&j.conflict);throw e;}return j;}); }
+    /* The row's stamp as of the copy this page is working from, posted back
+       as baseUpdatedAt so the Worker refuses a save built on a copy somebody
+       else has since saved over (editConflict in worker.js) instead of
+       silently replacing their work. Kept in the meta with everything else,
+       because this page edits a copy in localStorage that can outlive the
+       tab. The script save does not answer with the new stamp, so it is
+       read back after each save. */
+    function readStamp(slug){
+      return fetch('/api/page?type=script&slug=' + encodeURIComponent(slug), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(res){ return (res && res.updatedAt) || null; })
+        .catch(function(){ return null; });
+    }
 
     // ── the roster, in the order the script page will show it ──
     // The page groups by team and keeps the stored order within each team, so
@@ -717,8 +730,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         });
       }
       html += '</div>';
-      // Jinxes active between characters on this script
-      var jinxes = window.findScriptJinxes ? window.findScriptJinxes(chars) : [];
+      // Jinxes active between characters on this script: the characters'
+      // own, minus any this script switched off, plus any it wrote itself —
+      // the same call the published page and script.html make.
+      var jinxes = (window.PageRender && window.PageRender.scriptJinxes)
+        ? window.PageRender.scriptJinxes(chars, getJinxEdits())
+        : (window.findScriptJinxes ? window.findScriptJinxes(chars) : []);
       if (jinxes.length){
         html += '<div style="margin-top:12px"><h2 style="font-size:1rem">Jinxes <span style="color:#6b5d49;font-size:.85rem">(' + jinxes.length + ')</span></h2>';
         jinxes.forEach(function(j){
@@ -1025,8 +1042,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         };
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
+        if (EDIT_SLUG && m0.updatedAt) entry.baseUpdatedAt = m0.updatedAt;
         return apiSaveScript(entry);
-      }).then(function(){
+      }).then(function(saved){
+        return readStamp(slug).then(function(stamp){
+          var ms = getMeta();
+          if (stamp) ms.updatedAt = stamp; else delete ms.updatedAt;
+          setMeta(ms);
+          return saved;
+        });
+      }).then(function(saved){
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'scripts/' + slug + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){
@@ -1035,7 +1060,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         } else if (removeBg){
           var m3 = getMeta(); if (m3.theme) delete m3.theme.background; setMeta(m3);
         }
-        currentStatus = saveStatus;
+        // What the Worker stored, not what was asked for: an approved
+        // editor's save keeps a draft a draft, whatever button they pressed.
+        currentStatus = (saved && saved.status) || saveStatus;
         setEditMode(slug);
         var m = getMeta();
         m.header = removeHeader ? '' : (existingHeader || m.header);
@@ -1052,15 +1079,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? ' <em><code>/s/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
             'To change an existing script, open it from <a href="account">your account</a>.</em>'
           : '';
-        if (isDraft) {
-          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
+        if (currentStatus === 'draft') {
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> ' +
+            (isDraft ? 'Draft saved (not public).' : 'Saved. It is still a draft: only its creator can publish it.') +
+            ' <a href="' + url + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
         } else {
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.' + note);
         }
         $('sb-publish').disabled = false;
         $('sb-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
+        // Reloading this page reopens the copy in localStorage, not the
+        // saved one, so the way to "see theirs" has to be a link to it.
+        var fresh = err && err.conflict && EDIT_SLUG
+          ? ' <a href="publish-script?s=' + encodeURIComponent(EDIT_SLUG) + '">Open the saved version →</a>' : '';
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message) + fresh);
         $('sb-publish').disabled = false;
         $('sb-draft').disabled = false;
       });
@@ -1252,8 +1285,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             creditUnlinked: !!entry.creditUnlinked,
             publicEdit: PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '',
             editors: entry.editors || [],
-            theme: entry.theme || {}
+            theme: entry.theme || {},
+            updatedAt: res.updatedAt || ''
           };
+          if (!m.updatedAt) delete m.updatedAt;
           if (!m.nightOrder) delete m.nightOrder;
           if (!m.jinxEdits) delete m.jinxEdits;
           setMeta(m);

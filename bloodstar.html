@@ -273,6 +273,7 @@
       <div class="bs-card">
         <h2>Art</h2>
         <label class="bs-check"><input type="checkbox" id="bs-art" checked><span>Copy the character icons<span class="hint">Without this, the pages link to the icons on Bloodstar.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-replaceart"><span>Replace the icons on pages you already have<span class="hint">Importing again over your own pages keeps their icons unless this is ticked.</span></span></label>
         <label class="bs-check"><input type="checkbox" id="bs-logo-opt" checked><span>The project logo<span class="hint">Becomes the script or collection page's logo.</span></span></label>
         <label class="bs-check"><input type="checkbox" id="bs-bg" checked><span>The almanac's background image<span class="hint">Becomes the script or collection page's background.</span></span></label>
       </div>
@@ -341,8 +342,9 @@
 
       <div class="bs-card">
         <h2>Tags</h2>
-        <p class="bs-sub">Characters with no tags are <strong>Partial</strong> and hidden from the
-          browse pages. Tick characters, then pick a tag to give them.
+        <p class="bs-sub">Characters with no tags are <strong>Partial</strong>: never picked as the
+          Featured or Random Character, and readers can choose to hide them. Tick characters,
+          then pick a tag to give them.
           <span id="bs-tag-untagged"></span></p>
 
         <div class="bs-fld" style="margin-bottom:9px">
@@ -393,6 +395,7 @@
   <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/bloodstar.js"></script>
+  <script src="assets/import-merge.js"></script>
   <script src="assets/art-normalize.js"></script>
   <script src="assets/art-thumb.js"></script>
   <script>
@@ -412,6 +415,13 @@
     var me = null;
     var halted = null;      // the rate-limit error that stopped a run
     var usedThisRun = {};   // identities this run has already claimed
+    // The identity each character was saved under, for as long as this
+    // project is on the page. A second press skips the rows already done and
+    // used to resolve their identities again regardless: one whose name
+    // somebody else holds was handed the NEXT free address, and the roster
+    // pointed at a page that was never made. Rows saved here keep theirs.
+    var madeById = {};
+    var ownByName = {};     // this account's pages by name (ImportMerge.ownPages)
     // Redrawing the table replaces every row, which would wipe the progress a
     // run is writing into it — and would leave the run holding row objects
     // that are no longer in the list it is walking.
@@ -419,7 +429,9 @@
 
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
-      .then(function (j) { me = j && j.user; })
+      // /api/me answers flat ({loggedIn, username, displayName}), not under
+      // a `user` key — reading that key left the Creator box never filled in.
+      .then(function (j) { me = j && j.loggedIn ? j : null; })
       .catch(function () { /* the read call will say if we are not logged in */ });
 
     /* ── the tag assigner ──
@@ -566,6 +578,7 @@
       o.howToRun = $('bs-howtorun').checked;
       o.credit = $('bs-credit').checked;
       o.art = $('bs-art').checked;
+      o.replaceArt = $('bs-replaceart').checked;
       o.logo = $('bs-logo-opt').checked;
       o.background = $('bs-bg').checked;
       o.synopsis = $('bs-synopsis').value;
@@ -638,6 +651,7 @@
 
       loadWikiIndex();
       skipped = {};
+      madeById = {};
       tagsById = {};
       tagPick = {};
       $('bs-tag-search').value = '';
@@ -816,6 +830,33 @@
       });
     }
 
+    function loadPage(slug) {
+      var failed = new Error('could not read your existing page, so nothing was written');
+      return fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), { credentials: 'same-origin' })
+        .then(function (r) {
+          // Gone since the check: nothing to keep, so an ordinary create.
+          if (r.status === 404) return null;
+          if (!r.ok) throw failed;
+          return r.json();
+        }, function () { throw failed; });
+    }
+    /* The project merged into a page that already exists. The jinxes are the
+       project's only when they are being written onto characters; otherwise
+       the page keeps its own. Art follows artPlan: a slot it hands over takes
+       what was copied (or, failing that, the Bloodstar link when the page has
+       nothing there). */
+    function mergeInto(page, payload, plan, opts) {
+      var fromFile = Object.assign({}, payload);
+      if (opts.jinxes !== 'characters') delete fromFile.jinxes;
+      var out = window.ImportMerge.merge(page, fromFile, { creator: opts.creator, appearsIn: opts.appearsIn });
+      [['art', 'image', 'main'], ['artAlt', 'imageAlt', 'alt'], ['artAlt2', 'imageAlt2', 'alt2']].forEach(function (k) {
+        if (!plan[k[2]]) return;
+        if (payload[k[0]]) { out[k[0]] = payload[k[0]]; out[k[1]] = payload[k[1]]; }
+        else if (payload[k[1]] && !(out[k[0]] || out[k[1]])) out[k[1]] = payload[k[1]];
+      });
+      return out;
+    }
+
     /* An icon on Bloodstar is copied server-side: the bytes go straight from
        Bloodstar into this wiki's storage and the browser only sends the two
        URLs. Art hosted anywhere else (a project's imgur background, say) has
@@ -930,7 +971,7 @@
         .then(function (r) { return r.json(); })
         .catch(function () { return null; })
         .then(function (j) {
-          var pick;
+          var pick, reused = '';
           if (!j || j.error || !j.taken) pick = base;
           // `mine` means saving there updates a page of yours rather than
           // colliding with it, which is what re-running an import over your own
@@ -939,6 +980,11 @@
           // the reason is that a second script with the same name is a second
           // script, never a silent overwrite of the first.
           else if (j.mine && !fresh && !usedThisRun[base]) pick = base;
+          // A character whose name somebody else holds, or that this project
+          // already used: the free address the check suggests is a NEW page,
+          // so a re-import lands on one of your own of that name first.
+          else if (!fresh && type === 'character' && window.ImportMerge &&
+                   (reused = window.ImportMerge.reuseOwn(ownByName, name, usedThisRun))) pick = reused;
           else pick = j.suggestion || base;
           if (usedThisRun[pick]) {
             for (var n = 2; n < 80; n++) {
@@ -946,7 +992,9 @@
             }
           }
           usedThisRun[pick] = 1;
-          return pick;
+          // `mine`: saving there updates a page of yours, so it is read and
+          // merged into rather than replaced (see writeCharacters).
+          return { slug: pick, mine: !!(reused && pick === reused) || !!(j && j.taken && j.mine && !fresh && pick === base) };
         });
     }
 
@@ -989,6 +1037,7 @@
       halted = null;
       usedThisRun = {};
       var slugById = {};
+      var mineById = {};
       var made = [], failed = 0;
       var pageSlug = '', extras = {};
 
@@ -1014,7 +1063,7 @@
         if (opts.destination === 'characters') return Promise.resolve();
         var type = opts.destination;
         return resolveSlug(type, bundle.meta.name || 'imported-script', '', true)
-          .then(function (s) { pageSlug = s; });
+          .then(function (s) { pageSlug = s.slug; });
       }
 
       function copyPageArt() {
@@ -1041,19 +1090,33 @@
       }
 
       function settleCharacterSlugs() {
+        // Saved earlier in this sitting: the page is there and it is yours,
+        // and its identity is claimed before anything else is resolved.
+        creating.forEach(function (r) {
+          if (!madeById[r.id]) return;
+          slugById[r.id] = madeById[r.id];
+          mineById[r.id] = true;
+          usedThisRun[madeById[r.id]] = 1;
+        });
         var i = 0;
-        return (function next() {
+        var own = fetch('/api/account', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (a) { ownByName = window.ImportMerge ? window.ImportMerge.ownPages(a && a.characters) : {}; })
+          .catch(function () { ownByName = {}; });
+        return own.then(function next() {
           if (i >= creating.length) return Promise.resolve();
           var r = creating[i];
+          if (slugById[r.id]) { i++; return next(); }
           var at = planned.rows.indexOf(r);
           rowState(at, 'work', 'checking address&hellip;');
-          return resolveSlug('character', r.name, opts.appearsIn).then(function (slug) {
-            slugById[r.id] = slug;
+          return resolveSlug('character', r.name, opts.appearsIn).then(function (res) {
+            slugById[r.id] = res.slug;
+            mineById[r.id] = res.mine;
             rowState(at, 'wait', 'ready');
             i++;
             return next();
           });
-        })();
+        });
       }
 
       function writeCharacters() {
@@ -1066,39 +1129,63 @@
           var r = creating[i], at = planned.rows.indexOf(r), slug = slugById[r.id];
           if (rowDone(at)) { made.push(slug); i++; return next(); }
           runSay('work', 'Making character pages&hellip; ' + (i + 1) + ' of ' + creating.length + '.');
-          var artJob = Promise.resolve('');
-          if (opts.art && r.entry.image) {
-            rowState(at, 'work', 'copying art&hellip;');
-            artJob = copyArt(BI.artKey(slug), r.entry.image)
-              .then(function () { return BI.artKey(slug); })
-              .catch(function (err) {
-                if (err && err.rateLimited) throw err;
-                return '';   // the page keeps the Bloodstar URL and still shows art
+          /* A page of yours already at this identity is UPDATED, the way
+             mass-upload.html does it: read back first, and this project merged
+             INTO it through assets/import-merge.js — the mechanics from the
+             project, everything else the page's own (tags, almanac text it
+             already has, alternate art, the printable token, who may edit it,
+             whether it is published). Posting the project over it used to
+             replace the whole page, and the default "draft" took a live page
+             off the site. A page that cannot be read is not written. */
+          var mine = !!mineById[r.id];
+          if (mine) rowState(at, 'work', 'reading your page&hellip;');
+          var pageJob = !window.ImportMerge
+            ? Promise.reject(new Error('the page did not finish loading. Reload and try again'))
+            : mine ? loadPage(slug) : Promise.resolve(null);
+          var plan = null;
+          return pageJob.then(function (page) {
+            plan = window.ImportMerge.artPlan(page, opts);
+            /* Each icon into its own slot, one after the other. A character
+               with more than one is usually a traveller, whose good and evil
+               tokens are both the work — importing one of them is importing
+               part of the character. A slot the page already fills is kept
+               unless "Replace the icons" is ticked (artPlan). */
+            function copySlot(prev, wanted, src, key) {
+              return prev.then(function (paths) {
+                if (!(opts.art && wanted && src)) { paths.push(''); return paths; }
+                rowState(at, 'work', 'copying art&hellip;');
+                return copyArt(key, src).then(function () { paths.push(key); return paths; })
+                  .catch(function (err) {
+                    if (err && err.rateLimited) throw err;
+                    paths.push('');   // the page keeps the Bloodstar URL and still shows art
+                    return paths;
+                  });
               });
-          }
-          /* The second icon, copied into its own slot. A character with two
-             is usually a traveller, whose good and evil tokens are both the
-             work — importing one of them is importing half the character. */
-          var artAltJob = Promise.resolve('');
-          if (opts.art && r.entry.imageAlt) {
-            artAltJob = artJob.then(function () {
-              return copyArt(BI.artAltKey(slug), r.entry.imageAlt)
-                .then(function () { return BI.artAltKey(slug); })
-                .catch(function (err) {
-                  if (err && err.rateLimited) throw err;
-                  return '';   // falls back to the Bloodstar URL, as the first does
-                });
+            }
+            var artJob = copySlot(copySlot(copySlot(Promise.resolve([]),
+              plan.main, r.entry.image, BI.artKey(slug)),
+              plan.alt, r.entry.imageAlt, BI.artAltKey(slug)),
+              plan.alt2, r.entry.imageAlt2, BI.artAlt2Key(slug));
+            return artJob.then(function (paths) {
+              // Art copied over an existing page touches its row (touchArtRow
+              // in worker.js), which moves the stamp the save is checked
+              // against: read it again, or the save is refused as somebody
+              // else's edit.
+              var cur = page && paths.some(Boolean) ? loadPage(slug) : Promise.resolve(page);
+              return cur.then(function (p) { return { paths: paths, page: p }; });
             });
-          }
-          return Promise.all([artJob, artAltJob]).then(function (paths) {
-            var artPath = paths[0], artAltPath = paths[1];
+          }).then(function (res) {
+            var paths = res.paths, page = res.page;
             rowState(at, 'work', 'saving&hellip;');
-            var payload = BI.characterPayload(r.entry, opts, slug, artPath, jinxPlan.byOwner[slug] || [], artAltPath);
+            var payload = BI.characterPayload(r.entry, opts, slug, paths[0], jinxPlan.byOwner[slug] || [], paths[1], paths[2]);
+            if (page) payload = mergeInto(page, payload, plan, opts);
             return post('/api/character', payload).then(function (j) {
-              var page = (j && j.page) || ('c/' + slug);
+              var href = (j && j.page) || ('c/' + slug);
               made.push(slug);
-              rowState(at, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> <a href="/' + esc(page.replace(/^\//, '')) + '" target="_blank">view</a>' +
-                (opts.art && r.entry.image && !artPath ? ' <span class="bs-chip warn">art left on Bloodstar</span>' : ''));
+              madeById[r.id] = slug;
+              rowState(at, 'ok', '<span class="ico ico-check" aria-hidden="true"></span> <a href="/' + esc(href.replace(/^\//, '')) + '" target="_blank">view</a>' +
+                (page ? ' (page updated)' : '') +
+                (opts.art && r.entry.image && plan.main && !paths[0] ? ' <span class="bs-chip warn">art left on Bloodstar</span>' : ''));
             });
           }).then(function () { i++; return next(); })
             .catch(function (err) {

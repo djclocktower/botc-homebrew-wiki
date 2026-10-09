@@ -557,7 +557,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
-    function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+    function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error){var e=new Error((j&&j.error)||'Save failed. Are you logged in?');e.conflict=!!(j&&j.conflict);throw e;}return j;}); }
+    /* The row's stamp as of the copy this form was loaded from, posted back
+       as baseUpdatedAt so the Worker refuses a save built on a copy somebody
+       else has since saved over (editConflict in worker.js) instead of
+       silently replacing their work. The collection save does not answer with
+       the new stamp, so it is read back after each save. */
+    var baseUpdatedAt = null;
+    function readStamp(key){
+      return fetch('/api/page?type=collection&slug=' + encodeURIComponent(key), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(res){ return (res && res.updatedAt) || null; })
+        .catch(function(){ return null; });
+    }
 
     function matchTerms(){
       return $('pc-match').value.split(',').map(function(s){ return norm(s); }).filter(Boolean);
@@ -909,13 +921,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         // Always send logo ('' clears it server-side); background rides on theme.
         entry.logo = logoDataURL ? ('collections/' + id + '-logo.png') : (removeLogo ? '' : (existingLogo || ''));
         if (t) entry.theme = t;
+        if (EDIT_KEY && baseUpdatedAt) entry.baseUpdatedAt = baseUpdatedAt;
         return apiSave(entry);
+      }).then(function(res){
+        return readStamp((res && res.slug) || id).then(function(stamp){
+          baseUpdatedAt = stamp;
+          return res;
+        });
       }).then(function(res){
         if (headerDataURL){ existingHeader = 'collections/' + id + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'collections/' + id + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){ existingBg = 'collections/' + id + '-bg.png'; bgDataURL = null; }
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
-        currentStatus = saveStatus;
+        // What the Worker stored, not what was asked for: an approved
+        // editor's save keeps a draft a draft, whatever button they pressed.
+        currentStatus = (res && res.status) || saveStatus;
         EDIT_KEY = id;
         EDIT_PK = (res && res.slug) || EDIT_PK || id;
         $('pub-page-title').textContent = 'Edit Collection';
@@ -930,15 +950,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? ' <em><code>/collection/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
             'To change an existing collection, open it from <a href="account">your account</a>.</em>'
           : '';
-        if (isDraft){
-          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
+        if (currentStatus === 'draft'){
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> ' +
+            (isDraft ? 'Draft saved (not public).' : 'Saved. It is still a draft: only its creator can publish it.') +
+            ' <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
         } else {
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
         }
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
+        var fresh = err && err.conflict && EDIT_KEY
+          ? ' <a href="publish-collection?c=' + encodeURIComponent(EDIT_KEY) + '">Open the saved version →</a>' : '';
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message) + fresh);
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       });
@@ -984,6 +1008,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         .then(function(res){
           var c = res.data; if (!c) return;
           currentStatus = res.status || 'published';
+          baseUpdatedAt = res.updatedAt || null;
           draftedNotice(c);
           EDIT_KEY = c.id || slugify(c.displayName || c.slug) || key;
           EDIT_PK = c.slug || EDIT_KEY;

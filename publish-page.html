@@ -578,7 +578,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         say('work', 'Uploading images…');
         return Promise.all(jobs).then(function(){
           if (headerData) { headerPath = 'pages/' + slug + '-header.png'; headerData = null; }
-          if (bgData) { theme.background = 'pages/' + slug + '-bg.png'; bgData = null; }
+          // bgPath too, as publish-news does: collect() only reads
+          // theme.background back through bgPath once bgData is spent, so
+          // without it the second save sent no background and the image just
+          // uploaded was dropped from the page.
+          if (bgData) { theme.background = 'pages/' + slug + '-bg.png'; bgPath = theme.background; bgData = null; }
           var again = collect();
           again.status = status;
           again.slug = slug;

@@ -85,6 +85,7 @@
       // familiar name with a different ability is ordinary homebrew.
       reworked: 'import',         // import | link | skip
       art: true,
+      replaceArt: false,          // over a page you already have: see ImportMerge.artPlan
       logo: true,
       background: true,
       flavour: 'quote',           // quote | lede | skip
@@ -226,8 +227,9 @@
      `artPath` is where its icon actually landed (empty when it stayed on
      Bloodstar or there was none). `artAltPath` is the same for the second
      icon: a Bloodstar project exports `image` as an array for a character
-     with more than one, and the second entry is a traveller's good token. */
-  function characterPayload(entry, opts, slug, artPath, jinxes, artAltPath) {
+     with more than one, and the second entry is a traveller's good token.
+     `artAlt2Path` is the third: a traveller's evil token. */
+  function characterPayload(entry, opts, slug, artPath, jinxes, artAltPath, artAlt2Path) {
     var overview = clean(entry.overview);
     var lede = '';
     var bullets = [];
@@ -318,6 +320,15 @@
       payload.imageAlt = 'https://botchomebrew.wiki/assets/' + artAltPath;
     } else if (entry.imageAlt) {
       payload.imageAlt = entry.imageAlt;
+    }
+    /* And the third — the schema's [unaligned, good, evil] for a traveller
+       (see "A character's three icons" in CLAUDE.md). Without it every
+       Bloodstar traveller arrived with no evil token. */
+    if (artAlt2Path) {
+      payload.artAlt2 = artAlt2Path;
+      payload.imageAlt2 = 'https://botchomebrew.wiki/assets/' + artAlt2Path;
+    } else if (entry.imageAlt2) {
+      payload.imageAlt2 = entry.imageAlt2;
     }
     return payload;
   }
@@ -538,6 +549,7 @@
      which is why the slug has to be settled before any art moves. */
   function artKey(slug) { return 'art/' + slug + '.png'; }
   function artAltKey(slug) { return 'art/' + slug + '-alt.png'; }
+  function artAlt2Key(slug) { return 'art/' + slug + '-alt2.png'; }
 
   var api = {
     TEAMS: TEAMS,
@@ -559,7 +571,7 @@
     nightOrder: nightOrder,
     pagePayload: pagePayload,
     changelogPayload: changelogPayload,
-    artKey: artKey, artAltKey: artAltKey
+    artKey: artKey, artAltKey: artAltKey, artAlt2Key: artAlt2Key
   };
   if (typeof window !== 'undefined') { window.BloodstarImport = api; }
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }

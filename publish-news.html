@@ -444,6 +444,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!a.body.trim()) { say('err', 'Write the article body first.'); return; }
       a.status = status;
       a.images = images.slice();
+      // Held down until the save settles: a second tap while a brand-new
+      // article was saving had no slug to save to yet, and made a second
+      // article.
+      busy(true);
       say('work', 'Saving…');
       api('/api/admin/news', a).then(function(d){
         editingSlug = d.slug;
@@ -473,7 +477,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
               ? 'Taken off the site. It is a draft again — only admins can see it, and Publish puts it back.'
               : 'Saved as a draft. Only admins can see it.'));
         loadList();
-      }).catch(function(err){ say('err', esc(err.message || 'Could not reach the server. Try again.')); });
+      }).catch(function(err){ say('err', esc(err.message || 'Could not reach the server. Try again.')); })
+        .then(function(){ busy(false); });
+    }
+    function busy(on){
+      ['n-publish', 'n-draft', 'n-delete'].forEach(function(id){ $(id).disabled = on; });
     }
 
     function del(){

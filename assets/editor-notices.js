@@ -2,11 +2,12 @@
 
    /api/character answers every save with the page's classification and, if
    it is Partial, which pieces are still missing. This turns that into a
-   modal the owner actually reads, because a Partial page is invisible in
-   browsing and people would otherwise assume their page had failed to save.
+   modal the owner actually reads, because a Partial page is left out of the
+   wiki's own picks (Featured Character, Random Character) and readers can
+   hide it, and people would otherwise wonder why their page never comes up.
 
    It also handles the publish bar: if the Worker downgraded a publish attempt
-   to a draft because the page is missing a name, an icon, an ability or tags,
+   to a draft because the page is missing a name, an icon or an ability,
    that is what the modal leads with.
 
    Load after assets/classify.js (for the labels) — it degrades to plain
@@ -88,8 +89,8 @@
       : '';
 
     modal('Saved, but this page is Partial',
-      '<p class="rules-modal-intro">It is live, but <strong>Partial</strong> pages ' +
-      'are hidden from the homepage and All Characters.</p>' +
+      '<p class="rules-modal-intro">It is live and listed, but <strong>Partial</strong> pages ' +
+      'are never picked as the Featured or Random Character, and readers can choose to hide them.</p>' +
       '<p class="rules-modal-intro">Still to add:</p>' +
       list +
       '<p class="rules-modal-intro" style="margin-top:14px">Add them and save again.</p>',

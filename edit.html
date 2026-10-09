@@ -875,16 +875,23 @@
         return normalizeArtDataURL(url).catch(function(){ return url; });
       });
     }
+    /* A file the browser cannot draw (HEIC, a broken download) — see
+       create.html, the same form: say so rather than doing nothing. */
+    function artUnreadable(input) {
+      input.value = '';
+      alert('That image could not be read. Save it as a PNG, JPEG or WebP and pick it again.');
+    }
     $('art').addEventListener('change', function(e){
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
-        artOriginal = ev.target.result;
-        standardizedCopy(ev.target.result).then(function(url){
+        var picked = ev.target.result;
+        standardizedCopy(picked).then(function(url){
+          artOriginal = picked;
           artDataURL = url; artChanged = true;
           var th=$('artthumb'); th.src=url; th.style.display='block';
           $('artStdWrap').style.display=''; update();
-        });
+        }).catch(function(){ artUnreadable($('art')); });
       };
       reader.readAsDataURL(file);
     });
@@ -914,13 +921,14 @@
         var file = e.target.files[0]; if(!file) return;
         var reader = new FileReader();
         reader.onload = function(ev){
-          slot.setOrig(ev.target.result);
-          standardizedCopy(ev.target.result).then(function(url){
+          var picked = ev.target.result;
+          standardizedCopy(picked).then(function(url){
+            slot.setOrig(picked);
             slot.set(url);
             var th=$(id+'Thumb'); th.src=url; th.style.display='block';
             $(id+'StdWrap').style.display=''; $(id+'Clear').style.display='';
             update();
-          });
+          }).catch(function(){ artUnreadable($(id)); });
         };
         reader.readAsDataURL(file);
       });
@@ -975,7 +983,7 @@
           var th=$('tokenThumb'); th.src=url; th.style.display='block';
           $('tokenClear').style.display='';
           syncTokenHint(); update();
-        });
+        }).catch(function(){ artUnreadable($('tokenFile')); });
       };
       reader.readAsDataURL(file);
     });
@@ -1555,7 +1563,7 @@
       var cost = window.Classify && window.Classify.isIncomplete(entry)
         ? ' This page is still missing ' +
           window.Classify.listPhrase(window.Classify.missingBits(entry)) +
-          ', so without the mark it becomes Partial and is hidden from the browse pages.'
+          ', so without the mark it becomes Partial: never picked as the Featured or Random Character, and hidden from readers who choose to hide Partial pages.'
         : '';
       $('curata-note').innerHTML = where +
         ' It adds a laurel wreath and shows the page more often on the homepage. ' +
