@@ -84,7 +84,7 @@
   var bootPromise = null;
   function boot() {
     if (!bootPromise) {
-      bootPromise = fetch('/api/boot', { credentials: 'same-origin', cache: 'no-store' })
+      bootPromise = fetch('/api/boot', { credentials: 'same-origin', cache: 'no-cache' })
         .then(function (r) { return r.json(); })
         .catch(function () { return null; });
     }

@@ -325,7 +325,7 @@
   // re-apply the map as it stood when the page loaded.
   function refresh() {
     var source = bootUsed
-      ? fetch('/api/boot', { credentials: 'same-origin', cache: 'no-store' })
+      ? fetch('/api/boot', { credentials: 'same-origin', cache: 'no-cache' })
         .then(function (r) { return r.json(); }).catch(function () { return null; })
       : bootPromise;
     bootUsed = true;
