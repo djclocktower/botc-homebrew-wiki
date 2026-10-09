@@ -2308,6 +2308,44 @@ async function wikiParentRow(env, type, key) {
   return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status, data: parseData(row) };
 }
 
+/* The one rule for whether a set's page (/p/) is the PUBLIC's: its parent
+   must exist and be published. A page goes down with its set — deleted,
+   purged, or taken back to draft — and comes back with it. Every public way
+   in asks this (the /p/ route, comments, the creator pages, Featured
+   Articles), so a page search leaves out cannot be reached by a link either.
+   It used to be "parent not deleted": a purged parent resolved to null and
+   skipped the test, and a draft parent passed it. A standalone article's
+   virtual parent is always published. `parent` is a wikiParentRow() result. */
+function wikiParentPublic(parent) {
+  return !!parent && (parent.status || 'published') === 'published';
+}
+// ...and who still reaches one whose set is hidden: the page's owner, an
+// admin, the set's owner, and the set's approved editors — the same people
+// /api/page-viewer hands the set's draft pages to. Not an "anyone can edit"
+// guest: that mode opens a page to members because the page is public.
+async function mayReachHiddenWikiPage(env, sess, row, parent) {
+  if (!sess) return false;
+  if (canEditRow(sess, row)) return true;
+  if (parent && parent.ownerId != null && canEditRow(sess, { owner_id: parent.ownerId })) return true;
+  return (await wikiPageAccess(env, sess, row, parent)) === 'approved';
+}
+/* A standalone article's credit is free text any member types, so one
+   credited to somebody else would be listed on THEIR creator page — under a
+   name the writer has no claim to. So a creator page lists an article by its
+   credit only when the credit is the writer's by the same proof the rest of
+   the page uses: the name resolves to the article's owner. An article with no
+   owner (imported) or owned by an admin account stands on its credit, as
+   bulk-imported characters do. Its owner's own creator page still lists it,
+   by ownership. A set's page is not affected: only the set's owner and its
+   approved editors can write one. `account` is the user row the name
+   resolves to (or null), `admins` the adminUserIds(). */
+function articleCreditStands(r, account, admins) {
+  if (r.parent_type !== ARTICLE_PARENT || r.owner_id == null) return true;
+  const owner = Number(r.owner_id);
+  if (admins.includes(owner)) return true;
+  return !!account && Number(account.id) === owner;
+}
+
 // Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
 // Only the indexed columns are read, so this stays cheap even at 1000 rows.
 // [[Character Name]] -> the path segment render-wiki builds `c/{value}` from,
@@ -2506,10 +2544,12 @@ async function commentTarget(env, type, slug) {
   if (!COMMENTABLE.includes(type) || !slug) return null;
   if (type === 'wikipage') {
     await ensurePagesTable(env);
-    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, data FROM pages WHERE slug=?')
+    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, parent_type, parent_slug, data FROM pages WHERE slug=?')
       .bind(slug).first().catch(() => null);
     if (!row || row.status !== 'published') return null;
     if (parseData(row).comments === false) return null;
+    // Publicly visible means its set is too (wikiParentPublic).
+    if (!wikiParentPublic(await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null))) return null;
     return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/p/' + row.slug };
   }
   if (type === 'news') {
@@ -2675,6 +2715,27 @@ async function isProtected(env, type, slug) {
 }
 const PROTECTED_MSG = 'This page has been protected by an admin and cannot be edited right now.';
 
+/* ---- a page gone for good takes what is keyed on it ----
+   Slugs are reusable: a purged character's identity, a deleted wiki page's or
+   news article's slug can be taken by the next page of that name. Anything
+   left behind under the old (type, slug) is then inherited by a stranger's
+   page — its public history (and its owner's rollback to the old text), its
+   comments and their reports, other people's suggested versions, its view
+   counts, an admin's protection. So every hard delete clears all of it here,
+   in one place. Each table may not exist yet, so each step is on its own. */
+async function dropPageRefs(env, type, slug) {
+  const run = async (sql, ...binds) => {
+    try { await env.DB.prepare(sql).bind(...binds).run(); } catch { /* table not created yet */ }
+  };
+  await run('DELETE FROM comment_reports WHERE comment_id IN (SELECT id FROM comments WHERE entity_type=? AND slug=?)', type, slug);
+  await run('DELETE FROM comments WHERE entity_type=? AND slug=?', type, slug);
+  await run('DELETE FROM revisions WHERE entity_type=? AND slug=?', type, slug);
+  await run('DELETE FROM favorites WHERE entity_type=? AND slug=?', type, slug);
+  await run('DELETE FROM suggestions WHERE entity_type=? AND slug=?', type, slug);
+  await run('DELETE FROM page_views WHERE entity_type=? AND slug=?', type, slug);
+  await run('DELETE FROM settings WHERE key=?', protectKey(type, slug));
+}
+
 // ---- creator identity: which free-text "Creator" names belong to an account ----
 // A page's Creator field is free text ("Hystrex"); an account is a row in users.
 // Half the wiki was bulk-imported with a creator string and no account at all,
@@ -2699,11 +2760,35 @@ function normCreator(s) { return String(s == null ? '' : s).trim().toLowerCase()
 
 // A credit can name several people — "Taiyi (太一), Saki" — and each of them
 // gets their own creator page, so matching one name against the whole column
-// has to compare a single comma-separated segment at a time. Normalising the
-// spaces around the commas lets instr() do exact segment matching; instr and
-// not LIKE, because a name is free text and may contain % or _.
-function creditMatchSQL(col) {
-  return `instr(',' || replace(replace(lower(trim(${col})), ' ,', ','), ', ', ',') || ',', ',' || ? || ',') > 0`;
+// has to compare a single comma-separated segment at a time.
+//
+// That comparison is made in JS (creditHas), never in SQL. D1's SQLite has no
+// ICU, so its lower() folds A-Z and nothing else (gotcha 12): "Ólafur" stays
+// "Ólafur" while the key, lower-cased in JS, is "ólafur", and a SQL segment
+// match never found an accented credit at all — not for proof by ownership,
+// not for /author?a=, not for collect-creator. So SQL only NARROWS:
+// creditProbeSQL() is instr() against creditProbe(name), the longest run of
+// the name SQL's lower() is guaranteed to agree on (ASCII, and characters
+// that have no case — CJK, digits, punctuation). Every row it lets through is
+// then confirmed with creditHas(). A name with no such run (wholly Cyrillic,
+// say) probes with '' and instr(x, '') is 1, so the narrowing just steps aside.
+// instr and not LIKE, because a name is free text and may contain % or _.
+function creditProbe(name) {
+  let best = '', run = '';
+  for (const ch of normCreator(name)) {
+    const caseless = ch.toLowerCase() === ch.toUpperCase();
+    if (ch <= '\x7f' || caseless) run += ch;
+    else { if (run.length > best.length) best = run; run = ''; }
+  }
+  return run.length > best.length ? run : best;
+}
+function creditProbeSQL(col) {
+  return `instr(lower(${col}), ?) > 0`;
+}
+// The real test: does this credit string name any of `names` (each already
+// normCreator'd)?
+function creditHas(value, names) {
+  return !!names.length && creditNames(value).some(n => names.includes(n));
 }
 /* "This credit isn't mine" (`creditUnlinked` on a page's data). Somebody
    uploading another creator's character on their behalf still OWNS the row —
@@ -2752,11 +2837,11 @@ const CREDIT_DISOWNED_COUNT = `SUM(CASE WHEN ${CREDIT_UNLINKED_SQL} THEN 1 ELSE 
    per-name fix above looked broken for half an hour after it went live.
    Bump this whenever the rule changes and the old answers die with the
    deploy. */
-const CREDIT_RULE_V = 2;
+const CREDIT_RULE_V = 3;
 
-// The same test against a list of names: one bind per name.
-function creditAnySQL(col, n) {
-  const one = creditMatchSQL(col);
+// The same narrowing against a list of names: bind creditProbe() of each.
+function creditAnyProbeSQL(col, n) {
+  const one = creditProbeSQL(col);
   return '(' + new Array(n).fill(one).join(' OR ') + ')';
 }
 // Credit string -> the individual names in it, lower-cased.
@@ -2806,19 +2891,30 @@ async function resolveCreatorAccount(env, name) {
   // has to reach a decision the characters would otherwise settle on their
   // own; the whole answer is behind cachedCreatorAccount either way.
   try {
+    // Per row, then tallied here: the segment match is creditHas(), which SQL
+    // cannot do for an accented name (see creditProbe).
+    const tally = rows => {
+      const by = new Map();
+      for (const r of rows || []) {
+        if (!creditHas(r.c, [key])) continue;
+        const o = by.get(r.owner_id) || { owner_id: r.owner_id, n: 0, dis: 0 };
+        o.n++;
+        if (Number(r.dis)) o.dis++;
+        by.set(r.owner_id, o);
+      }
+      return [...by.values()];
+    };
     const [chars, scripts] = await Promise.all([
       env.DB.prepare(
-        `SELECT owner_id, COUNT(*) AS n, ${CREDIT_DISOWNED_COUNT} AS dis FROM characters
-          WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('creator')}
-          GROUP BY owner_id`
-      ).bind(key).all(),
+        `SELECT owner_id, creator AS c, ${CREDIT_UNLINKED_SQL} AS dis FROM characters
+          WHERE owner_id IS NOT NULL AND status='published' AND ${creditProbeSQL('creator')}`
+      ).bind(creditProbe(key)).all(),
       env.DB.prepare(
-        `SELECT owner_id, COUNT(*) AS n, ${CREDIT_DISOWNED_COUNT} AS dis FROM scripts
-          WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('author')}
-          GROUP BY owner_id`
-      ).bind(key).all()
+        `SELECT owner_id, author AS c, ${CREDIT_UNLINKED_SQL} AS dis FROM scripts
+          WHERE owner_id IS NOT NULL AND status='published' AND ${creditProbeSQL('author')}`
+      ).bind(creditProbe(key)).all()
     ]);
-    const charRows = chars.results || [], scriptRows = scripts.results || [];
+    const charRows = tally(chars.results), scriptRows = tally(scripts.results);
     // One disown anywhere takes the account out of the running for this name.
     const disowned = new Set();
     for (const r of [...charRows, ...scriptRows]) {
@@ -3242,8 +3338,9 @@ async function wikiPageAccess(env, sess, row, parent) {
   if (await isProtected(env, parent.type, parent.slug)) return '';
   if (mode === 'approved') return isApprovedEditor(sess, parent.data) ? 'approved' : '';
   // 'all' opens a published page; a draft is still its owner's and its named
-  // editors' alone, exactly as a character draft is.
-  return (row.status || 'published') === 'published' ? 'all' : '';
+  // editors' alone, exactly as a character draft is — and so is a page whose
+  // set is a draft, which is not public either (wikiParentPublic).
+  return (row.status || 'published') === 'published' && wikiParentPublic(parent) ? 'all' : '';
 }
 
 /* May this session add a page under this parent? Its owner, an admin, or an
@@ -3340,16 +3437,34 @@ async function adminUserIds(env, cache) {
    up, how many were left with the members who own them, and how many it could
    not read or write at all. */
 async function waterfallOwner(env, sess, type, row, ownerId, cache) {
-  const out = { claimed: 0, held: 0, failed: 0 };
+  const out = { claimed: 0, held: 0, failed: 0, pages: 0 };
   if (ownerId == null) return out;
   if (type !== 'script' && type !== 'collection') return out;
-  const slugs = [...new Set(await rosterCharacterSlugs(env, type, row, cache))].slice(0, OWNER_WATERFALL_MAX);
-  if (!slugs.length) return out;
   // The admin accounts, whose ownership of a character page is the bulk
   // import's leftovers. Read once (there are a handful), and if the read fails
   // the claim falls back to unowned-only — the safe half of the rule.
   const admins = await adminUserIds(env, cache);
   const adminQ = admins.length ? admins.map(() => '?').join(',') : '';
+  /* The set's custom wiki pages (/p/) come along on the same terms: nobody's
+     or an admin's, never a member's. They have to — the set's sharing choice
+     reaches only pages owned by the set's owner (wikiPageAccess), so a new
+     owner handed the set without them could not edit its rules page at all.
+     A collection's pages may name it by PK slug or by kebab id. */
+  try {
+    await ensurePagesTable(env);
+    const keys = [...new Set([row.slug, type === 'collection' ? parseData(row).id : null].filter(Boolean))];
+    const res = await env.DB.prepare(
+      `UPDATE pages SET owner_id=?, updated_at=datetime('now')
+       WHERE parent_type=? AND parent_slug IN (${keys.map(() => '?').join(',')})
+         AND (owner_id IS NULL` + (adminQ ? ` OR owner_id IN (${adminQ})` : '') + `)`
+    ).bind(ownerId, type, ...keys, ...admins).run();
+    out.pages = (res && res.meta && res.meta.changes) || 0;
+  } catch (err) {
+    console.log('waterfallOwner: wiki pages failed on ' + type + ' ' + (row && row.slug) +
+      ': ' + ((err && err.message) || err));
+  }
+  const slugs = [...new Set(await rosterCharacterSlugs(env, type, row, cache))].slice(0, OWNER_WATERFALL_MAX);
+  if (!slugs.length) return out;
   // Both statements below bind the new owner and every admin id beside the
   // chunk, so the chunk gets what those leave of the budget — named here so a
   // third bind cannot be added without this line being wrong in an obvious
@@ -3890,6 +4005,17 @@ function kebab(s) {
     .replace(/^-+|-+$/g, '').slice(0, 80);
 }
 
+// The loose key two set names are compared on: case, accents, punctuation and
+// apostrophes ignored, so "Tales from Tir-Far's Archive" finds
+// tales-from-tir-fars-archive. In ANY script: the old a-z0-9 version reduced
+// a wholly non-Latin name to '' — which then "matched" every collection whose
+// own name did the same — and dropped an accented letter outright where kebab
+// folds it ("Café" read as "caf" against an id of "cafe"). Every loose set
+// lookup goes through this, and an empty key matches nothing.
+function looseSetKey(s) {
+  return usernameKey(s).replace(/[^\p{L}\p{N}\p{M}]+/gu, '');
+}
+
 let _urlSlugReady = false;
 async function ensureUrlSlugColumn(env) {
   if (_urlSlugReady) return;
@@ -3948,12 +4074,22 @@ async function findScriptRowLoose(env, key) {
   const hit = await env.DB.prepare('SELECT slug, data FROM scripts WHERE slug=?')
     .bind(kebab(key)).first().catch(() => null);
   if (hit) return hit;
-  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const nkey = norm(key);
-  if (!nkey) return null;
+  if (!looseSetKey(key)) return null;
   const { results } = await env.DB.prepare('SELECT slug, data FROM scripts')
     .all().catch(() => ({ results: [] }));
-  for (const row of results || []) {
+  return matchScriptRow(results || [], key);
+}
+// The matching half of findScriptRowLoose, over rows already in hand — the
+// nest-urls sweep reads the table once and asks this for every character.
+function matchScriptRow(rows, key) {
+  if (!key) return null;
+  const pk = kebab(key);
+  const exact = rows.find(r => r.slug === pk);
+  if (exact) return exact;
+  const norm = looseSetKey;
+  const nkey = norm(key);
+  if (!nkey) return null;
+  for (const row of rows) {
     if (norm(row.slug) === nkey) return row;
     try {
       const d = JSON.parse(row.data);
@@ -3979,37 +4115,60 @@ async function findScriptRowLoose(env, key) {
 // Archive" has to find tales-from-tir-fars-archive, or a whole collection
 // would land in step 3 under a near-miss of its own name.
 async function characterQualifier(env, entry, ownerId) {
+  return (await qualifierFrom(qualifierSource(env), entry, ownerId)).q;
+}
+// Where characterQualifier looks things up. An ordinary save asks the
+// database one question at a time; the nest-urls sweep hands in the same
+// questions answered from tables it read once (see there). Both go through
+// qualifierFrom(), so the sweep files a page exactly where its next save
+// would — the sweep used to keep a copy of these rules that had drifted
+// (draft scripts' rosters, include[] without exclude[], unpublished
+// collections lending their name).
+function qualifierSource(env) {
+  return {
+    collection: key => findCollectionRow(env, key),
+    script: key => findScriptRowLoose(env, key),
+    included: () => includeCollections(env),
+    roster: () => scriptRosterMap(env),
+    userName: async id => {
+      const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(id).first();
+      return u && u.username;
+    }
+  };
+}
+// -> {q, kind}; kind says which rule filed it (the sweep reports the tally).
+async function qualifierFrom(src, entry, ownerId) {
   const segs = String((entry && entry.appearsIn) || '')
     .split(',').map(s => s.trim()).filter(Boolean);
 
   for (const s of segs) {
-    const row = await findCollectionRow(env, s);
+    const row = await src.collection(s);
     if (row) {
       const d = parseData(row);
       const q = kebab((d && d.id) || row.slug);
-      if (q) return q;
+      if (q) return { q, kind: 'collection' };
     }
   }
   for (const s of segs) {
-    const row = await findScriptRowLoose(env, s);
+    const row = await src.script(s);
     if (row) {
       const q = kebab(row.slug);
-      if (q) return q;
+      if (q) return { q, kind: 'script' };
     }
   }
   if (segs.length) {
     const q = kebab(segs[0]);
-    if (q) return q;
+    if (q) return { q, kind: 'unregistered' };
   }
   // No "Appears in" of its own — but a collection may list it by hand, which
   // is exactly what the page itself shows in that row (applyCollectionAppearsIn).
   // The address agrees with the page rather than contradicting it.
   if (entry && entry.slug) {
     try {
-      for (const coll of await includeCollections(env)) {
+      for (const coll of await src.included()) {
         if (coll.include.includes(entry.slug)) {
           const q = kebab(coll.id);
-          if (q) return q;
+          if (q) return { q, kind: 'listed' };
         }
       }
     } catch { /* fall through to the script rosters */ }
@@ -4018,8 +4177,8 @@ async function characterQualifier(env, entry, ownerId) {
     // plainly belong to one script, and would otherwise be filed under the
     // account that happens to own them.
     try {
-      const q = (await scriptRosterMap(env)).get(String(entry.slug));
-      if (q) return q;
+      const q = (await src.roster()).get(String(entry.slug));
+      if (q) return { q, kind: 'listed' };
     } catch { /* fall through to the author */ }
   }
   // A credit can name several people ("Taiyi (太一), Saki"); the first is the
@@ -4027,17 +4186,15 @@ async function characterQualifier(env, entry, ownerId) {
   const cred = creditNames((entry && entry.creator) || '')[0];
   if (cred) {
     const q = kebab(cred);
-    if (q) return q;
+    if (q) return { q, kind: 'creator' };
   }
   if (ownerId) {
     try {
-      const u = await env.DB.prepare('SELECT username FROM users WHERE id=?')
-        .bind(ownerId).first();
-      const q = kebab(u && u.username);
-      if (q) return q;
+      const q = kebab(await src.userName(ownerId));
+      if (q) return { q, kind: 'account' };
     } catch { /* fall through */ }
   }
-  return CHAR_ADDR_FALLBACK;
+  return { q: CHAR_ADDR_FALLBACK, kind: 'fallback' };
 }
 
 // The first free address under `qualifier`. Two characters with the same name
@@ -4078,10 +4235,11 @@ async function freeCharAddress(env, qualifier, base, exceptUid) {
 }
 
 // The address a character's current name and set ask for. `current` is the
-// address it already has, if any.
-async function characterAddress(env, uid, entry, ownerId, current) {
+// address it already has, if any, and `prevName` the name it had before this
+// save.
+async function characterAddress(env, uid, entry, ownerId, current, prevName) {
   const q = kebab(await characterQualifier(env, entry, ownerId)) || CHAR_ADDR_FALLBACK;
-  const name = kebab((entry && entry.name) || uid) || 'character';
+  const name = charAddressName(entry && entry.name, uid);
   const first = q + '/' + name;
   // Already filed under the right set under the right name — including as a
   // numbered duplicate. Keep it. Recomputing the address on every save is what
@@ -4089,10 +4247,20 @@ async function characterAddress(env, uid, entry, ownerId, current) {
   // set must not shuffle the page onto a different URL just because a sibling
   // moved away and freed up the unnumbered form.
   if (current === first) return current;
-  if (current && current.startsWith(first + '-') && /^\d+$/.test(current.slice(first.length + 1))) {
+  // A numbered address is kept only when the NAME is unchanged too (the set
+  // is, or the prefix would not match). Renaming "Carpenter 2", filed at
+  // set/carpenter-2, to "Carpenter" looks exactly like a numbered duplicate
+  // of set/carpenter — and kept the -2 for good, under a name that no longer
+  // has a 2 in it.
+  if (current && current.startsWith(first + '-') && /^\d+$/.test(current.slice(first.length + 1)) &&
+      (prevName === undefined || charAddressName(prevName, uid) === name)) {
     return current;
   }
   return freeCharAddress(env, q, name, uid);
+}
+// The character half of an address: its name, else its identity.
+function charAddressName(name, uid) {
+  return kebab(name) || kebab(uid) || 'character';
 }
 
 // Move a character to a new address, remembering the old one. This is the
@@ -5313,8 +5481,9 @@ async function featuredArticles(env, limit, opts = {}) {
     let hidden = r.status === 'published' ? '' : 'draft';
     if (hidden && !opts.all) continue;
     const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-    // Same rule as the author listing: a page goes down with its parent.
-    if (!hidden && parent && parent.status === 'deleted') hidden = 'parent-deleted';
+    // Same rule as the author listing: a page goes down with its parent
+    // (wikiParentPublic). A purged parent reads as deleted.
+    if (!hidden && !wikiParentPublic(parent)) hidden = parent && parent.status !== 'deleted' ? 'parent-draft' : 'parent-deleted';
     if (hidden && !opts.all) continue;
     const d = parseData(r);
     articles.push({
@@ -6404,15 +6573,26 @@ async function findCollectionRow(env, key) {
     'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections WHERE slug=?'
   ).bind(key).first().catch(() => null);
   if (hit) return hit;
-  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const nkey = norm(key);
   const { results } = await env.DB.prepare(
     'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections'
   ).all().catch(() => ({ results: [] }));
-  for (const row of results || []) {
+  return matchCollectionRow(results || [], key);
+}
+// The matching half of findCollectionRow, over rows already in hand (the
+// nest-urls sweep reads the table once). PK first, then the loose keys.
+function matchCollectionRow(rows, key) {
+  if (!key) return null;
+  const exact = rows.find(r => r.slug === key);
+  if (exact) return exact;
+  // looseSetKey: an empty key (a name with no letters at all) matches
+  // nothing, rather than every row whose own key is empty too.
+  const norm = looseSetKey;
+  const nkey = norm(key);
+  for (const row of rows) {
     try {
       const d = foldLegacyCurata(JSON.parse(row.data));
-      if (d.id === key || norm(d.id) === nkey || norm(row.slug) === nkey || norm(d.displayName) === nkey) return row;
+      if (d.id === key) return row;
+      if (nkey && (norm(d.id) === nkey || norm(row.slug) === nkey || norm(d.displayName) === nkey)) return row;
     } catch { /* skip bad rows */ }
   }
   return null;
@@ -7104,20 +7284,25 @@ const app = {
       await ensurePagesTable(env);
       const author = (url.searchParams.get('author') || '').trim();
       if (author) {
-        // Published only — an author page is public.
+        // Published only — an author page is public. Matched one credit
+        // segment at a time, in JS (see creditProbe), like the creator pages.
+        const key = normCreator(author);
         const { results } = await env.DB.prepare(
-          `SELECT slug, title, parent_type, parent_slug, author, data, updated_at
-           FROM pages WHERE status='published' AND lower(author)=lower(?)
-           ORDER BY updated_at DESC LIMIT 200`
-        ).bind(author).all().catch(() => ({ results: [] }));
+          `SELECT slug, title, parent_type, parent_slug, author, owner_id, data, updated_at
+           FROM pages WHERE status='published' AND ${creditProbeSQL('author')}
+           ORDER BY updated_at DESC`
+        ).bind(creditProbe(key)).all().catch(() => ({ results: [] }));
+        const account = await cachedCreatorAccount(env, ctx, author);
+        const admins = await adminUserIds(env);
         const pages = [];
         for (const r of results || []) {
+          if (pages.length >= 200) break;
+          if (!creditHas(r.author, [key]) || !articleCreditStands(r, account, admins)) continue;
           const d = parseData(r);
           const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-          // A page whose script/collection has been deleted drops out of the
-          // public listings with it.
-          // A draft parent is somebody's unpublished page: not listed, not named.
-          if (parent && parent.status && parent.status !== 'published') continue;
+          // A page goes down with its script/collection (wikiParentPublic):
+          // a draft parent is somebody's unpublished page, not listed, not named.
+          if (!wikiParentPublic(parent)) continue;
           pages.push({
             slug: r.slug, title: r.title, author: r.author,
             blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
@@ -7160,6 +7345,10 @@ const app = {
       const access = await wikiPageAccess(env, sess, row, parent);
       const editable = !!access;
       if (row.status !== 'published' && !editable) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
+      // Same rule as the /p/ route: a page under a hidden set is not public.
+      if (!editable && !wikiParentPublic(parent) && !(await mayReachHiddenWikiPage(env, sess, row, parent))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       return jsonResponse({
@@ -7209,12 +7398,13 @@ const app = {
         const d = parseData(row);
         const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
         // A page goes down with its parent: if the script/collection it belongs
-        // to has been deleted, nothing links here any more and the public
-        // shouldn't reach it either. Its owner still can, so restoring the
-        // parent brings everything back.
-        if (parent && parent.status === 'deleted') {
+        // to has been deleted, purged or taken back to draft, nothing public
+        // links here and the public shouldn't reach it by URL either
+        // (wikiParentPublic). Its owner, the set's owner and its approved
+        // editors still can, so restoring the parent brings everything back.
+        if (!wikiParentPublic(parent)) {
           const sess = await getSession(env, request);
-          if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
+          if (!(await mayReachHiddenWikiPage(env, sess, row, parent))) return assetsOrNotFound(env, request);
         }
         await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
         const page = {
@@ -7619,17 +7809,22 @@ const app = {
       // Each page is still listed on the creator page for the name it credits
       // (the second clause finds it there), and still on its owner's account
       // page, which is where they manage it.
+      //
+      // SQL only narrows (owner, or a credit that might name one of these);
+      // keep() is the actual rule, because the name match has to be made in
+      // JS to be right for an accented credit (see creditProbe).
       function whereFor(nameCol) {
         const clauses = [];
-        if (u) {
-          clauses.push(disowned.length
-            ? `(owner_id=? AND ${CREDIT_LINKED_SQL} AND NOT ${creditAnySQL(nameCol, disowned.length)})`
-            : `(owner_id=? AND ${CREDIT_LINKED_SQL})`);
-        }
-        if (names.length) clauses.push(creditAnySQL(nameCol, names.length));
+        if (u) clauses.push('owner_id=?');
+        if (names.length) clauses.push(creditAnyProbeSQL(nameCol, names.length));
         if (!clauses.length) return null;
         return { sql: `(${clauses.join(' OR ')}) AND status IN ${statusIn}`,
-                 binds: [...(u ? [u.id, ...disowned] : []), ...names] };
+                 binds: [...(u ? [u.id] : []), ...names.map(creditProbe)] };
+      }
+      function keep(r) {
+        if (u && Number(r.owner_id) === Number(u.id) && !Number(r.dis) &&
+            !creditHas(r.c, disowned)) return true;
+        return creditHas(r.c, names);
       }
       // The PK slug comes off the row, not out of the JSON: legacy rows do not
       // all carry `slug` in their data blob, and a card with no slug is a
@@ -7639,9 +7834,10 @@ const app = {
         if (!w) return [];
         try {
           const { results } = await env.DB.prepare(
-            `SELECT slug, data, status FROM ${table} WHERE ${w.sql} ORDER BY updated_at DESC`
+            `SELECT slug, data, status, owner_id, ${nameCol} AS c, ${CREDIT_UNLINKED_SQL} AS dis
+               FROM ${table} WHERE ${w.sql} ORDER BY updated_at DESC`
           ).bind(...w.binds).all();
-          return results || [];
+          return (results || []).filter(keep);
         } catch {
           // status/updated_at not migrated on this row set — legacy fallback
           const { results } = await env.DB.prepare(
@@ -7763,17 +7959,24 @@ const app = {
         const where = [];
         const binds = [];
         if (u) { where.push('owner_id=?'); binds.push(u.id); }
-        if (names.length) { where.push(creditAnySQL('author', names.length)); binds.push(...names); }
+        if (names.length) { where.push(creditAnyProbeSQL('author', names.length)); binds.push(...names.map(creditProbe)); }
         if (where.length) {
           const { results } = await env.DB.prepare(
-            `SELECT slug, title, parent_type, parent_slug, data, updated_at FROM pages
+            `SELECT slug, title, parent_type, parent_slug, author, owner_id, data, updated_at FROM pages
              WHERE (${where.join(' OR ')}) AND status='published'
-             ORDER BY updated_at DESC LIMIT 200`
+             ORDER BY updated_at DESC`
           ).bind(...binds).all();
+          const admins = await adminUserIds(env);
           for (const r of results || []) {
+            if (pages.length >= 200) break;
+            // Owned by this account, or credited to one of its names — and an
+            // article credited by somebody else's hand is not proof of that
+            // (articleCreditStands).
+            if (!(u && Number(r.owner_id) === Number(u.id)) &&
+                !(creditHas(r.author, names) && articleCreditStands(r, u, admins))) continue;
             const d = parseData(r);
             const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-            if (parent && parent.status && parent.status !== 'published') continue;
+            if (!wikiParentPublic(parent)) continue;
             pages.push({
               slug: r.slug, title: r.title,
               blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
@@ -10076,20 +10279,42 @@ const app = {
       // Content flags can't be expressed in SQL (they live in the data blob),
       // so pull `data` and filter in JS. 'any' means no flag filter.
       const flag = (url.searchParams.get('flag') || '').trim();
-      // Only over-fetch when something below actually filters in JS. With no
-      // flag and no collection filter the extra 600 rows were read, parsed and
-      // classified purely to be thrown away by the .slice(0, 400) at the end —
-      // and `data` is the expensive column in this query, ~3 KB a row.
-      const needsJsFilter = !!collKey ||
-        ['no-icon', 'partial', 'curata', 'no-owner'].includes(flag);
-      const rowLimit = needsJsFilter ? 1000 : 400;
+      // "No owner" is a column, so it is a WHERE clause like the rest
+      // (the same test the JS filter made: no account behind owner_id).
+      if (flag === 'no-owner') wh.push('u.username IS NULL');
+      // Membership is resolved BEFORE the page list is read, so the roster
+      // narrows the scan rather than a cut of it. It used to be applied to the
+      // newest 1,000 rows of a 2,400-row table, so "collection X + owner none"
+      // silently left out every member nobody had touched lately — and the
+      // assign-owner bulk action then skipped them without a word.
+      let members = null;
+      if (collKey) {
+        if (type !== 'character') {
+          return jsonResponse({ error: 'The collection filter only applies to characters.' }, { status: 400 });
+        }
+        const crow = await findCollectionRow(env, collKey);
+        if (!crow) return jsonResponse({ error: 'No collection called “' + collKey + '”.' }, { status: 404 });
+        const { results: all } = await env.DB.prepare(
+          "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
+        ).all().catch(() => ({ results: [] }));
+        members = new Set(
+          PageRender.resolveCollectionMembers(parseData(crow), all || []).map(x => x.slug)
+        );
+      }
+      const dataFlag = ['no-icon', 'partial', 'curata'].includes(flag);
+      const where = wh.length ? 'WHERE ' + wh.join(' AND ') : '';
+      // With a JS filter the whole match is read and filtered FIRST, and only
+      // the result is cut to 400, so `total` is the real count. Without one,
+      // SQL does the cut and a COUNT says how many there were.
       const { results } = await env.DB.prepare(
         `SELECT p.slug, p.${t.nameCol} AS name, p.status, p.updated_at, u.username AS owner, p.data
          FROM ${t.table} p LEFT JOIN users u ON u.id = p.owner_id
-         ${wh.length ? 'WHERE ' + wh.join(' AND ') : ''}
-         ORDER BY p.updated_at DESC LIMIT ${rowLimit}`
+         ${where}
+         ORDER BY p.updated_at DESC${members || dataFlag ? '' : ' LIMIT 400'}`
       ).bind(...binds).all();
-      let pages = (results || []).map(r => {
+      let rows = results || [];
+      if (members) rows = rows.filter(r => members.has(r.slug));
+      let pages = rows.map(r => {
         const d = parseData(r);
         return {
           slug: r.slug, name: r.name, status: r.status,
@@ -10106,29 +10331,17 @@ const app = {
           missing: type === 'character' ? Classify.missingBits(d) : []
         };
       });
-      // Narrow to one collection's roster. Composes with everything above, so
-      // "collection X + owner none" is the list of that collection's unowned
-      // pages — which, with the assign-owner bulk action, is how a whole
-      // collection gets handed to an account.
-      if (collKey) {
-        if (type !== 'character') {
-          return jsonResponse({ error: 'The collection filter only applies to characters.' }, { status: 400 });
-        }
-        const crow = await findCollectionRow(env, collKey);
-        if (!crow) return jsonResponse({ error: 'No collection called “' + collKey + '”.' }, { status: 404 });
-        const { results: all } = await env.DB.prepare(
-          "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
-        ).all().catch(() => ({ results: [] }));
-        const members = new Set(
-          PageRender.resolveCollectionMembers(parseData(crow), all || []).map(x => x.slug)
-        );
-        pages = pages.filter(p => members.has(p.slug));
-      }
       if (flag === 'no-icon') pages = pages.filter(p => !p.hasIcon);
       else if (flag === 'partial') pages = pages.filter(p => p.classification === 'partial');
       else if (flag === 'curata') pages = pages.filter(p => p.curata);
-      else if (flag === 'no-owner') pages = pages.filter(p => !p.owner);
-      return jsonResponse({ pages: pages.slice(0, 400), total: pages.length });
+      let total = pages.length;
+      if (!members && !dataFlag && total >= 400) {
+        const c = await env.DB.prepare(
+          `SELECT COUNT(*) AS n FROM ${t.table} p LEFT JOIN users u ON u.id = p.owner_id ${where}`
+        ).bind(...binds).first().catch(() => null);
+        if (c && c.n != null) total = Number(c.n);
+      }
+      return jsonResponse({ pages: pages.slice(0, 400), total });
     }
 
     // ---------- ADMIN: PAGE-VIEW ANALYTICS ----------
@@ -11250,11 +11463,15 @@ const app = {
         let address = charAddress(existing) || c.slug;
         let movedFrom = null;
         try {
-          const prevAddress = charAddress(existing);
+          // The address it HAS — not charAddress(), which falls back to the
+          // identity for a legacy row with no url_slug yet. That page is
+          // getting its first address, not moving, and reading the identity
+          // as one reported (and logged) a rename nobody made.
+          const prevAddress = existing && existing.url_slug ? String(existing.url_slug) : '';
           address = await characterAddress(
             env, c.slug, c,
             existing ? existing.owner_id : sess.userId,
-            prevAddress
+            prevAddress, existing ? existing.name : undefined
           );
           const changed = await setCharAddress(env, c.slug, address);
           // A page that had an address and now has a different one has moved,
@@ -11686,10 +11903,20 @@ const app = {
             .bind(String(b.slug || '')).first().catch(() => null);
           if (!row) return jsonResponse({ error: 'Page not found.' }, { status: 404 });
           if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
-          await saveRevision(env, sess, 'wikipage', row);
+          // An admin's protection holds against deleting too — the page's own
+          // lock, or its script's or collection's, as it does for every edit.
+          if (!sess.isAdmin) {
+            const par = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+            if ((await isProtected(env, 'wikipage', row.slug)) ||
+                (par && par.type !== ARTICLE_PARENT && await isProtected(env, par.type, par.slug))) {
+              return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+            }
+          }
           await env.DB.prepare('DELETE FROM pages WHERE slug=?').bind(row.slug).run();
-          await ensureCommentTables(env);
-          await env.DB.prepare("DELETE FROM comments WHERE entity_type='wikipage' AND slug=?").bind(row.slug).run();
+          // Deleting one is permanent, and its slug can be taken by the next
+          // page of that title — which must not inherit this one's history
+          // (or let its owner roll back to this text), comments or reports.
+          await dropPageRefs(env, 'wikipage', row.slug);
           await unfeatureArticle(env, row.slug);
           await logActivity(env, sess, 'delete', 'wikipage', row.slug, row.title);
           return jsonResponse({ ok: true, deleted: row.slug });
@@ -11916,17 +12143,32 @@ const app = {
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (row.status !== 'deleted') return jsonResponse({ error: 'Purge only removes already-deleted pages. Delete it first.' }, { status: 400 });
         await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
-        // A purged page is gone for good — drop its version history too.
-        try {
-          await env.DB.prepare('DELETE FROM revisions WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
-        } catch { /* revisions table may not exist yet */ }
-        // And the bookmarks pointing at it: a soft-deleted page keeps them
-        // (it can be restored), a purged one has nothing left to come back.
-        try {
-          await env.DB.prepare('DELETE FROM favorites WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
-        } catch { /* favorites table may not exist yet */ }
+        // A purged page is gone for good — drop its version history, the
+        // bookmarks pointing at it (a soft-deleted page keeps them, since it
+        // can be restored), its comments, suggestions, views and protection.
+        await dropPageRefs(env, type, row.slug);
+        // A script's or collection's custom wiki pages went down with it when
+        // it was deleted; purged, there is nothing for them to come back
+        // with, and a new set taking the same slug would adopt them. So they
+        // are deleted too, exactly as deleting each one would.
+        let pagesPurged = 0;
+        if (type === 'script' || type === 'collection') {
+          try {
+            await ensurePagesTable(env);
+            const keys = [...new Set([row.slug, type === 'collection' ? parseData(row).id : null].filter(Boolean))];
+            const { results } = await env.DB.prepare(
+              `SELECT slug FROM pages WHERE parent_type=? AND parent_slug IN (${keys.map(() => '?').join(',')})`
+            ).bind(type, ...keys).all();
+            for (const p of results || []) {
+              await env.DB.prepare('DELETE FROM pages WHERE slug=?').bind(p.slug).run();
+              await dropPageRefs(env, 'wikipage', p.slug);
+              await unfeatureArticle(env, p.slug);
+              pagesPurged++;
+            }
+          } catch { /* the set is gone; its pages are already hidden */ }
+        }
         await logActivity(env, sess, 'purge', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug });
+        return jsonResponse({ ok: true, slug: row.slug, pagesPurged });
       }
 
       // ---- admin: roll a page back to an earlier revision ----
@@ -12026,7 +12268,7 @@ const app = {
         return jsonResponse({
           ok: true, slug: row.slug, owner: uname || null,
           characters: spread.claimed, charactersHeld: spread.held,
-          charactersFailed: spread.failed
+          charactersFailed: spread.failed, wikiPages: spread.pages
         });
       }
 
@@ -12553,8 +12795,9 @@ const app = {
           const row = await env.DB.prepare('SELECT title FROM news WHERE slug=?').bind(slug).first().catch(() => null);
           if (!row) return jsonResponse({ error: 'Article not found.' }, { status: 404 });
           await env.DB.prepare('DELETE FROM news WHERE slug=?').bind(slug).run();
-          await ensureCommentTables(env);
-          await env.DB.prepare("DELETE FROM comments WHERE entity_type='news' AND slug=?").bind(slug).run();
+          // Comments, their reports and the view counts go with it: the
+          // slug is free for the next article (dropPageRefs).
+          await dropPageRefs(env, 'news', slug);
           await logActivity(env, sess, 'delete', 'news', slug, row.title);
           return jsonResponse({ ok: true, deleted: slug });
         }
@@ -12704,15 +12947,17 @@ const app = {
           return jsonResponse({ error: 'Need both a creator and a collection name.' }, { status: 400 });
         }
         // One credit can name several people, so match a comma-separated
-        // segment rather than the whole column (see creditMatchSQL).
-        const { results } = await env.DB.prepare(
-          `SELECT slug, name FROM characters
-            WHERE status IS NOT 'deleted' AND ${creditMatchSQL('creator')}
+        // segment rather than the whole column — in JS, see creditProbe.
+        const { results: maybe } = await env.DB.prepare(
+          `SELECT slug, name, creator FROM characters
+            WHERE status IS NOT 'deleted' AND ${creditProbeSQL('creator')}
             ORDER BY name`
-        ).bind(normCreator(creator)).all().catch(() => ({ results: [] }));
+        ).bind(creditProbe(creator)).all().catch(() => ({ results: [] }));
+        const results = (maybe || []).filter(r => creditHas(r.creator, [normCreator(creator)]))
+          .map(r => ({ slug: r.slug, name: r.name }));
         const slugs = (results || []).map(r => r.slug);
         const existing = await findCollectionRow(env, collName);
-        if (b.dryRun) {
+        if (b.dryRun !== false) {
           return jsonResponse({
             ok: true, dryRun: true, creator, collection: collName,
             exists: !!existing, count: slugs.length,
@@ -12803,7 +13048,7 @@ const app = {
           let slug = kebab(r.name) || kebab(r.slug);
           plan.push({ from: r.slug, name: r.name, slug, body, hasBody: !!body.trim(), author: d.creator || null });
         }
-        if (b.dryRun) {
+        if (b.dryRun !== false) {
           return jsonResponse({
             ok: true, dryRun: true, parent: parent.name, count: plan.length,
             pages: plan.map(p => ({ from: p.from, name: p.name, slug: p.slug, hasBody: p.hasBody,
@@ -12864,7 +13109,7 @@ const app = {
           "SELECT slug, name, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
         ).bind(u.id).all();
         const hits = (results || []).filter(r => !parseData(r).curata);
-        if (b.dryRun) {
+        if (b.dryRun !== false) {
           return jsonResponse({
             ok: true, dryRun: true, username: u.username,
             owned: (results || []).length, count: hits.length,
@@ -13048,63 +13293,29 @@ const app = {
         await ensureUrlSlugColumn(env);
         await ensureRedirectsTable(env);
 
-        // --- lookup maps, built once ---
-        const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-        const setKey = new Map();       // normalised set name -> {q, kind}
-        const includedIn = new Map();   // character identity -> qualifier
-        try {
-          const { results } = await env.DB.prepare('SELECT slug, data FROM collections').all();
-          for (const r of results || []) {
-            let d = {};
-            try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { /* skip bad rows */ }
-            const q = kebab(d.id || r.slug);
-            if (!q) continue;
-            for (const k of [r.slug, d.id, d.displayName, d.name]) {
-              if (k && !setKey.has(norm(k))) setKey.set(norm(k), { q, kind: 'collection' });
-            }
-            for (const s of (Array.isArray(d.include) ? d.include : [])) {
-              if (typeof s === 'string' && !includedIn.has(s)) includedIn.set(s, q);
-            }
-          }
-        } catch { /* no collections is survivable */ }
-        try {
-          const { results } = await env.DB.prepare('SELECT slug, data FROM scripts').all();
-          for (const r of results || []) {
-            let d = {};
-            try { d = JSON.parse(r.data); } catch { /* skip bad rows */ }
-            const q = kebab(r.slug);
-            if (!q) continue;
-            // Collections win outright, so a name both claim keeps the
-            // collection it already resolved to.
-            for (const k of [r.slug, d.id, d.displayName, d.name]) {
-              if (k && !setKey.has(norm(k))) setKey.set(norm(k), { q, kind: 'script' });
-            }
-          }
-        } catch { /* no scripts is survivable */ }
-        // Rosters, for characters with no "Appears in" of their own that a
-        // script plainly owns (the Blood on the TARDIS cast).
-        try {
-          const { results } = await env.DB.prepare(
-            'SELECT slug, data FROM scripts ORDER BY created_at, slug'
-          ).all();
-          for (const r of results || []) {
-            const q = kebab(r.slug);
-            if (!q) continue;
-            let d = {};
-            try { d = JSON.parse(r.data); } catch { continue; }
-            for (const x of (Array.isArray(d.characters) ? d.characters : [])) {
-              // Collections were indexed first and keep the character.
-              if (typeof x === 'string' && !x.startsWith('off-') && !includedIn.has(x)) {
-                includedIn.set(x, q);
-              }
-            }
-          }
-        } catch { /* no rosters is survivable */ }
+        // --- lookups, read once ---
+        // The same questions characterQualifier asks on a save, answered from
+        // tables read once (qualifierFrom is the one set of rules for both).
+        const readAll = async sql => {
+          try { return (await env.DB.prepare(sql).all()).results || []; } catch { return []; }
+        };
+        const collRows = await readAll('SELECT slug, display_name AS name, owner_id, status, data FROM collections');
+        const scriptRows = await readAll('SELECT slug, data FROM scripts');
         const userName = new Map();
-        try {
-          const { results } = await env.DB.prepare('SELECT id, username FROM users').all();
-          for (const r of results || []) userName.set(Number(r.id), kebab(r.username));
-        } catch { /* fall through to the misc bucket */ }
+        for (const r of await readAll('SELECT id, username FROM users')) userName.set(Number(r.id), r.username);
+        const memo = new Map();
+        const once = (kind, key, fn) => {
+          const k = kind + '\u0000' + key;
+          if (!memo.has(k)) memo.set(k, fn());
+          return memo.get(k);
+        };
+        const src = {
+          collection: key => once('c', key, () => matchCollectionRow(collRows, key)),
+          script: key => once('s', key, () => matchScriptRow(scriptRows, key)),
+          included: () => includeCollections(env),
+          roster: () => scriptRosterMap(env),
+          userName: async id => userName.get(Number(id)) || ''
+        };
 
         // --- every character, oldest first, so a run is deterministic ---
         const { results: rows } = await env.DB.prepare(
@@ -13129,33 +13340,10 @@ const app = {
         const kinds = { collection: 0, script: 0, unregistered: 0, listed: 0, creator: 0, account: 0, fallback: 0 };
         const plan = [];
         for (const r of rows || []) {
-          const segs = String(r.appears_in || '').split(',').map(x => x.trim()).filter(Boolean);
-          let q = '', kind = '';
-          for (const s of segs) {
-            const hit = setKey.get(norm(s));
-            if (hit && hit.kind === 'collection') { q = hit.q; kind = 'collection'; break; }
-          }
-          if (!q) for (const s of segs) {
-            const hit = setKey.get(norm(s));
-            if (hit) { q = hit.q; kind = hit.kind; break; }
-          }
-          // A set this wiki has no page for is still a set, and reads far
-          // better than scattering its characters under their authors.
-          if (!q && segs.length) { q = kebab(segs[0]); if (q) kind = 'unregistered'; }
-          // Listed by hand in a collection, or on a script's roster.
-          if (!q && includedIn.has(String(r.slug))) {
-            q = includedIn.get(String(r.slug)); kind = 'listed';
-          }
-          if (!q) {
-            const cred = creditNames(r.creator || '')[0];
-            q = kebab(cred); if (q) kind = 'creator';
-          }
-          if (!q && r.owner_id != null) {
-            q = userName.get(Number(r.owner_id)) || ''; if (q) kind = 'account';
-          }
-          if (!q) { q = CHAR_ADDR_FALLBACK; kind = 'fallback'; }
+          const { q, kind } = await qualifierFrom(src,
+            { appearsIn: r.appears_in, slug: r.slug, creator: r.creator }, r.owner_id);
 
-          const base = kebab(r.name) || kebab(r.slug) || 'character';
+          const base = charAddressName(r.name, r.slug);
           const first = q + '/' + base;
           const current = r.url_slug ? String(r.url_slug) : '';
           // Already filed correctly, including as a numbered duplicate.
@@ -13192,7 +13380,7 @@ const app = {
           });
         }
 
-        let changed = 0;
+        let changed = 0, failed = 0;
         for (let i = 0; i < plan.length; i += 40) {
           const chunk = plan.slice(i, i + 40);
           const stmts = [];
@@ -13212,8 +13400,10 @@ const app = {
               "DELETE FROM redirects WHERE entity_type='character' AND from_slug=?"
             ).bind(p.to));
           }
+          // Keep going: a failed chunk is retried by the next run — but it is
+          // COUNTED, so a run that wrote nothing cannot read as a clean one.
           try { await env.DB.batch(stmts); changed += chunk.length; }
-          catch { /* keep going: a failed chunk is retried by the next run */ }
+          catch (e) { failed += chunk.length; console.error('[nest-urls] chunk failed:', (e && e.message) || e); }
         }
         // Written straight to D1, so the feeds and the in-isolate caches have
         // to be told, or every page keeps serving its old address.
@@ -13221,7 +13411,7 @@ const app = {
         await logActivity(env, sess, 'nest-urls', 'character', '', changed + ' addresses');
         return jsonResponse({
           ok: true, dryRun: false, scanned: (rows || []).length,
-          changed, kinds, samples: plan.slice(0, 40)
+          changed, failed, kinds, samples: plan.slice(0, 40)
         });
       }
 
@@ -13248,7 +13438,7 @@ const app = {
         // say "231 of these are only missing tags" before anything is moved.
         const byReason = {};
         for (const h of hits) for (const m of h.missing) byReason[m] = (byReason[m] || 0) + 1;
-        if (b.dryRun) {
+        if (b.dryRun !== false) {
           return jsonResponse({
             ok: true, dryRun: true, count: hits.length, byReason,
             pages: hits.slice(0, 300)
@@ -13361,7 +13551,7 @@ const app = {
           }
         }
 
-        if (b.dryRun) {
+        if (b.dryRun !== false) {
           return jsonResponse({
             ok: true, dryRun: true,
             exact, named,
@@ -13429,7 +13619,7 @@ const app = {
           res.flags.forEach(f => flags.push({ slug: row.slug, field: f.field, flag: f.flag }));
           if (res.changed) plan.push({ row, data: res.data, n: res.changed });
         }
-        if (b.dryRun) {
+        if (b.dryRun !== false) {
           return jsonResponse({
             ok: true, dryRun: true, scanned: rows.length,
             pages: plan.length, fields: plan.reduce((a, p) => a + p.n, 0),
@@ -13557,14 +13747,14 @@ const app = {
           if (r.parent_type === ARTICLE_PARENT) { already.push({ slug, title: r.title }); continue; }
           const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
           const item = { slug, title: r.title, from: parent ? parent.name : r.parent_slug };
-          if (!b.dryRun) {
+          if (b.dryRun === false) {
             await env.DB.prepare(`UPDATE pages SET parent_type=?, parent_slug='' WHERE slug=?`)
               .bind(ARTICLE_PARENT, slug).run();
             await logActivity(env, sess, 'to-article', 'wikipage', slug, r.title);
           }
           converted.push(item);
         }
-        return jsonResponse({ ok: true, dryRun: !!b.dryRun, converted, already, missing });
+        return jsonResponse({ ok: true, dryRun: b.dryRun !== false, converted, already, missing });
       }
 
       // ---- admin: rewrite one of the site's own strings (/text-editor) ----
@@ -13756,11 +13946,12 @@ const app = {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           adminName = u ? u.username : null;
         } catch { /* non-fatal */ }
-        let done = 0, claimed = 0, held = 0, charFailed = 0;
+        let done = 0, claimed = 0, held = 0, charFailed = 0, wikiPages = 0;
         // One read of the character table for the whole batch (see
         // rosterCharacterSlugs), however many collections it assigns.
         const rosterCache = {};
         const failed = [];
+        const incomplete = [];   // {slug, missing}: characters the publish bar turned away
         for (const slug of slugs) {
           try {
             let row = await getEntityRow(env, type, slug);
@@ -13772,6 +13963,15 @@ const app = {
               // /api/publish — a reason a page is down must not outlive the
               // page being down, whichever door put it back up.
               const bd = parseData(row);
+              // The publish bar holds here too, as it does on /api/publish
+              // (for admins as well): an incomplete character is skipped and
+              // reported, never put live with no icon or ability.
+              const missing = action === 'publish' && type === 'character' ? Classify.missingForPublish(bd) : [];
+              if (missing.length) {
+                failed.push(slug);
+                incomplete.push({ slug, missing });
+                continue;
+              }
               if (action === 'publish' && bd._draftNote) {
                 delete bd._draftNote;
                 await env.DB.prepare(`UPDATE ${t.table} SET status='published', data=?, updated_at=datetime('now') WHERE slug=?`)
@@ -13801,6 +14001,7 @@ const app = {
                 claimed += spread.claimed;
                 held += spread.held;
                 charFailed += spread.failed;
+                wikiPages += spread.pages;
               }
             } else if (action === 'curata' || action === 'uncurata') {
               const on = action === 'curata';
@@ -13832,7 +14033,7 @@ const app = {
           } catch { failed.push(slug); }
         }
         await logActivity(env, sess, 'bulk-' + action, type, null, done + ' page' + (done === 1 ? '' : 's'));
-        return jsonResponse({ ok: true, done, failed, characters: claimed, charactersHeld: held, charactersFailed: charFailed });
+        return jsonResponse({ ok: true, done, failed, characters: claimed, charactersHeld: held, charactersFailed: charFailed, wikiPages, incomplete });
       }
 
       return jsonResponse({ error: 'Unknown endpoint' }, { status: 404 });

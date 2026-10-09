@@ -140,7 +140,8 @@
     var fGrid = document.getElementById('articles-grid');
     var fForm = document.getElementById('feature-add');
     var fMsg = document.getElementById('feature-add-msg');
-    var HIDDEN_WHY = { draft: 'Hidden: page is a draft', 'parent-deleted': 'Hidden: its script or collection was deleted' };
+    var HIDDEN_WHY = { draft: 'Hidden: page is a draft', 'parent-deleted': 'Hidden: its script or collection was deleted',
+      'parent-draft': 'Hidden: its script or collection is a draft' };
 
     function esc(s){
       return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')

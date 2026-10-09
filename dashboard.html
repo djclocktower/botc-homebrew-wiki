@@ -1842,7 +1842,7 @@
       if (!confirm('Gather every character by ' + $('cc-creator').value.trim() + ' into “' + $('cc-coll').value.trim() + '”?')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/admin/collect-creator', {
-        creator: $('cc-creator').value.trim(), collection: $('cc-coll').value.trim()
+        creator: $('cc-creator').value.trim(), collection: $('cc-coll').value.trim(), dryRun: false
       }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
@@ -1878,7 +1878,7 @@
       if (!confirm('Convert these to wiki pages and retire the characters?\n\nThe characters are soft-deleted, so Deleted Content can restore any of them.')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/admin/concepts-to-pages', {
-        from: $('c2p-from').value.trim(), parent: $('c2p-parent').value.trim()
+        from: $('c2p-from').value.trim(), parent: $('c2p-parent').value.trim(), dryRun: false
       }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
@@ -1921,7 +1921,7 @@
       var who = $('sto-user').value.trim();
       if (!confirm('Give Curata to every character owned by ' + who + '?')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/curata-owner', { username: who }).then(function(res){
+      postJSON('/api/admin/curata-owner', { username: who, dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('sto-toast', false, d.error || 'Failed.'); return; }
@@ -2076,7 +2076,7 @@
     $('f2a-go').addEventListener('click', function(){
       if (!confirm('Make every featured page a standalone article?\n\nEach one leaves its script or collection and is listed on the Articles page instead. Addresses, text and comments stay the same.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/page-to-article', { featured: true }).then(function(res){
+      postJSON('/api/admin/page-to-article', { featured: true, dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('f2a-toast', false, d.error || 'Failed.'); return; }
@@ -2279,7 +2279,7 @@
       if (!confirm('Move ' + n + ' published character' + (n === '1' ? '' : 's') +
                    ' that miss the publish bar to drafts?\n\nThey disappear from the public wiki until their owner fills the gap. Nothing is deleted, and you can publish any of them again from Bulk actions.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/demote-incomplete', {}).then(function(res){
+      postJSON('/api/admin/demote-incomplete', { dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('noicon-toast', false, d.error || 'Failed.'); return; }
@@ -2345,7 +2345,7 @@
         'Scripts keep the character: their rosters are repointed at the official one, so the name still shows and links to the official wiki. Collections drop it, because a collection can only hold pages from this wiki.\n\n' +
         'The pages are soft-deleted — they appear under Deleted pages and can be restored. Nothing is purged and no art is removed.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/official-cleanup', {}).then(function(res){
+      postJSON('/api/admin/official-cleanup', { dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('offc-toast', false, d.error || 'Failed.'); return; }
@@ -2383,7 +2383,7 @@
       if (!confirm('Clean up the text on all 119 Odyssey pages?\n\nEvery page it edits is saved to revisions first, so any of them can be rolled back.')) return;
       var btn = this; btn.disabled = true;
       setToast('odyc-toast', true, 'Cleaning up… this takes a few seconds.');
-      postJSON('/api/admin/cleanup-odyssey', {}).then(function(res){
+      postJSON('/api/admin/cleanup-odyssey', { dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('odyc-toast', false, d.error || 'Cleanup failed.'); return; }
