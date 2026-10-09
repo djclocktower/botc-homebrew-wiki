@@ -339,6 +339,8 @@ import * as Bloodstar from './bloodstar.js';
 // Delete this import, the route and the card once the cleanup has been run.
 import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 import { homeData } from './home-data.js';
+// The first screen of /all-characters, /team and /tag, drawn on the server.
+import { LIST_PAGES, serveListPage } from './list-pages.js';
 import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
@@ -6819,6 +6821,13 @@ async function ssrRoute(env, ctx, request, url, build) {
   return stripViewHeader(res);
 }
 
+// What worker/list-pages.js borrows: the same version keys, feed bodies and
+// edge cache as the SSR pages, and the same no-store HTML response.
+const LIST_HELPERS = {
+  contentVersion, cachedFeedBody, edgeCacheGet, edgeCachePut,
+  htmlPage: html => htmlPage(html), cacheControl: SSR_EDGE_CACHE_CONTROL, renderV: SSR_RENDER_V
+};
+
 const app = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -7502,6 +7511,14 @@ const app = {
         status: 302,
         headers: { Location: url.origin + dest, 'Cache-Control': 'no-store' }
       });
+    }
+
+    // ---------- CHARACTER LISTS (/all-characters, /team?t=, /tag?t=) ----------
+    // The static page with its first screen of cards already drawn
+    // (worker/list-pages.js). Anything that cannot be drawn on the server
+    // gets the static page as it always was.
+    if (method === 'GET' && LIST_PAGES[path]) {
+      return (await serveListPage(LIST_HELPERS, env, ctx, request, url)) || env.ASSETS.fetch(request);
     }
 
     // ---------- CREATOR PAGE (/u/{username} and /author?a=Name) ----------
