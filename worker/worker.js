@@ -40,6 +40,8 @@
  *   POST /api/contact         -> open one ({category, body, images[]})
  *   POST /api/contact/reply   -> carry one on ({id, body, images[]}); reopens
  *                                the thread so it returns to the admin queue
+ *   POST /api/view            -> {type, slug}: a page shown from a prefetch
+ *                                counts its view (no login; 204 always)
  *   POST /api/report-broken-link -> the 404 page's "this looks like a mistake"
  *                                box; same inbox as /api/contact, but works
  *                                without an account (rate-limited per IP)
@@ -881,6 +883,55 @@ function sessionCookie(token) {
 }
 function clearCookie() {
   return 'botc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+}
+
+/* ---- the login hint (botc_li) ----
+   The session cookie is HttpOnly, so a page cannot tell whether anyone is
+   logged in without asking /api/me — and every page did, for every reader,
+   most of whom have never logged in. `botc_li=1` is a second cookie that
+   page JavaScript CAN read and that says nothing but "a session cookie was
+   issued to this browser" (BotcData.me() in assets/data.js skips /api/me
+   without it). It is not a credential: the Worker never reads it to decide
+   anything, so forging or deleting it changes only whether the page asks.
+
+   It is added here, on the way out, rather than in each of the places a
+   session cookie is set or cleared (login, signup, Discord, password reset,
+   logout, the invalid-session paths): any response that sets botc_session
+   gets the matching hint, so a new route that logs somebody in cannot forget
+   it. Two more cases:
+     - a request that carries a session cookie and no hint (logged in before
+       the hint existed) gets one — but only on a response that is no-store or
+       private, never on anything a shared cache could keep. The SSR edge
+       cache stores its copy before this runs, from a cookie-free build.
+     - /api/me clears both cookies when the session behind them is gone. */
+const LOGIN_HINT_COOKIE = 'botc_li=1; Path=/; Secure; SameSite=Lax; Max-Age=' + (60 * 60 * 24 * 30);
+const LOGIN_HINT_CLEAR = 'botc_li=; Path=/; Secure; SameSite=Lax; Max-Age=0';
+function setCookieValues(headers) {
+  if (typeof headers.getSetCookie === 'function') return headers.getSetCookie();
+  const v = headers.get('Set-Cookie');
+  return v ? [v] : [];
+}
+function withLoginHint(request, res) {
+  if (!res || !res.headers || res.status === 101 || res.webSocket) return res;
+  let session = null;   // null: no session cookie set; true: set; false: cleared
+  for (const c of setCookieValues(res.headers)) {
+    const m = /^\s*botc_session=([^;]*)/.exec(c);
+    if (m) session = !!m[1] && !/;\s*Max-Age=0\b/i.test(c);
+  }
+  let add = null;
+  if (session === true) add = LOGIN_HINT_COOKIE;
+  else if (session === false) add = LOGIN_HINT_CLEAR;
+  else {
+    const cookie = request.headers.get('Cookie') || '';
+    const cc = res.headers.get('Cache-Control') || '';
+    if (/(?:^|;\s*)botc_session=[^;\s]/.test(cookie) && !/(?:^|;\s*)botc_li=1(?:;|$)/.test(cookie) &&
+        /\b(?:no-store|private)\b/i.test(cc)) add = LOGIN_HINT_COOKIE;
+  }
+  if (!add) return res;
+  let out;
+  try { out = new Response(res.body, res); } catch { return res; }
+  out.headers.append('Set-Cookie', add);
+  return out;
 }
 
 // ---- the custom 404 page ----
@@ -2909,10 +2960,21 @@ async function creatorNamesFor(env, userId, username) {
 
 // ---- page-view counter (analytics; bots filtered, 180-day retention) ----
 const BOT_UA_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|discord|whatsapp|telegram|curl|wget|python|java|httpclient|headless|lighthouse|pingdom|uptime/i;
+// A speculative fetch (site.js's speculation rules prefetch a reading link
+// the moment a finger lands on it) is not a view: the reader may never open
+// the page. Chrome marks it `Sec-Purpose: prefetch`; older engines used
+// `Purpose`. When the reader does open it, the page is shown from that
+// prefetch WITHOUT asking again, so it counts itself (POST /api/view).
+const VIEW_TYPES = ['character', 'script', 'collection', 'news', 'wikipage'];
+function isPrefetch(request) {
+  return /prefetch|prerender/i.test((request.headers.get('Sec-Purpose') || '') + ' ' + (request.headers.get('Purpose') || '') +
+    ' ' + (request.headers.get('X-Moz') || ''));
+}
 async function bumpView(env, request, type, slug) {
   try {
     const ua = request.headers.get('User-Agent') || '';
     if (!ua || BOT_UA_RE.test(ua)) return;
+    if (isPrefetch(request)) return;
     await ensureViewsTable(env);
     await env.DB.prepare(
       `INSERT INTO page_views (entity_type, slug, day, n) VALUES (?,?,date('now'),1)
@@ -5627,8 +5689,26 @@ function versionAssetPaths(html) {
     (all, file) => ASSET_MANIFEST[file] ? 'assets/' + ASSET_MANIFEST[file] : all);
 }
 
+// The announcement bar, painted from this browser's last copy of it before
+// the rest of <body> is parsed, so the page does not jump down when
+// /api/boot answers (site.js reconciles it and wires the close button). The
+// same few lines as earlyAnnouncement() in assets/data.js, which does this on
+// the static pages; here data.js is deferred, so it would come too late.
+// Identical for every reader, so it is safe in the shared SSR cache.
+const EARLY_ANNOUNCEMENT = String.raw`<script>(function(){try{var c=JSON.parse(localStorage.getItem("botc_announce")),a=c&&c.ann;` +
+  String.raw`if(!a||!a.text||Date.now()-c.ts>2592e5||localStorage.getItem("botc_announce_dismissed")===a.text)return;` +
+  String.raw`var b=document.createElement("div");b.className="site-announcement";b.setAttribute("data-early","1");b.setAttribute("data-text",a.text);` +
+  String.raw`var s=document.createElement("span");s.textContent=a.text.replace(/\[([^\]\n]+)\]\([^)\s]+\)/g,"$1");` +
+  String.raw`var x=document.createElement("button");x.className="site-announcement-close";x.type="button";x.setAttribute("aria-label","Dismiss announcement");x.textContent="×";` +
+  String.raw`b.appendChild(s);b.appendChild(x);document.body.insertBefore(b,document.body.firstChild)}catch(e){}})();</script>`;
+
 // Shared HTML shell for every server-rendered page (/c/, /s/, /collection/).
 // The topbar/nav markup mirrors the static pages (scripts.html is canonical).
+// Every script is `defer`, data.js in the head included: none of them blocks
+// parsing, they still run in the order listed (data.js first), and all of
+// them run before DOMContentLoaded. The inline bootstrap only sets globals,
+// so it is safe to run before them; nothing in a rendered body calls a
+// script global while parsing (the scripts attach their own handlers).
 function pageShell(o) {
   // o: {title, ogTitle, desc, canonicalUrl, ogImage, ogCard, themeColor, body,
   //     bodyClass, bodyStyle, mainClass, mainStyle, bootstrap, scripts[],
@@ -5661,7 +5741,7 @@ function pageShell(o) {
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
-<script src="${R}assets/${ASSET_MANIFEST['data.js'] || 'data.js'}"></script>
+<script src="${R}assets/${ASSET_MANIFEST['data.js'] || 'data.js'}" defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${attr(o.title)} — BOTC HomeBrew Wiki</title>
 <meta name="description" content="${attr(o.desc)}">
@@ -5682,6 +5762,7 @@ ${o.themeColor ? '<meta name="theme-color" content="' + attr(o.themeColor) + '">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['header-redesign.css'] || 'header-redesign.css'}">
 </head>
 <body${bodyAttrs}>
+${EARLY_ANNOUNCEMENT}
 ${o.draftBanner || ''}
   <header class="topbar">
     <div class="brand-group">
@@ -5722,7 +5803,7 @@ ${o.draftBanner || ''}
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script>window.BOTC_ASSETS=${jsStr(RUNTIME_ASSETS)}; ${o.bootstrap || ''}</script>
-${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + (ASSET_MANIFEST[s] || s) + '"></script>').join('\n')}
+${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + (ASSET_MANIFEST[s] || s) + '" defer></script>').join('\n')}
 </body>
 </html>`;
 }
@@ -6754,11 +6835,22 @@ async function touchArtRow(env, key) {
    rolls rendered pages after any Worker, renderer, stylesheet or HTML edit. */
 const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
 const SSR_RENDER_V = '6-' + BUILD_ID;
+// The same list as the `/` and `/:page` Link lines in _headers — keep the
+// two in step. Beyond the two stylesheets and the two faces every page
+// renders in: the bold condensed face (headings and the nav), the parchment
+// texture every panel is painted on, and the phone's background (media-gated,
+// so a desktop never fetches it). All of them are referenced only from inside
+// styles.css, so without a hint the browser cannot ask for them until the
+// stylesheet has arrived and been parsed. Do not add more: a preload competes
+// with the page for the same connection.
 const PAGE_LINK_HEADER = versionAssetPaths(
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
   '</assets/fonts/trade-gothic-lt-std.woff2>; rel=preload; as=font; type=font/woff2; crossorigin, ' +
-  '</assets/fonts/dumbledor2.woff2>; rel=preload; as=font; type=font/woff2; crossorigin');
+  '</assets/fonts/dumbledor2.woff2>; rel=preload; as=font; type=font/woff2; crossorigin, ' +
+  '</assets/fonts/trade-gothic-lt-std-bold-condensed.woff2>; rel=preload; as=font; type=font/woff2; crossorigin, ' +
+  '</assets/parchment.webp>; rel=preload; as=image; type=image/webp, ' +
+  '</assets/bg-m.webp>; rel=preload; as=image; type=image/webp; media="(max-width: 760px)"');
 const VIEW_HEADER = 'X-Botc-View';
 
 function hasSessionCookie(request) {
@@ -8117,7 +8209,12 @@ const app = {
 
     if (method === 'GET' && path === '/api/me') {
       const sess = await getSession(env, request);
-      if (!sess) return jsonResponse({ loggedIn: false, isAdmin: false });
+      // A session cookie (or login hint) whose session is gone: clear both,
+      // or the page would keep asking on every view (see withLoginHint).
+      if (!sess) {
+        const stale = /(?:^|;\s*)(?:botc_session=[^;\s]|botc_li=)/.test(request.headers.get('Cookie') || '');
+        return jsonResponse({ loggedIn: false, isAdmin: false }, stale ? { 'Set-Cookie': clearCookie() } : {});
+      }
       const u = await env.DB.prepare(
         `SELECT username, email, is_admin, display_name, avatar_url, email_verified, discord_id, password_hash
          FROM users WHERE id=?`
@@ -10174,6 +10271,32 @@ const app = {
            FROM site_text ORDER BY updated_at DESC`
       ).all();
       return jsonResponse({ overrides: rows.results || [] });
+    }
+
+    // ---------- a page shown from a prefetch counts itself ----------
+    // site.js prefetches reading pages on hover/touch (speculation rules), and
+    // bumpView() ignores those fetches — the reader may never open the page.
+    // When they do, the browser shows the prefetched copy without asking
+    // again, so the page sends one beacon here instead. Same bot filter and
+    // daily counter as bumpView (it IS bumpView), published pages only, and
+    // rate-limited per connection. Always 204: a beacon reads no answer.
+    if (method === 'POST' && path === '/api/view') {
+      const done = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+      const b = await request.json().catch(() => null);
+      const type = b && VIEW_TYPES.includes(b.type) ? b.type : '';
+      const key = b && typeof b.slug === 'string' ? b.slug.slice(0, 200) : '';
+      const ua = request.headers.get('User-Agent') || '';
+      if (!type || !key || !ua || BOT_UA_RE.test(ua)) return done();
+      if (await rateLimited(env, request, 'view', 300, 3600)) return done();
+      let row = null;
+      try {
+        if (type === 'collection') row = await findCollectionRow(env, key);
+        else if (type === 'news') { await ensureNewsTable(env); row = await env.DB.prepare('SELECT slug, status FROM news WHERE slug=?').bind(key).first(); }
+        else if (type === 'wikipage') { await ensurePagesTable(env); row = await env.DB.prepare('SELECT slug, status FROM pages WHERE slug=?').bind(key).first(); }
+        else row = await env.DB.prepare(`SELECT slug, status FROM ${CONTENT[type].table} WHERE slug=?`).bind(key).first();
+      } catch { row = null; }
+      if (row && row.status === 'published') await bumpView(env, request, type, String(row.slug));
+      return done();
     }
 
     // ---------- BROKEN-LINK REPORT (the 404 page's contact box) ----------
@@ -13978,7 +14101,7 @@ function withSecurityHeaders(res) {
 export default {
   async fetch(request, env, ctx) {
     try {
-      return withSecurityHeaders(await app.fetch(request, env, ctx));
+      return withSecurityHeaders(withLoginHint(request, await app.fetch(request, env, ctx)));
     } catch (e) {
       let path = '';
       try { path = new URL(request.url).pathname; } catch { /* ignore */ }
