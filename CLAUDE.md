@@ -517,17 +517,25 @@ assets/
                        the page owns the form and the progress table, this owns
                        the rules. Same split as grimforge.js.
   import-merge.js      What a re-import keeps and what it replaces: the rules
-                       behind mass-upload.html landing a file on a page this
-                       account already has. Mechanics (name, team, ability,
-                       night order, reminders, setup flags, jinxes) come from
-                       the file, the empties included; everything else on the
-                       page stays — tags, almanac text, the printable token,
-                       the art slots, who may edit it, its publish state —
-                       and flavour/edition only when the file carries them.
+                       behind mass-upload.html AND /bloodstar landing on a
+                       page this account already has. Mechanics (name, team,
+                       ability, night order, reminders, setup flags, jinxes)
+                       come from the file — the empties included, but only
+                       the ones it carries; everything else on the page stays —
+                       tags, almanac text, the printable token, the art slots,
+                       who may edit it, its publish state — and
+                       flavour/edition only when the file carries them.
+                       Almanac prose (FILL_EMPTY, what a Bloodstar import
+                       brings) only fills a field the page has nothing in,
+                       and assigned tags are added to the page's.
                        artPlan() says which art slots the file may write:
                        none the page already fills unless "Replace the art"
-                       is ticked. No DOM, no fetch (same split as
-                       bloodstar.js); the tests run it in a vm.
+                       is ticked. ownPages()/reuseOwn() land a name another
+                       account holds, or a second same-named character in one
+                       file, back on the page of yours the last run made
+                       instead of the next free address (a new page every
+                       run). No DOM, no fetch (same split as bloodstar.js);
+                       the tests run it in a vm.
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   char-preview.js      The live preview iframe on create.html + edit.html.
@@ -2614,7 +2622,7 @@ the form starts.
 | almanac overview, the rest | `summaryBullets` |
 | Examples / How to Run / tips | `examples[]` / `howToRun[]` / `tips[]` or the callout |
 | `attribution` | `iconBy` when it credits the art, else a "Credit" box |
-| `image` | `art/{identity}.png` in R2 |
+| `image` (and a traveller's `imageAlt` / `imageAlt2`) | `art/{identity}.png` (`-alt`, `-alt2`) in R2 |
 | synopsis / overview / changelog | the page's Synopsis and Gameplay, and a `/p/` page |
 | the almanac's night order | the page's arranged `nightOrder` |
 | (nothing — Bloodstar has no tags) | assigned by hand, per character, in the tool |
@@ -2628,7 +2636,8 @@ the full `render-wiki.js` mark set. That is what the `mode` argument to
 ### Tags are assigned per character, not per project
 
 Bloodstar has no tags and this wiki leans on them: a character with none reads
-as **Partial** and is hidden from the browse pages. The tool first carried one
+as **Partial**, which keeps it out of Featured and Random Character and lets
+readers hide it. The tool first carried one
 tag picker applied to every character in the project, which is not what a tag
 is — "Information" is true of the Ferrotypist and false of the Drunk, and 36
 characters sharing one tag tells a reader nothing.
@@ -2678,7 +2687,20 @@ one pointed at the official character, goes nowhere.
   even one of your own** (the wiki's rule — see "Character identity vs
   address"), so its `slug-check` asks for a fresh one. Characters are the
   opposite: landing on your own page is how re-running an import over your own
-  characters works, exactly as `mass-upload.html` does it.
+  characters works, exactly as `mass-upload.html` does it — and, as there,
+  **the page is read back (`/api/page`) and the project merged into it through
+  `assets/import-merge.js`**: mechanics from the project, almanac prose only
+  into fields the page has nothing in, assigned tags added, and the page's
+  publish state, alternate art, token, editors and sharing kept. An icon slot
+  the page already fills is kept unless "Replace the icons on pages you
+  already have" is ticked. A page that cannot be read is not written. It
+  used to post the project over the page, which replaced it outright and —
+  the form defaulting to draft — took a live page off the site. Art copied
+  over an existing page touches its row, so the page is read again before
+  the save to carry the new stamp (`/api/bloodstar-art` does not return one).
+  Identities saved in a run are remembered for as long as the project is on
+  the page, so pressing Import again after a halt reuses them rather than
+  resolving a done row to a different address.
 
 ## Custom wiki pages (`/p/{slug}`)
 

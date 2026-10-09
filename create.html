@@ -918,17 +918,26 @@
         return normalizeArtDataURL(url).catch(function () { return url; });
       });
     }
+    /* A file the browser cannot draw (an iPhone's HEIC, a broken download)
+       used to do nothing at all: no thumb, no message, and the page went on
+       looking as if no file had been picked. Say so, and clear the picker so
+       the same file can be picked again once it has been converted. */
+    function artUnreadable(input) {
+      input.value = '';
+      alert('That image could not be read. Save it as a PNG, JPEG or WebP and pick it again.');
+    }
 
     $('art').addEventListener('change', function (e) {
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
-        artOriginal = ev.target.result;
-        standardizedCopy(ev.target.result).then(function (url) {
+        var picked = ev.target.result;
+        standardizedCopy(picked).then(function (url) {
+          artOriginal = picked;
           artDataURL = url; importedImage = null;
           var th = $('artthumb'); th.src = url; th.style.display = 'block';
           $('artStdWrap').style.display = ''; $('arturl').textContent = ''; update();
-        });
+        }).catch(function () { artUnreadable($('art')); });
       };
       reader.readAsDataURL(file);
     });
@@ -952,12 +961,13 @@
         var file = e.target.files[0]; if (!file) return;
         var reader = new FileReader();
         reader.onload = function (ev) {
-          slot.setOrig(ev.target.result);
-          standardizedCopy(ev.target.result).then(function (url) {
+          var picked = ev.target.result;
+          standardizedCopy(picked).then(function (url) {
+            slot.setOrig(picked);
             slot.set(url);
             var th = $(id + 'Thumb'); th.src = url; th.style.display = 'block';
             $(id + 'StdWrap').style.display = ''; $(id + 'Clear').style.display = ''; update();
-          });
+          }).catch(function () { artUnreadable($(id)); });
         };
         reader.readAsDataURL(file);
       });
@@ -996,6 +1006,7 @@
           var th = $('tokenThumb'); th.src = tokenDataURL; th.style.display = 'block';
           $('tokenClear').style.display = ''; update();
         };
+        img.onerror = function () { artUnreadable($('tokenFile')); };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
@@ -1117,8 +1128,12 @@
       // this the import leaves the PREVIOUS team's box on screen — import a
       // townsfolk over a demon draft and the form kept offering "Fighting the
       // …" and never offered "Bluffing as the …".
-      if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) {
-        $('team').value = obj.team;
+      // The official schema spells it "traveler"; the wiki says "traveller".
+      // Matched as written, a traveller's JSON silently kept the old team.
+      var team = String(obj.team || '').toLowerCase();
+      if (team === 'traveler') team = 'traveller';
+      if (team && $('team').querySelector('option[value="' + team + '"]')) {
+        $('team').value = team;
         $('team').dispatchEvent(new Event('change'));
       }
       set('ability', obj.ability || '');
@@ -1172,6 +1187,22 @@
       } else {
         msg.className = 'ok'; msg.textContent = 'Imported successfully.';
       }
+      /* `image` is the schema's one to three icons: [regular, flipped], or a
+         traveller's [unaligned, good, evil] — which are exactly this form's
+         three slots (see "A character's three icons" in CLAUDE.md). Taking
+         only the first left an imported traveller with one of its tokens. */
+      [{ at: 1, id: 'artAlt', set: function (v) { artAltDataURL = v; artAltOriginal = null; } },
+       { at: 2, id: 'artAlt2', set: function (v) { artAlt2DataURL = v; artAlt2Original = null; } }].forEach(function (slot) {
+        var url = Array.isArray(obj.image) ? obj.image[slot.at] : null;
+        if (!url) return;
+        loadImageToCanvas(url, true).then(function (data) {
+          slot.set(data);
+          var th = $(slot.id + 'Thumb'); th.src = data; th.style.display = 'block';
+          $(slot.id + 'StdWrap').style.display = ''; $(slot.id + 'Clear').style.display = ''; update();
+        }).catch(function () {
+          msg.textContent += ' Icon ' + (slot.at + 1) + ' could not be loaded (the host blocks it); upload it by hand.';
+        });
+      });
       update();
     }
 
@@ -1236,6 +1267,15 @@
         });
     }
 
+    // The identity the first save in this tab landed on. Every save after it
+    // goes back there: asking the check again found that page taken (by now
+    // it is), and a page whose name another account holds was handed the
+    // NEXT free address — so Save Draft then Publish made a second page and
+    // left the first behind as an orphaned draft. Identity never changes, so
+    // a name edited after the first save is a rename of that page, not a new
+    // one.
+    var savedSlug = '';
+
     function submitCharacter(saveStatus) {
       var d = gather();
       if (!d.name)    return setStatus('err', 'A character name is required.');
@@ -1246,7 +1286,7 @@
       $('publish').disabled = true;
       $('save-draft').disabled = true;
       setStatus('work', verb + '&hellip;');
-      resolveSlug(d).then(function (slug) {
+      (savedSlug ? Promise.resolve(savedSlug) : resolveSlug(d)).then(function (slug) {
         saveCharacter(d, slug, saveStatus);
       });
     }
@@ -1333,6 +1373,7 @@
           });
         })
         .then(function (saved) {
+          savedSlug = (saved && saved.slug) || slug;
           // The Worker decides the address (/c/{set}/{character}) and hands
           // it back; `slug` is only the page's identity and its art slot.
           var url = SITE_ROOT + ((saved && saved.page) || ('c/' + slug));
