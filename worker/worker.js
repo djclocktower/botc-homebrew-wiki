@@ -13596,6 +13596,25 @@ const app = {
           return jsonResponse({ ok: true, reverted: true, items: await siteTextItems(env) });
         }
 
+        // A short phrase is the risky kind: site.js applies an override
+        // wherever its words stand in the site's own text, so "Each night"
+        // made site-wide reaches every label that opens with it. Live mode
+        // only offers one where it IS the text that was clicked; the list on
+        // /text-editor cannot know that, so it asks first and says so here.
+        // A single character is never safe to rewrite everywhere. Reverting
+        // (above) is always allowed, so an existing row can still be dropped.
+        const SITE_TEXT_MIN = 2, SITE_TEXT_SHORT = 25;
+        const bare = original.trim();
+        if (bare.length < SITE_TEXT_MIN) {
+          return jsonResponse({ error: 'That is too short to change safely.' }, { status: 400 });
+        }
+        if (scope === '*' && bare.length < SITE_TEXT_SHORT && b.confirmShort !== true) {
+          return jsonResponse({
+            error: 'A short phrase changes it everywhere on the site. Confirm that is what you meant.',
+            needsConfirm: true
+          }, { status: 400 });
+        }
+
         const existing = await env.DB.prepare(
           'SELECT id FROM site_text WHERE scope=? AND original=?'
         ).bind(scope, original).first();

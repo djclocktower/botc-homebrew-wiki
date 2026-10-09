@@ -1995,8 +1995,10 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   tuned token at full size (`preview_scale: 1`), uploads it to the `-token`
   slot and re-saves the row iconforge-style (full data from `/api/page`,
   `status` pinned so saving a token never publishes a draft). Its "show in the
-  gallery" tick sets `tokenArt` only when ticked — unticked leaves the stored
-  answer alone. **`?edit=` resolves through `/api/page`, not only the card
+  gallery" tick opens on what the page says now (`tokenArt`; ticked for a
+  page's first token) and the save writes the tick either way, so saving a
+  better token never switches a gallery the owner turned off back on. An
+  untouched tick re-reads `tokenArt` from `/api/page` at save time. **`?edit=` resolves through `/api/page`, not only the card
   feed**: the feed is published-only, and the page most likely to arrive
   through this door is a draft fresh out of create.html — matching it against
   the feed alone made the door silently do nothing for exactly the people it
@@ -2810,7 +2812,9 @@ How the three pieces fit:
    until something is actually changed, and every visit re-scans, so text
    added by a later deploy is simply there — that is what keeps the list
    current with no upkeep. New pages/assets are found by crawling `<a href>`
-   and `<script src>` on top of the seed lists.
+   and `<script src>` on top of the seed lists; `assetPath()` maps a built
+   `assets/immutable/name.HASH.js` back to `assets/name.js` (so a string keeps
+   one key across deploys) and takes subfolders, not the sealed vendor ones.
 2. **Only the changes are stored.** `POST /api/admin/site-text` writes one row
    per rewritten string into `site_text` (`scope`, `original`, `replacement`).
    Saving a replacement equal to the original — or Undo — deletes the row and
@@ -2822,7 +2826,14 @@ How the three pieces fit:
    MutationObserver so client-rendered content is covered too, and a
    localStorage cache so a repeat visit never flashes the old wording. Put
    `data-no-text-override` on anything that must show text verbatim (the text
-   editor's own results list does).
+   editor's own results list does). **It never touches what people wrote**:
+   `USER_CONTENT` in site.js lists the wrappers the renderers already print
+   around user text (a character's prose and ability, script/collection
+   synopses, wiki and news bodies, comments, messages, cards, search rows,
+   profiles) and those subtrees are skipped — without it, rewriting "Each
+   night" rewrote every ability on the wiki in every reader's browser. A new
+   surface that prints user text adds its class there or carries
+   `data-user-content`. Live mode asks the same list (`SiteText.skip`).
 
 **Live mode** (`assets/text-live.js`) is the same three pieces worn differently:
 switched on from /text-editor, it lets the owner browse the wiki normally and
@@ -2855,7 +2866,13 @@ Two rules worth knowing before changing any of this:
   to that page, so a short label can be changed without touching a page that
   happens to use the same word. Matching is by substring inside a text node —
   a whole node is not required, because the site builds a lot of its sentences
-  by concatenation.
+  by concatenation — but on **word edges** (so "Go" never lands inside
+  "Good"), the same test as live mode's `bounded()`.
+- **Short site-wide phrases need a confirmation.** The list on /text-editor
+  cannot know where a phrase stands, so a site-wide original under 25
+  characters asks first, and `POST /api/admin/site-text` refuses one without
+  `confirmShort: true` (live mode sends it: its guard is the confirmation). A
+  one-character original is refused outright. Reverting is always allowed.
 - **`{placeholder}`** in an original marks a slot the site fills in
   ("Add {missing} to fix."). It compiles to a capture group, so the filled-in
   value survives; a replacement must keep the placeholder.
