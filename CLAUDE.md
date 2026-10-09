@@ -2213,7 +2213,8 @@ others writes a different credit, which is what the credit string is for.
   disown recorded on a script reaches a decision the characters would
   otherwise settle alone), `creatorNamesFor()` (which returns
   `{names, disowned}` — the second half is what keeps those pages off the
-  account's own creator page), the `owners` tally in `/api/creators`, and the
+  account's own creator page), the `owners` tally in `/api/creators` (which
+  reads both tables the same way and attaches no suspended account), and the
   `owner_id` half of `/api/user`'s listing (its collections are filtered in
   JS, same rule). Miss one and the name half-resolves.
 - **`/api/user` tests twice and both are needed**: the NAME test takes the
@@ -2530,6 +2531,9 @@ Three places ask:
   three already on the wiki got there. It is the one door every route goes
   through (both editors, `mass-upload.html`, `/bloodstar`, Grimoire Forge's
   "+ Add to Drafts"), so there is one rule rather than five that can drift.
+  It **fails closed**: if `roles.json` cannot be loaded the save is refused
+  with a 503 and a retry message (as is `/api/bloodstar`), and the failed
+  load is not memoised, so the next request tries again.
 - **`/bloodstar`** has no option for it: an exact match is always pointed at
   `off-{id}` and never becomes a page. A script keeps the character either
   way — `charHref()` in render-page.js sends an official roster entry to the
@@ -3680,8 +3684,12 @@ CSS/JS under `.build/public/assets/immutable/` and rewrites HTML and preload
 links to those URLs. `_headers` serves them immutable for a year; unversioned
 fallback files still revalidate. CSS-relative font/image URLs are rebased.
 `worker/asset-manifest.js` gives SSR and lazy loaders the same filenames.
-The generated `BUILD_ID` includes assets, Worker code and root HTML, and
-automatically rolls SSR keys after deploys.
+The generated `BUILD_ID` includes assets, Worker code, root HTML and the
+official data the Worker reads at runtime (`assets/roles.json`,
+`night-order.json`, `official-jinxes.json`), and automatically rolls SSR keys
+after deploys. It is also in the jinx-index, sitemap, creators, search-index,
+`/api/home` and anonymous `/api/user` edge keys, so a deploy never keeps
+serving a body the previous code built.
 
 **Commit both generated files:** `worker/asset-manifest.js` and
 `migration/asset-archive.json`. The archive retains compressed bytes for
@@ -3709,7 +3717,9 @@ load creators.js or the wiki/news article renderers. News cards come from
 `/api/news?limit=3&format=cards`, rendered with the same NewsRender card helper.
 Public news lists use news-scoped version keys, limit/format/deploy-specific
 ETags, coalesced builds and the internal edge cache. Authorized draft lists
-remain uncached. Failed news reads are never stored as empty lists. Both
+remain uncached. Failed news reads are never stored as empty lists. A public
+news list selects **pinned articles first, then the limit**, so a pinned
+article older than the newest three still reaches the homepage. Both
 `/api/home` and public news check conditional requests before building bodies.
 It keeps random tile selection in the browser and keys the daily
 featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
@@ -3723,7 +3733,9 @@ Matching ETags return 304 without rebuilding. Internal version-keyed copies
 remain in `caches.default` for a week, with parsed/in-flight reuse in each
 isolate. Overlapping misses share one build in an isolate; separate isolates
 can still build concurrently. `FEED_FORMAT_V` must move if a later deployment
-changes an existing feed's serialized shape or semantics.
+changes an existing feed's serialized shape or semantics (3: script and
+collection rows carry their PK `slug` when the blob has none, and a row whose
+JSON cannot be parsed is skipped and logged instead of failing every feed).
 
 `settings.cache_versions` stores per-type dependency counters beside the
 legacy `content_version`. One SQL statement updates both. Character feeds
@@ -3736,6 +3748,21 @@ saves clear it in their isolate, while other isolates can take up to five
 seconds to observe a change. A failed version read cannot reuse a stale
 version-zero public cache, and failed feed queries never retry without their
 visibility filters. No new database migration is required.
+
+**A degraded answer is never cached.** Wherever a read can fail soft (the
+sitemap, the anonymous `/api/user` body, the creators list, the search index,
+the per-isolate registries: the `[[Name]]` link map, the official roster and
+its name/icon maps, `official-jinxes.json`, the Curata and include-collection
+sets), the failure is served for that one request and **not memoised**: the
+old `catch { cache = [] }` pinned an empty answer for a version, or for the
+isolate's whole life. No fallback re-reads without the `published` (or
+not-banned) filter. An SSR page rendered while one of its registries, its
+roster (`charsBySlug` marks a short one `incomplete`) or the jinx index failed
+gets an internal `X-Botc-Degraded` header, and `ssrRoute()` keeps it out of
+the week-long shared cache. Admin tools that write rows directly bump the
+scopes they touched themselves (`ban-purge` bumps everything,
+`concepts-to-pages` the characters, `official-cleanup` scripts and
+collections; `clean-refs` is in `FEED_CHANGING_ACTIONS`).
 
 Creator/profile caches retain their existing 30-minute cap for account
 fields; authenticated `/api/user` responses remain private and uncached.
