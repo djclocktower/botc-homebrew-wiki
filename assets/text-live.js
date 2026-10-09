@@ -43,6 +43,8 @@
   var HIT = 'te-live-hit';
 
   var index = null;        // {byWord: {word: [entry]}, loose: [entry], all: [entry]}
+  var active = false;      // the mode is on; nothing may set `index` while it is off
+  var wired = false;
   var bar = null;
   var pop = null;
   var openEntry = null;
@@ -63,15 +65,36 @@
     return String(s).toLowerCase().match(/[a-z0-9À-ɏ]+/g) || [];
   }
 
+  /* Off is real: the listeners stay attached (they are cheap and all bail
+     on a null index) but nothing can put an index back while `active` is
+     false — a catalogue scan still in flight when the switch was flipped used
+     to finish, set the index and switch editing straight back on. */
   function off() {
+    active = false;
     try { localStorage.setItem(FLAG, '0'); } catch (e) {}
+    clearTimeout(pendingClick); pendingClick = null;
     document.documentElement.classList.remove('textedit-on');
     Array.prototype.forEach.call(document.querySelectorAll('.' + HIT), function (el) {
       el.classList.remove(HIT);
     });
-    if (bar) bar.remove();
+    if (bar) { bar.remove(); bar = null; }
     closeEditor();
     index = null;
+  }
+
+  function setIndex(entries) {
+    if (!active) return false;
+    index = buildIndex(entries);
+    return true;
+  }
+
+  /* Somebody's writing is never offered, even where a catalogued phrase sits
+     inside it: site.js would not apply the override there, so offering it
+     would only rewrite the site's copy somewhere else. */
+  function skipped(el) {
+    if (!el) return true;
+    if (el.closest('.te-live-ui') || el.closest(OPT_OUT)) return true;
+    return !!(window.SiteText && window.SiteText.skip && window.SiteText.skip(el));
   }
 
   /* ---- the catalogue --------------------------------------------- */
@@ -203,7 +226,7 @@
 
   function editableIn(el) {
     if (!el || el.nodeType !== 1) return null;
-    if (el.closest('.te-live-ui') || el.closest(OPT_OUT)) return null;
+    if (skipped(el)) return null;
     var hits = offers(directText(el));
     return hits.length ? hits[0].entry : null;
   }
@@ -310,7 +333,11 @@
         source: 'live edit',
         original: entry.original,
         replacement: undo ? '' : value,
-        action: undo ? 'revert' : 'save'
+        action: undo ? 'revert' : 'save',
+        // A short phrase only reaches this box when it IS the text that was
+        // double-clicked (the guard above), and the box says "changes it
+        // everywhere" — that is the confirmation the server asks for.
+        confirmShort: true
       })
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, body: j }; });
@@ -328,7 +355,7 @@
         : Promise.resolve();
       Promise.resolve(done).then(function () {
         var cached = window.TextScan && window.TextScan.loadCatalog && window.TextScan.loadCatalog();
-        if (cached) index = buildIndex(cached.entries);
+        if (cached) setIndex(cached.entries);
         note(undo ? 'put back' : 'saved');
         setTimeout(function () { note('double-click any wording'); }, 2500);
       });
@@ -353,7 +380,7 @@
     }
     if (node && node.nodeType === 3) {
       var host = node.parentNode;
-      if (host && !host.closest('.te-live-ui') && !host.closest(OPT_OUT)) {
+      if (host && host.nodeType === 1 && !skipped(host)) {
         var hits = offers(node.nodeValue);
         // The one that actually covers the spot that was clicked, so a
         // paragraph stitched together from several source strings opens the
@@ -377,7 +404,7 @@
     var entry = entryAt(el, x, y);
     if (!entry) {
       note('not the site’s own wording — try the full list');
-      setTimeout(function () { note(index.all.length + ' strings · double-click any wording'); }, 2600);
+      setTimeout(function () { if (index) note(index.all.length + ' strings · double-click any wording'); }, 2600);
       return;
     }
     lastOpenAt = Date.now();
@@ -389,6 +416,8 @@
   /* ---- events ----------------------------------------------------- */
 
   function wire() {
+    if (wired) return;
+    wired = true;
     document.addEventListener('mouseover', function (e) {
       if (!index || !e.target || e.target.nodeType !== 1) return;
       if (editableIn(e.target)) e.target.classList.add(HIT);
@@ -454,7 +483,7 @@
   /* ---- start ------------------------------------------------------ */
 
   function useCatalog(entries, stale) {
-    index = buildIndex(entries);
+    if (!setIndex(entries)) return;
     note(index.all.length + ' strings · double-click any wording');
     if (stale) refreshCatalog();
   }
@@ -471,6 +500,7 @@
   }
 
   function refreshCatalog() {
+    if (!active) return Promise.resolve();
     return loadScanner().then(function (TS) {
       if (!TS) { note('could not read the site’s files'); return; }
       note('reading the site…');
@@ -478,13 +508,15 @@
         onProgress: function (done, total) { note('reading the site… ' + done + '/' + total); }
       }).then(function (res) {
         TS.saveCatalog(res.entries);
-        index = buildIndex(res.entries);
+        if (!setIndex(res.entries)) return;
         note(index.all.length + ' strings · double-click any wording');
       });
     }).catch(function () { note('could not read the site’s files'); });
   }
 
   function boot() {
+    if (active) return;
+    active = true;
     document.documentElement.classList.add('textedit-on');
     makeBar();
     wire();
@@ -500,7 +532,15 @@
     });
   }
 
-  window.TextLive = { off: off, refresh: refreshCatalog };
+  /* on() is what /text-editor calls when the switch is flipped back on in
+     the same visit; the script is already loaded by then, so loading it
+     again would do nothing at all. */
+  function on() {
+    try { localStorage.setItem(FLAG, '1'); } catch (e) {}
+    boot();
+  }
+
+  window.TextLive = { on: on, off: off, refresh: refreshCatalog };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

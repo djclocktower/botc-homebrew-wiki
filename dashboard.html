@@ -1219,13 +1219,30 @@
     }
 
     /* ---- shared helpers for the newer panels ---- */
-    function getJSON(path){ return fetch(path, { credentials: 'same-origin' }).then(function(r){ return r.json(); }); }
+    /* Both of these RESOLVE, never reject, and a failure comes back as an
+       ordinary { error } body. A Cloudflare 502/524 is an HTML page, so
+       r.json() threw, and every card that called these with no .catch was
+       left with its button disabled and "Scanning…" on screen for good. The
+       handlers already show d.error and re-enable on a failed answer, so
+       this one change covers all of them. */
+    function failBody(r){
+      return { error: r ? 'The server answered ' + r.status + ' instead of a result. Try again in a moment.'
+                        : 'Could not reach the server. Check the connection and try again.' };
+    }
+    function getJSON(path){
+      return fetch(path, { credentials: 'same-origin' }).then(function(r){
+        return r.json().catch(function(){ return failBody(r); });
+      }, function(){ return failBody(null); });
+    }
     function postJSON(path, body){
       return fetch(path, {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {})
-      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); });
+      }).then(function(r){
+        return r.json().catch(function(){ return failBody(r); })
+          .then(function(d){ return { status: r.status, body: d }; });
+      }, function(){ return { status: 0, body: failBody(null) }; });
     }
     function pubUrl(type, slug){
       var sl = encodeURIComponent(slug || '');
@@ -2447,9 +2464,14 @@
       if (ph) $('bulk-arg').placeholder = ph;
     }
     $('bulk-action').addEventListener('change', bulkArgSync);
+    /* The type the ticked list was LOADED as. Apply sends this, never the
+       dropdown's current value: switching the dropdown after loading used to
+       post character slugs as type "script". */
+    var bulkListType = null;
     $('bulk-load').addEventListener('click', function(){
       var btn = this; btn.disabled = true;
-      var p = new URLSearchParams({ type: $('bulk-type').value });
+      var loadType = $('bulk-type').value;
+      var p = new URLSearchParams({ type: loadType });
       if ($('bulk-q').value.trim()) p.set('q', $('bulk-q').value.trim());
       if ($('bulk-owner').value.trim()) p.set('owner', $('bulk-owner').value.trim());
       if ($('bulk-collection').value.trim()) p.set('collection', $('bulk-collection').value.trim());
@@ -2464,6 +2486,7 @@
           $('bulk-act-row').style.display = 'none';
           return;
         }
+        bulkListType = loadType;
         box.innerHTML =
           '<label class="adm-row" style="font-weight:700;cursor:pointer"><input type="checkbox" id="bulk-all"> select all (' + d.pages.length + ')</label>' +
           d.pages.map(function(pg){
@@ -2500,7 +2523,7 @@
       if (BULK_ARG[action] && !arg) { setToast('bulk-toast', false, 'Enter the ' + BULK_ARG[action] + ' first.'); return; }
       if (!confirm(label + ' — apply to ' + slugs.length + ' page' + (slugs.length === 1 ? '' : 's') + '?')) return;
       var btn = this; btn.disabled = true;
-      var body = { action: action, type: $('bulk-type').value, slugs: slugs };
+      var body = { action: action, type: bulkListType || $('bulk-type').value, slugs: slugs };
       if (action === 'assign-owner') body.username = arg;
       if (action === 'add-tag' || action === 'remove-tag') body.tag = arg;
       postJSON('/api/admin/bulk', body).then(function(res){
@@ -2649,7 +2672,13 @@
         }
         postJSON('/api/admin/purge-images', { keys: batch }).then(function(res){
           if (res.body && res.body.ok) { deleted += res.body.deleted || 0; next(); }
-          else { btn.disabled = false; setToast('orph-toast', false, (res.body && res.body.error) || 'Delete failed.'); }
+          else {
+            // Batches already sent are gone, so say how far it got.
+            btn.disabled = false;
+            setToast('orph-toast', false, ((res.body && res.body.error) || 'Delete failed.') +
+              (deleted ? ' ' + deleted + ' image' + (deleted === 1 ? ' was' : 's were') + ' deleted before it stopped.' : ''));
+            if (deleted) $('orph-scan').click();
+          }
         });
       })();
     });
@@ -3291,7 +3320,7 @@
           return getJSON(type === 'collection' ? 'collections.json?drafts=1'
                        : type === 'script' ? 'scripts.json?drafts=1'
                        : 'characters.json?fields=card&drafts=1')
-            .then(function(list){ return list || []; });
+            .then(function(list){ return Array.isArray(list) ? list : []; });
         });
       }
       function feed(type){

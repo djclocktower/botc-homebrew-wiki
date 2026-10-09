@@ -1100,6 +1100,7 @@
     var cAttach = null;          // the picker on the new-message form
     var cReplyAttach = null;     // the picker inside the open thread
     var cOpenId = null;          // which thread is expanded, if any
+    var msgParamUsed = false;    // ?msg= has been acted on (once per visit)
 
     function shotsHtml(list){
       if (!list || !list.length) return '';
@@ -1266,9 +1267,23 @@
           renderLists(data);
           // The DM that says "the admins replied" links to
           // /account?msg={id}#contact — open that conversation rather than
-          // making somebody hunt for it in a list of thirty.
-          var want = parseInt(new URLSearchParams(location.search).get('msg'), 10) || 0;
-          loadMyMessages(want || undefined);
+          // making somebody hunt for it in a list of thirty. Read ONCE: load()
+          // runs again after every save on this page, and re-reading it
+          // re-opened a thread its reader had already closed. It is dropped
+          // from the address too, so a reload does not do the same.
+          var want = 0;
+          if (!msgParamUsed) {
+            msgParamUsed = true;
+            var q = new URLSearchParams(location.search);
+            want = parseInt(q.get('msg'), 10) || 0;
+            if (q.has('msg') && window.history && history.replaceState) {
+              q.delete('msg');
+              var qs = q.toString();
+              try { history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + location.hash); } catch (e) {}
+            }
+          }
+          // Later reloads keep whichever thread the reader has open, if any.
+          loadMyMessages(want || cOpenId || undefined);
           loadSuggestions();
           loadShared();
           loadFavorites();

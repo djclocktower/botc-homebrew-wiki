@@ -404,11 +404,27 @@
     }
     var srcs = doc.querySelectorAll('script[src]');
     for (i = 0; i < srcs.length; i++) {
-      var src = (srcs[i].getAttribute('src') || '').split(/[?#]/)[0];
-      var m = src.match(/(assets\/[\w.-]+\.js)$/);
-      if (m) assets.push(m[1]);
+      var a = assetPath(srcs[i].getAttribute('src'));
+      if (a) assets.push(a);
     }
     return { pages: pages, assets: assets };
+  }
+
+  /* A <script src> as the file it was built from. The deployed pages load
+     content-hashed copies (assets/immutable/name.HASH.js — see "Caching" in
+     CLAUDE.md), and a pattern that only knew assets/name.js matched none of
+     them, so nothing past SEED_ASSETS was ever scanned. The hashed name is
+     mapped back to its source, so a string keeps one key (and one override)
+     across deploys. Subfolders count too (Icon Forge's modules), except the
+     sealed third-party payloads, which are not the site's own wording. */
+  function assetPath(src) {
+    src = String(src || '').split(/[?#]/)[0];
+    var m = src.match(/(?:^|\/)(assets\/(?:[\w-]+\/)*[\w.-]+\.js)$/);
+    if (!m) return null;
+    var path = m[1].replace(/^assets\/immutable\/([\w.-]+)\.[0-9a-f]{8,}\.js$/, 'assets/$1.js');
+    if (/^assets\/immutable\//.test(path)) return null;
+    if (/\/(vendor|minipaint|pyodide)\//.test(path)) return null;
+    return path;
   }
 
   /* ================================================================
@@ -571,6 +587,7 @@
     jsStrings: jsStrings,
     looksLikeCopy: looksLikeCopy,
     merge: merge,
+    assetPath: assetPath,
     SEED_PAGES: SEED_PAGES,
     SEED_ASSETS: SEED_ASSETS
   };

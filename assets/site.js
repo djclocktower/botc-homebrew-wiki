@@ -16,7 +16,12 @@
        applies on that page; one from a shared assets/*.js file (or found on
        several pages, like the topbar and footer) applies site-wide.
      - opt-out. Anything inside [data-no-text-override] or a contenteditable
-       is left alone.
+       is left alone, and so is everything PEOPLE wrote (USER_CONTENT below):
+       "Each night" is a sort label in sao.js and also the opening of half the
+       abilities on the wiki, and an override of the first must never reach
+       the second.
+     - word edges. A match has to start and end on a word boundary, so an
+       override of "Go" cannot land inside "Good".
 
    The map is kept in localStorage so a repeat visit applies it immediately
    instead of flashing the original wording, but it is re-fetched on every
@@ -84,6 +89,23 @@
     return pass(pass(text, undoRules), rules);
   }
 
+  /* Every occurrence of `from` that sits on word edges. The same test the
+     live editor's guard makes (bounded() in text-live.js): an edge that is a
+     letter or digit must not be glued to another one. */
+  var WORDCH = /[A-Za-z0-9]/;
+  function replaceBounded(text, from, to) {
+    var out = '', at = 0, i;
+    var headWord = WORDCH.test(from.charAt(0));
+    var tailWord = WORDCH.test(from.charAt(from.length - 1));
+    while ((i = text.indexOf(from, at)) >= 0) {
+      var ok = !(headWord && i > 0 && WORDCH.test(text.charAt(i - 1))) &&
+        !(tailWord && WORDCH.test(text.charAt(i + from.length)));
+      if (ok) { out += text.slice(at, i) + to; at = i + from.length; }
+      else { out += text.slice(at, i + 1); at = i + 1; }
+    }
+    return out + text.slice(at);
+  }
+
   function pass(text, list) {
     var out = text;
     for (var i = 0; i < list.length; i++) {
@@ -94,18 +116,18 @@
         rule.re.lastIndex = 0;
         out = out.replace(rule.re, filler(rule));
       } else if (out.indexOf(rule.from) >= 0) {
-        out = out.split(rule.from).join(rule.to);
+        out = replaceBounded(out, rule.from, rule.to);
       }
     }
     return out;
   }
 
-  function patchAttrs(root, anyOptOut) {
+  function patchAttrs(root) {
     if (!root || !root.querySelectorAll) return;
     var list = Array.prototype.slice.call(root.querySelectorAll(ATTR_SEL));
     if (root.nodeType === 1 && root.matches && root.matches(ATTR_SEL)) list.push(root);
     for (var i = 0; i < list.length; i++) {
-      if (anyOptOut && optedOut(list[i])) continue;
+      if (optedOut(list[i])) continue;
       for (var a = 0; a < ATTRS.length; a++) {
         var el = list[i], name = ATTRS[a];
         if (!el.hasAttribute(name)) continue;
@@ -123,34 +145,75 @@
   }
 
   var OPT_OUT = '[data-no-text-override],[contenteditable]';
+  /* Where the words on the page are somebody's writing rather than the
+     site's: a character's name, ability and almanac prose, a script's or
+     collection's synopsis, a wiki page or news body, comments, messages,
+     the cards and tiles that repeat any of those, a profile. Matched by the
+     classes the renderers already print (render.js, render-page.js,
+     render-wiki.js, render-news.js and the client-side lists) rather than by
+     marking the renderers, so nothing they print had to change. The section
+     headings around this prose ("Summary", "How to Run", "Synopsis") are the
+     site's own and stay editable, which is why the character parchment is
+     listed by its paragraphs and not as a whole. A new surface that prints
+     user text gets its class added here, or carries [data-user-content]. */
+  var USER_CONTENT = [
+    '[data-user-content]',
+    // a character page
+    '.gen-title', '.char-parchment p', '.char-parchment li', '.callout', '.ex',
+    '.quote', '.pronounce', '.info-credit', '.jname', '.jtext', '.rel-name', '.rel-note',
+    '.custom-box-h', '.custom-box-body', '.json-body', '.tag-link', '.author-link',
+    '.appears-in-link',
+    // script and collection pages
+    '.script-title-fallback', '.coll-title', '.sv-tagline', '.script-desc',
+    '.script-meta-line', '.sv-section > p', '.sv-boot-list', '.script-char-text',
+    '.sv-night-text', '.sv-credits-list', '.sv-info-author',
+    // wiki pages, articles, news
+    '.wiki-title', '.wiki-subtitle', '.wiki-meta', '.wiki-body', '.wiki-infobox',
+    '.wiki-pagelink-title', '.wiki-pagelink-blurb', '.news-body', '.news-meta',
+    '.news-article-head h1', '.news-card-title', '.news-card-summary',
+    // cards, tiles and rows that repeat a page's own words
+    '.char-card-name', '.char-card-ability', '.search-result-name',
+    '.search-result-ability', '.collection-name', '.collection-tile-tagline',
+    '.script-tile-desc', '.featured-name', '.featured-ability', '.featured-lede',
+    '.featured-body', '.recent-name', '.draft-tile-name', '.fav-tile-name',
+    '.creator-name', '.pin-name', '.pin-text',
+    // people talking: comments, messages, modmail, profiles, suggestions
+    '.cmt-body', '.cmt-who', '.bubble', '.convo-preview', '.convo-name',
+    '.msg-body', '.adm-body', '.profile-bio', '.profile-hero-text h1',
+    '.profile-uname', '.hist-body', '.sg-note', '.sg-note-msg', '.sg-reply-said',
+    '.sg-inbox-name', '.sg-inbox-note'
+  ].join(',');
+  var SKIP = OPT_OUT + ',' + USER_CONTENT;
   function optedOut(node) {
-    var el = node.nodeType === 1 ? node : node.parentNode;
-    return !!(el && el.closest && el.closest(OPT_OUT));
+    var el = node && (node.nodeType === 1 ? node : node.parentNode);
+    return !!(el && el.closest && el.closest(SKIP));
   }
 
   function walk(root) {
     if (!root) return;
-    // Asked against the whole document, not `root`: the observer hands us
-    // nodes from inside an opted-out container (the text editor's own list of
-    // strings, which must show them as they are), and a container's marker is
-    // above those nodes, not inside them.
-    var anyOptOut = !!document.querySelector(OPT_OUT);
-    if (anyOptOut && optedOut(root)) return;
+    // `root` is asked with closest(), so its ANCESTORS count: the observer
+    // hands us nodes from inside an opted-out container (a comment that just
+    // arrived, the text editor's own list of strings), and the container's
+    // marker is above those nodes, not inside them.
+    if (root.nodeType !== 9 && root.nodeType !== 11 && optedOut(root)) return;
     if (root.nodeType === 3) { patchText(root); return; }
     if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
     var doc = root.ownerDocument || document;
-    var walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    // Elements are visited too, so a skipped container is rejected ONCE and
+    // its whole subtree with it, instead of asking closest() per text node.
+    var walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
-        var p = n.parentNode;
-        if (!p || SKIP_TAGS[p.nodeName]) return NodeFilter.FILTER_REJECT;
-        if (anyOptOut && optedOut(n)) return NodeFilter.FILTER_REJECT;
+        if (n.nodeType === 1) {
+          return (SKIP_TAGS[n.nodeName] || n.matches(SKIP))
+            ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
+        }
         return NodeFilter.FILTER_ACCEPT;
       }
     });
     var n, list = [];
     while ((n = walker.nextNode())) list.push(n);
     for (var i = 0; i < list.length; i++) patchText(list[i]);
-    patchAttrs(root, anyOptOut);
+    patchAttrs(root);
   }
 
   function applyAll() {
@@ -258,7 +321,10 @@
     apply: applyAll,
     items: function () { return allItems.slice(); },
     inScope: inScope,
-    here: here
+    here: here,
+    // text-live.js asks this too, so live mode never offers somebody's
+    // writing even where a catalogued phrase happens to sit inside it.
+    skip: optedOut
   };
 })();
 
