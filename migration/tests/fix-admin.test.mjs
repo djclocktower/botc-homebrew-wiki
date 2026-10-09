@@ -283,3 +283,19 @@ test('an article credited to somebody else is not listed on their creator page',
   const other = await json(await f.request('/api/user?u=other'));
   assert.deepEqual(other.pages.map(p => p.slug), ['forged']);
 });
+
+test('a wiki page\'s history goes down with its set', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  await seed(f);
+  f.insert('scripts', 'live-set', { slug: 'live-set', name: 'Live Set' });
+  f.insert('scripts', 'draft-set', { slug: 'draft-set', name: 'Draft Set' }, 'draft');
+  f.db.prepare('UPDATE scripts SET owner_id=2').run();
+  page(f, 'under-live', 'script', 'live-set', 'published', 2);
+  page(f, 'under-draft', 'script', 'draft-set', 'published', 2);
+  const hist = (slug, who) => f.request('/api/page-history?type=wikipage&slug=' + slug, who ? as(who) : {});
+  assert.equal((await hist('under-live')).status, 200);
+  assert.equal((await hist('under-draft')).status, 404, 'anonymous readers cannot see it');
+  assert.equal((await hist('under-draft', 'other')).status, 404, 'nor another member');
+  assert.equal((await hist('under-draft', 'member')).status, 200, 'its owner still can');
+  assert.equal((await hist('under-draft', 'admin')).status, 200);
+});

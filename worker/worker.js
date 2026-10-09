@@ -4179,11 +4179,24 @@ async function getEntityRow(env, type, slug, opts) {
 // while publish-page.html told people deletion could not be undone.
 const REVISABLE = { character: 1, collection: 1, script: 1, wikipage: 1 };
 
+/* Whether a page's history (/api/page-history, /api/page-revision) is hidden
+   from this reader. A published page's history is public, the way a wiki's
+   is; a draft is its owner's alone. A set's wiki page also goes down with its
+   set (wikiParentPublic), so its history must not stay readable by a link
+   after the page itself 404s. */
+async function historyHidden(env, sess, type, row, owns) {
+  if ((row.status || 'published') !== 'published' && !owns) return true;
+  if (type !== 'wikipage' || owns) return false;
+  const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+  if (wikiParentPublic(parent)) return false;
+  return !(await mayReachHiddenWikiPage(env, sess, row, parent));
+}
+
 async function revisableRow(env, type, slug) {
   if (type === 'wikipage') {
     await ensurePagesTable(env);
     const row = await env.DB.prepare(
-      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at FROM pages WHERE slug=?'
+      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at, parent_type, parent_slug FROM pages WHERE slug=?'
     ).bind(slug).first().catch(() => null);
     return row || null;
   }
@@ -10540,9 +10553,9 @@ const app = {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      // A published page's history is public, the way a wiki's is. A draft is
-      // its owner's alone, and has no history anyway (see saveRevision).
-      if ((row.status || 'published') !== 'published' && !owns) {
+      // A draft has no history anyway (see saveRevision); historyHidden says
+      // who else may not read it.
+      if (await historyHidden(env, sess, type, row, owns)) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       await ensureRevisionsTable(env);
@@ -10659,7 +10672,7 @@ const app = {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      if ((row.status || 'published') !== 'published' && !owns) {
+      if (await historyHidden(env, sess, type, row, owns)) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       await ensureRevisionsTable(env);
