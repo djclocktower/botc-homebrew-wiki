@@ -9,15 +9,8 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
-<!-- The compact homepage snapshot starts downloading here, while
-     the stylesheet and scripts are still on their way, instead of after the
-     scripts at the end of the body have run. `crossorigin` has to be there
-     for the preload to match a plain fetch(). -->
-<link rel="preload" href="/api/home" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <script defer src="assets/data.js"></script>
-<script defer src="assets/render-page.js"></script>
-<script defer src="assets/classify.js"></script>
 <script defer src="assets/favorites.js"></script>
 <script defer src="assets/card-actions.js"></script>
 <script defer src="assets/rules.js"></script>
@@ -64,7 +57,7 @@
   <section class="landing-hero">
     <h1>Homebrew characters &amp; scripts for Blood on the Clocktower</h1>
     <p class="landing-intro">Welcome to the BOTC homebrew wiki. Add your own characters, scripts and collections, or find characters by creator or tag.</p>
-    <div class="landing-stats" id="landing-stats">— loading —</div>
+    <div class="landing-stats" id="landing-stats"><!--home:stats-->— loading —<!--/home:stats--></div>
     <div class="landing-ctas">
       <a class="cta-secondary" href="all-characters">Browse All Characters</a>
       <a class="cta-secondary" href="create">+ Create a Character</a>
@@ -80,11 +73,16 @@
 
     <!-- ── NEWS ─────────────────────────────────────────────── -->
     <!-- Hidden until there is at least one published article, so the
-         homepage never shows an empty News heading. -->
+         homepage never shows an empty News heading.
+         The page is server-rendered from this file (worker/home-page.js):
+         each "home:NAME" … "/home:NAME" comment pair is a region the
+         Worker fills, and what is between them is only the static fallback.
+         Keep every pair, and keep `id="…-section" hidden` written exactly
+         so — the Worker un-hides the section by that string. -->
     <section class="landing-section" id="news-section" hidden>
       <h2 class="type-header"><a href="news" style="color:inherit;text-decoration:none">News</a></h2>
       <div class="type-rule"></div>
-      <div class="news-grid" id="news-grid"></div>
+      <div class="news-grid" id="news-grid"><!--home:news--><!--/home:news--></div>
       <p style="text-align:right;margin:10px 2px 0">
         <a href="news" style="font-family:'Oswald',sans-serif;font-size:.82rem;letter-spacing:.05em;color:rgba(236,225,200,.75);text-decoration:none">All news →</a>
       </p>
@@ -96,7 +94,7 @@
     <section class="landing-section" id="articles-section" hidden>
       <h2 class="type-header"><a href="articles" style="color:inherit;text-decoration:none">Articles</a></h2>
       <div class="type-rule"></div>
-      <div class="news-grid" id="articles-grid"></div>
+      <div class="news-grid" id="articles-grid"><!--home:articles--><!--/home:articles--></div>
       <p style="text-align:right;margin:10px 2px 0">
         <a href="articles" style="font-family:'Oswald',sans-serif;font-size:.82rem;letter-spacing:.05em;color:rgba(236,225,200,.75);text-decoration:none">All articles →</a>
       </p>
@@ -106,9 +104,9 @@
     <section class="landing-section">
       <h2 class="type-header">Collections</h2>
       <div class="type-rule"></div>
-      <div class="collections-grid" id="collections-grid">
+      <div class="collections-grid" id="collections-grid"><!--home:collections-->
         <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading collections…</p>
-      </div>
+      <!--/home:collections--></div><!--home:collections-pool--><!--/home:collections-pool-->
     </section>
 
 
@@ -116,9 +114,9 @@
     <section class="landing-section">
       <h2 class="type-header"><a href="scripts" style="color:inherit;text-decoration:none">Scripts</a></h2>
       <div class="type-rule"></div>
-      <div class="collections-grid" id="scripts-grid">
+      <div class="collections-grid" id="scripts-grid"><!--home:scripts-->
         <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading scripts…</p>
-      </div>
+      <!--/home:scripts--></div><!--home:scripts-pool--><!--/home:scripts-pool-->
     </section>
 
     <!-- ── BROWSE PATHS ─────────────────────────────────────── -->
@@ -130,25 +128,25 @@
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 4-1 6-2 2 1 4 2 6 2h2"/></svg></div>
           <h3 class="browse-card-title">By Team</h3>
           <p class="browse-card-desc">Townsfolk, Outsiders, Minions, Demons, Travellers, Fabled, and Loric.</p>
-          <span class="browse-card-count" id="bc-team">—</span>
+          <span class="browse-card-count" id="bc-team"><!--home:bc-team-->—<!--/home:bc-team--></span>
         </a>
         <a class="browse-card" href="creators">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></div>
           <h3 class="browse-card-title">By Creator</h3>
           <p class="browse-card-desc">Every creator on the wiki, with their symbol and their characters.</p>
-          <span class="browse-card-count" id="bc-creator">—</span>
+          <span class="browse-card-count" id="bc-creator"><!--home:bc-creator-->—<!--/home:bc-creator--></span>
         </a>
         <a class="browse-card" href="tags">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg></div>
           <h3 class="browse-card-title">By Tag</h3>
           <p class="browse-card-desc">Find characters by mechanic: Setup, Poison, Madness, Win/Loss Condition, and more.</p>
-          <span class="browse-card-count" id="bc-tag">—</span>
+          <span class="browse-card-count" id="bc-tag"><!--home:bc-tag-->—<!--/home:bc-tag--></span>
         </a>
         <a class="browse-card" href="jinxes">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18.5" r="2.6"/><path d="M7.4 7.3 9.9 16.3"/><path d="M16.6 7.3 14.1 16.3"/><path d="M7.6 6h8.8"/></svg></div>
           <h3 class="browse-card-title">Jinxes</h3>
           <p class="browse-card-desc">Which characters do not get along, as a list and a map.</p>
-          <span class="browse-card-count" id="bc-jinx">&hellip;</span>
+          <span class="browse-card-count" id="bc-jinx"><!--home:bc-jinx-->&hellip;<!--/home:bc-jinx--></span>
         </a>
         <a class="browse-card" href="script">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></div>
@@ -182,18 +180,18 @@
     <section class="landing-section">
       <h2 class="type-header">Recently Added</h2>
       <div class="type-rule"></div>
-      <div class="recent-strip" id="recent-strip">
+      <div class="recent-strip" id="recent-strip"><!--home:recent-->
         <p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%">Loading…</p>
-      </div>
+      <!--/home:recent--></div>
     </section>
 
     <!-- ── FEATURED ─────────────────────────────────────────── -->
     <section class="landing-section">
       <h2 class="type-header">Featured Character</h2>
       <div class="type-rule"></div>
-      <div class="featured-wrap" id="featured-wrap">
+      <div class="featured-wrap" id="featured-wrap"><!--home:featured-->
         <p style="text-align:center;color:rgba(236,225,200,.6);padding:18px">Loading…</p>
-      </div>
+      <!--/home:featured--></div>
     </section>
 
     <!-- ── RULES ────────────────────────────────────────────── -->
