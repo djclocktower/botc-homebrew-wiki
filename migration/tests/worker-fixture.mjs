@@ -25,6 +25,10 @@ export async function fixture() {
   const source = (await read('worker/worker.js')).replace(
     /from (['"])(\.\.?\/[^'"]+)\1/g,
     (_, quote, path) => 'from ' + JSON.stringify(path === './argon2.js' ? argon2Url : pathToFileURL(resolve(root, 'worker', path)).href)
+  ).replace(
+    // Lazily loaded modules (import('./bloodstar.js')) resolve the same way.
+    /\bimport\((['"])(\.\.?\/[^'"]+)\1\)/g,
+    (_, quote, path) => 'import(' + JSON.stringify(pathToFileURL(resolve(root, 'worker', path)).href) + ')'
   ) + `\n// isolate ${instance++}\nexport const hooks = {
     contentVersion, bumpContentVersion, cachedFeedBody, renderCharacterPage,
     applyCollectionAppearsIn, charsBySlug, ensurePagesTable, uploadSlotDenied,

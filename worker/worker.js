@@ -332,12 +332,23 @@ import OfficialRoles from '../assets/official-roles.js';
 // shapes, for /bloodstar. Worker-only: it has no DOM, because Workers have no
 // DOMParser, and worker/ is excluded from the asset upload so it costs the
 // site nothing. See the header of that file for the almanac's shape.
-import * as Bloodstar from './bloodstar.js';
+// Loaded on first use (a dynamic import, which the bundler keeps in the same
+// bundle but evaluates only when called), because only the two /bloodstar
+// routes ever need it and every isolate used to evaluate it at start-up.
+let _bloodstarModule = null;
+function loadBloodstar() {
+  return _bloodstarModule || (_bloodstarModule = import('./bloodstar.js'));
+}
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.
-// Delete this import, the route and the card once the cleanup has been run.
-import OdysseyCleanup from '../migration/odyssey-cleanup.js';
+// Loaded on first use, like Bloodstar above: one admin route needs it.
+// Delete this loader, the route and the card once the cleanup has been run.
+let _odysseyCleanupModule = null;
+function loadOdysseyCleanup() {
+  return _odysseyCleanupModule || (_odysseyCleanupModule =
+    import('../migration/odyssey-cleanup.js').then(m => m.default || m));
+}
 import { homeData } from './home-data.js';
 import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
@@ -872,7 +883,13 @@ async function getSession(env, request) {
   const cookie = request.headers.get('Cookie') || '';
   const m = cookie.match(/botc_session=([^;]+)/);
   if (!m) return null;
-  const raw = await env.SESSIONS.get('sess:' + m[1]);
+  // cacheTtl 60 is spelled out, not raised: it is already KV's default (and
+  // its minimum), so this read is served from the colo's KV cache when warm.
+  // A longer TTL would let a logged-out or revoked token keep answering on
+  // GETs for that much longer in other colos (KV deletes are visible at once
+  // only in the colo that made them), so 60 s stays the ceiling. Bans and
+  // demotions do not depend on it: POSTs and admin reads re-check D1.
+  const raw = await env.SESSIONS.get('sess:' + m[1], { cacheTtl: 60 });
   if (!raw) return null;
   try { return { token: m[1], ...JSON.parse(raw) }; } catch { return null; }
 }
@@ -1399,8 +1416,13 @@ function validSignup(username, email, password) {
 let _unameKeyReady = false;
 async function ensureUsernameKey(env) {
   if (_unameKeyReady) return true;
-  try { await env.DB.prepare('ALTER TABLE users ADD COLUMN username_key TEXT').run(); }
-  catch { /* already there */ }
+  // Column and index already there (the normal case): skip both writes; the
+  // backfill below is a read that finds nothing.
+  const built = await schemaHas(env, { tables: { users: ['username_key'] }, indexes: ['idx_users_username_key'] });
+  if (!built) {
+    try { await env.DB.prepare('ALTER TABLE users ADD COLUMN username_key TEXT').run(); }
+    catch { /* already there */ }
+  }
   try {
     const { results } = await env.DB.prepare(
       'SELECT id, username FROM users WHERE username_key IS NULL'
@@ -1415,7 +1437,7 @@ async function ensureUsernameKey(env) {
     // UNIQUE is the real guard against two signups racing onto one key. It can
     // only fail if live data already holds a collision, which is why it comes
     // last: the lookups above work either way, they just lose the race guard.
-    await env.DB.prepare(
+    if (!built) await env.DB.prepare(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_key ON users(username_key)'
     ).run().catch(() => {});
     _unameKeyReady = true;
@@ -1542,6 +1564,7 @@ const REVISIONS_KEEP = 50;
 let _revisionsReady = false;
 async function ensureRevisionsTable(env) {
   if (_revisionsReady) return;
+  if (await schemaHas(env, { tables: { revisions: [] }, indexes: ['idx_revisions_entity'] })) { _revisionsReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS revisions (
        id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1690,6 +1713,7 @@ async function saveRevision(env, sess, type, row) {
 let _suggestReady = false;
 async function ensureSuggestTable(env) {
   if (_suggestReady) return;
+  if (await schemaHas(env, { tables: { suggestions: [] }, indexes: ['idx_suggestions_page'] })) { _suggestReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS suggestions (
        id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1726,6 +1750,7 @@ const SUGGEST_NOTE_MAX = 600;
 let _favoritesReady = false;
 async function ensureFavoritesTable(env) {
   if (_favoritesReady) return;
+  if (await schemaHas(env, { tables: { favorites: [] }, indexes: ['idx_favorites_page'] })) { _favoritesReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS favorites (
        user_id     INTEGER NOT NULL,
@@ -1853,9 +1878,65 @@ async function favoritesPayload(env, userId, expand) {
 }
 
 // ---- more lazily-created tables/columns (no manual migrations ever) ----
+// Reading the schema instead of re-creating it. Every ensure*() used to open
+// each new isolate by re-running its CREATE TABLE IF NOT EXISTS / ALTER TABLE
+// statements, and those are WRITES: each one is a round trip to the D1
+// primary (an ALTER on a column that exists even fails, every time), and they
+// ran in front of the first query on read paths too. Now the first ensure in
+// an isolate reads sqlite_master once (a read, shared by every ensure), and
+// only an object that is genuinely missing is created. A failed or odd read
+// falls back to the old CREATE ... IF NOT EXISTS path, which is idempotent, so
+// the worst case is the old behaviour. Tables are never dropped, so a snapshot
+// that says "present" can never be wrong; one that says "missing" because it
+// predates another isolate's CREATE only costs that idempotent CREATE.
+// Hot read paths (the SSR pages, /api/boot, the feeds) do not call ensure*()
+// at all: a missing table there means nothing has been written yet, which
+// reads as empty (see isMissingSchema()). Tables are still created lazily, on
+// the first write that needs them.
+let _schemaSnapshot = null;   // Promise<{tables: Map(name -> CREATE sql), indexes: Set}|null>
+function schemaSnapshot(env) {
+  if (!_schemaSnapshot) {
+    const pending = env.DB.prepare(
+      "SELECT type, name, sql FROM sqlite_master WHERE type IN ('table','index')"
+    ).all().then(({ results }) => {
+      const tables = new Map(), indexes = new Set();
+      for (const r of results || []) {
+        if (r.type === 'table') tables.set(String(r.name), String(r.sql || ''));
+        else if (r.name) indexes.add(String(r.name));
+      }
+      return { tables, indexes };
+    }).catch(() => {
+      if (_schemaSnapshot === pending) _schemaSnapshot = null;   // retry next time
+      return null;
+    });
+    _schemaSnapshot = pending;
+  }
+  return _schemaSnapshot;
+}
+// True when every named table (with the listed columns — an ALTER ... ADD
+// COLUMN rewrites the table's CREATE text, so the column name is in it) and
+// every named index already exists.
+async function schemaHas(env, spec) {
+  const snap = await schemaSnapshot(env);
+  if (!snap) return false;
+  for (const [table, cols] of Object.entries(spec.tables || {})) {
+    const sql = snap.tables.get(table);
+    if (sql === undefined) return false;
+    for (const col of cols) if (!new RegExp('\\b' + col + '\\b', 'i').test(sql)) return false;
+  }
+  return (spec.indexes || []).every(name => snap.indexes.has(name));
+}
+// "This table/column has not been created yet": the read paths that skip
+// ensure*() treat it as "nothing written yet" (or create and retry, where the
+// schema is the read's own business).
+function isMissingSchema(e) {
+  return /no such (table|column)/i.test(String((e && e.message) || e || ''));
+}
+
 let _viewsReady = false;
 async function ensureViewsTable(env) {
   if (_viewsReady) return;
+  if (await schemaHas(env, { tables: { page_views: [] } })) { _viewsReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS page_views (
        entity_type TEXT NOT NULL,
@@ -1876,6 +1957,7 @@ async function ensureViewsTable(env) {
 let _rateReady = false;
 async function ensureRateTable(env) {
   if (_rateReady) return;
+  if (await schemaHas(env, { tables: { rate_limits: [] } })) { _rateReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS rate_limits (
        key     TEXT PRIMARY KEY,
@@ -1911,6 +1993,10 @@ const MODMAIL_MAX = 3000;
 let _messagesReady = false;
 async function ensureMessagesTable(env) {
   if (_messagesReady) return;
+  if (await schemaHas(env, {
+    tables: { messages: ['last_reply', 'replied_at', 'replied_by', 'images', 'last_at'], modmail_replies: [] },
+    indexes: ['idx_modmail_thread', 'idx_messages_status']
+  })) { _messagesReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS messages (
        id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2015,6 +2101,10 @@ async function touchModmail(env, id, reopen) {
 let _dmReady = false;
 async function ensureDmTables(env) {
   if (_dmReady) return;
+  if (await schemaHas(env, {
+    tables: { dms: [], dm_blocks: [], dm_reports: [] },
+    indexes: ['idx_dms_recipient', 'idx_dms_sender', 'idx_dm_reports_status']
+  })) { _dmReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS dms (
        id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2068,6 +2158,10 @@ const COMMENT_TERMS_VERSION = '1';
 let _commentsReady = false;
 async function ensureCommentTables(env) {
   if (_commentsReady) return;
+  if (await schemaHas(env, {
+    tables: { comments: ['parent_id', 'pinned', 'images'], comment_reports: [], users: ['comment_terms'] },
+    indexes: ['idx_comments_page', 'idx_comment_reports_st', 'idx_comments_status_id']
+  })) { _commentsReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS comments (
        id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2158,6 +2252,7 @@ async function restoreCommentCascade(env, row) {
 let _newsReady = false;
 async function ensureNewsTable(env) {
   if (_newsReady) return;
+  if (await schemaHas(env, { tables: { news: [] }, indexes: ['idx_news_status'] })) { _newsReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS news (
        slug         TEXT PRIMARY KEY,
@@ -2188,6 +2283,7 @@ const SITE_TEXT_ROWS = 2000;     // a ceiling on how many overrides can exist
 let _siteTextReady = false;
 async function ensureSiteTextTable(env) {
   if (_siteTextReady) return;
+  if (await schemaHas(env, { tables: { site_text: [] }, indexes: ['idx_site_text_key'] })) { _siteTextReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS site_text (
        id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2229,11 +2325,25 @@ async function announcementValue(env) {
   return ann;
 }
 
+// A short content hash for ETags of small bodies (/api/boot): FNV-1a over the
+// UTF-16 code units, plus the length. Not a security boundary — it only has
+// to change when the body does.
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36) + '-' + str.length.toString(36);
+}
+
 async function siteTextItems(env) {
   if (_siteTextCache && (Date.now() - _siteTextCache.at) < SITE_TEXT_CACHE_MS) return _siteTextCache.items;
   let items = [];
   try {
-    await ensureSiteTextTable(env);
+    // No ensureSiteTextTable() here: this runs on every page view, and the
+    // table is created by the first save on /text-editor. Until then the read
+    // fails with "no such table", which the catch reads as "no overrides".
     const rows = await env.DB.prepare(
       'SELECT scope, original, replacement FROM site_text ORDER BY length(original) DESC'
     ).all();
@@ -2251,6 +2361,7 @@ async function siteTextItems(env) {
 let _pagesReady = false;
 async function ensurePagesTable(env) {
   if (_pagesReady) return;
+  if (await schemaHas(env, { tables: { pages: [] }, indexes: ['idx_pages_parent', 'idx_pages_owner'] })) { _pagesReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS pages (
        slug        TEXT PRIMARY KEY,
@@ -2313,20 +2424,28 @@ async function wikiParentRow(env, type, key) {
 // [[Character Name]] -> the path segment render-wiki builds `c/{value}` from,
 // so the value is the ADDRESS. Both the identity and the name are keys, so a
 // writer can type either and still get a link.
+// Reached through cachedCharLinkMap(), which stores the answer at the edge;
+// null when the read failed, so a failure is never stored as "no links".
 async function loadCharLinks(env) {
   const map = {};
+  const run = () => env.DB.prepare(
+    "SELECT slug, url_slug, name FROM characters WHERE status='published'"
+  ).all();
   try {
-    await ensureUrlSlugColumn(env);
-    const { results } = await env.DB.prepare(
-      "SELECT slug, url_slug, name FROM characters WHERE status='published'"
-    ).all();
+    let res;
+    try { res = await run(); }
+    catch (e) {
+      if (!isMissingSchema(e)) throw e;
+      await ensureUrlSlugColumn(env);
+      res = await run();
+    }
     const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-    for (const r of results || []) {
+    for (const r of res.results || []) {
       const addr = charAddress(r);
       if (r.slug) map[norm(r.slug)] = addr;
       if (r.name) map[norm(r.name)] = addr;
     }
-  } catch { /* links just fall back to token pills */ }
+  } catch { return null; /* links just fall back to token pills */ }
   return map;
 }
 
@@ -2480,7 +2599,8 @@ function sanitizeInfobox(info) {
 // Pages a parent script/collection carries. Drafts are only ever included
 // for someone allowed to see them (the owner, or an admin).
 async function listWikiPages(env, parentType, parentSlug, opts = {}) {
-  await ensurePagesTable(env);
+  // No ensurePagesTable(): a read. With no pages table nothing has been
+  // written yet, which the catch below already reads as "no pages".
   const where = opts.includeDrafts
     ? "status IN ('published','draft')"
     : "status='published'";
@@ -2581,6 +2701,7 @@ async function findUserByUsername(env, username) {
 let _banReady = false;
 async function ensureBanColumn(env) {
   if (_banReady) return;
+  if (await schemaHas(env, { tables: { users: ['banned'] } })) { _banReady = true; return; }
   try {
     await env.DB.prepare('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0').run();
   } catch { /* column already exists */ }
@@ -2593,6 +2714,7 @@ async function ensureBanColumn(env) {
 let _profileColReady = false;
 async function ensureProfileColumn(env) {
   if (_profileColReady) return;
+  if (await schemaHas(env, { tables: { users: ['profile_json'] } })) { _profileColReady = true; return; }
   try {
     await env.DB.prepare('ALTER TABLE users ADD COLUMN profile_json TEXT').run();
   } catch { /* column already exists */ }
@@ -3787,6 +3909,7 @@ function checkEditConflict(existing, body) {
 let _redirectsReady = false;
 async function ensureRedirectsTable(env) {
   if (_redirectsReady) return;
+  if (await schemaHas(env, { tables: { redirects: [] } })) { _redirectsReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS redirects (
        entity_type TEXT NOT NULL,
@@ -3893,6 +4016,7 @@ function kebab(s) {
 let _urlSlugReady = false;
 async function ensureUrlSlugColumn(env) {
   if (_urlSlugReady) return;
+  if (await schemaHas(env, { tables: { characters: ['url_slug'] }, indexes: ['idx_characters_url_slug'] })) { _urlSlugReady = true; return; }
   // Lazily ALTERed, the same way users.banned and users.username_key are:
   // there are no manual migrations on this project.
   try { await env.DB.prepare('ALTER TABLE characters ADD COLUMN url_slug TEXT').run(); }
@@ -4126,20 +4250,36 @@ async function setCharAddress(env, uid, address) {
 // should canonically be read. Callers 301 when the reader arrived elsewhere.
 async function resolveCharacterPath(env, key) {
   if (!key) return null;
-  await ensureUrlSlugColumn(env);
+  // No ensureUrlSlugColumn() in front of every read (it was two writes to the
+  // D1 primary in each new isolate, ahead of the page's first query): the
+  // column exists on every live database, and a database where it does not
+  // yet is created and retried below.
   const cols = 'slug, url_slug, data, status, owner_id, updated_at';
-  const bySlug = async v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE slug=?`)
-    .bind(v).first().catch(() => null);
-  const byAddr = async v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE url_slug=?`)
-    .bind(v).first().catch(() => null);
+  // Identity or address in ONE query, identity preferred — the identity
+  // lookup and the address lookup used to be two sequential round trips.
+  const byEither = v => env.DB.prepare(
+    `SELECT ${cols} FROM characters WHERE slug=?1 OR url_slug=?1 ORDER BY slug=?1 DESC LIMIT 1`
+  ).bind(v).first();
+  const byAddr = v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE url_slug=?`).bind(v).first();
+  // A failed query reads as "no such page", as it always has; a database
+  // binding that cannot even prepare a statement still throws (that is the
+  // crash page's business, not a 404).
+  const read = async fn => {
+    const pending = fn();
+    try { return await pending; }
+    catch (e) {
+      if (!isMissingSchema(e)) return null;
+      try { await ensureUrlSlugColumn(env); return await fn(); } catch { return null; }
+    }
+  };
 
-  let row = key.includes('/') ? await byAddr(key) : (await bySlug(key)) || (await byAddr(key));
+  let row = await read(() => key.includes('/') ? byAddr(key) : byEither(key));
   if (!row) {
     // An address this page used to live at. Redirect rows written since the
     // split hold the identity; the 39 written before it hold what was then
     // the new slug, which IS the identity — but try both, cheaply.
     const moved = await lookupRedirect(env, 'character', key);
-    if (moved) row = (await bySlug(moved)) || (await byAddr(moved));
+    if (moved) row = await read(() => byEither(moved));
   }
   if (!row) return null;
   return { row, canonical: charAddress(row) };
@@ -4311,17 +4451,34 @@ async function rewriteProfilePins(env, from, to) {
 // version. This used to be a full `collections` scan on EVERY /c/, /s/ and
 // /collection/ view — a whole table read to answer a question whose answer
 // changes only when an admin toggles the mark.
+// Every published collection's data, read ONCE per collection version and
+// shared: the Curata set and the include[] set below both come from it, and
+// each used to run its own `SELECT data FROM collections` — one after the
+// other on every /c/ page miss and every character feed build. It is the
+// public collections feed body (the same rows, already parsed the same way,
+// kept in this isolate and at the edge under the same 'collection' version),
+// so a new isolate in a warm colo reads no D1 for it at all — and the /c/
+// "Appears in" lookup was already reading that body. Concurrent callers share
+// one read; a failure answers null and is not memoised, so the next request
+// retries.
+let _pubCollMemo = null;   // { version, promise }
+function publishedCollectionData(env, version) {
+  if (_pubCollMemo && _pubCollMemo.version === version) return _pubCollMemo.promise;
+  const memo = { version, promise: null };
+  memo.promise = cachedFeedBody(env, null, 'collections', 'full', version)
+    .then(body => JSON.parse(body).map(d => foldLegacyCurata(d || {})))
+    .catch(() => { if (_pubCollMemo === memo) _pubCollMemo = null; return null; });
+  _pubCollMemo = memo;
+  return memo.promise;
+}
+
 let _curataCollCache = null;
 async function curataCollections(env) {
   const version = await contentVersion(env, ['collection']);
   if (_curataCollCache && _curataCollCache.version === version) return _curataCollCache.rows;
-  let rows = [];
-  try {
-    const { results } = await env.DB.prepare(
-      "SELECT data FROM collections WHERE status='published'"
-    ).all();
-    rows = (results || []).map(parseData).filter(d => d && d.curata);
-  } catch { rows = []; }
+  const all = await publishedCollectionData(env, version);
+  if (!all) return [];
+  const rows = all.filter(d => d && d.curata);
   _curataCollCache = { version, rows };
   return rows;
 }
@@ -4360,12 +4517,11 @@ let _inclCollCache = null;
 async function includeCollections(env) {
   const version = await contentVersion(env, ['collection']);
   if (_inclCollCache && _inclCollCache.version === version) return _inclCollCache.rows;
+  const all = await publishedCollectionData(env, version);
+  if (!all) return [];
   let rows = [];
   try {
-    const { results } = await env.DB.prepare(
-      "SELECT data FROM collections WHERE status='published'"
-    ).all();
-    rows = (results || []).map(parseData)
+    rows = all
       .filter(d => d && Array.isArray(d.include) && d.include.length)
       .map(d => ({
         name: d.displayName || d.id || d.slug || '',
@@ -4632,6 +4788,13 @@ async function contentVersion(env, scopes) {
   finally { if (_contentVersionPending === pending) _contentVersionPending = null; }
 }
 
+// True when contentVersion() can answer from this isolate's memo without a
+// D1 read. ssrRoute() uses it to decide whether a page's own row should be
+// read alongside the version (see there).
+function contentVersionFresh() {
+  return !!(_contentVersionCache && Date.now() - _contentVersionCache.at < CONTENT_VERSION_CACHE_MS);
+}
+
 // Both counters change in ONE SQLite statement, so readers never see a global
 // bump without its dependency versions. Unknown/bulk-mixed operations reset all.
 async function bumpContentVersion(env, entityType) {
@@ -4775,11 +4938,23 @@ async function buildPublicJSON(env, table, opts = {}) {
   // PK (what references are keyed on) and `page` is built from `url_slug`
   // (what links go to). Twelve pages already link through `page`, which is why
   // this one line is most of the frontend's share of nesting.
-  if (chars) await ensureUrlSlugColumn(env);
   const cols = (chars ? 'data, status, slug, url_slug' : 'data, status') + ', updated_at';
   // Fail closed: a transient database error must not retry without the
   // published-only filter and expose drafts in a public, cached response.
-  const { results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all();
+  // The url_slug column is added (and the same query retried) only when the
+  // read says it is missing — not by an ALTER in front of every build.
+  const readRows = () => env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all();
+  // The collection sets the two passes at the end read come from one shared,
+  // memoised query: start it beside the character read, not after it.
+  if (chars) { curataCollections(env).catch(() => {}); includeCollections(env).catch(() => {}); }
+  let rowsRead;
+  try { rowsRead = await readRows(); }
+  catch (e) {
+    if (!chars || !isMissingSchema(e)) throw e;
+    await ensureUrlSlugColumn(env);
+    rowsRead = await readRows();
+  }
+  const { results } = rowsRead;
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
   const out = results.map(r => {
@@ -6010,34 +6185,100 @@ async function loadOfficialJinxes(env, origin) {
 //
 // Cached like the JSON feeds: in-isolate and in caches.default, under a key
 // carrying contentVersion(), which logActivity() bumps on every content write.
-// Cold cost is one card-feed read.
+// Cold cost is one narrow read of the characters table (loadJinxRows).
 let _jinxIndexCache = null;      // { version, index }
 async function jinxIndex(env, ctx) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
 
-  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}`, { method: 'GET' });
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}&f=2`, { method: 'GET' });
   try {
     const hit = await caches.default.match(cacheKey);
     if (hit) {
-      const index = await hit.json();
+      const index = unpackJinxIndex(await hit.json());
       _jinxIndexCache = { version, index };
       return index;
     }
   } catch { /* cache miss is not an error */ }
 
-  // Built from the shared card cache, so a /c/ page in a cold isolate pays
-  // for at most one corpus read — the same one the link map derives from.
-  const rows = await cachedCardChars(env, ctx);
+  // Built from the card rows when this isolate already holds them, and
+  // otherwise from a narrow read of just the fields the index uses — never by
+  // building (or pulling from the edge and parsing) the 3 MB card feed, which
+  // was most of what a /c/ page cost in a colo whose edge had not seen this
+  // version yet.
+  const rows = (_cardCharsCache && _cardCharsCache.version === version)
+    ? _cardCharsCache.rows : await loadJinxRows(env);
   const index = buildJinxIndex(rows);
   _jinxIndexCache = { version, index };
   try {
-    const stored = new Response(JSON.stringify(index), {
+    const stored = new Response(JSON.stringify(packJinxIndex(index)), {
       headers: { ...JSON_HEADERS, 'Cache-Control': INTERNAL_CACHE_CONTROL }
     });
     if (ctx) ctx.waitUntil(caches.default.put(cacheKey, stored).catch(() => {}));
   } catch { /* the in-isolate copy is enough */ }
   return index;
+}
+
+// The stored (edge) form of the index. In memory every key in `chars` points
+// at the same row object as `rows[slug]`, and `bySlug` lists the same edge
+// objects as `edges`; written out as-is, JSON repeats the row once per key and
+// the edge once per list, which made the entry ~2.2 MB that every new isolate
+// parsed on its first /c/ page. Stored once each, with references, and put
+// back together into the very same shape on the way in.
+function packJinxIndex(index) {
+  const keys = {};
+  for (const [k, row] of Object.entries(index.chars || {})) keys[k] = row && row.slug;
+  const at = new Map((index.edges || []).map((e, i) => [e, i]));
+  const bySlug = {};
+  for (const [s, list] of Object.entries(index.bySlug || {})) bySlug[s] = list.map(e => at.get(e));
+  return { f: 2, rows: index.rows, keys, edges: index.edges, bySlug };
+}
+function unpackJinxIndex(p) {
+  if (!p || p.f !== 2) return p;
+  const chars = {};
+  for (const [k, slug] of Object.entries(p.keys || {})) if (p.rows[slug]) chars[k] = p.rows[slug];
+  const bySlug = {};
+  for (const [s, list] of Object.entries(p.bySlug || {})) bySlug[s] = list.map(i => p.edges[i]);
+  return { chars, rows: p.rows, bySlug, edges: p.edges };
+}
+
+// Every published character, carrying only what buildJinxIndex() and the set
+// keys behind it read (Render.jinxCharIndex / jinxQualKeys): identity,
+// address, name, team, art, image, creator, jsonId, appearsIn, jinxes — plus
+// the derived appearsInFrom, exactly as the card feed stamps it. SQLite pulls
+// the fields out of the JSON, so the prose never crosses the wire. Same WHERE
+// as the card feed, so the rows come in the same order, which matters: the
+// index's set-qualified keys claim only what is still free. A row whose JSON
+// is broken is skipped (the CASE), where the card feed build would fail.
+async function loadJinxRows(env) {
+  const run = () => env.DB.prepare(
+    `SELECT slug, url_slug, CASE WHEN json_valid(data) THEN json_object(
+        'name', json_extract(data, '$.name'), 'team', json_extract(data, '$.team'),
+        'art', json_extract(data, '$.art'), 'image', json_extract(data, '$.image'),
+        'creator', json_extract(data, '$.creator'), 'jsonId', json_extract(data, '$.jsonId'),
+        'appearsIn', json_extract(data, '$.appearsIn'), 'jinxes', json_extract(data, '$.jinxes')
+      ) END AS j
+      FROM characters WHERE status='published'`
+  ).all();
+  let res;
+  try { res = await run(); }
+  catch (e) {
+    if (!isMissingSchema(e)) throw e;
+    await ensureUrlSlugColumn(env);
+    res = await run();
+  }
+  const rows = [];
+  for (const r of res.results || []) {
+    if (!r.j) continue;
+    let d;
+    try { d = JSON.parse(r.j); } catch { continue; }
+    for (const k of Object.keys(d)) if (d[k] === null) delete d[k];
+    d.slug = String(r.slug);
+    d.page = 'c/' + (r.url_slug ? String(r.url_slug) : String(r.slug));
+    rows.push(d);
+  }
+  await applyCollectionAppearsIn(env, rows);
+  return rows;
 }
 
 // The jinx list a /c/ page shows: its own, plus every jinx another character
@@ -6149,8 +6390,8 @@ function buildJinxIndex(chars) {
 //     parsed out of the shared feed body, so a cold isolate finds it at the
 //     edge instead of re-reading the table.
 //  3. The [[Character Name]] link map needs every name, but only name+slug —
-//     so it is derived from the same card rows rather than being one more
-//     scan of its own.
+//     so it is a small edge entry of its own (below), never a parse of the
+//     card feed, and only fetched for text that has a [[link]] in it.
 
 let _cardCharsCache = null;
 async function cachedCardChars(env, ctx) {
@@ -6161,63 +6402,110 @@ async function cachedCardChars(env, ctx) {
   return rows;
 }
 
+// The [[Character Name]] link map: name/identity -> address, for every
+// published character. Its OWN small edge entry, keyed on the version like
+// the jinx index beside it. It used to be derived from the card feed, so a
+// cold isolate pulled the whole 3 MB card body out of the edge cache and
+// parsed it just to read two strings per row — most of the time a /s/ or /p/
+// page took on a miss. Order: this isolate's memo, then the edge entry, then
+// the card rows if this isolate already holds them, then one narrow D1 read
+// (three indexed columns, no JSON) whose answer is stored at the edge for the
+// rest of the colo. Callers ask only when the text in hand contains "[["
+// (wantsCharLinks).
 let _charLinkCache = null;
+const _charLinkPending = new Map();
 async function cachedCharLinkMap(env, ctx) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_charLinkCache && _charLinkCache.version === version) return _charLinkCache.map;
-  const map = {};
-  const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  if (!_charLinkPending.has(version)) {
+    const pending = (async () => {
+      const key = `https://feed.internal/char-links.json?v=${version}&f=${FEED_FORMAT_V}`;
+      const hit = await edgeCacheGet(key);
+      if (hit !== null) {
+        try { return JSON.parse(hit); } catch { /* rebuild below */ }
+      }
+      const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      let map = null;
+      if (_cardCharsCache && _cardCharsCache.version === version) {
+        map = {};
+        for (const r of _cardCharsCache.rows) {
+          if (!r || !r.slug) continue;
+          // The ADDRESS: render-wiki turns this into `c/{value}`.
+          const addr = (typeof r.page === 'string' && r.page.indexOf('c/') === 0)
+            ? r.page.slice(2) : String(r.slug);
+          map[nkey(r.slug)] = addr;
+          if (r.name) map[nkey(r.name)] = addr;
+        }
+      } else {
+        map = await loadCharLinks(env);
+      }
+      // A failed read is not stored, so an outage cannot pin an empty map.
+      if (map) edgeCachePut(ctx, key, JSON.stringify(map), INTERNAL_CACHE_CONTROL);
+      return map;
+    })();
+    _charLinkPending.set(version, pending);
+    pending.finally(() => _charLinkPending.delete(version)).catch(() => {});
+  }
   try {
-    // Derived from the card feed: the SSR routes that need this map pull the
-    // card rows anyway (jinx index, collection rosters), so the map costs no
-    // D1 read of its own any more. `page` is stamped on every card row from
-    // url_slug, so the address here is the same one the old query computed.
-    for (const r of await cachedCardChars(env, ctx)) {
-      if (!r || !r.slug) continue;
-      // The ADDRESS: render-wiki turns this into `c/{value}`.
-      const addr = (typeof r.page === 'string' && r.page.indexOf('c/') === 0)
-        ? r.page.slice(2) : String(r.slug);
-      map[nkey(r.slug)] = addr;
-      if (r.name) map[nkey(r.name)] = addr;
-    }
-  } catch { /* an empty map just means [[Name]] renders as a plain token */ }
-  _charLinkCache = { version, map };
-  return map;
+    const map = await _charLinkPending.get(version);
+    if (map) { _charLinkCache = { version, map }; return map; }
+  } catch { /* fall through */ }
+  return {};   // an empty map just means [[Name]] renders as a plain token
+}
+
+// "[[" anywhere in the text a page is about to render through the wiki
+// engine: the only thing the link map is ever consulted for.
+function wantsCharLinks(...texts) {
+  return texts.some(t => typeof t === 'string' && t.indexOf('[[') !== -1);
 }
 
 // Just the roster, for a script page. D1 caps bound parameters at 100, and a
-// script's roster is capped at 100 entries, so chunk at 90 for headroom.
+// script's roster is capped at 100 entries, so chunk at 90 for headroom. The
+// chunks and the Curata collection set are read side by side.
 async function charsBySlug(env, slugs) {
   const wanted = [...new Set((slugs || []).map(String).filter(Boolean))];
   if (!wanted.length) return [];
-  await ensureUrlSlugColumn(env);
-  const out = [];
-  for (let i = 0; i < wanted.length; i += 90) {
-    const chunk = wanted.slice(i, i + 90);
+  const curata = curataCollections(env).catch(() => []);
+  const chunks = [];
+  for (let i = 0; i < wanted.length; i += 90) chunks.push(wanted.slice(i, i + 90));
+  const readChunk = async chunk => {
     const marks = chunk.map(() => '?').join(',');
+    const run = () => env.DB.prepare(
+      `SELECT data, status, slug, url_slug, updated_at FROM characters
+        WHERE status='published' AND slug IN (${marks})`
+    ).bind(...chunk).all();
     try {
-      const { results } = await env.DB.prepare(
-        `SELECT data, status, slug, url_slug, updated_at FROM characters
-          WHERE status='published' AND slug IN (${marks})`
-      ).bind(...chunk).all();
-      for (const r of results || []) {
-        try {
-          const d = foldLegacyCurata(JSON.parse(r.data));
-          d.slug = String(r.slug);
-          d.page = 'c/' + charAddress(r);
-          const v = rowVersion(r.updated_at);
-          if (v) d.v = v; else delete d.v;
-          const cls = Classify.classifyPage(d, 'character');
-          if (cls !== 'standard') d.classification = cls;
-          out.push(d);
-        } catch { /* skip an unparseable row rather than 500 the page */ }
+      try { return (await run()).results || []; }
+      catch (e) {
+        // A database whose url_slug column has not been added yet (there is
+        // no ensure in front of this read any more): add it and read again.
+        if (!isMissingSchema(e)) throw e;
+        await ensureUrlSlugColumn(env);
+        return (await run()).results || [];
       }
-    } catch { /* a transient failure: better a short roster than a 500 */ }
+    } catch { return []; /* a transient failure: better a short roster than a 500 */ }
+  };
+  const out = [];
+  for (const results of await Promise.all(chunks.map(readChunk))) {
+    for (const r of results) {
+      try {
+        const d = foldLegacyCurata(JSON.parse(r.data));
+        d.slug = String(r.slug);
+        d.page = 'c/' + charAddress(r);
+        const v = rowVersion(r.updated_at);
+        if (v) d.v = v; else delete d.v;
+        const cls = Classify.classifyPage(d, 'character');
+        if (cls !== 'standard') d.classification = cls;
+        out.push(d);
+      } catch { /* skip an unparseable row rather than 500 the page */ }
+    }
   }
   // buildPublicJSON used to do this for us. A character on a Curata
   // collection carries the mark onto every page it appears on, so a roster
   // built by slug has to inherit it too or the mark would vanish on script
-  // pages only. Cheap now that the collection set is memoised.
+  // pages only. Cheap now that the collection set is memoised, and already
+  // in flight beside the roster read.
+  await curata;
   await applyCollectionCurata(env, out);
   return out;
 }
@@ -6284,12 +6572,20 @@ async function pageJsonResponse(env, ctx, request, url) {
 }
 
 // ---- shared SSR for /s/{slug} and /collection/{id} pages ----
-async function renderContentPage(env, ctx, request, url, type, slug) {
+// The page row for /s/{slug} or /collection/{key}. A collection goes straight
+// to findCollectionRow(), whose first query already tries the PK — this used
+// to ask for the PK twice before it reached the kebab id.
+function contentPageRow(env, type, slug) {
+  return type === 'script'
+    ? env.DB.prepare('SELECT slug, data, status, owner_id, updated_at FROM scripts WHERE slug=?').bind(slug).first()
+    : findCollectionRow(env, slug);
+}
+
+// `loadRow` (optional) is the route's prefetch of contentPageRow(), started by
+// ssrRoute() beside its version read.
+async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   const isScript = type === 'script';
-  const table = isScript ? 'scripts' : 'collections';
-  let row = await env.DB.prepare(`SELECT slug, data, status, owner_id, updated_at FROM ${table} WHERE slug=?`)
-    .bind(slug).first();
-  if (!isScript && !row) row = await findCollectionRow(env, slug);
+  const row = await (loadRow ? loadRow() : contentPageRow(env, type, slug));
   if (!row || !row.data) return assetsOrNotFound(env, request);
 
   // Soft-deleted pages are hidden from everyone; recovery is on the dashboard.
@@ -6314,19 +6610,34 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const rv = rowVersion(row.updated_at);
   if (rv) d.v = rv; else delete d.v;
 
+  // Everything below depends on the row and on nothing else, so it is read
+  // side by side — the roster, the official roles, the custom wiki pages, the
+  // [[Name]] link map and the official names used to be five round trips in a
+  // row.
+  //
   // A script knows its roster by slug, so it never needs the rest of the
   // table. A collection's membership is matched on `appearsIn` at read time,
   // so it does — but from the memoised card feed, not a fresh full parse.
-  let chars = isScript
-    ? await charsBySlug(env, d.characters || [])
-    : await cachedCardChars(env, ctx);
   // Scripts can carry imported official roles ('off-' slugs), so resolve them.
   // An arranged night order needs this call on an all-homebrew script too: it
   // is what loads the night's non-character steps.
-  if (isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder)) {
-    const official = await loadOfficialRoles(env, url.origin);
-    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
-  }
+  const needOfficial = isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder);
+  // Custom wiki pages hanging off this script/collection. They live nowhere
+  // else on the site, so this list is the only way in (besides the author's
+  // page). Drafts show only to whoever may edit them.
+  // [[Character Name]] inside a custom box links to that character. This needs
+  // EVERY character's name, not just the ones on this page, so it cannot come
+  // from `chars` on a script page — it is its own small edge entry, and only
+  // fetched when the page's text actually contains a [[link]].
+  const [roster, official, wikiPages, links, officialNames] = await Promise.all([
+    isScript ? charsBySlug(env, d.characters || []) : cachedCardChars(env, ctx),
+    needOfficial ? loadOfficialRoles(env, url.origin) : null,
+    listWikiPages(env, type, row.slug || slug, { includeDrafts: mayEditParent }),
+    wantsCharLinks(row.data) ? cachedCharLinkMap(env, ctx) : {},
+    officialNameMap(env, url.origin).catch(() => ({}))
+  ]);
+  let chars = roster;
+  if (official) chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
 
   const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
   const theme = PageRender.sanitizeTheme(d.theme, themeBase);
@@ -6334,16 +6645,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
 
   const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
 
-  // Custom wiki pages hanging off this script/collection. They live nowhere
-  // else on the site, so this list is the only way in (besides the author's
-  // page). Drafts show only to whoever may edit them.
-  const wikiPages = await listWikiPages(env, type, row.slug || slug, { includeDrafts: mayEditParent });
   const pagesHTML = WikiRender.renderPageLinks(wikiPages, { linkRoot: '../' });
-  // [[Character Name]] inside a custom box links to that character. This needs
-  // EVERY character's name, not just the ones on this page, so it cannot come
-  // from `chars` on a script page — it derives from the shared card cache,
-  // which is already warm on a collection page and one edge read on a script.
-  await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env, ctx));
+  // The two registries [[Name]] resolves through, set together and with no
+  // suspension before the render (see setWikiTextRegistries).
+  WikiRender.setCharLinks(links);
+  WikiRender.setOfficialNames(officialNames);
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -6400,8 +6706,14 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
 // first, then by data.id, then by normalized slug/displayName.
 async function findCollectionRow(env, key) {
   if (!key) return null;
+  // The PK and the exact kebab id in ONE query (PK preferred) — every legacy
+  // collection URL used to be a PK miss followed by a whole-table read. The
+  // CASE keeps one row of broken JSON from failing the whole query
+  // (json_extract throws on it). Anything looser falls through to the scan.
   let hit = await env.DB.prepare(
-    'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections WHERE slug=?'
+    `SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections
+      WHERE slug=?1 OR (CASE WHEN json_valid(data) THEN json_extract(data, '$.id') END)=?1
+      ORDER BY slug=?1 DESC LIMIT 1`
   ).bind(key).first().catch(() => null);
   if (hit) return hit;
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -6783,7 +7095,88 @@ function stripViewHeader(res) {
   return new Response(res.body, { status: res.status, headers });
 }
 
-async function ssrRoute(env, ctx, request, url, build) {
+// A lazily started, shared promise: the first call starts `fn`, every later
+// call gets the same promise. A rejection nobody waits for is swallowed (the
+// caller that does wait still sees it).
+// decodeURIComponent that answers '' for a malformed escape (the route itself
+// still decodes, and fails, the way it always did — this only decides whether
+// there is anything worth prefetching).
+function safeDecode(s) {
+  try { return decodeURIComponent(s); } catch { return ''; }
+}
+
+function onceAsync(fn) {
+  let p = null;
+  return () => {
+    if (!p) {
+      p = (async () => fn())();
+      p.catch(() => {});
+    }
+    return p;
+  };
+}
+
+/* ---- Server-Timing (diagnostics) ----
+   The SSR pages, the feeds and /api/boot answer with
+     Server-Timing: cache;desc="hit|miss", d1;desc="N queries", app;dur=MS
+   so a slow page can be read straight off the browser's Network panel (or
+   curl -I) without guessing which half was slow. The count is per REQUEST:
+   app.fetch hands those routes an `env` whose DB counts the statements it
+   prepares (every statement here is prepared to be run once). A read another
+   request started and this one only awaited (a shared memo) is counted where
+   it started. The header goes on the response only — never on a copy stored
+   in caches.default, so a cache hit never replays a miss's numbers. */
+const SERVER_TIMING = Symbol('server-timing');
+const SERVER_TIMING_PATHS = /^\/(?:c|s|collection|news|p)\/|^\/(?:characters|scripts|collections)\.json$|^\/api\/(?:boot|home)$/;
+function timedEnv(env) {
+  try {
+    const t = { start: Date.now(), d1: 0 };
+    const real = env.DB;
+    // Methods are called on the real binding (bound), never on the wrapper.
+    const db = real && new Proxy(real, {
+      get(target, k) {
+        if (k === 'prepare') return sql => { t.d1++; return target.prepare(sql); };
+        const v = target[k];
+        return typeof v === 'function' ? v.bind(target) : v;
+      }
+    });
+    // Every other binding is read through the prototype, untouched; DB and
+    // the timing record are own properties that shadow it.
+    const out = Object.create(env);
+    Object.defineProperty(out, SERVER_TIMING, { value: t });
+    if (db) Object.defineProperty(out, 'DB', { value: db, enumerable: true });
+    return out;
+  } catch { return env; /* diagnostics must never cost a page */ }
+}
+function withServerTiming(env, res, cacheState) {
+  const t = env && env[SERVER_TIMING];
+  if (!t || !res || !res.headers) return res;
+  const value = (cacheState ? 'cache;desc="' + cacheState + '", ' : '') +
+    'd1;desc="' + t.d1 + ' queries", app;dur=' + Math.max(0, Date.now() - t.start);
+  try { res.headers.set('Server-Timing', value); return res; }
+  catch {
+    // Immutable headers (a response straight from the assets binding).
+    try {
+      const out = new Response(res.body, res);
+      out.headers.set('Server-Timing', value);
+      return out;
+    } catch { return res; }
+  }
+}
+
+/* `prefetch` (optional) is the page's own first read — its row — as an
+   onceAsync() function the build also calls. When the version has to come
+   from D1 anyway (this isolate's 5 s memo has lapsed), the row is read in the
+   same round trip instead of after it, so a miss costs one D1 round trip
+   less. On a hit that read is simply unused: one indexed row, run in parallel,
+   only when a D1 trip was being made regardless. When the memo is fresh no
+   prefetch is started, so a hit in a busy isolate still reaches D1 not at all.
+
+   The version read itself stays in front of the cache lookup: it is what
+   makes an edit show on the next view, and serving the old key while it is
+   refreshed in the background would be stale-while-revalidate by another
+   name. */
+async function ssrRoute(env, ctx, request, url, build, prefetch) {
   if (request.method !== 'GET') return stripViewHeader((await build(request)) || await assetsOrNotFound(env, request));
   // Public content is rendered with no cookie or authorization, even on a
   // member's first visit. No personalized response ever enters this cache.
@@ -6792,6 +7185,7 @@ async function ssrRoute(env, ctx, request, url, build) {
   const publicRequest = new Request(request, { headers });
   let cacheReq = null;
   try {
+    if (prefetch && !contentVersionFresh()) prefetch();
     const version = await contentVersion(env, SSR_DEPS[url.pathname.split('/')[1]]);
     cacheReq = new Request('https://ssr.internal' + url.pathname + '?v=' + encodeURIComponent(version) +
       '&o=' + encodeURIComponent(url.origin) + '&r=' + SSR_RENDER_V, { method: 'GET' });
@@ -6799,7 +7193,7 @@ async function ssrRoute(env, ctx, request, url, build) {
     if (hit) {
       const [type, slug] = (hit.headers.get(VIEW_HEADER) || '').split('|');
       if (type && slug && ctx) ctx.waitUntil(bumpView(env, request, type, slug));
-      return stripViewHeader(new Response(hit.body, { status: 200, headers: hit.headers }));
+      return withServerTiming(env, stripViewHeader(new Response(hit.body, { status: 200, headers: hit.headers })), 'hit');
     }
   } catch { cacheReq = null; }
   const res = (await build(publicRequest)) || await assetsOrNotFound(env, publicRequest);
@@ -6807,7 +7201,7 @@ async function ssrRoute(env, ctx, request, url, build) {
     (res.headers.get('Content-Type') || '').startsWith('text/html');
   if (!publicPage && hasSessionCookie(request)) {
     // Draft/private-parent access still uses the original authorization path.
-    return stripViewHeader((await build(request)) || await assetsOrNotFound(env, request));
+    return withServerTiming(env, stripViewHeader((await build(request)) || await assetsOrNotFound(env, request)), 'private');
   }
   if (cacheReq && publicPage && !res.headers.has('Set-Cookie')) {
     try {
@@ -6816,7 +7210,7 @@ async function ssrRoute(env, ctx, request, url, build) {
       if (ctx) ctx.waitUntil(put);
     } catch { /* cache storage never blocks the response */ }
   }
-  return stripViewHeader(res);
+  return withServerTiming(env, stripViewHeader(res), 'miss');
 }
 
 const app = {
@@ -6824,6 +7218,8 @@ const app = {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+    // Server-Timing: the read routes get an env whose DB counts its queries.
+    if (method === 'GET' && SERVER_TIMING_PATHS.test(path)) env = timedEnv(env);
 
     if (crossSiteWrite(request, url, env)) {
       return jsonResponse({ error: 'That request came from another website, so it was refused.' }, { status: 403 });
@@ -6867,31 +7263,31 @@ const app = {
 
       // A matching ETag means the browser already has this exact version.
       if ((request.headers.get('If-None-Match') || '') === etag) {
-        return new Response(null, {
+        return withServerTiming(env, new Response(null, {
           status: 304,
           headers: { ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL }
-        });
+        }));
       }
 
       // Isolate + edge cache, keyed on the content version so a bump misses
       // automatically rather than needing an explicit purge (cachedFeedBody
       // owns both layers; the stored copy carries the long INTERNAL ttl).
       const body = await cachedFeedBody(env, ctx, table, fields, version);
-      return new Response(body, {
+      return withServerTiming(env, new Response(body, {
         headers: {
           ...JSON_HEADERS,
           ETag: etag,
           'Cache-Control': FEED_CACHE_CONTROL
         }
-      });
+      }));
     }
 
     if (method === 'GET' && path === '/api/home') {
       const home = await cachedHome(env, ctx, request);
       const headers = { ...JSON_HEADERS, ETag: home.etag, 'Cache-Control': FEED_CACHE_CONTROL };
-      return request.headers.get('If-None-Match') === home.etag
+      return withServerTiming(env, request.headers.get('If-None-Match') === home.etag
         ? new Response(null, { status: 304, headers })
-        : new Response(home.body, { headers });
+        : new Response(home.body, { headers }));
     }
 
     if (method === 'GET' && path === '/api/page-viewer') {
@@ -6933,9 +7329,18 @@ const app = {
     // `no-store` for the same reason /api/site-text is: an edit on
     // /text-editor or a new announcement has to show on the next load.
     // /api/site-text and /api/announcement stay for the editors that call them.
+    // Both reads go out together (one round trip), neither creates anything,
+    // and the body carries an ETag. It is still revalidated on EVERY load
+    // (max-age=0): an edit has to show on the next page, which a max-age would
+    // break for that long. A matching ETag answers 304 with no body.
     if (method === 'GET' && path === '/api/boot') {
       const [items, announcement] = await Promise.all([siteTextItems(env), announcementValue(env)]);
-      return jsonResponse({ items, announcement });
+      const body = JSON.stringify({ items, announcement });
+      const etag = 'W/"boot-' + fnv1a(body) + '"';
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      return withServerTiming(env, (request.headers.get('If-None-Match') || '') === etag
+        ? new Response(null, { status: 304, headers })
+        : new Response(body, { headers }));
     }
 
     // ---------- SYSTEM TEXT OVERRIDES (public; site.js applies them) ----------
@@ -7007,6 +7412,13 @@ const app = {
 
     // ---------- NEWS ARTICLE PAGES (server-side rendered) ----------
     if (method === 'GET' && path.startsWith('/news/')) {
+      // The article row, read beside the version when that read goes to D1
+      // (see ssrRoute). No ensureNewsTable(): with no news table there is no
+      // article, which the catch reads as a 404.
+      const newsSlug = safeDecode(path.slice(6));
+      const loadNews = newsSlug && /^[a-z0-9-]+$/i.test(newsSlug)
+        ? onceAsync(() => env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(newsSlug).first().catch(() => null))
+        : null;
       return ssrRoute(env, ctx, request, url, async (request) => {
         let slug = decodeURIComponent(path.slice(6));
         if (slug.endsWith('.html')) {
@@ -7017,8 +7429,7 @@ const app = {
           });
         }
         if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
-        await ensureNewsTable(env);
-        const row = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
+        const row = await loadNews();
         if (!row) return assetsOrNotFound(env, request);
         const isDraft = row.status !== 'published';
         if (isDraft && !(await adminSession(env, request))) return assetsOrNotFound(env, request);
@@ -7034,8 +7445,15 @@ const app = {
         const img = a.image
           ? (/^https?:\/\//i.test(a.image) ? a.image : url.origin + '/assets/' + a.image)
           : url.origin + '/assets/logo_skull.png';
-        // [[Character Name]] in an article links to that character's page.
-        await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
+        // [[Character Name]] in an article links to that character's page. The
+        // map is only fetched when the article has a [[link]] to resolve, and
+        // both registries are set with no suspension before the render.
+        const [newsLinks, newsOfficial] = await Promise.all([
+          wantsCharLinks(row.data, row.title) ? cachedCharLinkMap(env, ctx) : {},
+          officialNameMap(env, url.origin).catch(() => ({}))
+        ]);
+        WikiRender.setCharLinks(newsLinks);
+        WikiRender.setOfficialNames(newsOfficial);
         const newsTheme = PageRender.sanitizeTheme(a.theme, 'news/' + a.slug);
         const newsThemeAttrs = PageRender.themeAttrs(newsTheme, '../');
         const html = pageShell({
@@ -7053,7 +7471,7 @@ const app = {
           scripts: ['reading-lazy.js', 'newspage.js', 'site.js']
         });
         return htmlPage(html, isDraft ? '' : 'news|' + row.slug);
-      });
+      }, loadNews);
     }
 
     // ---------- STANDALONE ARTICLES (the /articles list) ----------
@@ -7181,6 +7599,13 @@ const app = {
 
     // ---------- CUSTOM WIKI PAGE (server-side rendered, noindex) ----------
     if (method === 'GET' && path.startsWith('/p/')) {
+      // The page row, read beside the version when that read goes to D1 (see
+      // ssrRoute). No ensurePagesTable(): with no pages table there is no
+      // page, which the catch reads as a 404.
+      const pageSlug = safeDecode(path.slice(3));
+      const loadPage = pageSlug && /^[a-z0-9-]+$/i.test(pageSlug)
+        ? onceAsync(() => env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(pageSlug).first().catch(() => null))
+        : null;
       return ssrRoute(env, ctx, request, url, async (request) => {
         let slug = decodeURIComponent(path.slice(3));
         if (slug.endsWith('.html')) {
@@ -7191,9 +7616,7 @@ const app = {
           });
         }
         if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
-        await ensurePagesTable(env);
-        const row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?')
-          .bind(slug).first().catch(() => null);
+        const row = await loadPage();
         if (!row) return assetsOrNotFound(env, request);
         const isDraft = row.status !== 'published';
         if (isDraft) {
@@ -7207,7 +7630,13 @@ const app = {
         if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
   
         const d = parseData(row);
-        const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
+        // The parent, the [[Name]] link map (only when the page has a [[link]])
+        // and the official names, side by side.
+        const [parent, pageLinks, pageOfficial] = await Promise.all([
+          wikiParentRow(env, row.parent_type, row.parent_slug),
+          wantsCharLinks(row.data, row.title) ? cachedCharLinkMap(env, ctx) : {},
+          officialNameMap(env, url.origin).catch(() => ({}))
+        ]);
         // A page goes down with its parent: if the script/collection it belongs
         // to has been deleted, nothing links here any more and the public
         // shouldn't reach it either. Its owner still can, so restoring the
@@ -7216,7 +7645,9 @@ const app = {
           const sess = await getSession(env, request);
           if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
         }
-        await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
+        // Both registries set with no suspension before the render.
+        WikiRender.setCharLinks(pageLinks);
+        WikiRender.setOfficialNames(pageOfficial);
         const page = {
           ...d, slug: row.slug, title: row.title,
           author: row.author || d.author || null,
@@ -7254,7 +7685,7 @@ const app = {
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
         return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug);
-      });
+      }, loadPage);
     }
 
     // ---------- COMMENTS (public read; posting needs an account) ----------
@@ -7319,6 +7750,10 @@ const app = {
 
     // ---------- CHARACTER PAGES (server-side rendered from D1) ----------
     if (method === 'GET' && path.startsWith('/c/')) {
+      // The row, read beside the version when that read goes to D1 (ssrRoute).
+      const charKey = safeDecode(path.slice(3));
+      const loadChar = /^[a-z0-9-]+(\/[a-z0-9-]+)?$/i.test(charKey)
+        ? onceAsync(() => resolveCharacterPath(env, charKey)) : null;
       return ssrRoute(env, ctx, request, url, async (request) => {
         let slug = decodeURIComponent(path.slice(3));
         // clean URLs: the .html form permanently redirects to the extensionless one
@@ -7332,7 +7767,7 @@ const app = {
         // One segment is an identity or a flat address from before nesting; two
         // is a nested address, /c/{set}/{character}.
         if (slug && /^[a-z0-9-]+(\/[a-z0-9-]+)?$/i.test(slug)) {
-          const found = await resolveCharacterPath(env, slug);
+          const found = await (loadChar ? loadChar() : resolveCharacterPath(env, slug));
           const row = found ? found.row : null;
           if (row && row.data) {
             // Soft-deleted pages are hidden from everyone (incl. owner/admin);
@@ -7370,13 +7805,26 @@ const app = {
             // address, which is what the canonical link and the OG tags use.
             d.slug = String(row.slug);
             d.page = 'c/' + found.canonical;
-            // Resolve alongside the other enrichment reads, before setting
-            // the shared renderer registries. A failure keeps the client fallback.
-            const setHrefPromise = appearsInHref(env, ctx, d.appearsIn).catch(() => undefined);
             // The creator's opt-out, applied before anything can lend the mark
             // back: Classify.isCurata is the one answer, and the row's own flag
             // is dropped here so the rest of the page renders as unmarked.
             if (!Classify.isCurata(d)) delete d.curata;
+            // Every enrichment read depends on the row and on nothing else, so
+            // they go out together: the "Appears in" link, the official
+            // registries, the jinx index, the [[Name]] link map (only when the
+            // page's own text has a [[link]]) and the two collection sets the
+            // Curata and "Appears in" passes below read (one shared query,
+            // memoised, so those passes need no read of their own). A failure
+            // in the "Appears in" lookup keeps the client fallback.
+            const ownLinks = wantsCharLinks(row.data);
+            const [setHref, icons, names, jx, ownLinkMap] = await Promise.all([
+              appearsInHref(env, ctx, d.appearsIn).catch(() => undefined),
+              officialIconMap(env, url.origin), officialNameMap(env, url.origin),
+              jinxIndex(env, ctx).catch(() => null),
+              ownLinks ? cachedCharLinkMap(env, ctx) : null,
+              curataCollections(env).catch(() => null),
+              includeCollections(env).catch(() => null)
+            ]);
             // Same Curata inheritance the JSON feeds get, so the star on the
             // page agrees with the star in the grid it was clicked from.
             if (!d.curata) await applyCollectionCurata(env, [d]);
@@ -7393,16 +7841,16 @@ const app = {
             // Views are counted against the IDENTITY, so a page's history
             // survives every rename it ever has.
             if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', String(row.slug)));
-            const [setHref, icons, names, links, jx] = await Promise.all([
-              setHrefPromise, officialIconMap(env, url.origin), officialNameMap(env, url.origin),
-              cachedCharLinkMap(env, ctx), jinxIndex(env, ctx).catch(() => null)
-            ]);
+            if (jx) d.jinxes = mergeMirroredJinxes(d, String(row.slug), jx);
+            // A jinx another page declares is drawn here too, and its rule text
+            // can carry a [[link]] this page's own text did not.
+            const links = ownLinkMap ||
+              ((d.jinxes || []).some(j => j && wantsCharLinks(j.text)) ? await cachedCharLinkMap(env, ctx) : {});
             // No suspension between shared registry assignment and rendering.
             Render.setOfficialIconUrls(icons);
             Render.setOfficialNames(names);
             WikiRender.setCharLinks(links);
             Render.setWikiChars(jx ? jx.chars : {});
-            if (jx) d.jinxes = mergeMirroredJinxes(d, String(row.slug), jx);
             // The row's version rides along for the emblem's versioned image
             // URLs (render.js artVersions) — same stamp as the feeds carry.
             const rv = rowVersion(row.updated_at);
@@ -7415,11 +7863,15 @@ const app = {
         }
         // Unknown slug -> fall back to a committed static page (if any), else 404.
         return assetsOrNotFound(env, request);
-      });
+      }, loadChar);
     }
 
     // ---------- SCRIPT PAGES (server-side rendered from D1) ----------
     if (method === 'GET' && path.startsWith('/s/')) {
+      // The row, read beside the version when that read goes to D1 (ssrRoute).
+      const scriptSlug = safeDecode(path.slice(3));
+      const loadScript = /^[a-z0-9-]+$/i.test(scriptSlug)
+        ? onceAsync(() => contentPageRow(env, 'script', scriptSlug)) : null;
       return ssrRoute(env, ctx, request, url, async (request) => {
         let slug = decodeURIComponent(path.slice(3));
         if (slug.endsWith('.html')) {
@@ -7430,14 +7882,17 @@ const app = {
           });
         }
         if (slug && /^[a-z0-9-]+$/i.test(slug)) {
-          return renderContentPage(env, ctx, request, url, 'script', slug);
+          return renderContentPage(env, ctx, request, url, 'script', slug, loadScript);
         }
         return assetsOrNotFound(env, request);
-      });
+      }, loadScript);
     }
 
     // ---------- COLLECTION PAGES (server-side rendered from D1) ----------
     if (method === 'GET' && path.startsWith('/collection/')) {
+      const collKey = safeDecode(path.slice('/collection/'.length));
+      const loadColl = collKey && !collKey.endsWith('.html')
+        ? onceAsync(() => contentPageRow(env, 'collection', collKey)) : null;
       return ssrRoute(env, ctx, request, url, async (request) => {
         let key = decodeURIComponent(path.slice('/collection/'.length));
         if (key.endsWith('.html')) {
@@ -7448,10 +7903,10 @@ const app = {
           });
         }
         if (key) {
-          return renderContentPage(env, ctx, request, url, 'collection', key);
+          return renderContentPage(env, ctx, request, url, 'collection', key, loadColl);
         }
         return assetsOrNotFound(env, request);
-      });
+      }, loadColl);
     }
 
     // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
@@ -8171,6 +8626,7 @@ const app = {
       if (!sess.isAdmin && await rateLimited(env, request, 'bloodstar', 60, 3600, { sess })) {
         return tooManyResponse('Too many Bloodstar projects read in the last hour. Try again later.', 3600);
       }
+      const Bloodstar = await loadBloodstar();
       const src = Bloodstar.bloodstarSource(url.searchParams.get('url'));
       if (src.error) return jsonResponse({ error: src.error }, { status: 400 });
 
@@ -10604,6 +11060,7 @@ const app = {
         }
         let srcUrl;
         try { srcUrl = new URL(String(b.src || '')); } catch { srcUrl = null; }
+        const Bloodstar = await loadBloodstar();
         if (!srcUrl || srcUrl.protocol !== 'https:' || !Bloodstar.isBloodstarHost(srcUrl.hostname)) {
           return jsonResponse({ error: 'That image is not on Bloodstar.' }, { status: 400 });
         }
@@ -13413,7 +13870,7 @@ const app = {
       // to they/them/their across the Odyssey almanacs, leaving `ability` and
       // the flavour quote's pronouns alone. The rules live in
       // migration/odyssey-cleanup.js so the same code can be dry-run locally.
-      // Remove this block, the import at the top and the dashboard card once
+      // Remove this block, the loader at the top and the dashboard card once
       // it has been run.
       if (path === '/api/admin/cleanup-odyssey') {
         const b = await request.json().catch(() => ({}));
@@ -13424,6 +13881,7 @@ const app = {
         ).all();
         const rows = results || [];
         const plan = [], flags = [];
+        const OdysseyCleanup = await loadOdysseyCleanup();
         for (const row of rows) {
           const res = OdysseyCleanup.cleanCharacter(parseData(row));
           res.flags.forEach(f => flags.push({ slug: row.slug, field: f.field, flag: f.flag }));
