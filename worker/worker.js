@@ -4164,6 +4164,25 @@ async function identityParked(env, slug) {
   return !!r;
 }
 
+/* Would this NEW identity share an R2 art slot with another character? Art
+   lives at art/{identity}.png with the alternates at -alt / -alt2 / -token
+   beside it, so identity "imp-alt" names the same file as Imp's flipped icon,
+   and a new "imp" would name the main art of an existing "imp-alt". Two pages
+   drawing one file is wrong whoever owns them, and across owners it let one
+   overwrite the other's art (uploadSlotDenied can only refuse it after the
+   fact). Deleted rows count: their art is still in the bucket and they can be
+   restored. Throws on a read error; callers treat that as "try again". */
+const ART_SLOT_SUFFIX_RE = /-(alt2?|token)$/;
+async function artSlotClash(env, slug) {
+  const keys = [slug + '-alt', slug + '-alt2', slug + '-token'];
+  const m = ART_SLOT_SUFFIX_RE.exec(slug);
+  if (m && m.index > 0) keys.push(slug.slice(0, m.index));
+  const r = await env.DB.prepare(
+    `SELECT 1 AS hit FROM characters WHERE slug IN (${keys.map(() => '?').join(',')}) LIMIT 1`
+  ).bind(...keys).first();
+  return !!r;
+}
+
 /* The address this page's name and set now ask for, recomputed on every save
    — that is what makes renaming automatic, and what moves a character's URL
    when it joins or leaves a collection. setCharAddress leaves a 301 behind
@@ -9097,8 +9116,11 @@ const app = {
       // character this is the save's own test (identityParked), so the two
       // cannot disagree: a redirect to a deleted page parks nothing, and a
       // live page's flat old address counts.
+      // A character identity that would share an art slot with another page
+      // (artSlotClash) is as taken as a parked one: the save refuses it.
       const parked = !row && (offPrefix || (type === 'character'
-        ? await identityParked(env, base).catch(() => false)
+        ? (await identityParked(env, base).catch(() => false)) ||
+          (await artSlotClash(env, base).catch(() => false))
         : !!(await lookupRedirect(env, type, base))));
       if (!row && !parked) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
       // `mine` says a save on this URL would update that page rather than
@@ -9185,8 +9207,18 @@ const app = {
       // Last resort, and the whole ladder for a page with neither a set nor a
       // resolvable username.
       for (let i = 2; i < 60; i++) candidates.push(stem + '-' + i);
-      const suggestion = candidates.find(s => s.length <= 80 && !used.has(s) &&
-        !(type === 'character' && officialPrefixed(s))) || null;
+      let suggestion = null;
+      for (const s of candidates) {
+        if (s.length > 80 || used.has(s)) continue;
+        if (type === 'character') {
+          if (officialPrefixed(s)) continue;
+          // Asked one candidate at a time: almost always the first free one
+          // passes, so this is one query rather than a scan per rung.
+          if (await artSlotClash(env, s).catch(() => true)) continue;
+        }
+        suggestion = s;
+        break;
+      }
       // Nothing about the page sitting on that URL is returned: it may be
       // somebody's draft, and the site never reveals that drafts exist.
       return jsonResponse({ base, taken: true, mine, suggestion });
@@ -11650,7 +11682,7 @@ const app = {
         if (acctFlags.banned) {
           return jsonResponse({ error: 'This account is suspended.' }, { status: 403 });
         }
-        if (await rateLimited(env, request, 'suggest', 20, 3600)) {
+        if (await rateLimited(env, request, 'suggest', 20, 3600, { sess })) {
           return tooManyResponse('Too many suggestions from this connection. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
@@ -12077,6 +12109,12 @@ const app = {
           catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
           if (parked) {
             return jsonResponse({ error: 'That URL still belongs to a page that was renamed. Pick a different name.' }, { status: 409 });
+          }
+          let clash;
+          try { clash = await artSlotClash(env, c.slug); }
+          catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
+          if (clash) {
+            return jsonResponse({ error: 'That URL would share its icon file with another character. Pick a different name.' }, { status: 409 });
           }
         }
         // Ownership, or the page's own public-editing setting. Everything

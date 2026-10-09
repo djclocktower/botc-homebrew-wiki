@@ -508,7 +508,10 @@
   /* ── Script-count badge on Script Builder nav links ── */
   var SCRIPT_KEY = 'botc_script';
   function scriptCount() {
-    try { return (JSON.parse(localStorage.getItem(SCRIPT_KEY)) || []).length; }
+    try {
+      var list = JSON.parse(localStorage.getItem(SCRIPT_KEY));
+      return Array.isArray(list) ? list.length : 0;
+    }
     catch (e) { return 0; }
   }
   function updateScriptBadge() {

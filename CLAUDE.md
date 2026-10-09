@@ -2172,6 +2172,12 @@ serving the old addresses.
   URL. Its suffix ladder still looks like a URL and still matters, because
   identities name the art slot. For scripts and collections the slug **is** still
   the URL and nothing about them changed.
+  **A new identity never shares an art file with another character**
+  (`artSlotClash()`): "Imp Alt" as `imp-alt` would draw `art/imp-alt.png`, which
+  is Imp's flipped icon, and a new `ghost` would own the `-alt` slot an existing
+  `ghost-alt` uses as its main art. Both slug-check (taken, and skipped by the
+  ladder) and the save (409) refuse it, so no two pages ever draw one file and
+  `uploadSlotDenied()` never has to guess between two owners.
 - `renameCharacter()` still exists for the one case that moves a primary key (an
   admin re-keying a row). An ordinary rename never goes through it.
 

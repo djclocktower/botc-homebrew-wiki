@@ -281,3 +281,29 @@ test('the wiki lock covers rollbacks and suggestions; protection fails closed', 
   assert.equal(r.status, 423);
   assert.equal(dataOf(f, 'characters', 'locked').ability, 'Does a thing.');
 });
+
+test('a new identity never shares an art slot with another character', async t => {
+  const f = await setup(t);
+  f.insert('characters', 'imp', char('imp'));
+  own(f, 'characters', 'imp', 2);
+  // "Imp Alt" would be art/imp-alt.png: Imp's flipped icon.
+  let r = await post(f, 1, '/api/character', char('imp-alt', { name: 'Imp Alt' }));
+  assert.equal(r.status, 409);
+  let j = await (await f.request('/api/slug-check?type=character&name=Imp Alt', as(1))).json();
+  assert.equal(j.taken, true);
+  assert.equal(j.mine, false);
+  assert.ok(j.suggestion && !/-(alt2?|token)$/.test(j.suggestion), j.suggestion);
+  assert.equal((await post(f, 1, '/api/character', char(j.suggestion, { name: 'Imp Alt' }))).status, 200);
+
+  // And the other way round: a new "Ghost" would own the -alt slot an
+  // existing "ghost-alt" page draws as its main icon.
+  f.insert('characters', 'ghost-alt', char('ghost-alt'));
+  own(f, 'characters', 'ghost-alt', 2);
+  r = await post(f, 1, '/api/character', char('ghost', { name: 'Ghost' }));
+  assert.equal(r.status, 409);
+  j = await (await f.request('/api/slug-check?type=character&name=Ghost', as(1))).json();
+  assert.equal(j.taken, true);
+  assert.notEqual(j.suggestion, 'ghost');
+  // A page that already exists keeps saving to its own identity.
+  assert.equal((await post(f, 2, '/api/character', char('imp', { ability: 'Still the Imp.' }))).status, 200);
+});
