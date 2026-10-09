@@ -87,7 +87,10 @@ Key dynamic behavior:
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
   requests per page view; `/api/site-text` and `/api/announcement` stay for
-  the editors), **`GET /api/search-index`** (the site search's creators,
+  the editors. One D1 round trip, no schema writes, and an ETag; it is still
+  `max-age=0, must-revalidate`, because a text edit or a new banner must show
+  on the next load, so a match is a bodiless 304 rather than a skipped
+  request), **`GET /api/search-index`** (the site search's creators,
   users, wiki pages and news — see "Site search"),
   **`GET /api/admin/thumb-missing`** (the dashboard's "Card
   thumbnails" scan, see "Caching"),
@@ -1020,6 +1023,21 @@ need a migration — just put them in the JSON; render.js decides what shows.
 rows (drafts visible to owner/admin). Character data schema: see the sample
 object in `migration/schema_explanation.md` or any `/characters.json` entry.
 
+**How "created lazily" stays cheap.** Every `ensure*()` first asks
+`schemaHas()`, which reads `sqlite_master` ONCE per isolate (one read shared
+by all of them) and only runs a `CREATE … IF NOT EXISTS` / `ALTER` for an
+object that is really missing. They used to re-run those statements in every
+new isolate, and each is a WRITE — a round trip to the D1 primary, in front of
+the first query, and an `ALTER` on a column that exists fails every time. A
+snapshot that cannot be read falls back to the old idempotent statements.
+**Hot read paths do not call `ensure*()` at all** (the SSR pages, `/api/boot`,
+`listWikiPages`, the character feed build): a missing table there reads as
+"nothing written yet" (a 404, an empty list), and the url_slug column is added
+and the read retried only when a query says it is missing (`isMissingSchema()`).
+Tables are still created on the first write that needs them. When adding an
+ensure: list its tables, columns and indexes in its `schemaHas()` line, or it
+will keep issuing its CREATEs.
+
 Scripts and collections carry rich page fields in their `data` JSON (all
 optional, no migration): `tagline, version, difficulty, synopsis, gameplay,
 strategyGood, strategyEvil, logo, theme{}`. Collections also have hybrid
@@ -1525,9 +1543,10 @@ through `inlineLinks()` in render.js. A small set and no others:
   `[label](/c/slug)`. `WikiRender.setOfficialNames()` is the registry;
   `Render.setOfficialNames()` **forwards into it**, so the `/c/` route and both
   character editors feed both engines with the call they already made, and
-  `setWikiTextRegistries()` in worker.js sets the pair together for `/s/`,
-  `/collection/`, `/news/` and `/p/`. Setting char links without the roster
-  would quietly send `[[Imp]]` to a homebrew Imp.
+  `/s/`, `/collection/`, `/news/` and `/p/` fetch both in their parallel
+  read and set the pair together, with no `await` before the render
+  (`setWikiTextRegistries()` is the helper for anything else). Setting char
+  links without the roster would quietly send `[[Imp]]` to a homebrew Imp.
 - `{{red|Imp}}` / `{{blue|Undertaker}}` (and `{{evil|…}}` / `{{good|…}}`, the
   same two under the game's names) — the character name coloured the way the
   official almanac colours it, in `--evil` / `--good`, bold. `.wiki-red` /
@@ -3717,6 +3736,53 @@ seconds to observe a change. A failed version read cannot reuse a stale
 version-zero public cache, and failed feed queries never retry without their
 visibility filters. No new database migration is required.
 
+**The SSR read path is two D1 round trips on a miss, at most.** The version
+read has to come first — it is what makes an edit show on the next view — but
+when it goes to D1 (the memo has lapsed), `ssrRoute()` starts the page's own
+row read beside it (`prefetch`, an `onceAsync()` the build also awaits). On a
+hit that row is unused: one indexed row, in parallel, only when D1 was being
+asked anyway. Everything that depends on the row then goes out together
+(`/c/`: "Appears in", official maps, jinx index, link map, collection sets;
+`/s/` and `/collection/`: roster, official roles, wiki pages, link map; `/p/`:
+parent, link map). Measured on the fixture with the live data and 50 ms per
+D1 call, cold isolate, warm edge: `/c/` 5 → 1 round trips, `/s/` 10 → 2,
+`/collection/` 8 → 2, `/p/` 9 → 2, `/news/` 7 → 1, `/api/boot` 3 → 1.
+Three supporting rules:
+- **The Curata and "Appears in" collection sets come from one shared read**
+  (`publishedCollectionData()`), which is the public collections feed body
+  (`cachedFeedBody(..., 'collections', 'full')`), so a new isolate in a warm
+  colo reads no D1 for it. It relies on that feed carrying `curata`, `id`,
+  `include`, `exclude` and `match`.
+- **The `[[Name]]` link map is its own edge entry** (`char-links.json`,
+  keyed like the jinx index), built from three columns (`loadCharLinks()`),
+  never by parsing the 3 MB card feed — and only fetched when the text being
+  rendered contains `[[` (`wantsCharLinks()`; on `/c/` that includes the
+  rule text of jinxes mirrored in from other pages). Registries are set with
+  no `await` between them and the render.
+- `findCollectionRow()` tries the PK and the exact kebab `id` in ONE query
+  (a `json_valid` CASE guards against a row of broken JSON) before the loose
+  scan; legacy collection URLs used to cost the PK twice plus a table read.
+
+**`Server-Timing`** (`cache;desc="hit|miss"`, `d1;desc="N queries"`,
+`app;dur=MS`) is on the SSR pages, the three feeds, `/api/home` and
+`/api/boot` — read it in the browser's Network panel or with `curl -I`. The
+count is per request (`timedEnv()` wraps `env.DB` for those routes), and the
+header is added to the response only, never to a copy stored in
+`caches.default`. In Workers, time advances only across I/O, so `dur` is
+wall time spent waiting, not CPU.
+
+**Not adopted: D1 read replication (`env.DB.withSession()`).** With
+replication off it does nothing; with it on, a replica can lag the primary.
+The version key is the danger: a version read from the primary and a row
+read from a lagging replica would store OLD content under the NEW key for a
+week, and an editor's next view could miss their own save. Doing it safely
+needs the version and the row in one session, in sequence (giving up the
+parallel prefetch), plus a bookmark cookie for read-your-writes. Revisit only
+if D1 latency, not round-trip count, becomes the problem. Likewise the
+session read (`getSession`) spells out KV's default `cacheTtl: 60` and does
+not raise it: a longer TTL would keep a logged-out token answering on GETs
+for longer in other colos.
+
 Creator/profile caches retain their existing 30-minute cap for account
 fields; authenticated `/api/user` responses remain private and uncached.
 
@@ -3810,7 +3876,13 @@ Two things that are NOT done, deliberately: Cloudflare's **Workers Cache**
 responses without invoking the Worker at all, but it also caches any
 response with NO Cache-Control header for two hours by heuristic — one
 per-user API route missing its `no-store` would leak across accounts, so it
-needs a full audit first. And `stale-while-revalidate` on CSS/JS was
+needs a full audit first. (A first pass, 2026-10: every JSON route goes
+through `jsonResponse()` = `no-store` or names its own; HTML pages are
+`no-store` or `no-cache`. What sends NO Cache-Control today:
+`redirectResponse()` — the login/OAuth 302s, which can carry `Set-Cookie`
+— and the bare-text 404/400s from the image routes and the non-HTML branch
+of `notFoundResponse()`. Those need explicit headers before Workers Cache
+is switched on.) And `stale-while-revalidate` on CSS/JS was
 rejected: the owner reviews edits on the live site, and a load that shows
 new HTML with last deploy's script is worse than the revalidation costs.
 
