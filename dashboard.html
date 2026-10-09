@@ -2217,7 +2217,7 @@
         }
         // Reads the art back from the site and uploads the 192px WebP beside
         // it; a browser that cannot encode WebP resolves false and we say so.
-        ArtThumb.uploadFromUrl(it.art).then(function(ok){
+        ArtThumb.uploadFromUrl(it.art, null, it.media).then(function(ok){
           if (ok) done++; else failed++;
           bar.innerHTML = '<p class="note">' + (done + failed) + ' of ' + total + ' &mdash; ' + esc(it.name || it.slug) + (ok ? '' : ' (skipped)') + '</p>';
           setTimeout(step, 30);

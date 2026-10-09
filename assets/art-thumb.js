@@ -59,7 +59,9 @@
   function render(img, width) {
     var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
     if (!w || !h) throw new Error('empty image');
-    var scale = width ? width / w : Math.min(1, SIZE / Math.max(w, h));
+    // Never larger than the original: a 400px logo blown up to 1280 is a
+    // bigger file of the same picture, made blurrier.
+    var scale = Math.min(1, width ? width / w : SIZE / Math.max(w, h));
     var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
     if (cw * ch > 16 * 1024 * 1024) throw new Error('image aspect ratio is too large');
     var cv = document.createElement('canvas');
@@ -110,9 +112,16 @@
 
   /* Make and upload the thumbnail for `artKey` from `src`. Resolves true when
      a thumbnail was stored, false when it was skipped or failed — never
-     rejects, so callers can drop the promise. */
-  function upload(artKey, src, sourceETag) {
-    if (MEDIA_RE.test(artKey) && !/-bg\./.test(artKey)) {
+     rejects, so callers can drop the promise.
+     A background (`{slug}-bg.{ext}`) is never drawn through srcset, so it gets
+     no resized copies. Read off the END of the key only: an unanchored
+     '-bg.' test caught any slug that merely contained it. A page whose own
+     slug ends in -bg names its header exactly like another page's
+     background, and only the caller knows which it is — `media` true says
+     "this is a banner or logo" (the dashboard backfill, which lists only
+     those, passes it through uploadFromUrl). */
+  function upload(artKey, src, sourceETag, media) {
+    if (MEDIA_RE.test(artKey) && (media || !/-bg\.[a-z0-9]+$/i.test(artKey))) {
       if (!sourceETag) return Promise.resolve(false);
       // Publish waits for these variants, so the new row version never names
       // a partly-written set. Failures keep the original-image fallback.
@@ -136,7 +145,7 @@
   /* The same, reading the art back from the site (for art the browser never
      held: a server-side Bloodstar copy, or the backfill). `?v=` busts any
      cached copy so a just-replaced icon is what gets thumbnailed. */
-  function uploadFromUrl(artKey, url) {
+  function uploadFromUrl(artKey, url, media) {
     var u = url || ((window.LINK_ROOT || '/') + 'assets/' + String(artKey).replace(/^\/+/, '').replace(/^assets\//, ''));
     u += (u.indexOf('?') === -1 ? '?' : '&') + 'v=' + Date.now().toString(36);
     if (MEDIA_RE.test(artKey)) {
@@ -145,7 +154,7 @@
         var etag = r.headers.get('ETag');
         return r.blob().then(function(blob) {
           var src = URL.createObjectURL(blob);
-          return upload(artKey, src, etag).finally(function(){ URL.revokeObjectURL(src); });
+          return upload(artKey, src, etag, media).finally(function(){ URL.revokeObjectURL(src); });
         });
       }).catch(function(){ return false; });
     }
