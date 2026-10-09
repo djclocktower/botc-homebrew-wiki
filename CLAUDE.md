@@ -115,9 +115,13 @@ Key dynamic behavior:
   wiki's existing duplicate style (`illusionist-megalomania`, `witcher-odyssey`,
   then `-2`, `-3`). That identity is **not** the URL — see "Character identity
   vs address" below; the reader-facing address is `/c/{set}/{character}` and
-  the Worker derives it on save. An identity only *parked* by a redirect counts
-  as taken. The Worker is still the enforcer — the check only decides which
-  slug the editor asks for.
+  the Worker derives it on save. An identity only *parked* by a redirect to a
+  live page (or a live page's flat old address) counts as taken, and a new
+  identity never starts with `off-` (the official-roster prefix in script
+  rosters): "Off-Kilter" is offered `offkilter`. `identityParked()` /
+  `officialPrefixed()` are the one test, asked by the check and refused by
+  `/api/character` on a create. The Worker is still the enforcer — the check
+  only decides which slug the editor asks for.
   `mass-upload.html` additionally tracks the slugs **its own run** has just
   taken, so two characters with the same name in one file get two pages
   instead of the second overwriting the first.
@@ -1119,6 +1123,9 @@ Two questions, answered in two places, and keeping them apart is the design:
 - **What order** belongs to the script's owner, as
   `nightOrder: {first: [slug], other: [slug]}` in the script's `data`.
   `sanitizeNightOrder()` caps each list at 200 and drops the key when empty.
+  The roster itself takes up to `SCRIPT_CHARACTERS_MAX` (200) and a longer one
+  is **refused** with a 400, never trimmed (it used to be cut to 100 in
+  silence).
 
 `PageRender.nightItems(entries, nightOrder)` in render-page.js is the single
 source of truth. The SSR page renders through it and both arranging panels (the
@@ -1369,7 +1376,17 @@ everyone. They edit it as the creator would; the creator keeps the page.
   exactly like `curataCollections()`, so the check costs one cached query
   rather than a scan per page view. Membership goes through
   `resolveCollectionMembers()` with the single character as the whole corpus —
-  one membership rule, not a second copy of it. The characters are deliberately
+  one membership rule, not a second copy of it. **That makes the roster a
+  permission, so the owner's own characters on it are the owner's to add or
+  remove.** A non-owner save of the set (an `'all'` guest, an approved editor)
+  keeps exactly the membership the stored row gave the set owner's characters
+  (`pinOwnerMembership()`: additions dropped, removals put back where they
+  stood) — otherwise adding the owner's closed character to a set open to
+  everyone opened it, and an approved editor reached its drafts. Everybody
+  else's characters stay theirs to add and remove, and a collection's `match[]`
+  is pinned for non-owners outright, since a match term sweeps pages in by
+  their "Appears in" text and there is no telling whose it would catch.
+  The characters are deliberately
   **not** listed in *Shared With You* (a 200-character roster would bury the
   pages actually shared); the parent's row says "and its characters" and is
   the way to them. `/api/page` returns `editVia` naming the parent, so
@@ -1429,6 +1446,13 @@ taking a published page back to draft still records what was live.
   before and after text (`diffFieldValues`).
 - `POST /api/page-rollback`: put a version back. Owner or admin, and it
   snapshots the current version first, so a rollback is itself undoable.
+  **Content comes back; the page's administration does not**
+  (`prepareRestore()`, shared with `/api/admin/rollback` and an approved
+  suggestion): `curata`, `curataOptOut`, `creditUnlinked`, `publicEdit`,
+  `editors`, `tagsBy` and `_draftNote` stay as they are now, a collection keeps
+  its id, the team is normalised, an exact official copy is refused, and a
+  character's address is recomputed from the restored name and set, with a
+  redirect left behind, exactly as a save does.
 
 ## Suggested edits
 
@@ -1445,13 +1469,18 @@ the editor would have saved, stored rather than applied.
 - `GET /api/suggestions?type=&slug=`: a page's suggestions, each with the
   field-by-field difference from the page **as it stands now**, and a `stale`
   flag when that differs from what it was written against. Visible to the owner,
-  to admins, and to each suggester for their own.
+  to admins, and to each suggester for their own — and only while the page is
+  one the reader could open: a draft or deleted page is a 404 to everybody
+  else, the suggester included (their entry comes back with the page), and the
+  diffs never carry `PRIVATE_DATA_KEYS` to anyone but the owner.
 - `GET /api/suggestions?inbox=1`: everything open on pages this account owns.
 - `POST /api/suggestion`: `approve` / `decline` (owner or admin, with an
   optional reply) or `withdraw` (the suggester). **Approving is an ordinary
   save**: `saveRevision()` snapshots the current version first, so it shows up
   in the history and can be rolled back, and owner-only fields are re-pinned
-  from the row rather than taken from the suggestion.
+  from the row rather than taken from the suggestion. It goes through
+  `prepareRestore()` (see the rollback above) with the publish bar on, so a
+  live page cannot lose what it needs to stay live through an approval.
 
 `suggestions.html` serves both `/suggestions?type=&slug=` (one page's queue,
 with Approve / Decline / Withdraw) and `/suggestions` (the owner's inbox).
