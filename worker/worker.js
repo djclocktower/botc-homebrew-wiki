@@ -2671,7 +2671,13 @@ async function isProtected(env, type, slug) {
   try {
     const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(protectKey(type, slug)).first();
     return !!r && r.value === '1';
-  } catch { return false; }
+  } catch {
+    // Fail CLOSED. A yes only ever narrows what somebody may do, and the
+    // save handlers ask it as `!sess.isAdmin && isProtected(...)`, so a read
+    // that broke costs a non-admin one refused edit rather than handing a
+    // protected page to everybody for as long as D1 is having trouble.
+    return true;
+  }
 }
 const PROTECTED_MSG = 'This page has been protected by an admin and cannot be edited right now.';
 
@@ -3012,7 +3018,7 @@ async function effectiveModeFor(env, type, row, d) {
   d = d || parseData(row);
   if (type === 'character') {
     const gov = await governingParent(env, row, d).catch(() => null);
-    if (gov) return { mode: gov.mode === PUBLIC_EDIT_CLOSED ? '' : gov.mode, via: parentRef(gov) };
+    if (gov) return { mode: gov.mode === PUBLIC_EDIT_CLOSED ? '' : gov.mode, via: parentRef(gov), gov };
   }
   return { mode: effectivePublicEdit(type, d), via: null };
 }
@@ -3128,7 +3134,7 @@ async function sharedParentPages(env) {
     // Collections first: see the precedence note above.
     for (const type of ['collection', 'script']) {
       const { results } = await env.DB.prepare(
-        `SELECT slug, owner_id, data FROM ${CONTENT[type].table}
+        `SELECT slug, owner_id, status, data FROM ${CONTENT[type].table}
          WHERE status IS NOT 'deleted' AND owner_id IS NOT NULL AND data LIKE ?`
       ).bind('%"publicEdit"%').all();
       for (const r of results || []) {
@@ -3139,7 +3145,7 @@ async function sharedParentPages(env) {
         const editors = mode === 'approved'
           ? approvedEditors(d).map(e => Number(e.id)).filter(n => Number.isFinite(n))
           : [];
-        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), mode, editors, data: d });
+        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), status: r.status || 'published', mode, editors, data: d });
       }
     }
   } catch {
@@ -3177,6 +3183,17 @@ async function governingParent(env, charRow, charData) {
     if (parentListsCharacter(p, charRow, d)) return p;
   }
   return null;
+}
+/* May this session be told which set that is? A draft set governs its pages
+   all the same, but its name and address are its owner's business until it
+   goes live: only the people who can open the draft itself (its owner, an
+   admin, its named editors) are told where the choice came from. */
+function parentVisibleTo(sess, p) {
+  if (!p) return false;
+  if ((p.status || 'published') === 'published') return true;
+  if (!sess || sess.userId == null) return false;
+  if (sess.isAdmin || Number(sess.userId) === p.ownerId) return true;
+  return p.mode === 'approved' && p.editors.includes(Number(sess.userId));
 }
 /* {type, key, name} of a set row: the shape the editors take to say where a
    permission or a setting came from. */
@@ -3632,15 +3649,18 @@ function setCreditUnlinked(next, stored, perm) {
    writes the entry — it would be the one thing an approved editor can change
    about the editor list. A page ticked before this existed picks the entry up
    on its owner's next save. */
-async function keepUploaderEditing(env, next, ownerId) {
+async function keepUploaderEditing(env, next, ownerId, stored) {
   if (ownerId == null) return;   // half the wiki has no owner account at all
   const own = Number(ownerId);
   const list = Array.isArray(next.editors) ? next.editors.slice() : [];
   const isOwn = e => e && Number(e.id) === own;
 
   if (!next.creditUnlinked) {
+    // Whether there is anything to undo is read off the STORED list:
+    // sanitizeEditors() has already taken the owner off `next.editors`, so
+    // the posted list never shows the entry this is here to remove.
+    if (!list.some(isOwn) && !approvedEditors(stored).some(isOwn)) return;   // was never on the list
     const kept = list.filter(e => !isOwn(e));
-    if (kept.length === list.length) return;      // was never on the list
     if (kept.length) next.editors = kept;
     else {
       delete next.editors;
@@ -3680,7 +3700,11 @@ async function notifyDrafted(env, opts) {
   } catch { /* a notification must never fail the moderation act */ }
 }
 
-async function getEntityRow(env, type, slug) {
+/* `opts.strict` makes a failed READ throw instead of answering "no such page".
+   The save handlers ask that way: a save that took a D1 hiccup for "this page
+   does not exist" ran as a create with the saver as owner, and the upsert then
+   wrote over somebody else's row. Everything else keeps the forgiving answer. */
+async function getEntityRow(env, type, slug, opts) {
   const t = CONTENT[type];
   if (!t || !slug) return null;
   // updated_at rides along for the edit-conflict check: the editors send it
@@ -3693,9 +3717,10 @@ async function getEntityRow(env, type, slug) {
     await ensureUrlSlugColumn(env);
     addr = ', url_slug';
   }
-  return env.DB.prepare(
+  const q = env.DB.prepare(
     `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, created_at, updated_at${addr} FROM ${t.table} WHERE slug=?`
-  ).bind(slug).first().catch(() => null);
+  ).bind(slug).first();
+  return opts && opts.strict ? q : q.catch(() => null);
 }
 
 // ---- history: resolving a page of any revisable type ----
@@ -3728,6 +3753,9 @@ async function applyRollback(env, type, row, d) {
     await env.DB.prepare(
       `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
     ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
+    // The name and the set are what the address is built from, so a version
+    // put back under an older name moves the page exactly as a save would.
+    await refreshCharAddress(env, row.slug, d, row.owner_id, row);
   } else if (type === 'collection') {
     await env.DB.prepare(
       `UPDATE collections SET display_name=?, data=?, updated_at=datetime('now') WHERE slug=?`
@@ -3742,6 +3770,238 @@ async function applyRollback(env, type, row, d) {
     ).bind(d.name || row.slug, d.author || null, JSON.stringify(d), row.slug).run();
   }
 }
+
+/* ---- what a character save and a restore both check ----
+   The save handler and the two ways a stored version is written back (a
+   rollback, an approved suggestion) go through these, so a version that comes
+   back cannot be something a save would have refused. */
+
+// One of the seven, case and the American spelling forgiven; '' otherwise.
+function normCharacterTeam(team) {
+  let t = String(team == null ? '' : team).trim().toLowerCase();
+  if (t === 'traveler') t = 'traveller';
+  return CHARACTER_TEAMS.includes(t) ? t : '';
+}
+
+// The refusal for a page that IS an official character (name and ability
+// both), or null. See "No official characters".
+async function officialCopyRefusal(env, origin, d) {
+  const graded = OfficialRoles.officialMatch(
+    await loadOfficialRoles(env, origin), { name: d.name, ability: d.ability });
+  if (graded && graded.match === 'exact') {
+    return jsonResponse({
+      error: OfficialRoles.officialRefusal(graded.role), official: graded.role.id
+    }, { status: 400 });
+  }
+  return null;
+}
+
+/* A character identity may not begin with `off-`: that prefix is how a script
+   roster names an OFFICIAL character (official-roles.js), so a homebrew
+   "Off-Kilter" stored as off-kilter would be read as an official id in every
+   roster that listed it. Only ever asked of a NEW identity — a row that already
+   has one keeps it. /api/slug-check never suggests one either. */
+function officialPrefixed(slug) {
+  return /^off-/.test(String(slug || ''));
+}
+
+/* Is this would-be identity already answering for another page? A live row
+   whose (flat, pre-nesting) address is this string, or a redirect from it to a
+   live page: /c/{one-segment} resolves the identity FIRST, so a new page
+   taking it would quietly hijack every old link to the page parked there.
+   Throws on a read error; the save treats that as "try again", not "free". */
+async function identityParked(env, slug) {
+  await ensureUrlSlugColumn(env);
+  const own = await env.DB.prepare(
+    "SELECT 1 AS hit FROM characters WHERE url_slug=? AND slug<>? AND status<>'deleted' LIMIT 1"
+  ).bind(slug, slug).first();
+  if (own) return true;
+  await ensureRedirectsTable(env);
+  const r = await env.DB.prepare(
+    `SELECT 1 AS hit FROM redirects r WHERE r.entity_type='character' AND r.from_slug=? AND ${LIVE_REDIRECT_SQL} LIMIT 1`
+  ).bind(slug).first();
+  return !!r;
+}
+
+/* The address this page's name and set now ask for, recomputed on every save
+   — that is what makes renaming automatic, and what moves a character's URL
+   when it joins or leaves a collection. setCharAddress leaves a 301 behind
+   whenever it actually moves. `existing` is the row before the write (null on
+   a create). Never throws: a page is still reachable at /c/{identity} until
+   the next save, or the admin backfill, gives it a nested one. */
+async function refreshCharAddress(env, slug, d, ownerId, existing) {
+  const prevAddress = charAddress(existing);
+  try {
+    const address = await characterAddress(env, slug, d, ownerId, prevAddress);
+    const changed = await setCharAddress(env, slug, address);
+    // A page that had an address and now has a different one has moved,
+    // and the editor says so. A page getting its first one has not.
+    return { address, movedFrom: changed && prevAddress && prevAddress !== address ? prevAddress : null };
+  } catch {
+    return { address: prevAddress || slug, movedFrom: null };
+  }
+}
+
+// match[] / include[] / exclude[] / order[] on a collection, capped and
+// normalised the one way.
+function sanitizeCollectionMembership(c) {
+  c.match = Array.isArray(c.match)
+    ? c.match.slice(0, 30).map(s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean)
+    : [];
+  for (const k of ['include', 'exclude']) {
+    c[k] = Array.isArray(c[k]) ? c[k].slice(0, 500).map(x => String(x).slice(0, 80)) : [];
+  }
+  // The author's hand-arranged roster order: a list of slugs, and only a
+  // list of slugs. It is deliberately NOT the membership — membership is
+  // still match[]/include[]/exclude[] — so a slug that leaves the
+  // collection just stops being found, and a new member that is not in
+  // here sorts after the ordered ones (see resolveCollectionMembers's
+  // caller in render-page.js). That means neither list has to be kept in
+  // step with the other, which is the only reason this is safe to store.
+  c.order = Array.isArray(c.order)
+    ? [...new Set(c.order.slice(0, 500).map(x => String(x).slice(0, 80)).filter(Boolean))]
+    : [];
+  if (!c.order.length) delete c.order;
+}
+
+/* A script's roster and the rest of what the official app reads out of its
+   exported JSON. Answers an error message, or '' when the script is fine. */
+function sanitizeScriptFields(s) {
+  // Refused rather than cut: a roster silently trimmed to the cap lost its
+  // last characters with nothing to say so.
+  if (Array.isArray(s.characters) && s.characters.length > SCRIPT_CHARACTERS_MAX) {
+    return 'A script can hold at most ' + SCRIPT_CHARACTERS_MAX +
+      ' characters, and this one has ' + s.characters.length + '.';
+  }
+  s.characters = Array.isArray(s.characters)
+    ? s.characters.map(x => String(x).slice(0, 80))
+    : [];
+  // The owner's hand-arranged night order: two lists of roster slugs.
+  // Like a collection's `order[]` it is kept apart from the roster, so
+  // neither list has to be kept in step with the other: a slug that has
+  // left the script never matches, and a character it has not heard of
+  // slots in by its own night number (sortNightItems in render-page.js).
+  s.nightOrder = sanitizeNightOrder(s.nightOrder);
+  if (!s.nightOrder) delete s.nightOrder;
+  s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
+  if (!s.jinxEdits) delete s.jinxEdits;
+  // The rest of what the official app reads out of the exported JSON:
+  // _meta.bootlegger / almanac / hideTitle (schema at
+  // github.com/ThePandemoniumInstitute/botc-release). The background and
+  // logo are the page's own, already validated by sanitizePageFields.
+  s.bootlegger = Array.isArray(s.bootlegger)
+    ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
+    : [];
+  if (!s.bootlegger.length) delete s.bootlegger;
+  s.almanac = typeof s.almanac === 'string' && /^https?:\/\//i.test(s.almanac.trim())
+    ? s.almanac.trim().slice(0, 300) : '';
+  if (!s.almanac) delete s.almanac;
+  if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
+  return '';
+}
+
+/* A stored version about to be written back over `row` — a rollback, or an
+   approved suggestion. Both used to write it whole, so whatever the snapshot
+   said came back with it: a Curata mark an admin had since taken off, an
+   editor the owner had since removed, a moderation note, an invalid team, an
+   address still built from the old name. Content moves; the page's
+   administration stays as it is now (RESTORE_PINNED_KEYS — Curata stays the
+   /api/admin/curata decision even for an admin's rollback), and the rest goes
+   through the same checks a save does. Mutates `d`; answers a refusal
+   Response, or null.
+
+   opts.origin             for the official roster
+   opts.requirePublishable a published page must still meet the publish bar
+                           (an approval; a rollback restores what WAS live) */
+const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote'];
+async function prepareRestore(env, type, row, d, opts) {
+  opts = opts || {};
+  const now = parseData(row);
+  for (const k of ['baseUpdatedAt', 'renameFrom', 'appearsInFrom', 'status', '_deleted']) delete d[k];
+  for (const k of RESTORE_PINNED_KEYS) {
+    if (now[k] !== undefined) d[k] = now[k]; else delete d[k];
+  }
+  if (type === 'wikipage') return null;
+  d.slug = row.slug;
+  if (type === 'collection') {
+    // The id is the URL and is never renamed (see /api/collection).
+    d.id = kebab(now.id) || kebab(d.id) || kebab(row.slug);
+    sanitizeCollectionMembership(d);
+  }
+  pinSuggestedFields(type, d, now);
+  if (type === 'character') {
+    const team = normCharacterTeam(d.team);
+    if (!team) {
+      return jsonResponse({ error: 'That version has no valid team, so it cannot be put back.' }, { status: 400 });
+    }
+    d.team = team;
+    const refused = await officialCopyRefusal(env, opts.origin, d);
+    if (refused) return refused;
+    if (opts.requirePublishable && (row.status || 'published') === 'published') {
+      const needed = Classify.missingForPublish(d);
+      if (needed.length) {
+        return jsonResponse({
+          error: 'A published page needs ' + Classify.listPhrase(needed) + ', and this version does not have it.',
+          missingForPublish: needed
+        }, { status: 400 });
+      }
+    }
+  } else if (type === 'script') {
+    const err = sanitizeScriptFields(d);
+    if (err) return jsonResponse({ error: err }, { status: 400 });
+  }
+  return null;
+}
+
+/* ---- a set's roster is its owner's, where it reaches the owner's pages ----
+   A set's "Who can edit" choice governs every character on it that the set's
+   owner also owns (governingParent). So the roster decides which of the
+   OWNER's characters an editor of the set may edit, and letting that editor
+   change it would let them hand themselves any of the owner's pages: add a
+   closed character to a set open to everyone and it is open too (an approved
+   editor would reach its drafts as well). So for anybody but the owner, the
+   owner's own characters keep exactly the membership the stored row gave
+   them — additions dropped, removals put back where they stood — and every
+   other character is theirs to add or remove as before.
+
+   Throws on a read error: guessing which slugs are the owner's would either
+   open a page or lose the edit. */
+async function ownerCharacterSlugs(env, ownerId, slugs) {
+  const out = new Set();
+  const list = [...new Set(slugs.map(String))].filter(x => x && !x.startsWith('off-'));
+  for (let i = 0; i < list.length; i += 90) {
+    const chunk = list.slice(i, i + 90);
+    const { results } = await env.DB.prepare(
+      `SELECT slug FROM characters WHERE owner_id=? AND slug IN (${chunk.map(() => '?').join(',')})`
+    ).bind(ownerId, ...chunk).all();
+    for (const r of results || []) out.add(String(r.slug));
+  }
+  return out;
+}
+async function pinOwnerMembership(env, ownerId, before, after) {
+  before = Array.isArray(before) ? before.map(String) : [];
+  after = Array.isArray(after) ? after.map(String) : [];
+  if (ownerId == null) return after;
+  const had = new Set(before), has = new Set(after);
+  const changed = [...after.filter(x => !had.has(x)), ...before.filter(x => !has.has(x))];
+  if (!changed.length) return after;
+  const owned = await ownerCharacterSlugs(env, ownerId, changed);
+  if (!owned.size) return after;
+  const out = after.filter(x => !(owned.has(x) && !had.has(x)));
+  before.forEach((x, i) => {
+    if (!owned.has(x) || out.includes(x)) return;
+    // Back after the nearest earlier entry that is still there.
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const k = out.indexOf(before[j]);
+      if (k !== -1) { at = k + 1; break; }
+    }
+    out.splice(at, 0, x);
+  });
+  return out;
+}
+
+const ROW_READ_FAILED = 'Could not read that page just now, so nothing was saved. Try again in a moment.';
 
 // ---- edit conflicts ----
 // Every content write is a blind whole-document upsert, and the editors post
@@ -4449,6 +4709,10 @@ const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
 // list a set of roster slugs. Returns null when there is nothing worth
 // storing, so an unarranged script keeps no key at all and sorts by the
 // characters' own night numbers, exactly as it always did.
+// A script's roster, matching the night lists' cap below (every character on
+// a script can wake). /api/script refuses a longer one rather than trim it.
+const SCRIPT_CHARACTERS_MAX = 200;
+
 function sanitizeNightOrder(o) {
   if (!o || typeof o !== 'object') return null;
   const list = v => Array.isArray(v)
@@ -6398,17 +6662,19 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
 // Collections: legacy rows have a display-string PK slug (e.g. "The Academy")
 // while URLs use the kebab id from the JSON ("the-academy"). Resolve by PK
 // first, then by data.id, then by normalized slug/displayName.
-async function findCollectionRow(env, key) {
+// `opts.strict`: a failed read throws, as getEntityRow's does.
+async function findCollectionRow(env, key, opts) {
   if (!key) return null;
+  const strict = !!(opts && opts.strict);
   let hit = await env.DB.prepare(
     'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections WHERE slug=?'
-  ).bind(key).first().catch(() => null);
+  ).bind(key).first().catch(e => { if (strict) throw e; return null; });
   if (hit) return hit;
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const nkey = norm(key);
   const { results } = await env.DB.prepare(
     'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections'
-  ).all().catch(() => ({ results: [] }));
+  ).all().catch(e => { if (strict) throw e; return { results: [] }; });
   for (const row of results || []) {
     try {
       const d = foldLegacyCurata(JSON.parse(row.data));
@@ -8244,6 +8510,11 @@ const app = {
         .replace(/^-+|-+$/g, '').slice(0, 80);
       const base = kebab(url.searchParams.get('name') || url.searchParams.get('slug'));
       if (!base) return jsonResponse({ error: 'Nothing to check.' }, { status: 400 });
+      // A NEW character identity never starts with the official-roster prefix
+      // (officialPrefixed), so "Off-Kilter" reads as taken and is offered
+      // offkilter, and the ladder is built from that stem instead.
+      const offPrefix = type === 'character' && officialPrefixed(base);
+      const stem = offPrefix ? 'off' + base.slice(4) : base;
       // A collection's URL is its kebab `id`, which for legacy rows is NOT the
       // PK slug ("The Academy" is the PK of the-academy). /api/collection
       // resolves a write through findCollectionRow, so the check has to look
@@ -8253,8 +8524,13 @@ const app = {
         ? await findCollectionRow(env, base)
         : await getEntityRow(env, type, base);
       // A URL a renamed page still redirects from is taken too: building a new
-      // page there would quietly hijack every old link to the moved one.
-      const parked = !row && !!(await lookupRedirect(env, type, base));
+      // page there would quietly hijack every old link to the moved one. For a
+      // character this is the save's own test (identityParked), so the two
+      // cannot disagree: a redirect to a deleted page parks nothing, and a
+      // live page's flat old address counts.
+      const parked = !row && (offPrefix || (type === 'character'
+        ? await identityParked(env, base).catch(() => false)
+        : !!(await lookupRedirect(env, type, base))));
       if (!row && !parked) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
       // `mine` says a save on this URL would update that page rather than
       // collide with it — which is what the create page wants, and what a
@@ -8280,14 +8556,24 @@ const app = {
         try {
           const { results } = await env.DB.prepare(
             `SELECT slug FROM ${t.table} WHERE slug=? OR slug LIKE ?`
-          ).bind(base, base + '-%').all();
+          ).bind(stem, stem + '-%').all();
           used = new Set((results || []).map(r => String(r.slug)));
         } catch { used = new Set(); }
+      }
+      if (type === 'character') {
+        // A live page's flat old address is as taken as an identity
+        // (identityParked), so the ladder never offers one the save refuses.
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT url_slug FROM characters WHERE (url_slug=? OR url_slug LIKE ?) AND status<>'deleted'"
+          ).bind(stem, stem + '-%').all();
+          for (const r of results || []) used.add(String(r.url_slug));
+        } catch { /* no address column yet */ }
       }
       try {
         const { results } = await env.DB.prepare(
           'SELECT from_slug FROM redirects WHERE entity_type=? AND (from_slug=? OR from_slug LIKE ?)'
-        ).bind(type, base, base + '-%').all();
+        ).bind(type, stem, stem + '-%').all();
         for (const r of results || []) used.add(String(r.from_slug));
       } catch { /* nothing has ever been renamed */ }
       used.add(base);
@@ -8322,14 +8608,16 @@ const app = {
       // rather than jumping to witcher-{author} and dropping the set from the
       // URL entirely.
       const flavour = appears || author;
+      if (stem !== base) candidates.push(stem);
       if (flavour) {
-        candidates.push(base + '-' + flavour);
-        for (let i = 2; i < 60; i++) candidates.push(base + '-' + flavour + '-' + i);
+        candidates.push(stem + '-' + flavour);
+        for (let i = 2; i < 60; i++) candidates.push(stem + '-' + flavour + '-' + i);
       }
       // Last resort, and the whole ladder for a page with neither a set nor a
       // resolvable username.
-      for (let i = 2; i < 60; i++) candidates.push(base + '-' + i);
-      const suggestion = candidates.find(s => s.length <= 80 && !used.has(s)) || null;
+      for (let i = 2; i < 60; i++) candidates.push(stem + '-' + i);
+      const suggestion = candidates.find(s => s.length <= 80 && !used.has(s) &&
+        !(type === 'character' && officialPrefixed(s))) || null;
       // Nothing about the page sitting on that URL is returned: it may be
       // somebody's draft, and the site never reveals that drafts exist.
       return jsonResponse({ base, taken: true, mine, suggestion });
@@ -8942,7 +9230,7 @@ const app = {
       let governedBy = null;
       if (type === 'character') {
         const gov = await governingParent(env, row, parseData(row)).catch(() => null);
-        if (gov) governedBy = { ...parentRef(gov), mode: gov.mode };
+        if (gov && parentVisibleTo(sess, gov)) governedBy = { ...parentRef(gov), mode: gov.mode };
       }
       /* Who points here: the pages naming this character in their own
          Related list. Relations are one-way by design — nothing shows on a
@@ -9409,8 +9697,9 @@ const app = {
         updatedAt: row.updated_at || null,
         canRestore: owns,
         publicEdit: eff.mode,
-        // The set the mode comes from, when a script or collection governs it.
-        publicEditVia: eff.via,
+        // The set the mode comes from, when a script or collection governs it
+        // and this reader may know that set exists (parentVisibleTo).
+        publicEditVia: eff.gov && parentVisibleTo(sess, eff.gov) ? eff.via : null,
         entries
       });
     }
@@ -9447,6 +9736,16 @@ const app = {
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const owns = canEditRow(sess, row);
+      /* The same visibility as the page itself: a draft or a deleted page is
+         Not Found to anyone who could not open it, or this would be a way to
+         learn an unpublished page's name (and, through the diffs, what it
+         says now). That includes somebody whose suggestion is waiting on a
+         page that has since gone to drafts — their entry comes back with the
+         page; until then it is the owner's draft, not theirs to read. */
+      if ((row.status || 'published') !== 'published' && !owns &&
+          !(type !== 'wikipage' && await canEditPage(env, sess, type, row))) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
       const { results } = await env.DB.prepare(
         `SELECT id, user_id, username, note, base_updated_at, status, reply,
                 decided_by, decided_at, ts, data
@@ -9463,7 +9762,10 @@ const app = {
           decidedBy: r.decided_by || null, decidedAt: r.decided_at || null,
           ts: r.ts, stale: !!(r.base_updated_at && row.updated_at && r.base_updated_at !== row.updated_at),
           // What the suggestion would change about the page as it stands now.
+          // The editor list and a moderation note are the owner's, here as in
+          // the public history (PRIVATE_DATA_KEYS).
           changes: diffFieldValues(row.data, r.data)
+            .filter(f => owns || !PRIVATE_DATA_KEYS.has(f.field))
         }))
       });
     }
@@ -10240,7 +10542,12 @@ const app = {
       // Posting a comment counts as a content write: a wiki locked because of
       // vandalism should not leave the comment boxes open. Removing and
       // reporting comments stay available so moderation still works.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx'].includes(path);
+      // Rolling a page back, approving a suggestion and sending one all write
+      // a page (or queue a version of one), so they freeze with the rest.
+      // /api/attachment does not: modmail uses it too, and the comment it
+      // would belong to is refused here anyway.
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx',
+        '/api/page-rollback', '/api/suggest', '/api/suggestion'].includes(path);
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -10712,6 +11019,8 @@ const app = {
         delete data.status;
         delete data.renameFrom;
         delete data.appearsInFrom;
+        // The editor's conflict stamp, never part of a page (checkEditConflict).
+        delete data.baseUpdatedAt;
         pinSuggestedFields(type, data, storedNow);
         if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
           return jsonResponse({ error: 'Nothing has changed, so there is nothing to suggest.' }, { status: 400 });
@@ -10799,15 +11108,14 @@ const app = {
         try { d = foldLegacyCurata(JSON.parse(sug.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
         // Re-pin everything that belongs to the page rather than to the
-        // suggestion: the row may have changed since it was written.
-        const now = parseData(row);
-        d.slug = row.slug;
-        d.publicEdit = now.publicEdit;
-        d.curata = !!now.curata;
-        if (now.curataOptOut) d.curataOptOut = true; else delete d.curataOptOut;
-        if (now.creditUnlinked) d.creditUnlinked = true; else delete d.creditUnlinked;
-        delete d._deleted;
-        pinSuggestedFields(sug.entity_type, d, now);
+        // suggestion (the row may have changed since it was written), and put
+        // it through what a save would: the team, the official-character
+        // guard, the publish bar for a live page, a collection's id.
+        {
+          const refused = await prepareRestore(env, sug.entity_type, row, d,
+            { origin: url.origin, requirePublishable: true });
+          if (refused) return refused;
+        }
         await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
         try { await applyRollback(env, sug.entity_type, row, d); }
         catch (e) { return jsonResponse({ error: publicError(e, 'Could not apply that suggestion.') }, { status: 500 }); }
@@ -10846,7 +11154,12 @@ const app = {
         let d;
         try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
-        delete d._deleted;
+        // Content comes back; who may edit it, its Curata mark and its
+        // moderation note stay as they are now (prepareRestore).
+        {
+          const refused = await prepareRestore(env, type, row, d, { origin: url.origin });
+          if (refused) return refused;
+        }
         // Snapshot what is being replaced, so the rollback is itself undoable.
         await saveRevision(env, sess, type, row);
         try { await applyRollback(env, type, row, d); }
@@ -11016,9 +11329,8 @@ const app = {
         // posted, and it is printed into class names and tooltips all over the
         // site — a "team" carrying markup was a way to put HTML on the
         // /jinxes map. Case and the American spelling are forgiven.
-        c.team = String(c.team).trim().toLowerCase();
-        if (c.team === 'traveler') c.team = 'traveller';
-        if (!CHARACTER_TEAMS.includes(c.team)) {
+        c.team = normCharacterTeam(c.team);
+        if (!c.team) {
           return jsonResponse({ error: 'Pick a team: ' + CHARACTER_TEAMS.join(', ') + '.' }, { status: 400 });
         }
         // The slug is the character's IDENTITY: the primary key, the art slot
@@ -11039,13 +11351,8 @@ const app = {
         // Nightwatchman that are nothing like the official ones); it is the
         // name AND the ability together that mean the page is a copy.
         {
-          const graded = OfficialRoles.officialMatch(
-            await loadOfficialRoles(env, url.origin), { name: c.name, ability: c.ability });
-          if (graded && graded.match === 'exact') {
-            return jsonResponse({
-              error: OfficialRoles.officialRefusal(graded.role), official: graded.role.id
-            }, { status: 400 });
-          }
+          const refused = await officialCopyRefusal(env, url.origin, c);
+          if (refused) return refused;
         }
         // Renaming: the editor sends the page's identity in renameFrom and the
         // slug its new name asks for in `slug`. The IDENTITY does not move —
@@ -11077,7 +11384,23 @@ const app = {
           renamedFrom = charAddress(src);
           c.slug = renameFrom;
         }
-        const existing = await getEntityRow(env, 'character', c.slug);
+        let existing;
+        try { existing = await getEntityRow(env, 'character', c.slug, { strict: true }); }
+        catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
+        if (!existing) {
+          // A NEW identity: never the official-roster prefix, and never one a
+          // live page still answers on (see identityParked). /api/slug-check
+          // steers every editor past both, so this is the hand-written request.
+          if (officialPrefixed(c.slug)) {
+            return jsonResponse({ error: 'A character\u2019s URL cannot start with \u201coff-\u201d. Pick a different name.' }, { status: 400 });
+          }
+          let parked;
+          try { parked = await identityParked(env, c.slug); }
+          catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
+          if (parked) {
+            return jsonResponse({ error: 'That URL still belongs to a page that was renamed. Pick a different name.' }, { status: 409 });
+          }
+        }
         // Ownership, or the page's own public-editing setting. Everything
         // that belongs to the creator (the URL, publishing, deleting, who may
         // edit) needs 'owner'. 'all' and 'tags' are what a guest was invited
@@ -11192,7 +11515,7 @@ const app = {
            is: it decides whose work the page is said to be, and a guest
            editing an opened page has no say in that. See CREDIT_LINKED_SQL. */
         setCreditUnlinked(c, stored, perm);
-        if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId);
+        if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId, stored);
         c.jinxes = sanitizeJinxes(c.jinxes);
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
@@ -11234,38 +11557,25 @@ const app = {
            before it had been acted on. */
         carryDraftNote(c, existing, status);
         if (existing) await saveRevision(env, sess, 'character', existing);
-        await env.DB.prepare(
+        // A create never lands on a row it did not load: one that appeared
+        // since (two saves racing for one name) is a conflict, not an update
+        // made in somebody else's name.
+        const written = await env.DB.prepare(
           `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
            VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
-           ON CONFLICT(slug) DO UPDATE SET
+           ON CONFLICT(slug) DO ` + (existing ? `UPDATE SET
              name=excluded.name, team=excluded.team, creator=excluded.creator,
              tags=excluded.tags, appears_in=excluded.appears_in,
-             data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+             data=excluded.data, status=excluded.status, updated_at=datetime('now')` : 'NOTHING')
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
-        // The address this page's name and set now ask for, recomputed on every
-        // save — that is what makes renaming automatic, and what moves a
-        // character's URL when it joins or leaves a collection. setCharAddress
-        // leaves a 301 behind whenever it actually moves.
-        let address = charAddress(existing) || c.slug;
-        let movedFrom = null;
-        try {
-          const prevAddress = charAddress(existing);
-          address = await characterAddress(
-            env, c.slug, c,
-            existing ? existing.owner_id : sess.userId,
-            prevAddress
-          );
-          const changed = await setCharAddress(env, c.slug, address);
-          // A page that had an address and now has a different one has moved,
-          // and the editor says so. A page getting its first one has not.
-          if (changed && prevAddress && prevAddress !== address) movedFrom = prevAddress;
-        } catch {
-          // Never lose a save over an address. The page is still reachable at
-          // /c/{identity} until the next save, or the admin backfill, gives it
-          // a nested one.
-          address = charAddress(existing) || c.slug;
+        if (!existing && !(written && written.meta && written.meta.changes)) {
+          return jsonResponse({ error: 'Another page has just taken that name. Pick a different name.' }, { status: 409 });
         }
+        // The address this page's name and set now ask for (refreshCharAddress).
+        // Never lose a save over an address.
+        const { address, movedFrom } = await refreshCharAddress(
+          env, c.slug, c, existing ? existing.owner_id : sess.userId, existing);
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
@@ -11291,7 +11601,9 @@ const app = {
           updatedAt: savedRow ? savedRow.updated_at : null,
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
-          editors: c.editors || [],
+          // Who else may edit is the owner's administration (account ids),
+          // exactly as /api/page keeps it: a guest's save does not get it back.
+          editors: perm === 'owner' ? (c.editors || []) : undefined,
           // Names the owner typed that no account answered to. Dropping them
           // silently would leave them believing they had shared the page.
           editorsUnknown,
@@ -11439,8 +11751,11 @@ const app = {
         }
         // Resolve the row this write targets: PK slug first, then kebab id
         // (legacy rows have display-string PK slugs, e.g. "The Academy").
-        let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
-        if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
+        let existing;
+        try {
+          existing = c.slug ? await getEntityRow(env, 'collection', c.slug, { strict: true }) : null;
+          if (!existing) existing = await findCollectionRow(env, c.id || c.slug, { strict: true });
+        } catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
         const perm = existing ? await editPermission(env, sess, 'collection', existing) : 'owner';
         // A deleted page comes back through an admin's restore, never through a
         // save: /api/publish already refused it, but saving over the row
@@ -11465,38 +11780,40 @@ const app = {
         // as PK so the URL, id and PK all agree.
         const kebab = s => String(s || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
-        c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
+        // The id IS the URL, and there is no rename for a collection: once it
+        // has one, an update keeps it whatever the body says. It used to be
+        // taken from the body on every save, so anybody who could edit the
+        // page — a guest included — could move its address, or point it at
+        // another collection's.
+        const storedId = existing ? kebab(parseData(existing).id) : '';
+        c.id = storedId || kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
         if (!c.id) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         const pkSlug = existing ? existing.slug : c.id;
-        if (!existing) {
-          // creating: the id must not collide with another collection's id
+        if (!storedId) {
+          // creating, or a legacy row getting its first id: the id must not
+          // collide with another collection's id
           const clash = await findCollectionRow(env, c.id);
           if (clash && clash.slug !== pkSlug) {
             return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
           }
-          c.slug = c.id;
-        } else {
-          c.slug = existing.slug;
         }
+        c.slug = existing ? existing.slug : c.id;
         if (!c.displayName) c.displayName = existing ? existing.name : c.slug;
         sanitizePageFields(c, 'collections/' + c.id);
-        c.match = Array.isArray(c.match)
-          ? c.match.slice(0, 30).map(s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean)
-          : [];
-        for (const k of ['include', 'exclude']) {
-          c[k] = Array.isArray(c[k]) ? c[k].slice(0, 500).map(x => String(x).slice(0, 80)) : [];
+        sanitizeCollectionMembership(c);
+        if (existing && perm !== 'owner') {
+          // The membership that reaches the owner's own characters is the
+          // owner's (see pinOwnerMembership). A match term sweeps in pages by
+          // their "Appears in" text, so there is no telling whose a new one
+          // would catch: match[] stays exactly as the owner left it.
+          const was = parseData(existing);
+          c.match = Array.isArray(was.match) ? was.match.slice() : [];
+          try {
+            for (const k of ['include', 'exclude']) {
+              c[k] = await pinOwnerMembership(env, existing.owner_id, was[k], c[k]);
+            }
+          } catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
         }
-        // The author's hand-arranged roster order: a list of slugs, and only a
-        // list of slugs. It is deliberately NOT the membership — membership is
-        // still match[]/include[]/exclude[] — so a slug that leaves the
-        // collection just stops being found, and a new member that is not in
-        // here sorts after the ordered ones (see resolveCollectionMembers's
-        // caller in render-page.js). That means neither list has to be kept in
-        // step with the other, which is the only reason this is safe to store.
-        c.order = Array.isArray(c.order)
-          ? [...new Set(c.order.slice(0, 500).map(x => String(x).slice(0, 80)).filter(Boolean))]
-          : [];
-        if (!c.order.length) delete c.order;
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
         const storedColl = existing ? parseData(existing) : null;
@@ -11519,7 +11836,7 @@ const app = {
         c.curata = existing ? !!parseData(existing).curata : false;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
-        if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId);
+        if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId, storedColl);
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
@@ -11530,12 +11847,16 @@ const app = {
            before it had been acted on. */
         carryDraftNote(c, existing, status);
         if (existing) await saveRevision(env, sess, 'collection', existing);
-        await env.DB.prepare(
+        // A create never lands on a row it did not load (see /api/character).
+        const written = await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
            VALUES (?,?,?,?,?,datetime('now'),datetime('now'))
-           ON CONFLICT(slug) DO UPDATE SET
-             display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+           ON CONFLICT(slug) DO ` + (existing ? `UPDATE SET
+             display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')` : 'NOTHING')
         ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
+        if (!existing && !(written && written.meta && written.meta.changes)) {
+          return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
+        }
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
@@ -11550,7 +11871,7 @@ const app = {
           }));
         }
         return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status,
-                              editors: c.editors || [], editorsUnknown });
+                              editors: perm === 'owner' ? (c.editors || []) : undefined, editorsUnknown });
       }
 
       if (path === '/api/script') {
@@ -11563,7 +11884,9 @@ const app = {
         if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
           return jsonResponse({ error: 'Invalid script URL.' }, { status: 400 });
         }
-        const existing = await getEntityRow(env, 'script', s.slug);
+        let existing;
+        try { existing = await getEntityRow(env, 'script', s.slug, { strict: true }); }
+        catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
         const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
         // A deleted page comes back through an admin's restore, never through a
         // save: /api/publish already refused it, but saving over the row
@@ -11585,33 +11908,23 @@ const app = {
           if (conflict) return conflict;
         }
         sanitizePageFields(s, 'scripts/' + s.slug);
-        s.characters = Array.isArray(s.characters)
-          ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
-          : [];
-        // The owner's hand-arranged night order: two lists of roster slugs.
-        // Like a collection's `order[]` it is kept apart from the roster, so
-        // neither list has to be kept in step with the other: a slug that has
-        // left the script never matches, and a character it has not heard of
-        // slots in by its own night number (sortNightItems in render-page.js).
-        s.nightOrder = sanitizeNightOrder(s.nightOrder);
-        if (!s.nightOrder) delete s.nightOrder;
-        s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
-        if (!s.jinxEdits) delete s.jinxEdits;
+        // The roster, night order, jinx edits and the official app's _meta
+        // fields (sanitizeScriptFields). An over-long roster is refused.
+        {
+          const err = sanitizeScriptFields(s);
+          if (err) return jsonResponse({ error: err }, { status: 400 });
+        }
+        if (existing && perm !== 'owner') {
+          // Which of the owner's own characters are on the script is the
+          // owner's (see pinOwnerMembership): the roster decides which of
+          // their pages the script's sharing choice reaches.
+          try {
+            s.characters = await pinOwnerMembership(env, existing.owner_id, parseData(existing).characters, s.characters);
+          } catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
+        }
         if (existing && perm !== 'owner' && publicEditTooBig(s)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
-        // The rest of what the official app reads out of the exported JSON:
-        // _meta.bootlegger / almanac / hideTitle (schema at
-        // github.com/ThePandemoniumInstitute/botc-release). The background and
-        // logo are the page's own, already validated by sanitizePageFields.
-        s.bootlegger = Array.isArray(s.bootlegger)
-          ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
-          : [];
-        if (!s.bootlegger.length) delete s.bootlegger;
-        s.almanac = typeof s.almanac === 'string' && /^https?:\/\//i.test(s.almanac.trim())
-          ? s.almanac.trim().slice(0, 300) : '';
-        if (!s.almanac) delete s.almanac;
-        if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
         let status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
         const storedScript = existing ? parseData(existing) : null;
@@ -11635,7 +11948,7 @@ const app = {
         s.curata = existing ? !!parseData(existing).curata : false;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(s, storedScript, perm);
-        if (perm === 'owner') await keepUploaderEditing(env, s, existing ? existing.owner_id : sess.userId);
+        if (perm === 'owner') await keepUploaderEditing(env, s, existing ? existing.owner_id : sess.userId, storedScript);
         /* An admin's "why this went to drafts" note survives an ordinary
            save and is cleared only by going live. The creator opens the
            editor BECAUSE of the note, and fixing one field is not
@@ -11643,12 +11956,16 @@ const app = {
            before it had been acted on. */
         carryDraftNote(s, existing, status);
         if (existing) await saveRevision(env, sess, 'script', existing);
-        await env.DB.prepare(
+        // A create never lands on a row it did not load (see /api/character).
+        const written = await env.DB.prepare(
           `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
            VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))
-           ON CONFLICT(slug) DO UPDATE SET
-             name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+           ON CONFLICT(slug) DO ` + (existing ? `UPDATE SET
+             name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')` : 'NOTHING')
         ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
+        if (!existing && !(written && written.meta && written.meta.changes)) {
+          return jsonResponse({ error: 'A script with that name already exists.' }, { status: 409 });
+        }
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
@@ -11663,7 +11980,7 @@ const app = {
           }));
         }
         return jsonResponse({ ok: true, slug: s.slug, status,
-                              editors: s.editors || [], editorsUnknown });
+                              editors: perm === 'owner' ? (s.editors || []) : undefined, editorsUnknown });
       }
 
       // ---- custom wiki pages (text-first pages under a script/collection) ----
@@ -11951,7 +12268,12 @@ const app = {
         let d;
         try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
-        delete d._deleted;
+        // Content comes back; who may edit it, its Curata mark and its
+        // moderation note stay as they are now (prepareRestore).
+        {
+          const refused = await prepareRestore(env, type, row, d, { origin: url.origin });
+          if (refused) return refused;
+        }
         await saveRevision(env, sess, type, row); // make the rollback undoable
         try { await applyRollback(env, type, row, d); }
         catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: 500 }); }
