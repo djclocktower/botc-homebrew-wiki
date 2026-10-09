@@ -1148,7 +1148,9 @@ a jinx the bare id has nowhere to carry it, so that one is written out in full.
 
 The export follows the schema at
 `github.com/ThePandemoniumInstitute/botc-release`. Beyond `name`/`author`/
-`logo`:
+`logo` (the page's **logo**, falling back to its header banner, absolute —
+a Bloodstar import has a logo and no banner, and reading the header alone
+exported none):
 
 - **`background`**: the page background (`theme.background`) as an absolute
   URL. One upload serves both the wiki page and the app.
@@ -1530,7 +1532,12 @@ through `inlineLinks()` in render.js. A small set and no others:
   character editors feed both engines with the call they already made, and
   `setWikiTextRegistries()` in worker.js sets the pair together for `/s/`,
   `/collection/`, `/news/` and `/p/`. Setting char links without the roster
-  would quietly send `[[Imp]]` to a homebrew Imp.
+  would quietly send `[[Imp]]` to a homebrew Imp. **Every char-link map is
+  keyed with `WikiRender.linkKey`** (accents folded, any script's letters
+  kept, never an empty key), and the name is matched on what was typed, not
+  on its escaped text — so `[[Médium]]`, `[[太一]]` and `[[Tea & Crumpets]]`
+  all resolve. The registries are own-key lookups: a page called Constructor
+  is a page, not `Object.prototype.constructor`.
 - `{{red|Imp}}` / `{{blue|Undertaker}}` (and `{{evil|…}}` / `{{good|…}}`, the
   same two under the game's names) — the character name coloured the way the
   official almanac colours it, in `--evil` / `--good`, bold. `.wiki-red` /
@@ -1727,8 +1734,11 @@ Things worth knowing before touching any of it:
 - **A traveller carrying evil art but no good art repeats its unaligned icon
   into the good slot** — `[unaligned, unaligned, evil]`. The app reads
   position one as GOOD, so `[unaligned, evil]` would render the evil token as
-  the good one and leave it with no evil token. That repeat is deliberate and
-  is the one export path that must **not** be de-duplicated.
+  the good one and leave it with no evil token. **A traveller's array is
+  never de-duplicated** — it is positional, so good art that is the same file
+  as the unaligned icon still exports `[A, A, E]`. Everyone else exports at
+  most `[regular, flipped]`, de-duplicated; a hidden slot three is not
+  exported.
 - **Slot three is drawn for travellers only** (`assets/art-labels.js`), since
   nobody else has a third entry — but it is *hidden*, never cleared. Retyping
   a character off Traveller must not silently drop art somebody uploaded.
@@ -3130,7 +3140,10 @@ and the Worker (which stamps `classification` + `curata` onto every row in
 Only `curata` is stored (a boolean in the page's `data` JSON, writable
 **only** through `POST /api/admin/curata` or the bulk action — every save
 handler overwrites whatever the client sent with the stored value). Partial vs
-Standard is derived on every read, so nothing ever needs migrating.
+Standard is derived on every read, so nothing ever needs migrating. A
+`classification` key is the Worker's stamp on a served row and nothing else:
+the saves drop a posted one, `foldLegacyCurata()` drops a stored one, and
+`classifyPage()` never reads one.
 
 **The creator can decline it: `curataOptOut`** on a character's own `data`.
 Granting the mark is the admins' call and declining it is the creator's — the

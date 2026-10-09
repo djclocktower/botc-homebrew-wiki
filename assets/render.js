@@ -11,7 +11,18 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function tok(s) {
-    return esc(s).replace(/\[\[(.+?)\]\]/g, '<span class="tok">$1</span>');
+    // Bounded like the engine's own [[…]], so a long run of '[[' that never
+    // closes is one pass rather than a rescan of the line from every one.
+    return esc(s).replace(/\[\[([^\]\n]{1,160})\]\]/g, '<span class="tok">$1</span>');
+  }
+  /* `\s+$` rescans a run of spaces from every space in it when anything
+     follows the run — quadratic on a long one — so the trailing trim is done
+     by hand. */
+  function trimEnd(s) {
+    s = String(s);
+    var e = s.length;
+    while (e > 0 && /\s/.test(s.charAt(e - 1))) e--;
+    return s.slice(0, e);
   }
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
@@ -354,9 +365,11 @@
     '</div>';
   }
 
+  // A plain URL: every caller escapes it into its attribute, and escaping it
+  // here too turned "Tea & Crumpets" into a link to "Tea_&amp;amp;_…".
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
-      esc(String(name).trim().replace(/\s+/g, '_'));
+      String(name).trim().replace(/\s+/g, '_');
   }
   // Map known slugified IDs back to proper display names for jinx links
   var JINX_ID_NAMES = {
@@ -700,28 +713,35 @@
        one as GOOD — so its evil token would render as its good one and it
        would have no evil token at all. Repeat the unaligned icon into the
        good slot instead, which is what every official traveller does anyway
-       (all 18 ship a single _g image used for every state). That repeat is
-       deliberate, so this is the one path that must not be de-duplicated. */
+       (all 18 ship a single _g image used for every state).
+
+       A traveller's array is POSITIONAL, so it is never de-duplicated: art
+       and good art that happen to be one file still export [A, A, E], where
+       dropping the repeat would hand the app [A, E] and the evil token in
+       the good slot. Everybody else exports at most [regular, flipped] — a
+       third slot left over from when the page was a traveller is hidden in
+       the editors, never cleared, and has no position to go to. */
     var vers = artVersions(d, '');
     var byKey = {};
     for (var vi = 0; vi < vers.length; vi++) byKey[vers[vi].key] = vers[vi];
-    var seq, repeated = false;
-    if (isTraveller(d.team) && byKey.alt2 && !byKey.alt) {
-      seq = [byKey.main, byKey.main, byKey.alt2];
-      repeated = true;
-    } else {
-      seq = [byKey.main, byKey.alt, byKey.alt2];
-    }
+    function url(v) { return (v && v.url) || ''; }
     var imgs = [];
-    for (var si = 0; si < seq.length; si++) {
-      var u = seq[si] && seq[si].url;
-      if (!u) continue;
-      if (!repeated && imgs.indexOf(u) !== -1) continue;
-      imgs.push(u);
+    if (isTraveller(d.team)) {
+      var un = url(byKey.main) || url(byKey.alt) || url(byKey.alt2);
+      if (un) imgs.push(un);
+      if (url(byKey.alt2)) imgs.push(url(byKey.alt) || un, url(byKey.alt2));
+      else if (url(byKey.alt)) imgs.push(url(byKey.alt));
+    } else {
+      [url(byKey.main), url(byKey.alt)].forEach(function (u) {
+        if (u && imgs.indexOf(u) === -1) imgs.push(u);
+      });
     }
     if (imgs.length) o.image = imgs;
     if (d.edition) o.edition = d.edition;
-    var fl = d.flavor || d.quote;
+    // The quote first, as the page reads it: an import stores both, the
+    // editor keeps the old `flavor` beside the one being edited, and the
+    // export carried that stale line while the page showed the new one.
+    var fl = d.quote || d.flavor;
     if (fl) o.flavor = plainText(String(fl).replace(/^["']|["']$/g, ''));
     o.firstNight = Number(d.firstNight) || 0;
     if (d.firstNightReminder) o.firstNightReminder = d.firstNightReminder;
@@ -732,7 +752,7 @@
     if (d.setup) o.setup = true;
     if (d.jinxes && d.jinxes.length) {
       var jx = d.jinxes.map(function (j) {
-        return { id: j.id || slugId(j.name), reason: plainText(j.text || j.reason || '') };
+        return { id: jinxExportId(j, d), reason: plainText(j.text || j.reason || '') };
       }).filter(function (j) { return j.id; });
       if (jx.length) o.jinxes = jx;
     }
@@ -740,6 +760,29 @@
     if (sp.length) o.special = sp;
     return o;
   }
+  /* The id a jinx's other character goes out under in the official JSON:
+     the id THAT character's own export carries (buildSchema above — its
+     jsonId, else slugId of its name), or the app has nothing to match the
+     two by. A target the jinx picker recorded is looked up by its slug, an
+     imported one keeps the id it was written with, and an older name-only
+     row is resolved the way the page draws it (resolveJinxTarget): official
+     first, then one of ours. With no registry loaded it falls back to the
+     id or the name, which is what it always exported. */
+  function jinxExportId(j, host) {
+    if (!j) return '';
+    if (j.slug) {
+      var pick = wikiChar(normJinxId(j.slug));
+      if (pick) return pick.jsonId || slugId(pick.name);
+    }
+    if (j.id) return j.id;
+    var nm = j.name || '';
+    if (officialName(nm)) return slugId(nm);
+    var keys = jinxLookupKeys(j, host), hit = null;
+    for (var ki = 0; ki < keys.length && !hit; ki++) hit = wikiChar(keys[ki]);
+    if (hit) return hit.jsonId || slugId(hit.name);
+    return slugId(nm);
+  }
+
   function schemaJSON(d) {
     var meta = { id: '_meta', name: '' };
     return JSON.stringify([meta, buildSchema(d)], null, 2);
@@ -775,7 +818,7 @@
      A page can credit several people ("Taiyi (太一), Saki") — each of them is
      credited separately, and a co-written character is listed under each. */
   function creditsByCreator(chars) {
-    var order = [], byName = {};
+    var order = [], byName = Object.create(null);
     (chars || []).forEach(function (c) {
       if (!c || c.official) return;
       splitCreators(c.creator).forEach(function (name) {
@@ -816,9 +859,12 @@
   /* ── Find jinxes that are active between characters on the same script ──
      Takes an array of character objects; returns [{a, b, text}] where `a`
      carries the jinx and `b` is the matching character also in the list. */
+  // Accents fold away exactly as slugId() folds them, so a name and an id
+  // written for it ('Médium', 'medium') are one key, not two.
   function normJinxId(id) {
     return String(id || '').replace(/_festival_of_lanterns$/, '')
-      .toLowerCase().replace(/[^a-z0-9]/g, '');
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
   }
 
   /* The SET-QUALIFIED keys a character also answers to, on top of its
@@ -844,7 +890,7 @@
      which is what every jinx typed by hand relies on. */
   function jinxQualKeys(c) {
     if (!c) return [];
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
 
     var nm = normJinxId(c.name);
@@ -882,7 +928,7 @@
         if (a.id) sets.push(a.id);
       });
     }
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     sets.forEach(function (sname) {
       var k = normJinxId(sname);
       if (k && !seen[k]) { seen[k] = 1; out.push(k); }
@@ -910,7 +956,7 @@
      resolves at step 3 exactly as it always did. */
   function jinxLookupKeys(j, host) {
     if (!j) return [];
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
     var nm = jinxDisplayName(j);
     var nameKey = normJinxId(nm);
@@ -918,7 +964,10 @@
     // `warden` is the name written twice, and putting it first would answer
     // the question before the host's own set was ever asked — which is the
     // whole tie-break, and exactly the case with four Wardens to choose from.
-    var idKey = normJinxId(j.id || slugId(nm));
+    // With no id there is nothing more to say than the name: slugId(name)
+    // differs from the name's own key only by its 50-character cut, which
+    // would put it first for no reason.
+    var idKey = j.id ? normJinxId(j.id) : nameKey;
     if (idKey !== nameKey) push(idKey);
     if (nameKey) {
       charSetKeys(host).forEach(function (k) { push(nameKey + k); });
@@ -937,7 +986,10 @@
      character. `byName` keeps EVERY page of a given name, which is what tells
      a tool that a name is ambiguous rather than just resolving it. */
   function jinxCharIndex(chars, row) {
-    var byKey = {}, byName = {}, items = [];
+    // Keyed by names people type, and a character can be called Constructor:
+    // a plain {} would find Object.prototype's member there and never let it
+    // register.
+    var byKey = Object.create(null), byName = Object.create(null), items = [];
     (chars || []).forEach(function (c) {
       if (!c || !c.slug) return;
       var v = row ? row(c) : c;
@@ -992,7 +1044,7 @@
   }
 
   function findScriptJinxes(chars) {
-    var byId = {};
+    var byId = Object.create(null);
     chars.forEach(function (c) {
       [slugId(c.name), normJinxId(c.jsonId), (c.slug || '').replace(/-/g, '')]
         .forEach(function (id) { if (id) byId[id] = c; });
@@ -1003,7 +1055,7 @@
     chars.forEach(function (c) {
       jinxQualKeys(c).forEach(function (id) { if (!byId[id]) byId[id] = c; });
     });
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     chars.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
         // An entry written by the jinx picker names its target outright; the
@@ -1325,7 +1377,7 @@
       var content = String((b && b.content) || '');
       if (!title && !content.trim()) return '';
       var body = content.split(/\n{2,}/).map(function (p) {
-        p = p.replace(/\s+$/, '');
+        p = trimEnd(p);
         return p.trim() ? '<p>' + inlineLinks(p).replace(/\n/g, '<br>') + '</p>' : '';
       }).join('');
       return '<div class="card custom-box">' +
@@ -1386,6 +1438,7 @@
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
     window.normJinxId = normJinxId;
+    window.jinxExportId = jinxExportId;
     window.jinxQualKeys = jinxQualKeys;
     window.jinxLookupKeys = jinxLookupKeys;
     window.jinxCharIndex = jinxCharIndex;
@@ -1416,6 +1469,7 @@
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      jinxExportId: jinxExportId,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,
       jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
       charSetKeys: charSetKeys,
