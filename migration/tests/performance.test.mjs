@@ -289,14 +289,15 @@ test('resolved Appears in markup skips both browser feed requests', async () => 
 
 test('empty browse results disconnect the previous viewport renderer', async () => {
   const source = await read('all-characters.html');
-  const renderer = source.slice(source.indexOf('    function render(){'), source.indexOf('    Promise.all([', source.indexOf('    function render(){')));
+  const renderer = source.slice(source.indexOf('    function render(opts){'), source.indexOf('    var cancelCards = null;', source.indexOf('    function render(opts){')));
   let cancelled = 0;
-  const panel = { innerHTML: '' };
+  const panel = { innerHTML: '', getAttribute: () => null };
   let list = Array.from({ length: 200 }, (_, id) => ({ team: 'townsfolk', id }));
   const context = vm.createContext({ FILTERS: { apply: () => list, state: { group: 'team' } }, FULL: list, AC_COLLECTIONS: [],
+    PANEL: panel, SSR: false, ADOPT: false, SET_OF: null, SETS_READY: true, AC_SCRIPTS: [], cancelCards: null,
+    CF: { makeSetOf: () => () => null, sections: () => ({ html: '<section></section>', groups: [] }), layoutSig: () => '' },
     TEAMS: [['townsfolk', 'Townsfolk']], card: () => '<a>card</a>',
-    window: { mountCardBatches() { return () => { cancelled++; }; },
-      CharFilters: { makeSetOf: () => () => null, sections: () => ({ html: '<section></section>', groups: [] }) } },
+    window: { mountCardBatches() { return () => { cancelled++; }; } },
     document: { getElementById: id => id === 'panel' ? panel : id === 'filter-count' ? {} : null } });
   vm.runInContext(renderer + '\nrender();', context);
   list = [];
