@@ -25,8 +25,9 @@ test('SSR keeps versioned main/alternate art, nested roots and unversioned expor
   const d = { slug: 'traveller', page: 'c/test-set/traveller', name: 'Traveller', team: 'traveller',
     art: 'art/traveller.png', artAlt: 'art/traveller-good.png', v: 'current' };
   const html = f.hooks.renderCharacterPage(d, 'https://botchomebrew.wiki', false, false, '');
-  assert.match(html, /src="\.\.\/\.\.\/assets\/art\/traveller\.png\?v=current"/);
-  assert.match(html, /assets\/art\/traveller-good\.png\?v=current/);
+  // The emblem draws the display copy (media/full/…), versioned; exports keep the PNG.
+  assert.match(html, /src="\.\.\/\.\.\/assets\/media\/full\/art\/traveller\.png\.webp\?v=current"/);
+  assert.match(html, /data-src="\.\.\/\.\.\/assets\/media\/full\/art\/traveller-good\.png\.webp\?v=current"/);
   assert.ok(Render.buildSchema(d).image.every(url => !url.includes('?v=')));
   const preview = Render.renderCharacter(d, 'blob:preview', '../../');
   assert.match(preview, /src="blob:preview"/);

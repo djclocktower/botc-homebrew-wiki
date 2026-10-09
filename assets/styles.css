@@ -473,11 +473,14 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    dip (reader.js's emPaint writes it as --em-s) and must not inherit this
    one. The printable token is the exception to all of it: see .emblem-token
    just below. */
+/* height:auto because the markup carries width/height="591" (space reserved
+   before the picture arrives); without it that height attribute would win
+   over the aspect ratio, as on .featured-art. */
 /* --art-scale is the owner's wiki-only display size (render.js writes it
    inline as a fraction, 0.5..2, only when one was chosen). It multiplies
    the 8/7 above rather than replacing it, so "100%" on the slider is
    exactly the page as drawn with the box switched off. */
-.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
+.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; height: auto; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
 /* The printable token (render.js marks it) is the one version that is NOT
    mostly transparent margin: it is a full-bleed disc, edge to edge. Every
    step above assumes the margin — the 7/6 box grows into room an icon on

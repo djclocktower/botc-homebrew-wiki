@@ -251,7 +251,7 @@
       // box instead of being clipped. Same trick as the /c/ page title.
       var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
       var headerHTML = sc.header || sc.logo
-        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('/', sc.header || sc.logo, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
+        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('/', sc.header || sc.logo, sc.v, PageRender.TILE_SIZES) + ' alt="' + esc(sc.name) + '"></div>'
         : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
@@ -270,7 +270,7 @@
       // collection's own page falls back through.
       var collBanner = coll.header || coll.logo;
       var topHTML = collBanner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', collBanner, coll.v)) + '"' + PageRender.responsiveAttrs('/', collBanner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', collBanner, coll.v)) + '"' + PageRender.responsiveAttrs('/', collBanner, coll.v, PageRender.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
         : '';
       // The blurb goes in the tagline paragraph, the same slot (and the same
       // three-line cutoff) every other collection tile on the site uses. It

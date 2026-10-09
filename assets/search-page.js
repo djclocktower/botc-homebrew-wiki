@@ -72,7 +72,7 @@
     var banner = sc.header || sc.logo;
     var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
     var headerHTML = banner
-      ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, sc.v)) + '"' + PR.responsiveAttrs('', banner, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
+      ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, sc.v)) + '"' + PR.responsiveAttrs('', banner, sc.v, PR.TILE_SIZES) + ' alt="' + esc(sc.name) + '"></div>'
       : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
     var blurb = sc.tagline || sc.description || '';
     return '<a class="collection-tile script-tile" href="s/' + esc(encodeURIComponent(sc.slug)) + '">' +
@@ -121,7 +121,7 @@
     var list = membersOf(coll), count = list.length;
     var banner = coll.header || coll.logo;
     var topHTML = banner
-      ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, coll.v)) + '"' + PR.responsiveAttrs('', banner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
+      ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, coll.v)) + '"' + PR.responsiveAttrs('', banner, coll.v, PR.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
       : '<div class="collection-icons">' + pickIcons(list, 8).map(function (c) {
           return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PR.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
         }).join('') + '</div>';
