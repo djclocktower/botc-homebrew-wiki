@@ -29,7 +29,10 @@ Key dynamic behavior:
   tools: Script Builder, editors, Token Tool, importers — everything
   `buildSchema()` needs to export a script) and the bare URL (the whole
   almanac, for `/api/seed` and a few admin tools). See "Caching" for which
-  page uses which and why. Every row carries **`v`**, the row's version
+  page uses which and why. A page that only COUNTS characters gets a small
+  answer instead of a feed: `/api/tag-counts` (/tags), `/api/collection-tiles`
+  (/all-collections) and `/api/did-you-mean` (the 404 page) — see "Caching".
+  Every row carries **`v`**, the row's version
   (base-36 `updated_at`), which the card renderers append to image URLs as
   `?v=` — see "Caching". Adding **`?drafts=1`** includes draft
   rows and stamps each row's `status` — but **only for a logged-in admin**;
@@ -370,10 +373,16 @@ assets/
   search-core.js       THE SEARCH ENGINE — folding (ö ō ø all read as o),
                        the word index, typo tolerance, ranking, highlighting
                        (mark()) and load(), which fetches the feeds and builds
-                       once per page. Browser + Node, no DOM at top level.
+                       once per page — in ~8 ms slices (createIndexAsync), so
+                       the build never holds a phone's main thread for a
+                       quarter of a second. Browser + Node, no DOM at top level.
                        Used by site.js (the top-bar preview, loaded on first
                        touch) and search-page.js. See "Site search".
   search-page.js       The /search page: tabs, sections, tiles, URL state.
+  did-you-mean.js      The 404 page's "Did you mean…" matcher (edit distance,
+                       prefix rule, 0.62 threshold), shared by 404.html and
+                       the Worker's /api/did-you-mean so the two cannot score
+                       an address differently. Browser + Worker.
   char-filters.js      The All Characters filter box (team/tag/source/status/
                        creator chips, Sort, Group) as a module over an ARRAY
                        of characters, plus the character card itself.
@@ -709,6 +718,16 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        + publishing live on publish-script.html; links there.
                        The Add sidebar holds the official roster as well as the
                        homebrew one, told apart by a Source chip pair;
+                       The sidebar and roster draw from the small GRID feed;
+                       the CARD feed (night positions, reminders, jinxes,
+                       jsonId — what export, import, the jinx and night-order
+                       panels read) starts downloading the moment the grid is
+                       in and is applied only after the first paint
+                       (`cardReady`). Until then those two panels say
+                       "Loading…", the roster lists no jinxes, and Export,
+                       Copy and Import wait for it rather than draw from grid
+                       rows. Its 30/50px thumbs are the 192px card thumbnails
+                       (PageRender.thumbSrc), not the full icons;
                        Randomize stays homebrew-only on purpose (180 official
                        characters would swamp the pool). Export goes through
                        PageRender.buildPageExport, the same call the published
@@ -927,9 +946,12 @@ favorites.html         /favorites — the pages this account saved, as cards:
                        which every "page does not exist" branch now returns.
                        so all its paths must be root-absolute or they resolve
                        against /c/whatever. Shows the broken address, a
-                       "Did you mean…" list (edit distance against the JSON
-                       feed the address implies; /c/, /s/ and /collection/
-                       only, so a missing favicon costs no fetch) and a report
+                       "Did you mean…" list (assets/did-you-mean.js; for /c/,
+                       /s/ and /collection/ the Worker matches its own cached
+                       feed and returns four rows, GET /api/did-you-mean?path=,
+                       so the page no longer downloads the character list;
+                       any other address is matched against the site's pages
+                       in the browser, so a missing favicon costs no fetch) and a report
                        box posting to /api/report-broken-link. Only HTML
                        Only HTML requests get it; images and JSON keep the bare 404.
                        The design is a character token on the page background
@@ -3630,6 +3652,26 @@ is focused, hovered or touched (and preloaded in `search.html`'s head):
 `search-core.js` itself is only fetched by `site.js` on first use
 (`BotcData.script`), so a page nobody searches on pays nothing.
 
+**The index is built in slices** (`createIndexAsync`, used by `load()`): the
+same `_init` / `_addRange` / `_finish` steps `createIndex` runs in one go, in
+the same order, ~8 ms at a time with a yield between (`scheduler.yield()` or
+a macrotask). The first slice runs at once, so a small index is ready without
+a wait. Order is what keeps it identical: the
+golden rankings (`migration/tests/search-ranking.golden.json`, made by the
+one-pass engine before the split) are compared against both builds in
+`feeds-summary.test.mjs` — change
+the ranking on purpose and regenerate it with
+`node migration/tests/search-corpus.mjs`.
+
+**On /search, typing runs one search per animation frame** (`runSoon()`):
+keystrokes that arrive while the last one is drawing fold into the next
+frame. Enter, Back and the top-bar hand-off run at once. A tab of one kind
+draws `LIST_STEP` (60) tiles and a "Show N more" button that appends the
+next batch (the Users tab is every account); the Characters tab keeps
+viewport.js's batches and the All tab its few per kind. Collection rosters
+(for tile counts and icons) are worked out while the page is idle
+(`warmMembers()`), not on the keystroke that first shows the tile.
+
 **Matching.** Both sides are folded the same way (`fold()`): lower case,
 NFKD with the combining marks dropped, the letters with no decomposition
 named outright (ø æ ß þ ł …), apostrophes deleted. Then, per query word:
@@ -3766,6 +3808,30 @@ featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
 script/collection `?fields=browse` omits editor/export payloads. The character
 `card` feed and full feeds retain export fields. All Characters loads both
 the card feed and export code only when its Collection JSON box is used.
+
+**Pages that only count characters get counts, not the feed.**
+`GET /api/tag-counts` → `{tags: {"Information": 512, …}}` (one per
+title-cased tag occurrence, published, Partial included — /tags' own rule)
+and `GET /api/collection-tiles` → `{collections: [{id, slug, displayName,
+author, tagline, header, logo, curata, v, count, icons: [{art, v}]}]}` (only
+collections with members; `resolveCollectionMembers` over the grid in feed
+order; one icon per team first) are derived from the cached grid/browse
+bodies (`SUMMARIES` / `cachedSummary()` in worker.js): isolate memo, edge
+copy keyed on the version, `FEED_CACHE_CONTROL` + ETag/304 like the feeds.
+About 1 KB and 18 KB against the grid's 1.1 MB. Bump `SUMMARY_FORMAT_V` if
+either shape changes. `GET /api/did-you-mean?path=` (the 404 page) is
+`no-store` and computed per call over the cached feed body. Public feeds
+never carry `status`, even one some old import stored INSIDE the data blob
+(44 published rows did); only `?drafts=1` stamps it (`FEED_FORMAT_V` 3).
+
+**Grid trims deliberately not made** (measured on the live corpus,
+2,710 rows, 188 KB gzip): dropping empty `appearsIn`/`creator`/`tags`
+strings saves ~0.5 KB gzip and every grid consumer (now including
+server-side renderers) would have to treat absence as empty; dropping
+`curata` where `classification === 'curata'` ~0.4 KB; dropping an `art` that
+equals `art/{slug}.png` ~12.5 KB (7%) but needs every card renderer to
+rebuild it through one shared helper. `page` is the address and cannot be
+derived in the browser. None was worth a second rule in every consumer yet.
 
 Feeds send `private, max-age=0, must-revalidate` plus a version/format ETag.
 `private` prevents Cloudflare from replacing the Worker's ETag with its own.

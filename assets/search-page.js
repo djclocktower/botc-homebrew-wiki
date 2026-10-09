@@ -91,6 +91,20 @@
     if (!members[key]) members[key] = PR.resolveCollectionMembers(coll, index.data.characters);
     return members[key];
   }
+  // Each collection's roster is a pass over every character, and a keystroke
+  // that brought a new collection tile into the results used to pay for it
+  // there and then. Worked out ahead while the page is idle instead.
+  function warmMembers() {
+    var colls = (index.data.collections || []).slice(), i = 0;
+    var idle = window.requestIdleCallback || function (f) {
+      return setTimeout(function () { f({ timeRemaining: function () { return 8; } }); }, 50);
+    };
+    function step(deadline) {
+      while (i < colls.length && deadline.timeRemaining() > 2) membersOf(colls[i++]);
+      if (i < colls.length) idle(step);
+    }
+    idle(step);
+  }
   // A few member icons for a collection with no banner, one per team first.
   function pickIcons(list, n) {
     var withArt = list.filter(function (c) { return c.art; }), picked = [], seen = {}, i;
@@ -175,18 +189,54 @@
       (d.kind === 'team' ? '<span class="sp-pill-kind">Team</span>' : '') +
       '<span class="tag-count">' + (d.count || 0) + '</span></a>';
   }
+  // The container each kind is drawn in, and the tiles inside it — apart, so
+  // "Show more" can append tiles to a list already on screen.
+  function gridClass(type) {
+    if (type === 'character') return 'char-grid';
+    if (type === 'script' || type === 'collection') return 'collections-grid';
+    if (type === 'creator' || type === 'user') return 'creators-page-grid sp-people';
+    if (type === 'tag') return 'tags-index sp-tags';
+    return 'news-grid';
+  }
+  function tilesHTML(type, list) {
+    var tile = type === 'character' ? function (r) { return CF.card(r.item.data, markFn); }
+      : type === 'script' ? function (r) { return scriptTile(r.item.data); }
+      : type === 'collection' ? function (r) { return collectionTile(r.item.data); }
+      : (type === 'creator' || type === 'user') ? function (r) { return personTile(r.item); }
+      : type === 'tag' ? function (r) { return tagPill(r.item); }
+      : function (r) { return textCard(r.item); };
+    return list.map(tile).join('');
+  }
   function gridHTML(type, list) {
-    if (type === 'character') {
-      return '<div class="char-grid">' + list.map(function (r) { return CF.card(r.item.data, markFn); }).join('') + '</div>';
-    }
-    if (type === 'script') return '<div class="collections-grid">' + list.map(function (r) { return scriptTile(r.item.data); }).join('') + '</div>';
-    if (type === 'collection') return '<div class="collections-grid">' + list.map(function (r) { return collectionTile(r.item.data); }).join('') + '</div>';
-    if (type === 'creator' || type === 'user') {
-      return '<div class="creators-page-grid sp-people">' +
-        list.map(function (r) { return personTile(r.item); }).join('') + '</div>';
-    }
-    if (type === 'tag') return '<div class="tags-index sp-tags">' + list.map(function (r) { return tagPill(r.item); }).join('') + '</div>';
-    return '<div class="news-grid">' + list.map(function (r) { return textCard(r.item); }).join('') + '</div>';
+    return '<div class="' + gridClass(type) + '">' + tilesHTML(type, list) + '</div>';
+  }
+  /* A tab of one kind draws its first LIST_STEP results and a "Show more"
+     button for the rest, instead of every tile at once: the Users tab alone
+     is every account on the wiki, and drawing all of them on every keystroke
+     was most of what typing cost. The Characters tab has its own batching
+     (viewport.js), and the All tab shows a handful of each kind. */
+  var LIST_STEP = 60;
+  var moreList = null;   // {type, list, shown} for the Show more button
+  function moreHTML() {
+    var left = moreList.list.length - moreList.shown;
+    return left > 0
+      ? '<div class="sp-empty sp-more-wrap" style="padding:20px 16px 4px"><button type="button" class="filter-reset sp-show-more">Show ' +
+          Math.min(left, LIST_STEP) + ' more (' + left + ' left)</button></div>'
+      : '';
+  }
+  function drawList(type, list) {
+    moreList = { type: type, list: list, shown: Math.min(list.length, LIST_STEP) };
+    out.innerHTML = gridHTML(type, list.slice(0, moreList.shown)) + moreHTML();
+  }
+  function showMore() {
+    if (!moreList) return;
+    var grid = out.firstElementChild, wrap = out.querySelector('.sp-more-wrap');
+    if (!grid) return;
+    var next = moreList.list.slice(moreList.shown, moreList.shown + LIST_STEP);
+    moreList.shown += next.length;
+    grid.insertAdjacentHTML('beforeend', tilesHTML(moreList.type, next));
+    if (wrap) wrap.remove();
+    out.insertAdjacentHTML('beforeend', moreHTML());
   }
 
   /* ── tabs ── */
@@ -502,6 +552,7 @@
 
   function drawBody() {
     if (cancelCards) { cancelCards(); cancelCards = null; }
+    moreList = null;
     var type = TAB_TYPE[state.tab], q = state.q.trim();
     var showFilters = type === 'character';
     if (showFilters) {
@@ -519,7 +570,7 @@
     countEl.hidden = false;
     countEl.textContent = noun(type, list.length) +
       (found.length !== list.length ? ' (of ' + found.length + ')' : '') + (q ? ' for “' + q + '”' : '');
-    if (list.length) { out.innerHTML = gridHTML(type, list); return; }
+    if (list.length) { drawList(type, list); return; }
     out.innerHTML = found.length
       ? emptyHTML('No ' + NOUN[type][1] + ' match these filters. <button type="button" class="filter-reset" id="sp-reset">Reset</button>')
       : emptyHTML(q ? 'No ' + NOUN[type][1] + ' match “' + esc(q) + '”.' : 'Nothing here yet.');
@@ -559,6 +610,7 @@
   out.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('.sp-more') : null;
     if (b) setTab(b.getAttribute('data-tab'));
+    if (e.target.closest && e.target.closest('.sp-show-more')) showMore();
   });
 
   var setOf = null;   // "Group: By script or collection", built once
@@ -584,16 +636,31 @@
     cancelCards = window.mountCardBatches(out, groups, card);
   }
 
-  /* ── running a search ── */
+  /* ── running a search ──
+     Typing runs at most one search per animation frame: keystrokes that
+     arrive while the last one is still being drawn are folded into the next
+     frame's run, which searches for whatever the box holds by then, instead
+     of each queueing a full search and redraw of its own. A frame is ~16 ms,
+     so a single keystroke still answers at once. Everything that is not
+     typing (Enter, Back, the top-bar box) runs straight away. */
+  var frame = 0;
   function run() {
+    if (frame) { (window.cancelAnimationFrame || clearTimeout)(frame); frame = 0; }
     res = index.search(state.q);
     drawTabs();
     drawBody();
   }
+  function runSoon() {
+    if (frame) return;
+    frame = (window.requestAnimationFrame || function (f) { return setTimeout(f, 16); })(function () {
+      frame = 0;
+      run();
+    });
+  }
   input.addEventListener('input', function () {
     state.q = input.value;
     writeURL(false);
-    if (index) run();
+    if (index) runSoon();
   });
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -624,6 +691,7 @@
     S.load().then(function (idx) {
       index = idx;
       run();
+      warmMembers();
     }).catch(function () {
       out.innerHTML = emptyHTML('The search could not load. <button type="button" class="filter-reset" id="sp-retry">Try again</button>');
       document.getElementById('sp-retry').addEventListener('click', function () {
