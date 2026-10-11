@@ -72,7 +72,7 @@ async function siteTextBlock() {
   assert.ok(start >= 0 && end > start, 'system-text block found');
   const block = src.slice(start, end);
   const sandbox = {
-    window: {},
+    window: { BotcData: { boot: () => new Promise(() => {}) } },
     location: { pathname: '/' },
     localStorage: { getItem() { return null; }, setItem() {} },
     document: { title: '', body: null, querySelector() { return null; } },

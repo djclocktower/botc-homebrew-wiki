@@ -76,7 +76,7 @@
 /* Parchment cards — sharp edges, matches the site's panels */
 .tt-card {
   background-color: var(--card);
-  background-image: url('assets/parchment.jpg');
+  background-image: url('assets/parchment.webp');
   background-size: cover; background-repeat: no-repeat;
   border: 4px solid var(--parch-frame); border-radius: 0;
   padding: 16px 18px; margin: 0 0 22px;
@@ -90,10 +90,10 @@
 
 /* Option rows — ink text ONLY on parchment, never on the dark background */
 .tt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
-.tt-row > label { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
+.tt-row > label { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
 .tt-seg { display: inline-flex; border: 2px solid var(--parch-frame); border-radius: 0; overflow: hidden; }
 .tt-seg button {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .85rem;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .85rem;
   border: none; padding: 6px 14px; min-width: 56px;
   background: #fffdf8; color: var(--ink); cursor: pointer;
   transition: background .14s, color .14s;
@@ -109,21 +109,21 @@
 .tt-paper-dims select { padding: 5px 4px; border: 2px solid var(--parch-frame); background: #fff; color: var(--ink); font: inherit; font-size: .9rem; }
 .tt-paper-note { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--ink); opacity: .75; }
 .tt-paper-note.warn { color: var(--maroon); opacity: 1; }
-.tt-check { display: inline-flex; align-items: center; gap: 8px; font-family: 'Oswald', sans-serif; font-size: .9rem; color: var(--ink); }
+.tt-check { display: inline-flex; align-items: center; gap: 8px; font-family: 'Roboto',sans-serif; font-size: .9rem; color: var(--ink); }
 .tt-check input { width: 17px; height: 17px; accent-color: var(--maroon); }
 
 /* ─── Interactive transform tool ──────────────────────────── */
 .tt-tf-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
-.tt-tf-label { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem; color: var(--ink); margin-right: 2px; }
+.tt-tf-label { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .82rem; color: var(--ink); margin-right: 2px; }
 .tt-tf-chip {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .78rem;
   border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
   color: var(--ink); padding: 4px 10px; cursor: pointer; transition: background .12s, color .12s;
 }
 .tt-tf-chip:hover:not([disabled]) { background: rgba(91,31,33,.08); }
 .tt-tf-chip.on { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
 .tt-tf-chip[disabled] { opacity: .4; cursor: not-allowed; }
-.tt-tf-hint { flex-basis: 100%; font-family: 'Oswald', sans-serif; font-size: .72rem; color: var(--ink); opacity: .72; }
+.tt-tf-hint { flex-basis: 100%; font-family: 'Roboto',sans-serif; font-size: .72rem; color: var(--ink); opacity: .72; }
 
 .tt-gz-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .tt-gz-box {
@@ -151,7 +151,7 @@
   padding: 14px; margin-top: 6px;
 }
 .tt-preview img { max-width: 100%; max-height: 340px; display: block; }
-.tt-preview .ph { color: rgba(236,225,200,.55); font-family: 'Oswald', sans-serif; font-size: .88rem; text-align: center; }
+.tt-preview .ph { color: rgba(236,225,200,.55); font-family: 'Roboto',sans-serif; font-size: .88rem; text-align: center; }
 
 /* Workspace: controls stack on the left, preview sticks alongside on the right.
    The preview spans the full column so it can stay pinned while you scroll the
@@ -193,7 +193,7 @@
 .tt-out a {
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
   background: var(--maroon); color: #f3ead4; text-decoration: none;
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .9rem;
   padding: 9px 16px; border-radius: 0; transition: filter .15s;
 }
 .tt-out a:hover { filter: brightness(1.15); }
@@ -215,7 +215,7 @@
 }
 .tt-step button:hover { background: rgba(91,31,33,.08); }
 .tt-step-val {
-  min-width: 26px; text-align: center; font-family: 'Oswald', sans-serif;
+  min-width: 26px; text-align: center; font-family: 'Roboto',sans-serif;
   font-weight: 600; font-size: .88rem; color: var(--ink);
   border-left: 1px solid rgba(180,160,120,.4); border-right: 1px solid rgba(180,160,120,.4);
   padding: 0 4px;
@@ -254,7 +254,7 @@
 .tt-seg-sm button { padding: 4px 12px; min-width: 48px; font-size: .8rem; }
 .tt-adj-actions { margin-top: 14px; }
 .tt-btn-sm {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .84rem;
   border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
   color: var(--maroon); padding: 6px 14px; cursor: pointer; transition: background .12s;
 }
@@ -271,7 +271,7 @@
 .tt-modal.open { display: flex; }
 .tt-modal-card {
   background-color: var(--card);
-  background-image: url('assets/parchment.jpg');
+  background-image: url('assets/parchment.webp');
   background-size: cover; background-repeat: no-repeat;
   border: 4px solid var(--parch-frame); border-radius: 0;
   padding: 16px 18px; width: min(680px, 100%);
@@ -292,13 +292,13 @@
   padding: 10px; margin-bottom: 12px;
 }
 .tte-preview img { max-width: 100%; max-height: 280px; display: block; }
-.tte-preview .ph { color: rgba(236,225,200,.55); font-family: 'Oswald', sans-serif; font-size: .85rem; }
+.tte-preview .ph { color: rgba(236,225,200,.55); font-family: 'Roboto',sans-serif; font-size: .85rem; }
 .tte-rem-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 7px 2px; border-bottom: 1px solid rgba(180,160,120,.3);
 }
 .tte-rem-row:last-child { border-bottom: none; }
-.tte-rem-text { font-family: 'Oswald', sans-serif; font-size: .88rem; color: var(--ink); }
+.tte-rem-text { font-family: 'Roboto',sans-serif; font-size: .88rem; color: var(--ink); }
 .tte-none { font-size: .86rem; color: var(--ink); opacity: .75; font-style: italic; }
 
 /* ─── v4: custom assets, JSON import, art warnings ───────────── */
@@ -307,8 +307,8 @@
   padding: 8px 2px; border-bottom: 1px solid rgba(180,160,120,.3);
 }
 .tt-asset-row:last-child { border-bottom: none; }
-.tt-asset-row > label { flex: 1; min-width: 140px; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
-.tt-asset-status { font-family: 'Oswald', sans-serif; font-size: .8rem; min-width: 72px; }
+.tt-asset-row > label { flex: 1; min-width: 140px; font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
+.tt-asset-status { font-family: 'Roboto',sans-serif; font-size: .8rem; min-width: 72px; }
 .tt-asset-on { color: #1c5429; font-weight: 600; }
 .tt-asset-off { color: var(--ink); opacity: .6; }
 .tt-assets-hint { font-size: .85rem; color: var(--ink); opacity: .85; margin: 0 0 10px; }
@@ -328,7 +328,7 @@
 .tt-warn-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 6px 0; border-top: 1px solid rgba(180,140,80,.35);
-  font-family: 'Oswald', sans-serif; font-size: .88rem;
+  font-family: 'Roboto',sans-serif; font-size: .88rem;
 }
 @media (max-width: 640px) {
   .sb-script-item { flex-wrap: wrap; }

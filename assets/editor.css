@@ -8,7 +8,7 @@
   background: #f6efdf; padding: 5px 6px;
 }
 .we-btn {
-  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  font-family: 'Roboto',sans-serif; font-size: .76rem; letter-spacing: .03em;
   background: #fffdf8; border: 1px solid #cdbfa0; color: #5b4632;
   padding: 3px 8px; cursor: pointer; line-height: 1.5;
 }
@@ -83,7 +83,7 @@
 .article-row a:hover { text-decoration: underline; }
 .article-row .meta { font-size: .8rem; color: #6b5d49; }
 .article-row .pill {
-  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  font-family: 'Roboto',sans-serif; font-size: .68rem; letter-spacing: .05em;
   text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
 }
 .article-row .pill.draft { background: rgba(154,110,20,.14); color: #7a5c18; border: 1px solid rgba(154,110,20,.4); }
@@ -101,7 +101,7 @@
    in the two character editors: `html.create-redesign .tag-pick-btn.selected`
    is more specific, so it wins wherever it applies. */
 .tag-pick-btn {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .76rem;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .76rem;
   letter-spacing: .03em; cursor: pointer; border: 1px solid #cdbfa0; border-radius: 5px;
   padding: 4px 10px; background: #fffdf8; color: #5b4632;
   transition: background .15s, color .15s, border-color .15s;
@@ -121,7 +121,7 @@
   padding: 10px 12px; margin: 0 0 8px; font-size: .82rem; color: #5b4632;
 }
 .fmt-help-h {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .72rem;
   letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
   margin-bottom: 6px;
 }
@@ -323,7 +323,7 @@ html.textedit-on .te-live-hit {
 .no-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) { .no-cols { grid-template-columns: 1fr; } }
 .no-head {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .06em;
+  font-family: 'Roboto',sans-serif; font-size: .8rem; letter-spacing: .06em;
   text-transform: uppercase; color: var(--maroon); margin: 0 0 6px;
 }
 .no-list {
@@ -366,7 +366,7 @@ html.textedit-on .te-live-hit {
 .no-grip:active { color: var(--maroon); }
 .no-pos {
   flex-shrink: 0; min-width: 1.4em; text-align: right;
-  font-family: 'Oswald', sans-serif; font-size: .78rem; color: #6b5d49; line-height: 1.6;
+  font-family: 'Roboto',sans-serif; font-size: .78rem; color: #6b5d49; line-height: 1.6;
 }
 .no-text { flex: 1; min-width: 0; }
 .no-name { display: block; font-size: .92rem; color: var(--maroon); font-weight: 600; }
@@ -393,7 +393,7 @@ html.textedit-on .te-live-hit {
 .sjx-text { flex: 1; min-width: 0; }
 .sjx-pair { display: block; font-size: .92rem; font-weight: 600; color: var(--maroon); }
 .sjx-own {
-  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  font-family: 'Roboto',sans-serif; font-size: .66rem; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase;
   color: #6b5d49; background: rgba(91,31,33,.08);
   border: 1px solid rgba(180,160,120,.5); border-radius: 3px;
@@ -401,14 +401,14 @@ html.textedit-on .te-live-hit {
 }
 .sjx-reason { display: block; font-size: .84rem; color: var(--ink); font-style: italic; line-height: 1.35; }
 .sjx-btn {
-  flex-shrink: 0; font-size: .78rem; font-family: 'Oswald', sans-serif;
+  flex-shrink: 0; font-size: .78rem; font-family: 'Roboto',sans-serif;
   background: rgba(255,253,248,.6); border: 1px solid rgba(122,45,47,.4);
   color: var(--maroon); border-radius: 4px; padding: 4px 8px; cursor: pointer;
 }
 .sjx-btn:hover { background: rgba(255,253,248,1); }
 .sjx-off { margin-top: 10px; }
 .sjx-off-head {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  font-family: 'Roboto',sans-serif; font-size: .72rem; letter-spacing: .06em;
   text-transform: uppercase; color: #6b5d49; margin: 0 0 4px;
 }
 .sjx-row-off { border: 1px dashed rgba(180,160,120,.6); background: rgba(0,0,0,.02); opacity: .8; }

@@ -21,7 +21,7 @@
   .jg-wrap { position: relative; margin: 0 0 10px; }
   .jg-stage {
     position: relative; width: 100%; height: clamp(420px, 80vh, 860px);
-    background: var(--parch); background-image: url('assets/parchment.jpg');
+    background: var(--parch); background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 4px solid var(--parch-frame);
     overflow: hidden; touch-action: none; cursor: grab;
@@ -45,8 +45,8 @@
     font-family: 'Trade Gothic', sans-serif; font-size: .8rem; color: #5b4632;
     display: flex; flex-direction: column; gap: 2px;
   }
-  .jg-tip strong { font-family: 'Oswald', sans-serif; color: var(--maroon); font-size: .88rem; }
-  .jg-tip-text { font-family: 'EB Garamond', serif; font-style: italic; font-size: .86rem; line-height: 1.25; }
+  .jg-tip strong { font-family: 'Roboto',sans-serif; color: var(--maroon); font-size: .88rem; }
+  .jg-tip-text { font-family: 'Noto Serif', serif; font-style: italic; font-size: .86rem; line-height: 1.25; }
 
   .jg-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
   .jg-bar input[type="search"] {
@@ -96,18 +96,18 @@
   .jg-panel[hidden] { display: none; }
   .jg-panel-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
   .jg-panel-ico { width: 46px; height: 46px; object-fit: contain; flex: none; }
-  .jg-panel h3 { margin: 0; font-family: 'Oswald', sans-serif; font-size: 1.05rem; color: var(--maroon); }
+  .jg-panel h3 { margin: 0; font-family: 'Roboto',sans-serif; font-size: 1.05rem; color: var(--maroon); }
   .jg-panel-meta { font-family: 'Trade Gothic', sans-serif; font-size: .76rem; opacity: .7; }
   .jg-panel-close {
     position: absolute; top: 8px; right: 10px; background: none; border: 0;
     font-size: 1.2rem; line-height: 1; cursor: pointer; color: #726348;
   }
   .jg-panel-jinx { padding: 9px 0; border-top: 1px solid #eadfc6; }
-  .jg-panel-jinx a { font-family: 'Oswald', sans-serif; font-weight: 600; text-decoration: none; font-size: .95rem; }
+  .jg-panel-jinx a { font-family: 'Roboto',sans-serif; font-weight: 600; text-decoration: none; font-size: .95rem; }
   .jg-panel-jinx a.good { color: var(--good-name); }
   .jg-panel-jinx a.evil { color: var(--evil); }
   .jg-panel-jinx a:hover { text-decoration: underline; }
-  .jg-panel-jinx p { margin: 2px 0 0; font-family: 'EB Garamond', serif; font-style: italic; font-size: .95rem; line-height: 1.3; }
+  .jg-panel-jinx p { margin: 2px 0 0; font-family: 'Noto Serif', serif; font-style: italic; font-size: .95rem; line-height: 1.3; }
   /* On a phone a side panel covers the whole map, so the reader loses sight
      of what they just tapped. Become a bottom sheet instead: the map stays
      visible above it, and the sheet is only as tall as it needs to be. */
@@ -121,7 +121,7 @@
 
   .jx-panel {
     background-color: var(--parch);
-    background-image: url('assets/parchment.jpg');
+    background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 4px solid var(--parch-frame);
     padding: 24px 28px;
@@ -158,7 +158,7 @@
   .jx-list-char { margin: 0 0 22px; }
   .jx-list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
   .jx-list-head img { width: 42px; height: 42px; object-fit: contain; flex: none; }
-  .jx-list-head a { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.06rem; color: var(--maroon); text-decoration: none; }
+  .jx-list-head a { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: 1.06rem; color: var(--maroon); text-decoration: none; }
   .jx-list-head a:hover { text-decoration: underline; }
   .jx-list-count { font-family: 'Trade Gothic', sans-serif; font-size: .76rem; opacity: .6; }
   .jx-list-body { border-left: 2px solid var(--parch-frame); padding-left: 12px; margin-left: 20px; }

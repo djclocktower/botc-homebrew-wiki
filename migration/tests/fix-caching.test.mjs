@@ -148,9 +148,9 @@ test('an SSR page rendered without its registries is served but not cached, and 
   const f = await fixture(); t.after(() => f.finish());
   f.insert('characters', 'hero', { name: 'Hero', ability: 'x', lede: 'Friend of [[Sidekick]].' });
   f.insert('characters', 'sidekick', { name: 'Sidekick', ability: 'x' });
-  // The /c/ route's own row read still works; the card feed behind the
-  // [[Name]] link map and the jinx index does not.
-  failOn(f, /SELECT data, status, slug, url_slug, updated_at FROM characters WHERE status='published'/);
+  // The /c/ route's own row read still works; the narrow read behind the
+  // [[Name]] link map does not.
+  failOn(f, /SELECT slug, url_slug, name FROM characters WHERE status='published'/);
   const bad = await f.request('/c/test-set/hero');
   assert.equal(bad.status, 200);
   assert.equal(bad.headers.get('X-Botc-Degraded'), null, 'the internal marker never leaves the Worker');

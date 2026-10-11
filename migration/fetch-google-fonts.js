@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const FAMILIES = 'family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,800;1,400' +
-  '&family=Oswald:wght@500;600;700&family=EB+Garamond:ital,wght@1,400;1,500' +
+  '&family=Oswald:wght@500;600;700&family=Roboto:wght@400;500;600;700&family=Noto+Serif:ital,wght@1,400&family=EB+Garamond:ital,wght@1,400;1,500' +
   '&family=Cinzel:wght@600;700&family=Pirata+One&family=IM+Fell+English:ital@0;1' +
   '&family=Grenze+Gotisch:wght@400;600&display=swap';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
@@ -24,8 +24,14 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 (async () => {
   const css = await (await fetch('https://fonts.googleapis.com/css2?' + FAMILIES, { headers: { 'User-Agent': UA } })).text();
   const groups = new Map();
-  for (const b of css.split('@font-face').slice(1)) {
-    const subset = (b.match(/\/\* ([a-z-]+) \*\//) || [])[1];
+  // Google writes each face as `/* subset */ @font-face { ... }`: the label
+  // comes BEFORE its block. Splitting on '@font-face' put every label at the
+  // end of the PREVIOUS block, so each file was named one subset off — the
+  // "latin" files held latin-ext, the "latin-ext" files held vietnamese, and
+  // the real basic-latin file was never downloaded. Pair label and block in
+  // one match instead.
+  for (const m of css.matchAll(/\/\*\s*([a-z0-9-]+)\s*\*\/\s*@font-face\s*\{([^}]*)\}/g)) {
+    const subset = m[1], b = m[2];
     if (subset !== 'latin' && subset !== 'latin-ext') continue;
     const fam = b.match(/font-family: '([^']+)'/)[1];
     const style = b.match(/font-style: (\w+)/)[1];
@@ -44,7 +50,10 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const out = [];
   for (const g of groups.values()) {
     const ws = g.weights.sort((a, b) => a - b);
-    const name = (count[base(g)] > 1 ? `${base(g)}-${ws[0]}` : base(g)) + '.woff2';
+    // The folder is served immutable for a year, so a file whose bytes change
+    // must change its NAME: the first few hex digits of its MD5 do that.
+    const md5 = crypto.createHash('md5').update(g.bytes).digest('hex').slice(0, 8);
+    const name = (count[base(g)] > 1 ? `${base(g)}-${ws[0]}` : base(g)) + '-' + md5 + '.woff2';
     fs.writeFileSync(path.join(OUT, name), g.bytes);
     const fw = ws.length > 1 ? `${ws[0]} ${ws[ws.length - 1]}` : String(ws[0]);
     out.push(`@font-face {\n  font-family: '${g.fam}';\n  font-style: ${g.style};\n  font-weight: ${fw};\n  font-display: swap;\n  src: url('fonts/${name}') format('woff2');\n  unicode-range: ${g.range};\n}`);
