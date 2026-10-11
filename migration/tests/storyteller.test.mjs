@@ -135,6 +135,23 @@ test('storyteller: the bag draw', async () => {
   const withChoir = ['choirboy', 'king', 'chef', 'empath', 'monk', 'saint', 'recluse', 'poisoner', 'imp'].map(off);
   const c = C.drawBag(withChoir, { players: 5, locks: ['off-choirboy'], rng: C.makeRng(9) });
   assert.ok(c.bag.includes('off-king'));
+  assert.equal(c.bag.length, 5, 'the King takes a Townsfolk slot');
+
+  // The Huntsman's Damsel is one more Outsider, even at 7 players (none by
+  // the table), and a Huntsman drawn in the last pass still brings it.
+  const hunt = ['huntsman', 'damsel', 'chef', 'empath', 'monk', 'mayor', 'soldier', 'slayer', 'saint', 'poisoner', 'imp'].map(off);
+  for (let seed = 1; seed < 30; seed++) {
+    const h = C.drawBag(hunt, { players: 7, rng: C.makeRng(seed), ...(seed % 2 ? { locks: ['off-huntsman'] } : {}) });
+    const t = tally(h.bag);
+    assert.equal(h.bag.length, 7, 'seed ' + seed + ': ' + h.bag.join(','));
+    assert.equal(h.bag.includes('off-huntsman'), h.bag.includes('off-damsel'), 'seed ' + seed + ': the pair is drawn together');
+    if (h.bag.includes('off-huntsman')) {
+      assert.equal(t.outsider, 1); assert.equal(t.townsfolk, 4);
+      assert.deepEqual(plain(h.counts), { townsfolk: 4, outsider: 1, minion: 1, demon: 1 });
+    }
+  }
+  // A [[Name]] mark is not a setup bracket.
+  assert.deepEqual(plain(C.parseSetupMods({ name: 'X', ability: 'Learn the [[POISONED]] player.' })), []);
 
   // Not enough Outsiders on the script.
   const short = ['chef', 'empath', 'monk', 'mayor', 'soldier', 'slayer', 'saint', 'recluse', 'baron', 'imp'].map(off);
@@ -255,7 +272,7 @@ test('storyteller: a saved state is reconciled with the roster', async () => {
     choices: { 'off-chef#0': 1, 'off-gone#0': 1 }, handled: { 'off-gone#0': true, 'off-imp#0': true },
     thinks: { 'off-drunk': 'off-empath', 'off-gone': 'off-chef' },
     fabledOn: ['off-sentinel', 'off-gone'], travellersOn: ['off-gunslinger', 'off-chef'],
-    bluffs: ['off-empath', 'off-gone', 'off-chef'], tokensDone: { 'off-imp|Dead': true, 'off-gone|X': true },
+    bluffs: ['off-empath', 'off-gone', 'off-chef', 'off-poisoner'], tokensDone: { 'off-imp|Dead': true, 'off-gone|X': true },
     dead: ['off-imp', 'off-gone'], night: { which: 'other', n: 3, step: 4, everyone: 1 }
   };
   const copy = JSON.parse(JSON.stringify(saved));

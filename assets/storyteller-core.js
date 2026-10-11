@@ -113,7 +113,8 @@
      line. You are in the middle" stays one sentence. */
   function parseSetupMods(entry) {
     if (!entry) return [];
-    var ability = String(entry.ability || '');
+    // A [[Name]] wiki mark is not a setup bracket.
+    var ability = String(entry.ability || '').replace(/\[\[[^\]]*\]\]/g, '');
     var brackets = ability.match(/\[[^\]]*\]/g) || [];
     var out = [];
     brackets.forEach(function (br) {
@@ -144,7 +145,7 @@
   /* The mods of the characters in play, flattened, each carrying its slug,
      name and index (the index is the key a choice is stored under). */
   function modsForBag(entries, bagSlugs) {
-    var by = bySlugMap(entries), out = [];
+    var by = bySlugMap(entries), out = [], byName = bagNameIndex(entries);
     uniq(bagSlugs || []).forEach(function (slug) {
       var c = by[slug];
       if (!c) return;
@@ -152,12 +153,30 @@
         var o = {};
         for (var k in m) o[k] = m[k];
         o.slug = slug; o.index = i;
+        // A "+the Damsel" names a character; its team decides whether it
+        // moves the counts (see adjustCounts).
+        if (m.kind === 'require') {
+          var hit = byName[requireKey(m.name)];
+          if (hit) { o.target = hit; o.team = by[hit].team; }
+        }
         return o;
       });
       if (mods.length) out.push({ slug: slug, name: c.name || slug, mods: mods });
     });
     return out;
   }
+  // Bag characters by folded name, first one wins: how "+the King" finds
+  // the King.
+  function bagNameIndex(entries) {
+    var byName = {};
+    (entries || []).forEach(function (c) {
+      if (!c || BAG_TEAMS.indexOf(c.team) === -1) return;
+      var k = fold(c.name);
+      if (k && !byName[k]) byName[k] = c.slug;
+    });
+    return byName;
+  }
+  function requireKey(name) { return fold(String(name || '').replace(/^the\s+/i, '')); }
   function flatMods(groups) {
     var out = [];
     (groups || []).forEach(function (g) { (g.mods || []).forEach(function (m) { out.push(m); }); });
@@ -167,13 +186,25 @@
 
   /* Start from the table and apply every count mod, in order. Moving a
      non-Townsfolk team moves Townsfolk the other way; a Townsfolk mod trades
-     with the Outsiders. `choices` picks which option of an "X or Y" mod. */
+     with the Outsiders. `choices` picks which option of an "X or Y" mod.
+     A "+the X" (require) counts too, as every "+" in a setup bracket does:
+     X goes in on top of its team's count and a Townsfolk comes out. So the
+     Huntsman's Damsel is one more Outsider, and the Choirboy's King (a
+     Townsfolk) changes nothing. Without this a 7-player Huntsman game, with
+     no Outsiders, had nowhere to put the Damsel. */
   function adjustCounts(base, mods, choices) {
     var counts = { townsfolk: 0, outsider: 0, minion: 0, demon: 0 };
     for (var t in counts) counts[t] = (base && base[t]) || 0;
-    var sources = [], warnings = [];
+    var sources = [], warnings = [], required = {};
     choices = choices || {};
     (mods || []).forEach(function (m, pos) {
+      if (m && m.kind === 'require' && m.target && !required[m.target] &&
+        counts.hasOwnProperty(m.team) && m.team !== 'townsfolk') {
+        required[m.target] = 1;
+        counts[m.team] += 1; counts.townsfolk -= 1;
+        sources.push({ slug: m.slug, team: m.team, d: 1 });
+        return;
+      }
       if (!m || m.kind !== 'count' || !counts.hasOwnProperty(m.team)) return;
       var opts = m.options || [];
       if (!opts.length) return;
@@ -269,28 +300,36 @@
     var base = baseCounts(opts.players);
     if (!base) return { bag: [], counts: null, warnings: ['Choose between ' + PLAYERS_MIN + ' and ' + PLAYERS_MAX + ' players.'], passes: 0 };
 
-    var byName = {};
-    pool.forEach(function (c) { var k = fold(c.name); if (k && !byName[k]) byName[k] = c.slug; });
+    var byName = bagNameIndex(pool);
+    // What the bag needs ("+the King"): the characters needed, the ones
+    // needing them, and which of the needed are not in yet.
+    function needs(list, warn) {
+      var out = { keep: {}, missing: [] };
+      list.forEach(function (slug) {
+        parseSetupMods(by[slug]).forEach(function (m) {
+          if (m.kind !== 'require') return;
+          var hit = byName[requireKey(m.name)];
+          if (!hit) {
+            if (warn) warn.push(by[slug].name + ' needs ' + m.name + ', which is not on this script.');
+            return;
+          }
+          out.keep[hit] = 1; out.keep[slug] = 1;
+          if (list.indexOf(hit) === -1 && out.missing.indexOf(hit) === -1) out.missing.push(hit);
+        });
+      });
+      return out;
+    }
 
     var counts, warnings, pass, stable = false;
     for (pass = 1; pass <= 4; pass++) {
       var adj = adjustCounts(base, flatMods(modsForBag(entries, bag.concat(also))), opts.choices);
       counts = adj.counts;
       warnings = adj.warnings.slice();
-      // Characters another one needs ("+the King") join the bag and stay.
-      var required = {};
-      bag.slice().forEach(function (slug) {
-        parseSetupMods(by[slug]).forEach(function (m) {
-          if (m.kind !== 'require') return;
-          var hit = byName[fold(m.name.replace(/^the\s+/i, ''))];
-          if (!hit) {
-            warnings.push(by[slug].name + ' needs ' + m.name + ', which is not on this script.');
-            return;
-          }
-          required[hit] = 1;
-          if (bag.indexOf(hit) === -1) bag.push(hit);
-        });
-      });
+      // Characters another one needs join the bag and stay, and so does the
+      // one needing them, or trimming its team could split the pair.
+      var nd = needs(bag, warnings);
+      nd.missing.forEach(function (hit) { bag.push(hit); });
+      var required = nd.keep;
       ['demon', 'minion', 'outsider', 'townsfolk'].forEach(function (team) {
         var members = bag.filter(function (s) { return inPool[s].team === team; });
         while (members.length > counts[team]) {
@@ -317,7 +356,10 @@
         }
       });
       var after = adjustCounts(base, flatMods(modsForBag(entries, bag.concat(also))), opts.choices).counts;
-      if (sameCounts(after, counts)) { stable = true; break; }
+      // Stable only when the counts held AND nothing drawn this pass needs a
+      // character not in yet (a Huntsman drawn as the last Townsfolk used to
+      // end the draw with its Damsel missing).
+      if (sameCounts(after, counts) && !needs(bag, null).missing.length) { stable = true; break; }
     }
     if (!stable) { pass = 4; warnings.push('Setup modifiers disagree; check the counts by hand.'); }
     bag.sort(function (a, b) {
@@ -505,7 +547,11 @@
     out.fabledOn = list(s.fabledOn).filter(function (x) { return by[x].team === 'fabled' || by[x].team === 'loric'; });
     out.fabledSet = !!s.fabledSet;
     out.travellersOn = list(s.travellersOn).filter(function (x) { return by[x].team === 'traveller'; });
-    out.bluffs = list(s.bluffs).filter(function (x) { return out.bag.indexOf(x) === -1; }).slice(0, 3);
+    // A bluff is a good character not in play; one whose page has since
+    // changed team is dropped and redrawn.
+    out.bluffs = list(s.bluffs).filter(function (x) {
+      return out.bag.indexOf(x) === -1 && (by[x].team === 'townsfolk' || by[x].team === 'outsider');
+    }).slice(0, 3);
     var td = obj(s.tokensDone);
     Object.keys(td).forEach(function (k) { if (on(k.split('|')[0]) && td[k]) out.tokensDone[k] = true; });
     out.dead = list(s.dead);

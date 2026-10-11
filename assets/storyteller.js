@@ -293,7 +293,11 @@
   pinTabs();
   window.addEventListener('resize', pinTabs);
   if (window.ResizeObserver && document.querySelector('.topbar')) {
-    new ResizeObserver(pinTabs).observe(document.querySelector('.topbar'));
+    // border-box: the default content box misses a change of padding or
+    // border, which moved the bar's bottom edge without telling us.
+    var ro = new ResizeObserver(pinTabs);
+    try { ro.observe(document.querySelector('.topbar'), { box: 'border-box' }); }
+    catch (e) { ro.observe(document.querySelector('.topbar')); }
   }
   function setTab(tab, initial) {
     S.tab = tab;
@@ -320,7 +324,11 @@
     var a = document.activeElement, key = a && a.getAttribute && a.getAttribute('data-key');
     renderSetup(); renderBag(); renderPrep(); renderNight();
     if (key) {
-      var again = main.querySelector('[data-key="' + key.replace(/"/g, '') + '"]');
+      // A key can carry a reminder token's own text, so it is escaped as a
+      // whole: a stray backslash there used to make this selector throw.
+      var sel = (window.CSS && CSS.escape) ? CSS.escape(key) : key.replace(/["\\\n]/g, '');
+      var again = null;
+      try { again = main.querySelector('[data-key="' + sel + '"]'); } catch (e) { /* keep going */ }
       if (again && again !== a) { try { again.focus({ preventScroll: true }); } catch (e) { again.focus(); } }
     }
   }

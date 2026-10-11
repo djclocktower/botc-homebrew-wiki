@@ -1203,7 +1203,13 @@ are not a source: they have no night order and can hold 100+ characters.
 **Setup counts.** The official 5–15 table, then every `[...]` in an ability
 read clause by clause (`parseSetupMods()`): `+N` / `-N Team`, `X or Y`, and
 `X to Y` are **count** mods (an option the Storyteller picks, the first by
-default); `+the King` is a **require** (the King joins the bag and stays);
+default); `+the King` is a **require**: the King joins the bag and stays,
+together with the character needing it, and like every `+` it goes in on top
+of its team's count with a Townsfolk coming out — so the Huntsman's Damsel is
+one more Outsider (a 7-player game with none by the table still gets it) and
+the Choirboy's King changes no count. A draw is not settled while anything in
+the bag still needs a character that is not in it. A `[[Name]]` mark in an
+ability is not a bracket;
 extra copies of itself (Village Idiot) is **copies**; anything else — an
 unknown number (`-? to +?`), or a sentence (`[No Demon]`, `[You neighbor the
 Demon]`) — is a **manual** note with a "handled" tick, and adjacent notes from
