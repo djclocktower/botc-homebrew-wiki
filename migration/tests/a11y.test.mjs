@@ -130,3 +130,49 @@ test('a11y: the modals use dialog.js, and their pages load it first', () => {
   }
   assert.match(read('tokens.html'), /id="tt-editor" role="dialog" aria-modal="true" aria-labelledby="tte-title"/);
 });
+
+// ── 4. Skip link ─────────────────────────────────────────────────────────
+test('a11y: site.js adds a skip link, away from the end of the file', () => {
+  assert.match(site, /a\.className = 'skip-link'/);
+  assert.match(css, /\.skip-link:focus\s*\{/);
+  // The end of site.js is where the error beacon lives; new blocks go in
+  // the middle so the two never collide.
+  const tail = site.split('\n').slice(-40).join('\n');
+  assert.doesNotMatch(tail, /skip-link|syncChip/);
+});
+
+// ── 5. Search results are a list of links, not a listbox ────────────────
+test('a11y: the search drop is not a listbox of options', () => {
+  assert.doesNotMatch(site, /role="option"/);
+  assert.match(site, /drop\.removeAttribute\('role'\)/);
+  assert.match(site, /input\.removeAttribute\('aria-haspopup'\)/);
+  assert.match(site, /input\.setAttribute\('aria-controls', 'search-drop'\)/);
+  assert.match(site, /className = 'sr-only'/);
+  assert.match(css, /\.sr-only\s*\{/);
+});
+
+// ── 6. Three-state chips ────────────────────────────────────────────────
+test('a11y: chips mirror their state into aria-pressed and show a mark', () => {
+  const src = site.slice(site.indexOf('/* a11y-chip:start */'), site.indexOf('/* a11y-chip:end */'));
+  assert.ok(src.length > 20, 'syncChip is between the a11y-chip markers');
+  const ctx = vm.createContext({});
+  vm.runInContext(src + '\nthis.syncChip = syncChip;', ctx);
+  function chip(classes, role) {
+    const attrs = role ? { role } : {};
+    const sets = [];
+    return { tagName: 'BUTTON', sets, classList: { contains: c => classes.includes(c) },
+      getAttribute: k => attrs[k] ?? null, setAttribute: (k, v) => { attrs[k] = v; sets.push([k, v]); } };
+  }
+  const on = chip(['filter-chip', 'active']), ex = chip(['filter-chip', 'active-exclude']), off = chip(['filter-chip']);
+  for (const c of [on, ex, off]) ctx.syncChip(c);
+  assert.deepEqual([on, ex, off].map(c => c.getAttribute('aria-pressed')), ['true', 'false', 'false']);
+  const tab = chip(['filter-chip', 'active'], 'tab');
+  ctx.syncChip(tab);
+  assert.deepEqual(tab.sets, [], 'a role="tab" chip is left alone');
+  const rule = css.match(/\.filter-chip\.active-exclude:not\(\.filter-chip-curata\)[^{]*::before\s*\{[^}]*\}/);
+  assert.ok(rule, 'styles.css draws a mark on an excluded chip');
+  assert.match(css, /\.filter-chip\.active-exclude[^{]*::before\s*\{[^}]*text-decoration:\s*none/,
+    'the ✕ is not struck through by the chip\'s line-through');
+  assert.match(css, /content: "\\2715" \/ "Excluded: "/);
+  assert.match(css, /:not\(\.sp-tab\)::before/, 'the /search tabs get no ✓');
+});

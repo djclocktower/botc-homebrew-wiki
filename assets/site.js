@@ -605,6 +605,27 @@
     if (!input || !drop) return;
     var index = null, loading = null;
 
+    // The results are a list of LINKS, reached with real focus and the arrow
+    // keys (below) — not a listbox, which would promise a screen reader an
+    // active-descendant widget this is not. The hand-copied markup on every
+    // page still says role="listbox" / aria-haspopup, so it is corrected
+    // here rather than in forty files; don't add either to a new page.
+    drop.removeAttribute('role');
+    input.removeAttribute('aria-haspopup');
+    input.setAttribute('aria-controls', 'search-drop');
+    // How many results there are, spoken once typing settles (the top bar's
+    // box and the one in the phone menu share it).
+    var live = document.createElement('div');
+    live.className = 'sr-only';
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    document.body.appendChild(live);
+    var liveTimer = 0;
+    function announce(text) {
+      clearTimeout(liveTimer);
+      liveTimer = setTimeout(function () { live.textContent = text; }, 400);
+    }
+
     // The Favorites / Add to Script buttons under each character result's
     // icon (assets/card-actions.js, which needs favorites.js for the heart).
     // Most pages have neither, so they are fetched alongside the feeds the
@@ -685,12 +706,13 @@
           return '<div class="search-group-label" role="presentation">' + esc(window.BotcSearch.TYPE_LABEL[g.type]) + '</div>' +
             g.rows.map(function (r) { return rowHTML(r.item, res.tokens); }).join('');
         }).join('') +
-          '<a class="search-all" href="' + esc(resultsPage(q)) + '" role="option">See all ' + res.mixed.length +
+          '<a class="search-all" href="' + esc(resultsPage(q)) + '">See all ' + res.mixed.length +
           ' result' + (res.mixed.length === 1 ? '' : 's') + ' for “' + esc(q) + '” →</a>';
       }
       drop.innerHTML = html;
       var nb = navResultsBox();
       if (nb) nb.innerHTML = html;
+      announce(res.total ? res.mixed.length + ' result' + (res.mixed.length === 1 ? '' : 's') : 'No results');
     }
 
     // An image field is either a path inside assets/ or a whole URL somebody
@@ -740,7 +762,7 @@
       switch (item.type) {
         case 'character':
           subClass = GOOD[d.team] ? ' good' : '';
-          return '<a class="search-result" href="' + esc(item.href) + '" role="option">' +
+          return '<a class="search-result" href="' + esc(item.href) + '">' +
             '<span class="card-side">' + thumbHTML(charThumb(d)) +
             (window.CardActions ? window.CardActions.slotHTML(d) : '') + '</span>' +
             '<div class="search-result-info">' +
@@ -778,7 +800,7 @@
           pic = thumbHTML(ROOT + 'assets/favicon.png');
           sub = esc(d.desc || d.kind || '');
       }
-      return '<a class="search-result" href="' + esc(item.href) + '" role="option">' + pic +
+      return '<a class="search-result" href="' + esc(item.href) + '">' + pic +
         '<div class="search-result-info">' +
         '<span class="search-result-name">' + name + '</span>' +
         (sub ? '<span class="search-result-ability">' + sub + '</span>' : '') +
@@ -788,6 +810,7 @@
     function open() { drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
     function close() {
       searchToken++;
+      clearTimeout(liveTimer);
       drop.hidden = true;
       input.setAttribute('aria-expanded', 'false');
       if (navResults) navResults.innerHTML = '';
@@ -1028,6 +1051,85 @@
   document.querySelectorAll('.topbar, .nav-dropdown').forEach(function (el) {
     el.setAttribute('translate', 'no');
   });
+})();
+
+/* ── "Skip to content" ──
+   The first thing a keyboard or switch user reaches on every page, so the
+   top bar's dozen links are not in the way of every page they open. Added
+   here rather than in the markup because the top bar is hand-copied into
+   every page and into the Worker's pageShell(). Invisible until it has
+   focus (.skip-link in styles.css). Pages with no <main> (the character
+   editors) get none. An existing id on <main> is never renamed: code uses
+   #content and #panel. New blocks in this file go here, in the middle,
+   never at the end (the end of the file is the error beacon's). */
+(function () {
+  var main = document.querySelector('main');
+  if (!main || document.querySelector('.skip-link')) return;
+  if (!main.id) main.id = 'main-content';
+  var a = document.createElement('a');
+  a.className = 'skip-link';
+  a.href = '#' + main.id;
+  a.textContent = 'Skip to content';
+  a.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+    main.focus();
+  });
+  document.body.insertBefore(a, document.body.firstChild);
+})();
+
+/* ── Filter chips say whether they are on ──
+   Every filter box on the wiki marks a chip on with .active (and, on the
+   three-state chips, excluded with .active-exclude), and about two dozen
+   places toggle those classes. Rather than teach each of them ARIA, one
+   observer mirrors the class into aria-pressed on every button.filter-chip,
+   so a screen reader hears "pressed". The excluded state is spoken through
+   the ✕'s CSS alt text ("Excluded:"), which aria-pressed cannot say.
+   A chip with a role of its own (the /search tabs are role="tab") is left
+   alone: aria-pressed on a tab is invalid. The callback returns at once for
+   the class changes it does not care about — card redraws, emblem pips and
+   the card actions change classes constantly — and batches the rest into
+   one animation frame. */
+(function () {
+  /* a11y-chip:start */
+  function syncChip(btn) {
+    if (!btn || btn.tagName !== 'BUTTON' || btn.getAttribute('role')) return;
+    var want = btn.classList.contains('active') ? 'true' : 'false';
+    if (btn.getAttribute('aria-pressed') !== want) btn.setAttribute('aria-pressed', want);
+  }
+  /* a11y-chip:end */
+  if (typeof MutationObserver === 'undefined' || !document.body) return;
+  var pending = [], scheduled = false;
+  function flush() {
+    scheduled = false;
+    var list = pending; pending = [];
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i];
+      if (n.classList && n.classList.contains('filter-chip')) syncChip(n);
+      else if (n.querySelectorAll) Array.prototype.forEach.call(n.querySelectorAll('button.filter-chip'), syncChip);
+    }
+  }
+  function queue(n) {
+    pending.push(n);
+    if (scheduled) return;
+    scheduled = true;
+    (window.requestAnimationFrame || setTimeout)(flush);
+  }
+  queue(document.body);
+  new MutationObserver(function (records) {
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      if (r.type === 'attributes') {
+        if (r.target.classList && r.target.classList.contains('filter-chip')) queue(r.target);
+        continue;
+      }
+      for (var j = 0; j < r.addedNodes.length; j++) {
+        var n = r.addedNodes[j];
+        if (n.nodeType !== 1) continue;
+        if ((n.classList && n.classList.contains('filter-chip')) || (n.firstElementChild && n.querySelector('.filter-chip'))) queue(n);
+      }
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
 })();
 
 /* ── Redesigned top bar: solid/scrolled state past 24px of scroll ── */

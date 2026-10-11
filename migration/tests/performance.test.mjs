@@ -160,13 +160,14 @@ async function searchFixture(fetcher) {
   const source = await read('assets/site.js');
   const handlers = new Map();
   function element(id) {
-    return { value: '', hidden: true, innerHTML: '', setAttribute() {}, blur() {}, contains() { return false; },
+    return { value: '', hidden: true, innerHTML: '', textContent: '', setAttribute() {}, removeAttribute() {}, appendChild() {}, blur() {}, contains() { return false; },
       addEventListener(event, callback) { handlers.set(id + ':' + event, callback); } };
   }
   const input = element('input'), drop = element('drop'), wrap = element('wrap'), mobile = element('mobile'), menu = element('menu');
   const context = vm.createContext({
     window: {}, URL, location: { origin: 'https://botchomebrew.wiki', href: 'https://botchomebrew.wiki/scripts' },
     document: { baseURI: 'https://botchomebrew.wiki/', getElementById: id => ({ 'search-input': input, 'search-drop': drop, 'search-wrap': wrap, 'nav-search-input': mobile, hamburger: menu })[id] || null,
+      createElement: () => element('created'), body: element('body'),
       addEventListener(event, callback) { handlers.set('document:' + event, callback); } },
     fetch: url => fetcher(new URL(url).pathname.slice(1) + new URL(url).search), ROOT: '', GOOD: { townsfolk: true }, TEAM_LABEL: {},
     esc: s => String(s).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;'),

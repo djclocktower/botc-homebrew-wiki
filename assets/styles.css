@@ -2249,6 +2249,34 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .filter-chip:hover { background: rgba(91,31,33,.08); }
 .filter-chip.active { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
 .filter-chip.active-exclude { background: var(--evil); color: var(--parch); border-color: var(--evil); text-decoration: line-through; opacity: 0.85; }
+/* A ✓ on an included chip and a ✕ on an excluded one, so the state is not
+   carried by colour alone. The glyph is paid for out of the chip's own
+   side padding (11px each side becomes 5px + 7px, and the glyph takes the
+   10px freed), so a chip is the same width on and off: the last chip on a
+   wrapped row cannot jump to the next line between the two taps of the
+   include → exclude cycle and leave the second tap on a different chip.
+   inline-block keeps the exclude chip's line-through off the ✕, and
+   line-height 1 keeps the fallback glyph font from making the chip a pixel
+   taller. The second `content` is CSS alt text: the ✓ is silent (site.js
+   sets aria-pressed) and the ✕ is read as "Excluded:". Not on the Curata
+   and Favorites chips (their ::before / heart is the mark) or the /search
+   tabs (a tab is not a filter). */
+.filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab),
+.filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab) {
+  padding-left: 5px; padding-right: 7px;
+}
+.filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before,
+.filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before {
+  display: inline-block;
+  width: 9px; margin-right: 1px; line-height: 1;
+  text-align: center; text-decoration: none;
+}
+.filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before {
+  content: "\2713"; content: "\2713" / "";
+}
+.filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before {
+  content: "\2715"; content: "\2715" / "Excluded: ";
+}
 .filter-select {
   font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: var(--maroon);
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
