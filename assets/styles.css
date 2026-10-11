@@ -1821,7 +1821,10 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .landing-stats {
   display: inline-block;
-  font-family: 'Oswald', sans-serif; font-weight: 500;
+  /* The phone's own sans, on purpose. This rule asked for Oswald, which never
+     loaded until the 2026-10 font fix, so every reader saw the system sans —
+     and the owner preferred that to Oswald once it finally appeared. */
+  font-family: sans-serif; font-weight: 500;
   font-size: .92rem; letter-spacing: .08em; text-transform: uppercase;
   color: rgba(236,225,200,.7);
   padding: 8px 18px;
