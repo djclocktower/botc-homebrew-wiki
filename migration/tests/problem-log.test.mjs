@@ -352,3 +352,22 @@ test('the site.js beacon reports our own errors, three at most, and nothing from
   assert.equal(bodies[1].line, 88);
   assert.equal(bodies[2].source, 'https://botchomebrew.wiki/tools');
 });
+
+test('an oversized beacon with no Content-Length is dropped unread, and a deleted page\'s own address is not redirected', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  admins(f);
+  // No Content-Length header at all (a chunked body): still capped at 8 KB.
+  const big = beacon({ message: 'big', source: 'https://botchomebrew.wiki/assets/site.js', line: 1, page: '/tools', stack: 'x'.repeat(20000) });
+  assert.equal(big.headers['Content-Length'], undefined);
+  assert.equal((await f.safeRequest('/api/client-error', big)).status, 204);
+  await settle(f);
+  assert.equal(rows(f).length, 0);
+
+  // A deleted page still holding the address would answer 404 before any
+  // redirect row was read, so the tool says so instead of saving a dead one.
+  f.insert('characters', 'witch', { name: 'Witch', team: 'minion', ability: 'Each night, choose a player.' });
+  f.insert('characters', 'gone', { name: 'Gone', team: 'minion', ability: 'x' }, 'deleted');
+  const res = await f.request('/api/admin/problem-redirect', post('admin', { path: '/c/test-set/gone', to: 'witch' }));
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /deleted page still holds/);
+});

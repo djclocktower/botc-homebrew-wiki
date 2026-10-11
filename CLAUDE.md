@@ -3504,8 +3504,10 @@ source only when an admin can do something about what it reports.
 a minute (the sightings in between ride along as its count), the isolate
 writes at most 30 rows a minute, and the two kinds a stranger can mint new
 fingerprints for are capped — 10 new 404 addresses a minute, 200 new 404s and
-50 new browser errors a UTC day. Existing fingerprints keep counting past the
-caps. Counts lost when an isolate dies are fine: it is a signal, not
+50 new browser errors a UTC day — and so are crashes and server errors (100 new
+of each a day), whose route can carry a raw path. Existing fingerprints keep
+counting past the caps. The beacon reads at most 8 KB of body, streamed, so a
+chunked post with no Content-Length is never buffered whole. Counts lost when an isolate dies are fine: it is a signal, not
 accounting. **Retention** is in the nightly prune: 30 days since last seen,
 14 days after being marked fixed, and past 1,000 rows the least-seen
 `notfound` and `browser` rows go first. Crash, server, cron and email rows are
@@ -3563,7 +3565,9 @@ the owner learns to ignore.
 (`POST /api/admin/problem-redirect {path, to}`): writes one `redirects` row,
 the same kind a rename writes, pointing at the target's **identity**, and
 marks the problem fixed with `detail: redirect:{identity}`. Refused when a
-live page already answers at the address or the target is not a published
+live page already answers at the address, when a **deleted** page still holds
+it as its identity or address (the `/c/` route finds that row first and 404s,
+so the redirect would never be read), or the target is not a published
 character. `{path, undo: true}` takes it back, only while the redirect still
 points where the tool pointed it. **A redirect parks the address**
 (`LIVE_REDIRECT_SQL`): a future character whose name and set would produce it
@@ -3997,7 +4001,9 @@ keeps `content-visibility: auto`.
    `_`-prefixed files and returns the newest 7 manifests' row counts. The
    prune walks the **whole** R2 listing a page at a time (it used to read one
    page of 1,000 keys and never reached the old days), stopping at the first
-   day still kept and deleting at most `BACKUP_PRUNE_MAX` (5,000) a night.
+   day still kept and deleting at most `BACKUP_PRUNE_MAX` (5,000) a night,
+   1,000 keys per `delete()` call (one call per key would be thousands of
+   subrequests in one cron run).
    Each read and write is retried (`backupRetry`), and the read size adapts to
    the table's row width so a narrow, huge table (`page_views`) is a handful
    of parts rather than hundreds. The last run's result, with the reason for

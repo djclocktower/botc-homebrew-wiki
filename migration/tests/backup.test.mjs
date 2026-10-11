@@ -18,7 +18,8 @@ function fakeR2({ pageSize = 1000 } = {}) {
       return { async json() { return JSON.parse(body); }, size: bytes(body) };
     },
     async head(key) { return objects.has(key) ? { size: bytes(objects.get(key)) } : null; },
-    async delete(key) { objects.delete(key); },
+    batchDeletes: [],
+    async delete(key) { if (Array.isArray(key)) this.batchDeletes.push(key.length); for (const k of [].concat(key)) objects.delete(k); },
     async list({ prefix, limit = 1000, cursor }) {
       this.listCalls++;
       const keys = [...objects.keys()].filter(k => k.startsWith(prefix)).sort();
@@ -241,6 +242,8 @@ test('pruning walks every page of the listing, and keeps the last month', async 
     assert.ok(left.includes(`backups/${recent}/characters.json`));
     assert.ok(left.includes(`backups/${res.date}/characters.json`));
     assert.ok(r2.listCalls >= 2, 'the listing was paged');
+    // Deleted a thousand keys a call, not one call per key.
+    assert.deepEqual(r2.batchDeletes, [1000, 500]);
   } finally { await f.finish(); }
 });
 

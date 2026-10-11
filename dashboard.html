@@ -2805,7 +2805,9 @@
     var problemRows = [];
     function problemRowHTML(r, i){
       var fixed = !!r.fixed_at;
-      var redirect = /^redirect:(\S+)$/.exec(r.detail || '');
+      // Only the redirect tool writes "redirect:" into a missing-page row; on
+      // any other kind the detail is a stack a reader's browser sent.
+      var redirect = r.kind === 'notfound' ? /^redirect:(\S+)$/.exec(r.detail || '') : null;
       var html = '<div class="pr-row" data-i="' + i + '">';
       html += '<div class="pr-title">' + esc(problemTitle(r)) +
         (r.reopened ? '<span class="pr-tag">Came back after being marked fixed</span>' : '') + '</div>';

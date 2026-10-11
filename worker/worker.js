@@ -5773,7 +5773,10 @@ async function pruneBackups(env) {
       }
       cursor = listed.truncated ? listed.cursor : null;
     } while (cursor);
-    for (const key of doomed) await env.ART.delete(key);
+    // R2 deletes up to 1,000 keys in one call. One call per key was up to
+    // BACKUP_PRUNE_MAX subrequests in a single cron run, past what one
+    // invocation is allowed.
+    for (let i = 0; i < doomed.length; i += 1000) await env.ART.delete(doomed.slice(i, i + 1000));
     return doomed.length;
   } catch (e) {
     console.error('[backup] prune failed:', (e && e.message) || e);
@@ -5832,13 +5835,16 @@ const PROBLEM_WRITE_GAP_MS = 60000;
 const PROBLEM_WRITES_PER_MIN = 30;
 const PROBLEM_BUF_MAX = 300;
 const PROBLEM_NEW_NOTFOUND_PER_MIN = 10;
-const PROBLEM_NEW_PER_DAY = { notfound: 200, browser: 50 };
+// crash and server are capped too: their route can carry a raw path, and a
+// bug that echoes the address into its message would otherwise let anybody
+// mint a new row per request.
+const PROBLEM_NEW_PER_DAY = { notfound: 200, browser: 50, crash: 100, server: 100 };
 // Kept rows: 30 days since last seen, fixed ones 14 days after the fix, and
 // beyond PROBLEM_ROWS_MAX the least-seen 404 and browser rows go first.
 const PROBLEM_ROWS_MAX = 1000;
 const _problemBuf = new Map();     // fp -> { n, lastWrite }
 let _problemMinute = { at: 0, writes: 0, newNotfound: 0 };
-let _problemDay = { day: '', notfound: 0, browser: 0 };
+let _problemDay = { day: '', n: {} };
 
 // A small synchronous FNV-1a, two passes with different seeds -> 16 hex.
 // crypto.subtle is async and far more than a dedupe key needs.
@@ -5877,18 +5883,18 @@ function problemTake(fp, kind) {
   const now = Date.now();
   if (now - _problemMinute.at >= 60000) _problemMinute = { at: now, writes: 0, newNotfound: 0 };
   const day = new Date(now).toISOString().slice(0, 10);
-  if (_problemDay.day !== day) _problemDay = { day, notfound: 0, browser: 0 };
+  if (_problemDay.day !== day) _problemDay = { day, n: {} };
   let e = _problemBuf.get(fp);
   if (e) {
     // Most recently seen last, so the oldest is the first key.
     _problemBuf.delete(fp);
     _problemBuf.set(fp, e);
   } else {
-    if (kind === 'notfound' && (_problemMinute.newNotfound >= PROBLEM_NEW_NOTFOUND_PER_MIN ||
-        _problemDay.notfound >= PROBLEM_NEW_PER_DAY.notfound)) return 0;
-    if (kind === 'browser' && _problemDay.browser >= PROBLEM_NEW_PER_DAY.browser) return 0;
-    if (kind === 'notfound') { _problemMinute.newNotfound++; _problemDay.notfound++; }
-    if (kind === 'browser') _problemDay.browser++;
+    const cap = PROBLEM_NEW_PER_DAY[kind];
+    if (cap && (_problemDay.n[kind] || 0) >= cap) return 0;
+    if (kind === 'notfound' && _problemMinute.newNotfound >= PROBLEM_NEW_NOTFOUND_PER_MIN) return 0;
+    if (kind === 'notfound') _problemMinute.newNotfound++;
+    if (cap) _problemDay.n[kind] = (_problemDay.n[kind] || 0) + 1;
     e = { n: 0, lastWrite: -Infinity };
     _problemBuf.set(fp, e);
     if (_problemBuf.size > PROBLEM_BUF_MAX) _problemBuf.delete(_problemBuf.keys().next().value);
@@ -5994,6 +6000,25 @@ function beaconThrottled(ip) {
   _beaconByIp.set(ip, e);
   if (_beaconByIp.size > 1000) _beaconByIp.delete(_beaconByIp.keys().next().value);
   return e.n > 5;
+}
+// A request body as text, or null when it is longer than `max` bytes (the
+// rest is never read).
+async function readCappedText(request, max) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) { try { await reader.cancel(); } catch { /* gone already */ } return null; }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(n);
+  let at = 0;
+  for (const c of chunks) { all.set(c, at); at += c.byteLength; }
+  return new TextDecoder().decode(all);
 }
 // Quoted text comes out of an error before it is kept: a JSON.parse error
 // quotes the input it choked on, and on /messages or an editor that input
@@ -10733,7 +10758,10 @@ const app = {
         if (!ua || BOT_UA_RE.test(ua)) return quiet();
         if ((parseInt(request.headers.get('Content-Length') || '0', 10) || 0) > 8192) return quiet();
         if (beaconThrottled(request.headers.get('CF-Connecting-IP') || 'unknown')) return quiet();
-        const text = (await request.text()).slice(0, 8192);
+        // Read at most 8 KB: a body with no Content-Length (chunked) would
+        // otherwise be buffered whole before anything could look at it.
+        const text = await readCappedText(request, 8192);
+        if (text == null) return quiet();
         let b = null;
         try { b = JSON.parse(text); } catch { return quiet(); }
         const problem = clientErrorProblem(b, url.origin);
@@ -12638,6 +12666,13 @@ const app = {
         const taken = await resolveCharacterPath(env, from);
         if (taken && taken.row && taken.row.status !== 'deleted') {
           return jsonResponse({ error: 'A page already answers at that address, so it is not missing.' }, { status: 400 });
+        }
+        // A deleted page that still HOLDS the address (as its identity or its
+        // address, not through an old redirect) wins over any redirect row:
+        // the /c/ route finds it first and answers 404, so the redirect would
+        // be saved and never used.
+        if (taken && taken.row && (String(taken.row.slug) === from || String(taken.row.url_slug || '') === from)) {
+          return jsonResponse({ error: 'A deleted page still holds that address. Restore it, or remove it for good from the deleted pages list, then try again.' }, { status: 400 });
         }
         let to = String(b.to || '').trim().replace(/^\/+/, '').replace(/^c\//, '').split(/[?#]/)[0];
         const target = to ? await resolveCharacterPath(env, to) : null;
