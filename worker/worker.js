@@ -2347,13 +2347,12 @@ function sanitizeBoxes(boxes) {
 // anything that names nobody. `mirrored`/`mirroredFrom` are deliberately NOT
 // kept: those are added on read, and a client must never be able to fake one.
 const JINX_MAX = 60;
-/* A suggestion is the whole page as somebody else would have saved it, and
-   approving one writes it through applyRollback() — which, like a rollback,
-   stores the blob as given. So everything the owner alone decides is pinned
-   back to the stored page here (at submission AND again at approval), and the
-   fields the save handlers clean are cleaned the same way, or approving a
-   suggestion could slip the suggester onto the page's editor list or store
-   a jinx list no save would have accepted. */
+/* A suggestion is the whole page as somebody else would have saved it. So
+   everything the owner alone decides is pinned back to the stored page here
+   at submission, and the fields the save handlers clean are cleaned the same
+   way, or a suggestion could slip the suggester onto the page's editor list
+   or store a jinx list no save would have accepted. Approval runs it again,
+   with the save's checks on top, through prepareRestore(). */
 // What a failed write tells the reader. A message written FOR them (an
 // error thrown with `public: true`) is shown; anything else — a D1 error
 // with table and column names in it — goes to the log and the reader gets
@@ -2501,27 +2500,39 @@ async function listWikiPages(env, parentType, parentSlug, opts = {}) {
 }
 
 // Find the page a comment is aimed at and work out who may moderate it.
-// Returns null when the page doesn't exist or isn't publicly visible.
-async function commentTarget(env, type, slug) {
+// Returns null when the page doesn't exist or isn't publicly visible — for a
+// wiki page that includes a set that is not public (wikiParentLive), so a
+// hidden page has no public thread and takes no new comments.
+// {moderate: true} is the owner's and the admins' door: it needs only a page
+// that exists (and, for a character/script/collection, is not deleted), so a
+// comment can still be removed or pinned after the page went to drafts or
+// switched its comments off.
+async function commentTarget(env, type, slug, opts = {}) {
   if (!COMMENTABLE.includes(type) || !slug) return null;
   if (type === 'wikipage') {
     await ensurePagesTable(env);
-    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, data FROM pages WHERE slug=?')
+    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, data, parent_type, parent_slug FROM pages WHERE slug=?')
       .bind(slug).first().catch(() => null);
-    if (!row || row.status !== 'published') return null;
-    if (parseData(row).comments === false) return null;
+    if (!row) return null;
+    if (!opts.moderate) {
+      if (row.status !== 'published') return null;
+      if (parseData(row).comments === false) return null;
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+      if (!wikiParentLive(parent)) return null;
+    }
     return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/p/' + row.slug };
   }
   if (type === 'news') {
     await ensureNewsTable(env);
     const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id FROM news WHERE slug=?')
       .bind(slug).first().catch(() => null);
-    if (!row || row.status !== 'published') return null;
+    if (!row || (!opts.moderate && row.status !== 'published')) return null;
     return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/news/' + row.slug };
   }
   let row = await getEntityRow(env, type, slug);
   if (!row && type === 'collection') row = await findCollectionRow(env, slug);
-  if (!row || row.status !== 'published') return null;
+  if (!row) return null;
+  if (opts.moderate ? row.status === 'deleted' : row.status !== 'published') return null;
   // Collection URLs use the kebab id from the JSON, never the PK slug —
   // legacy rows have display-string slugs like "The Academy".
   const path = type === 'character' ? '/c/' + charAddress(row)
@@ -3242,8 +3253,31 @@ async function wikiPageAccess(env, sess, row, parent) {
   if (await isProtected(env, parent.type, parent.slug)) return '';
   if (mode === 'approved') return isApprovedEditor(sess, parent.data) ? 'approved' : '';
   // 'all' opens a published page; a draft is still its owner's and its named
-  // editors' alone, exactly as a character draft is.
-  return (row.status || 'published') === 'published' ? 'all' : '';
+  // editors' alone, exactly as a character draft is. So is a page whose set is
+  // not public (wikiParentLive): it is hidden, and 'all' opens no hidden page.
+  return (row.status || 'published') === 'published' && wikiParentLive(parent) ? 'all' : '';
+}
+
+/* A set's page is public only while its set is: an unpublished or deleted
+   script/collection takes its pages with it, exactly as the listings (search,
+   /api/wiki-pages, the creator page) already did. A standalone article's
+   virtual parent is always published. A missing parent — a purged set —
+   counts as not live. */
+function wikiParentLive(parent) {
+  return !!parent && (parent.type === ARTICLE_PARENT || (parent.status || 'published') === 'published');
+}
+
+/* May this session READ this wiki page? Public when the page and its set are
+   both published. Otherwise its owner (and admins), and — while the set
+   still exists — the approved editors the set's owner named. Never an 'all'
+   guest: a hidden page is hidden from them as a draft is. Used by the /p/
+   route and GET /api/wiki-page, so the two cannot disagree. */
+async function wikiPageVisible(env, sess, row, parent) {
+  if ((row.status || 'published') === 'published' && wikiParentLive(parent)) return true;
+  if (canEditRow(sess, row)) return true;
+  if (!parent || parent.status === 'deleted') return false;
+  const a = await wikiPageAccess(env, sess, row, parent);
+  return a === 'owner' || a === 'approved';
 }
 
 /* May this session add a page under this parent? Its owner, an admin, or an
@@ -3710,7 +3744,7 @@ async function revisableRow(env, type, slug) {
   if (type === 'wikipage') {
     await ensurePagesTable(env);
     const row = await env.DB.prepare(
-      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at FROM pages WHERE slug=?'
+      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at, parent_type, parent_slug, author FROM pages WHERE slug=?'
     ).bind(slug).first().catch(() => null);
     return row || null;
   }
@@ -3720,22 +3754,119 @@ async function revisableRow(env, type, slug) {
   return row || null;
 }
 
+/* ---- putting a version back: rollback and suggestion approval ----
+
+   Rollback (the owner's and the admins') and approving a suggestion put
+   CONTENT back. The page's settings are not content: who may edit it, the
+   admins' Curata mark, the creator's opt-outs, a moderation note. Those
+   always come from the row as it stands NOW, never from the version being
+   restored — or rolling back vandalism reopened the page to the vandal, and
+   an owner could get Curata back after an admin took it away by restoring
+   any version from before. The restored content then passes the same checks
+   a save does (the team list, name and ability, the official-character
+   refusal, the sanitizers, and the publish bar on a live page), because a
+   suggestion is text a stranger wrote and an old revision may predate a rule.
+
+   Throws a `public` error with a `status` when the version cannot go back;
+   callers run this BEFORE saveRevision so a refusal leaves no snapshot. */
+const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', '_draftNote'];
+
+function restoreRefusal(msg) {
+  return Object.assign(new Error(msg), { public: true, status: 400 });
+}
+
+async function prepareRestore(env, type, row, snapshot, origin, { source = 'rollback' } = {}) {
+  const now = parseData(row);
+  const d = foldLegacyCurata({ ...snapshot });
+  for (const k of ['_deleted', 'appearsInFrom', 'renameFrom', 'status', 'baseUpdatedAt']) delete d[k];
+  for (const k of RESTORE_PINNED_KEYS) {
+    if (now[k] !== undefined) d[k] = now[k]; else delete d[k];
+  }
+  /* `tagsBy` says whose the tags are, so it travels with the tags. A rollback
+     restores the snapshot's tags, and with them the snapshot's mark; pinning
+     today's would call an owner's old tags a guest's (or the reverse) and
+     flip the tags-open default. A suggestion's tags are a stranger's text
+     on top of today's page, so there it is today's mark, as at submission. */
+  if (source === 'suggestion') {
+    if (now.tagsBy !== undefined) d.tagsBy = now.tagsBy; else delete d.tagsBy;
+  }
+
+  if (type === 'character') {
+    d.slug = row.slug;
+    d.team = String(d.team || '').trim().toLowerCase();
+    if (d.team === 'traveler') d.team = 'traveller';
+    if (!CHARACTER_TEAMS.includes(d.team)) {
+      throw restoreRefusal('That version has no valid team (it needs one of ' +
+        CHARACTER_TEAMS.join(', ') + '). Fix it in the editor instead.');
+    }
+    if (!String(d.name || '').trim() || !String(d.ability || '').trim()) {
+      throw restoreRefusal('That version is missing its name or ability.');
+    }
+    // The same door /api/character keeps: no page here may BE an official
+    // character. A failed roles load grades nothing, exactly as it does there.
+    const graded = OfficialRoles.officialMatch(
+      await loadOfficialRoles(env, origin), { name: d.name, ability: d.ability });
+    if (graded && graded.match === 'exact') throw restoreRefusal(OfficialRoles.officialRefusal(graded.role));
+    d.jinxes = sanitizeJinxes(d.jinxes);
+    if (!d.jinxes.length) delete d.jinxes;
+    d.related = sanitizeRelated(d.related);
+    if (!d.related.length) delete d.related;
+    d.artScale = Render.artScaleValue(d.artScale);
+    if (!d.artScale) delete d.artScale;
+    // A live page stays live and complete. Refused rather than demoted to a
+    // draft: "Put this version back" taking the page down as a side effect
+    // would surprise its owner, and a guest's save is refused for the same
+    // reason. A draft has no bar to meet.
+    if ((row.status || 'published') === 'published') {
+      const needed = Classify.missingForPublish(d);
+      if (needed.length) {
+        throw restoreRefusal('That version is missing ' + Classify.listPhrase(needed) +
+          ', which a published page needs. Move the page to drafts first, or add it in the editor.');
+      }
+    }
+  } else if (type === 'script') {
+    d.slug = row.slug;
+    sanitizePageFields(d, 'scripts/' + row.slug);
+  } else if (type === 'collection') {
+    // The kebab id IS the collection's URL, and collections have no redirects.
+    d.slug = row.slug;
+    d.id = now.id || d.id || row.slug;
+    sanitizePageFields(d, 'collections/' + d.id);
+  } else if (type === 'wikipage') {
+    // Parentage is frozen at creation (and moved only by an admin's
+    // page-to-article, which writes the columns), so the row's columns win.
+    if (row.parent_type !== undefined) d.parentType = row.parent_type;
+    if (row.parent_slug !== undefined) d.parentSlug = row.parent_slug;
+    d.slug = row.slug;
+    sanitizeWikiFields(d, 'pages/' + row.slug + '-', 'pages/' + row.slug);
+    d.title = String(d.title || row.name || row.slug).slice(0, 160);
+  }
+  return d;
+}
+
 // Writes a revision's data back onto its row. Split out because rollback and
 // the owner-facing version of it are the same operation with different gates.
+// Always pass `d` through prepareRestore() first.
 async function applyRollback(env, type, row, d) {
   if (type === 'character') {
     if (!d.name || !d.team) throw Object.assign(new Error('That revision is missing required fields.'), { public: true });
     await env.DB.prepare(
       `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
     ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
+    // The restored name and set ask for an address, exactly as a save's do;
+    // a move leaves its 301 behind.
+    try {
+      const addr = await characterAddress(env, row.slug, d, row.owner_id, charAddress(row));
+      await setCharAddress(env, row.slug, addr);
+    } catch (e) { console.error('[restore] address not recomputed:', e && e.message); }
   } else if (type === 'collection') {
     await env.DB.prepare(
       `UPDATE collections SET display_name=?, data=?, updated_at=datetime('now') WHERE slug=?`
     ).bind(d.displayName || row.name || row.slug, JSON.stringify(d), row.slug).run();
   } else if (type === 'wikipage') {
     await env.DB.prepare(
-      `UPDATE pages SET title=?, data=?, updated_at=datetime('now') WHERE slug=?`
-    ).bind(d.title || row.name || row.slug, JSON.stringify(d), row.slug).run();
+      `UPDATE pages SET title=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
+    ).bind(d.title || row.name || row.slug, d.author || null, JSON.stringify(d), row.slug).run();
   } else {
     await env.DB.prepare(
       `UPDATE scripts SET name=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
@@ -5313,8 +5444,11 @@ async function featuredArticles(env, limit, opts = {}) {
     let hidden = r.status === 'published' ? '' : 'draft';
     if (hidden && !opts.all) continue;
     const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-    // Same rule as the author listing: a page goes down with its parent.
-    if (!hidden && parent && parent.status === 'deleted') hidden = 'parent-deleted';
+    // Same rule as the author listing: a page goes down with its parent. A
+    // set that is gone altogether reads as deleted, not as a draft.
+    if (!hidden && !wikiParentLive(parent)) {
+      hidden = (!parent || parent.status === 'deleted') ? 'parent-deleted' : 'parent-draft';
+    }
     if (hidden && !opts.all) continue;
     const d = parseData(r);
     articles.push({
@@ -7159,7 +7293,8 @@ const app = {
       const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
       const access = await wikiPageAccess(env, sess, row, parent);
       const editable = !!access;
-      if (row.status !== 'published' && !editable) {
+      // A draft, or a page whose set is not public, answers like no page at all.
+      if (!(await wikiPageVisible(env, sess, row, parent))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       return jsonResponse({
@@ -7196,26 +7331,20 @@ const app = {
           .bind(slug).first().catch(() => null);
         if (!row) return assetsOrNotFound(env, request);
         const isDraft = row.status !== 'published';
-        if (isDraft) {
+        // A page goes down with its parent: under a script/collection that is
+        // a draft, deleted or gone, nothing public links here and the public
+        // must not reach it either — not even its parent's name. Its owner
+        // (and, while the set exists, the set's approved editors) still can,
+        // so publishing or restoring the set brings everything back.
+        const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+        const hidden = isDraft || !wikiParentLive(parent);
+        if (hidden) {
           const sess = await getSession(env, request);
-          const par = canEditRow(sess, row) ? null
-            : await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
-          if (!canEditRow(sess, row) && !(await wikiPageAccess(env, sess, row, par))) {
-            return assetsOrNotFound(env, request);
-          }
+          if (!(await wikiPageVisible(env, sess, row, parent))) return assetsOrNotFound(env, request);
         }
-        if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
+        if (!hidden && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
   
         const d = parseData(row);
-        const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
-        // A page goes down with its parent: if the script/collection it belongs
-        // to has been deleted, nothing links here any more and the public
-        // shouldn't reach it either. Its owner still can, so restoring the
-        // parent brings everything back.
-        if (parent && parent.status === 'deleted') {
-          const sess = await getSession(env, request);
-          if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
-        }
         await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
         const page = {
           ...d, slug: row.slug, title: row.title,
@@ -7244,16 +7373,20 @@ const app = {
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+            : hidden
+            ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.parentNotLivePage + '</div>'
             : '',
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${jsStr(row.slug)};` +
-            // A draft cannot be featured, so wikipage.js offers admins no button.
-            (isDraft ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
+            // A draft (or a page whose set is not public) cannot be featured,
+            // so wikipage.js offers admins no button.
+            (hidden ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
             // A set's page gets the admins' "Make it a standalone article" button.
             (row.parent_type === ARTICLE_PARENT ? ' window.WIKI_PAGE_ARTICLE = true;' : '') +
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${jsStr(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
-        return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug);
+        // No view key on a hidden page, so it can never enter the shared cache.
+        return htmlPage(html, hidden ? '' : 'wikipage|' + row.slug);
       });
     }
 
@@ -10799,15 +10932,10 @@ const app = {
         try { d = foldLegacyCurata(JSON.parse(sug.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
         // Re-pin everything that belongs to the page rather than to the
-        // suggestion: the row may have changed since it was written.
-        const now = parseData(row);
-        d.slug = row.slug;
-        d.publicEdit = now.publicEdit;
-        d.curata = !!now.curata;
-        if (now.curataOptOut) d.curataOptOut = true; else delete d.curataOptOut;
-        if (now.creditUnlinked) d.creditUnlinked = true; else delete d.creditUnlinked;
-        delete d._deleted;
-        pinSuggestedFields(sug.entity_type, d, now);
+        // suggestion (the row may have changed since it was written), and
+        // hold what is left to the rules a save is held to.
+        try { d = await prepareRestore(env, sug.entity_type, row, d, url.origin, { source: 'suggestion' }); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not apply that suggestion.') }, { status: e.status || 400 }); }
         await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
         try { await applyRollback(env, sug.entity_type, row, d); }
         catch (e) { return jsonResponse({ error: publicError(e, 'Could not apply that suggestion.') }, { status: 500 }); }
@@ -10846,7 +10974,9 @@ const app = {
         let d;
         try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
-        delete d._deleted;
+        // Content comes back; the page's settings stay as they are now.
+        try { d = await prepareRestore(env, type, row, d, url.origin); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: e.status || 400 }); }
         // Snapshot what is being replaced, so the rollback is itself undoable.
         await saveRevision(env, sess, type, row);
         try { await applyRollback(env, type, row, d); }
@@ -10943,7 +11073,7 @@ const app = {
         if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
-        const target = await commentTarget(env, row.entity_type, row.slug);
+        const target = await commentTarget(env, row.entity_type, row.slug, { moderate: true });
         const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
         if (!sess.isAdmin && !isOwner) {
           return jsonResponse({ error: 'Only the page owner and the admins can pin comments.' }, { status: 403 });
@@ -10964,7 +11094,7 @@ const app = {
         if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
-        const target = await commentTarget(env, row.entity_type, row.slug);
+        const target = await commentTarget(env, row.entity_type, row.slug, { moderate: true });
         const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
         if (!sess.isAdmin && !isOwner && row.user_id !== sess.userId) {
           return jsonResponse({ error: 'You can only remove your own comments.' }, { status: 403 });
@@ -11120,6 +11250,8 @@ const app = {
           // the creator. The editor locks the field for a guest; this is the
           // half a hand-written request cannot get around.
           c.name = stored.name;
+          // Whose work it is belongs to the creator too, like creditUnlinked.
+          if (stored.creator !== undefined) c.creator = stored.creator; else delete c.creator;
         }
         if (perm === 'all-but-ability') {
           // Everything but the rule itself. The ability is what the page IS
@@ -11249,7 +11381,15 @@ const app = {
         // leaves a 301 behind whenever it actually moves.
         let address = charAddress(existing) || c.slug;
         let movedFrom = null;
-        try {
+        /* An open page's guest never moves it. The address is derived from the
+           name AND the set ("Appears in") and the credit, so pinning the name
+           alone did not keep the URL with the creator — and every move parks
+           the old address in `redirects`. The owner's next save files the page
+           under whatever "Appears in" now says. A row with no address yet
+           (before the backfill) still gets its first one. */
+        const guestSave = !!existing && !!existing.url_slug &&
+          (perm === 'all' || perm === 'all-but-ability' || perm === 'tags');
+        if (!guestSave) try {
           const prevAddress = charAddress(existing);
           address = await characterAddress(
             env, c.slug, c,
@@ -11465,7 +11605,12 @@ const app = {
         // as PK so the URL, id and PK all agree.
         const kebab = s => String(s || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
-        c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
+        const storedColl = existing ? parseData(existing) : null;
+        // The kebab id IS the URL, collections have no redirects, and the
+        // editor calls the URL fixed once created — so an existing collection
+        // keeps its id whoever saves, owner included. A legacy row with no
+        // stored id gets one on its first save.
+        c.id = (storedColl && storedColl.id) || kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
         if (!c.id) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         const pkSlug = existing ? existing.slug : c.id;
         if (!existing) {
@@ -11499,12 +11644,15 @@ const app = {
         if (!c.order.length) delete c.order;
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
-        const storedColl = existing ? parseData(existing) : null;
         let editorsAdded = [], editorsUnknown = [];
         if (existing && perm !== 'owner') {
           status = existing.status || 'published';
           c.publicEdit = storedColl.publicEdit;
           c.editors = approvedEditors(storedColl);
+          // An open collection's guest fixes the text, not whose work it is.
+          if (perm === 'all') {
+            if (storedColl.author !== undefined) c.author = storedColl.author; else delete c.author;
+          }
         } else {
           c.publicEdit = sanitizePublicEdit(c.publicEdit, 'collection');
           const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
@@ -11621,6 +11769,11 @@ const app = {
           status = existing.status || 'published';
           s.publicEdit = storedScript.publicEdit;
           s.editors = approvedEditors(storedScript);
+          // So does the credit: an open script's guest fixes the text, not
+          // whose work it is.
+          if (perm === 'all') {
+            if (storedScript.author !== undefined) s.author = storedScript.author; else delete s.author;
+          }
         } else {
           s.publicEdit = sanitizePublicEdit(s.publicEdit, 'script');
           const eds = await sanitizeEditors(env, s.editors, existing ? existing.owner_id : sess.userId);
@@ -11932,8 +12085,9 @@ const app = {
       // ---- admin: roll a page back to an earlier revision ----
       // Body: {type, slug, id} where id is a revision id from
       // /api/admin/revisions. The current version is snapshotted first, so a
-      // rollback can itself be rolled back. Publish status and ownership are
-      // left as they are — only the page content moves.
+      // rollback can itself be rolled back. Publish status, ownership and the
+      // page's settings are left as they are — only the page content moves
+      // (see prepareRestore).
       if (path === '/api/admin/rollback') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -11951,7 +12105,9 @@ const app = {
         let d;
         try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
-        delete d._deleted;
+        // Same rules as the owner's rollback: content back, settings as now.
+        try { d = await prepareRestore(env, type, row, d, url.origin); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: e.status || 400 }); }
         await saveRevision(env, sess, type, row); // make the rollback undoable
         try { await applyRollback(env, type, row, d); }
         catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: 500 }); }
