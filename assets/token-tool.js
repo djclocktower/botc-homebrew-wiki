@@ -614,7 +614,7 @@
   }
 
   /* ---- per-token editor modal ---- */
-  var editorSlug = null;
+  var editorSlug = null, editorDlg = null;
   function openEditor(sl) {
     var c = charBySlug[sl]; if (!c) return;
     editorSlug = sl;
@@ -633,6 +633,11 @@
     renderEditorSave(sl);
     $('tt-editor').classList.add('open');
     document.body.style.overflow = 'hidden';
+    // assets/dialog.js: Tab stays inside the editor, Escape closes it, and
+    // focus goes back to the token's Edit button.
+    if (window.BotcDialog && !editorDlg) {
+      editorDlg = window.BotcDialog.open($('tt-editor'), { initialFocus: '#tte-close', onClose: function () { editorDlg = null; closeEditor(); } });
+    }
     $('tte-preview').innerHTML = '<span class="ph">Drawing…</span>';
     if (editorGizmo) editorGizmo.setAsset(null);
     refreshEditorTf();
@@ -712,6 +717,8 @@
       });
   }
   function closeEditor() {
+    if (editorDlg) { var d = editorDlg; editorDlg = null; d.close(); }
+    if (!editorSlug) return;
     if (editorGizmo) editorGizmo.setAsset(null);
     editorSlug = null;
     $('tt-editor').classList.remove('open');
@@ -767,7 +774,8 @@
       scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
     };
     $('tte-save-go').onclick = saveEditorToken;
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && editorSlug) closeEditor(); });
+    // Escape is dialog.js's when it loaded; this is the fallback.
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && editorSlug && !window.BotcDialog) closeEditor(); });
   }
 
   var edPrevTimer = null, edPrevSeq = 0;

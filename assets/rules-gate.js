@@ -52,16 +52,22 @@
 
     var box = overlay.querySelector('#rules-agree-box');
     var go = overlay.querySelector('#rules-continue');
+    // assets/dialog.js keeps Tab inside the box. Escape does nothing here:
+    // agreeing is the one way on (Cancel is a link off the page).
+    var dlg = window.BotcDialog
+      ? window.BotcDialog.open(overlay, { initialFocus: box, closeOnEscape: false })
+      : null;
     box.addEventListener('change', function () { go.disabled = !box.checked; });
     go.addEventListener('click', function () {
       if (!box.checked) return;
       setAcked();
+      if (dlg) dlg.close();
       overlay.remove();
       document.body.classList.remove('rules-modal-lock');
     });
 
     document.body.classList.add('rules-modal-lock');
-    box.focus();
+    if (!dlg) box.focus();
   }
 
   if (document.readyState === 'loading') {

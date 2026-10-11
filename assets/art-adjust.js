@@ -237,18 +237,22 @@
         }, { passive: false });
 
         /* ── finish ── */
-        var done = false;
+        var done = false, dlg = null;
         function close(value, err) {
           if (done) return;
           done = true;
-          document.removeEventListener('keydown', onKey, true);
+          if (dlg) dlg.close(); else document.removeEventListener('keydown', onKey, true);
           if (back.parentNode) back.parentNode.removeChild(back);
           if (err) reject(err); else resolve(value);
         }
+        // Escape belongs to assets/dialog.js when the page loaded it (which
+        // also keeps Tab inside the panel and returns focus to the button
+        // that opened it); this listener is the fallback for a page that
+        // did not.
         function onKey(e) {
           if (e.key === 'Escape') { e.stopPropagation(); close(null); }
         }
-        document.addEventListener('keydown', onKey, true);
+        if (!global.BotcDialog) document.addEventListener('keydown', onKey, true);
         cancel.addEventListener('click', function () { close(null); });
         back.addEventListener('click', function (e) { if (e.target === back) close(null); });
         ok.addEventListener('click', function () {
@@ -263,7 +267,9 @@
 
         document.body.appendChild(back);
         draw();
-        ok.focus();
+        if (global.BotcDialog) {
+          dlg = global.BotcDialog.open(back, { initialFocus: ok, escapeResult: null, onClose: function () { close(null); } });
+        } else ok.focus();
       });
     });
   }

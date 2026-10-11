@@ -927,18 +927,63 @@
     // scrolls away the bar's bottom is lower by exactly that much. Measured
     // by height, the open menu covered the whole bar, hamburger included,
     // on every draft page.
+    //
+    // It is also capped to the room left under the bar and scrolls inside
+    // itself (overflow-y in styles.css). A logged-in reader's menu is eleven
+    // rows, about 625px, and an iPhone shows 568-664px under the browser's
+    // own bars, so "My Account" (and the unread-mail flag on it) sat below
+    // the bottom of the screen with no way to reach it: a swipe over the
+    // menu scrolled the page behind it instead. The cap is set here rather
+    // than in CSS because the top moves with whatever sits above the bar.
     function positionDrop() {
       var tb = document.querySelector('.topbar');
-      if (tb) drop.style.top = Math.max(0, tb.getBoundingClientRect().bottom) + 'px';
+      if (!tb) return;
+      var top = Math.max(0, tb.getBoundingClientRect().bottom);
+      drop.style.top = top + 'px';
+      var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      drop.style.maxHeight = Math.max(160, vh - top) + 'px';
     }
-    btn.addEventListener('click', function () {
+    btn.setAttribute('aria-controls', 'nav-dropdown');
+    // One way to close it, so the button's state, the menu and
+    // aria-expanded can never disagree.
+    function closeMenu() {
+      drop.classList.remove('open');
+      btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    btn.addEventListener('click', function (e) {
       positionDrop();
       var open = drop.classList.toggle('open');
       btn.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       // Don't auto-focus the search field on open — that pops the mobile
       // keyboard uninvited. The keyboard appears only when the user taps
-      // the search field themselves.
+      // the search field themselves. A click with detail 0 came from Enter
+      // or Space rather than a tap, so a keyboard user is taken to the
+      // first LINK (never the search field) instead of being left behind
+      // on the button.
+      if (open && e && e.detail === 0) {
+        var first = drop.querySelector('a[href]');
+        if (first) first.focus();
+      }
+    });
+    // Escape closes the menu from anywhere and hands focus back to the
+    // button that opened it.
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !drop.classList.contains('open')) return;
+      closeMenu();
+      btn.focus();
+    });
+    // Tabbing out of the menu closes it, for the keyboard only. Focus that
+    // moves nowhere (relatedTarget null) is left alone: iOS Safari does not
+    // focus a link on tap, so tapping a search result after typing in the
+    // in-menu box blurs the box with relatedTarget null, and closing the
+    // menu there would hide the result before the tap's click landed.
+    // Taps outside the menu are handled by the document click below.
+    drop.addEventListener('focusout', function (e) {
+      var to = e.relatedTarget;
+      if (!to || drop.contains(to) || btn.contains(to)) return;
+      closeMenu();
     });
     var navSearch = document.getElementById('nav-search-input');
     var topSearch = document.getElementById('search-input');
@@ -948,10 +993,15 @@
         topSearch.dispatchEvent(new Event('input'));
       });
       navSearch.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+        if (e.key === 'Escape') { closeMenu(); btn.focus(); }
       });
     }
     window.addEventListener('resize', positionDrop);
+    // The phone keyboard opening (from the in-menu search) shrinks the
+    // visual viewport without a window resize on iOS.
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', function () {
+      if (drop.classList.contains('open')) positionDrop();
+    });
     // The bar moves while whatever sits above it scrolls away; keep the
     // open menu hanging off it.
     window.addEventListener('scroll', function () {
@@ -959,7 +1009,7 @@
     }, { passive: true });
     document.addEventListener('click', function (e) {
       if (!btn.contains(e.target) && !drop.contains(e.target)) {
-        drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
+        closeMenu();
       }
     });
   })();
