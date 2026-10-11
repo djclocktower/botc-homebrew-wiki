@@ -524,6 +524,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // What the Worker said this account may do here, so updateButtons() can
     // label itself honestly however many times it re-runs.
     var editRole = 'owner';
+    function lockAuthor(el){
+      if (!el || el.readOnly) return;
+      el.readOnly = true;
+      el.title = 'The credit stays with the collection\u2019s creator.';
+      var note = document.createElement('div');
+      note.style.cssText = 'margin-top:4px;font-size:.84rem;color:#726348';
+      note.textContent = 'Only the collection\u2019s creator can change the author.';
+      el.parentNode.insertBefore(note, el.nextSibling);
+    }
     function applyEditMode(mode, isOwner){
       editRole = mode || '';
       renderEditStatus();
@@ -552,6 +561,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (mode === 'all'){
         // updateButtons() already labels Publish correctly for the stored
         // status; only the draft and delete buttons have to go.
+        // The credit is the creator's too: the Worker keeps the stored author
+        // whatever an open page's guest posts, so the box is locked.
+        lockAuthor($('pc-author'));
         pubStatus('ok', 'Anyone with an account can edit this collection. ' +
           'Publishing and deleting stay with its creator.');
         $('pc-draft').style.display = 'none';

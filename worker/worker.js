@@ -43,6 +43,9 @@
  *   POST /api/report-broken-link -> the 404 page's "this looks like a mistake"
  *                                box; same inbox as /api/contact, but works
  *                                without an account (rate-limited per IP)
+ *   POST /api/client-error    -> the browser half of the problem log (the
+ *                                beacon at the end of site.js); no login,
+ *                                always answers an empty 204
  *   GET  /api/announcement    -> current site-wide announcement (public)
  *   GET  /api/site-text       -> the site's rewritten system text, as a map
  *                                site.js applies in the browser (public,
@@ -215,7 +218,14 @@
  *   POST /api/admin/purge-images -> delete selected orphaned images
  *   GET  /api/admin/broken-refs  -> scripts/collections pointing at missing chars
  *   POST /api/admin/clean-refs   -> strip broken refs from one page
- *   GET  /api/admin/backups   -> list nightly R2 backups (dates + tables)
+ *   GET  /api/admin/backups   -> list nightly R2 backups (dates + tables, and
+ *                                the newest nights' manifests: row counts, warnings)
+ *   GET  /api/admin/problems  -> the problem log (?kind=&show=open|fixed|all),
+ *                                plus this week's count per kind
+ *   POST /api/admin/problem   -> {fp, action:'fix'|'forget'}
+ *   POST /api/admin/problem-redirect -> send a missing /c/ address to a
+ *                                character ({path, to}), or take it back
+ *                                ({path, undo:true})
  *   GET  /api/admin/backup-file  -> download one backup table (?date=&table=)
  *   POST /api/admin/restore-page -> restore one page from a backup date
  *   GET  /api/admin/pages     -> page list for bulk actions
@@ -1207,9 +1217,15 @@ async function sendEmail(env, to, subject, html) {
       },
       body: JSON.stringify({ from, to: [to], subject, html })
     });
-    if (!res.ok) return { ok: false, error: 'Email delivery failed (' + res.status + ').' };
+    if (!res.ok) {
+      // Into the problem log (nothing about the recipient): password-reset
+      // and verification mail failing is invisible from the dashboard otherwise.
+      await recordProblem(env, null, { kind: 'email', route: 'sendEmail', message: 'Email delivery failed (' + res.status + ')' });
+      return { ok: false, error: 'Email delivery failed (' + res.status + ').' };
+    }
     return { ok: true };
   } catch {
+    await recordProblem(env, null, { kind: 'email', route: 'sendEmail', message: 'Email delivery failed (no answer from the email service)' });
     return { ok: false, error: 'Email delivery failed.' };
   }
 }
@@ -2347,13 +2363,12 @@ function sanitizeBoxes(boxes) {
 // anything that names nobody. `mirrored`/`mirroredFrom` are deliberately NOT
 // kept: those are added on read, and a client must never be able to fake one.
 const JINX_MAX = 60;
-/* A suggestion is the whole page as somebody else would have saved it, and
-   approving one writes it through applyRollback() — which, like a rollback,
-   stores the blob as given. So everything the owner alone decides is pinned
-   back to the stored page here (at submission AND again at approval), and the
-   fields the save handlers clean are cleaned the same way, or approving a
-   suggestion could slip the suggester onto the page's editor list or store
-   a jinx list no save would have accepted. */
+/* A suggestion is the whole page as somebody else would have saved it. So
+   everything the owner alone decides is pinned back to the stored page here
+   at submission, and the fields the save handlers clean are cleaned the same
+   way, or a suggestion could slip the suggester onto the page's editor list
+   or store a jinx list no save would have accepted. Approval runs it again,
+   with the save's checks on top, through prepareRestore(). */
 // What a failed write tells the reader. A message written FOR them (an
 // error thrown with `public: true`) is shown; anything else — a D1 error
 // with table and column names in it — goes to the log and the reader gets
@@ -2501,27 +2516,39 @@ async function listWikiPages(env, parentType, parentSlug, opts = {}) {
 }
 
 // Find the page a comment is aimed at and work out who may moderate it.
-// Returns null when the page doesn't exist or isn't publicly visible.
-async function commentTarget(env, type, slug) {
+// Returns null when the page doesn't exist or isn't publicly visible — for a
+// wiki page that includes a set that is not public (wikiParentLive), so a
+// hidden page has no public thread and takes no new comments.
+// {moderate: true} is the owner's and the admins' door: it needs only a page
+// that exists (and, for a character/script/collection, is not deleted), so a
+// comment can still be removed or pinned after the page went to drafts or
+// switched its comments off.
+async function commentTarget(env, type, slug, opts = {}) {
   if (!COMMENTABLE.includes(type) || !slug) return null;
   if (type === 'wikipage') {
     await ensurePagesTable(env);
-    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, data FROM pages WHERE slug=?')
+    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, data, parent_type, parent_slug FROM pages WHERE slug=?')
       .bind(slug).first().catch(() => null);
-    if (!row || row.status !== 'published') return null;
-    if (parseData(row).comments === false) return null;
+    if (!row) return null;
+    if (!opts.moderate) {
+      if (row.status !== 'published') return null;
+      if (parseData(row).comments === false) return null;
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+      if (!wikiParentLive(parent)) return null;
+    }
     return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/p/' + row.slug };
   }
   if (type === 'news') {
     await ensureNewsTable(env);
     const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id FROM news WHERE slug=?')
       .bind(slug).first().catch(() => null);
-    if (!row || row.status !== 'published') return null;
+    if (!row || (!opts.moderate && row.status !== 'published')) return null;
     return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/news/' + row.slug };
   }
   let row = await getEntityRow(env, type, slug);
   if (!row && type === 'collection') row = await findCollectionRow(env, slug);
-  if (!row || row.status !== 'published') return null;
+  if (!row) return null;
+  if (opts.moderate ? row.status === 'deleted' : row.status !== 'published') return null;
   // Collection URLs use the kebab id from the JSON, never the PK slug —
   // legacy rows have display-string slugs like "The Academy".
   const path = type === 'character' ? '/c/' + charAddress(row)
@@ -3242,8 +3269,41 @@ async function wikiPageAccess(env, sess, row, parent) {
   if (await isProtected(env, parent.type, parent.slug)) return '';
   if (mode === 'approved') return isApprovedEditor(sess, parent.data) ? 'approved' : '';
   // 'all' opens a published page; a draft is still its owner's and its named
-  // editors' alone, exactly as a character draft is.
-  return (row.status || 'published') === 'published' ? 'all' : '';
+  // editors' alone, exactly as a character draft is. So is a page whose set is
+  // not public (wikiParentLive): it is hidden, and 'all' opens no hidden page.
+  return (row.status || 'published') === 'published' && wikiParentLive(parent) ? 'all' : '';
+}
+
+/* A set's page is public only while its set is: an unpublished or deleted
+   script/collection takes its pages with it, exactly as the listings (search,
+   /api/wiki-pages, the creator page) already did. A standalone article's
+   virtual parent is always published. A missing parent — a purged set —
+   counts as not live. */
+function wikiParentLive(parent) {
+  return !!parent && (parent.type === ARTICLE_PARENT || (parent.status || 'published') === 'published');
+}
+
+/* May this session READ this wiki page? Public when the page and its set are
+   both published. Otherwise its owner (and admins), and — while the set
+   still exists — the approved editors the set's owner named. Never an 'all'
+   guest: a hidden page is hidden from them as a draft is. Used by the /p/
+   route and GET /api/wiki-page, so the two cannot disagree. */
+async function wikiPageVisible(env, sess, row, parent) {
+  if ((row.status || 'published') === 'published' && wikiParentLive(parent)) return true;
+  if (canEditRow(sess, row)) return true;
+  if (!parent || parent.status === 'deleted') return false;
+  const a = await wikiPageAccess(env, sess, row, parent);
+  return a === 'owner' || a === 'approved';
+}
+
+/* May a reader who does not own this row see its history? A published page's
+   history is public; a wiki page's only while its set is too (the history
+   carries the page's text, so it must not outlive the page's own 404). */
+async function historyPublic(env, type, row) {
+  if ((row.status || 'published') !== 'published') return false;
+  if (type !== 'wikipage') return true;
+  const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+  return wikiParentLive(parent);
 }
 
 /* May this session add a page under this parent? Its owner, an admin, or an
@@ -3710,7 +3770,7 @@ async function revisableRow(env, type, slug) {
   if (type === 'wikipage') {
     await ensurePagesTable(env);
     const row = await env.DB.prepare(
-      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at FROM pages WHERE slug=?'
+      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at, parent_type, parent_slug, author FROM pages WHERE slug=?'
     ).bind(slug).first().catch(() => null);
     return row || null;
   }
@@ -3720,22 +3780,119 @@ async function revisableRow(env, type, slug) {
   return row || null;
 }
 
+/* ---- putting a version back: rollback and suggestion approval ----
+
+   Rollback (the owner's and the admins') and approving a suggestion put
+   CONTENT back. The page's settings are not content: who may edit it, the
+   admins' Curata mark, the creator's opt-outs, a moderation note. Those
+   always come from the row as it stands NOW, never from the version being
+   restored — or rolling back vandalism reopened the page to the vandal, and
+   an owner could get Curata back after an admin took it away by restoring
+   any version from before. The restored content then passes the same checks
+   a save does (the team list, name and ability, the official-character
+   refusal, the sanitizers, and the publish bar on a live page), because a
+   suggestion is text a stranger wrote and an old revision may predate a rule.
+
+   Throws a `public` error with a `status` when the version cannot go back;
+   callers run this BEFORE saveRevision so a refusal leaves no snapshot. */
+const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', '_draftNote'];
+
+function restoreRefusal(msg) {
+  return Object.assign(new Error(msg), { public: true, status: 400 });
+}
+
+async function prepareRestore(env, type, row, snapshot, origin, { source = 'rollback' } = {}) {
+  const now = parseData(row);
+  const d = foldLegacyCurata({ ...snapshot });
+  for (const k of ['_deleted', 'appearsInFrom', 'renameFrom', 'status', 'baseUpdatedAt']) delete d[k];
+  for (const k of RESTORE_PINNED_KEYS) {
+    if (now[k] !== undefined) d[k] = now[k]; else delete d[k];
+  }
+  /* `tagsBy` says whose the tags are, so it travels with the tags. A rollback
+     restores the snapshot's tags, and with them the snapshot's mark; pinning
+     today's would call an owner's old tags a guest's (or the reverse) and
+     flip the tags-open default. A suggestion's tags are a stranger's text
+     on top of today's page, so there it is today's mark, as at submission. */
+  if (source === 'suggestion') {
+    if (now.tagsBy !== undefined) d.tagsBy = now.tagsBy; else delete d.tagsBy;
+  }
+
+  if (type === 'character') {
+    d.slug = row.slug;
+    d.team = String(d.team || '').trim().toLowerCase();
+    if (d.team === 'traveler') d.team = 'traveller';
+    if (!CHARACTER_TEAMS.includes(d.team)) {
+      throw restoreRefusal('That version has no valid team (it needs one of ' +
+        CHARACTER_TEAMS.join(', ') + '). Fix it in the editor instead.');
+    }
+    if (!String(d.name || '').trim() || !String(d.ability || '').trim()) {
+      throw restoreRefusal('That version is missing its name or ability.');
+    }
+    // The same door /api/character keeps: no page here may BE an official
+    // character. A failed roles load grades nothing, exactly as it does there.
+    const graded = OfficialRoles.officialMatch(
+      await loadOfficialRoles(env, origin), { name: d.name, ability: d.ability });
+    if (graded && graded.match === 'exact') throw restoreRefusal(OfficialRoles.officialRefusal(graded.role));
+    d.jinxes = sanitizeJinxes(d.jinxes);
+    if (!d.jinxes.length) delete d.jinxes;
+    d.related = sanitizeRelated(d.related);
+    if (!d.related.length) delete d.related;
+    d.artScale = Render.artScaleValue(d.artScale);
+    if (!d.artScale) delete d.artScale;
+    // A live page stays live and complete. Refused rather than demoted to a
+    // draft: "Put this version back" taking the page down as a side effect
+    // would surprise its owner, and a guest's save is refused for the same
+    // reason. A draft has no bar to meet.
+    if ((row.status || 'published') === 'published') {
+      const needed = Classify.missingForPublish(d);
+      if (needed.length) {
+        throw restoreRefusal('That version is missing ' + Classify.listPhrase(needed) +
+          ', which a published page needs. Move the page to drafts first, or add it in the editor.');
+      }
+    }
+  } else if (type === 'script') {
+    d.slug = row.slug;
+    sanitizePageFields(d, 'scripts/' + row.slug);
+  } else if (type === 'collection') {
+    // The kebab id IS the collection's URL, and collections have no redirects.
+    d.slug = row.slug;
+    d.id = now.id || d.id || row.slug;
+    sanitizePageFields(d, 'collections/' + d.id);
+  } else if (type === 'wikipage') {
+    // Parentage is frozen at creation (and moved only by an admin's
+    // page-to-article, which writes the columns), so the row's columns win.
+    if (row.parent_type !== undefined) d.parentType = row.parent_type;
+    if (row.parent_slug !== undefined) d.parentSlug = row.parent_slug;
+    d.slug = row.slug;
+    sanitizeWikiFields(d, 'pages/' + row.slug + '-', 'pages/' + row.slug);
+    d.title = String(d.title || row.name || row.slug).slice(0, 160);
+  }
+  return d;
+}
+
 // Writes a revision's data back onto its row. Split out because rollback and
 // the owner-facing version of it are the same operation with different gates.
+// Always pass `d` through prepareRestore() first.
 async function applyRollback(env, type, row, d) {
   if (type === 'character') {
     if (!d.name || !d.team) throw Object.assign(new Error('That revision is missing required fields.'), { public: true });
     await env.DB.prepare(
       `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
     ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
+    // The restored name and set ask for an address, exactly as a save's do;
+    // a move leaves its 301 behind.
+    try {
+      const addr = await characterAddress(env, row.slug, d, row.owner_id, charAddress(row));
+      await setCharAddress(env, row.slug, addr);
+    } catch (e) { console.error('[restore] address not recomputed:', e && e.message); }
   } else if (type === 'collection') {
     await env.DB.prepare(
       `UPDATE collections SET display_name=?, data=?, updated_at=datetime('now') WHERE slug=?`
     ).bind(d.displayName || row.name || row.slug, JSON.stringify(d), row.slug).run();
   } else if (type === 'wikipage') {
     await env.DB.prepare(
-      `UPDATE pages SET title=?, data=?, updated_at=datetime('now') WHERE slug=?`
-    ).bind(d.title || row.name || row.slug, JSON.stringify(d), row.slug).run();
+      `UPDATE pages SET title=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
+    ).bind(d.title || row.name || row.slug, d.author || null, JSON.stringify(d), row.slug).run();
   } else {
     await env.DB.prepare(
       `UPDATE scripts SET name=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
@@ -5313,8 +5470,11 @@ async function featuredArticles(env, limit, opts = {}) {
     let hidden = r.status === 'published' ? '' : 'draft';
     if (hidden && !opts.all) continue;
     const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-    // Same rule as the author listing: a page goes down with its parent.
-    if (!hidden && parent && parent.status === 'deleted') hidden = 'parent-deleted';
+    // Same rule as the author listing: a page goes down with its parent. A
+    // set that is gone altogether reads as deleted, not as a draft.
+    if (!hidden && !wikiParentLive(parent)) {
+      hidden = (!parent || parent.status === 'deleted') ? 'parent-deleted' : 'parent-draft';
+    }
     if (hidden && !opts.all) continue;
     const d = parseData(r);
     articles.push({
@@ -5486,15 +5646,102 @@ async function backupRetry(what, fn) {
   throw new Error(what + ': ' + ((last && last.message) || String(last || 'error')));
 }
 
+// Every table the Worker or migration/schema.sql creates, most important
+// first (a cron run that runs out of time has saved these by then). A new
+// CREATE TABLE must be added here: migration/tests/backup.test.mjs reads both
+// files and fails on any table this list does not name.
+//   core: true    created by schema.sql, so a missing one is a FAILURE
+//   (no core)     created lazily the first time its feature is used; until
+//                 then it is "absent", which is not a failure
+//   backup: false deliberately not backed up, with the reason in `why`
+// Before this list existed the backup was a hand-kept array that had quietly
+// missed redirects, favorites, suggestions, modmail_replies and site_text.
+const DATA_TABLES = [
+  { name: 'characters', core: true },
+  { name: 'collections', core: true },
+  { name: 'scripts', core: true },
+  { name: 'pages' },
+  { name: 'news' },
+  { name: 'users', core: true },
+  { name: 'settings', core: true },
+  { name: 'redirects' },
+  { name: 'favorites' },
+  { name: 'suggestions' },
+  { name: 'site_text' },
+  { name: 'messages', core: true },
+  { name: 'modmail_replies' },
+  { name: 'comments' },
+  { name: 'comment_reports' },
+  { name: 'dms' },
+  { name: 'dm_blocks' },
+  { name: 'dm_reports' },
+  { name: 'activity_log', core: true },
+  { name: 'revisions', core: true },
+  { name: 'page_views', core: true },
+  { name: 'rate_limits', backup: false, why: 'spent rate-limit counters, rebuilt on use' },
+  { name: 'problem_log', backup: false, why: 'operational log of what went wrong; holds stack traces, not content' }
+];
+// UTF-8 length of a string without encoding a copy of it (a backup part is
+// up to a few MB). Surrogate pairs count once, as 4 bytes.
+function utf8Length(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) { n += 4; i++; }
+    else n += 3;
+  }
+  return n;
+}
+// sqlite_master names that are the database's own, not ours.
+const SYSTEM_TABLE_RE = /^(sqlite_|_cf_|d1_)/i;
+// How far a core table may shrink overnight before the run says so. A table
+// that lost half its rows in a day is the one backup event worth interrupting
+// the owner for: it is what a bad bulk delete looks like.
+const BACKUP_SHRINK_MIN_ROWS = 50;
+const BACKUP_SHRINK_RATIO = 0.5;
+// Snapshots kept, and how many old files one run may delete (cron time stays
+// bounded; a backlog is finished off on the nights after).
+const BACKUP_KEEP_DAYS = 30;
+const BACKUP_PRUNE_MAX = 5000;
+
+// The tables a run backs up: the registry, then anything sqlite_master knows
+// that the registry does not (backed up too, and flagged as `unregistered` in
+// the manifest so a forgotten registration is visible rather than lost).
+async function backupTableList(env) {
+  const list = DATA_TABLES.filter(t => t.backup !== false).map(t => ({ name: t.name, core: !!t.core }));
+  const known = new Set(DATA_TABLES.map(t => t.name));
+  const unregistered = [];
+  try {
+    const { results } = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    for (const r of results || []) {
+      const name = String((r && r.name) || '');
+      if (!name || known.has(name) || SYSTEM_TABLE_RE.test(name)) continue;
+      // Interpolated into SQL and into an R2 key below, so only plain names.
+      if (!/^[a-z_][a-z0-9_]{0,39}$/i.test(name)) continue;
+      unregistered.push(name);
+      list.push({ name, core: false, unregistered: true });
+    }
+  } catch { /* fall back to the registry alone */ }
+  return { list, unregistered };
+}
+
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'pages', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
+  const startedAt = new Date().toISOString();
+  const { list: tables, unregistered } = await backupTableList(env);
   const saved = {};
   const failed = {};
-  for (const t of tables) {
+  const manifestTables = {};
+  for (const entry of tables) {
+    const t = entry.name;
     let rows = 0;
     let written = 0;
+    let part = 0;
+    let bytes = 0;
+    const writtenParts = [];
     try {
       // Paged by rowid rather than SELECT *. The whole table used to be
       // materialised in the isolate and then stringified — two copies in a
@@ -5502,7 +5749,6 @@ async function runBackup(env) {
       // page means ~100k rows at a few KB each once the wiki has a few
       // thousand characters, which cannot be read into a Worker at all.
       let after = 0;
-      let part = 0;
       let limit = BACKUP_CHUNK;
       let pieces = [];
       let pending = 0;
@@ -5513,9 +5759,14 @@ async function runBackup(env) {
           ? `backups/${stamp}/${t}.json`
           : `backups/${stamp}/${t}.part${part}.json`;
         const body = '[' + pieces.join(',') + ']';
-        await backupRetry('writing ' + name.slice(name.lastIndexOf('/') + 1), () =>
+        const stored = await backupRetry('writing ' + name.slice(name.lastIndexOf('/') + 1), () =>
           env.ART.put(name, body, { httpMetadata: { contentType: 'application/json' } }));
+        // R2 answers a put with the object it stored, size included; only
+        // count the bytes ourselves when it does not say.
+        const size = stored && typeof stored.size === 'number' ? stored.size : utf8Length(body);
+        writtenParts.push({ key: name, size });
         part++;
+        bytes += size;
         written += held;
         pieces = [];
         pending = 0;
@@ -5554,8 +5805,27 @@ async function runBackup(env) {
           await env.ART.delete(key);
         }
       } catch { /* tidying is best-effort */ }
+      // Read back: every part this run wrote is still there, at the size it
+      // was written. Mostly a guard against a lost race with the tidy above
+      // (two runs on the same day), which would otherwise leave a backup
+      // that reads back short with nothing to say so.
+      for (let i = 0; i < writtenParts.length; i++) {
+        const p = writtenParts[i];
+        const head = await backupRetry('checking ' + p.key.slice(p.key.lastIndexOf('/') + 1), () => env.ART.head(p.key));
+        if (!head) throw new Error(`check failed: part ${i} missing`);
+        if (typeof head.size === 'number' && head.size !== p.size) {
+          throw new Error(`check failed: part ${i} size ${head.size}, written ${p.size}`);
+        }
+      }
       saved[t] = rows;
+      manifestTables[t] = { status: 'ok', rows, parts: part, bytes };
     } catch (e) {
+      // A lazily created table that was never created is "absent": nothing to
+      // back up yet, and not a failure. A core table missing IS one.
+      if (!entry.core && !written && /no such table/i.test((e && e.message) || '')) {
+        manifestTables[t] = { status: 'absent', rows: 0, parts: 0, bytes: 0 };
+        continue;
+      }
       // A failure here used to be recorded as "skipped" and returned inside a
       // successful-looking result, so a backup that had silently stopped
       // working looked exactly like one that was fine. Record it as a failure,
@@ -5563,18 +5833,53 @@ async function runBackup(env) {
       const msg = ((e && e.message) || 'error') + (written ? ` (${written} rows were saved before it stopped)` : '');
       saved[t] = written;
       failed[t] = msg.slice(0, 500);
+      manifestTables[t] = { status: 'failed', rows: written, parts: part, bytes, error: failed[t] };
       console.error(`[backup] ${stamp} ${t} FAILED: ${msg}`);
+      await recordProblem(env, null, { kind: 'cron', route: 'backup', message: t + ': ' + msg });
     }
   }
-  const cutoff = Date.now() - 30 * 86400000;
+
+  // Compare with last night. Only core tables, only ones that backed up
+  // cleanly tonight (a failure is already reported), and only from a size
+  // where a halving means something.
+  const warnings = [];
   try {
-    const listed = await env.ART.list({ prefix: 'backups/', limit: 1000 });
-    for (const obj of listed.objects) {
-      const m = obj.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\//);
-      if (m && Date.parse(m[1]) < cutoff) await env.ART.delete(obj.key);
+    const yesterday = new Date(Date.parse(stamp) - 86400000).toISOString().slice(0, 10);
+    const prev = await env.ART.get(`backups/${yesterday}/_manifest.json`);
+    const before = prev ? await prev.json() : null;
+    if (before && before.tables) {
+      for (const entry of tables) {
+        const now = manifestTables[entry.name];
+        const then = before.tables[entry.name];
+        if (!entry.core || !now || now.status !== 'ok' || !then || then.status !== 'ok') continue;
+        if (then.rows >= BACKUP_SHRINK_MIN_ROWS && now.rows < then.rows * BACKUP_SHRINK_RATIO) {
+          warnings.push(`${entry.name}: ${now.rows} rows, yesterday ${then.rows}`);
+        }
+      }
     }
-  } catch { /* pruning is best-effort */ }
+  } catch { /* no usable manifest for yesterday: nothing to compare with */ }
+  for (const w of warnings) {
+    await recordProblem(env, null, { kind: 'cron', route: 'backup check', message: 'A table shrank sharply overnight: ' + w });
+  }
+
   const failedTables = Object.keys(failed);
+  const skipped = {};
+  for (const t of DATA_TABLES) if (t.backup === false) skipped[t.name] = t.why || '';
+  // Written LAST, after every table: a manifest that exists says the run got
+  // to the end. Its row counts are what tomorrow's shrink check reads.
+  const manifest = {
+    v: 1, date: stamp, startedAt, finishedAt: new Date().toISOString(),
+    ok: failedTables.length === 0, tables: manifestTables, unregistered, skipped, warnings
+  };
+  try {
+    await backupRetry('writing _manifest.json', () => env.ART.put(`backups/${stamp}/_manifest.json`,
+      JSON.stringify(manifest), { httpMetadata: { contentType: 'application/json' } }));
+  } catch (e) {
+    console.error(`[backup] ${stamp} manifest FAILED: ${(e && e.message) || e}`);
+    await recordProblem(env, null, { kind: 'cron', route: 'backup', message: 'writing the manifest: ' + ((e && e.message) || 'error') });
+  }
+
+  await pruneBackups(env);
   // Recorded in settings so the dashboard can show it. A cron backup runs
   // inside ctx.waitUntil() with nobody reading the return value, so without
   // this a broken nightly backup is invisible until the day it is needed.
@@ -5584,10 +5889,312 @@ async function runBackup(env) {
        ON CONFLICT(key) DO UPDATE SET value=excluded.value`
     ).bind(JSON.stringify({
       date: stamp, at: new Date().toISOString(),
-      ok: failedTables.length === 0, failed
+      ok: failedTables.length === 0, failed, warnings
     })).run();
   } catch { /* the backup itself matters more than the bookkeeping */ }
-  return { date: stamp, saved, failed, ok: failedTables.length === 0 };
+  return { date: stamp, saved, failed, ok: failedTables.length === 0, warnings, manifest };
+}
+
+// Old snapshots out, a page of the listing at a time. It used to read ONE
+// page of 1,000 keys, and a month of backups is far more files than that, so
+// the oldest days were never reached and nothing old was ever deleted. R2
+// lists keys in order and every key starts with its date, so the walk stops
+// at the first day still worth keeping. The keys are collected first and
+// deleted after, so deleting cannot shift the listing under the cursor.
+async function pruneBackups(env) {
+  const cutoff = Date.now() - BACKUP_KEEP_DAYS * 86400000;
+  try {
+    const doomed = [];
+    let cursor;
+    walk: do {
+      const listed = await env.ART.list({ prefix: 'backups/', limit: 1000, ...(cursor ? { cursor } : {}) });
+      for (const obj of listed.objects || []) {
+        const m = obj.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\//);
+        if (!m) continue;
+        if (Date.parse(m[1]) >= cutoff) break walk;
+        doomed.push(obj.key);
+        if (doomed.length >= BACKUP_PRUNE_MAX) break walk;
+      }
+      cursor = listed.truncated ? listed.cursor : null;
+    } while (cursor);
+    // R2 deletes up to 1,000 keys in one call. One call per key was up to
+    // BACKUP_PRUNE_MAX subrequests in a single cron run, past what one
+    // invocation is allowed.
+    for (let i = 0; i < doomed.length; i += 1000) await env.ART.delete(doomed.slice(i, i + 1000));
+    return doomed.length;
+  } catch (e) {
+    console.error('[backup] prune failed:', (e && e.message) || e);
+    await recordProblem(env, null, { kind: 'cron', route: 'backup prune', message: (e && e.message) || 'error' });
+    return 0;
+  }
+}
+
+// ---- the problem log: what went wrong, for the owner ----
+// One row per DISTINCT problem (a fingerprint of kind + place + message with
+// the numbers taken out), counting how often it happened. Fed by a handful of
+// sources an admin can act on — crashes, 5xx answers, HTML 404s on the
+// Worker's own routes, the nightly jobs, email that did not send, and the
+// browser beacon — and read by the "Problems this week" card on the
+// dashboard's Health tab. See "The problem log" in CLAUDE.md.
+//
+// Do not sprinkle recordProblem() into every catch: a source belongs here
+// only when an admin can do something about what it reports.
+//
+// Nothing personal is stored: no IP, no user agent, no cookie, no request
+// body, and no query string anywhere (reset and verification tokens live in
+// query strings).
+let _problemReady = false;
+async function ensureProblemTable(env) {
+  if (_problemReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS problem_log (
+       fp         TEXT PRIMARY KEY,
+       kind       TEXT NOT NULL,
+       route      TEXT NOT NULL,
+       message    TEXT NOT NULL,
+       sample     TEXT,
+       detail     TEXT,
+       count      INTEGER NOT NULL DEFAULT 1,
+       first_seen TEXT NOT NULL DEFAULT (datetime('now')),
+       last_seen  TEXT NOT NULL DEFAULT (datetime('now')),
+       fixed_at   TEXT,
+       reopened   INTEGER NOT NULL DEFAULT 0
+     )`
+  ).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_problem_seen ON problem_log(last_seen DESC)').run();
+  _problemReady = true;
+}
+const PROBLEM_KINDS = ['crash', 'server', 'notfound', 'browser', 'cron', 'email'];
+// Kinds that light the Health tab badge. 404s are too noisy to nag about, and
+// a browser report is the one kind an anonymous stranger can create — a badge
+// anybody can keep red is a badge the owner learns to ignore.
+const PROBLEM_BADGE_KINDS = ['crash', 'server', 'cron', 'email'];
+// Throttle, per isolate. A fingerprint writes at most once a minute (the
+// sightings in between ride along as its count); the isolate writes at most
+// PROBLEM_WRITES_PER_MIN rows a minute in all; and the two kinds a stranger
+// can mint new fingerprints for are capped per minute and per UTC day, so a
+// scanner walking random addresses cannot flood the table. Counts lost when
+// an isolate dies are fine: this is a signal, not accounting.
+const PROBLEM_WRITE_GAP_MS = 60000;
+const PROBLEM_WRITES_PER_MIN = 30;
+const PROBLEM_BUF_MAX = 300;
+const PROBLEM_NEW_NOTFOUND_PER_MIN = 10;
+// crash and server are capped too: their route can carry a raw path, and a
+// bug that echoes the address into its message would otherwise let anybody
+// mint a new row per request.
+const PROBLEM_NEW_PER_DAY = { notfound: 200, browser: 50, crash: 100, server: 100 };
+// Kept rows: 30 days since last seen, fixed ones 14 days after the fix, and
+// beyond PROBLEM_ROWS_MAX the least-seen 404 and browser rows go first.
+const PROBLEM_ROWS_MAX = 1000;
+const _problemBuf = new Map();     // fp -> { n, lastWrite }
+let _problemMinute = { at: 0, writes: 0, newNotfound: 0 };
+let _problemDay = { day: '', n: {} };
+
+// A small synchronous FNV-1a, two passes with different seeds -> 16 hex.
+// crypto.subtle is async and far more than a dedupe key needs.
+function problemHash(str) {
+  const pass = seed => {
+    let h = seed >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  };
+  return pass(0x811c9dc5) + pass(0x01000193 ^ 0x5bd1e995);
+}
+// The query string and fragment come off every URL in a piece of text.
+function stripUrlQueries(text) {
+  return String(text == null ? '' : text).replace(/(https?:\/\/[^\s?#)"'<>]+)[?#][^\s)"'<>]*/g, '$1');
+}
+// Where a problem happened, as a pattern: every character page is one place.
+function problemRoute(path) {
+  const p = String(path || '/').split(/[?#]/)[0] || '/';
+  const m = p.match(/^\/(c|s|collection|p|news|u)\/./);
+  if (m) return m[1] === 'c' ? '/c/:page' : '/' + m[1] + '/:slug';
+  return p.slice(0, 120);
+}
+function problemFingerprint(kind, route, message) {
+  const norm = String(message || '')
+    .replace(/\b(?=[0-9a-f-]*\d)[0-9a-f-]{8,}\b/gi, '*')   // ids, hashes, uuids
+    .replace(/\d+/g, '#')
+    .slice(0, 200);
+  return kind + ':' + problemHash(kind + '|' + route + '|' + norm);
+}
+// Whether this sighting writes now, and with what count. Synchronous, so the
+// caller never waits on it.
+function problemTake(fp, kind) {
+  const now = Date.now();
+  if (now - _problemMinute.at >= 60000) _problemMinute = { at: now, writes: 0, newNotfound: 0 };
+  const day = new Date(now).toISOString().slice(0, 10);
+  if (_problemDay.day !== day) _problemDay = { day, n: {} };
+  let e = _problemBuf.get(fp);
+  if (e) {
+    // Most recently seen last, so the oldest is the first key.
+    _problemBuf.delete(fp);
+    _problemBuf.set(fp, e);
+  } else {
+    const cap = PROBLEM_NEW_PER_DAY[kind];
+    if (cap && (_problemDay.n[kind] || 0) >= cap) return 0;
+    if (kind === 'notfound' && _problemMinute.newNotfound >= PROBLEM_NEW_NOTFOUND_PER_MIN) return 0;
+    if (kind === 'notfound') _problemMinute.newNotfound++;
+    if (cap) _problemDay.n[kind] = (_problemDay.n[kind] || 0) + 1;
+    e = { n: 0, lastWrite: -Infinity };
+    _problemBuf.set(fp, e);
+    if (_problemBuf.size > PROBLEM_BUF_MAX) _problemBuf.delete(_problemBuf.keys().next().value);
+  }
+  e.n++;
+  if (now - e.lastWrite < PROBLEM_WRITE_GAP_MS) return 0;
+  if (_problemMinute.writes >= PROBLEM_WRITES_PER_MIN) return 0;
+  _problemMinute.writes++;
+  const n = e.n;
+  e.n = 0;
+  e.lastWrite = now;
+  return n;
+}
+async function writeProblem(env, row, n) {
+  await ensureProblemTable(env);
+  await env.DB.prepare(
+    `INSERT INTO problem_log (fp, kind, route, message, sample, detail, count) VALUES (?,?,?,?,?,?,?)
+     ON CONFLICT(fp) DO UPDATE SET count = problem_log.count + excluded.count,
+       last_seen = datetime('now'), sample = excluded.sample,
+       detail = COALESCE(excluded.detail, problem_log.detail),
+       reopened = CASE WHEN problem_log.fixed_at IS NOT NULL THEN 1 ELSE problem_log.reopened END,
+       fixed_at = NULL`
+  ).bind(row.fp, row.kind, row.route, row.message, row.sample, row.detail, n).run();
+}
+// Never throws and never holds a response up: with a ctx the write rides
+// ctx.waitUntil(); without one (cron, sendEmail) the returned promise is
+// safe to await and resolves whatever happens.
+function recordProblem(env, ctx, p) {
+  try {
+    if (!env || !env.DB || !p || PROBLEM_KINDS.indexOf(p.kind) === -1) return Promise.resolve();
+    const kind = p.kind;
+    const route = kind === 'notfound'
+      ? String(p.route || '/').split(/[?#]/)[0].toLowerCase().slice(0, 200)
+      : problemRoute(p.route);
+    const message = stripUrlQueries(p.message || 'error').slice(0, 300) || 'error';
+    const fp = problemFingerprint(kind, route, message);
+    const n = problemTake(fp, kind);
+    if (!n) return Promise.resolve();
+    const row = {
+      fp, kind, route, message,
+      sample: p.sample ? stripUrlQueries(String(p.sample).split(/[?#]/)[0]).slice(0, 200) : null,
+      detail: p.detail ? stripUrlQueries(p.detail).slice(0, 2000) : null
+    };
+    const job = writeProblem(env, row, n).catch(e => {
+      console.error('[problem-log] write failed:', (e && e.message) || e);
+    });
+    if (ctx && typeof ctx.waitUntil === 'function') { ctx.waitUntil(job); return Promise.resolve(); }
+    return job;
+  } catch { return Promise.resolve(); }
+}
+
+// Addresses a person asked for that nothing serves. Only a real page visit by
+// a browser counts: no user agent or a bot's one is out, and so is anything
+// without Sec-Fetch-Mode: navigate, which every current browser sends on a
+// visit and scanners, uptime checks and scripts do not. BOT_UA_RE matches
+// Discordbot too, so a dead link's unfurl is not counted, only the clicks.
+const PROBLEM_SCANNER_RE = /\.(php|aspx?|jsp|cgi|env|ini|sql|bak|git)(\/|$)|\/wp-|\/\.well-known\/|phpmyadmin|xmlrpc|\/\.git/i;
+function humanPageVisit(request) {
+  const ua = request.headers.get('User-Agent') || '';
+  if (!ua || BOT_UA_RE.test(ua)) return false;
+  return request.headers.get('Sec-Fetch-Mode') === 'navigate';
+}
+// Called by the default export with every answer the router produced. Kept
+// small and wrapped whole: a bug here would touch every request.
+function observeResponse(env, ctx, request, res) {
+  try {
+    const status = res && res.status;
+    // 502/504 are deliberately out: the Worker answers 502 when SOMEBODY
+    // ELSE's site failed (Bloodstar, the email service, a mistyped project
+    // link), which the owner cannot act on. 503 is ours (sessions, roster).
+    if (status === 500 || status === 501 || status === 503) {
+      recordProblem(env, ctx, { kind: 'server', route: new URL(request.url).pathname, message: 'answered ' + status });
+    } else if (status === 404 && request.method === 'GET' &&
+               /text\/html/i.test(res.headers.get('Content-Type') || '')) {
+      const path = new URL(request.url).pathname;
+      if (humanPageVisit(request) && !PROBLEM_SCANNER_RE.test(path)) {
+        recordProblem(env, ctx, { kind: 'notfound', route: path, message: 'Not found', sample: path });
+      }
+    }
+  } catch { /* the log must never change an answer */ }
+}
+
+// The browser beacon's source check: one of the files this build ships,
+// hashed or not. A forged report naming a file we do not ship is dropped (a
+// tab left open from the previous deploy is too, which is fine).
+let _shippedScripts = null;
+function shippedScript(file) {
+  if (!_shippedScripts) {
+    _shippedScripts = new Set();
+    for (const [k, v] of Object.entries(ASSET_MANIFEST || {})) { _shippedScripts.add(k); _shippedScripts.add(v); }
+  }
+  return _shippedScripts.has(file);
+}
+// Per-IP, per-isolate: five a minute. A first, cheap gate in front of the D1
+// rate limiter.
+const _beaconByIp = new Map();
+function beaconThrottled(ip) {
+  const now = Date.now();
+  let e = _beaconByIp.get(ip);
+  if (!e || now - e.at >= 60000) e = { at: now, n: 0 };
+  e.n++;
+  _beaconByIp.delete(ip);
+  _beaconByIp.set(ip, e);
+  if (_beaconByIp.size > 1000) _beaconByIp.delete(_beaconByIp.keys().next().value);
+  return e.n > 5;
+}
+// A request body as text, or null when it is longer than `max` bytes (the
+// rest is never read).
+async function readCappedText(request, max) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) { try { await reader.cancel(); } catch { /* gone already */ } return null; }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(n);
+  let at = 0;
+  for (const c of chunks) { all.set(c, at); at += c.byteLength; }
+  return new TextDecoder().decode(all);
+}
+// Quoted text comes out of an error before it is kept: a JSON.parse error
+// quotes the input it choked on, and on /messages or an editor that input
+// can be somebody's private writing.
+function scrubQuoted(text) {
+  return String(text || '').replace(/(["'`])[^"'`]{24,}\1/g, '$1…$1');
+}
+// The whole of POST /api/client-error after the cheap header checks. Returns
+// the problem to record, or null to drop it.
+function clientErrorProblem(b, origin) {
+  if (!b || typeof b !== 'object') return null;
+  const message = scrubQuoted(String(b.message || '').slice(0, 300)).trim();
+  const source = String(b.source || '').slice(0, 300);
+  const stack = scrubQuoted(String(b.stack || '').slice(0, 1500));
+  const page = String(b.page || '').slice(0, 200);
+  const line = Number.isInteger(b.line) ? b.line : parseInt(b.line, 10) || 0;
+  if (!message || !page.startsWith('/') || page.startsWith('//')) return null;
+  if (/^Script error\.?$/i.test(message) || /ResizeObserver loop/i.test(message)) return null;
+  if (/chrome-extension:|moz-extension:|safari-(web-)?extension:|webkit-masked-url/i.test(source + ' ' + stack)) return null;
+  let src;
+  try { src = new URL(source); } catch { return null; }
+  if (src.origin !== origin) return null;
+  const isPage = src.pathname === page;
+  const file = src.pathname.startsWith('/assets/') && /\.js$/.test(src.pathname)
+    ? src.pathname.slice('/assets/'.length) : '';
+  if (!isPage && !(file && shippedScript(file))) return null;
+  const where = isPage ? 'inline script' : file.slice(file.lastIndexOf('/') + 1);
+  return {
+    kind: 'browser', route: page,
+    message: message + ' (' + where + ':' + line + ')',
+    sample: page, detail: stack || null
+  };
 }
 
 function jsonResponse(obj, extraHeaders = {}) {
@@ -7159,7 +7766,8 @@ const app = {
       const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
       const access = await wikiPageAccess(env, sess, row, parent);
       const editable = !!access;
-      if (row.status !== 'published' && !editable) {
+      // A draft, or a page whose set is not public, answers like no page at all.
+      if (!(await wikiPageVisible(env, sess, row, parent))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       return jsonResponse({
@@ -7196,26 +7804,20 @@ const app = {
           .bind(slug).first().catch(() => null);
         if (!row) return assetsOrNotFound(env, request);
         const isDraft = row.status !== 'published';
-        if (isDraft) {
+        // A page goes down with its parent: under a script/collection that is
+        // a draft, deleted or gone, nothing public links here and the public
+        // must not reach it either — not even its parent's name. Its owner
+        // (and, while the set exists, the set's approved editors) still can,
+        // so publishing or restoring the set brings everything back.
+        const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+        const hidden = isDraft || !wikiParentLive(parent);
+        if (hidden) {
           const sess = await getSession(env, request);
-          const par = canEditRow(sess, row) ? null
-            : await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
-          if (!canEditRow(sess, row) && !(await wikiPageAccess(env, sess, row, par))) {
-            return assetsOrNotFound(env, request);
-          }
+          if (!(await wikiPageVisible(env, sess, row, parent))) return assetsOrNotFound(env, request);
         }
-        if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
+        if (!hidden && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
   
         const d = parseData(row);
-        const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
-        // A page goes down with its parent: if the script/collection it belongs
-        // to has been deleted, nothing links here any more and the public
-        // shouldn't reach it either. Its owner still can, so restoring the
-        // parent brings everything back.
-        if (parent && parent.status === 'deleted') {
-          const sess = await getSession(env, request);
-          if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
-        }
         await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
         const page = {
           ...d, slug: row.slug, title: row.title,
@@ -7244,16 +7846,20 @@ const app = {
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+            : hidden
+            ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.parentNotLivePage + '</div>'
             : '',
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${jsStr(row.slug)};` +
-            // A draft cannot be featured, so wikipage.js offers admins no button.
-            (isDraft ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
+            // A draft (or a page whose set is not public) cannot be featured,
+            // so wikipage.js offers admins no button.
+            (hidden ? ' window.WIKI_PAGE_DRAFT = true;' : '') +
             // A set's page gets the admins' "Make it a standalone article" button.
             (row.parent_type === ARTICLE_PARENT ? ' window.WIKI_PAGE_ARTICLE = true;' : '') +
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${jsStr(row.slug)};`),
           scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'reading-lazy.js', 'site.js']
         });
-        return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug);
+        // No view key on a hidden page, so it can never enter the shared cache.
+        return htmlPage(html, hidden ? '' : 'wikipage|' + row.slug);
       });
     }
 
@@ -9378,8 +9984,9 @@ const app = {
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
       // A published page's history is public, the way a wiki's is. A draft is
-      // its owner's alone, and has no history anyway (see saveRevision).
-      if ((row.status || 'published') !== 'published' && !owns) {
+      // its owner's alone, and has no history anyway (see saveRevision). So is
+      // a wiki page whose set is not public.
+      if (!owns && !(await historyPublic(env, type, row))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       await ensureRevisionsTable(env);
@@ -9482,7 +10089,7 @@ const app = {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      if ((row.status || 'published') !== 'published' && !owns) {
+      if (!owns && !(await historyPublic(env, type, row))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       await ensureRevisionsTable(env);
@@ -9678,7 +10285,17 @@ const app = {
         const r = await env.DB.prepare("SELECT value FROM settings WHERE key='last_backup'").first();
         if (r && r.value) backup = JSON.parse(r.value);
       } catch { /* no backup has run since this was added */ }
-      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked, backup });
+      // Problems in the last day that an admin can act on (the Health tab
+      // badge). 404s and browser reports are left out on purpose: see
+      // PROBLEM_BADGE_KINDS.
+      let problems = 0;
+      try {
+        await ensureProblemTable(env);
+        problems = await one(`SELECT COUNT(*) AS n FROM problem_log WHERE fixed_at IS NULL
+          AND kind IN (${PROBLEM_BADGE_KINDS.map(() => '?').join(',')}) AND last_seen >= datetime('now','-1 day')`,
+          ...PROBLEM_BADGE_KINDS);
+      } catch { /* the badge is a nicety */ }
+      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked, backup, problems });
     }
 
     if (method === 'GET' && path === '/api/admin/dm-reports') {
@@ -9844,17 +10461,67 @@ const app = {
         for (const o of listed.objects) {
           // A big table is written in parts ({table}.part1.json …); the size
           // shown is the whole table's, and the download link reads them all.
-          const m = o.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\/([a-z_]+)(\.part\d+)?\.json$/);
+          const m = o.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\/([a-z0-9_]+)(\.part\d+)?\.json$/);
           if (!m) continue;
           const day = byDate[m[1]] = byDate[m[1]] || {};
+          // `_manifest.json` (and anything else starting with `_`) is the
+          // run's own bookkeeping, not a table.
+          if (m[2].startsWith('_')) continue;
           day[m[2]] = (day[m[2]] || 0) + (o.size || 0);
         }
         cursor = listed.truncated ? listed.cursor : null;
       } while (cursor);
-      const backups = Object.keys(byDate).sort().reverse().map(date => ({
-        date, tables: Object.keys(byDate[date]).sort().map(table => ({ table, size: byDate[date][table] }))
+      const dates = Object.keys(byDate).sort().reverse();
+      // Each night's manifest (row counts, warnings), newest 7 nights only:
+      // one small read each. Older backups and nights from before manifests
+      // existed simply have none.
+      const manifests = {};
+      await Promise.all(dates.slice(0, 7).map(async date => {
+        try {
+          const obj = await env.ART.get(`backups/${date}/_manifest.json`);
+          const mf = obj ? await obj.json() : null;
+          if (!mf || !mf.tables) return;
+          const rows = {};
+          for (const [t, v] of Object.entries(mf.tables)) rows[t] = v && typeof v.rows === 'number' ? v.rows : 0;
+          manifests[date] = { ok: mf.ok !== false, warnings: Array.isArray(mf.warnings) ? mf.warnings : [], tables: rows };
+        } catch { /* a missing or unreadable manifest just shows no counts */ }
+      }));
+      const backups = dates.map(date => ({
+        date, tables: Object.keys(byDate[date]).sort().map(table => ({ table, size: byDate[date][table] })),
+        ...(manifests[date] ? { manifest: manifests[date] } : {})
       }));
       return jsonResponse({ backups });
+    }
+
+    // ---------- ADMIN: THE PROBLEM LOG ----------
+    // What went wrong on the wiki (see recordProblem). ?kind= narrows to one
+    // kind, ?show=open|fixed|all; `week` is how many times each kind happened
+    // in the last seven days, for the card's summary line.
+    if (method === 'GET' && path === '/api/admin/problems') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureProblemTable(env);
+      const kind = url.searchParams.get('kind') || 'all';
+      const show = url.searchParams.get('show') || 'open';
+      const where = [], binds = [];
+      if (PROBLEM_KINDS.includes(kind)) { where.push('kind=?'); binds.push(kind); }
+      if (show === 'open') where.push('fixed_at IS NULL');
+      else if (show === 'fixed') where.push('fixed_at IS NOT NULL');
+      const [list, weekRows] = await Promise.all([
+        env.DB.prepare(
+          `SELECT fp, kind, route, message, sample, detail, count, first_seen, last_seen, fixed_at, reopened
+           FROM problem_log ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+           ORDER BY (fixed_at IS NULL) DESC, last_seen DESC LIMIT 200`
+        ).bind(...binds).all(),
+        env.DB.prepare(
+          `SELECT kind, SUM(count) AS n FROM problem_log
+           WHERE last_seen >= datetime('now','-7 day') GROUP BY kind`
+        ).all()
+      ]);
+      const week = {};
+      for (const k of PROBLEM_KINDS) week[k] = 0;
+      for (const r of (weekRows.results || [])) if (r.kind in week) week[r.kind] = Number(r.n) || 0;
+      return jsonResponse({ rows: list.results || [], week });
     }
 
     // ---------- ADMIN: DOWNLOAD ONE BACKUP TABLE ----------
@@ -9864,7 +10531,7 @@ const app = {
       if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
       const date = url.searchParams.get('date') || '';
       const table = url.searchParams.get('table') || '';
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[a-z_]{1,40}$/.test(table)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[a-z0-9_]{1,40}$/.test(table)) {
         return jsonResponse({ error: 'Bad date or table.' }, { status: 400 });
       }
       // Concatenated across parts so the downloaded file is the whole table.
@@ -10217,6 +10884,36 @@ const app = {
       ).bind(sess ? sess.userId : null, uname, 'bug', lines.join('\n')).run();
       if (sess) await logActivity(env, sess, 'contact', 'message', null, 'broken-link');
       return jsonResponse({ ok: true, message: 'Thanks, the admins have it.' });
+    }
+
+    // The browser half of the problem log: site.js reports an error thrown by
+    // one of OUR scripts (see the beacon at the end of site.js). No login,
+    // like the broken-link box, because most readers have none. It is the one
+    // place a stranger can write into the log, so it is filtered hard, and it
+    // ALWAYS answers an empty 204 — accepted, filtered or throttled alike — so
+    // the answer tells an abuser nothing. crossSiteWrite() has already turned
+    // away an explicit cross-site post; this also refuses one that carries no
+    // Sec-Fetch-Site at all (curl), which sendBeacon and fetch never omit.
+    if (method === 'POST' && path === '/api/client-error') {
+      const quiet = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+      try {
+        if (request.headers.get('Sec-Fetch-Site') !== 'same-origin') return quiet();
+        const ua = request.headers.get('User-Agent') || '';
+        if (!ua || BOT_UA_RE.test(ua)) return quiet();
+        if ((parseInt(request.headers.get('Content-Length') || '0', 10) || 0) > 8192) return quiet();
+        if (beaconThrottled(request.headers.get('CF-Connecting-IP') || 'unknown')) return quiet();
+        // Read at most 8 KB: a body with no Content-Length (chunked) would
+        // otherwise be buffered whole before anything could look at it.
+        const text = await readCappedText(request, 8192);
+        if (text == null) return quiet();
+        let b = null;
+        try { b = JSON.parse(text); } catch { return quiet(); }
+        const problem = clientErrorProblem(b, url.origin);
+        if (!problem) return quiet();
+        if (await rateLimited(env, request, 'clienterr', 30, 3600)) return quiet();
+        recordProblem(env, ctx, problem);
+      } catch { /* never an error answer */ }
+      return quiet();
     }
 
     // ---------- WRITES (logged-in users; ownership enforced) ----------
@@ -10799,15 +11496,10 @@ const app = {
         try { d = foldLegacyCurata(JSON.parse(sug.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
         // Re-pin everything that belongs to the page rather than to the
-        // suggestion: the row may have changed since it was written.
-        const now = parseData(row);
-        d.slug = row.slug;
-        d.publicEdit = now.publicEdit;
-        d.curata = !!now.curata;
-        if (now.curataOptOut) d.curataOptOut = true; else delete d.curataOptOut;
-        if (now.creditUnlinked) d.creditUnlinked = true; else delete d.creditUnlinked;
-        delete d._deleted;
-        pinSuggestedFields(sug.entity_type, d, now);
+        // suggestion (the row may have changed since it was written), and
+        // hold what is left to the rules a save is held to.
+        try { d = await prepareRestore(env, sug.entity_type, row, d, url.origin, { source: 'suggestion' }); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not apply that suggestion.') }, { status: e.status || 400 }); }
         await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
         try { await applyRollback(env, sug.entity_type, row, d); }
         catch (e) { return jsonResponse({ error: publicError(e, 'Could not apply that suggestion.') }, { status: 500 }); }
@@ -10846,7 +11538,9 @@ const app = {
         let d;
         try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
-        delete d._deleted;
+        // Content comes back; the page's settings stay as they are now.
+        try { d = await prepareRestore(env, type, row, d, url.origin); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: e.status || 400 }); }
         // Snapshot what is being replaced, so the rollback is itself undoable.
         await saveRevision(env, sess, type, row);
         try { await applyRollback(env, type, row, d); }
@@ -10943,7 +11637,7 @@ const app = {
         if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
-        const target = await commentTarget(env, row.entity_type, row.slug);
+        const target = await commentTarget(env, row.entity_type, row.slug, { moderate: true });
         const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
         if (!sess.isAdmin && !isOwner) {
           return jsonResponse({ error: 'Only the page owner and the admins can pin comments.' }, { status: 403 });
@@ -10964,7 +11658,7 @@ const app = {
         if (!id) return jsonResponse({ error: 'No comment given.' }, { status: 400 });
         const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
         if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
-        const target = await commentTarget(env, row.entity_type, row.slug);
+        const target = await commentTarget(env, row.entity_type, row.slug, { moderate: true });
         const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
         if (!sess.isAdmin && !isOwner && row.user_id !== sess.userId) {
           return jsonResponse({ error: 'You can only remove your own comments.' }, { status: 403 });
@@ -11120,6 +11814,8 @@ const app = {
           // the creator. The editor locks the field for a guest; this is the
           // half a hand-written request cannot get around.
           c.name = stored.name;
+          // Whose work it is belongs to the creator too, like creditUnlinked.
+          if (stored.creator !== undefined) c.creator = stored.creator; else delete c.creator;
         }
         if (perm === 'all-but-ability') {
           // Everything but the rule itself. The ability is what the page IS
@@ -11249,7 +11945,15 @@ const app = {
         // leaves a 301 behind whenever it actually moves.
         let address = charAddress(existing) || c.slug;
         let movedFrom = null;
-        try {
+        /* An open page's guest never moves it. The address is derived from the
+           name AND the set ("Appears in") and the credit, so pinning the name
+           alone did not keep the URL with the creator — and every move parks
+           the old address in `redirects`. The owner's next save files the page
+           under whatever "Appears in" now says. A row with no address yet
+           (before the backfill) still gets its first one. */
+        const guestSave = !!existing && !!existing.url_slug &&
+          (perm === 'all' || perm === 'all-but-ability' || perm === 'tags');
+        if (!guestSave) try {
           const prevAddress = charAddress(existing);
           address = await characterAddress(
             env, c.slug, c,
@@ -11465,7 +12169,12 @@ const app = {
         // as PK so the URL, id and PK all agree.
         const kebab = s => String(s || '').toLowerCase().normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
-        c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
+        const storedColl = existing ? parseData(existing) : null;
+        // The kebab id IS the URL, collections have no redirects, and the
+        // editor calls the URL fixed once created — so an existing collection
+        // keeps its id whoever saves, owner included. A legacy row with no
+        // stored id gets one on its first save.
+        c.id = (storedColl && storedColl.id) || kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
         if (!c.id) return jsonResponse({ error: 'Could not build a URL from that name.' }, { status: 400 });
         const pkSlug = existing ? existing.slug : c.id;
         if (!existing) {
@@ -11499,12 +12208,15 @@ const app = {
         if (!c.order.length) delete c.order;
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
-        const storedColl = existing ? parseData(existing) : null;
         let editorsAdded = [], editorsUnknown = [];
         if (existing && perm !== 'owner') {
           status = existing.status || 'published';
           c.publicEdit = storedColl.publicEdit;
           c.editors = approvedEditors(storedColl);
+          // An open collection's guest fixes the text, not whose work it is.
+          if (perm === 'all') {
+            if (storedColl.author !== undefined) c.author = storedColl.author; else delete c.author;
+          }
         } else {
           c.publicEdit = sanitizePublicEdit(c.publicEdit, 'collection');
           const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
@@ -11623,6 +12335,11 @@ const app = {
           status = existing.status || 'published';
           s.publicEdit = storedScript.publicEdit;
           s.editors = approvedEditors(storedScript);
+          // So does the credit: an open script's guest fixes the text, not
+          // whose work it is.
+          if (perm === 'all') {
+            if (storedScript.author !== undefined) s.author = storedScript.author; else delete s.author;
+          }
         } else {
           s.publicEdit = sanitizePublicEdit(s.publicEdit, 'script');
           const eds = await sanitizeEditors(env, s.editors, existing ? existing.owner_id : sess.userId);
@@ -11944,8 +12661,9 @@ const app = {
       // ---- admin: roll a page back to an earlier revision ----
       // Body: {type, slug, id} where id is a revision id from
       // /api/admin/revisions. The current version is snapshotted first, so a
-      // rollback can itself be rolled back. Publish status and ownership are
-      // left as they are — only the page content moves.
+      // rollback can itself be rolled back. Publish status, ownership and the
+      // page's settings are left as they are — only the page content moves
+      // (see prepareRestore).
       if (path === '/api/admin/rollback') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -11963,7 +12681,9 @@ const app = {
         let d;
         try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
-        delete d._deleted;
+        // Same rules as the owner's rollback: content back, settings as now.
+        try { d = await prepareRestore(env, type, row, d, url.origin); }
+        catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: e.status || 400 }); }
         await saveRevision(env, sess, type, row); // make the rollback undoable
         try { await applyRollback(env, type, row, d); }
         catch (e) { return jsonResponse({ error: publicError(e, 'Could not restore that revision.') }, { status: 500 }); }
@@ -12063,6 +12783,99 @@ const app = {
         } catch (e) {
           return jsonResponse({ error: (e && e.message) || 'Backup failed.' }, { status: 500 });
         }
+      }
+
+      // ---- admin: the problem log's buttons ----
+      // fix: hide it until it happens again (it comes back marked "reopened").
+      // forget: delete the record.
+      if (path === '/api/admin/problem') {
+        const b = await request.json().catch(() => ({}));
+        const fp = String(b.fp || '').slice(0, 64);
+        if (!fp) return jsonResponse({ error: 'Which problem?' }, { status: 400 });
+        await ensureProblemTable(env);
+        if (b.action === 'fix') {
+          await env.DB.prepare("UPDATE problem_log SET fixed_at=datetime('now'), count=0, reopened=0 WHERE fp=?").bind(fp).run();
+        } else if (b.action === 'forget') {
+          await env.DB.prepare('DELETE FROM problem_log WHERE fp=?').bind(fp).run();
+        } else {
+          return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      // ---- admin: send a missing /c/ address to a page ----
+      // For a 404 the problem log keeps seeing: one redirect row, exactly the
+      // kind a rename writes, pointing at the page's IDENTITY. It refuses an
+      // address a live page already answers to, and a target that is not a
+      // published page. `undo` takes it back, but only while the redirect
+      // still points where this tool pointed it. Scripts and collections have
+      // no redirect mechanism, so this is characters only.
+      if (path === '/api/admin/problem-redirect') {
+        const b = await request.json().catch(() => ({}));
+        const fullPath = String(b.path || '').trim().split(/[?#]/)[0].toLowerCase();
+        if (!fullPath.startsWith('/c/')) return jsonResponse({ error: 'Only a missing character address (/c/…) can be redirected.' }, { status: 400 });
+        let from = fullPath.slice(3);
+        try { from = decodeURIComponent(from); } catch { /* keep as typed */ }
+        if (!/^[a-z0-9-]+(\/[a-z0-9-]+)?$/.test(from)) {
+          return jsonResponse({ error: 'That is not an address a character page could have.' }, { status: 400 });
+        }
+        const fp = problemFingerprint('notfound', fullPath.slice(0, 200), 'Not found');
+        await ensureRedirectsTable(env);
+        if (b.undo) {
+          const r = await env.DB.prepare(
+            "SELECT to_slug FROM redirects WHERE entity_type='character' AND from_slug=?"
+          ).bind(from).first().catch(() => null);
+          let made = '';
+          try {
+            await ensureProblemTable(env);
+            const pr = await env.DB.prepare('SELECT detail FROM problem_log WHERE fp=?').bind(fp).first();
+            const m = pr && String(pr.detail || '').match(/^redirect:(\S+)$/);
+            made = m ? m[1] : '';
+          } catch { /* no record: nothing this tool made */ }
+          if (!r || !made || r.to_slug !== made) {
+            return jsonResponse({ error: 'That address is not sent anywhere by this tool any more, so there is nothing to undo.' }, { status: 409 });
+          }
+          await env.DB.prepare("DELETE FROM redirects WHERE entity_type='character' AND from_slug=?").bind(from).run();
+          // The record stays marked fixed with the redirect taken off it, so
+          // the next visit to the address reopens it like any recurrence.
+          await env.DB.prepare('UPDATE problem_log SET detail=NULL WHERE fp=?').bind(fp).run().catch(() => null);
+          await logActivity(env, sess, 'redirect-remove', 'character', made, from);
+          return jsonResponse({ ok: true, removed: true });
+        }
+        const taken = await resolveCharacterPath(env, from);
+        if (taken && taken.row && taken.row.status !== 'deleted') {
+          return jsonResponse({ error: 'A page already answers at that address, so it is not missing.' }, { status: 400 });
+        }
+        // A deleted page that still HOLDS the address (as its identity or its
+        // address, not through an old redirect) wins over any redirect row:
+        // the /c/ route finds it first and answers 404, so the redirect would
+        // be saved and never used.
+        if (taken && taken.row && (String(taken.row.slug) === from || String(taken.row.url_slug || '') === from)) {
+          return jsonResponse({ error: 'A deleted page still holds that address. Restore it, or remove it for good from the deleted pages list, then try again.' }, { status: 400 });
+        }
+        let to = String(b.to || '').trim().replace(/^\/+/, '').replace(/^c\//, '').split(/[?#]/)[0];
+        const target = to ? await resolveCharacterPath(env, to) : null;
+        if (!target || !target.row || target.row.status !== 'published') {
+          return jsonResponse({ error: 'Pick a published character to send people to.' }, { status: 400 });
+        }
+        const identity = String(target.row.slug);
+        if (from === identity || from === target.canonical) {
+          return jsonResponse({ error: 'That is the page\'s own address.' }, { status: 400 });
+        }
+        await env.DB.prepare(
+          `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+           ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+        ).bind(from, identity).run();
+        try {
+          await ensureProblemTable(env);
+          await env.DB.prepare(
+            "UPDATE problem_log SET fixed_at=datetime('now'), count=0, reopened=0, detail=? WHERE fp=?"
+          ).bind('redirect:' + identity, fp).run();
+        } catch { /* the redirect is what matters */ }
+        await logActivity(env, sess, 'redirect-add', 'character', identity, from);
+        let name = identity;
+        try { name = JSON.parse(target.row.data).name || identity; } catch { /* keep the slug */ }
+        return jsonResponse({ ok: true, from, to: identity, name, address: target.canonical });
       }
 
       // ---- admin: one-time seed ----
@@ -13868,6 +14681,7 @@ const app = {
         }
       } catch (e) {
         console.error('[cron] backup threw:', (e && e.message) || e);
+        await recordProblem(env, null, { kind: 'cron', route: 'backup', message: 'The backup stopped: ' + ((e && e.message) || 'error'), detail: (e && e.stack) || null });
       }
 
       // Argon2id over any password hash still PBKDF2-only (see
@@ -13878,6 +14692,7 @@ const app = {
         if (w.wrapped || w.left) console.log('[cron] legacy password hashes wrapped:', w.wrapped, 'left in batch:', w.left);
       } catch (e) {
         console.error('[cron] password wrapping threw:', (e && e.message) || e);
+        await recordProblem(env, null, { kind: 'cron', route: 'password wrapping', message: (e && e.message) || 'error' });
       }
 
       // Retention. page_views(day) is indexed now, so this is a range delete
@@ -13895,11 +14710,28 @@ const app = {
         // hour, so a day past expiry is far beyond anything still being read;
         // the upsert ignores an expired row regardless, so this is only there
         // to stop the table growing a row per member per bucket forever.
-        ["DELETE FROM rate_limits WHERE expires < CAST(strftime('%s','now') AS INTEGER) - 86400", 'rate_limits']
+        ["DELETE FROM rate_limits WHERE expires < CAST(strftime('%s','now') AS INTEGER) - 86400", 'rate_limits'],
+        // The problem log (see "The problem log" in CLAUDE.md): a month since
+        // last seen, a fortnight after being marked fixed, and past
+        // PROBLEM_ROWS_MAX the least-seen 404 and browser rows — the two kinds
+        // a stranger can create. Crash, server, cron and email rows are never
+        // pruned by count.
+        ["DELETE FROM problem_log WHERE last_seen < datetime('now', '-30 day')", 'problem_log'],
+        ["DELETE FROM problem_log WHERE fixed_at IS NOT NULL AND fixed_at < datetime('now', '-14 day')", 'problem_log fixed'],
+        [`DELETE FROM problem_log WHERE fp IN (SELECT fp FROM problem_log WHERE kind IN ('notfound','browser')
+            ORDER BY count ASC, last_seen ASC
+            LIMIT max(0, (SELECT COUNT(*) FROM problem_log) - ${PROBLEM_ROWS_MAX}))`, 'problem_log cap']
       ];
       for (const [sql, label] of prune) {
         try { await env.DB.prepare(sql).run(); }
-        catch (e) { console.error(`[cron] prune ${label} failed:`, (e && e.message) || e); }
+        catch (e) {
+          const msg = (e && e.message) || String(e);
+          console.error(`[cron] prune ${label} failed:`, msg);
+          // A lazily created table that does not exist yet has nothing to prune.
+          if (!/no such table/i.test(msg)) {
+            await recordProblem(env, null, { kind: 'cron', route: 'prune ' + label, message: msg });
+          }
+        }
       }
     })());
   }
@@ -13990,11 +14822,16 @@ function withSecurityHeaders(res) {
 export default {
   async fetch(request, env, ctx) {
     try {
-      return withSecurityHeaders(await app.fetch(request, env, ctx));
+      const res = await app.fetch(request, env, ctx);
+      // The problem log sees the answer AFTER it exists and changes nothing
+      // about it (5xx and HTML 404s; see observeResponse).
+      observeResponse(env, ctx, request, res);
+      return withSecurityHeaders(res);
     } catch (e) {
       let path = '';
       try { path = new URL(request.url).pathname; } catch { /* ignore */ }
       console.error('[fetch] unhandled error', request.method, path, (e && e.stack) || e);
+      recordProblem(env, ctx, { kind: 'crash', route: path, message: (e && e.message) || String(e), sample: path, detail: (e && e.stack) || null });
       return withSecurityHeaders(crashResponse(request));
     }
   },

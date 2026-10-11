@@ -208,7 +208,7 @@
     }
 
     function restore(id, btn) {
-      if (!confirm('Put this version back?\n\nThe current version is saved to the history first, so you can undo this.')) return;
+      if (!confirm('Put this version back?\n\nIts text and pictures come back; who can edit the page and its Curata mark stay as they are now. The current version is saved to the history first, so you can undo this.')) return;
       btn.disabled = true;
       btn.textContent = 'Restoring…';
       fetch('/api/page-rollback', {

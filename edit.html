@@ -1387,8 +1387,9 @@
       nm.readOnly = true;
       nm.title = 'Only the page\u2019s creator can rename it.';
       hideOwnerOnly();
+      lockCredit();
       guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
-        'open for anyone with an account to edit, except the name. ' +
+        'open for anyone with an account to edit, except the name and the credit. ' +
         'Your changes are recorded in ' + histLink(entry) + '.' + viaSetHTML());
     }
     /* Open except the ability. The form is the guest form above with the
@@ -1400,6 +1401,7 @@
       nm.readOnly = true;
       nm.title = 'Only the page\u2019s creator can rename it.';
       hideOwnerOnly();
+      lockCredit();
       var ab = $('ability');
       if (ab) {
         ab.readOnly = true;
@@ -1412,8 +1414,32 @@
         cj.title = 'The custom JSON stays with the page\u2019s creator.';
       }
       guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
-        'open for anyone with an account to edit, <strong>except the name and ability</strong>. ' +
+        'open for anyone with an account to edit, <strong>except the name, credit and ability</strong>. ' +
         'Your changes are recorded in ' + histLink(entry) + '.' + viaSetHTML());
+    }
+    /* Whose work the page is, and where it lives, stay with its creator: the
+       Worker keeps the stored Creator and the stored address whatever an
+       open page's guest posts. So the Creator box is locked, and "Appears in"
+       says that changing it will not move the page. */
+    function lockCredit() {
+      var cr = $('creator');
+      if (cr) {
+        cr.readOnly = true;
+        cr.title = 'The credit stays with the page\u2019s creator.';
+        var note = document.createElement('div');
+        note.className = 'sub';
+        note.style.margin = '4px 0 0';
+        note.textContent = 'Only the page\u2019s creator can change the credit.';
+        cr.parentNode.insertBefore(note, cr.nextSibling);
+      }
+      var ap = $('appears');
+      if (ap) {
+        var note2 = document.createElement('div');
+        note2.className = 'sub';
+        note2.style.margin = '4px 0 0';
+        note2.textContent = 'Changing this won\u2019t move the page to a new address; that happens when its creator next saves.';
+        ap.parentNode.insertBefore(note2, ap.nextSibling);
+      }
     }
     // Controls that only mean something to the page's owner. The Worker carries
     // the stored value forward whatever a guest posts, so leaving these on

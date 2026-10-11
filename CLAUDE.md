@@ -198,6 +198,8 @@ assets/
                        empty Edit box. Set here rather than in the markup so
                        every page gets it from one line (the topbar markup
                        is hand-copied per page).
+                       Ends with the problem-log beacon (F3) — keep it the
+                       last block; see "The problem log".
   render.js            Shared character renderer + official-schema JSON builder.
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
@@ -884,6 +886,8 @@ bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project li
                        section below), and one whose ends both stay out cannot
                        be stored at all.
 login.html, account.html, dashboard.html, reset-password.html
+                       The dashboard's Health tab opens on "Problems this
+                       week", the problem log's card (see "The problem log").
                        Every text box on the dashboard is a type-ahead
                        (assets/suggest.js): page slugs follow the type dropdown
                        beside them, usernames come from
@@ -1020,6 +1024,9 @@ a renamed page used to live at — for characters `to_slug` is the page's
 **identity**, never another address, see "Character identity vs address" below),
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
+`problem_log` (what went wrong on the wiki — one row per distinct problem,
+keyed by a fingerprint, with a count, first/last seen and a "marked fixed"
+stamp; not backed up; see "The problem log" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
 actually CHANGED, keyed `(scope, original)`; see "System text" below), and a
 lazily ALTERed `users.banned` column. `settings` also holds
@@ -1277,6 +1284,28 @@ The save handlers enforce the rest:
 - A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413).
 - The editor makes the **name read-only** for a guest: renaming moves the URL,
   and that stays with the creator.
+- **A guest never moves the address or rewrites the credit.** An `'all'` /
+  `'all-but-ability'` / `'tags'` guest's save keeps the stored `url_slug`
+  (it never runs `characterAddress()`), and an `'all'` / `'all-but-ability'`
+  guest's save keeps the stored `creator` (`author` on an `'all'` script or
+  collection). The address is derived from the name **and** `appearsIn` and
+  the credit, so pinning the name alone did not keep the URL with the
+  creator, and every move parks the old address in `redirects`, which a
+  guest could use to squat addresses. `appearsIn` itself stays editable — it
+  is useful text — and the **owner's** next save files the page under it. An
+  unowned page (nobody will ever save as its owner) stays where it is until
+  an admin runs the nest-urls sweep. A row with no `url_slug` yet still gets
+  its first one. Approved editors are unaffected: they edit as the creator
+  would, rename included. The editors say so rather than letting the Worker
+  discard an edit in silence: `lockCredit()` in edit.html (called by the
+  `'all'` and `'all-but-ability'` guest modes) makes Creator read-only with a
+  note and tells the guest "Appears in" will not move the page, and
+  `lockAuthor()` in publish-script.html / publish-collection.html does the
+  same to Author in `'all'` mode.
+- **An existing collection's `id` is fixed on every save, owner included.**
+  The kebab id is its URL, collections have no redirects, and the editor
+  already calls the URL fixed once created. A legacy row with no stored `id`
+  gets one on its first save.
 - **An open page is open to its art too.** Image uploads go through
   `canEditPageArt()` — ownership, an approved editor, **or** a guest on a page
   whose mode is `'all'` / `'all-but-ability'`. They used to go through
@@ -1433,6 +1462,37 @@ taking a published page back to draft still records what was live.
 - `POST /api/page-rollback`: put a version back. Owner or admin, and it
   snapshots the current version first, so a rollback is itself undoable.
 
+**Putting a version back restores content, never settings: `prepareRestore()`.**
+The owner's rollback, `/api/admin/rollback` and suggestion approval all pass
+the version through it **before** `saveRevision()`, so a refusal writes
+nothing and adds no history entry. It:
+
+- pins `RESTORE_PINNED_KEYS` — `curata`, `curataOptOut`, `creditUnlinked`,
+  `publicEdit`, `editors`, `_draftNote` — from the row **as it stands now**,
+  plus the identity (`slug`; a collection's `id`; a wiki page's
+  `parentType`/`parentSlug` from the row's columns). `tagsBy` travels with the
+  restored tags on a rollback (it says whose those tags are) and is pinned from
+  the row on an approval;
+- holds the version to the save's checks: the team list (case and
+  "traveler" forgiven, anything else refused), name and ability, the
+  exact-official refusal, `sanitizeJinxes` / `sanitizeRelated` /
+  `artScaleValue`, `sanitizePageFields` / `sanitizeWikiFields`, and on a
+  **published** character `missingForPublish()` — **refused** (400), not
+  demoted to draft, because "Put this version back" taking a live page down
+  would surprise its owner. A draft has no bar to meet;
+- and `applyRollback()` then recomputes the character's address (a restored
+  name or set moves the URL, 301 left behind) and writes a wiki page's
+  `author` column.
+
+Why: rolling back vandalism used to restore the `publicEdit` / `editors` the
+page had at the time, reopening it to the vandal; an owner could get Curata
+back after an admin revoked it by restoring any older version; a rollback on a
+drafted page wiped the admin's note; and an approved suggestion skipped every
+check a save makes. An admin re-grants Curata through `/api/admin/curata`,
+never through history. **`/api/admin/restore-page` (restore from a backup
+date) is deliberately outside all of this**: it is a whole-row disaster
+restore and brings back the owner and status too.
+
 ## Suggested edits
 
 A page set to `publicEdit: 'suggest'` collects proposed versions in the
@@ -1453,8 +1513,12 @@ the editor would have saved, stored rather than applied.
 - `POST /api/suggestion`: `approve` / `decline` (owner or admin, with an
   optional reply) or `withdraw` (the suggester). **Approving is an ordinary
   save**: `saveRevision()` snapshots the current version first, so it shows up
-  in the history and can be rolled back, and owner-only fields are re-pinned
-  from the row rather than taken from the suggestion.
+  in the history and can be rolled back, and it goes through `prepareRestore()`
+  (see "History is public" above) — owner-only fields re-pinned from the row
+  rather than taken from the suggestion, and the save's checks applied, so a
+  suggestion with a bad team, no icon on a live page, or an exact official
+  character is refused rather than stored. An approved rename moves the
+  address, with a 301 left behind.
 
 `suggestions.html` serves both `/suggestions?type=&slug=` (one page's queue,
 with Approve / Decline / Withdraw) and `/suggestions` (the owner's inbox).
@@ -2857,6 +2921,26 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   route pins that prefix to the page's owner (longest matching slug wins).
 - Comments work like every other page type (`entity_type='wikipage'`), and can
   be switched off per page.
+- **A set's page is public only while its set is published**
+  (`wikiParentLive()`; an article's virtual parent always is, and a missing
+  parent counts as deleted). Below that bar the page behaves like a draft:
+  `/p/` 404s to strangers — without naming the set — and its owner and the
+  set's approved editors see a "not public" bar (`SYS.parentNotLivePage`);
+  `GET /api/wiki-page` is gated the same way (`wikiPageVisible()`, shared by
+  both); its history (`/api/page-history`, `/api/page-revision`) is the
+  owner's alone (`historyPublic()`), since it carries the page's text;
+  comments neither read nor post; Featured Articles hides it as
+  `parent-draft` (`parent-deleted` for a deleted or missing set). The listings
+  already did this. `wikiPageAccess()` never answers `'all'` for such a page,
+  so a drafted set left on "anyone can edit" does not open its hidden pages to
+  every member. A deleted or missing set admits the owner (and admins) only.
+  No cache work was needed: `SSR_DEPS.p` and `FEATURED_DEPS` already roll on
+  script/collection writes, and a hidden page carries no view key, so it
+  never enters the shared cache.
+- `commentTarget(…, {moderate: true})` is what the pin and remove routes ask:
+  it needs only a page that exists (not deleted, for the three content types),
+  so an owner can still moderate after the page went to drafts or switched its
+  comments off. Reading and posting keep the published-and-public rule.
 - Deleting one is **permanent** — unlike scripts/characters there is no soft
   delete, so the account page offers Edit only and the editor owns the rest.
 - The first set of these is the **Odyssey glossary**: nine pages (Attack,
@@ -3581,6 +3665,123 @@ be *either 10 or 60 seconds* and every limit here is hour-scale; reshaping
 are the legitimate burst, or raises the real ceiling to 12,000 an hour. Its
 counters are also per-Cloudflare-location. Don't swap it in.
 
+## The problem log (what went wrong)
+
+Before this, the only record of a crash, a dead link or an email that never
+went out was Cloudflare's own log, which the owner cannot read. Now each one
+is a row in the lazily created **`problem_log`** table, shown on the
+**"Problems this week"** card that opens the dashboard's Health tab.
+
+**One row per distinct problem, not per occurrence.** `recordProblem(env,
+ctx, {kind, route, message, sample, detail})` fingerprints `kind + route +
+message` with the digits and ids taken out (`problemFingerprint()`, a small
+synchronous FNV-1a), and upserts a count. Marking a row fixed resets its
+count; if it happens again the upsert reopens it and sets `reopened`, which
+the card shows as "Came back after being marked fixed". `recordProblem`
+**never throws and never holds a response up**: with a `ctx` it rides
+`ctx.waitUntil()`, without one (cron, `sendEmail`) its promise resolves
+whatever happens.
+
+**The six sources — and only these:**
+
+| kind | from | route |
+|---|---|---|
+| `crash` | the default export's catch (the safety net, Gotcha 17) | `problemRoute(path)`: `/c/:page`, `/s/:slug`, … |
+| `server` | the default export, an answer of **500, 501 or 503** | the path |
+| `notfound` | the default export, an HTML 404 to a real page visit | the lower-cased path itself |
+| `cron` | a failed backup table, a shrink warning, a failed prune, a thrown backup or password-wrapping run | `backup`, `backup check`, … |
+| `email` | `sendEmail()` getting a non-ok answer or no answer (not "not configured") | `sendEmail` |
+| `browser` | the beacon at the end of `site.js` → `POST /api/client-error` | the page's path |
+
+**502 and 504 are deliberately not recorded**: the Worker answers 502 when
+somebody ELSE's site failed — Bloodstar is down, a creator pasted a wrong
+project link, the email service refused — which the owner cannot act on. 503
+stays in because it is ours (sessions unreachable, the official roster not
+loading). **Do not sprinkle `recordProblem()` into every catch**: add a
+source only when an admin can do something about what it reports.
+
+**Throttled per isolate** (`problemTake()`): a fingerprint writes at most once
+a minute (the sightings in between ride along as its count), the isolate
+writes at most 30 rows a minute, and the two kinds a stranger can mint new
+fingerprints for are capped — 10 new 404 addresses a minute, 200 new 404s and
+50 new browser errors a UTC day — and so are crashes and server errors (100 new
+of each a day), whose route can carry a raw path. Existing fingerprints keep
+counting past the caps. The beacon reads at most 8 KB of body, streamed, so a
+chunked post with no Content-Length is never buffered whole. Counts lost when an isolate dies are fine: it is a signal, not
+accounting. **Retention** is in the nightly prune: 30 days since last seen,
+14 days after being marked fixed, and past 1,000 rows the least-seen
+`notfound` and `browser` rows go first. Crash, server, cron and email rows are
+never pruned by count.
+
+**Privacy.** No IP, user agent, cookie or request body is stored, and **no
+query string anywhere** — reset and verification tokens live in query
+strings, so `stripUrlQueries()` runs over the message, the sample and the
+stack too. `problem_log` is `backup: false` in `DATA_TABLES`.
+
+**404s are counted only for what the Worker sees**, i.e. the
+`run_worker_first` routes (`/c/`, `/s/`, `/collection/`, `/p/`, `/news/`,
+`/u/`, `/author` …) — which are the links people share. Do **not** add `/*` to
+`run_worker_first` to get more, or every static file goes through the Worker.
+And only a real page visit counts: a GET answered with a `text/html` 404, a
+user agent that is present and not `BOT_UA_RE` (which matches Discordbot, so
+a dead link's unfurl is not counted, only the clicks), **`Sec-Fetch-Mode:
+navigate`** (scanners and uptime checks with browser-looking user agents send
+none; old Safari before 16.4 goes uncounted, which is acceptable), and not a
+scanner path (`.php`, `/wp-`, `/.git`, …).
+
+**The beacon** is one self-contained IIFE at the very end of `site.js`. It
+reports an error only when the file is one of our `/assets/` scripts or the
+page itself (an inline script), ignores failed image loads, sends a rejected
+promise only when its stack runs through our scripts, sends three reports a
+page at most and each distinct error once. Failed fetches are left alone
+(data.js retries; a reader going offline is not a site problem).
+`POST /api/client-error` needs no login and is the one place a stranger can
+write into the log, so it **always answers an empty 204** — accepted,
+filtered or throttled alike — and drops a report unless: `Sec-Fetch-Site` is
+present and `same-origin` (`crossSiteWrite()` lets a header-less curl
+through, this does not), the user agent is not a bot, the body is under 8 KB,
+the IP is under 5 a minute in this isolate and under the D1 `clienterr` limit
+(30 an hour), the page is a path on this site, and the source is this
+origin's page or a file in `ASSET_MANIFEST` (hashed or not — a forged file
+name, or a tab left open from the previous deploy, is dropped). "Script
+error.", ResizeObserver noise and anything mentioning an extension are
+dropped. Quoted text of 24+ characters is scrubbed from the message and stack
+(`scrubQuoted()`), because a `JSON.parse` error quotes its input and on
+/messages or an editor that input is somebody's private writing.
+
+**The card** (dashboard.html, `loadProblems()`): a summary line first ("3 page
+crashes · 12 missing pages · nightly jobs fine", or "Nothing has gone wrong
+this week"), filters by kind and open/fixed, and a row per problem titled in
+plain words through `PROBLEM_PLACES` (route → "saving a character"), with a
+"what should I do" line per kind, Technical details with "Copy for a
+developer", **Mark fixed** (hides it until it happens again) and **Forget**
+(deletes it). `GET /api/admin/problems`, `POST /api/admin/problem`. **The
+Health tab badge** (`queue-counts`' `problems`) counts open crash, server,
+cron and email rows seen in the last day — **never 404s or browser reports**:
+404s are too noisy to nag about, and a badge anyone can keep red is a badge
+the owner learns to ignore.
+
+**"Send people to…"**, on a missing `/c/` address only
+(`POST /api/admin/problem-redirect {path, to}`): writes one `redirects` row,
+the same kind a rename writes, pointing at the target's **identity**, and
+marks the problem fixed with `detail: redirect:{identity}`. Refused when a
+live page already answers at the address, when a **deleted** page still holds
+it as its identity or address (the `/c/` route finds that row first and 404s,
+so the redirect would never be read), or the target is not a published
+character. `{path, undo: true}` takes it back, only while the redirect still
+points where the tool pointed it. **A redirect parks the address**
+(`LIVE_REDIRECT_SQL`): a future character whose name and set would produce it
+is numbered `-2` instead, which is why the card says "That address will stay
+reserved for this page". Logged as `redirect-add` / `redirect-remove` (in the
+Activity log's Site group; not in `FEED_CHANGING_ACTIONS`, since 404s are
+never cached). Scripts and collections have no redirect mechanism, so no
+button for them.
+
+**Not built yet:** an R2 inventory/diff and a second backup bucket (they need
+live R2 sizing and an owner-created bucket), and slow-request timing
+(`Date.now()` only moves across I/O in a Worker, so it is noisy and easy to
+misread).
+
 ## Assigning an owner (and what comes with it)
 
 `POST /api/admin/assign-owner` and the dashboard's `assign-owner` bulk action
@@ -3976,14 +4177,40 @@ keeps `content-visibility: auto`.
 5. New-character URLs are live instantly (SSR), but changes to repo files
    (CSS/JS/HTML) need a deploy cycle after push (~30–60 s).
 6. `/api/seed` refuses to run when the characters table is non-empty; it
-   reads the repo's stale JSON backups. Nightly cron also dumps every table
+   reads the repo's stale JSON backups. Nightly cron also dumps the database
    to R2 `backups/{date}/` (30-day retention) — that's the real backup.
+   **Which tables is the `DATA_TABLES` registry in worker.js**, beside
+   `runBackup`: every table the Worker or `schema.sql` creates, most important
+   first. **A new `CREATE TABLE` must be registered there** — `backup.test.mjs`
+   reads worker.js and schema.sql and fails on any table the registry does not
+   name — and one deliberately left out says so with `backup: false` and a
+   `why` (`rate_limits`: spent counters; `problem_log`: an operational log).
+   The registry replaced a hand-kept array that had quietly missed
+   `redirects`, `modmail_replies`, `suggestions`, `favorites` and `site_text`.
+   At run time a table `sqlite_master` knows and the registry does not is
+   backed up anyway and listed as `unregistered`. A lazily created table that
+   was never created is `absent`, which is not a failure; a missing `core`
+   (schema.sql) table is. Each night ends with **`_manifest.json`**, written
+   last: every table's status, rows, parts and bytes, the unregistered and
+   skipped lists, and `warnings` — a core table of 50+ rows that came out
+   under half of last night's count (compared with yesterday's manifest).
+   Warnings go into `last_backup` beside `failed` and show as an amber banner
+   on the dashboard; they do not make the run fail. Every part is **read back**
+   (`head()`, size in bytes) after the stale-part tidy, and one missing or the
+   wrong size fails its table ("check failed"). `/api/admin/backups` skips
+   `_`-prefixed files and returns the newest 7 manifests' row counts. The
+   prune walks the **whole** R2 listing a page at a time (it used to read one
+   page of 1,000 keys and never reached the old days), stopping at the first
+   day still kept and deleting at most `BACKUP_PRUNE_MAX` (5,000) a night,
+   1,000 keys per `delete()` call (one call per key would be thousands of
+   subrequests in one cron run).
    Each read and write is retried (`backupRetry`), and the read size adapts to
    the table's row width so a narrow, huge table (`page_views`) is a handful
    of parts rather than hundreds. The last run's result, with the reason for
    any failed table, is under Backups on the dashboard's Health tab, beside a
    "Back up now" button (POST `/api/backup`, which rewrites today's files and
-   deletes parts a bigger earlier run left behind).
+   deletes parts a bigger earlier run left behind). A failed table, a shrink
+   warning and a broken prune are also entries in the problem log.
 7. Some character names carry credit marks (`∇`, `♊︎`) in the D1 name field;
    token-tool.js strips them for tokens only. Don't "fix" the names.
 8. **`resolveJinxTarget()` in render.js is the only place a jinx target is
