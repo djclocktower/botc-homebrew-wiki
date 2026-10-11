@@ -4240,7 +4240,11 @@ in styles.css; the wiki's own faces have woff2 twins too. See
 folder is immutable for a year; until 2026-10 a subset-labelling bug in
 `migration/fetch-google-fonts.js` meant Oswald, EB Garamond, Libre Franklin
 and the theme faces never drew basic-latin text at all (system fonts stood
-in), so after any refresh check which font actually renders. All Characters draws 48 cards initially, then
+in), so after any refresh check which font actually renders. **The site's
+labels, chips and headings are Roboto, not Oswald** (the owner's choice: it is
+what an Android phone drew while Oswald never loaded); Oswald is kept only as
+the theme-kit preset. Flavour quotes are Trade Gothic italic, as on the
+official wiki. All Characters draws 48 cards initially, then
 appends bounded batches when their section approaches the viewport. Filter
 changes disconnect the old observer, including when results become empty.
 The Show more buttons also work without IntersectionObserver; `.type-section`

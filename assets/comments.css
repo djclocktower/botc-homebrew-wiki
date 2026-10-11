@@ -57,12 +57,12 @@
 .cmt-main { flex: 1 1 auto; min-width: 0; }
 .cmt-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 4px; }
 .cmt-who {
-  font-family: 'Oswald', sans-serif; font-size: .95rem; letter-spacing: .02em;
+  font-family: 'Roboto',sans-serif; font-size: .95rem; letter-spacing: .02em;
   color: var(--cmt-cream); text-decoration: none;
 }
 .cmt-who:hover { color: #fff; text-decoration: underline; }
 .cmt-badge {
-  font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .07em;
+  font-family: 'Roboto',sans-serif; font-size: .64rem; letter-spacing: .07em;
   text-transform: uppercase; color: #f7ecd0; background: var(--maroon);
   border: 1px solid rgba(236,225,200,.3); padding: 1px 6px;
 }
@@ -73,7 +73,7 @@
 .cmt-actions { margin-top: 6px; display: flex; gap: 14px; }
 .cmt-action {
   background: none; border: none; padding: 0; cursor: pointer;
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  font-family: 'Roboto',sans-serif; font-size: .74rem; letter-spacing: .04em;
   color: #7fb2e6; text-decoration: underline; text-underline-offset: 3px;
 }
 .cmt-action:hover { color: #a9cdf3; }

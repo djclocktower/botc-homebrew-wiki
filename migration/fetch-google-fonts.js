@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const FAMILIES = 'family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,800;1,400' +
-  '&family=Oswald:wght@500;600;700&family=EB+Garamond:ital,wght@1,400;1,500' +
+  '&family=Oswald:wght@500;600;700&family=Roboto:wght@400;500;600;700&family=EB+Garamond:ital,wght@1,400;1,500' +
   '&family=Cinzel:wght@600;700&family=Pirata+One&family=IM+Fell+English:ital@0;1' +
   '&family=Grenze+Gotisch:wght@400;600&display=swap';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';

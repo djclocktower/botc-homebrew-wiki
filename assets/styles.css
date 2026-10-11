@@ -159,6 +159,22 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('fonts/roboto-regular-latin-ext-a6323dda.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('fonts/roboto-regular-latin-665db5e1.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
   font-family: 'Pirata One';
   font-style: normal;
   font-weight: 400;
@@ -322,7 +338,7 @@ p { margin: 0 0 .8em; }
 ul { list-style: none; margin: .2em 0 0; padding: 0; }
 li { position: relative; padding-left: 1.1em; margin: 0 0 .85em; }
 li::before { content: "•"; position: absolute; left: 0; color: var(--evil); font-weight: 700; }
-.tok { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 0; }
+.tok { font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 0; }
 
 /* ── the inline marks a character page's prose carries ──
    Almanac text (the ability, the lede, the summary, How to Run, the
@@ -559,7 +575,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .jinx:hover { background: rgba(91,31,33,.05); }
 .jico { width: 48px; height: 48px; object-fit: contain; }
 .jbody { min-width: 0; }
-.jname { display: block; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.05rem; line-height: 1.1; margin-bottom: 2px; text-decoration: none; }
+.jname { display: block; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: 1.05rem; line-height: 1.1; margin-bottom: 2px; text-decoration: none; }
 .jname:hover { text-decoration: underline; }
 .jname.good { color: var(--good-name); } .jname.evil { color: var(--evil); }
 .jtext { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.02rem; line-height: 1.28; color: var(--ink); }
@@ -773,14 +789,14 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   margin: 0 0 3px; line-height: 1.15;
 }
 .char-card-type {
-  font-family: 'Oswald', sans-serif; font-size: .78rem;
+  font-family: 'Roboto', sans-serif; font-size: .78rem;
   letter-spacing: .1em; text-transform: uppercase;
   color: var(--evil); margin: 0 0 7px;
 }
 .char-card-type.good { color: var(--good-name); }
 .char-card-ability { font-size: .9rem; color: var(--ink); line-height: 1.35; margin: 0 0 10px; }
 .char-card-link {
-  font-family: 'Oswald', sans-serif; font-size: .82rem;
+  font-family: 'Roboto', sans-serif; font-size: .82rem;
   letter-spacing: .06em; color: var(--good-name);
 }
 .empty-card {
@@ -892,7 +908,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .rel-ico { width: 44px; height: 44px; object-fit: contain; }
 .rel-bd { min-width: 0; }
 .rel-name {
-  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  display: block; font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: 1.02rem; line-height: 1.15; margin-bottom: 2px;
   color: var(--maroon); text-decoration: none;
 }
@@ -978,7 +994,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 
 /* edit link in breadcrumb */
 .edit-link {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase; text-decoration: none;
   color: rgba(236,225,200,.5); border: 1px solid rgba(236,225,200,.2);
   border-radius: 0; padding: 2px 8px;
@@ -1070,7 +1086,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .search-result-type {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
   color: var(--evil);
 }
@@ -1104,7 +1120,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    opens the full results page. */
 .search-group-label {
   padding: 8px 14px 4px;
-  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .66rem; font-weight: 600;
   letter-spacing: .1em; text-transform: uppercase;
   color: rgba(236,225,200,.5);
   border-top: 1px solid rgba(214,196,150,.12);
@@ -1128,7 +1144,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 img.search-result-thumb.round { border-radius: 50%; object-fit: cover; }
 .search-drop .search-all, .nav-search-results .search-all {
   display: block; padding: 11px 14px;
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .06em;
   text-transform: uppercase; text-decoration: none;
   color: var(--parch); background: #331532;
   border-top: 1px solid rgba(214,196,150,.2);
@@ -1193,7 +1209,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   gap: 12px; flex-wrap: wrap;
 }
 .sp-more {
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .05em;
   cursor: pointer; background: none; border: none; padding: 4px 0;
   color: rgba(236,225,200,.8); text-decoration: underline; text-underline-offset: 3px;
 }
@@ -1206,7 +1222,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sp-people { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .sp-tags { padding-bottom: 0; }
 .sp-pill-kind {
-  font-family: 'Oswald', sans-serif; font-weight: 400; font-size: .7rem;
+  font-family: 'Roboto', sans-serif; font-weight: 400; font-size: .7rem;
   letter-spacing: .08em; text-transform: uppercase; opacity: .65;
 }
 .sp-team-pill { border-left: 4px solid var(--good); }
@@ -1240,7 +1256,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .tag-pill {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .95rem; letter-spacing: .04em;
   text-decoration: none;
   background: var(--card); border: 1px solid var(--card-edge);
@@ -1439,7 +1455,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   text-overflow: unset;
 }
 .creator-at { font-size: .72rem; opacity: .7; }
-.creator-count { font-size: .7rem; opacity: .78; font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
+.creator-count { font-size: .7rem; opacity: .78; font-family: 'Roboto', sans-serif; letter-spacing: .03em; }
 
 /* ════════════════════════════════════════════════════════════════
    SCRIPT BUILDER
@@ -1519,7 +1535,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sb-toolbar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .sb-btn {
-  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .03em;
   cursor: pointer; border: none; padding: 9px 16px; font-size: .88rem;
   color: #f3ead4; transition: filter .15s;
 }
@@ -1825,10 +1841,11 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .landing-stats {
   display: inline-block;
-  /* The phone's own sans, on purpose. This rule asked for Oswald, which never
-     loaded until the 2026-10 font fix, so every reader saw the system sans —
-     and the owner preferred that to Oswald once it finally appeared. */
-  font-family: sans-serif; font-weight: 500;
+  /* Roboto, like every label that used to ask for Oswald. Oswald never loaded
+     until the 2026-10 font fix, so readers saw their phone's own sans (Roboto,
+     on Android); once Oswald finally appeared the owner preferred the old look,
+     so it is now self-hosted and the same on every device. */
+  font-family: 'Roboto', sans-serif; font-weight: 500;
   font-size: .92rem; letter-spacing: .08em; text-transform: uppercase;
   color: rgba(236,225,200,.7);
   padding: 8px 18px;
@@ -1907,7 +1924,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   border-top: 1px solid rgba(180,160,120,.4);
 }
 .collection-count {
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .8rem; letter-spacing: .06em; text-transform: uppercase;
   color: var(--maroon);
 }
@@ -1955,7 +1972,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   flex: 1;
 }
 .browse-card-count {
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .78rem; letter-spacing: .07em; text-transform: uppercase;
   color: var(--good-name);
   padding-top: 8px;
@@ -1993,7 +2010,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   word-break: break-word;
 }
 .recent-type {
-  font-family: 'Oswald', sans-serif; font-size: .68rem;
+  font-family: 'Roboto', sans-serif; font-size: .68rem;
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--evil);
 }
@@ -2037,7 +2054,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .featured-body { min-width: 0; }
 .featured-type {
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--evil); margin-bottom: 4px;
 }
@@ -2057,7 +2074,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   color: var(--ink); margin: 0 0 10px;
 }
 .featured-meta {
-  font-family: 'Oswald', sans-serif; font-size: .76rem;
+  font-family: 'Roboto', sans-serif; font-size: .76rem;
   letter-spacing: .04em;
   color: var(--ink);
   margin-bottom: 10px;
@@ -2182,7 +2199,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .script-badge {
   display: inline-block; min-width: 18px; height: 18px; line-height: 18px;
   padding: 0 5px; margin-left: 6px;
-  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 700;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; font-weight: 700;
   text-align: center; color: #f3ead4;
   background: var(--maroon); border-radius: 9px;
   vertical-align: middle;
@@ -2204,7 +2221,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* ─── Search "matched field" tag ─────────────────────────── */
 .search-match {
   display: inline-block; margin-left: 8px;
-  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  font-family: 'Roboto', sans-serif; font-size: .64rem;
   letter-spacing: .04em; text-transform: uppercase;
   color: var(--good-name); opacity: .8;
   border: 1px solid rgba(47,111,184,.35); border-radius: 3px;
@@ -2233,12 +2250,12 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .filter-group-label {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .72rem;
   letter-spacing: .08em; text-transform: uppercase; color: var(--maroon);
 }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter-chip {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .03em;
   cursor: pointer; user-select: none;
   background: #fffdf8; color: var(--maroon);
   border: 1px solid var(--parch-frame); border-radius: 0;
@@ -2253,12 +2270,12 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   padding: 6px 10px;
 }
 .filter-reset {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .04em;
   cursor: pointer; background: none; border: none; color: var(--good-name);
   text-decoration: underline; padding: 4px 0;
 }
 .filter-count {
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .04em;
   color: rgba(236,225,200,.7); margin: 0 0 18px;
 }
 /* Until the JS builds them, keep the bar and toggle fully hidden — the
@@ -2368,7 +2385,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   color: rgba(236,225,200,.85); text-align: center; max-width: 760px; margin: 0 auto 8px;
 }
 .script-meta-line {
-  font-family: 'Oswald', sans-serif; font-size: .85rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .85rem; letter-spacing: .05em;
   text-transform: uppercase; color: rgba(236,225,200,.6); text-align: center; margin: 0 0 24px;
 }
 .script-view-layout {
@@ -2452,7 +2469,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 
 .coll-chars { margin: 8px 0; }
 .coll-chars-count {
-  text-align: center; font-family: 'Oswald', sans-serif;
+  text-align: center; font-family: 'Roboto', sans-serif;
   letter-spacing: .07em; text-transform: uppercase; font-size: .9rem;
   color: rgba(236,225,200,.72); margin: 0 0 20px;
 }
@@ -2532,7 +2549,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   width: 100%; max-width: 760px; margin: 0 auto; text-align: center;
 }
 .collection-hero-count {
-  font-family: 'Oswald', sans-serif; font-size: .92rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .92rem; letter-spacing: .04em;
   color: rgba(236,225,200,.6); margin: 0;
 }
 .collection-edit-btn { display: inline-block; margin: 0; }
@@ -2717,7 +2734,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sv-subhead.good { color: var(--good-name); }
 .sv-difficulty {
-  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .78rem;
+  display: inline-block; font-family: 'Roboto', sans-serif; font-size: .78rem;
   font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
   padding: 1px 9px; border-radius: 999px; border: 1px solid rgba(91,31,33,.4);
   color: var(--maroon); background: rgba(91,31,33,.08);
@@ -2736,7 +2753,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sv-credits-list li { position: static; padding: 4px 0; border-bottom: 1px solid rgba(180,160,120,.25); font-size: .95rem; }
 .sv-credits-list li::before { display: none; }
 .sv-credits-list li:last-child { border-bottom: none; }
-.sv-credits-count { font-family: 'Oswald', sans-serif; font-size: .78rem; opacity: .65; color: var(--maroon); }
+.sv-credits-count { font-family: 'Roboto', sans-serif; font-size: .78rem; opacity: .65; color: var(--maroon); }
 
 /* Night order (collapsible, reuses .jinx-drop chrome) */
 .sv-night { margin-top: 18px; }
@@ -2759,7 +2776,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    min-width here was always for. */
 .sv-night-item::before {
   content: counter(night) "."; position: static;
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .78rem; color: var(--maroon); opacity: .55; min-width: 20px; padding-top: 3px;
 }
 .sv-night-item:last-child { border-bottom: none; }
@@ -2867,7 +2884,7 @@ body.theme-bg::before {
 .rules-item:last-child { margin-bottom: 0; }
 .rules-item-title {
   display: block;
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: 1.02rem; letter-spacing: .01em;
   color: var(--maroon);
 }
@@ -2997,7 +3014,7 @@ a:hover .curata-mark { opacity: .9; }
 /* Partial stays a word — a glyph can't say "unfinished" — but quietly. */
 .page-class {
   display: inline-block; vertical-align: middle;
-  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  font-family: 'Roboto', sans-serif; font-size: .64rem;
   letter-spacing: .07em; text-transform: uppercase;
   padding: 1px 6px; border: 1px solid currentColor; border-radius: 0;
   white-space: nowrap; cursor: help; margin-left: .45em;
@@ -3079,7 +3096,7 @@ a:hover .curata-mark { opacity: .9; }
 .filter-chip-selected-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter-chip-selected-row:empty { display: none; }
 .filter-more {
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .74rem; letter-spacing: .04em;
   color: rgba(236,225,200,.65); align-self: center;
 }
 @media (max-width: 640px) {
@@ -3098,7 +3115,7 @@ a:hover .curata-mark { opacity: .9; }
 }
 .news-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(40,12,30,.35); }
 .news-card-date {
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .74rem; letter-spacing: .06em;
   text-transform: uppercase; color: #8a7a5e;
 }
 .news-card-title {
@@ -3108,7 +3125,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-card-summary { color: var(--ink); font-size: .92rem; line-height: 1.45; margin: 0; }
 .news-card-more {
   display: inline-block; margin-top: 9px;
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .05em;
   color: var(--good-name);
 }
 .news-article {
@@ -3122,7 +3139,7 @@ a:hover .curata-mark { opacity: .9; }
   font-family: 'Dumbledor2', serif; font-size: 1.7rem; letter-spacing: .02em;
   color: var(--maroon); margin: 4px 0 8px; line-height: 1.2;
 }
-.news-meta { font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .05em; color: #8a7a5e; }
+.news-meta { font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .05em; color: #8a7a5e; }
 .news-hero { width: 100%; height: auto; margin: 0 0 16px; border: 2px solid var(--parch-frame); }
 .news-body { color: var(--ink); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
 .news-body p { margin: 0 0 13px; }
@@ -3136,7 +3153,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-empty { color: rgba(236,225,200,.7); text-align: center; padding: 28px 10px; }
 .news-back { max-width: 900px; margin: 0 auto 12px; }
 .news-back a {
-  font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .84rem; letter-spacing: .04em;
   color: rgba(236,225,200,.8); text-decoration: none;
 }
 .news-back a:hover { color: #fff; text-decoration: underline; }
@@ -3150,13 +3167,13 @@ a:hover .curata-mark { opacity: .9; }
   padding: 6px 2px 0;
 }
 .news-admin-pill {
-  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .68rem; letter-spacing: .05em;
   text-transform: uppercase; padding: 2px 9px; border-radius: 999px;
 }
 .news-admin-pill.draft { background: rgba(154,110,20,.22); color: #f0d79a; border: 1px solid rgba(214,170,70,.5); }
 .news-admin-pill.published { background: rgba(42,110,42,.22); color: #b7e0b7; border: 1px solid rgba(90,170,90,.5); }
 .news-admin-edit {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .04em;
   color: rgba(236,225,200,.85); text-decoration: none;
 }
 .news-admin-edit:hover { color: #fff; text-decoration: underline; }
@@ -3168,7 +3185,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .feature-add { margin: 0 0 16px; }
 .feature-add-label {
   display: block; margin: 0 0 6px;
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .04em;
   color: rgba(236,225,200,.8);
 }
 .feature-add-row { display: flex; gap: 8px; }
@@ -3183,7 +3200,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 .wiki-feature { margin: 10px 0 0; }
 .wiki-feature-btn {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .04em;
   padding: 5px 12px; cursor: pointer;
   background: rgba(122,92,24,.12); color: var(--maroon);
   border: 1px solid var(--parch-frame);
@@ -3206,7 +3223,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 /* Same amber the SSR draft banner uses, so "draft" always looks the same. */
 .draft-mark {
   display: inline-block; vertical-align: middle;
-  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  font-family: 'Roboto', sans-serif; font-size: .64rem;
   letter-spacing: .07em; text-transform: uppercase;
   padding: 1px 6px; margin-left: .45em;
   color: #7a5c18; border: 1px solid currentColor; border-radius: 0;
@@ -3215,12 +3232,12 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 /* A dashed edge marks the whole card as not-yet-public at a glance. */
 .char-card-draft { border-style: dashed; opacity: .9; }
 .draft-count {
-  font-family: 'Oswald', sans-serif; font-size: .6em;
+  font-family: 'Roboto', sans-serif; font-size: .6em;
   letter-spacing: .08em; text-transform: uppercase;
   opacity: .6; vertical-align: middle; margin-left: .5em;
 }
 .draft-note {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .03em;
   color: rgba(236,225,200,.6); text-align: center; margin: 0 0 14px;
 }
 
@@ -3233,7 +3250,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-page { max-width: 1080px; margin: 0 auto; }
 .wiki-crumb { margin: 0 0 10px; }
 .wiki-crumb a {
-  font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .84rem; letter-spacing: .04em;
   color: rgba(236,225,200,.8); text-decoration: none;
 }
 .wiki-crumb a:hover { color: #fff; text-decoration: underline; }
@@ -3257,7 +3274,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   opacity: .85; margin: 6px 0 0;
 }
 .wiki-meta {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .05em;
   color: #8a7a5e; margin: 8px 0 0;
 }
 .wiki-meta a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
@@ -3326,7 +3343,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 @media (max-width: 620px) { .wiki-toc { float: none; max-width: none; margin-left: 0; } }
 .wiki-toc-head {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .74rem;
   letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
   margin-bottom: 6px;
 }
@@ -3349,7 +3366,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   border: 1px solid var(--parch-frame); padding: 6px 10px; text-align: left; vertical-align: top;
 }
 .wiki-table th {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .82rem;
   letter-spacing: .04em; text-transform: uppercase;
   background: rgba(91,31,33,.08); color: var(--maroon);
 }
@@ -3387,7 +3404,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   padding: 10px 14px; margin: 0 0 16px;
 }
 .wiki-callout-head {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .76rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .76rem;
   letter-spacing: .09em; text-transform: uppercase; margin-bottom: 5px;
   color: var(--maroon);
 }
@@ -3426,7 +3443,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 .wiki-pagelink:hover { background: rgba(255,255,255,.55); }
 .wiki-pagelink-title {
-  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  display: block; font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: 1rem; letter-spacing: .02em; color: var(--maroon);
 }
 .wiki-pagelink-blurb {
@@ -3572,7 +3589,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .jx-opt-ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
 .jx-opt-body, .sg-opt-body { min-width: 0; display: flex; flex-direction: column; }
 .jx-opt-name, .sg-opt-name {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .jx-opt-meta, .sg-opt-meta {
@@ -3629,7 +3646,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   .hist-row { grid-template-columns: 1fr; gap: 2px; }
 }
 .hist-when {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .03em;
   color: #6b5d49; padding-top: 2px;
 }
 .hist-body { min-width: 0; font-size: .92rem; color: var(--ink); }
@@ -3638,14 +3655,14 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .hist-who:hover { text-decoration: underline; }
 .hist-who-gone { font-weight: 400; font-style: italic; color: #6b5d49; }
 .hist-badge {
-  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .66rem; font-weight: 600;
   letter-spacing: .07em; text-transform: uppercase;
   color: #1c5429; background: rgba(42,110,42,.12);
   border: 1px solid rgba(42,110,42,.4); border-radius: 3px; padding: 1px 6px;
 }
 .hist-row-now .hist-body, .hist-row-first .hist-body { color: #6b5d49; }
 .hist-chip {
-  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .74rem;
+  display: inline-block; font-family: 'Roboto', sans-serif; font-size: .74rem;
   letter-spacing: .03em; color: var(--maroon); background: #fffdf8;
   border: 1px solid rgba(180,160,120,.7); border-radius: 3px;
   padding: 1px 7px; margin: 2px 4px 2px 0;
@@ -3653,7 +3670,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .hist-nochange { color: #6b5d49; font-style: italic; }
 .hist-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .hist-btn {
-  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .76rem; letter-spacing: .03em;
   color: var(--maroon); background: rgba(255,253,248,.7);
   border: 1px solid rgba(122,45,47,.4); border-radius: 4px;
   padding: 4px 10px; cursor: pointer;
@@ -3666,7 +3683,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   padding: 8px 10px; margin-bottom: 8px;
 }
 .hist-field-name {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; letter-spacing: .06em;
   text-transform: uppercase; color: var(--maroon); margin-bottom: 4px;
 }
 .hist-was, .hist-now {
@@ -3676,7 +3693,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .hist-was { color: #8a3a3a; }
 .hist-now { color: #1c5429; }
 .hist-tag {
-  flex-shrink: 0; font-family: 'Oswald', sans-serif; font-size: .66rem;
+  flex-shrink: 0; font-family: 'Roboto', sans-serif; font-size: .66rem;
   letter-spacing: .06em; text-transform: uppercase; opacity: .8; padding-top: 3px;
   min-width: 44px;
 }
@@ -3699,11 +3716,11 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   background: rgba(122,93,63,.07); border-color: var(--rule); color: #5f5240;
 }
 .edit-status-bar .es-label {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; letter-spacing: .06em;
   text-transform: uppercase; opacity: .75;
 }
 .edit-status-bar .oe-chip {
-  font-family: 'Oswald', sans-serif; font-size: .7rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .7rem; font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase;
   color: #1c5429; background: rgba(42,110,42,.1);
   border: 1px solid rgba(42,110,42,.35); border-radius: 3px; padding: 1px 6px;
@@ -3712,7 +3729,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   color: #6b5d49; background: rgba(122,93,63,.08); border-color: rgba(122,93,63,.35);
 }
 .hist-page-link {
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .74rem; letter-spacing: .04em;
   color: var(--maroon); text-decoration: none; border-bottom: 1px solid rgba(122,45,47,.35);
 }
 .hist-page-link:hover { color: var(--evil); }
@@ -3723,7 +3740,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
    NOT .hist-open — that is already the "this page is open to editing" line on
    /history itself, and a second rule under the same name would restyle it. */
 .hist-open-link {
-  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .82rem;
+  display: inline-block; font-family: 'Roboto', sans-serif; font-size: .82rem;
   letter-spacing: .03em; color: var(--maroon); text-decoration: none;
   background: #fffdf8; border: 1px solid var(--rule); border-radius: 4px;
   padding: 7px 12px; min-height: 34px; line-height: 1.4;
@@ -3801,9 +3818,9 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .sg-row:first-child { border-top: none; padding-top: 4px; }
 .sg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .sg-who { font-weight: 700; color: var(--maroon); }
-.sg-when { font-family: 'Oswald', sans-serif; font-size: .76rem; color: #6b5d49; }
+.sg-when { font-family: 'Roboto', sans-serif; font-size: .76rem; color: #6b5d49; }
 .sg-chip {
-  font-family: 'Oswald', sans-serif; font-size: .68rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .68rem; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase;
   border-radius: 3px; padding: 1px 7px; border: 1px solid;
 }
@@ -3835,7 +3852,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .sg-inbox-main { flex: 1; min-width: 0; }
 .sg-inbox-name { display: block; color: var(--maroon); font-weight: 700; text-decoration: none; }
 .sg-inbox-name:hover { text-decoration: underline; }
-.sg-inbox-meta { display: block; font-family: 'Oswald', sans-serif; font-size: .74rem; color: #6b5d49; }
+.sg-inbox-meta { display: block; font-family: 'Roboto', sans-serif; font-size: .74rem; color: #6b5d49; }
 .sg-inbox-note { display: block; font-size: .86rem; font-style: italic; color: var(--ink); margin-top: 2px; }
 /* The note box in the editor when a page takes suggestions */
 .suggest-note-fld textarea { min-height: 60px; }
@@ -3850,7 +3867,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .att-box { margin-top: 10px; }
 .att-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .att-add {
-  font-family: 'Oswald', sans-serif; text-transform: uppercase;
+  font-family: 'Roboto', sans-serif; text-transform: uppercase;
   font-size: .74rem; letter-spacing: .06em; cursor: pointer;
   padding: 5px 12px; color: inherit;
   background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.3);
