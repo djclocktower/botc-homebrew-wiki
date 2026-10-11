@@ -1044,3 +1044,57 @@ window.placeEditButton();
     fitAll();
   }
 })();
+
+/* ── Problem log beacon (F3) ──
+   Keep this the LAST block in site.js. When one of the wiki's OWN scripts
+   throws in a reader's browser, report it to POST /api/client-error so it
+   shows on the dashboard's "Problems this week" card. Three reports a page
+   at most, each distinct error once; errors from extensions, other sites and
+   failed image loads are never sent, and nothing personal is: the message,
+   the file and line, the stack and the page's path (no query string). The
+   Worker filters again and always answers an empty 204. Failed fetches are
+   not reported: data.js retries them, and a reader going offline is not a
+   problem with the site. See "The problem log" in CLAUDE.md. */
+(function () {
+  var sent = 0, seen = {};
+  var origin = location.origin;
+  function ours(src) {
+    return !src || src === location.href ||
+      (src.indexOf(origin + '/assets/') === 0 && /\.js(\?|#|$)/.test(src));
+  }
+  function send(msg, src, line, col, stack) {
+    if (sent >= 3 || !msg) return;
+    var key = msg + '|' + src + '|' + line;
+    if (seen[key]) return;
+    seen[key] = 1; sent++;
+    var body = JSON.stringify({
+      message: String(msg).slice(0, 300),
+      source: String(src || location.href).slice(0, 300),
+      line: line | 0, col: col | 0,
+      stack: String(stack || '').slice(0, 1500),
+      page: location.pathname
+    });
+    try {
+      if (navigator.sendBeacon && navigator.sendBeacon('/api/client-error', new Blob([body], { type: 'application/json' }))) return;
+      fetch('/api/client-error', { method: 'POST', body: body, keepalive: true, credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' } }).catch(function () {});
+    } catch (e) { /* reporting must never become a second error */ }
+  }
+  window.addEventListener('error', function (e) {
+    // A failed <img>/<script> load is reported on the element: ignore it.
+    if (!e || (e.target !== window && e.target && e.target.tagName)) return;
+    if (!ours(e.filename)) return;
+    send(e.message, e.filename, e.lineno, e.colno, e.error && e.error.stack);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    var stack = String((r && r.stack) || '');
+    // Only a rejection whose stack runs through one of our own scripts, and
+    // that script is the source the Worker checks.
+    var at = stack.indexOf(origin + '/assets/');
+    if (at === -1) return;
+    var m = /^[^\s)]+?\.js/.exec(stack.slice(at));
+    var line = /\.js[^:\s)]*:(\d+)/.exec(stack.slice(at));
+    send((r && r.message) || String(r), m ? m[0] : '', line ? +line[1] : 0, 0, stack);
+  });
+})();
