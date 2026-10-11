@@ -43,6 +43,9 @@
  *   POST /api/report-broken-link -> the 404 page's "this looks like a mistake"
  *                                box; same inbox as /api/contact, but works
  *                                without an account (rate-limited per IP)
+ *   POST /api/client-error    -> the browser half of the problem log (the
+ *                                beacon at the end of site.js); no login,
+ *                                always answers an empty 204
  *   GET  /api/announcement    -> current site-wide announcement (public)
  *   GET  /api/site-text       -> the site's rewritten system text, as a map
  *                                site.js applies in the browser (public,
@@ -215,7 +218,14 @@
  *   POST /api/admin/purge-images -> delete selected orphaned images
  *   GET  /api/admin/broken-refs  -> scripts/collections pointing at missing chars
  *   POST /api/admin/clean-refs   -> strip broken refs from one page
- *   GET  /api/admin/backups   -> list nightly R2 backups (dates + tables)
+ *   GET  /api/admin/backups   -> list nightly R2 backups (dates + tables, and
+ *                                the newest nights' manifests: row counts, warnings)
+ *   GET  /api/admin/problems  -> the problem log (?kind=&show=open|fixed|all),
+ *                                plus this week's count per kind
+ *   POST /api/admin/problem   -> {fp, action:'fix'|'forget'}
+ *   POST /api/admin/problem-redirect -> send a missing /c/ address to a
+ *                                character ({path, to}), or take it back
+ *                                ({path, undo:true})
  *   GET  /api/admin/backup-file  -> download one backup table (?date=&table=)
  *   POST /api/admin/restore-page -> restore one page from a backup date
  *   GET  /api/admin/pages     -> page list for bulk actions
@@ -1207,9 +1217,15 @@ async function sendEmail(env, to, subject, html) {
       },
       body: JSON.stringify({ from, to: [to], subject, html })
     });
-    if (!res.ok) return { ok: false, error: 'Email delivery failed (' + res.status + ').' };
+    if (!res.ok) {
+      // Into the problem log (nothing about the recipient): password-reset
+      // and verification mail failing is invisible from the dashboard otherwise.
+      await recordProblem(env, null, { kind: 'email', route: 'sendEmail', message: 'Email delivery failed (' + res.status + ')' });
+      return { ok: false, error: 'Email delivery failed (' + res.status + ').' };
+    }
     return { ok: true };
   } catch {
+    await recordProblem(env, null, { kind: 'email', route: 'sendEmail', message: 'Email delivery failed (no answer from the email service)' });
     return { ok: false, error: 'Email delivery failed.' };
   }
 }
@@ -5486,15 +5502,88 @@ async function backupRetry(what, fn) {
   throw new Error(what + ': ' + ((last && last.message) || String(last || 'error')));
 }
 
+// Every table the Worker or migration/schema.sql creates, most important
+// first (a cron run that runs out of time has saved these by then). A new
+// CREATE TABLE must be added here: migration/tests/backup.test.mjs reads both
+// files and fails on any table this list does not name.
+//   core: true    created by schema.sql, so a missing one is a FAILURE
+//   (no core)     created lazily the first time its feature is used; until
+//                 then it is "absent", which is not a failure
+//   backup: false deliberately not backed up, with the reason in `why`
+// Before this list existed the backup was a hand-kept array that had quietly
+// missed redirects, favorites, suggestions, modmail_replies and site_text.
+const DATA_TABLES = [
+  { name: 'characters', core: true },
+  { name: 'collections', core: true },
+  { name: 'scripts', core: true },
+  { name: 'pages' },
+  { name: 'news' },
+  { name: 'users', core: true },
+  { name: 'settings', core: true },
+  { name: 'redirects' },
+  { name: 'favorites' },
+  { name: 'suggestions' },
+  { name: 'site_text' },
+  { name: 'messages', core: true },
+  { name: 'modmail_replies' },
+  { name: 'comments' },
+  { name: 'comment_reports' },
+  { name: 'dms' },
+  { name: 'dm_blocks' },
+  { name: 'dm_reports' },
+  { name: 'activity_log', core: true },
+  { name: 'revisions', core: true },
+  { name: 'page_views', core: true },
+  { name: 'rate_limits', backup: false, why: 'spent rate-limit counters, rebuilt on use' },
+  { name: 'problem_log', backup: false, why: 'operational log of what went wrong; holds stack traces, not content' }
+];
+// sqlite_master names that are the database's own, not ours.
+const SYSTEM_TABLE_RE = /^(sqlite_|_cf_|d1_)/i;
+// How far a core table may shrink overnight before the run says so. A table
+// that lost half its rows in a day is the one backup event worth interrupting
+// the owner for: it is what a bad bulk delete looks like.
+const BACKUP_SHRINK_MIN_ROWS = 50;
+const BACKUP_SHRINK_RATIO = 0.5;
+// Snapshots kept, and how many old files one run may delete (cron time stays
+// bounded; a backlog is finished off on the nights after).
+const BACKUP_KEEP_DAYS = 30;
+const BACKUP_PRUNE_MAX = 5000;
+
+// The tables a run backs up: the registry, then anything sqlite_master knows
+// that the registry does not (backed up too, and flagged as `unregistered` in
+// the manifest so a forgotten registration is visible rather than lost).
+async function backupTableList(env) {
+  const list = DATA_TABLES.filter(t => t.backup !== false).map(t => ({ name: t.name, core: !!t.core }));
+  const known = new Set(DATA_TABLES.map(t => t.name));
+  const unregistered = [];
+  try {
+    const { results } = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    for (const r of results || []) {
+      const name = String((r && r.name) || '');
+      if (!name || known.has(name) || SYSTEM_TABLE_RE.test(name)) continue;
+      // Interpolated into SQL and into an R2 key below, so only plain names.
+      if (!/^[a-z_][a-z0-9_]{0,39}$/i.test(name)) continue;
+      unregistered.push(name);
+      list.push({ name, core: false, unregistered: true });
+    }
+  } catch { /* fall back to the registry alone */ }
+  return { list, unregistered };
+}
+
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'pages', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
+  const startedAt = new Date().toISOString();
+  const { list: tables, unregistered } = await backupTableList(env);
   const saved = {};
   const failed = {};
-  for (const t of tables) {
+  const manifestTables = {};
+  for (const entry of tables) {
+    const t = entry.name;
     let rows = 0;
     let written = 0;
+    let part = 0;
+    let bytes = 0;
     try {
       // Paged by rowid rather than SELECT *. The whole table used to be
       // materialised in the isolate and then stringified — two copies in a
@@ -5502,7 +5591,6 @@ async function runBackup(env) {
       // page means ~100k rows at a few KB each once the wiki has a few
       // thousand characters, which cannot be read into a Worker at all.
       let after = 0;
-      let part = 0;
       let limit = BACKUP_CHUNK;
       let pieces = [];
       let pending = 0;
@@ -5516,6 +5604,7 @@ async function runBackup(env) {
         await backupRetry('writing ' + name.slice(name.lastIndexOf('/') + 1), () =>
           env.ART.put(name, body, { httpMetadata: { contentType: 'application/json' } }));
         part++;
+        bytes += body.length;
         written += held;
         pieces = [];
         pending = 0;
@@ -5555,7 +5644,14 @@ async function runBackup(env) {
         }
       } catch { /* tidying is best-effort */ }
       saved[t] = rows;
+      manifestTables[t] = { status: 'ok', rows, parts: part, bytes };
     } catch (e) {
+      // A lazily created table that was never created is "absent": nothing to
+      // back up yet, and not a failure. A core table missing IS one.
+      if (!entry.core && !written && /no such table/i.test((e && e.message) || '')) {
+        manifestTables[t] = { status: 'absent', rows: 0, parts: 0, bytes: 0 };
+        continue;
+      }
       // A failure here used to be recorded as "skipped" and returned inside a
       // successful-looking result, so a backup that had silently stopped
       // working looked exactly like one that was fine. Record it as a failure,
@@ -5563,18 +5659,53 @@ async function runBackup(env) {
       const msg = ((e && e.message) || 'error') + (written ? ` (${written} rows were saved before it stopped)` : '');
       saved[t] = written;
       failed[t] = msg.slice(0, 500);
+      manifestTables[t] = { status: 'failed', rows: written, parts: part, bytes, error: failed[t] };
       console.error(`[backup] ${stamp} ${t} FAILED: ${msg}`);
+      await recordProblem(env, null, { kind: 'cron', route: 'backup', message: t + ': ' + msg });
     }
   }
-  const cutoff = Date.now() - 30 * 86400000;
+
+  // Compare with last night. Only core tables, only ones that backed up
+  // cleanly tonight (a failure is already reported), and only from a size
+  // where a halving means something.
+  const warnings = [];
   try {
-    const listed = await env.ART.list({ prefix: 'backups/', limit: 1000 });
-    for (const obj of listed.objects) {
-      const m = obj.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\//);
-      if (m && Date.parse(m[1]) < cutoff) await env.ART.delete(obj.key);
+    const yesterday = new Date(Date.parse(stamp) - 86400000).toISOString().slice(0, 10);
+    const prev = await env.ART.get(`backups/${yesterday}/_manifest.json`);
+    const before = prev ? await prev.json() : null;
+    if (before && before.tables) {
+      for (const entry of tables) {
+        const now = manifestTables[entry.name];
+        const then = before.tables[entry.name];
+        if (!entry.core || !now || now.status !== 'ok' || !then || then.status !== 'ok') continue;
+        if (then.rows >= BACKUP_SHRINK_MIN_ROWS && now.rows < then.rows * BACKUP_SHRINK_RATIO) {
+          warnings.push(`${entry.name}: ${now.rows} rows, yesterday ${then.rows}`);
+        }
+      }
     }
-  } catch { /* pruning is best-effort */ }
+  } catch { /* no usable manifest for yesterday: nothing to compare with */ }
+  for (const w of warnings) {
+    await recordProblem(env, null, { kind: 'cron', route: 'backup check', message: 'A table shrank sharply overnight: ' + w });
+  }
+
   const failedTables = Object.keys(failed);
+  const skipped = {};
+  for (const t of DATA_TABLES) if (t.backup === false) skipped[t.name] = t.why || '';
+  // Written LAST, after every table: a manifest that exists says the run got
+  // to the end. Its row counts are what tomorrow's shrink check reads.
+  const manifest = {
+    v: 1, date: stamp, startedAt, finishedAt: new Date().toISOString(),
+    ok: failedTables.length === 0, tables: manifestTables, unregistered, skipped, warnings
+  };
+  try {
+    await backupRetry('writing _manifest.json', () => env.ART.put(`backups/${stamp}/_manifest.json`,
+      JSON.stringify(manifest), { httpMetadata: { contentType: 'application/json' } }));
+  } catch (e) {
+    console.error(`[backup] ${stamp} manifest FAILED: ${(e && e.message) || e}`);
+    await recordProblem(env, null, { kind: 'cron', route: 'backup', message: 'writing the manifest: ' + ((e && e.message) || 'error') });
+  }
+
+  await pruneBackups(env);
   // Recorded in settings so the dashboard can show it. A cron backup runs
   // inside ctx.waitUntil() with nobody reading the return value, so without
   // this a broken nightly backup is invisible until the day it is needed.
@@ -5584,10 +5715,287 @@ async function runBackup(env) {
        ON CONFLICT(key) DO UPDATE SET value=excluded.value`
     ).bind(JSON.stringify({
       date: stamp, at: new Date().toISOString(),
-      ok: failedTables.length === 0, failed
+      ok: failedTables.length === 0, failed, warnings
     })).run();
   } catch { /* the backup itself matters more than the bookkeeping */ }
-  return { date: stamp, saved, failed, ok: failedTables.length === 0 };
+  return { date: stamp, saved, failed, ok: failedTables.length === 0, warnings, manifest };
+}
+
+// Old snapshots out, a page of the listing at a time. It used to read ONE
+// page of 1,000 keys, and a month of backups is far more files than that, so
+// the oldest days were never reached and nothing old was ever deleted. R2
+// lists keys in order and every key starts with its date, so the walk stops
+// at the first day still worth keeping. The keys are collected first and
+// deleted after, so deleting cannot shift the listing under the cursor.
+async function pruneBackups(env) {
+  const cutoff = Date.now() - BACKUP_KEEP_DAYS * 86400000;
+  try {
+    const doomed = [];
+    let cursor;
+    walk: do {
+      const listed = await env.ART.list({ prefix: 'backups/', limit: 1000, ...(cursor ? { cursor } : {}) });
+      for (const obj of listed.objects || []) {
+        const m = obj.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\//);
+        if (!m) continue;
+        if (Date.parse(m[1]) >= cutoff) break walk;
+        doomed.push(obj.key);
+        if (doomed.length >= BACKUP_PRUNE_MAX) break walk;
+      }
+      cursor = listed.truncated ? listed.cursor : null;
+    } while (cursor);
+    for (const key of doomed) await env.ART.delete(key);
+    return doomed.length;
+  } catch (e) {
+    console.error('[backup] prune failed:', (e && e.message) || e);
+    await recordProblem(env, null, { kind: 'cron', route: 'backup prune', message: (e && e.message) || 'error' });
+    return 0;
+  }
+}
+
+// ---- the problem log: what went wrong, for the owner ----
+// One row per DISTINCT problem (a fingerprint of kind + place + message with
+// the numbers taken out), counting how often it happened. Fed by a handful of
+// sources an admin can act on — crashes, 5xx answers, HTML 404s on the
+// Worker's own routes, the nightly jobs, email that did not send, and the
+// browser beacon — and read by the "Problems this week" card on the
+// dashboard's Health tab. See "The problem log" in CLAUDE.md.
+//
+// Do not sprinkle recordProblem() into every catch: a source belongs here
+// only when an admin can do something about what it reports.
+//
+// Nothing personal is stored: no IP, no user agent, no cookie, no request
+// body, and no query string anywhere (reset and verification tokens live in
+// query strings).
+let _problemReady = false;
+async function ensureProblemTable(env) {
+  if (_problemReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS problem_log (
+       fp         TEXT PRIMARY KEY,
+       kind       TEXT NOT NULL,
+       route      TEXT NOT NULL,
+       message    TEXT NOT NULL,
+       sample     TEXT,
+       detail     TEXT,
+       count      INTEGER NOT NULL DEFAULT 1,
+       first_seen TEXT NOT NULL DEFAULT (datetime('now')),
+       last_seen  TEXT NOT NULL DEFAULT (datetime('now')),
+       fixed_at   TEXT,
+       reopened   INTEGER NOT NULL DEFAULT 0
+     )`
+  ).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_problem_seen ON problem_log(last_seen DESC)').run();
+  _problemReady = true;
+}
+const PROBLEM_KINDS = ['crash', 'server', 'notfound', 'browser', 'cron', 'email'];
+// Kinds that light the Health tab badge. 404s are too noisy to nag about, and
+// a browser report is the one kind an anonymous stranger can create — a badge
+// anybody can keep red is a badge the owner learns to ignore.
+const PROBLEM_BADGE_KINDS = ['crash', 'server', 'cron', 'email'];
+// Throttle, per isolate. A fingerprint writes at most once a minute (the
+// sightings in between ride along as its count); the isolate writes at most
+// PROBLEM_WRITES_PER_MIN rows a minute in all; and the two kinds a stranger
+// can mint new fingerprints for are capped per minute and per UTC day, so a
+// scanner walking random addresses cannot flood the table. Counts lost when
+// an isolate dies are fine: this is a signal, not accounting.
+const PROBLEM_WRITE_GAP_MS = 60000;
+const PROBLEM_WRITES_PER_MIN = 30;
+const PROBLEM_BUF_MAX = 300;
+const PROBLEM_NEW_NOTFOUND_PER_MIN = 10;
+const PROBLEM_NEW_PER_DAY = { notfound: 200, browser: 50 };
+// Kept rows: 30 days since last seen, fixed ones 14 days after the fix, and
+// beyond PROBLEM_ROWS_MAX the least-seen 404 and browser rows go first.
+const PROBLEM_ROWS_MAX = 1000;
+const _problemBuf = new Map();     // fp -> { n, lastWrite }
+let _problemMinute = { at: 0, writes: 0, newNotfound: 0 };
+let _problemDay = { day: '', notfound: 0, browser: 0 };
+
+// A small synchronous FNV-1a, two passes with different seeds -> 16 hex.
+// crypto.subtle is async and far more than a dedupe key needs.
+function problemHash(str) {
+  const pass = seed => {
+    let h = seed >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  };
+  return pass(0x811c9dc5) + pass(0x01000193 ^ 0x5bd1e995);
+}
+// The query string and fragment come off every URL in a piece of text.
+function stripUrlQueries(text) {
+  return String(text == null ? '' : text).replace(/(https?:\/\/[^\s?#)"'<>]+)[?#][^\s)"'<>]*/g, '$1');
+}
+// Where a problem happened, as a pattern: every character page is one place.
+function problemRoute(path) {
+  const p = String(path || '/').split(/[?#]/)[0] || '/';
+  const m = p.match(/^\/(c|s|collection|p|news|u)\/./);
+  if (m) return m[1] === 'c' ? '/c/:page' : '/' + m[1] + '/:slug';
+  return p.slice(0, 120);
+}
+function problemFingerprint(kind, route, message) {
+  const norm = String(message || '')
+    .replace(/\b(?=[0-9a-f-]*\d)[0-9a-f-]{8,}\b/gi, '*')   // ids, hashes, uuids
+    .replace(/\d+/g, '#')
+    .slice(0, 200);
+  return kind + ':' + problemHash(kind + '|' + route + '|' + norm);
+}
+// Whether this sighting writes now, and with what count. Synchronous, so the
+// caller never waits on it.
+function problemTake(fp, kind) {
+  const now = Date.now();
+  if (now - _problemMinute.at >= 60000) _problemMinute = { at: now, writes: 0, newNotfound: 0 };
+  const day = new Date(now).toISOString().slice(0, 10);
+  if (_problemDay.day !== day) _problemDay = { day, notfound: 0, browser: 0 };
+  let e = _problemBuf.get(fp);
+  if (e) {
+    // Most recently seen last, so the oldest is the first key.
+    _problemBuf.delete(fp);
+    _problemBuf.set(fp, e);
+  } else {
+    if (kind === 'notfound' && (_problemMinute.newNotfound >= PROBLEM_NEW_NOTFOUND_PER_MIN ||
+        _problemDay.notfound >= PROBLEM_NEW_PER_DAY.notfound)) return 0;
+    if (kind === 'browser' && _problemDay.browser >= PROBLEM_NEW_PER_DAY.browser) return 0;
+    if (kind === 'notfound') { _problemMinute.newNotfound++; _problemDay.notfound++; }
+    if (kind === 'browser') _problemDay.browser++;
+    e = { n: 0, lastWrite: -Infinity };
+    _problemBuf.set(fp, e);
+    if (_problemBuf.size > PROBLEM_BUF_MAX) _problemBuf.delete(_problemBuf.keys().next().value);
+  }
+  e.n++;
+  if (now - e.lastWrite < PROBLEM_WRITE_GAP_MS) return 0;
+  if (_problemMinute.writes >= PROBLEM_WRITES_PER_MIN) return 0;
+  _problemMinute.writes++;
+  const n = e.n;
+  e.n = 0;
+  e.lastWrite = now;
+  return n;
+}
+async function writeProblem(env, row, n) {
+  await ensureProblemTable(env);
+  await env.DB.prepare(
+    `INSERT INTO problem_log (fp, kind, route, message, sample, detail, count) VALUES (?,?,?,?,?,?,?)
+     ON CONFLICT(fp) DO UPDATE SET count = problem_log.count + excluded.count,
+       last_seen = datetime('now'), sample = excluded.sample,
+       detail = COALESCE(excluded.detail, problem_log.detail),
+       reopened = CASE WHEN problem_log.fixed_at IS NOT NULL THEN 1 ELSE problem_log.reopened END,
+       fixed_at = NULL`
+  ).bind(row.fp, row.kind, row.route, row.message, row.sample, row.detail, n).run();
+}
+// Never throws and never holds a response up: with a ctx the write rides
+// ctx.waitUntil(); without one (cron, sendEmail) the returned promise is
+// safe to await and resolves whatever happens.
+function recordProblem(env, ctx, p) {
+  try {
+    if (!env || !env.DB || !p || PROBLEM_KINDS.indexOf(p.kind) === -1) return Promise.resolve();
+    const kind = p.kind;
+    const route = kind === 'notfound'
+      ? String(p.route || '/').split(/[?#]/)[0].toLowerCase().slice(0, 200)
+      : problemRoute(p.route);
+    const message = stripUrlQueries(p.message || 'error').slice(0, 300) || 'error';
+    const fp = problemFingerprint(kind, route, message);
+    const n = problemTake(fp, kind);
+    if (!n) return Promise.resolve();
+    const row = {
+      fp, kind, route, message,
+      sample: p.sample ? stripUrlQueries(String(p.sample).split(/[?#]/)[0]).slice(0, 200) : null,
+      detail: p.detail ? stripUrlQueries(p.detail).slice(0, 2000) : null
+    };
+    const job = writeProblem(env, row, n).catch(e => {
+      console.error('[problem-log] write failed:', (e && e.message) || e);
+    });
+    if (ctx && typeof ctx.waitUntil === 'function') { ctx.waitUntil(job); return Promise.resolve(); }
+    return job;
+  } catch { return Promise.resolve(); }
+}
+
+// Addresses a person asked for that nothing serves. Only a real page visit by
+// a browser counts: no user agent or a bot's one is out, and so is anything
+// without Sec-Fetch-Mode: navigate, which every current browser sends on a
+// visit and scanners, uptime checks and scripts do not. BOT_UA_RE matches
+// Discordbot too, so a dead link's unfurl is not counted, only the clicks.
+const PROBLEM_SCANNER_RE = /\.(php|aspx?|jsp|cgi|env|ini|sql|bak|git)(\/|$)|\/wp-|\/\.well-known\/|phpmyadmin|xmlrpc|\/\.git/i;
+function humanPageVisit(request) {
+  const ua = request.headers.get('User-Agent') || '';
+  if (!ua || BOT_UA_RE.test(ua)) return false;
+  return request.headers.get('Sec-Fetch-Mode') === 'navigate';
+}
+// Called by the default export with every answer the router produced. Kept
+// small and wrapped whole: a bug here would touch every request.
+function observeResponse(env, ctx, request, res) {
+  try {
+    const status = res && res.status;
+    // 502/504 are deliberately out: the Worker answers 502 when SOMEBODY
+    // ELSE's site failed (Bloodstar, the email service, a mistyped project
+    // link), which the owner cannot act on. 503 is ours (sessions, roster).
+    if (status === 500 || status === 501 || status === 503) {
+      recordProblem(env, ctx, { kind: 'server', route: new URL(request.url).pathname, message: 'answered ' + status });
+    } else if (status === 404 && request.method === 'GET' &&
+               /text\/html/i.test(res.headers.get('Content-Type') || '')) {
+      const path = new URL(request.url).pathname;
+      if (humanPageVisit(request) && !PROBLEM_SCANNER_RE.test(path)) {
+        recordProblem(env, ctx, { kind: 'notfound', route: path, message: 'Not found', sample: path });
+      }
+    }
+  } catch { /* the log must never change an answer */ }
+}
+
+// The browser beacon's source check: one of the files this build ships,
+// hashed or not. A forged report naming a file we do not ship is dropped (a
+// tab left open from the previous deploy is too, which is fine).
+let _shippedScripts = null;
+function shippedScript(file) {
+  if (!_shippedScripts) {
+    _shippedScripts = new Set();
+    for (const [k, v] of Object.entries(ASSET_MANIFEST || {})) { _shippedScripts.add(k); _shippedScripts.add(v); }
+  }
+  return _shippedScripts.has(file);
+}
+// Per-IP, per-isolate: five a minute. A first, cheap gate in front of the D1
+// rate limiter.
+const _beaconByIp = new Map();
+function beaconThrottled(ip) {
+  const now = Date.now();
+  let e = _beaconByIp.get(ip);
+  if (!e || now - e.at >= 60000) e = { at: now, n: 0 };
+  e.n++;
+  _beaconByIp.delete(ip);
+  _beaconByIp.set(ip, e);
+  if (_beaconByIp.size > 1000) _beaconByIp.delete(_beaconByIp.keys().next().value);
+  return e.n > 5;
+}
+// Quoted text comes out of an error before it is kept: a JSON.parse error
+// quotes the input it choked on, and on /messages or an editor that input
+// can be somebody's private writing.
+function scrubQuoted(text) {
+  return String(text || '').replace(/(["'`])[^"'`]{24,}\1/g, '$1…$1');
+}
+// The whole of POST /api/client-error after the cheap header checks. Returns
+// the problem to record, or null to drop it.
+function clientErrorProblem(b, origin) {
+  if (!b || typeof b !== 'object') return null;
+  const message = scrubQuoted(String(b.message || '').slice(0, 300)).trim();
+  const source = String(b.source || '').slice(0, 300);
+  const stack = scrubQuoted(String(b.stack || '').slice(0, 1500));
+  const page = String(b.page || '').slice(0, 200);
+  const line = Number.isInteger(b.line) ? b.line : parseInt(b.line, 10) || 0;
+  if (!message || !page.startsWith('/') || page.startsWith('//')) return null;
+  if (/^Script error\.?$/i.test(message) || /ResizeObserver loop/i.test(message)) return null;
+  if (/chrome-extension:|moz-extension:|safari-(web-)?extension:|webkit-masked-url/i.test(source + ' ' + stack)) return null;
+  let src;
+  try { src = new URL(source); } catch { return null; }
+  if (src.origin !== origin) return null;
+  const isPage = src.pathname === page;
+  const file = src.pathname.startsWith('/assets/') && /\.js$/.test(src.pathname)
+    ? src.pathname.slice('/assets/'.length) : '';
+  if (!isPage && !(file && shippedScript(file))) return null;
+  const where = isPage ? 'inline script' : file.slice(file.lastIndexOf('/') + 1);
+  return {
+    kind: 'browser', route: page,
+    message: message + ' (' + where + ':' + line + ')',
+    sample: page, detail: stack || null
+  };
 }
 
 function jsonResponse(obj, extraHeaders = {}) {
@@ -9678,7 +10086,17 @@ const app = {
         const r = await env.DB.prepare("SELECT value FROM settings WHERE key='last_backup'").first();
         if (r && r.value) backup = JSON.parse(r.value);
       } catch { /* no backup has run since this was added */ }
-      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked, backup });
+      // Problems in the last day that an admin can act on (the Health tab
+      // badge). 404s and browser reports are left out on purpose: see
+      // PROBLEM_BADGE_KINDS.
+      let problems = 0;
+      try {
+        await ensureProblemTable(env);
+        problems = await one(`SELECT COUNT(*) AS n FROM problem_log WHERE fixed_at IS NULL
+          AND kind IN (${PROBLEM_BADGE_KINDS.map(() => '?').join(',')}) AND last_seen >= datetime('now','-1 day')`,
+          ...PROBLEM_BADGE_KINDS);
+      } catch { /* the badge is a nicety */ }
+      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked, backup, problems });
     }
 
     if (method === 'GET' && path === '/api/admin/dm-reports') {
@@ -9844,17 +10262,67 @@ const app = {
         for (const o of listed.objects) {
           // A big table is written in parts ({table}.part1.json …); the size
           // shown is the whole table's, and the download link reads them all.
-          const m = o.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\/([a-z_]+)(\.part\d+)?\.json$/);
+          const m = o.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\/([a-z0-9_]+)(\.part\d+)?\.json$/);
           if (!m) continue;
           const day = byDate[m[1]] = byDate[m[1]] || {};
+          // `_manifest.json` (and anything else starting with `_`) is the
+          // run's own bookkeeping, not a table.
+          if (m[2].startsWith('_')) continue;
           day[m[2]] = (day[m[2]] || 0) + (o.size || 0);
         }
         cursor = listed.truncated ? listed.cursor : null;
       } while (cursor);
-      const backups = Object.keys(byDate).sort().reverse().map(date => ({
-        date, tables: Object.keys(byDate[date]).sort().map(table => ({ table, size: byDate[date][table] }))
+      const dates = Object.keys(byDate).sort().reverse();
+      // Each night's manifest (row counts, warnings), newest 7 nights only:
+      // one small read each. Older backups and nights from before manifests
+      // existed simply have none.
+      const manifests = {};
+      await Promise.all(dates.slice(0, 7).map(async date => {
+        try {
+          const obj = await env.ART.get(`backups/${date}/_manifest.json`);
+          const mf = obj ? await obj.json() : null;
+          if (!mf || !mf.tables) return;
+          const rows = {};
+          for (const [t, v] of Object.entries(mf.tables)) rows[t] = v && typeof v.rows === 'number' ? v.rows : 0;
+          manifests[date] = { ok: mf.ok !== false, warnings: Array.isArray(mf.warnings) ? mf.warnings : [], tables: rows };
+        } catch { /* a missing or unreadable manifest just shows no counts */ }
+      }));
+      const backups = dates.map(date => ({
+        date, tables: Object.keys(byDate[date]).sort().map(table => ({ table, size: byDate[date][table] })),
+        ...(manifests[date] ? { manifest: manifests[date] } : {})
       }));
       return jsonResponse({ backups });
+    }
+
+    // ---------- ADMIN: THE PROBLEM LOG ----------
+    // What went wrong on the wiki (see recordProblem). ?kind= narrows to one
+    // kind, ?show=open|fixed|all; `week` is how many times each kind happened
+    // in the last seven days, for the card's summary line.
+    if (method === 'GET' && path === '/api/admin/problems') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureProblemTable(env);
+      const kind = url.searchParams.get('kind') || 'all';
+      const show = url.searchParams.get('show') || 'open';
+      const where = [], binds = [];
+      if (PROBLEM_KINDS.includes(kind)) { where.push('kind=?'); binds.push(kind); }
+      if (show === 'open') where.push('fixed_at IS NULL');
+      else if (show === 'fixed') where.push('fixed_at IS NOT NULL');
+      const [list, weekRows] = await Promise.all([
+        env.DB.prepare(
+          `SELECT fp, kind, route, message, sample, detail, count, first_seen, last_seen, fixed_at, reopened
+           FROM problem_log ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+           ORDER BY (fixed_at IS NULL) DESC, last_seen DESC LIMIT 200`
+        ).bind(...binds).all(),
+        env.DB.prepare(
+          `SELECT kind, SUM(count) AS n FROM problem_log
+           WHERE last_seen >= datetime('now','-7 day') GROUP BY kind`
+        ).all()
+      ]);
+      const week = {};
+      for (const k of PROBLEM_KINDS) week[k] = 0;
+      for (const r of (weekRows.results || [])) if (r.kind in week) week[r.kind] = Number(r.n) || 0;
+      return jsonResponse({ rows: list.results || [], week });
     }
 
     // ---------- ADMIN: DOWNLOAD ONE BACKUP TABLE ----------
@@ -9864,7 +10332,7 @@ const app = {
       if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
       const date = url.searchParams.get('date') || '';
       const table = url.searchParams.get('table') || '';
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[a-z_]{1,40}$/.test(table)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[a-z0-9_]{1,40}$/.test(table)) {
         return jsonResponse({ error: 'Bad date or table.' }, { status: 400 });
       }
       // Concatenated across parts so the downloaded file is the whole table.
@@ -10217,6 +10685,33 @@ const app = {
       ).bind(sess ? sess.userId : null, uname, 'bug', lines.join('\n')).run();
       if (sess) await logActivity(env, sess, 'contact', 'message', null, 'broken-link');
       return jsonResponse({ ok: true, message: 'Thanks, the admins have it.' });
+    }
+
+    // The browser half of the problem log: site.js reports an error thrown by
+    // one of OUR scripts (see the beacon at the end of site.js). No login,
+    // like the broken-link box, because most readers have none. It is the one
+    // place a stranger can write into the log, so it is filtered hard, and it
+    // ALWAYS answers an empty 204 — accepted, filtered or throttled alike — so
+    // the answer tells an abuser nothing. crossSiteWrite() has already turned
+    // away an explicit cross-site post; this also refuses one that carries no
+    // Sec-Fetch-Site at all (curl), which sendBeacon and fetch never omit.
+    if (method === 'POST' && path === '/api/client-error') {
+      const quiet = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+      try {
+        if (request.headers.get('Sec-Fetch-Site') !== 'same-origin') return quiet();
+        const ua = request.headers.get('User-Agent') || '';
+        if (!ua || BOT_UA_RE.test(ua)) return quiet();
+        if ((parseInt(request.headers.get('Content-Length') || '0', 10) || 0) > 8192) return quiet();
+        if (beaconThrottled(request.headers.get('CF-Connecting-IP') || 'unknown')) return quiet();
+        const text = (await request.text()).slice(0, 8192);
+        let b = null;
+        try { b = JSON.parse(text); } catch { return quiet(); }
+        const problem = clientErrorProblem(b, url.origin);
+        if (!problem) return quiet();
+        if (await rateLimited(env, request, 'clienterr', 30, 3600)) return quiet();
+        recordProblem(env, ctx, problem);
+      } catch { /* never an error answer */ }
+      return quiet();
     }
 
     // ---------- WRITES (logged-in users; ownership enforced) ----------
@@ -12053,6 +12548,92 @@ const app = {
         }
       }
 
+      // ---- admin: the problem log's buttons ----
+      // fix: hide it until it happens again (it comes back marked "reopened").
+      // forget: delete the record.
+      if (path === '/api/admin/problem') {
+        const b = await request.json().catch(() => ({}));
+        const fp = String(b.fp || '').slice(0, 64);
+        if (!fp) return jsonResponse({ error: 'Which problem?' }, { status: 400 });
+        await ensureProblemTable(env);
+        if (b.action === 'fix') {
+          await env.DB.prepare("UPDATE problem_log SET fixed_at=datetime('now'), count=0, reopened=0 WHERE fp=?").bind(fp).run();
+        } else if (b.action === 'forget') {
+          await env.DB.prepare('DELETE FROM problem_log WHERE fp=?').bind(fp).run();
+        } else {
+          return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      // ---- admin: send a missing /c/ address to a page ----
+      // For a 404 the problem log keeps seeing: one redirect row, exactly the
+      // kind a rename writes, pointing at the page's IDENTITY. It refuses an
+      // address a live page already answers to, and a target that is not a
+      // published page. `undo` takes it back, but only while the redirect
+      // still points where this tool pointed it. Scripts and collections have
+      // no redirect mechanism, so this is characters only.
+      if (path === '/api/admin/problem-redirect') {
+        const b = await request.json().catch(() => ({}));
+        const fullPath = String(b.path || '').trim().split(/[?#]/)[0].toLowerCase();
+        if (!fullPath.startsWith('/c/')) return jsonResponse({ error: 'Only a missing character address (/c/…) can be redirected.' }, { status: 400 });
+        let from = fullPath.slice(3);
+        try { from = decodeURIComponent(from); } catch { /* keep as typed */ }
+        if (!/^[a-z0-9-]+(\/[a-z0-9-]+)?$/.test(from)) {
+          return jsonResponse({ error: 'That is not an address a character page could have.' }, { status: 400 });
+        }
+        const fp = problemFingerprint('notfound', fullPath.slice(0, 200), 'Not found');
+        await ensureRedirectsTable(env);
+        if (b.undo) {
+          const r = await env.DB.prepare(
+            "SELECT to_slug FROM redirects WHERE entity_type='character' AND from_slug=?"
+          ).bind(from).first().catch(() => null);
+          let made = '';
+          try {
+            await ensureProblemTable(env);
+            const pr = await env.DB.prepare('SELECT detail FROM problem_log WHERE fp=?').bind(fp).first();
+            const m = pr && String(pr.detail || '').match(/^redirect:(\S+)$/);
+            made = m ? m[1] : '';
+          } catch { /* no record: nothing this tool made */ }
+          if (!r || !made || r.to_slug !== made) {
+            return jsonResponse({ error: 'That address is not sent anywhere by this tool any more, so there is nothing to undo.' }, { status: 409 });
+          }
+          await env.DB.prepare("DELETE FROM redirects WHERE entity_type='character' AND from_slug=?").bind(from).run();
+          // The record stays marked fixed with the redirect taken off it, so
+          // the next visit to the address reopens it like any recurrence.
+          await env.DB.prepare('UPDATE problem_log SET detail=NULL WHERE fp=?').bind(fp).run().catch(() => null);
+          await logActivity(env, sess, 'redirect-remove', 'character', made, from);
+          return jsonResponse({ ok: true, removed: true });
+        }
+        const taken = await resolveCharacterPath(env, from);
+        if (taken && taken.row && taken.row.status !== 'deleted') {
+          return jsonResponse({ error: 'A page already answers at that address, so it is not missing.' }, { status: 400 });
+        }
+        let to = String(b.to || '').trim().replace(/^\/+/, '').replace(/^c\//, '').split(/[?#]/)[0];
+        const target = to ? await resolveCharacterPath(env, to) : null;
+        if (!target || !target.row || target.row.status !== 'published') {
+          return jsonResponse({ error: 'Pick a published character to send people to.' }, { status: 400 });
+        }
+        const identity = String(target.row.slug);
+        if (from === identity || from === target.canonical) {
+          return jsonResponse({ error: 'That is the page\'s own address.' }, { status: 400 });
+        }
+        await env.DB.prepare(
+          `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+           ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+        ).bind(from, identity).run();
+        try {
+          await ensureProblemTable(env);
+          await env.DB.prepare(
+            "UPDATE problem_log SET fixed_at=datetime('now'), count=0, reopened=0, detail=? WHERE fp=?"
+          ).bind('redirect:' + identity, fp).run();
+        } catch { /* the redirect is what matters */ }
+        await logActivity(env, sess, 'redirect-add', 'character', identity, from);
+        let name = identity;
+        try { name = JSON.parse(target.row.data).name || identity; } catch { /* keep the slug */ }
+        return jsonResponse({ ok: true, from, to: identity, name, address: target.canonical });
+      }
+
       // ---- admin: one-time seed ----
       if (path === '/api/seed') {
         // Safety: refuse if data already exists (prevents accidental overwrite)
@@ -13856,6 +14437,7 @@ const app = {
         }
       } catch (e) {
         console.error('[cron] backup threw:', (e && e.message) || e);
+        await recordProblem(env, null, { kind: 'cron', route: 'backup', message: 'The backup stopped: ' + ((e && e.message) || 'error'), detail: (e && e.stack) || null });
       }
 
       // Argon2id over any password hash still PBKDF2-only (see
@@ -13866,6 +14448,7 @@ const app = {
         if (w.wrapped || w.left) console.log('[cron] legacy password hashes wrapped:', w.wrapped, 'left in batch:', w.left);
       } catch (e) {
         console.error('[cron] password wrapping threw:', (e && e.message) || e);
+        await recordProblem(env, null, { kind: 'cron', route: 'password wrapping', message: (e && e.message) || 'error' });
       }
 
       // Retention. page_views(day) is indexed now, so this is a range delete
@@ -13883,11 +14466,28 @@ const app = {
         // hour, so a day past expiry is far beyond anything still being read;
         // the upsert ignores an expired row regardless, so this is only there
         // to stop the table growing a row per member per bucket forever.
-        ["DELETE FROM rate_limits WHERE expires < CAST(strftime('%s','now') AS INTEGER) - 86400", 'rate_limits']
+        ["DELETE FROM rate_limits WHERE expires < CAST(strftime('%s','now') AS INTEGER) - 86400", 'rate_limits'],
+        // The problem log (see "The problem log" in CLAUDE.md): a month since
+        // last seen, a fortnight after being marked fixed, and past
+        // PROBLEM_ROWS_MAX the least-seen 404 and browser rows — the two kinds
+        // a stranger can create. Crash, server, cron and email rows are never
+        // pruned by count.
+        ["DELETE FROM problem_log WHERE last_seen < datetime('now', '-30 day')", 'problem_log'],
+        ["DELETE FROM problem_log WHERE fixed_at IS NOT NULL AND fixed_at < datetime('now', '-14 day')", 'problem_log fixed'],
+        [`DELETE FROM problem_log WHERE fp IN (SELECT fp FROM problem_log WHERE kind IN ('notfound','browser')
+            ORDER BY count ASC, last_seen ASC
+            LIMIT max(0, (SELECT COUNT(*) FROM problem_log) - ${PROBLEM_ROWS_MAX}))`, 'problem_log cap']
       ];
       for (const [sql, label] of prune) {
         try { await env.DB.prepare(sql).run(); }
-        catch (e) { console.error(`[cron] prune ${label} failed:`, (e && e.message) || e); }
+        catch (e) {
+          const msg = (e && e.message) || String(e);
+          console.error(`[cron] prune ${label} failed:`, msg);
+          // A lazily created table that does not exist yet has nothing to prune.
+          if (!/no such table/i.test(msg)) {
+            await recordProblem(env, null, { kind: 'cron', route: 'prune ' + label, message: msg });
+          }
+        }
       }
     })());
   }
@@ -13978,11 +14578,16 @@ function withSecurityHeaders(res) {
 export default {
   async fetch(request, env, ctx) {
     try {
-      return withSecurityHeaders(await app.fetch(request, env, ctx));
+      const res = await app.fetch(request, env, ctx);
+      // The problem log sees the answer AFTER it exists and changes nothing
+      // about it (5xx and HTML 404s; see observeResponse).
+      observeResponse(env, ctx, request, res);
+      return withSecurityHeaders(res);
     } catch (e) {
       let path = '';
       try { path = new URL(request.url).pathname; } catch { /* ignore */ }
       console.error('[fetch] unhandled error', request.method, path, (e && e.stack) || e);
+      recordProblem(env, ctx, { kind: 'crash', route: path, message: (e && e.message) || String(e), sample: path, detail: (e && e.stack) || null });
       return withSecurityHeaders(crashResponse(request));
     }
   },
