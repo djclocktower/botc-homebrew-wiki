@@ -214,7 +214,18 @@
     '</form>';
   }
 
+  /* Every load() redraws the section — after a reply, a pin, a removal — and
+     a redraw used to rebuild the comment box too, so a half-written comment
+     and the images already uploaded for it were thrown away because somebody
+     pinned a different comment. So the forms being written in are carried
+     across: the main box (its text, its counter and its picker, whose handle
+     is state.attach) and an open reply box, put back under the same comment
+     if that comment is still there. Their listeners come with them, which is
+     why wire() skips a form it did not build. */
   function render() {
+    var keepMain = root.querySelector('#cmt-form');
+    var keepReply = root.querySelector('.cmt-reply-slot form');
+    var keepReplyIn = keepReply ? keepReply.parentNode.id : '';
     var n = state.comments.length;
     root.innerHTML =
       '<div class="gen-sech-wrap" id="sec-comments">' +
@@ -228,12 +239,17 @@
         : '<p class="cmt-empty">No comments yet.' +
           (state.me && state.me.canComment ? ' Be the first.' : '') + '</p>') +
       formHTML();
-    wire();
+    var fresh = root.querySelector('#cmt-form');
+    var reuse = !!(keepMain && fresh);
+    if (reuse) fresh.parentNode.replaceChild(keepMain, fresh);
+    var slot = keepReplyIn && document.getElementById(keepReplyIn);
+    if (slot && root.contains(slot)) slot.appendChild(keepReply);
+    wire(reuse);
   }
 
-  function wire() {
+  function wire(keptForm) {
     var form = root.querySelector('#cmt-form');
-    if (form) {
+    if (form && !keptForm) {
       var box = root.querySelector('#cmt-box');
       var count = root.querySelector('#cmt-count');
       box.addEventListener('input', function () {
@@ -419,10 +435,17 @@
         if (!parentId) {
           var box = root.querySelector('#cmt-box');
           if (box) box.value = '';
+          var count = root.querySelector('#cmt-count');
+          if (count) count.textContent = '0 / 2000';
           if (att) att.clear();
+          // The box survives the redraw (see render), so its button has to
+          // be put back by hand.
+          if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
+        } else if (form && form.parentNode) {
+          // A posted reply closes its box; render() would carry it over.
+          form.parentNode.innerHTML = '';
         }
         if (state.me) state.me.agreed = true;
-        // load() re-renders everything, which closes the reply box for us.
         return load();
       })
       .catch(function (err) {
@@ -519,12 +542,18 @@
     root.classList.add('comments-section');
   }
 
+  /* Several loads can be in flight at once (post, then pin, then remove), and
+     they need not answer in order. Only the newest one asked is drawn; an
+     older answer arriving late would put back what the newer one took out. */
+  var loadSeq = 0;
   function load() {
+    var seq = ++loadSeq;
     return fetch('/api/comments?type=' + encodeURIComponent(TYPE) +
                  '&slug=' + encodeURIComponent(SLUG) + '&_=' + Date.now(),
                  { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
+        if (seq !== loadSeq) return;
         if (d.error) { root.hidden = true; return; }
         state.comments = d.comments || [];
         state.me = d.me || null;
@@ -537,7 +566,11 @@
         if (first) markSeen(newestId());   // nothing is new on a first visit
         else scheduleMarkSeen();
       })
-      .catch(function () { root.innerHTML = '<button type="button" class="card-load-more">Could not load comments. Tap to retry.</button>'; root.querySelector('button').addEventListener('click', load); });
+      .catch(function () {
+        // A failed REFRESH keeps the section already drawn, and whatever is
+        // being written in it; only a first load has nothing better to show.
+        if (seq !== loadSeq || state.loaded) return;
+        root.innerHTML = '<button type="button" class="card-load-more">Could not load comments. Tap to retry.</button>'; root.querySelector('button').addEventListener('click', load); });
   }
 
   /* The dots stay put for this visit — you should be able to see what is new

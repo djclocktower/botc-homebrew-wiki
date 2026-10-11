@@ -210,7 +210,10 @@
      Partial for want of fields that were never sent. The Worker classifies
      each row BEFORE it trims it and stamps the answer, so the stamp is the
      only honest reading of a trimmed row and always wins over recomputing.
-     Rows built in an editor carry no stamp and are computed as normal. */
+     Rows built in an editor carry no stamp and are computed as normal.
+     A stamp is only ever the Worker's: the save handlers drop any posted one
+     and foldLegacyCurata() drops any already stored, and classifyPage()
+     never reads one at all. */
   function stampedClass(d) {
     var c = d && d.classification;
     return (c === 'partial' || c === 'standard' || c === 'curata') ? c : '';
@@ -238,9 +241,18 @@
   }
 
   /* Collections and scripts only have two states — they have no almanac and
-     no tags of their own, so "Partial" would be meaningless for them. */
+     no tags of their own, so "Partial" would be meaningless for them.
+
+     This is the Worker's call, made on the STORED row before anything is
+     trimmed from it, so a character is always worked out from its content
+     and a `classification` in the row is never read. Saves keep what was
+     posted, so trusting it (as isPartial trusts the feed's own stamp) let an
+     owner post classification:"standard" and never be Partial. */
   function classifyPage(d, type) {
-    if (type === 'character') return classifyCharacter(d);
+    if (type === 'character') {
+      if (isCurata(d)) return 'curata';
+      return isIncomplete(d) ? 'partial' : 'standard';
+    }
     return isCurata(d) ? 'curata' : 'standard';
   }
 

@@ -190,11 +190,17 @@
      every size) was stored, false when it was skipped or failed — never
      rejects, so callers can drop the promise. The display copy is made after
      the thumbnail and never changes the answer: a card is what a missing
-     thumbnail costs, and that is what callers count. */
+     thumbnail costs, and that is what callers count.
+     A background (`{slug}-bg.{ext}`) is never drawn through srcset, so it gets
+     no resized copies. Read off the END of the key only: an unanchored '-bg.'
+     test caught any slug that merely contained it. A page whose own slug ends
+     in -bg names its header exactly like another page's background, and only
+     the caller knows which it is — `opts.media` says "this is a banner or
+     logo" (the dashboard backfill, which lists only those, passes it). */
   function upload(artKey, src, sourceETag, opts) {
     artKey = clean(artKey);
     opts = opts || {};
-    if (MEDIA_RE.test(artKey) && !/-bg\./.test(artKey)) {
+    if (MEDIA_RE.test(artKey) && (opts.media || !/-bg\.[a-z0-9]+$/i.test(artKey))) {
       if (!sourceETag || !src) return Promise.resolve(false);
       // Publish waits for these variants, so the new row version never names
       // a partly-written set. Failures keep the original-image fallback.

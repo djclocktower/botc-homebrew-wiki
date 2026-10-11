@@ -307,15 +307,16 @@
       .then(function (r) { return r.json(); })
       .then(function (list) {
         var map = {};
-        var norm = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+        // The engine's own key (render-wiki.js), so both sides agree.
+        var norm = window.WikiRender.linkKey;
         // render-wiki builds `c/{value}`, so the value is the character's
         // ADDRESS (page, minus its own c/ prefix) rather than its identity.
         var addr = function (c) {
           return c.page ? String(c.page).replace(/^\//, '').replace(/^c\//, '').replace(/\.html$/, '') : c.slug;
         };
         (list || []).forEach(function (c) {
-          if (c.slug) map[norm(c.slug)] = addr(c);
-          if (c.name) map[norm(c.name)] = addr(c);
+          if (norm(c.slug)) map[norm(c.slug)] = addr(c);
+          if (norm(c.name)) map[norm(c.name)] = addr(c);
         });
         window.WikiRender.setCharLinks(map);
         return map;

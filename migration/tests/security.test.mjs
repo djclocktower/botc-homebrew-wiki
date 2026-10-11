@@ -191,12 +191,18 @@ test('a verification link only verifies the address it was sent to', async () =>
     await Promise.all(t.f.background);
     assert.ok(t.mail.some(m => m.to[0] === 'dave@example.com' && /email address was changed/i.test(m.subject)));
 
-    // The link sent to the new address does verify it, once.
+    // The link sent to the new address does verify it. A second visit (the
+    // person's own click after a mail scanner's) reports the address as
+    // verified, but only while it is still the account's address.
     const fresh = t.linkToken(t.mail.filter(m => m.to[0] === 'victim@example.com').pop(), '/api/verify-email?');
     const ok = await t.f.request('/api/verify-email?token=' + fresh);
     assert.match(ok.headers.get('Location'), /verified=1/);
     const again = await t.f.request('/api/verify-email?token=' + fresh);
-    assert.match(again.headers.get('Location'), /verified=0/);
+    assert.match(again.headers.get('Location'), /verified=1/);
+    t.f.db.prepare("UPDATE users SET email='other@example.com', email_verified=0 WHERE username='dave'").run();
+    const stale = await t.f.request('/api/verify-email?token=' + fresh);
+    assert.match(stale.headers.get('Location'), /verified=0/);
+    assert.equal(t.f.db.prepare("SELECT email_verified FROM users WHERE username='dave'").get().email_verified, 0);
   } finally { await t.finish(); }
 });
 
@@ -303,9 +309,10 @@ test('admin reads need a live admin session; new members\' emails never leak', a
     }
     const cookie = t.cookieOf(await t.post('/api/signup', { username: 'henry', email: 'henry@example.com', password: 'henrys-password' }));
     assert.equal((await t.f.request('/api/admin/new-users', { headers: { Cookie: cookie } })).status, 403);
-    // Promoted in D1 but holding a pre-promotion cookie: still refused, as
-    // the cookie says not-admin. A fresh login is admin.
+    // Promoted in D1: the cookie from before the promotion is admin at once,
+    // and so is a fresh login.
     t.f.db.prepare("UPDATE users SET is_admin=1 WHERE username='henry'").run();
+    assert.equal((await t.f.request('/api/admin/queue-counts', { headers: { Cookie: cookie } })).status, 200);
     const admin = t.cookieOf(await t.post('/api/login', { username: 'henry', password: 'henrys-password' }));
     assert.equal((await t.f.request('/api/admin/queue-counts', { headers: { Cookie: admin } })).status, 200);
     // Demoted in D1: the admin cookie stops working at once.

@@ -28,7 +28,10 @@
     var infocard = document.querySelector('.char-infocard');
     if (!infocard) return;
     function getList() {
-      try { return JSON.parse(localStorage.getItem(storageKey)) || []; } catch (e) { return []; }
+      // Anything but an array (a corrupted or hand-edited value) reads as
+      // empty, or .indexOf below would throw and take the buttons with it.
+      try { var a = JSON.parse(localStorage.getItem(storageKey)); return Array.isArray(a) ? a : []; }
+      catch (e) { return []; }
     }
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -58,7 +61,7 @@
 
   var editBtn = document.getElementById('edit-btn');
   if (editBtn) {
-    editBtn.href = (window.LINK_ROOT || '') + 'edit?c=' + SLUG;
+    editBtn.href = (window.LINK_ROOT || '') + 'edit?c=' + encodeURIComponent(SLUG);
     editBtn.style.display = '';
   }
 

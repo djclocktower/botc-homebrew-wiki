@@ -21,7 +21,13 @@
    Mounted by both editors:
      var ui = window.SpecialEditor.mount(listEl, addButtonEl, {onChange: fn});
      ui.set(list);   // fill from a loaded character
-     ui.gather();    // -> [{type, name, value?, time?}]
+     ui.gather();    // -> [{type, name, value?, time?, global?}]
+
+   `global` (the team a property applies to across the grimoire, e.g. a
+   signal on every townsfolk) has no control of its own — the row is already
+   four boxes wide on a phone — but it is carried through untouched, on the
+   row, and gathered back. Dropping it here was dropping it from the page on
+   the first save after an import.
 */
 (function () {
   'use strict';
@@ -99,6 +105,10 @@
       s = s || {};
       var row = document.createElement('div');
       row.className = 'special-row';
+      if (s.global) {
+        row.setAttribute('data-global', String(s.global));
+        row.title = 'Applies to every ' + String(s.global) + ' (kept from the imported JSON)';
+      }
       row.innerHTML =
         '<select class="sp-type" aria-label="Kind of property">' + options(TYPES, s.type || 'ability') + '</select>' +
         '<input class="sp-name" type="text" list="' + DL_ID + '" maxlength="60" placeholder="bag-disabled" ' +
@@ -143,6 +153,8 @@
           if (time) o.time = time;
           var raw = r.querySelector('.sp-value').value.trim();
           if (raw !== '' && !isNaN(Number(raw))) o.value = Number(raw);
+          var global = r.getAttribute('data-global');
+          if (global) o.global = global;
           out.push(o);
         });
         return out;

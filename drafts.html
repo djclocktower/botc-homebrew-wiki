@@ -87,6 +87,10 @@
       <p>Log in to see your drafts.</p>
       <p><a href="login?next=drafts">Log in or create an account</a></p>
     </div>
+    <div class="drafts-gate" id="error" style="display:none">
+      <p>Your drafts could not be loaded just now.</p>
+      <p><a href="drafts">Try again</a></p>
+    </div>
     <div id="drafts" style="display:none">
       <p class="drafts-count" id="draft-count"></p>
       <div id="char-filters"></div>
@@ -134,14 +138,18 @@
         '<span class="draft-tile-meta">' + esc(kind) + '</span></a>';
     }
 
+    // Only a 401 means "not logged in". Anything else that goes wrong (a
+    // dropped connection, a 500) is an error, not a reason to tell somebody
+    // who is logged in to log in.
     fetch('/api/account', { credentials: 'same-origin' })
       .then(function (r) {
         if (r.status === 401) { hide('loading'); show('gate'); return null; }
+        if (!r.ok) throw new Error('account ' + r.status);
         return r.json();
       })
       .then(function (acct) {
         if (!acct) return;
-        if (acct.error) { hide('loading'); show('gate'); return; }
+        if (acct.error) throw new Error(acct.error);
 
         var isDraft = function (x) { return x.status === 'draft'; };
         var chars = (acct.characters || []).filter(isDraft);
@@ -157,10 +165,15 @@
 
         // Character cards want the whole row (art, ability, tags). The drafts
         // feed has it for admins; everyone else gets what the account page
-        // knows, which is enough for a readable card.
-        fetch('characters.json?drafts=1&_=' + Date.now())
-          .then(function (r) { return r.json(); })
-          .catch(function () { return []; })
+        // knows, which is enough for a readable card. Only an admin asks: for
+        // anyone else ?drafts=1 is the whole public almanac with no drafts in
+        // it. The admin feed is no-store already, so it needs no cache-buster.
+        var isAdmin = !!(acct.profile && acct.profile.isAdmin);
+        (isAdmin
+          ? fetch('characters.json?drafts=1&fields=grid', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .catch(function () { return []; })
+          : Promise.resolve([]))
           .then(function (all) {
             var bySlug = {};
             (all || []).forEach(function (c) { if (c.slug) bySlug[c.slug] = c; });
@@ -201,7 +214,7 @@
             }
           });
       })
-      .catch(function () { hide('loading'); show('gate'); });
+      .catch(function () { hide('loading'); show('error'); });
   })();
   </script>
   <script src="assets/site.js"></script>

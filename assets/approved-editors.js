@@ -49,8 +49,11 @@
   }
 
   /* mount(container, opts) -> { get, set, focus }
-     opts.onChange(list)  called whenever the list changes, so the page can
-                          write it into whatever it saves from.
+     opts.onChange(list)  called whenever the owner changes the list here
+                          (an add or a removal), so the page can write it into
+                          whatever it saves from. Not for the first draw or a
+                          set(): those are the page loading a list it already
+                          has, and must never write over it.
      opts.disabled        render the list read-only (a guest editing somebody
                           else's page: the Worker carries the stored list
                           forward whatever gets posted, so an editable box
@@ -82,7 +85,12 @@
       msg.hidden = false;
     }
 
-    function render() {
+    /* `changed` is true only for an add or a removal made here. The first
+       draw and set() are a page LOADING its list, not the owner changing
+       it: firing onChange for them handed publish-script.html an empty list
+       before it had read the saved one, its handler wrote that over the
+       stored editors, and the next save took every approved editor off. */
+    function render(changed) {
       if (!list.length) {
         chips.innerHTML = '<p class="ae-empty">Nobody yet. Only you can edit this page.</p>';
       } else {
@@ -96,7 +104,7 @@
           '</span>';
         }).join('');
       }
-      if (opts.onChange) opts.onChange(list.slice());
+      if (changed && opts.onChange) opts.onChange(list.slice());
     }
 
     function add(name) {
@@ -132,7 +140,7 @@
           list.push({ id: Number(res.id), username: String(res.username) });
           input.value = '';
           say('ok', '@' + res.username + ' can edit this page once you save.');
-          render();
+          render(true);
         })
         .catch(function () { say('err', 'Could not reach the wiki to check that name.'); })
         .then(function () { addBtn.disabled = false; });
@@ -152,7 +160,7 @@
         var gone = list[i].username;
         list.splice(i, 1);
         say('', '@' + gone + ' comes off the list when you save.');
-        render();
+        render(true);
       });
     }
 

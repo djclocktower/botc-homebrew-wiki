@@ -351,6 +351,7 @@
       catch(e){ setStatus('err','Could not read that JSON: ' + esc(e.message)); return; }
       if (!res.chars.length) { setStatus('err','No characters with a name and ability found in that JSON.'); return; }
       parsed = res.chars;
+      madeByRow = {};
       $('mu-rows').innerHTML = parsed.map(buildRow).join('');
       $('options').style.display = '';
       if (meta && meta.name && !$('appears').value) $('appears').value = meta.name;
@@ -445,6 +446,15 @@
     // address, in the shape the wiki already uses for duplicate names
     // (witcher-odyssey, then -2, -3). Nothing to read, nothing to confirm.
     var usedThisRun = {};
+    // The identity each row was saved under, kept for as long as this file
+    // is on the page. A row that already says done is skipped on a second
+    // press, and its identity has to stay claimed or the next character of
+    // the same name would be handed it and merged into it.
+    var madeByRow = {};
+    // This account's own pages by name (ImportMerge.ownPages), read once per
+    // run — what lands a re-import back on the numbered pages the last run
+    // made instead of on a new one each time.
+    var ownByName = {};
     function resolveSlug(name, appearsIn){
       var base = slugify(name);
       var q = '/api/slug-check?type=character&name=' + encodeURIComponent(name) +
@@ -453,13 +463,17 @@
         .then(function(r){ return r.json(); })
         .catch(function(){ return null; })
         .then(function(j){
-          var pick;
+          var pick, reused = '';
           // If the check itself fails, carry on and let the save decide: the
           // Worker never lets anyone write over a page that isn't theirs.
           if (!j || j.error || !j.taken) pick = base;
           // `mine` means the URL is one of your own pages, so saving updates
           // it — re-running an import over your own characters is the point.
           else if (j.mine && !usedThisRun[base]) pick = base;
+          // Somebody else holds the name, or this file already used it: the
+          // free address the check suggests is a NEW page, so land on one of
+          // your own of the same name first, if one is left.
+          else if (window.ImportMerge && (reused = window.ImportMerge.reuseOwn(ownByName, name, usedThisRun))) pick = reused;
           else pick = j.suggestion || base;
           // Two characters with the same name in ONE file: each is saved
           // before the next is resolved, so the Worker normally sees the
@@ -472,7 +486,7 @@
           usedThisRun[pick] = 1;
           // `mine` holds only for the page the check found: a numbered
           // variant taken to step around a duplicate in this file is new.
-          return { slug: pick, mine: !!(j && j.taken && j.mine && pick === base) };
+          return { slug: pick, mine: !!(reused && pick === reused) || !!(j && j.taken && j.mine && pick === base) };
         });
     }
 
@@ -594,6 +608,7 @@
               if (r.status === 429) throw limitError(r, j);
               if (!r.ok) throw new Error(j.error || 'save failed');
               var pageUrl = (j && j.page) || ('c/' + slug);
+              madeByRow[i] = slug;
               rowSlug(i, pageUrl);
               var note = artHow === 'remote' && imgUrl ? ' (art linked from another site)'
                 : artHow === 'kept' ? ' (page updated, icon kept)'
@@ -626,8 +641,10 @@
       $('go').disabled = true; $('parse').disabled = true;
       // Fresh each run: re-running the same file (after a couple of failures,
       // say) must be able to land on the pages the first run created rather
-      // than stepping around them into duplicates.
+      // than stepping around them into duplicates. Rows already done keep
+      // their pages claimed: they are skipped, so nothing else would.
       usedThisRun = {};
+      Object.keys(madeByRow).forEach(function(k){ if (rowDone(+k)) usedThisRun[madeByRow[k]] = 1; });
       halted = null;
       setStatus('work', 'Creating ' + parsed.length + ' pages&hellip;');
       var i = 0, ok = 0, fail = 0;
@@ -646,7 +663,11 @@
         if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
         else setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> All ' + ok + ' pages created! Find them ' + (opts.status==='draft' ? 'under drafts on <a href="account">your account page</a>' : 'under <a href="all-characters">All Characters</a>') + '.');
       }
-      (function next(){
+      var ownJob = fetch('/api/account', { credentials:'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(a){ ownByName = window.ImportMerge ? window.ImportMerge.ownPages(a && a.characters) : {}; })
+        .catch(function(){ ownByName = {}; });
+      ownJob.then(function next(){
         if (i >= parsed.length || halted) { finish(); return; }
         if (rowDone(i)) { ok++; i++; next(); return; }
         var c = parsed[i], idx = i;
@@ -661,7 +682,7 @@
           if (good) ok++; else fail++;
           i++; next();
         });
-      })();
+      });
     });
   })();
   </script>

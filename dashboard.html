@@ -1221,13 +1221,30 @@
     }
 
     /* ---- shared helpers for the newer panels ---- */
-    function getJSON(path){ return fetch(path, { credentials: 'same-origin' }).then(function(r){ return r.json(); }); }
+    /* Both of these RESOLVE, never reject, and a failure comes back as an
+       ordinary { error } body. A Cloudflare 502/524 is an HTML page, so
+       r.json() threw, and every card that called these with no .catch was
+       left with its button disabled and "Scanning…" on screen for good. The
+       handlers already show d.error and re-enable on a failed answer, so
+       this one change covers all of them. */
+    function failBody(r){
+      return { error: r ? 'The server answered ' + r.status + ' instead of a result. Try again in a moment.'
+                        : 'Could not reach the server. Check the connection and try again.' };
+    }
+    function getJSON(path){
+      return fetch(path, { credentials: 'same-origin' }).then(function(r){
+        return r.json().catch(function(){ return failBody(r); });
+      }, function(){ return failBody(null); });
+    }
     function postJSON(path, body){
       return fetch(path, {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {})
-      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); });
+      }).then(function(r){
+        return r.json().catch(function(){ return failBody(r); })
+          .then(function(d){ return { status: r.status, body: d }; });
+      }, function(){ return { status: 0, body: failBody(null) }; });
     }
     function pubUrl(type, slug){
       var sl = encodeURIComponent(slug || '');
@@ -1844,7 +1861,7 @@
       if (!confirm('Gather every character by ' + $('cc-creator').value.trim() + ' into “' + $('cc-coll').value.trim() + '”?')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/admin/collect-creator', {
-        creator: $('cc-creator').value.trim(), collection: $('cc-coll').value.trim()
+        creator: $('cc-creator').value.trim(), collection: $('cc-coll').value.trim(), dryRun: false
       }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
@@ -1880,7 +1897,7 @@
       if (!confirm('Convert these to wiki pages and retire the characters?\n\nThe characters are soft-deleted, so Deleted Content can restore any of them.')) return;
       var btn = this; btn.disabled = true;
       postJSON('/api/admin/concepts-to-pages', {
-        from: $('c2p-from').value.trim(), parent: $('c2p-parent').value.trim()
+        from: $('c2p-from').value.trim(), parent: $('c2p-parent').value.trim(), dryRun: false
       }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
@@ -1923,7 +1940,7 @@
       var who = $('sto-user').value.trim();
       if (!confirm('Give Curata to every character owned by ' + who + '?')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/curata-owner', { username: who }).then(function(res){
+      postJSON('/api/admin/curata-owner', { username: who, dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('sto-toast', false, d.error || 'Failed.'); return; }
@@ -2078,7 +2095,7 @@
     $('f2a-go').addEventListener('click', function(){
       if (!confirm('Make every featured page a standalone article?\n\nEach one leaves its script or collection and is listed on the Articles page instead. Addresses, text and comments stay the same.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/page-to-article', { featured: true }).then(function(res){
+      postJSON('/api/admin/page-to-article', { featured: true, dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('f2a-toast', false, d.error || 'Failed.'); return; }
@@ -2222,8 +2239,9 @@
         // Reads the image back from the site and uploads what it is missing
         // beside it — the 192px thumbnail and/or the full-size display copy
         // for an icon, the three sizes for a banner; a browser that cannot
-        // encode WebP resolves false and we say so.
-        ArtThumb.uploadFromUrl(it.art, null, it.media ? null : { thumb: it.thumb !== false, display: !!it.display }).then(function(ok){
+        // encode WebP resolves false and we say so. `media` says the key is a
+        // banner even when its slug happens to end in -bg.
+        ArtThumb.uploadFromUrl(it.art, null, it.media ? { media: true } : { thumb: it.thumb !== false, display: !!it.display }).then(function(ok){
           if (ok) done++; else failed++;
           bar.innerHTML = '<p class="note">' + (done + failed) + ' of ' + total + ' &mdash; ' + esc(it.name || it.slug) + (ok ? '' : ' (skipped)') + '</p>';
           setTimeout(step, 30);
@@ -2285,7 +2303,7 @@
       if (!confirm('Move ' + n + ' published character' + (n === '1' ? '' : 's') +
                    ' that miss the publish bar to drafts?\n\nThey disappear from the public wiki until their owner fills the gap. Nothing is deleted, and you can publish any of them again from Bulk actions.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/demote-incomplete', {}).then(function(res){
+      postJSON('/api/admin/demote-incomplete', { dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('noicon-toast', false, d.error || 'Failed.'); return; }
@@ -2351,7 +2369,7 @@
         'Scripts keep the character: their rosters are repointed at the official one, so the name still shows and links to the official wiki. Collections drop it, because a collection can only hold pages from this wiki.\n\n' +
         'The pages are soft-deleted — they appear under Deleted pages and can be restored. Nothing is purged and no art is removed.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/official-cleanup', {}).then(function(res){
+      postJSON('/api/admin/official-cleanup', { dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('offc-toast', false, d.error || 'Failed.'); return; }
@@ -2389,7 +2407,7 @@
       if (!confirm('Clean up the text on all 119 Odyssey pages?\n\nEvery page it edits is saved to revisions first, so any of them can be rolled back.')) return;
       var btn = this; btn.disabled = true;
       setToast('odyc-toast', true, 'Cleaning up… this takes a few seconds.');
-      postJSON('/api/admin/cleanup-odyssey', {}).then(function(res){
+      postJSON('/api/admin/cleanup-odyssey', { dryRun: false }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('odyc-toast', false, d.error || 'Cleanup failed.'); return; }
@@ -2453,9 +2471,14 @@
       if (ph) $('bulk-arg').placeholder = ph;
     }
     $('bulk-action').addEventListener('change', bulkArgSync);
+    /* The type the ticked list was LOADED as. Apply sends this, never the
+       dropdown's current value: switching the dropdown after loading used to
+       post character slugs as type "script". */
+    var bulkListType = null;
     $('bulk-load').addEventListener('click', function(){
       var btn = this; btn.disabled = true;
-      var p = new URLSearchParams({ type: $('bulk-type').value });
+      var loadType = $('bulk-type').value;
+      var p = new URLSearchParams({ type: loadType });
       if ($('bulk-q').value.trim()) p.set('q', $('bulk-q').value.trim());
       if ($('bulk-owner').value.trim()) p.set('owner', $('bulk-owner').value.trim());
       if ($('bulk-collection').value.trim()) p.set('collection', $('bulk-collection').value.trim());
@@ -2470,6 +2493,7 @@
           $('bulk-act-row').style.display = 'none';
           return;
         }
+        bulkListType = loadType;
         box.innerHTML =
           '<label class="adm-row" style="font-weight:700;cursor:pointer"><input type="checkbox" id="bulk-all"> select all (' + d.pages.length + ')</label>' +
           d.pages.map(function(pg){
@@ -2506,7 +2530,7 @@
       if (BULK_ARG[action] && !arg) { setToast('bulk-toast', false, 'Enter the ' + BULK_ARG[action] + ' first.'); return; }
       if (!confirm(label + ' — apply to ' + slugs.length + ' page' + (slugs.length === 1 ? '' : 's') + '?')) return;
       var btn = this; btn.disabled = true;
-      var body = { action: action, type: $('bulk-type').value, slugs: slugs };
+      var body = { action: action, type: bulkListType || $('bulk-type').value, slugs: slugs };
       if (action === 'assign-owner') body.username = arg;
       if (action === 'add-tag' || action === 'remove-tag') body.tag = arg;
       postJSON('/api/admin/bulk', body).then(function(res){
@@ -2655,7 +2679,13 @@
         }
         postJSON('/api/admin/purge-images', { keys: batch }).then(function(res){
           if (res.body && res.body.ok) { deleted += res.body.deleted || 0; next(); }
-          else { btn.disabled = false; setToast('orph-toast', false, (res.body && res.body.error) || 'Delete failed.'); }
+          else {
+            // Batches already sent are gone, so say how far it got.
+            btn.disabled = false;
+            setToast('orph-toast', false, ((res.body && res.body.error) || 'Delete failed.') +
+              (deleted ? ' ' + deleted + ' image' + (deleted === 1 ? ' was' : 's were') + ' deleted before it stopped.' : ''));
+            if (deleted) $('orph-scan').click();
+          }
         });
       })();
     });
@@ -3297,7 +3327,7 @@
           return getJSON(type === 'collection' ? 'collections.json?drafts=1'
                        : type === 'script' ? 'scripts.json?drafts=1'
                        : 'characters.json?fields=card&drafts=1')
-            .then(function(list){ return list || []; });
+            .then(function(list){ return Array.isArray(list) ? list : []; });
         });
       }
       function feed(type){

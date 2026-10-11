@@ -300,7 +300,14 @@
     /* Fit the map, once, and whenever the box changes size.
        fit({all: true}) ignores the legibility floor and really does show
        everything, however small that ends up. */
+    /* Whether the reader has moved the camera since the last fit. A resize
+       (a phone turned sideways) re-fits an untouched map, but must not throw
+       away a view somebody panned or zoomed to — that one only keeps its
+       centre in the middle of the new box. */
+    var viewTouched = false, fitOpts = null;
     function fit(o) {
+      viewTouched = false;
+      fitOpts = o || null;
       var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       nodes.forEach(function (n) {
         minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r);
@@ -318,6 +325,7 @@
     }
 
     function zoomAt(cx, cy, factor) {
+      viewTouched = true;
       var k = Math.max(0.15, Math.min(view.k * factor, 6));
       var f = k / view.k;
       view.x = cx - (cx - view.x) * f;
@@ -349,6 +357,9 @@
     // cannot be asked what was under the cursor, so the node is remembered
     // from pointerdown.
     var downAt = null, downNode = null, dragged = false;
+    // Set when a second finger joins the gesture; cleared once every finger
+    // is up. Lifting the fingers off a pinch is not a tap on anything.
+    var pinched = false;
 
     function nodeFromEvent(ev) {
       var t = ev.target;
@@ -385,8 +396,14 @@
       svg.setPointerCapture(ev.pointerId);
       pointers[ev.pointerId] = localPoint(ev);
       var ids = Object.keys(pointers);
-      if (ids.length === 2) {
-        dragNode = null; panFrom = null;
+      if (ids.length >= 2) {
+        // A second finger turns whatever the first one started into a pinch:
+        // a node it had picked up is let go (left fixed, it never moved
+        // again), and nothing from that first touch may become a click.
+        if (dragNode) dragNode.fixed = false;
+        dragNode = null; panFrom = null; downNode = null; downAt = null;
+        pinched = true;
+        if (ids.length > 2) return;
         var a = pointers[ids[0]], b = pointers[ids[1]];
         pinchFrom = {
           dist: Math.hypot(a.x - b.x, a.y - b.y),
@@ -422,6 +439,7 @@
         view.x = pinchFrom.cx - (pinchFrom.cx - view.x) * f;
         view.y = pinchFrom.cy - (pinchFrom.cy - view.y) * f;
         view.k = k;
+        viewTouched = true;
         applyView();
         return;
       }
@@ -440,6 +458,7 @@
       } else if (panFrom) {
         view.x = panFrom.vx + (ev.clientX - panFrom.x);
         view.y = panFrom.vy + (ev.clientY - panFrom.y);
+        viewTouched = true;
         applyView();
       }
     });
@@ -454,14 +473,19 @@
     }
     svg.addEventListener('pointerup', function (ev) {
       var wasDrag = dragged;
+      var wasPinch = pinched;
       var n = downNode;
       var hadPointer = !!pointers[ev.pointerId];
       endPointer(ev);
-      // A second finger lifting off a pinch is not a click on anything.
-      if (!hadPointer || wasDrag) return;
+      if (!Object.keys(pointers).length) pinched = false;
+      // Neither finger lifting off a pinch is a click on anything.
+      if (!hadPointer || wasDrag || wasPinch) return;
       select(n || null);
     });
-    svg.addEventListener('pointercancel', endPointer);
+    svg.addEventListener('pointercancel', function (ev) {
+      endPointer(ev);
+      if (!Object.keys(pointers).length) pinched = false;
+    });
     svg.addEventListener('pointerleave', function () { hideTip(); });
 
     function settleAround(n) {
@@ -656,6 +680,7 @@
       view.k = Math.max(view.k, 1.1);
       view.x = s.w / 2 - n.x * view.k;
       view.y = s.h / 2 - n.y * view.k;
+      viewTouched = true;
       applyView();
       select(n);
       return true;
@@ -672,9 +697,18 @@
 
     var ro = null;
     if (typeof ResizeObserver !== 'undefined') {
-      var first = true;
+      var lastSize = null;
       ro = new ResizeObserver(function () {
-        if (first) { first = false; fit(); return; }
+        var s = size();
+        if (!lastSize) { lastSize = s; if (!viewTouched) fit(fitOpts); return; }
+        var dw = s.w - lastSize.w, dh = s.h - lastSize.h;
+        // Only a real change of size: observers also fire for a sub-pixel
+        // reflow, and re-fitting on those would fight the reader.
+        if (Math.abs(dw) < 1 && Math.abs(dh) < 1) return;
+        lastSize = s;
+        if (!viewTouched) { fit(fitOpts); return; }
+        view.x += dw / 2; view.y += dh / 2;
+        applyView();
       });
       ro.observe(mount);
     }

@@ -1491,12 +1491,16 @@
        back with the ability swapped, exactly as the editor saves it — the
        status comes off the response so an icon-less draft is not pushed live,
        and baseUpdatedAt lets the Worker refuse a save based on a stale copy
-       rather than silently overwriting somebody. */
-    function applyOne(r, ri) {
-      var slug = r.char.slug;
-      var wanted = scanPicked[slug] || {};
-      if (!Object.keys(wanted).length) return Promise.resolve('skip');
-      scanState(ri, '', 'Saving&hellip;');
+       rather than silently overwriting somebody.
+
+       canEdit alone is not "may change the ability": a page open for tags
+       only, or for everything BUT the ability, says yes to canEdit and the
+       Worker then quietly keeps the stored ability — so this used to report
+       "saved" for a fix that never landed. Only the modes that can write the
+       ability are tried, and the page is read back afterwards so the result
+       says what is actually on it. */
+    var ABILITY_MODES = { owner: 1, approved: 1, all: 1 };
+    function readPage(slug) {
       return fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), { credentials: 'same-origin' })
         .then(function (res) {
           return res.json().catch(function () { return {}; }).then(function (j) {
@@ -1504,16 +1508,29 @@
             if (!res.ok || !j || j.error) throw new Error((j && j.error) || 'Could not open that page.');
             return j;
           });
-        })
+        });
+    }
+    function applyOne(r, ri) {
+      var slug = r.char.slug;
+      var wanted = scanPicked[slug] || {};
+      if (!Object.keys(wanted).length) return Promise.resolve('skip');
+      scanState(ri, '', 'Saving&hellip;');
+      var next = null;
+      return readPage(slug)
         .then(function (page) {
           if (!page.canEdit) throw new Error('SKIP:That page belongs to another account.');
+          if (!ABILITY_MODES[page.editMode]) {
+            throw new Error('SKIP:Not changed — this page is open to ' +
+              (page.editMode === 'tags' ? 'tag edits only' : 'edits of everything except its ability') +
+              ', so only its owner can fix the ability.');
+          }
           var entry = page.data || {};
           var current = String(entry.ability || '');
           var fresh = G.lint(current, { enabled: enabled }).issues.filter(function (i) {
             return wanted[i.key] && i.sev === 'fix' && i.suggest !== null && i.suggest !== undefined;
           });
           if (!fresh.length) throw new Error('SKIP:Already fixed on the page.');
-          var next = G.applyFixes(current, fresh);
+          next = G.applyFixes(current, fresh);
           if (next === current) throw new Error('SKIP:Nothing changed.');
           var body = Object.assign({}, entry, {
             slug: page.slug || slug,
@@ -1530,6 +1547,14 @@
               if (res.status === 401) throw new Error('LOGIN');
               if (!res.ok) throw new Error((j && j.error) || 'Save failed.');
               return fresh.length;
+            });
+          }).then(function (n) {
+            // Read it back: the save answering 200 is not the same as the
+            // ability on the page being the fixed one.
+            return readPage(page.slug || slug).then(function (after) {
+              var now = String((after.data && after.data.ability) || '');
+              if (now.trim() !== next.trim()) throw new Error('The save went through but the ability on the page did not change.');
+              return n;
             });
           });
         })

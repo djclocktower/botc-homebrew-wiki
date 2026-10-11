@@ -304,7 +304,9 @@
       var href, thumb, name;
       if (p.type === 'character') {
         href = '/' + String(hit.page || ('c/' + hit.slug)).replace(/^\//, '');
-        thumb = hit.art ? '/assets/' + hit.art : (hit.image || '/assets/favicon.png');
+        // PageRender.imgSrc, like the tiles: a path that is already a whole
+        // URL (art hosted elsewhere) must not get /assets/ glued on.
+        thumb = hit.art ? PageRender.imgSrc('/', hit.art, hit.v) : (hit.image || '/assets/favicon.png');
         name = hit.name;
       } else if (p.type === 'script') {
         href = '/s/' + encodeURIComponent(hit.slug);
@@ -312,13 +314,11 @@
         // /collection/ pages themselves fall back through. Reading `header`
         // alone put the skull on every page with a logo and no header, which
         // is every Bloodstar import.
-        thumb = hit.header ? '/assets/' + hit.header
-              : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
+        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/favicon.png';
         name = hit.name;
       } else {
         href = '/collection/' + encodeURIComponent(hit.id || hit.slug);
-        thumb = hit.header ? '/assets/' + hit.header
-              : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
+        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/favicon.png';
         name = hit.displayName || hit.slug;
       }
       // A pinned character carries the same quick actions as every other

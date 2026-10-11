@@ -150,8 +150,12 @@ test('admins turn featured set pages into standalone articles; the homepage list
   assert.deepEqual(d.converted.map(p => [p.slug, p.from]), [['painting', 'Travel by the Starlight']]);
   assert.equal(f.db.prepare("SELECT parent_type FROM pages WHERE slug='painting'").get().parent_type, 'collection');
   assert.match(await (await f.request('/p/painting')).text(), /noindex/);
-
+  // Leaving dryRun out is a dry run too: only an explicit false writes.
   d = await (await convert('admin', { featured: true })).json();
+  assert.equal(d.dryRun, true);
+  assert.equal(f.db.prepare("SELECT parent_type FROM pages WHERE slug='painting'").get().parent_type, 'collection');
+
+  d = await (await convert('admin', { featured: true, dryRun: false })).json();
   assert.equal(d.converted.length, 1);
   const row = f.db.prepare("SELECT parent_type, parent_slug, owner_id FROM pages WHERE slug='painting'").get();
   assert.deepEqual({ ...row }, { parent_type: 'article', parent_slug: '', owner_id: 2 });
@@ -171,9 +175,9 @@ test('admins turn featured set pages into standalone articles; the homepage list
   d = await (await convert('admin', { featured: true })).json();
   assert.equal(d.converted.length, 0);
   assert.equal(d.already.length, 1);
-  d = await (await convert('admin', { slug: 'https://botchomebrew.wiki/p/orphan' })).json();
+  d = await (await convert('admin', { slug: 'https://botchomebrew.wiki/p/orphan', dryRun: false })).json();
   assert.equal(d.converted[0].slug, 'orphan');
   // Drafts never reach the homepage panel.
-  await convert('admin', { slug: 'unfinished' });
+  await convert('admin', { slug: 'unfinished', dryRun: false });
   assert.doesNotMatch(await cards(), /unfinished/);
 });

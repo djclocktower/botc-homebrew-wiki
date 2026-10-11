@@ -93,7 +93,7 @@
   // A character's source category: a collection (Appears in matches a
   // collection) takes precedence over a script (listed in a homebrew script).
   function makeSourceOf(collections, scripts) {
-    var inScript = {};
+    var inScript = Object.create(null);   // keyed by slugs: no prototype
     (scripts || []).forEach(function (s) { (s.characters || []).forEach(function (sl) { inScript[norm(sl)] = true; }); });
     var colls = (collections || []).filter(function (c) { return !c.standalone; });
     return function (c) {
@@ -179,10 +179,12 @@
 
   /* What the chips are built from. Only tags that appear in the list are
      offered (on a collection view this keeps the bar from being a wall of
-     unused chips); the canonical tag list lives in assets/tags.js. */
+     unused chips); the canonical tag list lives in assets/tags.js. Keyed by
+     names, so no prototype: a tag or creator called "constructor" is a key. */
   function barModel(list, sourceOf) {
     sourceOf = sourceOf || function () { return null; };
-    var tagSet = {}, creatorSet = {}, teamSet = {}, srcSet = {}, nPartial = 0, nCurata = 0;
+    var tagSet = Object.create(null), creatorSet = Object.create(null),
+      teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0;
     var isPartial = dep('isPartial'), isCurata = dep('isCurata');
     list.forEach(function (c) {
       teamSet[c.team] = 1;
@@ -467,11 +469,17 @@
           var wasOn = ctrl.state.favOnly;
           FAV_SET = set;
           var n = set ? countList.filter(function (c) { return set.has(c.slug); }).length : 0;
-          favBtn.hidden = !n;
-          favBtn.innerHTML = root.Favorites.heartSVG() + ' Favorites' + (n ? ' (' + n + ')' : '');
+          // A quiet re-count (counts(): the search page's results changed)
+          // comes AFTER the list was drawn with the chip on. Switching it off
+          // here, without a re-draw, left an empty list and no filter in
+          // sight, so the chip stays on and visible at (0), like the other
+          // status chips, and "Reset" is offered under it.
+          var keep = quiet && ctrl.state.favOnly;
+          favBtn.hidden = !n && !keep;
+          favBtn.innerHTML = root.Favorites.heartSVG() + ' Favorites' + (n || keep ? ' (' + n + ')' : '');
           var group = byId('fc-status-group');
-          if (group && !partialBtn && !curataBtn) group.hidden = !n;
-          if (!n && ctrl.state.favOnly) { ctrl.state.favOnly = false; favBtn.classList.remove('active'); }
+          if (group && !partialBtn && !curataBtn) group.hidden = !n && !keep;
+          if (!n && ctrl.state.favOnly && !keep) { ctrl.state.favOnly = false; favBtn.classList.remove('active'); }
           if (n && !ctrl.state.favOnly && /[?&]favorites=1(&|$)/.test(location.search) && !favLoad.opened) {
             favLoad.opened = true;
             ctrl.state.favOnly = true; favBtn.classList.add('active');
@@ -609,7 +617,10 @@
     var scs = scripts || [];
     function collRef(c) { return { key: 'c:' + (c.id || c.slug), name: c.displayName || c.slug, href: 'collection/' + encodeURIComponent(c.id || c.slug) }; }
     function scriptRef(s) { return { key: 's:' + s.slug, name: s.name || s.slug, href: 's/' + encodeURIComponent(s.slug) }; }
-    var collByKey = {}, scriptByKey = {}, collById = {}, scriptBySlug = {};
+    // Keyed by set names people typed: no prototype, or a set called
+    // "Constructor" would find Object's own and never be registered.
+    var collByKey = Object.create(null), scriptByKey = Object.create(null),
+      collById = Object.create(null), scriptBySlug = Object.create(null);
     colls.forEach(function (c) {
       [c.id, c.slug, c.displayName].concat(c.match || []).forEach(function (k) {
         k = norm(k); if (k && !collByKey[k]) collByKey[k] = c;
@@ -642,7 +653,7 @@
 
   // One heading per group of sections: a name, linked when it has a page.
   function bucketSections(list, keyOf, groups, emptyLabel) {
-    var by = {}, keys = [], none = [];
+    var by = Object.create(null), keys = [], none = [];   // keyed by names; see makeSetOf
     list.forEach(function (c) {
       var k = keyOf(c);
       if (!k) { none.push(c); return; }
@@ -692,6 +703,14 @@
       groups.push({ selector: '.char-grid[data-group="' + t[0] + '"]', items: chars });
       return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-group="' + t[0] + '"></div></section>';
     }).join('');
+    // A row with a blank or unknown team is counted like any other, so it
+    // must be drawn somewhere: an "Other" section last, as card-filters.js
+    // and renderRosterCards() do.
+    var other = list.filter(function (c) { return !Object.prototype.hasOwnProperty.call(TEAM_LABEL, c.team); });
+    if (other.length) {
+      groups.push({ selector: '.char-grid[data-group="other"]', items: other });
+      html += '<section class="type-section" id="other"><h2 class="type-header">Other</h2><div class="type-rule"></div><div class="char-grid" data-group="other"></div></section>';
+    }
     return { html: html, groups: groups };
   }
 
