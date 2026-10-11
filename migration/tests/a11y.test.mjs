@@ -176,3 +176,98 @@ test('a11y: chips mirror their state into aria-pressed and show a mark', () => {
   assert.match(css, /content: "\\2715" \/ "Excluded: "/);
   assert.match(css, /:not\(\.sp-tab\)::before/, 'the /search tabs get no ✓');
 });
+
+// ── 7. Contrast of the small marks that were under 4.5:1 ───────────────
+function luminance(hex) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [n >> 16, (n >> 8) & 255, n & 255].map(v => v / 255)
+    .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+    .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
+}
+function ratio(a, b) {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+function blend(rgb, alpha, bg) {
+  const b = parseInt(bg.slice(1), 16), c = [b >> 16, (b >> 8) & 255, b & 255];
+  return '#' + rgb.map((v, i) => Math.round(v * alpha + c[i] * (1 - alpha)).toString(16).padStart(2, '0')).join('');
+}
+function ruleBody(selector) {
+  const m = css.match(new RegExp('(^|\\n)' + selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}'));
+  assert.ok(m, 'styles.css has a ' + selector + ' rule');
+  return m[2];
+}
+test('a11y: the Partial badge, the footer and the browse count are 4.5:1 or better', () => {
+  const partial = ruleBody('.page-class-partial');
+  const pc = partial.match(/color:\s*(#[0-9a-f]{6})/i)[1];
+  assert.match(partial, /opacity:\s*1\b/, 'the Partial badge does not inherit .page-class opacity');
+  for (const bg of ['#f7f6f2', '#f0e8d5', '#fffdf8']) assert.ok(ratio(pc, bg) >= 4.5, 'Partial on ' + bg + ': ' + ratio(pc, bg).toFixed(2));
+
+  const foot = ruleBody('.foot').match(/color:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+  const fc = blend([+foot[1], +foot[2], +foot[3]], +foot[4], '#1a0820');
+  assert.ok(ratio(fc, '#1a0820') >= 4.5, 'footer: ' + ratio(fc, '#1a0820').toFixed(2));
+
+  const count = ruleBody('.browse-card-count').match(/color:\s*(#[0-9a-f]{6})/i)[1];
+  assert.ok(ratio(count, '#f0e8d5') >= 4.5, 'browse count: ' + ratio(count, '#f0e8d5').toFixed(2));
+});
+
+// ── 8. Every form control has a name a screen reader can say ───────────
+// Pages that existed when this test was written must stay clean. A page
+// added later (another branch's new tool, say) is still scanned, and what
+// it needs is printed as a diagnostic with the exact one-line fix, but it
+// does not fail the suite until it is added to KNOWN_PAGES — so a merge is
+// never blocked by surprise. Set A11Y_STRICT=1 to fail on those too.
+const ADMIN_EXEMPT = new Set(['dashboard.html', 'text-editor.html', 'normalize-icons.html']);
+const KNOWN_PAGES = new Set(('404 account all-characters all-collections articles authors bloodstar character ' +
+  'create-script create creators dashboard drafts edit-collection edit-script edit favorites grimforge history ' +
+  'iconforge index jinxes login mass-upload messages news normalize-icons profile publish-collection publish-news ' +
+  'publish-page publish-script register-collection reset-password rules script-view script scripts search ' +
+  'steven-approved-order suggestions tag tags team text-editor tokens tools').split(' ').map(n => n + '.html'));
+
+export function unlabelledControls(html) {
+  const h = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+  const fors = new Set([...h.matchAll(/<label\b[^>]*\bfor\s*=\s*["']([^"']+)["']/gi)].map(m => m[1]));
+  const ranges = [...h.matchAll(/<label\b[\s\S]*?<\/label>/gi)].map(m => [m.index, m.index + m[0].length]);
+  const bad = [];
+  for (const m of h.matchAll(/<(input|select|textarea)\b([^>]*)>/gi)) {
+    const a = m[2];
+    if (/\btype\s*=\s*["']?(hidden|submit|button|reset|image)\b/i.test(a)) continue;
+    if (/\b(aria-label|aria-labelledby|title|placeholder)\s*=\s*["'][^"']/i.test(a)) continue;
+    const id = (a.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (id && fors.has(id)) continue;
+    if (ranges.some(([s, e]) => m.index > s && m.index < e)) continue;
+    const name = (a.match(/\bname\s*=\s*["']([^"']+)["']/i) || [])[1];
+    bad.push(m[1].toLowerCase() + (id ? '#' + id : name ? '[name="' + name + '"]' : ' (no id: line ' + (h.slice(0, m.index).split('\n').length) + ')'));
+  }
+  return bad;
+}
+
+test('a11y: every input, select and textarea has a label', t => {
+  const failures = [], later = [];
+  for (const f of rootHtml) {
+    if (ADMIN_EXEMPT.has(f)) continue;
+    const bad = unlabelledControls(read(f));
+    if (!bad.length) continue;
+    const line = f + ': ' + bad.join(', ');
+    (KNOWN_PAGES.has(f) ? failures : later).push(line);
+  }
+  const fix = ' Fix: give each one aria-label="…", a <label for="its-id">, a wrapping <label>, a title or a placeholder.';
+  if (later.length) {
+    t.diagnostic('Pages this test does not know yet have unlabelled controls (add the page to KNOWN_PAGES once fixed):');
+    for (const l of later) t.diagnostic('  ' + l);
+    t.diagnostic(fix);
+    if (process.env.A11Y_STRICT) failures.push(...later);
+  }
+  assert.deepEqual(failures, [], 'Unlabelled form controls.' + fix);
+  // The scanner itself: each way of naming a control counts, and nothing else.
+  assert.deepEqual(unlabelledControls('<input id="a"><label for="b">B</label><input id="b">' +
+    '<label>C <select id="c"></select></label><textarea placeholder="d"></textarea><input type="hidden">' +
+    '<input aria-label="e"><input title="f"><!-- <input id="g"> --><script>"<input id=h>"</script>'), ['input#a']);
+});
+
+test('a11y: the login switch is two toggle buttons, not a half-built tablist', () => {
+  const html = read('login.html');
+  assert.doesNotMatch(html, /class="login-tabs" role="tablist"/);
+  assert.match(html, /id="tab-login" type="button" aria-pressed="true"/);
+  assert.match(html, /\$\('tab-signup'\)\.setAttribute\('aria-pressed'/);
+});

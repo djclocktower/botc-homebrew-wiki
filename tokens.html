@@ -444,11 +444,11 @@
               <button data-v="grid" aria-pressed="true">Grid</button><button data-v="alternating" aria-pressed="false">Offset</button>
             </div></div>
           <div class="tt-row"><label>Character margin</label>
-            <div class="tt-range"><input type="range" id="opt-cmargin" min="0" max="25" step="1" value="5"><output id="out-cmargin">5%</output></div></div>
+            <div class="tt-range"><input type="range" id="opt-cmargin" aria-label="Character margin" min="0" max="25" step="1" value="5"><output id="out-cmargin">5%</output></div></div>
           <div class="tt-row"><label>Reminder margin</label>
-            <div class="tt-range"><input type="range" id="opt-rmargin" min="0" max="25" step="1" value="10"><output id="out-rmargin">10%</output></div></div>
+            <div class="tt-range"><input type="range" id="opt-rmargin" aria-label="Reminder margin" min="0" max="25" step="1" value="10"><output id="out-rmargin">10%</output></div></div>
           <div class="tt-row"><label>Token padding</label>
-            <div class="tt-range"><input type="range" id="opt-pad" min="0" max="8" step="0.5" value="2"><output id="out-pad">2&nbsp;mm</output></div></div>
+            <div class="tt-range"><input type="range" id="opt-pad" aria-label="Token padding" min="0" max="8" step="0.5" value="2"><output id="out-pad">2&nbsp;mm</output></div></div>
           <div class="tt-row"><label>Resolution</label>
             <div class="tt-seg" id="opt-dpi" role="group" aria-label="DPI">
               <button data-v="400" aria-pressed="true">400</button><button data-v="300" aria-pressed="false">300</button></div></div>
@@ -510,7 +510,7 @@
       </div>
       <p class="tt-assets-hint">Official script-tool format. Importing replaces your current set.</p>
       <div class="tt-row" style="justify-content:flex-start">
-        <input type="file" accept=".json,application/json" id="tt-import-file">
+        <input type="file" accept=".json,application/json" id="tt-import-file" aria-label="Script JSON file">
       </div>
       <textarea id="tt-import-text" class="tt-import-text" placeholder='…or paste the JSON here, e.g. [{"id":"_meta","name":"My Script"}, …]'></textarea>
       <div class="tt-adj-actions"><button type="button" class="tt-btn-generate" style="font-size:.95rem;padding:10px 22px" id="tt-import-go">Import</button></div>

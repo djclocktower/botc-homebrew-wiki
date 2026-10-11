@@ -269,7 +269,8 @@ body::after { display: none; }
 }
 .foot {
   text-align: center; margin-top: 26px;
-  color: rgba(236,225,200,.5); font-size: .82rem; letter-spacing: .03em;
+  /* .58, not .5: 4.3:1 on the dark page was just under 4.5:1. */
+  color: rgba(236,225,200,.58); font-size: .82rem; letter-spacing: .03em;
 }
 .foot em { font-style: italic; }
 
@@ -1959,7 +1960,9 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .browse-card-count {
   font-family: 'Oswald', sans-serif; font-weight: 600;
   font-size: .78rem; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--good-name);
+  /* a shade darker than --good-name (4.2:1 on this card's parchment, under
+     4.5:1); the variable itself passes everywhere else, so it is untouched */
+  color: #2b66aa;
   padding-top: 8px;
   border-top: 1px solid rgba(180,160,120,.4);
   width: 100%;
@@ -3033,7 +3036,10 @@ a:hover .curata-mark { opacity: .9; }
   white-space: nowrap; cursor: help; margin-left: .45em;
   opacity: .75; font-weight: 400;
 }
-.page-class-partial { color: #8a7248; background: none; }
+/* Darker than the other marks and at full opacity: #8a7248 at .75 was
+   2.8:1 on a card, under the 4.5:1 small text needs. #76603c is 5.5:1 on
+   the card, 4.9:1 on parchment. */
+.page-class-partial { color: #76603c; background: none; opacity: 1; }
 
 /* Collection tiles carry the wreath in the footer beside the character count,
    and character pages carry it at the end of the Tags row — both behind a
