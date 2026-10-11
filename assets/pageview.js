@@ -36,6 +36,24 @@
     }
   }
 
+  // Storyteller Mode: run this script at the table (storyteller.html). Added
+  // here rather than by the server for the same reason as the Favorite button:
+  // the published HTML is shared cache, and this way SSR_RENDER_V stays put.
+  // A draft gets one too, since /api/page lets its owner run it.
+  if (TYPE === 'script' && SLUG) {
+    var anchor = document.querySelector('.page-fav-bar') || document.getElementById('page-owner-controls');
+    if (anchor) {
+      var st = document.createElement('p');
+      st.className = 'page-owner-bar page-st-bar';
+      var link = document.createElement('a');
+      link.className = 'cta-secondary';
+      link.href = ROOT + 'storyteller?s=' + encodeURIComponent(SLUG);
+      link.textContent = 'Run this script ▸';
+      st.appendChild(link);
+      anchor.parentNode.insertBefore(st, anchor.nextSibling);
+    }
+  }
+
   // The Download JSON button is a plain link to /api/page-json now — the
   // server builds that JSON to render this page anyway, so nothing here has to
   // attach it. It used to be an href="#" that this file turned into a blob:

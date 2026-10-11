@@ -222,7 +222,7 @@ const KNOWN_PAGES = new Set(('404 account all-characters all-collections article
   'create-script create creators dashboard drafts edit-collection edit-script edit favorites grimforge history ' +
   'iconforge index jinxes login mass-upload messages news normalize-icons profile publish-collection publish-news ' +
   'publish-page publish-script register-collection reset-password rules script-view script scripts search ' +
-  'steven-approved-order suggestions tag tags team text-editor tokens tools').split(' ').map(n => n + '.html'));
+  'steven-approved-order storyteller suggestions tag tags team text-editor tokens tools').split(' ').map(n => n + '.html'));
 
 export function unlabelledControls(html) {
   const h = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
