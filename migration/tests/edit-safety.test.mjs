@@ -249,6 +249,12 @@ test('a wiki page under a draft script is hidden from strangers and shown to its
     let r = await t.get('/p/rules', null, true);
     assert.equal(r.status, 200);
     assert.match(await r.text(), /Secret Unreleased Script/);
+    // One edit while it is public, so the page has a history to hide.
+    r = await t.post('/api/wiki-page', { slug: 'rules', title: 'Rules', body: 'Hello again.', status: 'published' }, alice.cookie);
+    assert.equal(r.status, 200, await r.clone().text());
+    const revId = t.revs('wikipage', 'rules')[0].id;
+    assert.equal((await t.get('/api/page-history?type=wikipage&slug=rules')).status, 200);
+    assert.equal((await t.get('/api/page-revision?type=wikipage&slug=rules&id=' + revId)).status, 200);
 
     r = await t.post('/api/publish', { type: 'script', slug: 'secret-script', status: 'draft' }, alice.cookie);
     assert.equal(r.status, 200, await r.clone().text());
@@ -259,6 +265,10 @@ test('a wiki page under a draft script is hidden from strangers and shown to its
     assert.equal((await t.get('/p/rules', bob.cookie, true)).status, 404);
     assert.equal((await t.get('/api/wiki-page?slug=rules')).status, 404);
     assert.equal((await t.get('/api/comments?type=wikipage&slug=rules')).status, 404);
+    // Its history carries its text, so it goes down with the page.
+    assert.equal((await t.get('/api/page-history?type=wikipage&slug=rules')).status, 404);
+    assert.equal((await t.get('/api/page-revision?type=wikipage&slug=rules&id=' + revId, bob.cookie)).status, 404);
+    assert.equal((await t.get('/api/page-history?type=wikipage&slug=rules', alice.cookie)).status, 200);
     r = await t.post('/api/comments', { type: 'wikipage', slug: 'rules', body: 'Hi!', agree: true }, bob.cookie);
     assert.equal(r.status, 404);
     assert.deepEqual((await (await t.get('/api/featured-articles')).json()).articles, []);

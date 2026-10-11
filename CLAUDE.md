@@ -1273,8 +1273,12 @@ The save handlers enforce the rest:
   unowned page (nobody will ever save as its owner) stays where it is until
   an admin runs the nest-urls sweep. A row with no `url_slug` yet still gets
   its first one. Approved editors are unaffected: they edit as the creator
-  would, rename included. **Open follow-up:** the guest banner does not lock
-  the Creator / Author field yet, so the Worker silently keeps the stored one.
+  would, rename included. The editors say so rather than letting the Worker
+  discard an edit in silence: `lockCredit()` in edit.html (called by the
+  `'all'` and `'all-but-ability'` guest modes) makes Creator read-only with a
+  note and tells the guest "Appears in" will not move the page, and
+  `lockAuthor()` in publish-script.html / publish-collection.html does the
+  same to Author in `'all'` mode.
 - **An existing collection's `id` is fixed on every save, owner included.**
   The kebab id is its URL, collections have no redirects, and the editor
   already calls the URL fixed once created. A legacy row with no stored `id`
@@ -2793,7 +2797,9 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   `/p/` 404s to strangers — without naming the set — and its owner and the
   set's approved editors see a "not public" bar (`SYS.parentNotLivePage`);
   `GET /api/wiki-page` is gated the same way (`wikiPageVisible()`, shared by
-  both); comments neither read nor post; Featured Articles hides it as
+  both); its history (`/api/page-history`, `/api/page-revision`) is the
+  owner's alone (`historyPublic()`), since it carries the page's text;
+  comments neither read nor post; Featured Articles hides it as
   `parent-draft` (`parent-deleted` for a deleted or missing set). The listings
   already did this. `wikiPageAccess()` never answers `'all'` for such a page,
   so a drafted set left on "anyone can edit" does not open its hidden pages to

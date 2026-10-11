@@ -3280,6 +3280,16 @@ async function wikiPageVisible(env, sess, row, parent) {
   return a === 'owner' || a === 'approved';
 }
 
+/* May a reader who does not own this row see its history? A published page's
+   history is public; a wiki page's only while its set is too (the history
+   carries the page's text, so it must not outlive the page's own 404). */
+async function historyPublic(env, type, row) {
+  if ((row.status || 'published') !== 'published') return false;
+  if (type !== 'wikipage') return true;
+  const parent = await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+  return wikiParentLive(parent);
+}
+
 /* May this session add a page under this parent? Its owner, an admin, or an
    approved editor of it. */
 async function mayAddWikiPage(env, sess, parent) {
@@ -9511,8 +9521,9 @@ const app = {
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
       // A published page's history is public, the way a wiki's is. A draft is
-      // its owner's alone, and has no history anyway (see saveRevision).
-      if ((row.status || 'published') !== 'published' && !owns) {
+      // its owner's alone, and has no history anyway (see saveRevision). So is
+      // a wiki page whose set is not public.
+      if (!owns && !(await historyPublic(env, type, row))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       await ensureRevisionsTable(env);
@@ -9615,7 +9626,7 @@ const app = {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      if ((row.status || 'published') !== 'published' && !owns) {
+      if (!owns && !(await historyPublic(env, type, row))) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       await ensureRevisionsTable(env);
