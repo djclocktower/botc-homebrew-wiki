@@ -719,11 +719,18 @@
   function closeEditor() {
     if (editorDlg) { var d = editorDlg; editorDlg = null; d.close(); }
     if (!editorSlug) return;
+    var sl = editorSlug;
     if (editorGizmo) editorGizmo.setAsset(null);
     editorSlug = null;
     $('tt-editor').classList.remove('open');
     document.body.style.overflow = '';
     renderSet();          // refresh count values + edited dots
+    // renderSet() redrew the Edit buttons, so the one dialog.js handed focus
+    // back to is gone; give it to the same token's new button instead.
+    if (window.BotcDialog && (!document.activeElement || document.activeElement === document.body)) {
+      var again = Array.prototype.filter.call(document.querySelectorAll('#tt-set .tt-edit-btn'), function (b) { return b.dataset.slug === sl; })[0];
+      if (again) again.focus();
+    }
     schedulePreview();
   }
   function remEntries(c) {

@@ -125,6 +125,12 @@
   max-height: 46vh; overflow-y: auto;
 }
 .sb-add-filters .filter-chip { font-size: .74rem; padding: 3px 8px; }
+/* The ✓/✕ mark (styles.css) is paid for out of the chip's side padding so a
+   chip keeps its width on and off; these chips have 8px a side, not 11. */
+.sb-add-filters .filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab),
+.sb-add-filters .filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab) {
+  padding-left: 2px; padding-right: 4px;
+}
 .sb-add-filters .filter-select { font-size: .82rem; padding: 5px 8px; width: 100%; }
 .sb-add-count {
   font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
