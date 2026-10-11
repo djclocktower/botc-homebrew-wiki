@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storyteller Mode — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Run a Blood on the Clocktower game from a homebrew script on your phone: setup counts, the bag, demon bluffs, reminder tokens, jinxes in play and a step-by-step night order.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Storyteller Mode">
+<meta property="og:description" content="Run a Blood on the Clocktower game from a homebrew script on your phone: setup counts, the bag, demon bluffs, reminder tokens, jinxes in play and a step-by-step night order.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* Storyteller Mode. Every class here is page-local (st-*): styles.css is
+   shared and this page is used at a game table on a phone, so big targets,
+   high contrast and nothing that moves under a thumb. */
+.st-page {
+  position: relative; z-index: 5;
+  max-width: 720px; margin: 0 auto; padding: 0 16px 48px;
+}
+.st-card {
+  background-color: var(--parch);
+  border: 2px solid var(--parch-frame);
+  color: var(--maroon);
+  padding: 16px; margin: 0 0 16px;
+}
+.st-card h2, .st-card h3 {
+  font-family: 'Dumbledor2', serif; font-weight: 400; letter-spacing: .04em;
+  margin: 0 0 10px; color: var(--maroon);
+}
+.st-card h2 { font-size: 1.25rem; }
+.st-card h3 { font-size: 1.05rem; }
+.st-muted { color: rgba(91,31,33,.75); font-size: .92rem; }
+.st-note { font-size: .9rem; color: rgba(91,31,33,.85); margin: 8px 0 0; }
+
+/* Header */
+.st-head { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
+.st-head-logo { width: 72px; height: 72px; object-fit: contain; flex: none; }
+.st-head h1 {
+  font-family: 'Dumbledor2', serif; font-weight: 400; font-size: 1.5rem;
+  letter-spacing: .03em; margin: 0; color: var(--maroon); overflow-wrap: anywhere;
+}
+.st-head-by { margin: 2px 0 6px; font-size: .95rem; overflow-wrap: anywhere; }
+.st-head a { color: var(--good-name); }
+.st-missing { font-size: .88rem; margin: 6px 0 0; overflow-wrap: anywhere; }
+
+/* Tabs: sticky, so the next step is always one tap away. */
+.st-tabs {
+  position: sticky; top: 0; z-index: 30;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  background: var(--purple-deep); padding: 8px 0; margin: 0 0 12px;
+}
+.st-tab {
+  min-height: 48px; padding: 6px 4px;
+  font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .03em;
+  background: rgba(240,232,213,.12); color: #efe6d2;
+  border: 2px solid rgba(240,232,213,.3); cursor: pointer;
+}
+.st-tab[aria-selected="true"] { background: var(--parch); color: var(--maroon); border-color: var(--parch-frame); }
+.st-tab-n { opacity: .65; margin-right: 4px; }
+
+/* Buttons */
+.st-btn {
+  min-height: 44px; padding: 8px 14px;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .95rem; letter-spacing: .03em;
+  background: #fffaf0; color: var(--maroon); border: 2px solid var(--parch-frame);
+  cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.st-btn:disabled { opacity: .45; cursor: default; }
+.st-btn[aria-pressed="true"] { background: var(--maroon); color: #f3ead4; border-color: var(--maroon); }
+.st-btn-primary {
+  background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4; border-color: var(--maroon);
+  font-family: 'Dumbledor2', serif; font-weight: 400; font-size: 1.1rem; min-height: 52px; width: 100%;
+}
+.st-btn-small { min-height: 40px; padding: 6px 10px; font-size: .85rem; }
+.st-row-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.st-actions { display: grid; gap: 10px; margin: 0 0 16px; }
+
+/* Steppers */
+.st-stepper { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; }
+.st-stepper-label { flex: 1; font-family: 'Dumbledor2', serif; font-size: 1.1rem; }
+.st-step-btn { width: 52px; height: 52px; font-size: 1.6rem; padding: 0; }
+.st-stepper output { min-width: 2.2em; text-align: center; font-size: 1.6rem; font-weight: 700; }
+
+/* Counts */
+.st-counts { width: 100%; border-collapse: collapse; font-size: 1rem; }
+.st-counts th, .st-counts td { padding: 8px 6px; border-bottom: 1px solid rgba(180,160,120,.5); text-align: left; }
+.st-counts td.n, .st-counts th.n { text-align: center; width: 4.5em; }
+.st-counts .chg { font-weight: 700; }
+.st-counts .why { display: block; font-size: .8rem; color: rgba(91,31,33,.75); }
+
+/* Team colours on parchment (the styles.css team vars) and on the night
+   panel (lighter, for a dark room). */
+.st-t-townsfolk { color: var(--good); } .st-t-outsider { color: var(--outsider); }
+.st-t-minion { color: var(--minion); } .st-t-demon { color: var(--evil); }
+.st-t-traveller { color: #6a4fb0; } .st-t-fabled { color: var(--fabled); } .st-t-loric { color: var(--loric); }
+.st-night .st-t-townsfolk, .st-night .st-t-outsider, .st-night .st-t-traveller { color: #8cc3ff; }
+.st-night .st-t-minion, .st-night .st-t-demon { color: #ff8f86; }
+.st-night .st-t-fabled { color: #f0c96a; } .st-night .st-t-loric { color: #8fd6a0; }
+
+/* Modifier rows */
+.st-mod { padding: 10px 0; border-top: 1px solid rgba(180,160,120,.5); }
+.st-mod:first-of-type { border-top: 0; }
+.st-mod-who { font-weight: 700; }
+.st-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.st-check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.st-check input { width: 22px; height: 22px; flex: none; }
+
+/* Bag */
+.st-warn {
+  background: #fff1d6; border: 2px solid #c48a1a; color: #5a3a00;
+  padding: 10px 12px; margin: 0 0 12px; font-size: .95rem;
+}
+.st-warn ul { margin: 0; padding-left: 18px; }
+.st-warn .st-btn { margin-top: 8px; }
+.st-team-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 6px; }
+.st-team-head .bad { color: #b00; font-weight: 700; }
+.st-char { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(180,160,120,.5); }
+.st-char:first-of-type { border-top: 0; }
+.st-ico { width: 48px; height: 48px; object-fit: contain; flex: none; }
+.st-ico-sm { width: 28px; height: 28px; }
+.st-char-body { flex: 1; min-width: 0; }
+.st-char-name { font-weight: 700; font-size: 1.05rem; overflow-wrap: anywhere; }
+.st-char-ab { font-size: .88rem; color: #2a1a12; margin: 2px 0 0; overflow-wrap: anywhere; }
+.st-thinks { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: .92rem; }
+.st-select {
+  min-height: 44px; font-size: 16px; padding: 6px 8px; max-width: 100%;
+  background: #fffaf0; color: var(--maroon); border: 2px solid var(--parch-frame);
+}
+.st-add { margin-top: 8px; }
+.st-add .st-select { width: 100%; }
+
+/* Prep */
+.st-bluffs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.st-bluff { text-align: center; border: 1px solid rgba(180,160,120,.6); padding: 8px 4px; background: #fffaf0; }
+.st-bluff img { width: 64px; height: 64px; object-fit: contain; display: block; margin: 0 auto 4px; }
+.st-bluff-name { display: block; font-weight: 700; font-size: .92rem; min-height: 2.4em; overflow-wrap: anywhere; }
+.st-tokens { list-style: none; padding: 0; margin: 0 0 10px; }
+/* Ticked lists, not bulleted ones: no marker from any shared li rule. */
+.st-tokens li, .st-steps li { list-style: none; padding-left: 0; margin: 0; }
+.st-tokens li::before, .st-steps li::before, .st-tokens li::marker, .st-steps li::marker { content: none; display: none; }
+.st-tokens-who { font-weight: 700; margin: 10px 0 2px; }
+.st-jinx { padding: 10px 0; border-top: 1px solid rgba(180,160,120,.5); }
+.st-jinx:first-of-type { border-top: 0; }
+.st-jinx-pair { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-weight: 700; }
+.st-jinx-pair img { width: 32px; height: 32px; object-fit: contain; }
+.st-jinx p { margin: 4px 0 0; font-size: .95rem; overflow-wrap: anywhere; }
+
+/* Night: a dark panel for a dark room. */
+.st-night {
+  background: #120a18; color: #efe6d2; border: 2px solid #3a2a48;
+  padding: 12px 12px 0; margin: 0 0 16px;
+}
+.st-night a { color: #9fc8ff; }
+.st-night .st-btn { background: #241732; color: #efe6d2; border-color: #4b3860; }
+.st-night .st-btn[aria-pressed="true"] { background: #efe6d2; color: #120a18; border-color: #efe6d2; }
+.st-night-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.st-seg { display: flex; gap: 4px; }
+.st-night-n { font-family: 'Dumbledor2', serif; font-size: 1.2rem; }
+.st-night .st-check { color: #efe6d2; }
+.st-night-note { font-size: .88rem; color: rgba(239,230,210,.75); margin: 6px 0 0; }
+.st-step {
+  min-height: 300px; margin: 12px 0; padding: 16px 8px;
+  text-align: center; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+}
+.st-step.dead .st-step-art, .st-step.dead .st-step-name { opacity: .45; }
+.st-step-art { width: 140px; height: 140px; object-fit: contain; display: block; margin: 0 auto 8px; }
+.st-step-name { font-family: 'Dumbledor2', serif; font-size: 1.9rem; line-height: 1.15; margin: 0; overflow-wrap: anywhere; }
+.st-step-team { font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; opacity: .8; margin: 2px 0 10px; }
+.st-step-text { font-size: 1.2rem; line-height: 1.5; text-align: left; margin: 10px 0; overflow-wrap: anywhere; }
+.st-step-text .tok { color: #ffd88a; background: rgba(255,216,138,.14); }
+.st-step-text b { color: #ffd88a; }
+.st-badge { display: inline-block; font-size: .8rem; padding: 2px 8px; border: 1px solid currentColor; margin: 0 4px 6px; letter-spacing: .05em; text-transform: uppercase; }
+.st-step-who { font-size: 1rem; text-align: left; color: rgba(239,230,210,.85); margin: 8px 0; }
+.st-step-bluffs { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.st-step-bluffs span { display: flex; flex-direction: column; align-items: center; width: 90px; font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
+.st-step-bluffs img { width: 64px; height: 64px; object-fit: contain; }
+.st-step-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+.st-bar {
+  position: sticky; bottom: 0; z-index: 20;
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center;
+  background: #120a18; padding: 10px 0 12px; border-top: 1px solid #3a2a48;
+}
+.st-bar .st-btn { min-height: 56px; font-size: 1.05rem; }
+.st-bar-pos { font-size: 1.05rem; min-width: 4.5em; text-align: center; }
+.st-steps { margin: 4px 0 12px; }
+.st-steps summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.st-steps ol { margin: 0; padding-left: 0; list-style: none; counter-reset: st; }
+.st-steps li button {
+  width: 100%; text-align: left; min-height: 44px; padding: 6px 10px;
+  background: transparent; color: #efe6d2; border: 0; border-bottom: 1px solid #2c2038; cursor: pointer; font-size: 1rem;
+}
+.st-steps li button[aria-current="step"] { background: #2c2038; font-weight: 700; }
+.st-steps li .off { opacity: .5; }
+
+/* Show to player: the whole screen, nothing the Storyteller wrote. */
+.st-show {
+  position: fixed; inset: 0; z-index: 1000; background: #000; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px 16px; text-align: center; cursor: pointer;
+}
+.st-show[hidden] { display: none; }
+.st-show h2 { font-family: 'Dumbledor2', serif; font-weight: 400; font-size: clamp(1.6rem, 8vw, 3rem); margin: 0 0 24px; }
+.st-show-bluffs { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
+.st-show-bluffs span { display: flex; flex-direction: column; align-items: center; width: 140px; font-size: 1.2rem; font-weight: 700; }
+.st-show-bluffs img { width: 120px; height: 120px; object-fit: contain; }
+.st-show-hint { position: absolute; bottom: 16px; left: 0; right: 0; font-size: .85rem; opacity: .55; }
+
+.st-loading { color: #efe6d2; text-align: center; padding: 30px 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .st-step.fade { animation: st-fade .15s ease-out; }
+  @keyframes st-fade { from { opacity: .2; } to { opacity: 1; } }
+}
+@media (max-width: 420px) {
+  .st-tab { font-size: .9rem; }
+  .st-tab-n { display: none; }
+  .st-step-name { font-size: 1.6rem; }
+}
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <main class="st-page">
+    <div id="st-head" class="st-card st-head-card">
+      <p class="st-muted" style="margin:0">Loading the script…</p>
+    </div>
+    <noscript><p class="st-card">Storyteller Mode needs JavaScript.</p></noscript>
+
+    <div class="st-tabs" id="st-tabs" role="tablist" aria-label="Storyteller steps" hidden>
+      <button type="button" class="st-tab" role="tab" id="st-tab-setup" aria-controls="st-setup" data-act="tab" data-tab="setup"><span class="st-tab-n">1</span>Setup</button>
+      <button type="button" class="st-tab" role="tab" id="st-tab-bag" aria-controls="st-bag" data-act="tab" data-tab="bag"><span class="st-tab-n">2</span>Bag</button>
+      <button type="button" class="st-tab" role="tab" id="st-tab-prep" aria-controls="st-prep" data-act="tab" data-tab="prep"><span class="st-tab-n">3</span>Prep</button>
+      <button type="button" class="st-tab" role="tab" id="st-tab-night" aria-controls="st-night" data-act="tab" data-tab="night"><span class="st-tab-n">4</span>Night</button>
+    </div>
+
+    <section id="st-setup" class="st-panel" role="tabpanel" aria-labelledby="st-tab-setup" hidden></section>
+    <section id="st-bag" class="st-panel" role="tabpanel" aria-labelledby="st-tab-bag" hidden></section>
+    <section id="st-prep" class="st-panel" role="tabpanel" aria-labelledby="st-tab-prep" hidden></section>
+    <section id="st-night" class="st-panel" role="tabpanel" aria-labelledby="st-tab-night" hidden></section>
+  </main>
+
+  <!-- "Show to player": a full-screen view to turn toward the Demon. Not a
+       modal dialog: a tap, Escape or Back closes it. -->
+  <div class="st-show" id="st-show" role="region" aria-label="Shown to a player" tabindex="-1" hidden></div>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <!-- reader.js before render.js: render.js reads window.Reader as it loads. -->
+  <script src="assets/reader.js"></script>
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/official-roles.js"></script>
+  <script src="assets/storyteller-core.js"></script>
+  <script src="assets/storyteller.js"></script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
