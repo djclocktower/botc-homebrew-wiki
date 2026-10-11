@@ -25,6 +25,10 @@ export async function fixture() {
   const source = (await read('worker/worker.js')).replace(
     /from (['"])(\.\.?\/[^'"]+)\1/g,
     (_, quote, path) => 'from ' + JSON.stringify(path === './argon2.js' ? argon2Url : pathToFileURL(resolve(root, 'worker', path)).href)
+  ).replace(
+    // Lazily loaded modules (import('./bloodstar.js')) resolve the same way.
+    /\bimport\((['"])(\.\.?\/[^'"]+)\1\)/g,
+    (_, quote, path) => 'import(' + JSON.stringify(pathToFileURL(resolve(root, 'worker', path)).href) + ')'
   ) + `\n// isolate ${instance++}\nexport const hooks = {
     contentVersion, bumpContentVersion, cachedFeedBody, renderCharacterPage,
     applyCollectionAppearsIn, charsBySlug, ensurePagesTable, uploadSlotDenied,
@@ -67,7 +71,11 @@ export async function fixture() {
     ASSETS: { async fetch(request) {
       const path = new URL(request.url).pathname.slice(1);
       try { return new Response(await read(path)); }
-      catch { return new Response('Not found', { status: 404 }); }
+      catch {
+        // Clean URLs (/team serves team.html), as Cloudflare's assets do.
+        try { if (path && !/\.\w+$/.test(path)) return new Response(await read(path + '.html')); } catch { /* 404 below */ }
+        return new Response('Not found', { status: 404 });
+      }
     } }
   };
   globalThis.caches = { default: {

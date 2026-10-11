@@ -44,7 +44,7 @@
   /* ---- generic parchment panel ---- */
   .panel {
     background-color: var(--parch);
-    background-image: url('assets/parchment.jpg');
+    background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 2px solid var(--parch-frame);
     padding: clamp(16px,3vw,24px);
@@ -891,8 +891,10 @@
       <section class="panel">
         <h3>Card thumbnails <span class="count-pill" id="thumb-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Every card, search result and roster row draws a small WebP copy of the character's icon (about 8&nbsp;KB) instead of the full 591px art (150&nbsp;KB and up).
-          The editors make one whenever art is uploaded; art that arrived before that, or through the server-side Bloodstar copy, has none yet and its cards still load the big picture.
+          Every card, search result and roster row draws a small WebP copy of the character's icon (about 8&nbsp;KB) instead of the full 591px art (150&nbsp;KB and up),
+          and a character's own page and the homepage's Featured card draw a full-size WebP copy (about 37&nbsp;KB instead of the PNG's 166&nbsp;KB). Script and collection banners and logos have three WebP sizes.
+          The editors make them whenever an image is uploaded; images that arrived before that, or through the server-side Bloodstar copy, have none yet and still load the big picture.
+          Banner sizes made before October 2026 were sometimes <em>enlarged</em> past the original (bigger files, no sharper) and are listed so they are remade.
           A thumbnail that was stored but came out <em>blank</em> is listed too &mdash; it is a picture with nothing in it, so the card shows an empty tile even though the character&rsquo;s own page looks right.
           <strong>Scan</strong> lists them; <strong>Make them</strong> builds and uploads each thumbnail from this browser, one at a time. Re-runnable and safe: a character with no thumbnail just keeps showing the original.
         </p>
@@ -2185,16 +2187,18 @@
         if (!d || !d.ok) { $('thumb-list').innerHTML = '<p class="note">' + esc((d && d.error) || 'Scan failed.') + '</p>'; return; }
         thumbItems = d.items || [];
         $('thumb-count').textContent = d.missing;
-        var html = '<p class="note">' + d.withArt + ' character icons and page images; ' + d.missing + ' still have no usable thumbnail' +
+        var html = '<p class="note">' + d.withArt + ' character icons and page images; ' + d.missing + ' still need a small or full-size copy' +
           (d.missing ? ' (' + d.r2Thumbs + ' made so far, ' + d.committed + ' committed with the repo' +
             (d.blank ? '; ' + d.blank + ' of them stored one that came out blank' : '') + ').'
             : '. Every image has a small version.') + '</p>';
         if (thumbItems.length) {
           html += '<ul class="note" style="max-height:220px;overflow:auto;margin:6px 0 0;padding-left:18px">' +
-            thumbItems.slice(0, 200).map(function(it){ return '<li>' + esc(it.name || it.slug) + ' <span style="opacity:.6">' + esc(it.art) + (it.blank ? ' &mdash; blank' : '') + '</span></li>'; }).join('') +
+            thumbItems.slice(0, 200).map(function(it){
+              var what = it.media ? 'sizes' : [it.thumb !== false ? 'thumbnail' : '', it.display ? 'full-size copy' : ''].filter(Boolean).join(' + ');
+              return '<li>' + esc(it.name || it.slug) + ' <span style="opacity:.6">' + esc(it.art) + (what ? ' &mdash; ' + what : '') + (it.blank ? ' (blank)' : '') + '</span></li>'; }).join('') +
             (thumbItems.length > 200 ? '<li>&hellip; and ' + (thumbItems.length - 200) + ' more</li>' : '') + '</ul>';
           $('thumb-run').style.display = '';
-          $('thumb-run').textContent = 'Make ' + thumbItems.length + ' thumbnail' + (thumbItems.length === 1 ? '' : 's');
+          $('thumb-run').textContent = 'Make them (' + thumbItems.length + ')';
         }
         $('thumb-list').innerHTML = html;
       }).catch(function(){
@@ -2211,13 +2215,15 @@
         var it = todo.shift();
         if (!it) {
           btn.disabled = false;
-          setToast('thumb-toast', failed === 0, done + ' thumbnail' + (done === 1 ? '' : 's') + ' made' + (failed ? ', ' + failed + ' could not be' : '') + '.');
+          setToast('thumb-toast', failed === 0, done + ' image' + (done === 1 ? '' : 's') + ' done' + (failed ? ', ' + failed + ' could not be' : '') + '.');
           $('thumb-scan').click();
           return;
         }
-        // Reads the art back from the site and uploads the 192px WebP beside
-        // it; a browser that cannot encode WebP resolves false and we say so.
-        ArtThumb.uploadFromUrl(it.art).then(function(ok){
+        // Reads the image back from the site and uploads what it is missing
+        // beside it — the 192px thumbnail and/or the full-size display copy
+        // for an icon, the three sizes for a banner; a browser that cannot
+        // encode WebP resolves false and we say so.
+        ArtThumb.uploadFromUrl(it.art, null, it.media ? null : { thumb: it.thumb !== false, display: !!it.display }).then(function(ok){
           if (ok) done++; else failed++;
           bar.innerHTML = '<p class="note">' + (done + failed) + ' of ' + total + ' &mdash; ' + esc(it.name || it.slug) + (ok ? '' : ' (skipped)') + '</p>';
           setTimeout(step, 30);

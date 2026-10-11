@@ -71,7 +71,7 @@
     <div id="filter-bar" class="filter-bar" hidden></div>
     <p id="filter-count" class="filter-count" hidden></p>
   </div>
-  <main class="home-panel" id="panel">
+  <main class="home-panel list-panel" id="panel">
     <div class="char-grid">
       <div class="skel skel-card" style="height:120px"></div>
       <div class="skel skel-card" style="height:120px"></div>
@@ -153,53 +153,59 @@
     // group) is assets/char-filters.js, shared with the /search page.
     var FILTERS = null;
     var FULL = [];   // collection-scoped full list
+    var PANEL = document.getElementById('panel');
+    // The Worker drew the first screen of cards into this page
+    // (worker/list-pages.js). They are adopted as they stand; the full list
+    // is fetched once the page is idle or the reader does something.
+    var SSR = PANEL.getAttribute('data-ssr') === '1';
+    var ADOPT = SSR;
+    var CF = window.CharFilters;
+    var CFG = CF.config();
 
-    function render(){
+    function render(opts){
       // Disconnect previous batches even when the new result is empty.
       if (cancelCards) cancelCards();
-      var list = FILTERS.apply(FULL);
-      var panel = document.getElementById('panel');
+      // Before the filter box exists the list is the default view.
+      var list = FILTERS ? FILTERS.apply(FULL) : CF.applyState(FULL, CF.blankState(CFG), {});
+      var panel = PANEL;
       var count = document.getElementById('filter-count');
       count.hidden = false;
       count.textContent = list.length + ' character' + (list.length===1?'':'s') +
         (FULL.length !== list.length ? ' (of ' + FULL.length + ')' : '');
+      if (!FILTERS && SSR) count.insertAdjacentHTML('beforeend', '<span class="cf-loading-note"> · loading filters…</span>');
 
       if (!list.length){
+        ADOPT = false;
         panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
         return;
       }
       // Team sections, one grid, or author sections: CharFilters.sections()
-      // is the one layout, shared with /search.
-      if (!SET_OF) SET_OF = window.CharFilters.makeSetOf(AC_COLLECTIONS, AC_SCRIPTS);
-      var laid = window.CharFilters.sections(list, FILTERS.state.group, SET_OF);
-      panel.innerHTML = laid.html;
-      cancelCards = window.mountCardBatches(panel, laid.groups, card);
+      // is the one layout, shared with /search. The sets feed "By script or
+      // collection", which can only be picked once they are here.
+      if (!SET_OF && SETS_READY) SET_OF = CF.makeSetOf(AC_COLLECTIONS, AC_SCRIPTS);
+      var laid = CF.sections(list, FILTERS ? FILTERS.state.group : CFG.group, SET_OF);
+      // The server's cards are kept when they are this very layout.
+      var adopt = ADOPT && panel.getAttribute('data-ssr-sig') === CF.layoutSig(laid.groups);
+      ADOPT = false;
+      if (!adopt) panel.innerHTML = laid.html;
+      // A filter tap draws a short first batch so its answer paints at once;
+      // the rest of the screen follows in the next frames.
+      cancelCards = window.mountCardBatches(panel, laid.groups, card, { adopt: adopt, first: opts && opts.tap ? 16 : undefined });
     }
     var cancelCards = null;
     // "Group: By script or collection" — built once, from the same two feeds
     // the Source chips use.
-    var SET_OF = null, AC_SCRIPTS = [];
+    var SET_OF = null, AC_SCRIPTS = [], SETS_READY = false;
 
-    Promise.all([
-      BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
-      BotcData.json('characters.json?fields=grid'),
-      BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
-    ]).then(function(res){
-      var collData = res[0]||[], list = res[1], scripts = res[2]||[];
-      AC_SCRIPTS = scripts;
-      AC_COLLECTIONS = collData.map(function(c){
-        return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
-                match:c.match||[],description:c.description||'',header:c.header||'',
-                tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[],v:c.v};
-      });
-      AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
-                           match:[],standalone:true,description:'',header:''});
-                var activeCollection = findCollection(COLLECTION_PARAM);
+    // ?collection=Standalone: a hero for the collection, and the list cut to
+    // its characters. A real collection is sent to its own page (null).
+    function showCollection(list) {
+        var activeCollection = findCollection(COLLECTION_PARAM);
         // The per-collection browse/filter view now lives on the collection
         // page itself, so send real collections there. (Standalone stays here.)
         if (activeCollection && activeCollection.id && !activeCollection.standalone) {
           location.replace('collection/' + encodeURIComponent(activeCollection.id));
-          return;
+          return null;
         }
         if (activeCollection) {
           list = list.filter(function (c) { return charMatchesCollection(c, activeCollection); });
@@ -329,22 +335,110 @@
             if (heroSub) heroSub.textContent = '';
           }
         }
-        FULL = list;
-        FILTERS = window.CharFilters.mount({
-          bar: document.getElementById('filter-bar'),
-          toggle: document.getElementById('filter-toggle'),
-          list: list,
-          // A character on a collection counts as From Collection before it
-          // counts as From Script.
-          sourceOf: window.CharFilters.makeSourceOf(AC_COLLECTIONS, scripts),
-          onChange: render
+        return list;
+    }
+
+    function mountFilters() {
+      var typed = document.getElementById('fc-creator-search');
+      typed = typed ? typed.value : '';
+      FILTERS = CF.mount({
+        bar: document.getElementById('filter-bar'),
+        toggle: document.getElementById('filter-toggle'),
+        list: FULL,
+        // A character on a collection counts as From Collection before it
+        // counts as From Script.
+        sourceOf: CF.makeSourceOf(AC_COLLECTIONS, AC_SCRIPTS),
+        onChange: function () { render({ tap: true }); }
+      });
+      var note = document.querySelector('#filter-count .cf-loading-note');
+      if (note) note.remove();
+      var search = document.getElementById('fc-creator-search');
+      if (typed && search) { search.value = typed; search.dispatchEvent(new Event('input', { bubbles: true })); }
+      replayQueued();
+    }
+
+    // The cards are drawn as soon as the characters arrive; the filter box
+    // also needs the scripts and collections (Source chips, By script or
+    // collection), so it is mounted when those are in too. They are small
+    // and usually land first.
+    function load(clicked) {
+      var charsP = BotcData.json('characters.json?fields=grid');
+      var setsP = Promise.all([
+        BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
+        BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
+      ]).then(function(res){
+        var collData = res[0]||[];
+        AC_SCRIPTS = res[1]||[];
+        AC_COLLECTIONS = collData.map(function(c){
+          return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
+                  match:c.match||[],description:c.description||'',header:c.header||'',
+                  tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[],v:c.v};
         });
+        AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
+                             match:[],standalone:true,description:'',header:''});
+        SETS_READY = true;
+      });
+      // A ?collection= view needs the collections to know what to show.
+      var ready = COLLECTION_PARAM
+        ? Promise.all([charsP, setsP]).then(function (r) { return showCollection(r[0]); })
+        : charsP;
+      ready.then(function (list) {
+        if (!list) return;
+        FULL = list;
         render();
-      })
-      .catch(function () {
-        document.getElementById('panel').innerHTML =
+        // A "Show more" tapped while the list was on its way.
+        if (clicked && clicked.isConnected) clicked.click();
+        return setsP.then(mountFilters);
+      }).catch(function () {
+        if (SSR) {
+          // The first screen is still here; say the rest did not come.
+          var count = document.getElementById('filter-count');
+          count.textContent = 'Could not load the rest of the list. Reload the page to try again.';
+          return;
+        }
+        PANEL.innerHTML =
           '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
       });
+    }
+    // While the list loads, the server's filter box is greyed out but not
+    // dead: a chip tapped or a Sort/Group picked is remembered (and marked),
+    // the load starts if it had not, and the choice is applied the moment
+    // the real box is mounted. Typing in the creator search is kept too.
+    var QUEUED = [];
+    function queueWhileLoading(bar) {
+      function key(el) {
+        if (el.id) return '#' + el.id;
+        var a = ['data-team', 'data-tag', 'data-source'].filter(function (n) { return el.hasAttribute(n); })[0];
+        return a ? '[' + a + '="' + String(el.getAttribute(a)).replace(/["\\]/g, '\\$&') + '"]' : null;
+      }
+      bar.addEventListener('click', function (e) {
+        if (!bar.classList.contains('cf-loading')) return;
+        var chip = e.target.closest && e.target.closest('.filter-chip, .filter-reset');
+        var k = chip && key(chip);
+        if (!k) return;
+        QUEUED.push(['click', k]);
+        chip.classList.toggle('cf-queued');
+      }, true);
+      bar.addEventListener('change', function (e) {
+        if (bar.classList.contains('cf-loading') && e.target.id && e.target.tagName === 'SELECT') QUEUED.push(['change', '#' + e.target.id, e.target.value]);
+      }, true);
+    }
+    function replayQueued() {
+      var bar = document.getElementById('filter-bar');
+      QUEUED.splice(0).forEach(function (q) {
+        var el = bar.querySelector(q[1]);
+        if (!el) return;
+        if (q[0] === 'click') el.click();
+        else { el.value = q[2]; el.dispatchEvent(new Event('change', { bubbles: true })); }
+      });
+    }
+    if (SSR) {
+      // The Filters button opens the (greyed-out) box while the list loads.
+      var ssrBar = document.getElementById('filter-bar');
+      CF.wireToggle(document.getElementById('filter-toggle'), ssrBar);
+      queueWhileLoading(ssrBar);
+      window.mountCardBatches.whenNeeded(PANEL, load);
+    } else load();
   </script>
 
   <script src="assets/site.js"></script>

@@ -87,6 +87,18 @@
     return n ? ' style="--art-scale:' + (n / 100) + '"' : '';
   }
 
+  /* The DISPLAY copy of a piece of art: media/full/{art path}.webp, the
+     picture at its own size as WebP, made in the browser beside the original
+     (assets/art-thumb.js) and served by the Worker with the original standing
+     in until it exists (serveMedia). Only art under art/ has one — not a GIF,
+     not the printable token. '' when there is none to ask for. The Worker
+     (mediaParts) and render-page.js (displaySrc) hold the same rule. */
+  function artDisplayPath(rel) {
+    rel = String(rel || '');
+    return /^art\/[^/?#]+\.(png|jpe?g|webp)$/i.test(rel) && !/-token\.[a-z]+$/i.test(rel)
+      ? 'media/full/' + rel + '.webp' : '';
+  }
+
   function artVersions(d, root) {
     d = d || {};
     var arr = Array.isArray(d.image) ? d.image : [];
@@ -112,6 +124,10 @@
         // what an <img> on the page loads: the relative file where there is
         // one, so a page renders against its own root and R2 serves it.
         src: rel ? (prefix + 'assets/' + rel + ver) : abs,
+        // what the /c/ emblem draws: the display copy where the art has one
+        // (the same picture as WebP), else `src`. Never exported.
+        display: artDisplayPath(rel) ? (prefix + 'assets/' + artDisplayPath(rel) + ver)
+          : (rel ? (prefix + 'assets/' + rel + ver) : abs),
         // what leaves the wiki — the JSON the official app reads, and the
         // Token Tool fetching art across origins. Always absolute.
         url: abs || (rel ? ART_ABS + rel : '')
@@ -134,6 +150,7 @@
           label: 'Printable token',
           rel: trel,
           src: trel ? (prefix + 'assets/' + trel + ver) : tabs,
+          display: trel ? (prefix + 'assets/' + trel + ver) : tabs,
           url: tabs || (trel ? ART_ABS + trel : '')
         });
       }
@@ -403,6 +420,24 @@
     var u = OFFICIAL_ICON_URLS[slugId(id)];
     return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : '';
   }
+  /* What a page DRAWS for an official character: the 192px self-hosted copy
+     (assets/icons-sm/{id}.webp, migration/make-small-icons.js) instead of the
+     CDN's 400px file on another origin. Display only: exports and the Token
+     Tool keep officialIconUrl(). The map is keyed by slugId of the id and of
+     the name, which are the same string for every official character, so a
+     key it knows names a file that exists; iconFallbackAttrs() falls back to
+     the CDN copy if one ever does not. '' when the map does not know it. */
+  function officialIconSmall(id, root) {
+    var k = slugId(id);
+    return officialIconUrl(k) ? (root || '') + 'assets/icons-sm/' + k + '.webp' : '';
+  }
+  /* The onerror for an <img> drawing officialIconSmall(): try the CDN copy
+     (data-fb) once, then run `then` (what the onerror used to do). */
+  function iconFallbackAttrs(fb, then) {
+    return (fb ? ' data-fb="' + esc(fb) + '"' : '') +
+      ' onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.removeAttribute(\'data-fb\')}' +
+      (then ? 'else{' + then + '}' : '') + '"';
+  }
 
   /* Official display names, keyed the same way. Jinx names are typed by hand,
      so the wiki carries "leviathan", "pithag" and "plaguedoctor" where it
@@ -498,10 +533,12 @@
 
     // 2. An official character keeps the official icon and the official wiki,
     //    and takes its proper name back from roles.json.
-    var offIcon = officialIconUrl(iconId) || officialIconUrl(nm);
-    if (offIcon) {
+    var offKey = officialIconUrl(iconId) ? iconId : (officialIconUrl(nm) ? nm : '');
+    if (offKey) {
       var offNm = officialName(iconId) || officialName(nm) || nm;
-      return { name: offNm, href: jinxURL(offNm), iconSrc: offIcon,
+      // Drawn small: the self-hosted copy, with the CDN one as its fallback.
+      return { name: offNm, href: jinxURL(offNm), iconSrc: officialIconSmall(offKey, root),
+               iconFallback: officialIconUrl(offKey),
                external: true, slug: '', team: '' };
     }
 
@@ -566,8 +603,8 @@
       var key = r.id || nm;
       var offNm = officialName(slugId(key)) || nm || String(r.id || '');
       return { name: offNm, href: jinxURL(offNm),
-               iconSrc: officialIconUrl(slugId(key)), external: true,
-               ribbon: REL_RIBBONS[r.team] || 'page' };
+               iconSrc: officialIconSmall(key, root), iconFallback: officialIconUrl(slugId(key)),
+               external: true, ribbon: REL_RIBBONS[r.team] || 'page' };
     }
     if (type === 'page')       return { name: nm, href: root + 'p/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
     if (type === 'script')     return { name: nm, href: root + 's/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
@@ -586,7 +623,7 @@
       if (!t || !t.name) return '';
       var icon = t.iconSrc ?
         '<img loading="lazy" decoding="async" class="rel-ico" src="' + esc(t.iconSrc) + '" alt=""' +
-        ' onerror="this.style.display=\'none\';this.closest(\'.rel-card\').classList.add(\'noicon\')">' : '';
+        iconFallbackAttrs(t.iconFallback, 'this.style.display=\'none\';this.closest(\'.rel-card\').classList.add(\'noicon\')') + '>' : '';
       // The embed: an optional preview image on a custom link, https-only
       // (enforced again by sanitizeRelated — this test is the render-side
       // seatbelt for rows written before the field existed).
@@ -1218,8 +1255,11 @@
     var artVers = artVersions(d, root);
     // The caller resolved slot one itself (the Worker builds it from the row
     // and its own address depth), so let it win where it has an answer.
-    if (artVers.length && artSrc) artVers[0].src = artSrc;
-    else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, url: '' }];
+    // An explicit picture (the editors' preview of a file just picked) is
+    // what the emblem shows, display copy or not. The /c/ route passes the
+    // art's own address, which changes nothing: that keeps its display copy.
+    if (artVers.length && artSrc && artSrc !== artVers[0].src) artVers[0].src = artVers[0].display = artSrc;
+    else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, display: artSrc, url: '' }];
     /* The owner's "display size": how big the icon is DRAWN on this page,
        and nowhere else. It is a CSS variable on the emblem, which the
        stylesheet multiplies into the transform every emblem already has, so
@@ -1239,9 +1279,17 @@
        keep the owner's --art-scale off it — that setting is how big the
        ICON is displayed, and a token is not an icon. */
     function emblemClass(v) { return 'emblem' + (v.key === 'token' ? ' emblem-token' : ''); }
+    /* The emblem draws each version's DISPLAY copy (see artDisplayPath):
+       the same picture as the PNG at a fifth of the bytes. width/height give
+       the box its shape before the file arrives (the art standard is a
+       591-square frame; .emblem fixes the aspect ratio in CSS anyway, so a
+       legacy non-square icon still lays out exactly as before). The picture
+       on screen is the page's main image, so it asks for priority; the
+       others keep waiting on data-src. */
+    var EMB_DIM = ' width="591" height="591"';
     var emblem = '';
     if (artVers.length === 1) {
-      emblem = '<img class="' + emblemClass(artVers[0]) + '"' + scaleAttr + ' src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
+      emblem = '<img class="' + emblemClass(artVers[0]) + '"' + scaleAttr + EMB_DIM + ' src="' + esc(artVers[0].display) + '" alt="' + esc(d.name) + '" decoding="async" fetchpriority="high">';
     } else if (artVers.length) {
       /* Every version is its own <img>, stacked — see the icon gallery
          above for why swapping one src is not good enough. Only the one on
@@ -1252,10 +1300,10 @@
       emblem = '<div class="emblem-stack" data-at="0"' + scaleAttr +
         ' title="Swipe or click to see the other versions of this icon">' +
         artVers.map(function (v, i) {
-          return '<img class="' + emblemClass(v) + (i === 0 ? ' is-on' : '') + '" ' +
-            (i === 0 ? 'src' : 'data-src') + '="' + esc(v.src) +
+          return '<img class="' + emblemClass(v) + (i === 0 ? ' is-on' : '') + '"' + EMB_DIM + ' ' +
+            (i === 0 ? 'src' : 'data-src') + '="' + esc(v.display) +
             '" alt="' + (i === 0 ? esc(d.name) : '') + '"' +
-            (i === 0 ? '' : ' aria-hidden="true"') +
+            (i === 0 ? ' fetchpriority="high"' : ' aria-hidden="true"') +
             ' draggable="false" decoding="async">';
         }).join('') + '</div>' +
         '<div class="emblem-versions" role="group" aria-label="Versions of this icon">' +
@@ -1287,7 +1335,7 @@
         '">' + esc(j.mirroredFrom.name) + '</a></span>' : '';
       return '<div class="jinx' + (t.iconSrc ? '' : ' noicon') + '">' +
         (t.iconSrc ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(t.iconSrc) + '" alt=""' +
-        ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
+        iconFallbackAttrs(t.iconFallback, 'this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')') + '>'
         : '') +
         '<div class="jbody">' +
         '<a class="jname ' + al + '" href="' + esc(t.href) + '"' +
@@ -1411,7 +1459,8 @@
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
-      artVersions: artVersions, artVersion: artVersion,
+      artVersions: artVersions, artVersion: artVersion, artDisplayPath: artDisplayPath,
+      officialIconSmall: officialIconSmall,
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,

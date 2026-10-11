@@ -382,18 +382,34 @@
     }
     // Every sort is written ascending; Descending reverses the comparison
     // (page order: the arrangement read backwards).
+    // Each card's sort key is read ONCE, not on every comparison: a sort of
+    // n cards makes ~n·log n comparisons, and reading the ability meant a
+    // querySelector and a textContent each time — on the Script Builder's
+    // 2,000-row sidebar that was most of a sort's cost. Ties keep the cards'
+    // current order, exactly as the stable sort over the cards did.
+    var collator = (typeof Intl !== 'undefined' && Intl.Collator) ? new Intl.Collator() : null;
+    function cmpText(a, b) { return collator ? collator.compare(a, b) : a.localeCompare(b); }
+    function sortBy(arr, keyOf, cmp) {
+      var keyed = arr.map(function (card, i) { return { card: card, key: keyOf(card), i: i }; });
+      keyed.sort(function (x, y) { return cmp(x.key, y.key) || x.i - y.i; });
+      for (var i = 0; i < keyed.length; i++) arr[i] = keyed[i].card;
+      return arr;
+    }
     function sortArr(arr) {
       var flip = STATE.dir === 'desc' ? -1 : 1;
-      if (STATE.sort === 'name') arr.sort(function (a, b) { return flip * nameOf(a).localeCompare(nameOf(b)); });
+      if (STATE.sort === 'name') sortBy(arr, nameOf, function (a, b) { return flip * cmpText(a, b); });
       // data-order is higher for a newer page, so ascending is oldest first.
-      else if (STATE.sort === 'recent') arr.sort(function (a, b) { return flip * ((+a.getAttribute('data-order') || 0) - (+b.getAttribute('data-order') || 0)); });
+      else if (STATE.sort === 'recent') sortBy(arr, function (c) { return +c.getAttribute('data-order') || 0; }, function (a, b) { return flip * (a - b); });
       // Ties (and blank abilities) fall back to the name, A–Z.
-      else if (STATE.sort === 'ability') arr.sort(function (a, b) { return flip * (abilityLen(a) - abilityLen(b)) || nameOf(a).localeCompare(nameOf(b)); });
+      else if (STATE.sort === 'ability') {
+        sortBy(arr, function (c) { return { len: abilityLen(c), name: nameOf(c) }; },
+          function (a, b) { return flip * (a.len - b.len) || cmpText(a.name, b.name); });
+      }
       // SAO orders within a team, and grouped cards are already one section
       // per team — so sorting each grid on its own is the whole job there.
       // All together, it runs across the lot.
       else if (STATE.sort === 'sao' && HAS_SAO) {
-        arr.sort(function (a, b) { return flip * window.saoCompare(saoSubject(a), saoSubject(b)); });
+        sortBy(arr, saoSubject, function (a, b) { return flip * window.saoCompare(a, b); });
       }
       else if (STATE.sort === 'page' && flip < 0) arr.reverse();
       return arr;
@@ -454,12 +470,30 @@
       return out;
     }
 
+    /* Cards are gathered into a DocumentFragment and put back with ONE
+       append per grid. Appending them one at a time is one DOM mutation per
+       card, and every MutationObserver on the page (the site-text overrides
+       in site.js, the quick actions in card-actions.js) then has to look at
+       each of them — on the Script Builder's sidebar that made one tap of
+       a sort take seconds. Same order, same nodes, same listeners. */
+    function appendAll(grid, cards) {
+      var frag = document.createDocumentFragment();
+      cards.forEach(function (card) { frag.appendChild(card); });
+      grid.appendChild(frag);
+    }
+
     function sortCards() {
       if (GROUP_CHOICE && KEYED[STATE.group]) {
         var everyone = [];
         sections.forEach(function (sec) { if (sec._origOrder) everyone = everyone.concat(sec._origOrder); });
         var secs = keyedGrids(STATE.group), keyOf = KEYED[STATE.group].key;
-        sortArr(everyone).forEach(function (card) { secs[keyOf(card)].querySelector('.char-grid').appendChild(card); });
+        var byKey = {}, keys = [];
+        sortArr(everyone).forEach(function (card) {
+          var k = keyOf(card);
+          if (!byKey[k]) { byKey[k] = []; keys.push(k); }
+          byKey[k].push(card);
+        });
+        keys.forEach(function (k) { appendAll(secs[k].querySelector('.char-grid'), byKey[k]); });
         return;
       }
       if (GROUP_CHOICE && STATE.group === 'none') {
@@ -467,15 +501,14 @@
         // the sections laid end to end keep it.
         var all = [];
         sections.forEach(function (sec) { if (sec._origOrder) all = all.concat(sec._origOrder); });
-        var fg = flatGrid();
-        sortArr(all).forEach(function (card) { fg.appendChild(card); });
+        appendAll(flatGrid(), sortArr(all));
         return;
       }
       // Grouped: every card goes back to its own team's grid, in order.
       sections.forEach(function (sec) {
         var g = sec.querySelector(SEL.inner);
         if (!g || !sec._origOrder) return;
-        sortArr(sec._origOrder.slice()).forEach(function (card) { g.appendChild(card); });
+        appendAll(g, sortArr(sec._origOrder.slice()));
       });
     }
 

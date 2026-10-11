@@ -116,21 +116,31 @@
     if (!el) return null;
     return describeTag(el.getAttribute('data-tag')) ? el : null;
   }
-  document.addEventListener('mouseover', function (e) {
-    var el = tagEl(e.target);
-    if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
-    else hideTip();
-  });
-  document.addEventListener('focusin', function (e) {
-    var el = tagEl(e.target);
-    if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
-  });
-  document.addEventListener('focusout', hideTip);
-  window.addEventListener('scroll', hideTip, true);
-  window.addEventListener('resize', hideTip);
+  // The Worker reads the descriptions too (the /tag page's first screen is
+  // drawn there, worker/list-pages.js), so nothing here touches the DOM
+  // unless there is one.
+  if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    document.addEventListener('mouseover', function (e) {
+      var el = tagEl(e.target);
+      if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
+      else hideTip();
+    });
+    document.addEventListener('focusin', function (e) {
+      var el = tagEl(e.target);
+      if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
+    });
+    document.addEventListener('focusout', hideTip);
+    window.addEventListener('scroll', hideTip, true);
+    window.addEventListener('resize', hideTip);
+  }
 
-  window.TAG_INFO = TAG_INFO;
-  window.KNOWN_TAGS = KNOWN_TAGS;
-  window.describeTag = describeTag;
-  window.buildTagPicker = buildTagPicker;
+  if (typeof window !== 'undefined') {
+    window.TAG_INFO = TAG_INFO;
+    window.KNOWN_TAGS = KNOWN_TAGS;
+    window.describeTag = describeTag;
+    window.buildTagPicker = buildTagPicker;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { TAG_INFO: TAG_INFO, KNOWN_TAGS: KNOWN_TAGS, describeTag: describeTag };
+  }
 })();

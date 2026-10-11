@@ -13,6 +13,10 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<!-- The sidebar draws from the small grid feed, which starts downloading here
+     rather than after the scripts at the end of the body; the card feed the
+     export needs follows in the background once the page is up. -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
@@ -322,6 +326,15 @@
     var allChars = [];
     var bySlug = {};
     var officialChars = [];   // bundled official BotC roles (import-only; NOT in the Add sidebar)
+    /* Two passes over the character list. The sidebar, the roster, Randomize,
+       SAO Sort, Share and the credits line only need what a card shows, so
+       they draw from the small grid feed (characters.json?fields=grid). The
+       export, the import, the jinxes and the night order need schema fields
+       only the card feed carries (night positions and reminders, jinxes,
+       jsonId ...), so that feed is fetched in the background once the page
+       is up, and those features wait for it rather than draw from grid rows.
+       `cardReady` says which of the two allChars/bySlug hold. */
+    var cardReady = false, cardLoading = null;
 
     function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -427,6 +440,16 @@
       if (i !== -1) { s.splice(i, 1); setScript(s); if (window.updateScriptBadge) window.updateScriptBadge(); renderAll(); }
     }
 
+    // A 30px sidebar row and a 50px roster row draw the 192px WebP card
+    // thumbnail (PageRender.thumbSrc, ~8 KB), not the full icon (~150 KB):
+    // opening the builder on a phone used to fetch dozens of full-size PNGs,
+    // which also held up the card feed the export waits for. The Worker
+    // falls back to the original where no thumbnail exists yet.
+    function thumb(c) {
+      if (window.PageRender && window.PageRender.thumbSrc) return window.PageRender.thumbSrc(c, '');
+      return c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png');
+    }
+
     /* ── the "add" sidebar (all chars, grouped by team, alphabetical) ──
        Built ONCE, then filtered in place by the shared filter box
        (assets/card-filters.js, the same one the collection and creator pages
@@ -461,7 +484,7 @@
             ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
             ' data-partial="' + partial + '" data-curata="' + star + '">' +
             '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumb(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               '<span class="sb-add-name">' + esc(c.name) +
                 (c.official ? ' <span class="sb-add-off">official</span>' : '') + '</span>' +
             '</button>' +
@@ -521,7 +544,7 @@
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
         group.forEach(function (c) {
           html += '<div class="sb-script-item">' +
-            '<img class="sb-script-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-script-thumb" src="' + esc(thumb(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
             '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '"' +
               (c.official ? ' target="_blank" rel="noopener" title="Official character; opens the official wiki"' : '') + '>' +
               esc(c.name) + (c.official ? ' <span class="sb-add-off">official <span class="ico ico-external" aria-hidden="true"></span></span>' : '') + '</a>' +
@@ -533,7 +556,9 @@
       });
       // Jinxes active between characters on this script. The characters'
       // own, minus any this script switched off, plus any it wrote itself.
-      var jinxes = (window.PageRender && window.PageRender.scriptJinxes)
+      // Only once the card feed is in: grid rows carry no jinxes, and a list
+      // missing most of them would be a wrong answer, not a quick one.
+      var jinxes = !cardReady ? [] : (window.PageRender && window.PageRender.scriptJinxes)
         ? window.PageRender.scriptJinxes(chars, getJinxEdits())
         : (window.findScriptJinxes ? window.findScriptJinxes(chars) : []);
       if (jinxes.length) {
@@ -643,20 +668,51 @@
     // A search result's Add to Script button (assets/card-actions.js) writes
     // the same list this page draws; redraw so the roster follows it.
     window.addEventListener('botc-script-change', function () { renderAll(); });
+    // The export needs the card feed (see cardReady). Almost always it has
+    // landed long before anyone presses a button; if not, the button says so
+    // and finishes the job when it does.
+    function withCards(btn, run) {
+      if (cardReady) { run(); return; }
+      var label = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Loading…';
+      loadCards().then(function () {
+        btn.disabled = false; btn.innerHTML = label;
+        run();
+      }, function () {
+        btn.disabled = false; btn.innerHTML = label;
+        alert('Could not load the character details. Please try again.');
+      });
+    }
     document.getElementById('sb-export').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
-      var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';
-      download(fname + '.json', buildExport());
+      withCards(this, function () {
+        var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';
+        download(fname + '.json', buildExport());
+      });
     });
+    function copied(btn) {
+      btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Copied!';
+      setTimeout(function () { btn.innerHTML = '<span class="ico ico-copy" aria-hidden="true"></span> Copy JSON'; }, 1500);
+    }
+    function copyNow(btn) {
+      navigator.clipboard.writeText(buildExport()).then(function () { copied(btn); });
+    }
     document.getElementById('sb-copy').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
       var btn = this;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(buildExport()).then(function () {
-          btn.innerHTML = '<span class="ico ico-check" aria-hidden="true"></span> Copied!';
-          setTimeout(function () { btn.innerHTML = '<span class="ico ico-copy" aria-hidden="true"></span> Copy JSON'; }, 1500);
-        });
+      if (!navigator.clipboard) return;
+      if (cardReady) { copyNow(btn); return; }
+      // Still loading: Safari only lets a page write the clipboard during the
+      // click itself, so where it can, hand it a PROMISE of the text instead
+      // of awaiting the feed first.
+      if (window.ClipboardItem && navigator.clipboard.write) {
+        var text = loadCards().then(function () { return new Blob([buildExport()], { type: 'text/plain' }); });
+        navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })])
+          .then(function () { copied(btn); }, function () { withCards(btn, function () { copyNow(btn); }); });
+        return;
       }
+      withCards(btn, function () { copyNow(btn); });
     });
     document.getElementById('sb-clear').addEventListener('click', function () {
       if (!getScript().length) return;
@@ -809,7 +865,14 @@
       var f = e.target.files[0];
       if (!f) return;
       var fr = new FileReader();
-      fr.onload = function (ev) { importScript(ev.target.result); };
+      // Matching a script's ids back to pages reads `jsonId`, a card-feed
+      // field, so an import waits for that feed (see cardReady).
+      fr.onload = function (ev) {
+        var text = ev.target.result;
+        if (cardReady) { importScript(text); return; }
+        loadCards().then(function () { importScript(text); },
+          function () { alert('Could not load the character details. Please try again.'); });
+      };
       fr.readAsText(f);
       e.target.value = '';
     });
@@ -849,10 +912,73 @@
     }
 
     // ── load data ──
-    loadOfficial().then(function () {
-    return fetch('characters.json?fields=card')
-      .then(function (r) { return r.json(); })
-      .then(function (list) {
+    function feed(path) {
+      return window.BotcData ? window.BotcData.json(path)
+        : fetch(path).then(function (r) { if (!r.ok) throw new Error('feed'); return r.json(); });
+    }
+    // Settles once the sidebar and roster are on screen (or the grid failed),
+    // so the card feed is never applied — and its panels never mounted —
+    // ahead of the first paint, however early it arrives.
+    var markPainted, painted = new Promise(function (resolve) { markPainted = resolve; });
+    // The card feed, once; resolves when allChars/bySlug hold it and the two
+    // panels that need it are mounted. A failure is forgotten, so the next
+    // button press (or the panels' Try again) asks again.
+    function loadCards() {
+      if (cardReady) return Promise.resolve();
+      if (cardLoading) return cardLoading;
+      cardLoading = Promise.all([feed('characters.json?fields=card'), painted]).then(function (both) {
+        var list = both[0];
+        if (!Array.isArray(list)) throw new Error('Invalid feed');
+        // The same pages with every field. A row the grid had and this one
+        // lacks keeps its grid object, so nothing on screen loses its page.
+        allChars = list;
+        list.forEach(function (c) { bySlug[c.slug] = c; });
+        cardReady = true;
+        cardLoading = null;
+        document.getElementById('sb-jinx-body').innerHTML = '';
+        document.getElementById('sb-night-body').innerHTML = '';
+        mountNightEditor();
+        mountJinxEditor();
+        renderAll();
+      }, function (err) { cardLoading = null; throw err; });
+      return cardLoading;
+    }
+    var PANELS = [['sb-jinx-body', 'Loading jinxes…'], ['sb-night-body', 'Loading the night order…']];
+    function panelsLoading() {
+      // Nothing to reset before the night order has been drawn.
+      document.getElementById('sb-night-reset').style.display = 'none';
+      PANELS.forEach(function (p) { document.getElementById(p[0]).innerHTML = '<p class="sb-loading">' + p[1] + '</p>'; });
+    }
+    function cardsInBackground() {
+      loadCards().catch(function () {
+        PANELS.forEach(function (p) {
+          document.getElementById(p[0]).innerHTML = '<p class="sb-loading">Could not load the character details. ' +
+            '<button type="button" class="filter-reset sb-cards-retry">Try again</button></p>';
+        });
+      });
+    }
+    document.querySelector('.sb-main').addEventListener('click', function (e) {
+      if (!e.target.closest || !e.target.closest('.sb-cards-retry')) return;
+      panelsLoading();
+      cardsInBackground();
+    });
+    // The grid feed and the official roster download side by side (they used
+    // to go one after the other, roles.json first).
+    var gridGet = feed('characters.json?fields=grid');
+    // The card feed starts downloading the moment the grid is in: the network
+    // is idle while the sidebar is being drawn (a few seconds of main thread
+    // on a phone), and the sidebar's images have not been asked for yet.
+    // BotcData shares the request, so loadCards() picks up this same one;
+    // nothing is applied until after the first paint (see `painted`).
+    gridGet.then(function () { feed('characters.json?fields=card').catch(function () {}); }, function () {});
+    Promise.all([loadOfficial(), gridGet]).then(function (both) {
+      // One macrotask first: a fetch() only leaves once the page yields, and
+      // the drawing below holds the main thread for seconds on a phone, so
+      // without this the card request above waited for the whole draw.
+      return new Promise(function (resolve) { setTimeout(function () { resolve(both); }, 0); });
+    }).then(function (both) {
+        var list = both[1];
+        if (!Array.isArray(list)) throw new Error('Invalid feed');
         allChars = list;
         list.forEach(function (c) { bySlug[c.slug] = c; });
         var params = new URLSearchParams(location.search);
@@ -884,14 +1010,19 @@
         // box is mounted here, after its rows exist, and never again.
         renderSidebar();
         mountSidebarFilters();
-        mountNightEditor();
-        mountJinxEditor();
         renderAll();
+        // The jinx and night-order panels mount when the card feed lands,
+        // and never before this frame has been painted.
+        panelsLoading();
+        var after = function () { markPainted(); cardsInBackground(); };
+        if (window.requestAnimationFrame) requestAnimationFrame(function () { setTimeout(after, 0); });
+        else setTimeout(after, 0);
       })
       .catch(function () {
         document.getElementById('sb-add-list').innerHTML = '<p class="sb-loading">Could not load characters.</p>';
+        // Nothing to wait for: an export pressed now can still be served.
+        markPainted();
       });
-    });
   })();
   </script>
 

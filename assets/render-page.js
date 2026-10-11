@@ -240,10 +240,46 @@
      one; a remote `image` or another prefix falls back to artSrc(). The Worker
      serves the original at the thumbnail URL when no thumbnail exists yet, so
      this never needs an onerror of its own. Anything that shows the icon
-     LARGE (the /c/ emblem, the featured card) keeps artSrc(). */
+     LARGE (the /c/ emblem, the featured card) draws the display copy
+     instead (displaySrc below, artVersions().display in render.js). */
   function thumbSrc(c, root) {
     if (c.art && /^art\/[^/]+$/.test(c.art)) {
       return root + 'assets/thumb/' + c.art.slice(4) + '.webp' + artVer(c);
+    }
+    var small = officialSmall(c, root);
+    if (small) return small;
+    return artSrc(c, root);
+  }
+  /* An official character (official-roles.js: `official`, `id`, and the CDN
+     `image`) is DRAWN from the 192px self-hosted copy,
+     assets/icons-sm/{id}.webp (migration/make-small-icons.js), instead of the
+     CDN's 400px file on another origin. Display only: the object's `image`
+     is untouched, and that is what any export reads. */
+  function officialSmall(c, root) {
+    if (!c || !c.official || !c.id) return '';
+    var id = String(c.id).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return id ? (root || '') + 'assets/icons-sm/' + id + '.webp' : '';
+  }
+  /* The onerror for an <img> whose src may be a small official copy: try
+     `fb` (the CDN file) once, then do `then` — what the onerror always did. */
+  function fbAttrs(fb, then) {
+    if (!fb) return then ? ' onerror="' + then + '"' : '';
+    return ' data-fb="' + esc(fb) + '" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.removeAttribute(\'data-fb\')}' +
+      (then ? 'else{' + then + '}' : '') + '"';
+  }
+  // thumbSrc()'s fallback, for the same row: the CDN image of an official.
+  function thumbFallback(c) {
+    return officialSmall(c, '') && typeof c.image === 'string' && /^https?:\/\//i.test(c.image) ? c.image : '';
+  }
+  /* What draws ONE character large (the homepage's Featured card): the
+     display copy, media/full/{art}.webp — the same picture as WebP, made
+     beside the original by assets/art-thumb.js and stood in for by the
+     original until it exists. Same rule as render.js's artDisplayPath() and
+     the Worker's mediaParts(). Anything else falls back to artSrc(). */
+  function displaySrc(c, root) {
+    var a = c && typeof c.art === 'string' ? c.art : '';
+    if (/^art\/[^/?#]+\.(png|jpe?g|webp)$/i.test(a) && !/-token\.[a-z]+$/i.test(a)) {
+      return root + 'assets/media/full/' + a + '.webp' + artVer(c);
     }
     return artSrc(c, root);
   }
@@ -265,15 +301,41 @@
     return root + 'assets/' + p + (version
       ? (p.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(version)) : '');
   }
-  function responsiveAttrs(root, path, version, sizes) {
+  /* The srcset for a banner or logo: the browser-made WebP copies at the
+     320/640/1280 slots (media/{slot}/{path}.webp, see assets/art-thumb.js).
+     Each slot holds the source at min(slot, source width) — copies are never
+     enlarged — so the descriptors have to be TRUE widths or a width:auto
+     logo lays out at the wrong size: `imageW` is the page's record of its
+     images' real widths ({path: px}, or just the number), written by the
+     Worker. Known, the srcset lists the slots narrower than the source and
+     then one at the source's own width; unknown (a page not stamped yet),
+     the three slots as they always were — the copies made before the
+     no-enlarging rule really are those widths. */
+  function responsiveAttrs(root, path, version, sizes, imageW) {
     if (!/^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i.test(String(path || ''))) return '';
     var encodedPath = path.split('/').map(encodeURIComponent).join('/');
     var query = version ? '?v=' + encodeURIComponent(String(version)) : '';
-    var srcset = [320, 640, 1280].map(function(width) {
-      return root + 'assets/media/' + width + '/' + encodedPath + '.webp' + query + ' ' + width + 'w';
-    }).join(', ');
-    return ' srcset="' + esc(srcset) + '" sizes="' + esc(sizes || '(max-width: 640px) 94vw, 800px') + '"';
+    var srcW = typeof imageW === 'number' ? imageW
+      : (imageW && typeof imageW === 'object' ? Number(imageW[path]) : 0);
+    srcW = srcW > 0 && srcW <= 20000 ? Math.round(srcW) : 0;
+    var parts = [];
+    for (var i = 0; i < MEDIA_SLOTS.length; i++) {
+      var slot = MEDIA_SLOTS[i];
+      var w = srcW ? Math.min(slot, srcW) : slot;
+      parts.push(root + 'assets/media/' + slot + '/' + encodedPath + '.webp' + query + ' ' + w + 'w');
+      if (srcW && w >= srcW) break;
+    }
+    return ' srcset="' + esc(parts.join(', ')) + '" sizes="' + esc(sizes || '(max-width: 640px) 94vw, 800px') + '"';
   }
+  var MEDIA_SLOTS = [320, 640, 1280];
+  /* `sizes` for a script or collection TILE (the browse grids, the
+     homepage, a creator page, search). A tile is ~320 CSS px wide on a
+     phone and 245-380 on a desktop, its picture object-fit inside a 21:9
+     box. On a phone this deliberately says less than the tile's width, so a
+     3x screen takes the 640 copy (twice the density, indistinguishable at
+     that size) instead of the 1280 one at four to ten times the bytes; on a
+     desktop 320 keeps a 1x screen on the 320 copy and a 2x one on 640. */
+  var TILE_SIZES = '(max-width: 640px) 210px, 320px';
   /* An official character has no page here, so its name links to the official
      wiki: another site, so a new tab, and a mark saying so. */
   function offsite(c) {
@@ -309,7 +371,7 @@
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
           '<span class="card-side">' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
           quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
@@ -325,7 +387,7 @@
       other.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
           '<span class="card-side">' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="">' +
+          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), '') + '>' +
           quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
@@ -408,7 +470,7 @@
         // The icon and, under it, the two quick actions (Favorites, Add to
         // Script — assets/card-actions.js). A draft gets no slot.
         '<span class="card-side">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
         quickSlot(c) + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
@@ -540,7 +602,7 @@
     function side(c) {
       return '<a class="jx-pair-side" href="' + esc(charHref(c, root)) + '">' +
         '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' + esc(thumbSrc(c, root)) + '" alt=""' +
-        ' onerror="this.style.display=\'none\'">' +
+        fbAttrs(thumbFallback(c), 'this.style.display=\'none\'') + '>' +
         '<span class="jx-pair-name">' + esc(c.name) + '</span></a>';
     }
     jinxes.forEach(function (j) {
@@ -556,7 +618,7 @@
           side(j.a) + '<span class="jx-pair-link"><span class="ico ico-swap" aria-hidden="true"></span></span>' +
           '<a class="jx-pair-side" href="' + esc(j.target.href) + '" target="_blank" rel="noopener noreferrer">' +
             (j.target.iconSrc ? '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' +
-              esc(j.target.iconSrc) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+              esc(j.target.iconSrc) + '" alt=""' + fbAttrs(j.target.iconFallback, 'this.style.display=\'none\'') + '>' : '') +
             '<span class="jx-pair-name">' + esc(j.target.name) + '</span></a>' +
         '</span>' +
         '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
@@ -625,7 +687,7 @@
       if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
         return '<li class="sv-night-item">' +
-          '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(thumbSrc(it.c, root)) + '" alt="" onerror="this.style.display=\'none\'">' +
+          '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(thumbSrc(it.c, root)) + '" alt=""' + fbAttrs(thumbFallback(it.c), 'this.style.display=\'none\'') + '>' +
           '<div class="sv-night-text"><a class="sv-night-name" href="' + esc(charHref(it.c, root)) + '"' + offsite(it.c) + '>' + esc(it.c.name) + offMark(it.c) + '</a>' +
           (it.r ? '<span class="sv-night-reminder">' + esc(it.r) + '</span>' : '') +
           '</div></li>';
@@ -698,7 +760,7 @@
     rows += '<dt>Total:</dt><dd>' + opts.entries.length + ' character' + (opts.entries.length === 1 ? '' : 's') + '</dd>';
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
-      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '"' + responsiveAttrs(root, opts.logoPath, opts.artVersion, '240px') + ' alt="" onerror="this.style.display=\'none\'">' : '') +
+      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '"' + responsiveAttrs(root, opts.logoPath, opts.artVersion, '240px', opts.imageW) + ' alt="" onerror="this.style.display=\'none\'">' : '') +
       // Prominent author credit sits directly under the logo.
       (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
@@ -935,8 +997,8 @@
              creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px') + ' alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px') + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px', cfg.imageW) + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px', cfg.imageW) + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -969,7 +1031,7 @@
     }
 
     var aside = renderInfobox({
-      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, author: cfg.author, version: cfg.version,
+      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, imageW: cfg.imageW, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
     aside += renderCredits(cfg.creditsEntries || cfg.entries, root);
@@ -994,8 +1056,8 @@
 
     // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px') + ' alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px') + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px', cfg.imageW) + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px', cfg.imageW) + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -1004,7 +1066,7 @@
     // Information + JSON/tokens boxes — moved to the top. The author credit
     // lives prominently inside the Information box (linked to their page).
     var infobox = renderInfobox({
-      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, author: cfg.author, version: cfg.version,
+      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, imageW: cfg.imageW, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows,
       authorProminent: true
     });
@@ -1062,7 +1124,7 @@
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
     ];
     return renderPageBody({
-      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v,
+      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v, imageW: sc.imageW,
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
@@ -1092,7 +1154,7 @@
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
     return renderCollectionBody({
-      root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v,
+      root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v, imageW: coll.imageW,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
@@ -1123,7 +1185,8 @@
     buildPageExport: buildPageExport,
     FONT_PRESETS: FONT_PRESETS,
     artSrc: artSrc,
-    thumbSrc: thumbSrc,
+    thumbSrc: thumbSrc, displaySrc: displaySrc, officialSmall: officialSmall,
+    thumbFallback: thumbFallback, TILE_SIZES: TILE_SIZES,
     artVer: artVer,
     imgSrc: imgSrc, responsiveAttrs: responsiveAttrs, pagesSection: pagesSection,
     DIFFICULTY_LABEL: DIFFICULTY_LABEL
