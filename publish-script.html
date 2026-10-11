@@ -644,9 +644,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           base: function(){ return getMeta().baseUpdatedAt || null; },
           baseData: function(){ return savedBase(getMeta()); },
           onRestore: function(entry){
-            var m = getMeta();
+            var m = getMeta(), was = m.baseUpdatedAt;
             if (entry.base) m.baseUpdatedAt = entry.base;
+            // No snapshot of an older base: nothing to diff against, so no
+            // silent re-save over the newer copy (see edit.html).
             if (entry.baseData) m.savedSig = EJ.stableStringify(entry.baseData);
+            else if (entry.base && entry.base !== was) delete m.savedSig;
             setMeta(m);
           }
         });

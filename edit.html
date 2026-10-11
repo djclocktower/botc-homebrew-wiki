@@ -2069,6 +2069,13 @@
           updatePublishButton();
         }
       }
+      function resend(fresh) {
+        conflictRetried = true;
+        adopt(fresh);
+        // Everything outside the form (art paths and the like) is theirs.
+        originalEntry = Object.assign({}, fresh.data, originalEntry ? { name: originalEntry.name } : {});
+        saveCharacter(explicit);
+      }
       window.EditJournal.handleConflict({
         host: document.querySelector('.ractions') || $('save'),
         fetchTheirs: function () {
@@ -2080,13 +2087,9 @@
         mineBase: journal ? journal.cleanData() : null,
         mine: d || gather(),
         allowSilent: !conflictRetried,
-        retry: function (fresh) {
-          conflictRetried = true;
-          adopt(fresh);
-          // Everything outside the form (art paths and the like) is theirs.
-          originalEntry = Object.assign({}, fresh.data, originalEntry ? { name: originalEntry.name } : {});
-          saveCharacter(explicit);
-        },
+        retry: resend,
+        // With nothing to diff against, only after an explicit confirm.
+        replace: resend,
         combine: function (merged, fresh) {
           conflictRetried = true;
           adopt(fresh);
@@ -2158,12 +2161,12 @@
        whole form into a locked editor would be more confusing than useful.
        The handle is still made there (with no account, so it stores
        nothing): the conflict panel reads the form-as-loaded from it. */
-    function mountJournal(mode, stamp) {
+    function mountJournal(mode, stamp, ident) {
       meP.then(function (me) {
         if (!window.EditJournal) return;
         var full = mode === 'owner' || mode === 'approved' || mode === 'all' || mode === 'all-but-ability';
         journal = window.EditJournal.mount({
-          key: 'character:' + originalSlug,
+          key: 'character:' + (ident || originalSlug),   // the identity: ?c= may be a copied address
           user: full && me && me.loggedIn ? me.username : '',
           gather: gather,
           apply: function (data) {
@@ -2174,8 +2177,14 @@
           base: function () { return loadedUpdatedAt; },
           baseData: function () { return loadedData; },
           onRestore: function (entry) {
-            loadedUpdatedAt = entry.base || loadedUpdatedAt;
+            var was = loadedUpdatedAt;
+            loadedUpdatedAt = entry.base || was;
+            // A copy made against an older version, with no snapshot of that
+            // version (dropped for size), has nothing to diff against. Keeping
+            // today's copy as the base would let the conflict check call
+            // "nothing changed by them" and re-save over their edit silently.
             if (entry.baseData) loadedData = entry.baseData;
+            else if (entry.base && entry.base !== was) loadedData = null;
           }
         });
         journal.check(stamp);
@@ -2237,7 +2246,7 @@
           // The owner (and an admin, who reaches this page the same way) is the
           // only one who can roll a version back, so the panel is theirs.
           else if (mode === 'owner') { lockToSet(); renderEditStatus(); showOwnerHistory(); }
-          if (mode) mountJournal(mode, res.updatedAt || null);
+          if (mode) mountJournal(mode, res.updatedAt || null, res.slug);
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';

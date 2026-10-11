@@ -1032,6 +1032,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         mine: gatherForm(),
         allowSilent: !conflictRetried,
         retry: function(fresh){ conflictRetried = true; adopt(fresh); again(); },
+        // With nothing to diff against, only after an explicit confirm.
+        replace: function(fresh){ conflictRetried = true; adopt(fresh); again(); },
         combine: function(merged, fresh){
           conflictRetried = true;
           adopt(fresh);
@@ -1064,8 +1066,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           base: function(){ return loadedUpdatedAt; },
           baseData: function(){ return loadedData; },
           onRestore: function(entry){
-            loadedUpdatedAt = entry.base || loadedUpdatedAt;
+            var was = loadedUpdatedAt;
+            loadedUpdatedAt = entry.base || was;
+            // No snapshot of an older base: nothing to diff against, so no
+            // silent re-save over the newer copy (see edit.html).
             if (entry.baseData) loadedData = entry.baseData;
+            else if (entry.base && entry.base !== was) loadedData = null;
           }
         });
         journal.check(stamp || null);

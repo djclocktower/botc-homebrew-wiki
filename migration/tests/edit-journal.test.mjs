@@ -222,3 +222,53 @@ test('an entry for an existing page with no base is thrown away; undoing an edit
   c.flush();
   assert.ok(storage.getItem('botc_journal:u:character:fresh'));
 });
+
+test('prune also holds every entry together under TOTAL_MAX, dropping the oldest', async () => {
+  const { EJ, storage } = await load();
+  const now = Date.now();
+  const big = 'x'.repeat(250000);
+  for (let i = 0; i < 8; i++) {
+    storage.setItem('botc_journal:u:b' + i, JSON.stringify({ v: 1, at: now - i * 60e3, data: { body: big } }));
+  }
+  EJ.prune(now);
+  const kept = [...storage._map.keys()].filter(k => k.startsWith('botc_journal:'));
+  const total = kept.reduce((n, k) => n + storage.getItem(k).length, 0);
+  assert.ok(total <= EJ.TOTAL_MAX, 'under the budget');
+  assert.ok(kept.includes('botc_journal:u:b0'), 'the newest stays');
+  assert.ok(!kept.includes('botc_journal:u:b7'), 'the oldest goes first');
+});
+
+test('handleConflict re-sends silently only when their side changed nothing that matters', async () => {
+  const { EJ } = await load();
+  const base = { name: 'Wiretap', lede: 'loaded' };
+  const run = (theirs, opts = {}) => {
+    let retried = false;
+    const b = 'base' in opts ? opts.base : base;
+    return EJ.handleConflict({
+      fetchTheirs: () => Promise.resolve({ data: theirs, updatedAt: 'T2', status: 'published' }),
+      base: b, mineBase: b,
+      mine: { name: 'Wiretap', lede: 'mine' },
+      allowSilent: opts.allowSilent !== false,
+      retry: () => { retried = true; },
+      combine: () => {}, takeTheirs: () => {}, cancel: () => {}
+    }).then(() => retried);
+  };
+  // A Publish toggle or a Curata grant elsewhere: only ignored keys moved.
+  assert.equal(await run({ ...base, status: 'published', curata: true }), true);
+  // Their lede moved: the panel, never a silent re-send.
+  assert.equal(await run({ name: 'Wiretap', lede: 'theirs' }), false);
+  // A second refusal in a row is never silent.
+  assert.equal(await run({ ...base }, { allowSilent: false }), false);
+  // A restored copy with no snapshot of its old base (the editors drop their
+  // base for it): whatever differs from their copy goes to the panel.
+  assert.equal(await run({ name: 'Wiretap', lede: 'theirs' }, { base: null }), false);
+  assert.equal(await run({ name: 'Wiretap', lede: 'mine' }, { base: null }), true);
+});
+
+test('every editor drops a stale base it has no snapshot of, and can replace after a confirm', async () => {
+  for (const page of ['edit.html', 'publish-collection.html', 'publish-page.html', 'publish-script.html']) {
+    const html = await read(page);
+    assert.match(html, /else if \(entry\.base && entry\.base !== was\)/, page + ' forgets a base it cannot diff against');
+    assert.match(html, /\breplace: /, page + ' offers "Replace theirs with mine" when there is no base');
+  }
+});

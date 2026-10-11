@@ -1652,13 +1652,21 @@ unsaved changes asks first (`beforeunload`).
   stash) — inline in account.html and login.html, so neither needs the script.
 - **Text only**: `strip()` drops `data:` strings and anything over 100,000
   characters; an entry over 300,000 is not written. The banner says pictures
-  are not kept. 14 days, newest 20 (`prune()`).
+  are not kept. 14 days, newest 20, and all of them together under
+  `TOTAL_MAX` (1.5M characters) — localStorage is ~5 MB per origin and the
+  Script Builder writes there too (`prune()`).
 - **An entry carries its base** — the stamp (`base`), the server's copy
   (`baseData`) and the form (`baseForm`) its edits were made against.
   Restoring puts all three back, deliberately: a save after somebody else's
   edit then meets the panel with a true three-way diff, instead of
   overwriting blind or calling every restored field "yours". An entry for an
-  existing page with no base is thrown away.
+  existing page with no base is thrown away. **An entry whose `baseData` was
+  dropped for size makes the editor forget its own base too** (every
+  editor's `onRestore`: `else if (entry.base && entry.base !== was)`):
+  keeping today's server copy as the base of an older stamp would make the
+  panel see "nothing changed by them" and re-save silently over their edit.
+  With no base the panel lists what differs and offers "Replace theirs with
+  mine" behind a confirm, so every editor passes `replace`.
 - **Comparisons use `canon()`**, which drops empty values, so a widget
   settling ('' → [] → absent) never reads as an edit; the clean snapshot is
   also retaken 600 ms after mount if nothing was touched. A waiting offer is

@@ -54,6 +54,10 @@
   var KEEP = 20;
   var MAX_LEN = 300000;
   var MAX_STR = 100000;
+  // All entries together: localStorage is ~5 MB per origin and shared with
+  // the Script Builder, the favourites and the text catalogue. Twenty
+  // entries at MAX_LEN would fill it and break their writes too.
+  var TOTAL_MAX = 1500000;
   var DEBOUNCE = 1500;
   var IGNORE = ['updatedAt', 'baseUpdatedAt', 'status', 'slug', 'id', 'v', 'classification',
     'curata', 'curataFrom', '_draftNote', 'appearsInFrom', 'tagsBy', 'missing', 'page',
@@ -269,13 +273,17 @@
     var entries = [];
     allKeys(st).forEach(function (k) {
       if (k.indexOf(PREFIX) !== 0) return;
-      var at = 0;
-      try { at = (JSON.parse(st.getItem(k)) || {}).at || 0; } catch (e) {}
+      var at = 0, len = 0;
+      try { var raw = st.getItem(k) || ''; len = raw.length; at = (JSON.parse(raw) || {}).at || 0; } catch (e) {}
       if (!at || now - at > MAX_AGE) { try { st.removeItem(k); } catch (e) {} }
-      else entries.push({ k: k, at: at });
+      else entries.push({ k: k, at: at, len: len });
     });
     entries.sort(function (a, b) { return b.at - a.at; });
-    entries.slice(KEEP).forEach(function (e) { try { st.removeItem(e.k); } catch (x) {} });
+    var total = 0;
+    entries.forEach(function (e, i) {
+      total += e.len;
+      if (i >= KEEP || total > TOTAL_MAX) { try { st.removeItem(e.k); } catch (x) {} }
+    });
   }
   /* Logging out is the "I'm done on this device" act. */
   function clearAll() {
@@ -624,7 +632,7 @@
     diffFields: diffFields, merge: merge, label: label, ago: ago,
     rosterReplaced: rosterReplaced, valueText: valueText, prune: prune, clearAll: clearAll,
     saveError: saveError, isConflict: isConflict, esc: esc,
-    PREFIX: PREFIX, STASH_KEY: STASH_KEY, IGNORE: IGNORE, NOT_LOGGED_IN: NOT_LOGGED_IN,
+    PREFIX: PREFIX, STASH_KEY: STASH_KEY, TOTAL_MAX: TOTAL_MAX, IGNORE: IGNORE, NOT_LOGGED_IN: NOT_LOGGED_IN,
     lastError: null
   };
   root.EditJournal = api;
