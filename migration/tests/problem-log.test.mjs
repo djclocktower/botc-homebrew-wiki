@@ -300,7 +300,7 @@ test('a nightly backup table that keeps failing is a nightly-job problem', async
     objects: new Map(),
     async put(k, v) { this.objects.set(k, String(v)); },
     async get() { return null; },
-    async head(k) { return this.objects.has(k) ? { size: 1 } : null; },
+    async head(k) { return this.objects.has(k) ? { size: Buffer.byteLength(this.objects.get(k)) } : null; },
     async delete(k) { this.objects.delete(k); },
     async list() { return { objects: [], truncated: false }; }
   };
@@ -316,4 +316,39 @@ test('a nightly backup table that keeps failing is a nightly-job problem', async
   assert.ok(row);
   assert.equal(row.route, 'backup');
   assert.match(row.message, /^page_views: reading rows after 0/);
+});
+
+test('the site.js beacon reports our own errors, three at most, and nothing from extensions or failed loads', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const vm = await import('node:vm');
+  const src = await readFile(new URL('../../assets/site.js', import.meta.url), 'utf8');
+  const at = src.indexOf('/* ── Problem log beacon (F3) ──');
+  assert.ok(at > 0, 'the beacon block is in site.js');
+  const block = src.slice(at);
+  const listeners = {}, beacons = [];
+  const win = { addEventListener(type, fn) { listeners[type] = fn; } };
+  const ctx = {
+    window: win, location: { origin: 'https://botchomebrew.wiki', href: 'https://botchomebrew.wiki/tools', pathname: '/tools' },
+    navigator: { sendBeacon(url, blob) { beacons.push({ url, blob }); return true; } },
+    Blob: class { constructor(parts, opts) { this.text = parts.join(''); this.type = opts.type; } },
+    fetch() { throw new Error('should use sendBeacon'); }
+  };
+  vm.runInNewContext(block, ctx);
+  const fire = ev => listeners.error({ target: win, ...ev });
+  fire({ message: 'x is not defined', filename: 'https://botchomebrew.wiki/assets/immutable/site.abc.js', lineno: 4, colno: 2, error: { stack: 'ReferenceError' } });
+  fire({ message: 'x is not defined', filename: 'https://botchomebrew.wiki/assets/immutable/site.abc.js', lineno: 4, colno: 2 });  // a repeat
+  fire({ message: 'from an extension', filename: 'chrome-extension://abc/x.js', lineno: 1 });
+  listeners.error({ target: { tagName: 'IMG' }, message: '' });                                                                  // a failed load
+  listeners.unhandledrejection({ reason: { message: 'not ours', stack: 'Error\n at https://cdn.example/x.js:1:1' } });
+  listeners.unhandledrejection({ reason: { message: 'ours', stack: 'Error: ours\n at load (https://botchomebrew.wiki/assets/data.js:88:9)' } });
+  fire({ message: 'inline', filename: 'https://botchomebrew.wiki/tools', lineno: 9 });
+  fire({ message: 'a fourth', filename: 'https://botchomebrew.wiki/assets/site.js', lineno: 1 });
+  assert.equal(beacons.length, 3);
+  const bodies = beacons.map(b => JSON.parse(b.blob.text));
+  assert.ok(beacons.every(b => b.url === '/api/client-error' && b.blob.type === 'application/json'));
+  assert.deepEqual(bodies.map(b => b.message), ['x is not defined', 'ours', 'inline']);
+  assert.equal(bodies[0].page, '/tools');
+  assert.equal(bodies[1].source, 'https://botchomebrew.wiki/assets/data.js');
+  assert.equal(bodies[1].line, 88);
+  assert.equal(bodies[2].source, 'https://botchomebrew.wiki/tools');
 });

@@ -331,6 +331,47 @@
     color: #f0d4d4; padding: 9px 13px; margin: 12px 0 0; line-height: 1.45;
   }
   .dash-backup-warning[hidden] { display: none; }
+  /* A sharp overnight shrink is a warning, not a failure: amber, not red. */
+  .dash-backup-warning.is-warning {
+    background: rgba(176,128,30,.2); border-color: rgba(230,190,110,.55); color: #f3e2bd;
+  }
+
+  /* ---- Problems this week (Health tab) ----
+     Rows stack and use no tables, so the card works at 360px; every button is
+     44px tall on a phone. */
+  .pr-summary { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .95rem; font-weight: 700; margin: 0 0 10px; }
+  .pr-filters select { max-width: none; }
+  .pr-row {
+    border-bottom: 1px solid rgba(180,160,120,.3); padding: 12px 0;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+  }
+  .pr-title { font-weight: 700; overflow-wrap: anywhere; }
+  .pr-what { margin: 3px 0 0; opacity: .85; }
+  .pr-meta { margin: 4px 0 0; font-size: .82rem; opacity: .75; }
+  .pr-tag {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: .74rem; font-weight: 700;
+    background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4);
+  }
+  .pr-row details { margin: 8px 0 0; }
+  .pr-row summary { cursor: pointer; font-size: .85rem; color: var(--maroon); }
+  .pr-row pre {
+    white-space: pre-wrap; overflow-wrap: anywhere; font-size: .78rem; max-height: 260px; overflow: auto;
+    background: rgba(255,253,248,.6); border: 1px solid rgba(180,160,120,.35); border-radius: 6px; padding: 8px 10px; margin: 6px 0;
+  }
+  .pr-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .pr-hint { font-size: .78rem; opacity: .7; }
+  .pr-redirect { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .pr-redirect input {
+    font: inherit; font-size: .9rem; color: #241a12; flex: 1 1 200px; min-width: 0;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px; padding: 8px 10px;
+  }
+  .pr-redirect label { flex-basis: 100%; font-size: .85rem; font-weight: 700; }
+  .pr-redirect .pr-hint { flex-basis: 100%; }
+  .pr-link-btn { background: none; border: 0; padding: 0 2px; color: var(--maroon); text-decoration: underline; cursor: pointer; font: inherit; }
+  @media (max-width: 640px) {
+    .pr-row .small-btn, .pr-redirect input, .pr-filters select { min-height: 44px; }
+    .pr-filters select { flex: 1 1 100%; }
+  }
   .dash-tab-panel[hidden] { display: none; }
   .dash-tab-note {
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
@@ -700,6 +741,33 @@
       </div>
 
       <div class="dash-tab-panel" id="tab-health" role="tabpanel" aria-labelledby="dashtab-health" hidden>
+      <!-- The problem log (GET /api/admin/problems): what went wrong on the
+           wiki lately, in plain words. See "The problem log" in CLAUDE.md. -->
+      <section class="panel" id="problems-panel">
+        <h3>Problems this week <span class="count-pill" id="pr-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Things that went wrong on the wiki in the last few days. One-offs usually sort themselves out; something that keeps happening is worth passing to whoever looks after the code. Missing pages are addresses people tried that don't exist — often an old link on Discord.
+        </p>
+        <p class="pr-summary" id="pr-summary">Loading…</p>
+        <div class="act-filters pr-filters">
+          <select id="pr-kind" aria-label="Which problems">
+            <option value="all">Everything</option>
+            <option value="crash">Pages that crashed</option>
+            <option value="server">Server errors</option>
+            <option value="notfound">Missing pages</option>
+            <option value="browser">Problems in readers' browsers</option>
+            <option value="cron">Nightly jobs</option>
+            <option value="email">Emails that didn't send</option>
+          </select>
+          <select id="pr-show" aria-label="Open or fixed">
+            <option value="open">Still happening</option>
+            <option value="fixed">Marked fixed</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div id="pr-list"></div>
+        <div class="toast" id="pr-toast"></div>
+      </section>
       <section class="panel">
         <h3>Discord sign-in</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -840,6 +908,9 @@
             <optgroup label="Site">
               <option>lock</option><option>unlock</option><option>announce</option>
               <option>backup</option><option>restore-backup</option><option>purge-images</option>
+              <!-- "Send people to…" on a missing /c/ address (Problems this week). -->
+              <option value="redirect-add">redirect added</option>
+              <option value="redirect-remove">redirect removed</option>
             </optgroup>
           </select>
           <select id="act-type">
@@ -2654,6 +2725,189 @@
       })();
     });
 
+    /* ---- Problems this week (the problem log) ----
+       GET /api/admin/problems. Everything here is said in plain words; the
+       raw route, message and stack stay under "Technical details" for
+       whoever maintains the code. */
+    var PROBLEM_PLACES = {
+      '/api/character': 'saving a character',
+      '/api/script': 'saving a script',
+      '/api/collection': 'saving a collection',
+      '/api/wiki-page': 'saving a wiki page',
+      '/api/upload': 'uploading an image',
+      '/api/login': 'logging in',
+      '/api/signup': 'signing up',
+      '/c/:page': 'showing a character page',
+      '/s/:slug': 'showing a script page',
+      '/collection/:slug': 'showing a collection page',
+      '/p/:slug': 'showing a wiki page',
+      '/news/:slug': 'showing a news article',
+      '/u/:slug': 'showing a creator page',
+      'backup': 'the nightly backup',
+      'backup check': 'the nightly backup check',
+      'backup prune': 'clearing out old backups',
+      'password wrapping': 'the nightly password upgrade',
+      'sendEmail': 'sending an email'
+    };
+    var PROBLEM_WHAT = {
+      crash: 'If it keeps happening, copy the details and send them to whoever maintains the code. A one-off is usually nothing.',
+      server: 'If it keeps happening, copy the details and send them to whoever maintains the code. A one-off is usually nothing.',
+      notfound: 'Usually an old or mistyped link. If you know which page they meant, send them there.',
+      browser: 'Reported by a reader’s browser. Treat it as a hint, not proof.',
+      cron: 'The nightly backup or clean-up had trouble. Check the Backups card below.',
+      email: 'Password-reset or verification emails may not be arriving.'
+    };
+    function problemPlace(route){
+      if (PROBLEM_PLACES[route]) return PROBLEM_PLACES[route];
+      if (/^\/api\/auth\/discord/.test(route || '')) return 'signing in with Discord';
+      if (/^prune /.test(route || '')) return 'the nightly clean-up';
+      return '';
+    }
+    function problemTitle(r){
+      var place = problemPlace(r.route);
+      if (r.kind === 'crash') return place ? 'Something crashed while ' + place : 'A page crashed: ' + r.route;
+      if (r.kind === 'server') return place ? 'The server answered with an error while ' + place : 'The server answered with an error: ' + r.route;
+      if (r.kind === 'notfound') return 'People looked for a page that doesn’t exist: ' + r.route;
+      if (r.kind === 'browser') return 'Something broke in a reader’s browser on ' + r.route;
+      if (r.kind === 'cron') return 'Trouble with ' + (place || r.route) + ': ' + r.message;
+      if (r.kind === 'email') return 'An email didn’t send';
+      return r.route;
+    }
+    // SQLite's datetime('now') is UTC with a space; say it as "2 hours ago".
+    function problemWhen(s){
+      if (!s) return '';
+      var t = Date.parse(String(s).replace(' ', 'T') + 'Z');
+      if (isNaN(t)) return String(s);
+      var secs = Math.round((t - Date.now()) / 1000), abs = Math.abs(secs);
+      var units = [['day', 86400], ['hour', 3600], ['minute', 60]];
+      try {
+        var fmt = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+        for (var i = 0; i < units.length; i++) {
+          if (abs >= units[i][1]) return fmt.format(Math.round(secs / units[i][1]), units[i][0]);
+        }
+        return 'just now';
+      } catch (e) { return new Date(t).toLocaleString(); }
+    }
+    function problemSummary(week){
+      week = week || {};
+      var n = function(k){ return week[k] || 0; };
+      var plural = function(c, one, many){ return c + ' ' + (c === 1 ? one : many); };
+      var parts = [];
+      if (n('crash')) parts.push(plural(n('crash'), 'page crash', 'page crashes'));
+      if (n('server')) parts.push(plural(n('server'), 'server error', 'server errors'));
+      if (n('notfound')) parts.push(plural(n('notfound'), 'missing page', 'missing pages'));
+      if (n('browser')) parts.push(plural(n('browser'), 'browser error', 'browser errors'));
+      if (n('email')) parts.push(plural(n('email'), 'email that didn’t send', 'emails that didn’t send'));
+      if (!parts.length && !n('cron')) return 'Nothing has gone wrong this week.';
+      parts.push(n('cron') ? 'nightly jobs had trouble' : 'nightly jobs fine');
+      return parts.join(' · ');
+    }
+    var problemRows = [];
+    function problemRowHTML(r, i){
+      var fixed = !!r.fixed_at;
+      var redirect = /^redirect:(\S+)$/.exec(r.detail || '');
+      var html = '<div class="pr-row" data-i="' + i + '">';
+      html += '<div class="pr-title">' + esc(problemTitle(r)) +
+        (r.reopened ? '<span class="pr-tag">Came back after being marked fixed</span>' : '') + '</div>';
+      html += '<p class="pr-what">' + esc(PROBLEM_WHAT[r.kind] || '') + '</p>';
+      html += '<p class="pr-meta">' + (fixed
+        ? 'Marked fixed ' + esc(problemWhen(r.fixed_at)) + ' · last seen ' + esc(problemWhen(r.last_seen))
+        : 'Happened ' + esc(r.count) + ' time' + (r.count === 1 ? '' : 's') + ' · last ' + esc(problemWhen(r.last_seen)) +
+          ' · first ' + esc(problemWhen(r.first_seen))) + '</p>';
+      if (redirect) {
+        html += '<p class="pr-meta">Now sent to <a href="/c/' + esc(encodeURIComponent(redirect[1])) + '">' + esc(redirect[1]) + '</a> · ' +
+          '<button type="button" class="pr-link-btn" data-act="undo">Undo</button></p>';
+      }
+      html += '<details><summary>Technical details (for a developer)</summary><pre>' +
+        esc('kind: ' + r.kind + '\nwhere: ' + r.route + '\nmessage: ' + r.message +
+            (r.sample ? '\nexample: ' + r.sample : '') + (r.detail && !redirect ? '\n\n' + r.detail : '')) +
+        '</pre><button type="button" class="small-btn alt" data-act="copy">Copy for a developer</button></details>';
+      html += '<div class="pr-actions">';
+      if (!fixed) html += '<button type="button" class="small-btn" data-act="fix">Mark fixed</button><span class="pr-hint">Hides it until it happens again.</span>';
+      html += '<button type="button" class="small-btn alt" data-act="forget">Forget</button><span class="pr-hint">Deletes the record.</span></div>';
+      if (r.kind === 'notfound' && !fixed && /^\/c\/./.test(r.route)) {
+        html += '<div class="pr-redirect"><label for="pr-to-' + i + '">Send people to:</label>' +
+          '<input type="text" id="pr-to-' + i + '" placeholder="character name or slug" autocomplete="off">' +
+          '<button type="button" class="small-btn" data-act="redirect">Make redirect</button>' +
+          '<span class="pr-hint">That address will stay reserved for this page.</span></div>';
+      }
+      return html + '</div>';
+    }
+    function loadProblems(){
+      var box = $('pr-list');
+      if (!box) return;
+      box.innerHTML = '<p class="note">Loading…</p>';
+      getJSON('/api/admin/problems?kind=' + encodeURIComponent($('pr-kind').value) + '&show=' + encodeURIComponent($('pr-show').value))
+        .then(function(d){
+          if (!d || !d.rows) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not load the problem log.') + '</p>'; return; }
+          problemRows = d.rows;
+          $('pr-summary').textContent = problemSummary(d.week);
+          $('pr-count').textContent = d.rows.length || '';
+          if (!d.rows.length) {
+            box.innerHTML = '<p class="note">' + ($('pr-show').value === 'fixed' ? 'Nothing marked fixed.' : 'Nothing to show here.') + '</p>';
+            return;
+          }
+          box.innerHTML = d.rows.map(problemRowHTML).join('');
+          if (window.mountSuggest && window.__suggestChars) {
+            box.querySelectorAll('.pr-redirect input').forEach(function(el){
+              window.mountSuggest(el, { source: window.__suggestChars, empty: 'No character by that name.' });
+            });
+          }
+        })
+        .catch(function(){ box.innerHTML = '<p class="note">Could not load the problem log.</p>'; });
+    }
+    function copyText(text){
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(function(){ return true; }, function(){ return false; });
+      }
+      return Promise.resolve(false);
+    }
+    $('pr-kind').addEventListener('change', loadProblems);
+    $('pr-show').addEventListener('change', loadProblems);
+    $('pr-list').addEventListener('click', function(ev){
+      var btn = ev.target.closest && ev.target.closest('[data-act]');
+      if (!btn) return;
+      var rowEl = btn.closest('.pr-row');
+      var r = rowEl && problemRows[+rowEl.getAttribute('data-i')];
+      if (!r) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'copy') {
+        var text = ['Problem on botchomebrew.wiki', 'kind: ' + r.kind, 'where: ' + r.route, 'message: ' + r.message,
+          'example: ' + (r.sample || '-'), 'count: ' + r.count, 'first seen: ' + r.first_seen + ' UTC', 'last seen: ' + r.last_seen + ' UTC',
+          '', r.detail || ''].join('\n');
+        copyText(text).then(function(ok){
+          if (ok) setToast('pr-toast', true, 'Copied. Paste it wherever you talk to whoever maintains the code.');
+          else window.prompt('Copy this:', text);
+        });
+        return;
+      }
+      var call;
+      if (act === 'fix' || act === 'forget') {
+        if (act === 'forget' && !confirm('Delete the record of this problem?')) return;
+        call = postJSON('/api/admin/problem', { fp: r.fp, action: act });
+      } else if (act === 'redirect') {
+        var input = rowEl.querySelector('.pr-redirect input');
+        var to = input ? input.value.trim() : '';
+        if (!to) { setToast('pr-toast', false, 'Type the character people should be sent to.'); return; }
+        call = postJSON('/api/admin/problem-redirect', { path: r.route, to: to });
+      } else if (act === 'undo') {
+        if (!confirm('Take this redirect away? The address goes back to showing "page not found".')) return;
+        call = postJSON('/api/admin/problem-redirect', { path: r.route, undo: true });
+      } else return;
+      btn.disabled = true;
+      call.then(function(res){
+        btn.disabled = false;
+        var b = res.body || {};
+        if (!b.ok) { setToast('pr-toast', false, b.error || 'That did not work.'); return; }
+        setToast('pr-toast', true,
+          act === 'redirect' ? 'Done: ' + r.route + ' now goes to ' + (b.name || b.to) + '.' :
+          act === 'undo' ? 'Redirect taken away.' :
+          act === 'fix' ? 'Marked fixed. It comes back here if it happens again.' : 'Deleted.');
+        loadProblems();
+        refreshBadges();
+      }).catch(function(){ btn.disabled = false; setToast('pr-toast', false, 'That did not work.'); });
+    });
+
     /* ---- backups ---- */
     $('bk-load').addEventListener('click', function(){
       var btn = this; btn.disabled = true;
@@ -2668,10 +2922,15 @@
           return;
         }
         box.innerHTML = d.backups.map(function(b){
+          // Row counts come from that night's manifest (the newest 7 nights).
+          var counts = (b.manifest && b.manifest.tables) || {};
           var links = b.tables.map(function(t){
-            return '<a href="/api/admin/backup-file?date=' + b.date + '&table=' + esc(t.table) + '" style="color:var(--good-name,#2c5b9a);text-decoration:none;white-space:nowrap">' + esc(t.table) + ' (' + fmtBytes(t.size) + ')</a>';
+            var rows = typeof counts[t.table] === 'number' ? ', ' + counts[t.table].toLocaleString() + ' rows' : '';
+            return '<a href="/api/admin/backup-file?date=' + b.date + '&table=' + esc(t.table) + '" style="color:var(--good-name,#2c5b9a);text-decoration:none;white-space:nowrap">' + esc(t.table) + ' (' + fmtBytes(t.size) + esc(rows) + ')</a>';
           }).join(' · ');
-          return '<div class="adm-row"><span style="font-weight:700;flex:0 0 auto">' + esc(b.date) + '</span><span class="grow dim">' + links + '</span></div>';
+          var warn = b.manifest && b.manifest.warnings && b.manifest.warnings.length
+            ? '<span class="adm-body" style="color:#8a6310">Check: ' + esc(b.manifest.warnings.map(backupWarningText).join('; ')) + '</span>' : '';
+          return '<div class="adm-row"><span style="font-weight:700;flex:0 0 auto">' + esc(b.date) + '</span><span class="grow dim">' + links + '</span>' + warn + '</div>';
         }).join('');
         var sel = $('bk-date');
         sel.innerHTML = d.backups.map(function(b){ return '<option>' + esc(b.date) + '</option>'; }).join('');
@@ -2689,7 +2948,7 @@
       postJSON('/api/backup', {}).then(function(res){
         btn.disabled = false;
         var b = res.body || {};
-        if (b.date) renderBackupWarning({ date: b.date, at: new Date().toISOString(), ok: b.ok, failed: b.failed || {} });
+        if (b.date) renderBackupWarning({ date: b.date, at: new Date().toISOString(), ok: b.ok, failed: b.failed || {}, warnings: b.warnings || [] });
         if (b.ok) setToast('bk-run-toast', true, 'Backup for ' + b.date + ' finished: every table saved.');
         else if (b.failed) setToast('bk-run-toast', false, 'Backup finished, but these tables failed: ' + Object.keys(b.failed).join(', ') + '. The reason is shown above.');
         else setToast('bk-run-toast', false, b.error || 'Backup failed.');
@@ -3163,7 +3422,7 @@
       users:   [loadUsers, loadNewUsers],
       content: [],
       site:    [loadAnnouncement, loadNews],
-      health:  [loadDashboard, function(){ loadAnalytics(7); }],
+      health:  [loadProblems, loadDashboard, function(){ loadAnalytics(7); }],
       maint:   []
     };
     var tabLoaded = {};
@@ -3221,6 +3480,10 @@
           if (!d || d.error) return;
           setBadge('triage', (d.reportedComments || 0) + (d.reportedDms || 0) + (d.openMessages || 0));
           setBadge('users', d.newUsers || 0);
+          // Crashes, server errors, nightly jobs and emails in the last day.
+          // Missing pages and browser reports never light it (see
+          // PROBLEM_BADGE_KINDS in worker.js): anybody can create those.
+          setBadge('health', d.problems || 0);
           // Lock state used to arrive with /api/admin/dashboard, which is now
           // lazy. The banner has to be right from the first paint whichever
           // tab you land on, so it rides along with the badge counts.
@@ -3244,21 +3507,41 @@
         else {
           var when = bk.at ? new Date(bk.at).toLocaleString() : (bk.date || 'unknown');
           var fails = Object.keys(bk.failed || {});
+          var warns = (bk.warnings || []).map(backupWarningText);
           last.hidden = false;
-          last.textContent = bk.ok !== false
+          last.textContent = (bk.ok !== false
             ? 'Last backup: ' + when + ' — every table saved.'
             : 'Last backup: ' + when + ' — failed for ' + (fails.length
                 ? fails.map(function(t){ return t + ' (' + bk.failed[t] + ')'; }).join('; ')
-                : 'one or more tables') + '. Press Back up now to try again.';
+                : 'one or more tables') + '. Press Back up now to try again.') +
+            (warns.length ? ' Check: ' + warns.join('; ') + '.' : '');
         }
       }
       if (!el) return;
+      el.classList.remove('is-warning');
+      if (bk && bk.ok !== false && bk.warnings && bk.warnings.length) {
+        /* It ran, but a table came out far smaller than the night before:
+           what a bad bulk delete looks like, so worth interrupting for. */
+        var shrunk = bk.warnings.map(function(w){ return String(w).split(':')[0]; });
+        el.hidden = false;
+        el.classList.add('is-warning');
+        el.textContent = 'Last night’s backup ran, but ' + shrunk.join(', ') +
+          ' had far fewer rows than the night before. Worth a look: the numbers are under Backups on the Health tab.';
+        return;
+      }
       if (!bk || bk.ok !== false) { el.hidden = true; el.textContent = ''; return; }
       var tables = Object.keys(bk.failed || {});
       el.hidden = false;
       el.textContent = 'The nightly backup on ' + (bk.date || 'its last run') +
         ' failed for: ' + (tables.length ? tables.join(', ') : 'one or more tables') +
         '. The reason and a Back up now button are under Backups on the Health tab.';
+    }
+
+    // "characters: 10 rows, yesterday 2400" -> "characters has 10 rows, yesterday 2,400"
+    function backupWarningText(w){
+      var m = /^(\w+): (\d+) rows, yesterday (\d+)$/.exec(String(w));
+      if (!m) return String(w);
+      return m[1] + ' has ' + Number(m[2]).toLocaleString() + ' rows, yesterday ' + Number(m[3]).toLocaleString();
     }
 
     function setBadge(key, n){
@@ -3403,6 +3686,9 @@
       // so its rows are mounted where they are made (renderUnowned) through
       // this handle rather than here.
       window.__suggestUsers = users;
+      // The "Send people to…" box on a missing /c/ address (Problems this
+      // week) is drawn on every load too; it wants a character identity.
+      window.__suggestChars = function(){ return feed('character'); };
     }
 
     // Auth check, then load.

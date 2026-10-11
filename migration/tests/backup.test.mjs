@@ -243,3 +243,24 @@ test('pruning walks every page of the listing, and keeps the last month', async 
     assert.ok(r2.listCalls >= 2, 'the listing was paged');
   } finally { await f.finish(); }
 });
+
+test('a part that does not read back at the size it was written fails its table', async () => {
+  const f = await fixture();
+  const r2 = f.env.ART = fakeR2();
+  try {
+    f.insert('characters', 'witch', { name: 'Wïtch — ✓', team: 'minion' });
+    const realHead = r2.head.bind(r2);
+    r2.head = async key => {
+      const h = await realHead(key);
+      return h && key.endsWith('/characters.json') ? { size: h.size + 1 } : h;
+    };
+    const res = await quietly(() => f.hooks.runBackup(f.env));
+    assert.equal(res.ok, false);
+    assert.match(res.failed.characters, /check failed: part 0 size/);
+    assert.equal(res.manifest.tables.characters.status, 'failed');
+    // Non-ASCII text is measured in bytes, so an honest part passes.
+    r2.head = realHead;
+    const again = await quietly(() => f.hooks.runBackup(f.env));
+    assert.equal(again.ok, true, JSON.stringify(again.failed));
+  } finally { await f.finish(); }
+});

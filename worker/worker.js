@@ -5537,6 +5537,19 @@ const DATA_TABLES = [
   { name: 'rate_limits', backup: false, why: 'spent rate-limit counters, rebuilt on use' },
   { name: 'problem_log', backup: false, why: 'operational log of what went wrong; holds stack traces, not content' }
 ];
+// UTF-8 length of a string without encoding a copy of it (a backup part is
+// up to a few MB). Surrogate pairs count once, as 4 bytes.
+function utf8Length(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) { n += 4; i++; }
+    else n += 3;
+  }
+  return n;
+}
 // sqlite_master names that are the database's own, not ours.
 const SYSTEM_TABLE_RE = /^(sqlite_|_cf_|d1_)/i;
 // How far a core table may shrink overnight before the run says so. A table
@@ -5584,6 +5597,7 @@ async function runBackup(env) {
     let written = 0;
     let part = 0;
     let bytes = 0;
+    const writtenParts = [];
     try {
       // Paged by rowid rather than SELECT *. The whole table used to be
       // materialised in the isolate and then stringified — two copies in a
@@ -5601,10 +5615,14 @@ async function runBackup(env) {
           ? `backups/${stamp}/${t}.json`
           : `backups/${stamp}/${t}.part${part}.json`;
         const body = '[' + pieces.join(',') + ']';
-        await backupRetry('writing ' + name.slice(name.lastIndexOf('/') + 1), () =>
+        const stored = await backupRetry('writing ' + name.slice(name.lastIndexOf('/') + 1), () =>
           env.ART.put(name, body, { httpMetadata: { contentType: 'application/json' } }));
+        // R2 answers a put with the object it stored, size included; only
+        // count the bytes ourselves when it does not say.
+        const size = stored && typeof stored.size === 'number' ? stored.size : utf8Length(body);
+        writtenParts.push({ key: name, size });
         part++;
-        bytes += body.length;
+        bytes += size;
         written += held;
         pieces = [];
         pending = 0;
@@ -5643,6 +5661,18 @@ async function runBackup(env) {
           await env.ART.delete(key);
         }
       } catch { /* tidying is best-effort */ }
+      // Read back: every part this run wrote is still there, at the size it
+      // was written. Mostly a guard against a lost race with the tidy above
+      // (two runs on the same day), which would otherwise leave a backup
+      // that reads back short with nothing to say so.
+      for (let i = 0; i < writtenParts.length; i++) {
+        const p = writtenParts[i];
+        const head = await backupRetry('checking ' + p.key.slice(p.key.lastIndexOf('/') + 1), () => env.ART.head(p.key));
+        if (!head) throw new Error(`check failed: part ${i} missing`);
+        if (typeof head.size === 'number' && head.size !== p.size) {
+          throw new Error(`check failed: part ${i} size ${head.size}, written ${p.size}`);
+        }
+      }
       saved[t] = rows;
       manifestTables[t] = { status: 'ok', rows, parts: part, bytes };
     } catch (e) {
