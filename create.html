@@ -492,6 +492,7 @@
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/related-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <script src="assets/edit-journal.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
   <script src="assets/art-labels.js"></script>
@@ -1200,8 +1201,10 @@
 
     // ── publish ────────────────────────────────────────────────────
     // ── login check: warn + disable publish if not logged in ──
-    fetch('/api/me', { credentials: 'same-origin' })
+    var meP = fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
+      .catch(function(){ return {}; });
+    meP
       .then(function(d){
         if(!d.loggedIn){
           setStatus('err','You are not logged in. <a href="login?next=create">Log in or create an account</a> to publish your character.');
@@ -1326,7 +1329,7 @@
             body: JSON.stringify(entry)
           }).then(function(r){
             return r.json().then(function(j){
-              if(r.status === 401) throw new Error('Not logged in. Please log in at /login first.');
+              if(r.status === 401) throw new Error('Not logged in. Please log in at /login first. ' + window.EditJournal.NOT_LOGGED_IN);
               if(!r.ok) throw new Error(j.error || 'Save failed.');
               return j;
             });
@@ -1343,6 +1346,9 @@
           } else {
             setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
           }
+          // The page exists now: later edits from this tab are journalled
+          // under its own key, which is where edit.html will look for them.
+          if (journal) { journal.rekey('character:' + ((saved && saved.slug) || slug)); journal.markClean(); }
           // Partial-page warning / missing-icon explanation.
           if (window.showSaveNotice) window.showSaveNotice(saved, slug);
           // Names the Worker could not match to an account. Saying so beats
@@ -1366,6 +1372,87 @@
 
     addJinx();
     update();
+
+    /* A journal entry back into the form (assets/edit-journal.js). The same
+       fields edit.html's populateForm sets, minus everything a new page has
+       not got yet (the art, the token, Curata, the page name). Keep the two
+       in step: create.html and edit.html are the same form. */
+    function applyDraft(d) {
+      d = d || {};
+      function set(id, v) { var el = $(id); if (el) { el.value = v == null ? '' : v; el.dispatchEvent(new Event('input')); } }
+      function list(v) { return Array.isArray(v) ? v.join('\n') : (v || ''); }
+      set('name', d.name);
+      if (d.team && $('team').querySelector('option[value="' + d.team + '"]')) {
+        $('team').value = d.team;
+        $('team').dispatchEvent(new Event('change'));
+      }
+      set('creator', d.creator);
+      set('ability', d.ability);
+      set('lede', d.lede);
+      set('bullets', list(d.summaryBullets));
+      set('howto', list(d.howToRun));
+      set('callout', list(d.callout));
+      set('examples', list(d.examples));
+      set('tips', list(d.tips));
+      set('bluffing', list(d.bluffing));
+      set('fighting', list(d.fighting));
+      set('quote', d.quote);
+      set('appears', d.appearsIn);
+      if (window.setTagPickerValue) window.setTagPickerValue(d.tags || ''); else $('tags').value = d.tags || '';
+      set('pronunciation', d.pronunciation);
+      set('ipa', d.ipa);
+      set('respelling', d.respelling);
+      set('translatedBy', d.translatedBy);
+      set('iconBy', d.iconBy);
+      var sc = window.artScaleValue ? window.artScaleValue(d.artScale) : 0;
+      $('artScaleOn').checked = !!sc;
+      $('artScale').value = sc || 100;
+      syncArtScale();
+      set('edition', d.edition);
+      set('firstNight', d.firstNight || 0);
+      set('otherNight', d.otherNight || 0);
+      set('fnReminder', d.firstNightReminder);
+      set('onReminder', d.otherNightReminder);
+      set('reminders', list(d.reminders));
+      set('remindersGlobal', list(d.remindersGlobal));
+      $('setup').checked = !!d.setup;
+      $('jinxDisplay').value = d.jinxDisplay === 'dropdown' ? 'dropdown' : 'sidebar';
+      $('customJson').value = d.customJson || '';
+      if ($('publicEdit').querySelector('option[value="' + (d.publicEdit || '') + '"]')) $('publicEdit').value = d.publicEdit || '';
+      $('creditUnlinked').checked = !!d.creditUnlinked;
+      if (editorsUI) editorsUI.set(d.editors || []);
+      syncEditorsBox();
+      document.querySelectorAll('.jinx-row').forEach(function (r) { r.remove(); });
+      (d.jinxes || []).forEach(function (j) { var n = normalizeJinx(j); addJinx(n.name, n.align, n.text, n.slug, n.id); });
+      if (!(d.jinxes || []).length) addJinx();
+      document.querySelectorAll('.box-row').forEach(function (r) { r.remove(); });
+      (d.customBoxes || []).forEach(function (b) { addBox((b && b.title) || '', (b && b.content) || ''); });
+      if (relatedUI) relatedUI.set(d.related || []);
+      if (specialUI) specialUI.set(window.sanitizeSpecial ? window.sanitizeSpecial(d.special) : []);
+      document.querySelectorAll('textarea').forEach(function (ta) { ta.style.overflowY = 'hidden'; autoExpand(ta); });
+      updatePerspectiveFields();
+      if (window.refreshArtLabels) window.refreshArtLabels();
+      if (window.refreshNightOrderPickers) window.refreshNightOrderPickers();
+      if (window.autosizeTextareas) window.autosizeTextareas();
+      update();
+    }
+
+    /* Unsaved work is kept in this browser while it is typed, per account,
+       and offered back on the next visit (assets/edit-journal.js). A new
+       character's entry is character:new until its first save. */
+    var journal = null;
+    meP.then(function (me) {
+      if (!window.EditJournal) return;
+      journal = window.EditJournal.mount({
+        key: 'character:new',
+        user: me && me.loggedIn ? me.username : '',
+        gather: gather,
+        apply: applyDraft,
+        root: document.querySelector('.formcard'),
+        bannerHost: document.querySelector('.formcard')
+      });
+      journal.check(null);
+    });
 
     // Good characters get "Bluffing as the …", evil ones "Fighting the …", so
     // only the box that matches the team is offered. The other one is hidden

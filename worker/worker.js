@@ -11549,8 +11549,10 @@ const app = {
             path: '/collection/' + (c.id || pkSlug), origin: url.origin
           }));
         }
+        const stamp = await env.DB.prepare('SELECT updated_at FROM collections WHERE slug=?').bind(pkSlug).first().catch(() => null);
         return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status,
-                              editors: c.editors || [], editorsUnknown });
+                              editors: c.editors || [], editorsUnknown,
+                              updatedAt: stamp ? stamp.updated_at : null });
       }
 
       if (path === '/api/script') {
@@ -11662,8 +11664,10 @@ const app = {
             path: '/s/' + s.slug, origin: url.origin
           }));
         }
+        const stamp = await env.DB.prepare('SELECT updated_at FROM scripts WHERE slug=?').bind(s.slug).first().catch(() => null);
         return jsonResponse({ ok: true, slug: s.slug, status,
-                              editors: s.editors || [], editorsUnknown });
+                              editors: s.editors || [], editorsUnknown,
+                              updatedAt: stamp ? stamp.updated_at : null });
       }
 
       // ---- custom wiki pages (text-first pages under a script/collection) ----
@@ -11729,6 +11733,12 @@ const app = {
         if (!sess.isAdmin && parent.type !== ARTICLE_PARENT && await isProtected(env, parent.type, parent.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
+        // After every access check, so a 409 never tells a stranger when the
+        // page was last saved. A save that sends no stamp is let through.
+        {
+          const conflict = checkEditConflict(existing, b);
+          if (conflict) return conflict;
+        }
 
         // Slug is derived from the title once, then frozen so links keep
         // working. A clash with someone else's page gets a numeric suffix.
@@ -11785,9 +11795,11 @@ const app = {
             path: '/p/' + slug, origin: url.origin
           }));
         }
+        const stamp = await env.DB.prepare('SELECT updated_at FROM pages WHERE slug=?').bind(slug).first().catch(() => null);
         return jsonResponse({
           ok: true, slug, status,
-          parentType: parent.type, parentKey: parent.key, parentName: parent.name
+          parentType: parent.type, parentKey: parent.key, parentName: parent.name,
+          updatedAt: stamp ? stamp.updated_at : null
         });
       }
 

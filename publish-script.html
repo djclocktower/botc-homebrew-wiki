@@ -426,6 +426,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <script src="assets/edit-journal.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -456,7 +457,254 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
-    function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+    /* The save. An existing script posts the stamp it was loaded (or last
+       saved) at, kept in the meta because this page's state outlives the tab;
+       the Worker refuses a save made over somebody else's newer one with a
+       409 carrying `conflict: true`, which the panel below answers. */
+    function apiSaveScript(entry){
+      var base = getMeta().baseUpdatedAt;
+      if (EDIT_SLUG && base) entry.baseUpdatedAt = base;
+      return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)})
+        .then(function(r){
+          return r.json().catch(function(){ return null; }).then(function(j){
+            if(!j||j.error){
+              var msg = (j&&j.error)||'Save failed. Are you logged in?';
+              if (r.status === 401) msg += ' ' + window.EditJournal.NOT_LOGGED_IN;
+              throw window.EditJournal.saveError(msg, j, r.status);
+            }
+            return j;
+          });
+        });
+    }
+
+    /* ── never lose a word (assets/edit-journal.js) ──
+       botc_script and botc_script_meta are ONE slot, shared with the Script
+       Builder. Three things follow from that, each answered here:
+       - a stale editSlug would turn a brand-new script into an overwrite of
+         the last one published (the "different script" banner);
+       - opening ?s= replaced whatever was being built (the stash);
+       - opening ?s= replaced unsaved edits to that same script (put aside in
+         the journal, and offered back).
+       `savedSig` is the script as it stood at the last load or save, in the
+       server's shape: the base the conflict panel diffs against, and how this
+       page tells "edited here" from "as loaded". */
+    var META_FIELDS = ['name','author','description','tagline','version','difficulty','synopsis',
+      'gameplay','strategyGood','strategyEvil','customBoxes','nightOrder','jinxEdits','bootlegger',
+      'almanac','hideTitle','creditUnlinked','publicEdit','editors','header','logo','theme'];
+    var VOLATILE = ['editSlug','baseUpdatedAt','savedSig','rosterAck'];
+    var STASH_KEY = window.EditJournal.STASH_KEY;
+    var EJ = window.EditJournal;
+    var journal = null, conflictRetried = false;
+    var meP = fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); }).catch(function(){ return {}; });
+    function flatten(m, roster){
+      var e = {};
+      META_FIELDS.forEach(function(k){ if (m[k] !== undefined) e[k] = m[k]; });
+      e.characters = (roster || []).slice();
+      return e;
+    }
+    // Empty values are left out, so '' / [] / absent (which the widgets
+    // swap between as they settle) all read as the same script.
+    function sigOf(m, roster){
+      var e = EJ.strip(flatten(m, roster));
+      Object.keys(e).forEach(function(k){ if (EJ.isEmpty(e[k])) delete e[k]; });
+      return EJ.stableStringify(e);
+    }
+    function savedBase(m){ try { return m.savedSig ? JSON.parse(m.savedSig) : null; } catch(e){ return null; } }
+    function localDirty(m, roster){ return !m.savedSig || sigOf(m, roster) !== m.savedSig; }
+    function cleanMeta(m){
+      var out = {};
+      Object.keys(m).forEach(function(k){ if (VOLATILE.indexOf(k) < 0) out[k] = m[k]; });
+      return out;
+    }
+    /* The script's state into the meta, the roster and the form. */
+    function applyState(meta, roster){
+      var keep = getMeta(), m = {};
+      VOLATILE.forEach(function(k){ if (keep[k] !== undefined) m[k] = keep[k]; });
+      Object.keys(meta || {}).forEach(function(k){ if (VOLATILE.indexOf(k) < 0) m[k] = meta[k]; });
+      setMeta(m);
+      setScript((roster || []).slice());
+      Object.keys(TEXT_FIELDS).forEach(function(id){ var el = $(id); if (el) el.value = m[TEXT_FIELDS[id]] || ''; });
+      boxesUI.load(m.customBoxes || []);
+      existingHeader = m.header || null; existingLogo = m.logo || null;
+      existingBg = (m.theme && m.theme.background) || null;
+      primeFields(m);
+      renderSummary();
+      updateButtons();
+    }
+    function metaFromEntry(e){
+      var m = {};
+      META_FIELDS.forEach(function(k){ if (e[k] !== undefined) m[k] = e[k]; });
+      return m;
+    }
+    function notesHost(){
+      var host = document.getElementById('ej-notes');
+      if (host) return host;
+      var es = editStatusHost();
+      if (!es) return null;
+      host = document.createElement('div');
+      host.id = 'ej-notes';
+      es.parentNode.insertBefore(host, es);
+      return host;
+    }
+    function lockSave(on){ $('sb-publish').disabled = on; $('sb-draft').disabled = on; }
+
+    /* Bug 1. The meta still points at a script published earlier, but the
+       roster here is mostly not that script's: a share link, an Import with
+       "Replace", or a new script built in the Script Builder. Saving would
+       silently replace the old script. Fires only when the roster looks
+       REPLACED (EditJournal.rosterReplaced), so the ordinary way to change a
+       published roster (builder, then Publish) never meets it; saving waits
+       until a choice is made, because a silent default is the bug. */
+    function differentScriptBanner(m){
+      var saved = savedBase(m);
+      var now = getScript();
+      if (!m.editSlug || !saved || !EJ.rosterReplaced(saved.characters, now)) return;
+      if (m.rosterAck && m.rosterAck === now.join(',')) return;
+      var host = notesHost(); if (!host) return;
+      var name = esc(m.name || m.editSlug);
+      var box = document.createElement('div');
+      box.className = 'ej-banner';
+      box.setAttribute('role', 'alert');
+      box.innerHTML = '<p class="ej-head">This looks like a different script.</p>' +
+        '<p>The characters here are mostly not the ones in <strong>\u201c' + name + '\u201d</strong>, the script you published before.</p>' +
+        '<div class="ej-actions">' +
+          '<button type="button" class="ej-btn ej-primary" data-x="new">Publish as a new script</button>' +
+          '<button type="button" class="ej-btn" data-x="replace">Replace \u201c' + name + '\u201d with these characters</button>' +
+        '</div>';
+      host.appendChild(box);
+      lockSave(true);
+      box.addEventListener('click', function(e){
+        var b = e.target.closest && e.target.closest('[data-x]');
+        if (!b) return;
+        if (b.getAttribute('data-x') === 'new'){
+          // Everything but the author belongs to the old script: its name,
+          // its address, its image slots, its night order and jinxes.
+          setMeta({ author: m.author || '' });
+          location.href = 'publish-script';
+          return;
+        }
+        var mm = getMeta(); mm.rosterAck = getScript().join(','); setMeta(mm);
+        box.parentNode.removeChild(box);
+        lockSave(false);
+      });
+    }
+
+    /* Bug 2. Opening ?s= used to wipe whatever was being built in the Script
+       Builder. It is put aside in ONE slot (botc_script_stash) instead; a
+       newer stash replaces an older one. */
+    function stashNote(){
+      var st = null;
+      try { st = JSON.parse(localStorage.getItem(STASH_KEY)); } catch(e){}
+      if (!st || !st.roster || !st.roster.length) return;
+      var host = notesHost(); if (!host) return;
+      var box = document.createElement('div');
+      box.className = 'ej-banner';
+      box.setAttribute('role', 'status');
+      var nm = st.meta && st.meta.name ? ', \u201c' + esc(st.meta.name) + '\u201d' : '';
+      box.innerHTML = '<p>Your Script Builder roster (' + st.roster.length + ' character' + (st.roster.length === 1 ? '' : 's') + nm +
+        ') was put aside so this script could open.</p>' +
+        '<div class="ej-actions">' +
+          '<button type="button" class="ej-btn ej-primary" data-x="back">Put it back in the builder</button>' +
+          '<button type="button" class="ej-btn" data-x="drop">Forget it</button>' +
+        '</div>';
+      host.appendChild(box);
+      box.addEventListener('click', function(e){
+        var b = e.target.closest && e.target.closest('[data-x]');
+        if (!b) return;
+        if (b.getAttribute('data-x') === 'back'){
+          if (journal && journal.isDirty() && !confirm('Put the other roster back? Your unsaved changes to this script will be replaced.')) return;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(st.roster));
+            localStorage.setItem(META_KEY, JSON.stringify(st.meta || {}));
+            localStorage.removeItem(STASH_KEY);
+          } catch(x){}
+          if (journal) journal.pause();
+          location.href = 'script';
+          return;
+        }
+        if (!confirm('Forget the roster that was put aside? It cannot be brought back.')) return;
+        try { localStorage.removeItem(STASH_KEY); } catch(x){}
+        box.parentNode.removeChild(box);
+      });
+    }
+
+    /* The journal, for bug 3: mounted with no listeners (this page's state
+       already lives in localStorage), it holds the unsaved copy that ?s= put
+       aside and offers it back with the shared banner. */
+    function mountJournal(key, putAside, serverStamp){
+      return meP.then(function(me){
+        journal = EJ.mount({
+          key: key,
+          user: me && me.loggedIn ? me.username : '',
+          guard: false,
+          gather: function(){ return { meta: cleanMeta(getMeta()), roster: getScript() }; },
+          apply: function(d){ applyState(d.meta || {}, d.roster || []); },
+          bannerHost: notesHost(),
+          base: function(){ return getMeta().baseUpdatedAt || null; },
+          baseData: function(){ return savedBase(getMeta()); },
+          onRestore: function(entry){
+            var m = getMeta();
+            if (entry.base) m.baseUpdatedAt = entry.base;
+            if (entry.baseData) m.savedSig = EJ.stableStringify(entry.baseData);
+            setMeta(m);
+          }
+        });
+        if (putAside) journal.put(putAside.data, putAside.base, putAside.baseData, putAside.baseData);
+        journal.check(serverStamp || null);
+      });
+    }
+
+    /* Somebody saved this script after it was loaded here: the panel. */
+    function onConflict(saveStatus){
+      var explicit = saveStatus !== currentStatus;
+      var m = getMeta();
+      var base = savedBase(m);
+      pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> Not saved yet: somebody else saved this script while you had it open. Your changes are still here; see below.');
+      function adopt(fresh){
+        var mm = getMeta();
+        mm.baseUpdatedAt = fresh.updatedAt || null;
+        setMeta(mm);
+        if (!explicit && fresh.status) { currentStatus = fresh.status; updateButtons(); }
+      }
+      function again(){ submitScript(explicit ? saveStatus : (currentStatus || saveStatus)); }
+      EJ.handleConflict({
+        host: document.querySelector('.pub-actions'),
+        fetchTheirs: function(){
+          return fetch('/api/page?type=script&slug=' + encodeURIComponent(EDIT_SLUG), { credentials: 'same-origin' })
+            .then(function(r){ if (!r.ok) throw new Error('load'); return r.json(); })
+            .then(function(res){ return { data: res.data, updatedAt: res.updatedAt, status: res.status }; });
+        },
+        base: base,
+        mineBase: base,
+        mine: flatten(m, getScript()),
+        allowSilent: !conflictRetried,
+        retry: function(fresh){ conflictRetried = true; adopt(fresh); again(); },
+        combine: function(merged, fresh){
+          conflictRetried = true;
+          adopt(fresh);
+          var mm = getMeta();
+          mm.savedSig = EJ.stableStringify(EJ.strip(fresh.data));
+          setMeta(mm);
+          applyState(metaFromEntry(merged), merged.characters || getScript());
+          again();
+        },
+        replace: function(fresh){ conflictRetried = true; adopt(fresh); again(); },
+        takeTheirs: function(){
+          // Theirs wins: the local copy is marked as synced so the reload
+          // does not put it aside and offer it back.
+          var mm = getMeta();
+          mm.editSlug = EDIT_SLUG;
+          mm.savedSig = sigOf(mm, getScript());
+          setMeta(mm);
+          if (journal) journal.discard();
+          location.href = 'publish-script?s=' + encodeURIComponent(EDIT_SLUG);
+        },
+        cancel: function(){
+          pubStatus('err', 'Not saved yet. Your changes are still here; press save again when you are ready.');
+        }
+      });
+    }
 
     // ── the roster, in the order the script page will show it ──
     // The page groups by team and keeps the stored order within each team, so
@@ -1026,7 +1274,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
         return apiSaveScript(entry);
-      }).then(function(){
+      }).then(function(savedRes){
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'scripts/' + slug + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){
@@ -1040,7 +1288,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var m = getMeta();
         m.header = removeHeader ? '' : (existingHeader || m.header);
         m.logo = removeLogo ? '' : (existingLogo || m.logo);
-        m.editSlug = slug; setMeta(m);
+        m.editSlug = slug;
+        if (savedRes && savedRes.updatedAt) m.baseUpdatedAt = savedRes.updatedAt;
+        m.savedSig = sigOf(m, getScript());
+        delete m.rosterAck;
+        setMeta(m);
+        if (journal) { journal.rekey('script:' + slug); journal.markClean(); }
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
         renderEditStatus();   // the page exists now, so it has a status to state
         var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
@@ -1060,13 +1313,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $('sb-publish').disabled = false;
         $('sb-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         $('sb-publish').disabled = false;
         $('sb-draft').disabled = false;
+        if (EJ.isConflict(err)) return onConflict(saveStatus);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
       });
     }
-    $('sb-publish').addEventListener('click', function(){ submitScript('published'); });
-    $('sb-draft').addEventListener('click', function(){ submitScript('draft'); });
+    $('sb-publish').addEventListener('click', function(){ conflictRetried = false; submitScript('published'); });
+    $('sb-draft').addEventListener('click', function(){ conflictRetried = false; submitScript('draft'); });
 
     // ── delete: soft-delete this script (recoverable by an admin) ──
     $('sb-delete').addEventListener('click', function(){
@@ -1084,7 +1338,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(res){
         if (res.status === 200 && res.body.ok){
           // clear the local edit pointer so the builder doesn't reopen it
-          var m = getMeta(); delete m.editSlug; setMeta(m);
+          var m = getMeta(); delete m.editSlug; delete m.baseUpdatedAt; delete m.savedSig; setMeta(m);
+          if (journal) journal.discard();
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
@@ -1236,6 +1491,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           var entry = res.data; if (!entry) return;
           currentStatus = res.status || 'published';
           draftedNotice(entry);
+          // Before the server's copy replaces the one shared slot: whatever
+          // was here and never saved is kept, not overwritten.
+          var m0 = getMeta(), r0 = getScript(), putAside = null;
+          if (r0.length && (m0.editSlug || '') !== slug && (!m0.editSlug || localDirty(m0, r0))) {
+            try { localStorage.setItem(STASH_KEY, JSON.stringify({ roster: r0, meta: m0, at: Date.now() })); } catch(e){}
+          } else if (m0.editSlug === slug && m0.baseUpdatedAt && m0.savedSig && localDirty(m0, r0)) {
+            putAside = { data: { meta: cleanMeta(m0), roster: r0 }, base: m0.baseUpdatedAt, baseData: savedBase(m0) };
+          }
           setScript((entry.characters || []).slice());
           var m = {
             name: entry.name||'', author: entry.author||'', description: entry.description||'',
@@ -1256,9 +1519,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           };
           if (!m.nightOrder) delete m.nightOrder;
           if (!m.jinxEdits) delete m.jinxEdits;
+          m.baseUpdatedAt = res.updatedAt || null;
+          // Taken from the meta just built (not the raw row), so a field the
+          // row lacks and the meta fills with '' does not read as an edit.
+          m.savedSig = sigOf(m, entry.characters || []);
           setMeta(m);
           primeFields(m);
           setEditMode(slug);
+          stashNote();
+          mountJournal('script:' + slug, putAside, res.updatedAt || null);
           /* What this account may do to this script, decided by the Worker.
              'owner' is everything. 'all' is a script whose creator opened it:
              the text is editable, but publishing, unpublishing and deleting
@@ -1302,8 +1571,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           var m = getMeta();
           primeFields(m);
           renderSummary();
+          stashNote();
           if (m.editSlug){
             setEditMode(m.editSlug);
+            differentScriptBanner(m);
             // Sync the draft/published pill from the server without touching the
             // roster/details the user may have edited locally since publishing.
             fetch('/api/page?type=script&slug=' + encodeURIComponent(m.editSlug), { credentials: 'same-origin' })

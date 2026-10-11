@@ -288,6 +288,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render-wiki.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/edit-journal.js"></script>
   <script>
   (function(){
     function $(id){ return document.getElementById(id); }
@@ -307,6 +308,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var headerPath = '', headerData = null, removeHeader = false;
     var bgPath = '', bgData = null, removeBg = false;
     var boxesUI = null, infoUI = null;
+    /* The stamp this editor's copy is based on, posted with every save of an
+       existing page so the Worker can refuse one made over somebody else's
+       newer save; and the server's copy at that stamp, which the conflict
+       panel diffs "changed by them" against (assets/edit-journal.js). */
+    var loadedUpdatedAt = null, loadedData = null;
+    var journal = null, conflictRetried = false;
 
     // Send people back to this editor (with its ?p= / ?parentType= intact)
     // after they log in, instead of dumping them on the account page.
@@ -326,9 +333,17 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
-      }).then(function(r){ return r.json(); }).then(function(j){
-        if (!j || j.error) throw new Error((j && j.error) || 'Something went wrong.');
-        return j;
+      }).then(function(r){
+        return r.json().catch(function(){ return null; }).then(function(j){
+          if (!j || j.error) {
+            var msg = (j && j.error) || 'Something went wrong.';
+            if (r.status === 401) msg += ' ' + window.EditJournal.NOT_LOGGED_IN;
+            // The body rides on the error: a 409 is a conflict only when it
+            // says `conflict: true` (a clashing title is a 409 as well).
+            throw window.EditJournal.saveError(msg, j, r.status);
+          }
+          return j;
+        });
       });
     }
     function upload(key, dataUrl){ return api('/api/upload', { key: key, data: dataUrl }); }
@@ -563,11 +578,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!p.body.trim()) { say('err', 'Write something in the page body first.'); return Promise.resolve(); }
       if (!slug && !parentType) { say('err', 'This page has nothing to attach to.'); return Promise.resolve(); }
       p.status = status;
+      if (p.slug && loadedUpdatedAt) p.baseUpdatedAt = loadedUpdatedAt;
       $('p-publish').disabled = true; $('p-draft').disabled = true;
       say('work', status === 'published' ? 'Publishing…' : 'Saving draft…');
 
       return api('/api/wiki-page', p).then(function(res){
         slug = res.slug;
+        // Adopted before the second, image-path save below, or that save
+        // would be refused as made over this one.
+        if (res.updatedAt) loadedUpdatedAt = res.updatedAt;
         parentName = res.parentName || parentName;
         parentKey = res.parentKey || parentKey;
         parentType = res.parentType || parentType;
@@ -582,9 +601,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           var again = collect();
           again.status = status;
           again.slug = slug;
+          if (loadedUpdatedAt) again.baseUpdatedAt = loadedUpdatedAt;
           return api('/api/wiki-page', again);
         });
       }).then(function(res){
+        if (res.updatedAt) loadedUpdatedAt = res.updatedAt;
+        refreshBase();
+        if (journal) { journal.rekey('wikipage:' + slug); journal.markClean(); }
         setPill(res.status);
         showParent(); showUrl(); preview(); loadSiblings();
         var url = 'p/' + encodeURIComponent(slug);
@@ -602,17 +625,77 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           : '<span class="ico ico-check" aria-hidden="true"></span> Draft saved. Only you can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
         $('p-publish').disabled = false; $('p-draft').disabled = false;
       }).catch(function(err){
-        say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         $('p-publish').disabled = false; $('p-draft').disabled = false;
+        if (window.EditJournal.isConflict(err)) return onConflict(status);
+        say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
       });
     }
-    $('p-publish').addEventListener('click', function(){ save('published'); });
-    $('p-draft').addEventListener('click', function(){ save('draft'); });
+    $('p-publish').addEventListener('click', function(){ conflictRetried = false; save('published'); });
+    $('p-draft').addEventListener('click', function(){ conflictRetried = false; save('draft'); });
+
+    /* The server's copy after a save, for the next conflict's diff. Taken
+       only when it is the version this save produced: one fetched after
+       somebody else's save would hide their change from the panel. */
+    function refreshBase(){
+      if (!slug) return;
+      var stamp = loadedUpdatedAt;
+      fetch('/api/wiki-page?slug=' + encodeURIComponent(slug) + '&_=' + Date.now(), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(res){ if (res && res.page && res.page.updatedAt === stamp) loadedData = res.page; })
+        .catch(function(){});
+    }
+
+    /* Somebody saved this page after it was opened here: the panel (see
+       assets/edit-journal.js) instead of an error that sent people to reload
+       and lose what they wrote. */
+    function onConflict(status){
+      // Publish / Move to Draft asked for a status; "Save Changes" on a page
+      // already in that status did not, and keeps theirs if they changed it.
+      var explicit = status !== currentStatus;
+      say('err', '<span class="ico ico-x" aria-hidden="true"></span> Not saved yet: somebody else saved this page while you had it open. Your changes are still here; see below.');
+      function adopt(fresh){
+        loadedUpdatedAt = fresh.updatedAt || null;
+        loadedData = fresh.data;
+        if (!explicit && fresh.status) setPill(fresh.status);
+      }
+      window.EditJournal.handleConflict({
+        host: $('p-publish').parentNode,
+        fetchTheirs: function(){
+          return fetch('/api/wiki-page?slug=' + encodeURIComponent(slug) + '&_=' + Date.now(), { credentials: 'same-origin' })
+            .then(function(r){ if (!r.ok) throw new Error('load'); return r.json(); })
+            .then(function(res){ return { data: res.page, updatedAt: res.page.updatedAt, status: res.status }; });
+        },
+        base: loadedData,
+        mineBase: journal ? journal.cleanData() : null,
+        mine: collect(),
+        allowSilent: !conflictRetried,
+        retry: function(fresh){
+          conflictRetried = true;
+          adopt(fresh);
+          save(explicit ? status : (fresh.status || status));
+        },
+        combine: function(merged, fresh){
+          conflictRetried = true;
+          adopt(fresh);
+          fill(merged);
+          preview();
+          save(explicit ? status : (fresh.status || status));
+        },
+        takeTheirs: function(){
+          if (journal) journal.discard();
+          location.href = 'publish-page?p=' + encodeURIComponent(slug);
+        },
+        cancel: function(){
+          say('err', 'Not saved yet. Your changes are still in the form; press save again when you are ready.');
+        }
+      });
+    }
 
     $('p-delete').addEventListener('click', function(){
       if (!slug) return;
       if (!confirm('Delete "' + ($('p-title').value.trim() || slug) + '" for good?\n\nIts comments are deleted too. This cannot be undone.')) return;
       api('/api/wiki-page', { action: 'delete', slug: slug }).then(function(){
+        if (journal) journal.discard();
         location.href = parentHref();
       }).catch(function(err){ say('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message)); });
     });
@@ -668,6 +751,66 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       window.WikiEditor.loadCharLinks().then(preview);
     }
 
+    /* The page's fields into the form: from the server on load, from a
+       journal entry on Restore, from a combined copy after a conflict. */
+    function fill(p){
+      p = p || {};
+      $('p-title').value = p.title || '';
+      $('p-subtitle').value = p.subtitle || '';
+      $('p-blurb').value = p.blurb || '';
+      $('p-author').value = p.author || '';
+      $('p-body').value = p.body || '';
+      $('p-toc').checked = p.toc !== false;
+      $('p-comments').checked = p.comments !== false;
+      images = (p.images || []).slice();
+      headerPath = p.header || '';
+      theme = p.theme || {};
+      if (headerPath) {
+        var hv = $('p-header-prev'); hv.src = 'assets/' + headerPath; hv.style.display = 'block';
+        $('p-header-note').textContent = 'Current banner. Choose a file to replace it.';
+        $('p-header-remove').style.display = '';
+        $('p-images-sec').open = true;
+      } else if (!headerData) {
+        $('p-header-prev').style.display = 'none';
+        $('p-header-remove').style.display = 'none';
+      }
+      bgPath = theme.background || '';
+      if (theme.background) {
+        var bv = $('p-bg-prev'); bv.src = 'assets/' + bgPath; bv.style.display = 'block';
+        $('p-bg-note').textContent = 'Current background. Choose a file to replace it.';
+        $('p-bg-remove').style.display = '';
+      }
+      $('p-info-title').value = (p.infobox && p.infobox.title) || '';
+      $('p-info-image').value = (p.infobox && p.infobox.image) || '';
+      infoUI.load(p.infobox || null);
+      if (p.infobox) $('p-side-sec').open = true;
+      boxesUI.load(p.boxes || []);
+      if (p.boxes && p.boxes.length) $('p-side-sec').open = true;
+      if (window.ThemeEditor.prime(theme)) $('p-appearance').open = true;
+      renderImages();
+    }
+
+    /* Unsaved work is kept in this browser while it is typed, per account,
+       and offered back on the next visit (assets/edit-journal.js). */
+    function mountJournal(me){
+      if (!window.EditJournal) return;
+      journal = window.EditJournal.mount({
+        key: slug ? 'wikipage:' + slug : 'wikipage:new:' + parentType + ':' + parentKey,
+        user: me && me.username,
+        gather: collect,
+        apply: function(d){ fill(d); preview(); },
+        root: $('editor'),
+        bannerHost: $('editor'),
+        base: function(){ return loadedUpdatedAt; },
+        baseData: function(){ return loadedData; },
+        onRestore: function(entry){
+          loadedUpdatedAt = entry.base || loadedUpdatedAt;
+          if (entry.baseData) loadedData = entry.baseData;
+        }
+      });
+      journal.check(loadedUpdatedAt);
+    }
+
     function loadPage(){
       return fetch('/api/wiki-page?slug=' + encodeURIComponent(slug) + '&_=' + Date.now(),
                    { credentials: 'same-origin' })
@@ -675,37 +818,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         .then(function(res){
           var p = res.page;
           parentType = p.parentType; parentKey = p.parentKey; parentName = p.parentName || '';
-          $('p-title').value = p.title || '';
-          $('p-subtitle').value = p.subtitle || '';
-          $('p-blurb').value = p.blurb || '';
-          $('p-author').value = p.author || '';
-          $('p-body').value = p.body || '';
-          $('p-toc').checked = p.toc !== false;
-          $('p-comments').checked = p.comments !== false;
-          images = (p.images || []).slice();
-          headerPath = p.header || '';
-          theme = p.theme || {};
-          if (headerPath) {
-            var hv = $('p-header-prev'); hv.src = 'assets/' + headerPath; hv.style.display = 'block';
-            $('p-header-note').textContent = 'Current banner. Choose a file to replace it.';
-            $('p-header-remove').style.display = '';
-            $('p-images-sec').open = true;
-          }
-          if (theme.background) {
-            bgPath = theme.background;
-            var bv = $('p-bg-prev'); bv.src = 'assets/' + bgPath; bv.style.display = 'block';
-            $('p-bg-note').textContent = 'Current background. Choose a file to replace it.';
-            $('p-bg-remove').style.display = '';
-          }
-          if (p.infobox) {
-            $('p-info-title').value = p.infobox.title || '';
-            $('p-info-image').value = p.infobox.image || '';
-            infoUI.load(p.infobox);
-            $('p-side-sec').open = true;
-          }
-          if (p.boxes && p.boxes.length) { boxesUI.load(p.boxes); $('p-side-sec').open = true; }
-          if (window.ThemeEditor.prime(theme)) $('p-appearance').open = true;
-          renderImages();
+          loadedUpdatedAt = p.updatedAt || null;
+          loadedData = p;
+          fill(p);
           setPill(res.status);
           // Anything but the owner: an editor named on the parent, or anyone
           // with an account when the parent is open to all. Both write; the
@@ -740,16 +855,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         wire();
         if (!$('p-author').value) $('p-author').value = me.displayName || me.username || '';
         if (slug) {
-          loadPage().then(function(){ loadSiblings(); preview(); })
+          loadPage().then(function(){ loadSiblings(); preview(); mountJournal(me); })
             .catch(function(){ gate('Page not found', 'That page does not exist, or it is a draft on another account.'); });
         } else if (isArticle()) {
           window.WikiEditor.autoGrow($('p-body'));
           showParent();
           preview();
+          mountJournal(me);
         } else if (parentType && parentKey) {
           window.WikiEditor.autoGrow($('p-body'));
           loadSiblings();
           preview();
+          mountJournal(me);
         } else {
           gate('Nothing to attach to',
             'Open a script or collection you own and use <strong>+ Write a page</strong> in its Pages section. ' +

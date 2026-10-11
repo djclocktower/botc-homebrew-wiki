@@ -395,6 +395,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <script src="assets/edit-journal.js"></script>
   <script>
   (function () {
     var allChars = [];
@@ -411,6 +412,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var headerDataURL = null, existingHeader = null, removeHeader = false;
     var logoDataURL = null, existingLogo = null, removeLogo = false;
     var bgDataURL = null, existingBg = null, removeBg = false;
+    /* The stamp this editor's copy is based on (posted with every save of an
+       existing collection, so the Worker can refuse one made over somebody
+       else's newer save) and the server's copy at that stamp, which the
+       conflict panel diffs "changed by them" against. assets/edit-journal.js */
+    var loadedUpdatedAt = null, loadedData = null;
+    var journal = null, conflictRetried = false;
 
     var SITE_ROOT = new URL('.', location.href).href;
     function $(id){ return document.getElementById(id); }
@@ -557,7 +564,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
-    function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+    function apiSave(entry){
+      if (EDIT_KEY && loadedUpdatedAt) entry.baseUpdatedAt = loadedUpdatedAt;
+      return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)})
+        .then(function(r){
+          return r.json().catch(function(){ return null; }).then(function(j){
+            if(!j||j.error){
+              var msg = (j&&j.error)||'Save failed. Are you logged in?';
+              if (r.status === 401) msg += ' ' + window.EditJournal.NOT_LOGGED_IN;
+              // A 409 is a conflict only with `conflict: true`: a name some
+              // other collection already has is a 409 too, and a plain error.
+              throw window.EditJournal.saveError(msg, j, r.status);
+            }
+            return j;
+          });
+        });
+    }
 
     function matchTerms(){
       return $('pc-match').value.split(',').map(function(s){ return norm(s); }).filter(Boolean);
@@ -846,6 +868,50 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         });
     }
 
+    /* The collection as the form holds it, in the shape the save posts.
+       settledOnly leaves out images picked but not yet uploaded (their paths
+       name files that do not exist yet): what the journal keeps and what the
+       conflict panel compares. */
+    function buildEntry(id, saveStatus, settledOnly){
+      var t = {};
+      Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
+      // `theme` still carries the background that was loaded with the page,
+      // so the removal has to clear it explicitly — without the else the old
+      // path was copied straight back in and "Remove background" did nothing.
+      if (bgDataURL && !settledOnly) t.background = 'collections/' + id + '-bg.png';
+      else if (!removeBg && existingBg) t.background = existingBg;
+      else delete t.background;
+      t = window.PageRender.sanitizeTheme(t, 'collections/' + id);
+      var entry = {
+        id: id,
+        slug: EDIT_PK || id,
+        displayName: $('pc-name').value.trim(),
+        author: $('pc-author').value.trim(),
+        creditUnlinked: !!$('pc-credit-unlinked').checked,
+        description: $('pc-desc').value.trim(),
+        tagline: $('pc-tagline').value.trim(),
+        version: $('pc-version').value.trim(),
+        difficulty: $('pc-difficulty').value,
+        synopsis: $('pc-synopsis').value.trim(),
+        gameplay: $('pc-gameplay').value.trim(),
+        strategyGood: $('pc-strat-good').value.trim(),
+        strategyEvil: $('pc-strat-evil').value.trim(),
+        customBoxes: boxesUI.gather(),
+        match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
+        include: include.slice(),
+        exclude: exclude.slice(),
+        order: order.slice(),
+        publicEdit: $('sb-public-edit').value,
+        editors: editorsUI ? editorsUI.get() : [],
+        header: headerDataURL && !settledOnly ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
+        status: saveStatus
+      };
+      // Always send logo ('' clears it server-side); background rides on theme.
+      entry.logo = logoDataURL && !settledOnly ? ('collections/' + id + '-logo.png') : (removeLogo ? '' : (existingLogo || ''));
+      if (t) entry.theme = t;
+      return entry;
+    }
+
     // ── save ──
     function submitCollection(saveStatus){
       var isDraft = saveStatus === 'draft';
@@ -873,51 +939,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
       chain.then(function(){
         pubStatus('work', verb + '… saving collection');
-        var t = {};
-        Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
-        // `theme` still carries the background that was loaded with the page,
-        // so the removal has to clear it explicitly — without the else the old
-        // path was copied straight back in and "Remove background" did nothing.
-        if (bgDataURL) t.background = 'collections/' + id + '-bg.png';
-        else if (!removeBg && existingBg) t.background = existingBg;
-        else delete t.background;
-        t = window.PageRender.sanitizeTheme(t, 'collections/' + id);
-        var entry = {
-          id: id,
-          slug: EDIT_PK || id,
-          displayName: name,
-          author: $('pc-author').value.trim(),
-          creditUnlinked: !!$('pc-credit-unlinked').checked,
-          description: desc,
-          tagline: $('pc-tagline').value.trim(),
-          version: $('pc-version').value.trim(),
-          difficulty: $('pc-difficulty').value,
-          synopsis: $('pc-synopsis').value.trim(),
-          gameplay: $('pc-gameplay').value.trim(),
-          strategyGood: $('pc-strat-good').value.trim(),
-          strategyEvil: $('pc-strat-evil').value.trim(),
-          customBoxes: boxesUI.gather(),
-          match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
-          include: include.slice(),
-          exclude: exclude.slice(),
-          order: order.slice(),
-          publicEdit: $('sb-public-edit').value,
-          editors: editorsUI ? editorsUI.get() : [],
-          header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
-          status: saveStatus
-        };
-        // Always send logo ('' clears it server-side); background rides on theme.
-        entry.logo = logoDataURL ? ('collections/' + id + '-logo.png') : (removeLogo ? '' : (existingLogo || ''));
-        if (t) entry.theme = t;
-        return apiSave(entry);
+        return apiSave(buildEntry(id, saveStatus));
       }).then(function(res){
         if (headerDataURL){ existingHeader = 'collections/' + id + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'collections/' + id + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){ existingBg = 'collections/' + id + '-bg.png'; bgDataURL = null; }
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
-        currentStatus = saveStatus;
+        currentStatus = (res && res.status) || saveStatus;
         EDIT_KEY = id;
         EDIT_PK = (res && res.slug) || EDIT_PK || id;
+        if (res && res.updatedAt) loadedUpdatedAt = res.updatedAt;
+        refreshBase();
+        if (journal) { journal.rekey('collection:' + id); journal.markClean(); }
         $('pub-page-title').textContent = 'Edit Collection';
         updateUrlPreview(); updateButtons(); loadPages(id);
         renderEditStatus();   // the page exists now, so it has a status to state
@@ -938,13 +971,94 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
+        if (window.EditJournal.isConflict(err)) return onConflict(saveStatus);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
       });
     }
-    $('pc-publish').addEventListener('click', function(){ submitCollection('published'); });
-    $('pc-draft').addEventListener('click', function(){ submitCollection('draft'); });
+    $('pc-publish').addEventListener('click', function(){ conflictRetried = false; submitCollection('published'); });
+    $('pc-draft').addEventListener('click', function(){ conflictRetried = false; submitCollection('draft'); });
+
+    function gatherForm(){
+      var e = buildEntry(EDIT_KEY || slugify($('pc-name').value) || 'new', null, true);
+      delete e.status; delete e.id; delete e.slug;
+      return e;
+    }
+
+    /* The server's copy after a save, for the next conflict's diff. Taken
+       only when it is the version this save produced. */
+    function refreshBase(){
+      var key = EDIT_PK || EDIT_KEY, stamp = loadedUpdatedAt;
+      if (!key) return;
+      fetch('/api/page?type=collection&slug=' + encodeURIComponent(key), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(res){ if (res && res.data && res.updatedAt === stamp) loadedData = res.data; })
+        .catch(function(){});
+    }
+
+    /* Somebody saved this collection after it was loaded here: the panel
+       (assets/edit-journal.js) instead of an error that meant reloading. */
+    function onConflict(saveStatus){
+      var explicit = saveStatus !== currentStatus;
+      pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> Not saved yet: somebody else saved this collection while you had it open. Your changes are still here; see below.');
+      function adopt(fresh){
+        loadedUpdatedAt = fresh.updatedAt || null;
+        loadedData = fresh.data;
+        if (!explicit && fresh.status){ currentStatus = fresh.status; updateButtons(); }
+      }
+      function again(){ submitCollection(explicit ? saveStatus : (currentStatus || saveStatus)); }
+      window.EditJournal.handleConflict({
+        host: document.querySelector('.pub-actions'),
+        fetchTheirs: function(){
+          return fetch('/api/page?type=collection&slug=' + encodeURIComponent(EDIT_PK || EDIT_KEY), { credentials: 'same-origin' })
+            .then(function(r){ if (!r.ok) throw new Error('load'); return r.json(); })
+            .then(function(res){ return { data: res.data, updatedAt: res.updatedAt, status: res.status }; });
+        },
+        base: loadedData,
+        mineBase: journal ? journal.cleanData() : null,
+        mine: gatherForm(),
+        allowSilent: !conflictRetried,
+        retry: function(fresh){ conflictRetried = true; adopt(fresh); again(); },
+        combine: function(merged, fresh){
+          conflictRetried = true;
+          adopt(fresh);
+          populate(merged);
+          renderMembers();
+          again();
+        },
+        takeTheirs: function(){
+          if (journal) journal.discard();
+          location.href = 'publish-collection?c=' + encodeURIComponent(EDIT_KEY);
+        },
+        cancel: function(){
+          pubStatus('err', 'Not saved yet. Your changes are still here; press save again when you are ready.');
+        }
+      });
+    }
+
+    /* Unsaved work is kept in this browser while it is typed, per account,
+       and offered back on the next visit (assets/edit-journal.js). */
+    function mountJournal(stamp){
+      meP.then(function(me){
+        if (!window.EditJournal || !me || !me.loggedIn) return;
+        journal = window.EditJournal.mount({
+          key: EDIT_KEY ? 'collection:' + EDIT_KEY : 'collection:new',
+          user: me.username,
+          gather: gatherForm,
+          apply: function(d){ populate(d); renderMembers(); updateUrlPreview(); },
+          root: $('editor'),
+          bannerHost: $('editor'),
+          base: function(){ return loadedUpdatedAt; },
+          baseData: function(){ return loadedData; },
+          onRestore: function(entry){
+            loadedUpdatedAt = entry.base || loadedUpdatedAt;
+            if (entry.baseData) loadedData = entry.baseData;
+          }
+        });
+        journal.check(stamp || null);
+      });
+    }
 
     // ── delete: soft-delete this collection (recoverable by an admin) ──
     $('pc-delete').addEventListener('click', function(){
@@ -962,6 +1076,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
       .then(function(res){
         if (res.status === 200 && res.body.ok){
+          if (journal) journal.discard();
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
@@ -977,6 +1092,64 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
     });
 
+    /* The collection's fields into the form: from the server on load, from a
+       journal entry on Restore, from a combined copy after a conflict. */
+    function populate(c){
+      c = c || {};
+      $('pc-name').value = c.displayName || '';
+      $('pc-author').value = c.author || '';
+      $('pc-credit-unlinked').checked = !!c.creditUnlinked;
+      $('pc-tagline').value = c.tagline || '';
+      $('pc-version').value = c.version || '';
+      $('pc-difficulty').value = c.difficulty || '';
+      $('pc-desc').value = c.description || '';
+      $('pc-match').value = (c.match || []).join(', ');
+      $('pc-synopsis').value = c.synopsis || '';
+      $('pc-gameplay').value = c.gameplay || '';
+      $('pc-strat-good').value = c.strategyGood || '';
+      $('pc-strat-evil').value = c.strategyEvil || '';
+      if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
+      boxesUI.load(c.customBoxes || []);
+      if (c.customBoxes && c.customBoxes.length) $('sb-boxes-sec').open = true;
+      // Who else may edit this page (enforced by the Worker, not by the form).
+      $('sb-public-edit').value = PUBLIC_EDIT_MODES[c.publicEdit] ? c.publicEdit : '';
+      if (editorsUI) editorsUI.set(c.editors || []);
+      syncEditorsBox();
+      if (c.publicEdit) $('sb-open-sec').open = true;
+      include = (c.include || []).slice();
+      exclude = (c.exclude || []).slice();
+      order   = (c.order   || []).slice();
+      theme = {};
+      Object.keys(c.theme || {}).forEach(function(k){ theme[k] = c.theme[k]; });
+      if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
+      existingHeader = c.header || null;
+      existingLogo = c.logo || null;
+      existingBg = theme.background || null;
+      ['header', 'logo', 'bg'].forEach(function(k){
+        // A field the restored copy has not got: hide what is left on screen
+        // (unless a new file is waiting to upload in that slot).
+        var has = k === 'bg' ? theme.background : c[k];
+        var pending = k === 'header' ? headerDataURL : k === 'logo' ? logoDataURL : bgDataURL;
+        if (!has && !pending){ $('pc-' + k + '-prev').style.display = 'none'; $('pc-' + k + '-remove').style.display = 'none'; }
+      });
+      if (c.header){
+        var pv = $('pc-header-prev'); pv.src = PageRender.imgSrc('', c.header); pv.style.display = 'block';
+        $('pc-header-note').textContent = 'Current header. Choose a file to replace it, or remove it.';
+        $('pc-header-remove').style.display = '';
+      }
+      if (c.logo){
+        var lv = $('pc-logo-prev'); lv.src = PageRender.imgSrc('', c.logo); lv.style.display = 'block';
+        $('pc-logo-note').textContent = 'Current logo. Choose a file to replace it, or remove it.';
+        $('pc-logo-remove').style.display = '';
+        $('sb-appearance').open = true;
+      }
+      if (theme.background){
+        var bv = $('pc-bg-prev'); bv.src = PageRender.imgSrc('', theme.background); bv.style.display = 'block';
+        $('pc-bg-note').textContent = 'Current background. Choose a file to replace it, or remove it.';
+        $('pc-bg-remove').style.display = '';
+      }
+    }
+
     // ── edit mode: ?c={id} ──
     function loadForEdit(key){
       return fetch('/api/page?type=collection&slug=' + encodeURIComponent(key), { credentials: 'same-origin' })
@@ -989,51 +1162,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           EDIT_PK = c.slug || EDIT_KEY;
           $('pub-page-title').textContent = 'Edit Collection';
           document.title = 'Edit ' + (c.displayName || 'Collection') + ' — BOTC HomeBrew Wiki';
-          $('pc-name').value = c.displayName || '';
-          $('pc-author').value = c.author || '';
-          $('pc-credit-unlinked').checked = !!c.creditUnlinked;
-          $('pc-tagline').value = c.tagline || '';
-          $('pc-version').value = c.version || '';
-          $('pc-difficulty').value = c.difficulty || '';
-          $('pc-desc').value = c.description || '';
-          $('pc-match').value = (c.match || []).join(', ');
-          $('pc-synopsis').value = c.synopsis || '';
-          $('pc-gameplay').value = c.gameplay || '';
-          $('pc-strat-good').value = c.strategyGood || '';
-          $('pc-strat-evil').value = c.strategyEvil || '';
-          if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
-          if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
-          // Who else may edit this page (enforced by the Worker, not by the form).
-          $('sb-public-edit').value = PUBLIC_EDIT_MODES[c.publicEdit] ? c.publicEdit : '';
-          if (editorsUI) editorsUI.set(c.editors || []);
-          syncEditorsBox();
-          if (c.publicEdit) $('sb-open-sec').open = true;
+          loadedUpdatedAt = res.updatedAt || null;
+          loadedData = c;
+          populate(c);
           loadPages(EDIT_KEY);
-          include = (c.include || []).slice();
-          exclude = (c.exclude || []).slice();
-          order   = (c.order   || []).slice();
-          theme = {};
-          Object.keys(c.theme || {}).forEach(function(k){ theme[k] = c.theme[k]; });
-          if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
-          if (c.header){
-            existingHeader = c.header;
-            var pv = $('pc-header-prev'); pv.src = PageRender.imgSrc('', c.header); pv.style.display = 'block';
-            $('pc-header-note').textContent = 'Current header. Choose a file to replace it, or remove it.';
-            $('pc-header-remove').style.display = '';
-          }
-          if (c.logo){
-            existingLogo = c.logo;
-            var lv = $('pc-logo-prev'); lv.src = PageRender.imgSrc('', c.logo); lv.style.display = 'block';
-            $('pc-logo-note').textContent = 'Current logo. Choose a file to replace it, or remove it.';
-            $('pc-logo-remove').style.display = '';
-            $('sb-appearance').open = true;
-          }
-          if (theme.background){
-            existingBg = theme.background;
-            var bv = $('pc-bg-prev'); bv.src = PageRender.imgSrc('', theme.background); bv.style.display = 'block';
-            $('pc-bg-note').textContent = 'Current background. Choose a file to replace it, or remove it.';
-            $('pc-bg-remove').style.display = '';
-          }
           updateUrlPreview(); updateButtons(); renderMembers();
           if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
           $('pc-delete').style.display = '';
@@ -1044,14 +1176,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
              way to send a suggestion yet. */
           applyEditMode(res.editMode || (res.canEdit === false ? '' : 'owner'),
                         res.isOwner !== false);
+          mountJournal(res.updatedAt || null);
         })
-        .catch(function(){ /* not found -> plain create view */ });
+        .catch(function(){ /* not found -> plain create view */ mountJournal(null); });
     }
 
     // ── boot: login gate, characters, optional edit target ──
-    fetch('/api/me', { credentials: 'same-origin' })
+    var meP = fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+    meP
       .then(function(me){
+        if (!me) throw new Error('me');
         if (me && me.loggedIn){
           $('editor').style.display = '';
           // Load this account's own characters for the add-character search.
@@ -1073,7 +1209,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         allChars.forEach(function(c){ bySlug[c.slug] = c; });
         var key = new URLSearchParams(location.search).get('c');
         if (key){ loadForEdit(key); }
-        else { updateButtons(); renderMembers(); }
+        else { updateButtons(); renderMembers(); mountJournal(null); }
       })
       .catch(function(){
         $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">Could not load characters.</p>';

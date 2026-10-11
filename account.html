@@ -1240,6 +1240,9 @@
       fetch('/api/logout', { method: 'POST', credentials: 'same-origin' })
         .then(function(){
           try { sessionStorage.removeItem('botc_me'); } catch(e){}
+          // Logging out is "I'm done on this device": unsaved editor copies
+          // kept for this account (assets/edit-journal.js) go with it.
+          (function(){ try { for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && (k.indexOf('botc_journal:') === 0 || k === 'botc_script_stash')) localStorage.removeItem(k); } } catch(e){} })();
           if (window.Favorites) window.Favorites.drop();
           location.href = '/';
         });

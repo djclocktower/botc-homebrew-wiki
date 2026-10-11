@@ -530,6 +530,13 @@ assets/
                        bloodstar.js); the tests run it in a vm.
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
+  edit-journal.js      Never lose a word: the local journal (unsaved form
+                       copies per account, the "Restore them" banner, the
+                       leave-the-page warning) and the edit-conflict panel,
+                       plus the pure diff/merge helpers behind it. Mounted by
+                       all five editors (create, edit, publish-script,
+                       -collection, -page). No DOM at top level; the tests
+                       run it in a vm. See "Edit conflicts and unsaved work".
   char-preview.js      The live preview iframe on create.html + edit.html.
                        Written ONCE and then patched in place (only <main>'s
                        contents are replaced): assigning `srcdoc` per keystroke
@@ -749,12 +756,21 @@ publish-script.html    Script publishing page: name/author/tagline/version/
                        night lists the same way (see "Night order" below).
                        Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
+                       Its state lives in the slot it shares with the Script
+                       Builder, so it carries three guards: the "this looks
+                       like a different script" banner, the stash for a
+                       roster ?s= would have overwritten, and the meta's
+                       baseUpdatedAt/savedSig (see "Edit conflicts and
+                       unsaved work").
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
                        membership manager (match terms + manual include/exclude)
                        plus roster arranging: ▲▼ per character, a Sort (SAO)
                        button and Reset order, saved as `order[]`.
                        Publish/Draft via /api/collection; ?c={id} edit mode.
+                       buildEntry() is the form as the save posts it and
+                       populate() the reverse; the journal and the conflict
+                       panel use both.
 publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/author,
                        markdown-ish body with toolbar + live preview, banner and
                        body images (R2 pages/), fact box, custom boxes, theme kit,
@@ -1486,6 +1502,113 @@ section now (`redesign-create.js`'s `sharing` group): the sharing control used
 to be swept into Advanced Options with the jinxes and the custom JSON, where
 the one setting deciding who else may touch a page sat under a summary that
 never mentioned it.
+
+## Edit conflicts and unsaved work
+
+Two ways a writer used to lose text, both answered by `assets/edit-journal.js`
+so the five editors cannot answer them differently.
+
+**Somebody else saved first.** Every save is a whole-document upsert, so a tab
+opened an hour ago would silently revert every field changed since. All five
+editors now post the `updatedAt` they loaded as `baseUpdatedAt`, and the
+Worker refuses a stale one (`editConflict()` / `checkEditConflict()`: 409 with
+`conflict: true` and `savedAt`). `/api/wiki-page` checks too, and the save
+routes for scripts, collections and wiki pages now answer with the new
+`updatedAt` (only `/api/character` did), which the editor adopts — without
+that, the second save from the same tab was refused as somebody else's.
+
+- **Creating sends no stamp, and so do the importers on purpose**
+  (mass-upload, `/bloodstar`, Icon Forge, Grimforge, the bulk tools). No
+  stamp is the opt-out and must stay one.
+- **A 409 is a conflict only with `conflict: true`.** A collection name some
+  other collection has and "too many pages use that title" are 409s too, and
+  stay plain errors. The editors keep the response body on the thrown error
+  (`EditJournal.saveError`) to tell them apart.
+- **The check runs after every access check** (403/404/423), so a stranger
+  can never learn when a page was last saved from a 409. Approved editors and
+  admins are checked like owners; nobody is exempt.
+- `updated_at` is `datetime('now')`, one-second resolution: two saves inside
+  the same second are not caught. That race predates this.
+- publish-page's two-step save (text, then the banner/background paths)
+  adopts the first response's stamp before the second, or every save with a
+  new banner would conflict with itself.
+
+**The conflict panel** replaces "reload before saving again", which threw the
+typing away. It is drawn inline above the save buttons (no modal) and says
+what *you* changed, what *they* changed and what both changed (with theirs in
+a box to copy from), then offers **Combine and save**, **Use their version**
+(asks first, then reloads) and **Keep editing**. Three rules:
+
+- **Two snapshots, two shapes.** "Changed by you" compares the form now with
+  the form as loaded (gather() shape — the journal's `cleanData()`); "changed
+  by them" compares the server's copy then with the server's copy now (the
+  API's shape, `loadedData`). Diffing across shapes calls every field
+  changed. After a save, each editor re-reads the row (`refreshBase()`) and
+  keeps it only if its stamp is the one the save returned.
+- **Combine is per top-level field**: theirs everywhere, mine on every field I
+  changed, mine winning where both did. Two people editing different jinx
+  rows both "changed jinxes"; there is no per-field chooser yet.
+- **A 409 whose fresh copy shows no content change is re-sent once,
+  silently**: the account page's Publish toggle, a Curata grant and an icon
+  upload all move the stamp without changing a word, and a panel listing
+  nothing would only alarm somebody. A plain save then keeps their status; a
+  Publish / Move to Draft press keeps its own.
+- With **no base snapshot** (publish-script's meta from before this existed)
+  there is no Combine — `merge()` would take mine for everything and call it
+  a merge. The panel offers Use theirs, or a confirmed "Replace theirs with
+  mine".
+
+**The journal.** While somebody types, the form is copied to localStorage
+(debounced 1.5 s, and at once on `visibilitychange`/`pagehide`, which is what
+a phone fires before discarding a tab). The next visit to the same editor
+offers it back: "You have unsaved changes from 4 minutes ago. Restore them /
+Discard", plus a note when the page has been saved since. Leaving with
+unsaved changes asks first (`beforeunload`).
+
+- **Per account**: `botc_journal:{username}:{page key}`, keys
+  `character:{identity|new}`, `script:{slug|new}`, `collection:{id|new}`,
+  `wikipage:{slug}` / `wikipage:new:{parentType}:{parentKey}`. With no account
+  nothing is written. **Logging out clears every entry** (and the script
+  stash) — inline in account.html and login.html, so neither needs the script.
+- **Text only**: `strip()` drops `data:` strings and anything over 100,000
+  characters; an entry over 300,000 is not written. The banner says pictures
+  are not kept. 14 days, newest 20 (`prune()`).
+- **An entry carries its base** — the stamp (`base`), the server's copy
+  (`baseData`) and the form (`baseForm`) its edits were made against.
+  Restoring puts all three back, deliberately: a save after somebody else's
+  edit then meets the panel with a true three-way diff, instead of
+  overwriting blind or calling every restored field "yours". An entry for an
+  existing page with no base is thrown away.
+- **Comparisons use `canon()`**, which drops empty values, so a widget
+  settling ('' → [] → absent) never reads as an edit; the clean snapshot is
+  also retaken 600 ms after mount if nothing was touched. A waiting offer is
+  never overwritten by typing that happens before Restore/Discard.
+- Cleared by a save (`markClean`), a delete or "Use their version"
+  (`discard`); a new page's entry is re-keyed to its real key after its
+  first save, which is where edit.html will look.
+- edit.html mounts it for owner, approved, all and all-but-ability; a
+  tags-only or suggestion editor gets a handle that stores nothing (the
+  panel still reads the form-as-loaded from it). Restoring and combining go
+  through `populateForm(entry, keepArt)`, which leaves the art slots alone so
+  an icon picked and not yet uploaded survives.
+
+**publish-script's shared slot.** `botc_script` and `botc_script_meta` are
+one slot shared with the Script Builder, and the meta outlives the tab, so the
+stamp lives there (`m.baseUpdatedAt`) beside `m.savedSig` — the script as of
+the last load or save, empties dropped. It is the conflict base, and how the
+page tells "edited here" from "as loaded". Three guards:
+
+- **A different script on a stale `editSlug`** (a share link, Import →
+  Replace, or a new build) would have overwritten the last script published.
+  When fewer than half of the saved roster is left (`rosterReplaced`) a
+  banner asks: **Publish as a new script** (keeps only the author) or
+  **Replace "{name}"**, and saving waits for the answer. Adding or removing a
+  few characters — the ordinary builder-then-Publish edit — never trips it.
+- **`?s=` used to wipe the builder.** Unsaved local work for another (or no)
+  script is put in `botc_script_stash` (one slot, newest wins) with a note:
+  Put it back in the builder / Forget it.
+- **`?s=` used to wipe unsaved edits to the same script.** They are put in
+  the journal before the server's copy loads, and offered back.
 
 ## Formatting on a character page
 

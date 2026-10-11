@@ -499,6 +499,7 @@
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/related-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <script src="assets/edit-journal.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
   <script src="assets/art-labels.js"></script>
@@ -643,6 +644,11 @@
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
     var loadedUpdatedAt = null;
+    /* The server's copy as loaded (or as last saved): the base the conflict
+       panel diffs "changed by them" against. See assets/edit-journal.js. */
+    var loadedData = null;
+    var journal = null;
+    var conflictRetried = false;
     var artChanged    = false;
     var artDataURL    = null;
     // The picked file as it arrived, before the 600px working copy: what the
@@ -1606,7 +1612,10 @@
       });
     }
 
-    function populateForm(entry){
+    /* keepArt: put text back without touching the art slots — a restored
+       journal entry or a combined conflict keeps whatever icon the editor
+       already holds (including one just picked and not yet uploaded). */
+    function populateForm(entry, keepArt){
       originalEntry = entry;
       $('name').value            = entry.name || '';
       $('team').value            = entry.team || 'townsfolk';
@@ -1651,7 +1660,7 @@
       $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
       syncEditorsBox();
-      ALT_SLOTS.forEach(function (slot) {
+      if (!keepArt) ALT_SLOTS.forEach(function (slot) {
         if (!entry[slot.field]) return;
         var th = $(slot.id + 'Thumb');
         th.src = SITE_ROOT + 'assets/' + entry[slot.field];
@@ -1660,7 +1669,7 @@
         $(slot.id + 'Clear').style.display = '';
       });
       $('tokenArt').checked = !!entry.tokenArt;
-      if (entry.token) {
+      if (entry.token && !keepArt) {
         var tokTh = $('tokenThumb');
         tokTh.src = SITE_ROOT + 'assets/' + entry.token;
         tokTh.style.display = 'block';
@@ -1691,8 +1700,8 @@
       if (specialUI) specialUI.set(window.sanitizeSpecial ? window.sanitizeSpecial(entry.special) : []);
 
       var artURL = SITE_ROOT + 'assets/' + entry.art;
-      $('arturl').textContent = 'Current: ' + entry.art;
-      loadImageToCanvas(artURL, true).then(function(url){
+      if (!keepArt) $('arturl').textContent = 'Current: ' + entry.art;
+      if (!keepArt) loadImageToCanvas(artURL, true).then(function(url){
         artDataURL = url; artChanged = false;
         var th=$('artthumb'); th.src=url; th.style.display='block';
         $('artStdWrap').style.display=''; $('arturl').textContent = '';
@@ -1782,7 +1791,9 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin', body: JSON.stringify(body)
       }).then(function (r) { return r.json(); }).then(function (j) {
-        if (!j || j.error) throw new Error((j && j.error) || 'Image upload failed.');
+        // A 409 here carries `conflict: true` like the save's: somebody saved
+        // the page since it was opened, and the panel takes it from there.
+        if (!j || j.error) throw window.EditJournal.saveError((j && j.error) || 'Image upload failed.', j);
         if (j.updatedAt) loadedUpdatedAt = j.updatedAt;
         // The card thumbnail rides along with every art upload — made here,
         // never awaited (assets/art-thumb.js).
@@ -1931,16 +1942,18 @@
           body: JSON.stringify(entry)
         }).then(function(r){
           return r.json().then(function(j){
-            if(r.status === 401) throw new Error('Not logged in. Please log in at /login first.');
-            // 409: somebody saved this page while it was open here. Do NOT
-            // retry or merge — the whole point is that this tab's copy is
-            // stale, and posting it again is exactly the overwrite being
-            // prevented. Tell the editor and let them decide.
-            if(r.status === 409) throw new Error(j.error || 'Somebody else saved this page while you had it open. Reload before saving again.');
+            if(r.status === 401) throw new Error('Not logged in. Please log in at /login first. ' + window.EditJournal.NOT_LOGGED_IN);
+            // 409: somebody saved this page while it was open here. Never
+            // re-post blind: this tab's copy is stale, and posting it again
+            // is exactly the overwrite being prevented. The conflict panel
+            // (onConflict below) says what each side changed and asks.
+            if(r.status === 409) throw window.EditJournal.saveError(j.error || 'Somebody else saved this page while you had it open.', j, 409);
             if(!r.ok) throw new Error(j.error || 'Save failed.');
             // A successful save moves the page on: adopt the new stamp so a
             // second save from the same tab is not treated as stale.
             if (j && j.updatedAt) loadedUpdatedAt = j.updatedAt;
+            loadedData = JSON.parse(JSON.stringify(entry));
+            delete loadedData.baseUpdatedAt;
             return j;
           });
         });
@@ -1987,18 +2000,87 @@
         }
         $('save').disabled = false;
         $('save-publish').disabled = false;
+        if (journal) journal.markClean();
+        refreshBase();
       }).catch(function(err){
-        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+esc(err.message));
         $('save').disabled = false;
         $('save-publish').disabled = false;
+        if (window.EditJournal && window.EditJournal.isConflict(err)) return onConflict(saveStatus, d);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+esc(err.message));
+      });
+    }
+
+    /* The server's copy after a save (the Worker tidies what it is sent:
+       tags, editors, jinxes), for the next conflict's diff. Taken only when
+       it is the version this save produced: one fetched after somebody
+       else's save would hide their change from the panel. */
+    function refreshBase() {
+      var stamp = loadedUpdatedAt;
+      fetch('/api/page?type=character&slug=' + encodeURIComponent(originalSlug), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) { if (res && res.data && res.updatedAt === stamp) loadedData = res.data; })
+        .catch(function () {});
+    }
+
+    /* Somebody saved this page after it was opened here. Fetch their copy,
+       and either re-send at once (they changed nothing a reader would call
+       content: a Publish toggle in another tab, a Curata grant, an icon
+       upload) or show the panel: what each side changed, Combine and save,
+       Use their version, Keep editing. Nothing typed here is lost on any
+       path but "Use their version", which asks first. */
+    function onConflict(saveStatus, d) {
+      // Save & Publish asked for a status; a plain save keeps whatever the
+      // page's status is now, which may be theirs.
+      var explicit = saveStatus === 'published' && currentStatus === 'draft' ? 'published' : undefined;
+      setStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> Not saved yet: somebody else saved this page while you had it open. Your changes are still here; see below.');
+      function adopt(fresh) {
+        loadedUpdatedAt = fresh.updatedAt || null;
+        loadedData = JSON.parse(JSON.stringify(fresh.data));
+        if (!explicit && fresh.status) {
+          currentStatus = fresh.status;
+          isDraftPage = currentStatus === 'draft';
+          updatePublishButton();
+        }
+      }
+      window.EditJournal.handleConflict({
+        host: document.querySelector('.ractions') || $('save'),
+        fetchTheirs: function () {
+          return fetch('/api/page?type=character&slug=' + encodeURIComponent(originalSlug), { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error('load'); return r.json(); })
+            .then(function (res) { return { data: res.data, updatedAt: res.updatedAt, status: res.status }; });
+        },
+        base: loadedData,
+        mineBase: journal ? journal.cleanData() : null,
+        mine: d || gather(),
+        allowSilent: !conflictRetried,
+        retry: function (fresh) {
+          conflictRetried = true;
+          adopt(fresh);
+          // Everything outside the form (art paths and the like) is theirs.
+          originalEntry = Object.assign({}, fresh.data, originalEntry ? { name: originalEntry.name } : {});
+          saveCharacter(explicit);
+        },
+        combine: function (merged, fresh) {
+          conflictRetried = true;
+          adopt(fresh);
+          populateForm(merged, true);
+          saveCharacter(explicit);
+        },
+        takeTheirs: function () {
+          if (journal) journal.discard();
+          location.href = 'edit?c=' + encodeURIComponent(originalSlug);
+        },
+        cancel: function () {
+          setStatus('err', 'Not saved yet. Your changes are still in the form; press Save again when you are ready.');
+        }
       });
     }
     function updatePublishButton(){
       $('save-publish').style.display = currentStatus === 'draft' ? '' : 'none';
       $('save').textContent = currentStatus === 'draft' ? 'Save Draft' : 'Save Changes';
     }
-    $('save').addEventListener('click', function(){ saveCharacter(); });
-    $('save-publish').addEventListener('click', function(){ saveCharacter('published'); });
+    $('save').addEventListener('click', function(){ conflictRetried = false; saveCharacter(); });
+    $('save-publish').addEventListener('click', function(){ conflictRetried = false; saveCharacter('published'); });
 
     // ── delete: soft-delete this character (recoverable by an admin) ──
     $('delete-char').addEventListener('click', function(){
@@ -2014,6 +2096,7 @@
       .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
       .then(function(res){
         if(res.status === 200 && res.body.ok){
+          if (journal) journal.discard();
           setStatus('ok','<span class="ico ico-check" aria-hidden="true"></span> Deleted. Redirecting&hellip;');
           setTimeout(function(){ location.href = 'account'; }, 900);
         } else {
@@ -2030,8 +2113,10 @@
     });
 
     // ── login check: warn + disable save if not logged in ──
-    fetch('/api/me', { credentials: 'same-origin' })
+    var meP = fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
+      .catch(function(){ return {}; });
+    meP
       .then(function(d){
         if(!d.loggedIn){
           setStatus('err','You are not logged in. <a href="login?next='+encodeURIComponent('edit?c='+originalSlug)+'">Log in</a> to save changes.');
@@ -2039,6 +2124,36 @@
           var sp = $('save-publish'); if(sp) sp.disabled = true;
         }
       }).catch(function(){});
+
+    /* Unsaved work is kept in this browser while it is typed, per account,
+       and offered back on the next visit (assets/edit-journal.js). Not for a
+       tags-only or suggestion page: those are narrow edits, and restoring a
+       whole form into a locked editor would be more confusing than useful.
+       The handle is still made there (with no account, so it stores
+       nothing): the conflict panel reads the form-as-loaded from it. */
+    function mountJournal(mode, stamp) {
+      meP.then(function (me) {
+        if (!window.EditJournal) return;
+        var full = mode === 'owner' || mode === 'approved' || mode === 'all' || mode === 'all-but-ability';
+        journal = window.EditJournal.mount({
+          key: 'character:' + originalSlug,
+          user: full && me && me.loggedIn ? me.username : '',
+          gather: gather,
+          apply: function (data) {
+            populateForm(Object.assign({}, originalEntry, data), true);
+          },
+          root: document.querySelector('.formcard'),
+          bannerHost: document.querySelector('.formcard'),
+          base: function () { return loadedUpdatedAt; },
+          baseData: function () { return loadedData; },
+          onRestore: function (entry) {
+            loadedUpdatedAt = entry.base || loadedUpdatedAt;
+            if (entry.baseData) loadedData = entry.baseData;
+          }
+        });
+        journal.check(stamp);
+      });
+    }
 
     // ── on load: fetch character data (drafts included if you own them) ──
     if(!originalSlug){
@@ -2057,6 +2172,7 @@
           // the save so the Worker can refuse a write based on a stale copy
           // instead of silently reverting whatever changed in the meantime.
           loadedUpdatedAt = res.updatedAt || null;
+          loadedData = JSON.parse(JSON.stringify(entry));
           updatePublishButton();
           /* Three ways this editor can open, and the Worker has already
              decided which: 'owner' (or admin) is the whole form; 'all' is a
@@ -2094,6 +2210,7 @@
           // The owner (and an admin, who reaches this page the same way) is the
           // only one who can roll a version back, so the panel is theirs.
           else if (mode === 'owner') { lockToSet(); renderEditStatus(); showOwnerHistory(); }
+          if (mode) mountJournal(mode, res.updatedAt || null);
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';
