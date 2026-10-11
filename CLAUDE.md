@@ -1261,6 +1261,28 @@ The save handlers enforce the rest:
 - A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413).
 - The editor makes the **name read-only** for a guest: renaming moves the URL,
   and that stays with the creator.
+- **A guest never moves the address or rewrites the credit.** An `'all'` /
+  `'all-but-ability'` / `'tags'` guest's save keeps the stored `url_slug`
+  (it never runs `characterAddress()`), and an `'all'` / `'all-but-ability'`
+  guest's save keeps the stored `creator` (`author` on an `'all'` script or
+  collection). The address is derived from the name **and** `appearsIn` and
+  the credit, so pinning the name alone did not keep the URL with the
+  creator, and every move parks the old address in `redirects`, which a
+  guest could use to squat addresses. `appearsIn` itself stays editable — it
+  is useful text — and the **owner's** next save files the page under it. An
+  unowned page (nobody will ever save as its owner) stays where it is until
+  an admin runs the nest-urls sweep. A row with no `url_slug` yet still gets
+  its first one. Approved editors are unaffected: they edit as the creator
+  would, rename included. The editors say so rather than letting the Worker
+  discard an edit in silence: `lockCredit()` in edit.html (called by the
+  `'all'` and `'all-but-ability'` guest modes) makes Creator read-only with a
+  note and tells the guest "Appears in" will not move the page, and
+  `lockAuthor()` in publish-script.html / publish-collection.html does the
+  same to Author in `'all'` mode.
+- **An existing collection's `id` is fixed on every save, owner included.**
+  The kebab id is its URL, collections have no redirects, and the editor
+  already calls the URL fixed once created. A legacy row with no stored `id`
+  gets one on its first save.
 - **An open page is open to its art too.** Image uploads go through
   `canEditPageArt()` — ownership, an approved editor, **or** a guest on a page
   whose mode is `'all'` / `'all-but-ability'`. They used to go through
@@ -1417,6 +1439,37 @@ taking a published page back to draft still records what was live.
 - `POST /api/page-rollback`: put a version back. Owner or admin, and it
   snapshots the current version first, so a rollback is itself undoable.
 
+**Putting a version back restores content, never settings: `prepareRestore()`.**
+The owner's rollback, `/api/admin/rollback` and suggestion approval all pass
+the version through it **before** `saveRevision()`, so a refusal writes
+nothing and adds no history entry. It:
+
+- pins `RESTORE_PINNED_KEYS` — `curata`, `curataOptOut`, `creditUnlinked`,
+  `publicEdit`, `editors`, `_draftNote` — from the row **as it stands now**,
+  plus the identity (`slug`; a collection's `id`; a wiki page's
+  `parentType`/`parentSlug` from the row's columns). `tagsBy` travels with the
+  restored tags on a rollback (it says whose those tags are) and is pinned from
+  the row on an approval;
+- holds the version to the save's checks: the team list (case and
+  "traveler" forgiven, anything else refused), name and ability, the
+  exact-official refusal, `sanitizeJinxes` / `sanitizeRelated` /
+  `artScaleValue`, `sanitizePageFields` / `sanitizeWikiFields`, and on a
+  **published** character `missingForPublish()` — **refused** (400), not
+  demoted to draft, because "Put this version back" taking a live page down
+  would surprise its owner. A draft has no bar to meet;
+- and `applyRollback()` then recomputes the character's address (a restored
+  name or set moves the URL, 301 left behind) and writes a wiki page's
+  `author` column.
+
+Why: rolling back vandalism used to restore the `publicEdit` / `editors` the
+page had at the time, reopening it to the vandal; an owner could get Curata
+back after an admin revoked it by restoring any older version; a rollback on a
+drafted page wiped the admin's note; and an approved suggestion skipped every
+check a save makes. An admin re-grants Curata through `/api/admin/curata`,
+never through history. **`/api/admin/restore-page` (restore from a backup
+date) is deliberately outside all of this**: it is a whole-row disaster
+restore and brings back the owner and status too.
+
 ## Suggested edits
 
 A page set to `publicEdit: 'suggest'` collects proposed versions in the
@@ -1437,8 +1490,12 @@ the editor would have saved, stored rather than applied.
 - `POST /api/suggestion`: `approve` / `decline` (owner or admin, with an
   optional reply) or `withdraw` (the suggester). **Approving is an ordinary
   save**: `saveRevision()` snapshots the current version first, so it shows up
-  in the history and can be rolled back, and owner-only fields are re-pinned
-  from the row rather than taken from the suggestion.
+  in the history and can be rolled back, and it goes through `prepareRestore()`
+  (see "History is public" above) — owner-only fields re-pinned from the row
+  rather than taken from the suggestion, and the save's checks applied, so a
+  suggestion with a bad team, no icon on a live page, or an exact official
+  character is refused rather than stored. An approved rename moves the
+  address, with a 301 left behind.
 
 `suggestions.html` serves both `/suggestions?type=&slug=` (one page's queue,
 with Approve / Decline / Withdraw) and `/suggestions` (the owner's inbox).
@@ -2734,6 +2791,26 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   route pins that prefix to the page's owner (longest matching slug wins).
 - Comments work like every other page type (`entity_type='wikipage'`), and can
   be switched off per page.
+- **A set's page is public only while its set is published**
+  (`wikiParentLive()`; an article's virtual parent always is, and a missing
+  parent counts as deleted). Below that bar the page behaves like a draft:
+  `/p/` 404s to strangers — without naming the set — and its owner and the
+  set's approved editors see a "not public" bar (`SYS.parentNotLivePage`);
+  `GET /api/wiki-page` is gated the same way (`wikiPageVisible()`, shared by
+  both); its history (`/api/page-history`, `/api/page-revision`) is the
+  owner's alone (`historyPublic()`), since it carries the page's text;
+  comments neither read nor post; Featured Articles hides it as
+  `parent-draft` (`parent-deleted` for a deleted or missing set). The listings
+  already did this. `wikiPageAccess()` never answers `'all'` for such a page,
+  so a drafted set left on "anyone can edit" does not open its hidden pages to
+  every member. A deleted or missing set admits the owner (and admins) only.
+  No cache work was needed: `SSR_DEPS.p` and `FEATURED_DEPS` already roll on
+  script/collection writes, and a hidden page carries no view key, so it
+  never enters the shared cache.
+- `commentTarget(…, {moderate: true})` is what the pin and remove routes ask:
+  it needs only a page that exists (not deleted, for the three content types),
+  so an owner can still moderate after the page went to drafts or switched its
+  comments off. Reading and posting keep the published-and-public rule.
 - Deleting one is **permanent** — unlike scripts/characters there is no soft
   delete, so the account page offers Edit only and the editor owns the rest.
 - The first set of these is the **Odyssey glossary**: nine pages (Attack,

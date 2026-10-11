@@ -41,6 +41,9 @@
     draftPage: 'DRAFT: only you can see this page. Publish it from',
     draftArticle: 'DRAFT: only you can see this article. Publish it from',
     draftEditorLink: 'the editor',
+    /* The same bar on a PUBLISHED /p/ page whose script or collection is not
+       published: the page goes down with its set. */
+    parentNotLivePage: 'NOT PUBLIC: the script or collection this page belongs to is not published, so only you and its editors can see this page.',
 
     /* Under the draft bar, when an ADMIN was the one who took the page down.
        Only the people who can see the draft see this at all, which is the
