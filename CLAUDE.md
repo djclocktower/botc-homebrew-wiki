@@ -198,8 +198,24 @@ assets/
                        empty Edit box. Set here rather than in the markup so
                        every page gets it from one line (the topbar markup
                        is hand-copied per page).
+                       Also adds the skip link, the filter chips'
+                       aria-pressed and the menu's scroll cap, and corrects
+                       the search drop's ARIA — see "Phone chrome and
+                       accessibility".
                        Ends with the problem-log beacon (F3) — keep it the
                        last block; see "The problem log".
+  dialog.js            BotcDialog.open(el, {initialFocus, onClose,
+                       closeOnEscape, escapeResult}) -> {close(result)}: makes
+                       an element already in the document a modal (role and
+                       aria-modal, focus moved in, Tab trapped, Escape, focus
+                       returned to the opener). Never removes the element or
+                       touches the scroll lock; callers keep those, and test
+                       for window.BotcDialog so a page without it behaves as
+                       before. Adopted by rules-gate.js, editor-notices.js,
+                       comments.js (fetches it lazily), art-adjust.js and
+                       token-tool.js; NOT by iconforge/editor.js (Escape is
+                       miniPaint's, inside an iframe) or text-live.js (an
+                       admin popover). Use it for any new modal.
   render.js            Shared character renderer + official-schema JSON builder.
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
@@ -3883,6 +3899,80 @@ seeded with whole collections whose characters all arrived unowned.
   that to work**: profile.html read `sc.header || sc.logo` correctly for a year
   while `/api/user`'s card builder never put `logo` on the wire, so the second
   half could never fire. Pin cards on the creator page fall back the same way.
+
+## Phone chrome and accessibility
+
+The owner reviews on a phone, and the top bar is hand-copied into every page
+and into `pageShell()`, so every fix here is made **at runtime** (site.js) or
+in **styles.css**, never in the copied markup. `migration/tests/a11y.test.mjs`
+guards all of it without a browser.
+
+- **The hamburger menu scrolls.** `positionDrop()` in site.js sets the menu's
+  `max-height` from the bar's bottom edge to the bottom of the visual
+  viewport, and styles.css gives `.nav-dropdown` `overflow-y: auto` with
+  `overscroll-behavior: contain`. A logged-in reader's menu is ~11 rows, and on
+  an iPhone SE or 13 "My Account" (with the unread-mail flag) sat below the
+  screen, unreachable: a swipe scrolled the page behind instead. **The 55vh
+  rule in styles.css is `.nav-search-results`, the box of results inside the
+  menu, not the menu**, which fooled a reviewer once. The redesign's gilded
+  bottom line (`header-redesign.css`) is `position: sticky` for the same
+  reason: an absolute one hung 1px below the box made every menu scrollable
+  by 1px. Escape closes the menu and returns focus to the button; opening it
+  from the keyboard (`click` with `detail === 0`) focuses the first link,
+  never the search field (that would pop a phone keyboard). Tabbing out
+  closes it, but **only when `relatedTarget` is a real element**: iOS does
+  not focus a link on tap, so a tap on an in-menu search result blurs the box
+  with `relatedTarget` null, and closing there would hide the result before
+  the tap's click landed. `closeMenu()` is the one way to close it.
+- **iOS zoom-on-focus.** iOS Safari zooms into any focused field under 16px
+  and stays zoomed. The `@supports (-webkit-touch-callout: none)` block in
+  styles.css sets 16px on fields for iOS/iPadOS only, with `!important`
+  because the lazily-loaded comments.css and page-local id rules would
+  otherwise win depending on load order. It must never shrink a field, so
+  the ones already above 16px are excluded by name (`.sp-input`, Grimoire
+  Forge's `#gf-name` and `#gf-input`, whose backdrop has to keep identical
+  metrics). A new field drawn above 16px needs adding to that `:not()` list.
+  **Never use `maximum-scale` or `user-scalable=no`** in a viewport tag
+  instead: in-app browsers and Android honour it and it blocks pinch-zoom
+  (WCAG 1.4.4). The test refuses it in every page and in worker.js.
+- **Modals go through `assets/dialog.js`** (see the repo map). A must-answer
+  dialog (the rules gate) passes `closeOnEscape: false`.
+- **Skip link and search ARIA.** site.js puts a "Skip to content" link first
+  in `<body>` on any page with a `<main>` (giving it `id="main-content"` only
+  if it has no id), and removes the `role="listbox"` / `aria-haspopup` the
+  copied markup still carries on `#search-drop`: the results are a list of
+  links with real focus and arrow keys, not a listbox. Don't put either role
+  on a new page. The result count is spoken through one polite `.sr-only`
+  live region, 400ms after typing settles. **New site.js blocks go in the
+  middle of the file, never at the end**; the end is the error beacon's.
+- **Filter chips.** `.active` chips show a ✓ and `.active-exclude` chips a ✕,
+  paid for out of the chip's own side padding (11px+11px becomes 5px+7px) so
+  a chip is the same width on and off and the include → exclude double tap
+  never re-wraps a row under the finger. The glyph has `line-height: 1`
+  (the fallback font made chips 1px taller) and `text-decoration: none` (the
+  exclude chip's line-through). CSS alt text speaks the ✕ as "Excluded:". One
+  MutationObserver in site.js (`syncChip`, between `a11y-chip` markers)
+  mirrors `.active` into `aria-pressed` on every `button.filter-chip`, so
+  **no filter module needs ARIA code of its own**. The Curata and Favorites
+  chips keep their own mark, and a chip with a `role` (the /search tabs) is
+  left alone. Radio-like chips (creators.html sort, jinxes toggles) get the
+  ✓ too; that is accepted.
+- **Contrast**: small text must be 4.5:1 or better. Fix it by changing the
+  one selector's colour, never a shared `--` variable that passes elsewhere:
+  `.page-class-partial` is `#76603c` at full opacity, `.foot` is
+  `rgba(236,225,200,.58)`, `.browse-card-count` is `#2b66aa`.
+- **Labels.** Every `<input>`, `<select>` and `<textarea>` on a root page
+  needs `aria-label`, `aria-labelledby`, a `<label for>`, a wrapping
+  `<label>`, a `title` or a `placeholder`. The test scans every root `.html`;
+  the admin pages (dashboard, text-editor, normalize-icons) are exempt. A page
+  not in its `KNOWN_PAGES` list is reported as a diagnostic naming each
+  control instead of failing, so a page from another branch never blocks a
+  merge: fix what it prints, then add the page to the list
+  (`A11Y_STRICT=1` fails on those too).
+- **Known gaps**: the card-action buttons sit inside search-result links
+  (nested interactive controls; card-actions.js); admin pages are unlabelled;
+  create.html and edit.html have no `<main>`, so no skip link; Icon Forge's
+  two `.if-modal` overlays do not use dialog.js yet.
 
 ## Site search (the top-bar box and `/search`)
 

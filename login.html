@@ -208,9 +208,9 @@
 
       <!-- Login / signup view -->
       <div id="auth-view">
-        <div class="login-tabs" role="tablist">
-          <button class="login-tab active" id="tab-login" type="button">Log In</button>
-          <button class="login-tab" id="tab-signup" type="button">Sign Up</button>
+        <div class="login-tabs">
+          <button class="login-tab active" id="tab-login" type="button" aria-pressed="true">Log In</button>
+          <button class="login-tab" id="tab-signup" type="button" aria-pressed="false">Sign Up</button>
         </div>
 
         <!-- LOG IN -->
@@ -307,7 +307,9 @@
       $('signup-form').style.display = which === 'signup' ? 'block' : 'none';
       $('forgot-form').style.display = which === 'forgot' ? 'block' : 'none';
       $('tab-login').classList.toggle('active', which !== 'signup');
+      $('tab-login').setAttribute('aria-pressed', which !== 'signup' ? 'true' : 'false');
       $('tab-signup').classList.toggle('active', which === 'signup');
+      $('tab-signup').setAttribute('aria-pressed', which === 'signup' ? 'true' : 'false');
       $('card-title').textContent = which === 'signup' ? 'Create an Account'
         : which === 'forgot' ? 'Reset Password' : 'Log In';
       setMsg('', '');

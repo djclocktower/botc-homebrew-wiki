@@ -275,10 +275,14 @@ html.redesign-on .nav-dropdown {
   box-shadow: 0 8px 20px rgba(5,1,7,.4);
   backdrop-filter: blur(10px);
 }
-/* faint gilded glint along the menu's bottom edge, like the bar's */
+/* faint gilded glint along the menu's bottom edge, like the bar's.
+   Sticky rather than absolute: the menu scrolls inside itself when it is
+   taller than the screen (styles.css), and an absolute line hung 1px below
+   the box made every menu scrollable by that 1px (a scrollbar on desktop)
+   and scrolled away with the links. */
 html.redesign-on .nav-dropdown::after {
   content: "";
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  position: sticky; bottom: 0; flex: 0 0 1px; margin-top: -1px; height: 1px;
   background: linear-gradient(90deg, transparent 6%, rgba(214,196,150,.4) 50%, transparent 94%);
   pointer-events: none;
 }

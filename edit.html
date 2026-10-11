@@ -308,7 +308,7 @@
             <label for="artScaleOn" style="margin:0">Change how big the icon is displayed on this page</label>
           </div>
           <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-            <input type="range" id="artScale" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
+            <input type="range" id="artScale" aria-label="Icon display size" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
             <output id="artScaleOut" for="artScale" style="min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums">100%</output>
           </div>
           <div class="sub" style="margin-top:4px">The icon file, export and cards keep the true size.</div>
@@ -352,7 +352,7 @@
           <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none"><span class="ico ico-x" aria-hidden="true"></span> Remove token image</button>
         </div>
         <label for="tokenFile" class="sub" style="display:block;margin-top:8px">Or upload a finished token image to replace it:</label>
-        <input type="file" id="tokenFile" accept="image/*">
+        <input type="file" id="tokenFile" aria-label="Printable token image" accept="image/*">
       </div>
 
       <fieldset>
@@ -438,7 +438,7 @@
         <legend>Who can edit this page</legend>
         <p class="sub" style="margin:0 0 10px">You can put back any earlier version from the page's history.</p>
         <div class="fld" style="margin-bottom:0">
-          <select id="publicEdit">
+          <select id="publicEdit" aria-label="Who can edit this page">
             <option value="">Default: tags open to anyone until I tag the page myself</option>
             <option value="closed">Only me</option>
             <option value="approved">Approved editing: only the people I name below</option>
@@ -492,6 +492,7 @@
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
   <script src="assets/art-thumb.js"></script>
+  <script src="assets/dialog.js"></script>
   <script src="assets/art-adjust.js"></script>
   <script src="assets/token-auto.js"></script>
   <script src="assets/classify.js"></script>

@@ -470,7 +470,13 @@
   ];
 
   function showAgreement() {
-    return new Promise(function (resolve) {
+    // assets/dialog.js (Tab trap, Escape = Cancel, focus back to the Post
+    // button) is fetched on first need; a page that cannot get it still
+    // shows the agreement exactly as before.
+    var helper = window.BotcDialog || !(window.BotcData && window.BotcData.script)
+      ? Promise.resolve()
+      : window.BotcData.script('dialog.js').catch(function () {});
+    return helper.then(function () { return new Promise(function (resolve) {
       var overlay = document.createElement('div');
       overlay.className = 'rules-modal open';
       overlay.setAttribute('role', 'dialog');
@@ -493,18 +499,25 @@
       document.body.appendChild(overlay);
       document.body.classList.add('rules-modal-lock');
 
+      var done = false;
+      var box = overlay.querySelector('#cmt-agree-box');
+      var dlg = window.BotcDialog
+        ? window.BotcDialog.open(overlay, { initialFocus: box, escapeResult: false, onClose: function (r) { close(r); } })
+        : null;
       function close(result) {
+        if (done) return;
+        done = true;
+        if (dlg) dlg.close(result);
         overlay.remove();
         document.body.classList.remove('rules-modal-lock');
         resolve(result);
       }
-      var box = overlay.querySelector('#cmt-agree-box');
       var go = overlay.querySelector('#cmt-agree-go');
       box.addEventListener('change', function () { go.disabled = !box.checked; });
       go.addEventListener('click', function () { if (box.checked) close(true); });
       overlay.querySelector('#cmt-agree-cancel').addEventListener('click', function () { close(false); });
-      box.focus();
-    });
+      if (!dlg) box.focus();
+    }); });
   }
 
   /* ── load + mount ─────────────────────────────────────────────────── */
