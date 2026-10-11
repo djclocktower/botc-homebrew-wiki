@@ -269,7 +269,8 @@ body::after { display: none; }
 }
 .foot {
   text-align: center; margin-top: 26px;
-  color: rgba(236,225,200,.5); font-size: .82rem; letter-spacing: .03em;
+  /* .58, not .5: 4.3:1 on the dark page was just under 4.5:1. */
+  color: rgba(236,225,200,.58); font-size: .82rem; letter-spacing: .03em;
 }
 .foot em { font-style: italic; }
 
@@ -1737,6 +1738,18 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   flex-direction: column;
 }
 .nav-dropdown.open { display: flex; }
+/* The menu scrolls inside itself once it is taller than the room under the
+   bar. site.js (positionDrop) sets max-height from the bar's bottom edge,
+   because what sits above the bar varies; a logged-in reader's eleven rows
+   used to run past the bottom of an iPhone screen. overscroll-behavior stops
+   a swipe at the end of the menu scrolling the page behind it. (The 55vh
+   rule further down is .nav-search-results, the box of search results inside
+   the menu, not the menu itself.) */
+.nav-dropdown {
+  overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.nav-dropdown > * { flex-shrink: 0; }
 .nav-dropdown-search {
   padding: 10px clamp(14px,4vw,40px);
   border-bottom: 1px solid rgba(189,168,154,.2);
@@ -1947,7 +1960,9 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .browse-card-count {
   font-family: 'Oswald', sans-serif; font-weight: 600;
   font-size: .78rem; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--good-name);
+  /* a shade darker than --good-name (4.2:1 on this card's parchment, under
+     4.5:1); the variable itself passes everywhere else, so it is untouched */
+  color: #2b66aa;
   padding-top: 8px;
   border-top: 1px solid rgba(180,160,120,.4);
   width: 100%;
@@ -2237,6 +2252,34 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .filter-chip:hover { background: rgba(91,31,33,.08); }
 .filter-chip.active { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
 .filter-chip.active-exclude { background: var(--evil); color: var(--parch); border-color: var(--evil); text-decoration: line-through; opacity: 0.85; }
+/* A ✓ on an included chip and a ✕ on an excluded one, so the state is not
+   carried by colour alone. The glyph is paid for out of the chip's own
+   side padding (11px each side becomes 5px + 7px, and the glyph takes the
+   10px freed), so a chip is the same width on and off: the last chip on a
+   wrapped row cannot jump to the next line between the two taps of the
+   include → exclude cycle and leave the second tap on a different chip.
+   inline-block keeps the exclude chip's line-through off the ✕, and
+   line-height 1 keeps the fallback glyph font from making the chip a pixel
+   taller. The second `content` is CSS alt text: the ✓ is silent (site.js
+   sets aria-pressed) and the ✕ is read as "Excluded:". Not on the Curata
+   and Favorites chips (their ::before / heart is the mark) or the /search
+   tabs (a tab is not a filter). */
+.filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab),
+.filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab) {
+  padding-left: 5px; padding-right: 7px;
+}
+.filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before,
+.filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before {
+  display: inline-block;
+  width: 9px; margin-right: 1px; line-height: 1;
+  text-align: center; text-decoration: none;
+}
+.filter-chip.active:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before {
+  content: "\2713"; content: "\2713" / "";
+}
+.filter-chip.active-exclude:not(.filter-chip-curata):not(.filter-chip-fav):not(.sp-tab)::before {
+  content: "\2715"; content: "\2715" / "Excluded: ";
+}
 .filter-select {
   font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: var(--maroon);
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
@@ -2993,7 +3036,10 @@ a:hover .curata-mark { opacity: .9; }
   white-space: nowrap; cursor: help; margin-left: .45em;
   opacity: .75; font-weight: 400;
 }
-.page-class-partial { color: #8a7248; background: none; }
+/* Darker than the other marks and at full opacity: #8a7248 at .75 was
+   2.8:1 on a card, under the 4.5:1 small text needs. #76603c is 5.5:1 on
+   the card, 4.9:1 on parchment. */
+.page-class-partial { color: #76603c; background: none; opacity: 1; }
 
 /* Collection tiles carry the wreath in the footer beside the character count,
    and character pages carry it at the end of the Tags row — both behind a
@@ -3462,6 +3508,44 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-pagelinks-dark .wiki-pagelink:hover { background: rgba(0,0,0,.42); }
 .wiki-pagelinks-dark .wiki-pagelink-title { color: #ecd9a8; }
 .wiki-pagelinks-dark .wiki-pagelink-blurb { color: rgba(236,225,200,.78); }
+
+/* ─── Phone chrome and accessibility (see CLAUDE.md) ─────────────
+   iOS Safari zooms the page into any focused field whose text is under
+   16px, and leaves the page zoomed after the keyboard closes. Only iOS does
+   this, so only iOS is changed: -webkit-touch-callout exists only in iOS
+   (and iPadOS) WebKit, so desktop and Android keep the exact sizes.
+   The !important is deliberate. comments.css is loaded lazily and sizes the
+   comment box at equal specificity, and page-local rules use ids; this has
+   to win whatever loads last. It must never SHRINK a field, so the fields
+   already drawn above 16px are excluded by name: the /search page's box
+   (.sp-input, 17.3px) and Grimoire Forge's name and editor (#gf-input sits
+   over a backdrop that paints the issue marks, and the two must keep
+   identical metrics or the marks drift off the text).
+   Never "fix" this with maximum-scale or user-scalable=no in the viewport
+   tag instead: in-app browsers and Android honour it and it blocks
+   pinch-zoom (migration/tests/a11y.test.mjs refuses it). */
+@supports (-webkit-touch-callout: none) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not(.sp-input):not(#gf-name),
+  select,
+  textarea:not(#gf-input) { font-size: 16px !important; }
+}
+
+/* "Skip to content": the first thing a keyboard user tabs to (site.js puts
+   it at the top of <body>). Off screen until it has focus. */
+.skip-link {
+  position: absolute; left: 8px; top: -60px; z-index: 100;
+  padding: 10px 14px;
+  background: var(--parch); color: var(--maroon);
+  font-family: 'Oswald', sans-serif; text-decoration: none;
+  border: 2px solid var(--maroon);
+}
+.skip-link:focus { top: 8px; }
+/* Read by screen readers, never drawn (the search's result count). */
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 
 /* ─── Long names must wrap, not widen the page ──────────────────
    Names on this wiki are user-supplied and some are one long unbroken word

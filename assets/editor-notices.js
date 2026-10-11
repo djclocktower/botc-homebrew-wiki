@@ -49,13 +49,22 @@
       '</div>';
     document.body.appendChild(overlay);
     document.body.classList.add('rules-modal-lock');
+    // assets/dialog.js: Tab stays in the box, Escape closes it, and focus
+    // goes back to the Save button afterwards.
+    var dlg = window.BotcDialog
+      ? window.BotcDialog.open(overlay, { initialFocus: '#unfinished-ok', onClose: function () { close(); } })
+      : null;
+    var closed = false;
     function close() {
+      if (closed) return;
+      closed = true;
+      if (dlg) dlg.close();
       overlay.remove();
       document.body.classList.remove('rules-modal-lock');
     }
     overlay.querySelector('#unfinished-ok').addEventListener('click', close);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-    overlay.querySelector('#unfinished-ok').focus();
+    if (!dlg) overlay.querySelector('#unfinished-ok').focus();
   }
 
   /* Call with the JSON body /api/character returned, plus the slug. */
