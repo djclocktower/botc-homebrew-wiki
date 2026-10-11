@@ -4236,7 +4236,11 @@ Fonts: there is **no Google Fonts `@import`** any more (it put two more
 origins in the render-blocking path of every page). The seven families are
 self-hosted woff2 subsets in `assets/fonts/` with `unicode-range`, declared
 in styles.css; the wiki's own faces have woff2 twins too. See
-`assets/fonts/README.md`. All Characters draws 48 cards initially, then
+`assets/fonts/README.md`. Their filenames carry a content hash, because the
+folder is immutable for a year; until 2026-10 a subset-labelling bug in
+`migration/fetch-google-fonts.js` meant Oswald, EB Garamond, Libre Franklin
+and the theme faces never drew basic-latin text at all (system fonts stood
+in), so after any refresh check which font actually renders. All Characters draws 48 cards initially, then
 appends bounded batches when their section approaches the viewport. Filter
 changes disconnect the old observer, including when results become empty.
 The Show more buttons also work without IntersectionObserver; `.type-section`
