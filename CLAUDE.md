@@ -638,7 +638,15 @@ assets/
                        sortRosterSAO(). Used by script.html, publish-script.html,
                        steven-approved-order.html, and safe in the Worker.
   pageview.js          Client enhancements for /s/ and /collection/ SSR pages
-                       (edit button, JSON download).
+                       (edit button, JSON download, and the "Run this script"
+                       link into Storyteller Mode on a script page).
+  storyteller-core.js  Storyteller Mode's rules, pure (Browser + Node, no DOM,
+                       tested): the setup table, setup-bracket parsing, the bag
+                       draw, bluffs and fakes, reminder tokens, jinxes in play,
+                       the night steps, and the saved state. See "Storyteller
+                       Mode" below.
+  storyteller.js       The /storyteller page controller: loading, the four tabs,
+                       localStorage, wake lock, swipe and arrow keys.
   theme-editor.js      Shared theme-kit form controls (font + color pickers) for
                        publish-script/-collection/-page/-news.html.
   wiki-editor.js       Shared editor widgets: the formatting toolbar, the
@@ -807,9 +815,15 @@ scripts.html           /scripts — the script index. Filter chips for Curata an
                        .filter-bar that is not .open, so the bar was
                        unreachable on a phone without it.
 script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
-tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
-                       Creator Icons. This is what the "Tools" nav entry points at.
+tools.html             /tools — the toolbox hub: Script Builder, Storyteller
+                       Mode, Token Tool, Grimoire Forge, Icon Forge, Bloodstar
+                       Import, Jinxes, Creator Icons. This is what the "Tools"
+                       nav entry points at.
+storyteller.html       Storyteller Mode (/storyteller?s={slug}, or the Script
+                       Builder's local roster with no s): setup counts, bag,
+                       bluffs, reminders, jinxes in play, night runner. Static;
+                       all its CSS is page-local (st-*); nothing is stored on
+                       the server. In the sitemap's staticPages.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -1163,6 +1177,109 @@ jinxes actually changed; one the script never touched exports byte-for-byte as
 before, and a jinx it carries with someone *not* on this script is left alone.
 An official character normally exports as a bare id, but if this script gives it
 a jinx the bare id has nowhere to carry it, so that one is written out in full.
+
+## Storyteller Mode (`/storyteller`)
+
+A phone-first page for running a game from a script at the table: how many of
+each team, drawing the bag, demon bluffs, reminder tokens and jinxes in play,
+then the night one big step at a time. It is a static page
+(`storyteller.html` + `assets/storyteller.js`, rules in
+`assets/storyteller-core.js`) with **nothing stored on the server**.
+
+**Ways in:** a "Run this script" link on every `/s/` page, added in the browser
+by `pageview.js` (so the shared SSR HTML and `SSR_RENDER_V` are untouched, and
+a draft's owner gets it too); "Run a Game" in the Script Builder's toolbar; and
+a card on `/tools`.
+
+**Sources.** `?s={slug}` reads the script through `GET /api/page?type=script`,
+the one public route that returns its arranged `nightOrder` and `jinxEdits`
+(`scripts.json?fields=browse` drops both). It works logged out for a published
+script and for a draft's owner and approved editors; anything else is a 404
+and the page says it could not find the script. With no `s` it reads the
+Script Builder's `botc_script` / `botc_script_meta`, **read-only** — this page
+never writes the builder's keys. Characters come from
+`characters.json?fields=card` plus the official roster; a roster slug matching
+neither is listed under the header as "Not on the wiki" (a draft homebrew
+character lands there, since the card feed is published-only). Collections
+are not a source: they have no night order and can hold 100+ characters.
+
+**It reuses, never re-derives:**
+
+- The night is `PageRender.nightItems()` (the list a script page draws and the
+  export writes), with the `night-order.json` `meta` steps (dusk, minion info,
+  demon info, dawn) interleaved **exactly** as `nightSequences()` does — over
+  the full list first, then filtered to who is in play, so where Minion Info
+  falls never depends on the bag. A test asserts the runner's step ids equal
+  the export's `_meta.firstNight` / `otherNight`, so the runner cannot disagree
+  with the page or the official app. Minion and Demon Info are dropped below 7
+  players.
+- Jinxes are `PageRender.scriptJinxes()` (the script's own edits applied) plus
+  official-to-official pairs from `assets/official-jinxes.json` (partial, and
+  the page says so; a script's `jinxEdits.off` switches those off too). The
+  first text for a pair wins, so a script's own wording beats the file's.
+- Officials come from `buildOfficialRoles()`, which drops `reminders`,
+  `remindersGlobal` and `setup` **on purpose**: adding them there would change
+  how an official character exports when written out in full. This page gets
+  them from `STCore.officialExtras(roles)` and puts them on its own copies.
+  Do not grow `buildOfficialRoles()` instead.
+
+**Setup counts.** The official 5–15 table, then every `[...]` in an ability
+read clause by clause (`parseSetupMods()`): `+N` / `-N Team`, `X or Y`, and
+`X to Y` are **count** mods (an option the Storyteller picks, the first by
+default); `+the King` is a **require**: the King joins the bag and stays,
+together with the character needing it, and like every `+` it goes in on top
+of its team's count with a Townsfolk coming out — so the Huntsman's Damsel is
+one more Outsider (a 7-player game with none by the table still gets it) and
+the Choirboy's King changes no count. A draw is not settled while anything in
+the bag still needs a character that is not in it. A `[[Name]]` mark in an
+ability is not a bracket;
+extra copies of itself (Village Idiot) is **copies**; anything else — an
+unknown number (`-? to +?`), or a sentence (`[No Demon]`, `[You neighbor the
+Demon]`) — is a **manual** note with a "handled" tick, and adjacent notes from
+one bracket are merged. Manual and copies are **never applied automatically**;
+a guess there would be worse than saying so. A setup character with no
+brackets gets "Has a setup effect: read its ability", except the ones that
+think they are someone else (the Drunk), whose setup is the fake token.
+
+**The bag** (`drawBag()`): fill demon → minion → outsider → townsfolk, re-read
+the modifiers of what was drawn (a Baron changes the Outsider count) and
+repeat, at most four passes. Locks are hard keeps, `keep` is soft (stays
+unless the counts force it out), the rng is a seeded mulberry32 so a seed is a
+bag. Travellers, Fabled and Loric are never drawn: Fabled/Loric are in-play
+chips (on by default), Travellers are chips too (off by default), so a
+Traveller who wakes still gets its night step. Changing the player count does
+not redraw by itself; a "Fix the bag" bar appears instead. Re-roll swaps one
+character; Remove takes it out and leaves the gap for an Add or a Fix.
+A Drunk-like character (`thinksTeam()`: the official Drunk, Lunatic and
+Marionette, and homebrew worded "You think you are a …") gets a fake, which
+then wakes on its own night step marked as not really in play.
+
+**State** is one JSON object in `localStorage` under `botc_st:s:{slug}` or
+`botc_st:builder`, written on every change (the current tab rides the URL
+hash), so a reload or a locked phone never loses the Storyteller's place.
+`botc_st_index` keeps the 10 most recent keys and drops older games.
+`reconcileState()` drops anything that has left the roster and clamps the
+numbers, so a script edited between games still loads. Private mode, where
+storage throws, still works for the session and says a reload starts over.
+
+**At the table:** the tab bar is sticky under the site's topbar (measured, since
+the topbar's height varies); the Night tab is a dark panel with a sticky
+Prev / Next bar, ← → keys, a sideways swipe on the card (`touch-action:
+pan-y`), an "All steps" jump list, Dead marks (which dim a step but never skip
+it — some abilities work dead), an "Everyone on the script" toggle (forced on
+with no bag), and the Screen Wake Lock while that tab is open. "Show to
+player" on Demon Info (the bluffs) and Minion Info (THIS IS THE DEMON) is a
+page-local full-screen view closed by a tap, Escape or Back — deliberately not
+a modal dialog.
+
+**Cut, and keep cut** — this is not a grimoire app: no seating chart or player
+names, no day phase or votes, no multi-device sync, nothing on the server, no
+printing, no `?share=` links, no collections, no Travellers in the bag, and no
+automatic handling of copies-of-itself or rule-rewriting brackets (Atheist,
+Legion, Summoner, Kazali, Xaan). **Known gap:** a homebrew character with no
+night position (an "Each night" ability with `otherNight: 0`) is missing from
+the runner exactly as it is from the script page's Night Order box; fix the
+character, not this page.
 
 ## The official app's script JSON (`_meta`)
 
@@ -3735,7 +3852,8 @@ seeded with whole collections whose characters all arrived unowned.
   in that order. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
   `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
-  `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
+  `render.js`, `site.js`, `token-tool.js`, `storyteller-core.js` (and the
+  `.st-t-*` colour classes in `storyteller.html`), and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
   and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
