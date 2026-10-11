@@ -33,10 +33,11 @@ Each rule carries the subset's `unicode-range`, so a page only downloads a
 | Libre Franklin | regular 400–800, italic 400 | body text fallback, UI labels |
 | Roboto | regular 400–700 | section headings, chips, labels, the homepage stats line (what an Android phone showed while Oswald never loaded; the owner preferred it) |
 | Oswald | regular 500–700 | now only the "Oswald" theme-kit preset |
-| EB Garamond | italic 400–500 | jinx text, pronunciation (flavour quotes are Trade Gothic italic, as on the official wiki) |
+| Noto Serif | italic 400 | jinx text (what Android drew while EB Garamond never loaded; the owner preferred it) |
+| EB Garamond | italic 400–500 | pronunciation, descriptions, taglines (flavour quotes are Trade Gothic italic, as on the official wiki) |
 | Cinzel, Pirata One, IM Fell English, Grenze Gotisch | one weight each | the script/collection theme kit (`FONT_PRESETS`) — only downloaded on a page whose theme picks them |
 
-All eight are licensed under the SIL Open Font License 1.1, which permits
+All nine are licensed under the SIL Open Font License 1.1, which permits
 bundling and self-hosting. Refresh them by re-running
 `migration/fetch-google-fonts.js` (it fetches Google's CSS with a modern
 browser user-agent so the woff2 subsets come back, downloads the files under

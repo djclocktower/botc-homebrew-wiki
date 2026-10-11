@@ -4244,7 +4244,7 @@ in), so after any refresh check which font actually renders. **The site's
 labels, chips and headings are Roboto, not Oswald** (the owner's choice: it is
 what an Android phone drew while Oswald never loaded); Oswald is kept only as
 the theme-kit preset. Flavour quotes are Trade Gothic italic, as on the
-official wiki. All Characters draws 48 cards initially, then
+official wiki, and jinx text is Noto Serif italic (again what Android drew). All Characters draws 48 cards initially, then
 appends bounded batches when their section approaches the viewport. Filter
 changes disconnect the old observer, including when results become empty.
 The Show more buttons also work without IntersectionObserver; `.type-section`
