@@ -77,6 +77,9 @@
       return;
     }
 
+    // "It is live and listed" is only true of a published page; a draft
+    // being put away unfinished is the normal case and needs no warning.
+    if (result.status === 'draft') return;
     if (result.classification !== 'partial') return;
     if (shownFor[slug]) return;
     shownFor[slug] = true;

@@ -13328,8 +13328,22 @@ const app = {
         // page with the stored one, and esbuild refuses a const reassignment
         // at build time (which is what failed the Cloudflare deploy).
         let c = await request.json();
-        if (!c || !c.slug || !c.name || !c.team || !c.ability)
+        if (!c || typeof c !== 'object' || !c.slug || !c.team)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        /* A DRAFT may be saved with no name, no ability and no icon: somebody
+           half-way through an idea should be able to put it away and come back
+           to it. Publishing still needs all three (Classify.missingForPublish
+           below demotes a publish to a draft, and /api/publish refuses), so
+           the only thing relaxed here is the door into drafts. The identity
+           (`slug`) is still required — the editor mints an `untitled-…` one
+           for a page with no name yet. */
+        c.name = typeof c.name === 'string' ? c.name.trim() : '';
+        c.ability = typeof c.ability === 'string' ? c.ability : '';
+        if (c.status !== 'draft' && (!c.name || !c.ability.trim())) {
+          return jsonResponse({
+            error: 'A character needs a name and an ability to be published. Save it as a draft to finish it later.'
+          }, { status: 400 });
+        }
         // The team is one of the seven, and nothing else. It was stored as
         // posted, and it is printed into class names and tooltips all over the
         // site — a "team" carrying markup was a way to put HTML on the

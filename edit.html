@@ -1814,12 +1814,16 @@
     var currentStatus = 'published';
     function saveCharacter(newStatus){
       var d = gather();
-      if(!d.name)    return setStatus('err','A character name is required.');
-      if(!d.ability) return setStatus('err','An ability line is required.');
+      var saveStatus = newStatus || currentStatus;
+      // A draft may stay unfinished — no name, no ability — until it is
+      // published. A live page, and a suggestion for one, needs both.
+      if (saveStatus !== 'draft' || EDIT_MODE === 'suggest') {
+        if(!d.name)    return setStatus('err','A character name is required.');
+        if(!d.ability) return setStatus('err','An ability line is required.');
+      }
       // A page that takes suggestions is not saved from here at all: the same
       // form is posted as a proposal for its creator to answer.
       if (EDIT_MODE === 'suggest') return sendSuggestion(d);
-      var saveStatus = newStatus || currentStatus;
 
       $('save').disabled = true;
       $('save-publish').disabled = true;

@@ -1275,31 +1275,57 @@
     // one.
     var savedSlug = '';
 
+    // A draft saved before it has a name still needs an identity (the
+    // primary key and its art slot). It gets a fresh one of its own rather
+    // than going through the slug check, which would hand back an
+    // "untitled" page this account already has and save over it. The
+    // identity never changes, so naming the draft later is just a rename:
+    // its address follows the name.
+    function untitledSlug() {
+      var r = '';
+      try {
+        var a = new Uint8Array(6); crypto.getRandomValues(a);
+        for (var i = 0; i < a.length; i++) r += (a[i] % 36).toString(36);
+      } catch (e) { r = Date.now().toString(36); }
+      return 'untitled-' + r;
+    }
+
     function submitCharacter(saveStatus) {
       var d = gather();
-      if (!d.name)    return setStatus('err', 'A character name is required.');
-      if (!d.ability) return setStatus('err', 'An ability line is required.');
-      if (!artDataURL) return setStatus('err', 'Please upload character art (or import a JSON whose icon can be loaded).');
+      // A draft can be put away unfinished — no name, no ability, no icon —
+      // and finished later in the editor. Publishing needs all three.
+      if (saveStatus !== 'draft') {
+        if (!d.name)    return setStatus('err', 'A character name is required to publish. Use <em>Save as Draft</em> to finish it later.');
+        if (!d.ability) return setStatus('err', 'An ability line is required to publish. Use <em>Save as Draft</em> to finish it later.');
+        if (!artDataURL) return setStatus('err', 'Please upload character art (or import a JSON whose icon can be loaded). Use <em>Save as Draft</em> to finish it later.');
+      }
 
       var verb = saveStatus === 'draft' ? 'Saving draft' : 'Publishing';
       $('publish').disabled = true;
       $('save-draft').disabled = true;
       setStatus('work', verb + '&hellip;');
-      (savedSlug ? Promise.resolve(savedSlug) : resolveSlug(d)).then(function (slug) {
+      (savedSlug ? Promise.resolve(savedSlug) : d.name ? resolveSlug(d) : Promise.resolve(untitledSlug())).then(function (slug) {
         saveCharacter(d, slug, saveStatus);
       });
     }
 
     function saveCharacter(d, slug, saveStatus) {
-      d.art   = 'art/' + slug + '.png';
-      d.image = ART_BASE + slug + '.png';
+      // Only claim the icon slot when there is an icon to put in it: a draft
+      // saved without art must not point at a file that was never uploaded
+      // (the page would count as having an icon and draw a broken image).
+      if (artDataURL) {
+        d.art   = 'art/' + slug + '.png';
+        d.image = ART_BASE + slug + '.png';
+      } else {
+        d.art = ''; d.image = '';
+      }
 
       var isDraft = saveStatus === 'draft';
       var verb = isDraft ? 'Saving draft' : 'Publishing';
       setStatus('work', verb + '&hellip; uploading art');
 
       // Step 1: upload art to R2 (instant, no rebuild)
-      apiUpload('art/' + slug + '.png', artDataURL)
+      (artDataURL ? apiUpload('art/' + slug + '.png', artDataURL) : Promise.resolve())
         .then(function () {
           if (!artAltDataURL) return;
           setStatus('work', verb + '&hellip; uploading alternate art');
@@ -1352,6 +1378,7 @@
             entry.artAlt2   = 'art/' + slug + '-alt2.png';
             entry.imageAlt2 = ART_BASE + slug + '-alt2.png';
           }
+          if (!entry.art) { delete entry.art; delete entry.image; }
           if ($('tokenArt').checked) entry.tokenArt = true;
           if (!entry.artScale) delete entry.artScale;   // off, or 100: the default, stored as nothing
           if (tokenDataURL) {
