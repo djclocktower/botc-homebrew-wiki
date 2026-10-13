@@ -183,7 +183,7 @@
               var base = (hit && hit.status === 'draft') ? hit : c;
               var out = {};
               Object.keys(base).forEach(function (k) { out[k] = base[k]; });
-              out.slug = c.slug; out.name = c.name || out.name;
+              out.slug = c.slug; out.name = c.name || out.name || 'Untitled character';
               out.team = c.team || out.team; out.status = 'draft';
               return out;
             });

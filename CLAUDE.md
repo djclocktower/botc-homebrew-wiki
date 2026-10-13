@@ -3412,6 +3412,16 @@ searchable. Anything else still saying "Starlight" on the wiki is *content*
 **A character that misses `PUBLISH_REQUIREMENTS` cannot be published** (Fabled
 excepted, above). `/api/character` silently saves it as a draft (and says what
 is missing, via `editor-notices.js`), and `/api/publish` refuses.
+**A DRAFT needs none of it**: a character can be saved as a draft with no
+name, no ability and no icon (only an identity and a team), and finished
+later. `/api/character` refuses a *publish* with no name or ability outright
+(400) rather than demoting it, so clearing either on a live page cannot
+quietly unpublish it. create.html gives a nameless draft a fresh
+`untitled-{random}` identity (never the slug check, which would land it on an
+"untitled" draft the account already has) and claims the `art/` slot only
+when there is art; naming it later is an ordinary rename. edit.html only asks
+for a name and ability when the save is a publish or a suggestion. The
+account page and /drafts show a nameless one as "Untitled character".
 `POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages
 that went live before the bar was raised; the dashboard card scans first and
 reports the count and the reasons before anything moves. Always dry-run it.

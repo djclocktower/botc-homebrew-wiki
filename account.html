@@ -638,7 +638,9 @@
     }
 
     function rowHtml(type, r, isDraft) {
-      var name = esc(r.name || r.slug);
+      // A character draft may not have a name yet (drafts can be saved
+      // unfinished), and its identity then reads "untitled-k3j9x2".
+      var name = esc(r.name || (type === 'character' ? 'Untitled character' : r.slug));
       // Draft or not, the name goes to the page itself. A draft page renders
       // for its owner (and admins) with the DRAFT banner on it, so this is a
       // preview — which is what you want when you click a name. The editor is
