@@ -224,7 +224,16 @@
     cardRadius:  ['Rounded corners', 'px'],
     cardIcon:    ['Icon size', '%'],
     teamSize:    ['Heading size', '%'],
-    ruleW:       ['Divider thickness', 'px']
+    ruleW:       ['Divider thickness', 'px'],
+    cardW:       ['Box width (at least)', 'px'],
+    cardCols:    ['Boxes per row', ''],
+    cardGap:     ['Space between boxes', 'px'],
+    cardPad:     ['Space inside each box', 'px'],
+    pageW:       ['Exact page width', 'px'],
+    panelPad:    ['Space inside the big boxes', 'px'],
+    secGap:      ['Space between sections', 'px'],
+    infoW:       ['Information box width', 'px'],
+    titleSize:   ['Title size', '%']
   };
   var CHOICE_LABELS = {
     bgFit:    ['Image fit', { cover: 'Fill the screen', contain: 'Whole image', tile: 'Tile / repeat', stretch: 'Stretch', center: 'Actual size, centred' }],
@@ -237,7 +246,12 @@
     cardHover:  ['When the mouse is over a box', { lift: 'Lift up', grow: 'Grow', glow: 'Glow', none: 'Stay still' }],
     teamAlign:  ['Heading position', { left: 'Left', center: 'Centred', right: 'Right' }],
     teamCase:   ['Heading letters', { upper: 'UPPERCASE', lower: 'lowercase', caps: 'Small Caps', none: 'As typed' }],
-    ruleStyle:  ['Divider style', { fade: 'Fading line', solid: 'Solid line', dashed: 'Dashed', dotted: 'Dotted', double: 'Double line', glow: 'Glowing line', none: 'No divider' }]
+    ruleStyle:  ['Divider style', { fade: 'Fading line', solid: 'Solid line', dashed: 'Dashed', dotted: 'Dotted', double: 'Double line', glow: 'Glowing line', none: 'No divider' }],
+    cardLayout: ['Icon position', { side: 'Left of the text', top: 'Above the text', right: 'Right of the text' }],
+    cardAlign:  ['Text in the box', { left: 'Left', center: 'Centred', right: 'Right' }],
+    cardAbility: ['Ability text', { full: 'Show all of it', short: 'First 3 lines', hide: 'Hide it' }],
+    infoPos:    ['Information box position', { right: 'Right side', left: 'Left side', top: 'Above everything', bottom: 'Below everything' }],
+    topAlign:   ['Title and banner position', { left: 'Left', center: 'Centred', right: 'Right' }]
   };
   var COLOR_LABELS = {
     heading: 'Headings (if different from the accent)', bgColor: 'Page background colour',
@@ -271,14 +285,12 @@
   };
 
   function sampleHTML(kind) {
-    if (kind === 'profile') {
-      return '<div class="home-hero"><h1>Your Name</h1><p class="profile-bio">A short bio goes here, with a <a href="#">link</a>.</p></div>' +
-        '<section class="prof-section"><h2 class="type-header">Characters</h2><p>Your cards appear in sections like this one.</p></section>';
-    }
     if (kind === 'page' || kind === 'news') {
-      return '<div class="wiki-page-head"><h1 class="wiki-title">Page Title</h1></div>' +
-        '<div class="wiki-body"><h2 class="wiki-h">A heading</h2><p>Body text looks like this, with a <a href="#">link</a> in it.</p>' +
+      var body = '<div class="wiki-body"><h2 class="wiki-h">A heading</h2><p>Body text looks like this, with a <a href="#">link</a> in it.</p>' +
         '<hr class="wiki-rule"><p>More text after a divider.</p></div>';
+      return '<div class="wiki-page-head"><h1 class="wiki-title">Page Title</h1></div>' + (kind === 'page'
+        ? '<div class="wiki-layout">' + body + '<aside class="wiki-side"><div class="card wiki-infobox"><h2 class="info-h">Fact box</h2><dl class="info"><dt>Type</dt><dd>Rules</dd></dl></div></aside></div>'
+        : body);
     }
     var icon = function (id) { return '/assets/icons-sm/' + id + '.webp'; };
     if (kind === 'script') {
@@ -287,14 +299,17 @@
           '<div class="script-char-text"><span class="script-char-name">' + name + '</span>' +
           '<span class="script-char-ability">' + ab + '</span></div></a>';
       };
-      return '<section class="script-chars-panel"><div class="gen-sech-wrap"><h2 class="gen-sech">Synopsis</h2></div>' +
-        '<p class="script-desc">Body text looks like this, with a <a href="#">link</a> in it.</p>' +
-        '<div class="script-team-group"><h3 class="script-team-head good">Townsfolk <span class="script-team-count">(2)</span></h3>' +
+      return '<h1 class="script-title-fallback">Your Script</h1>' +
+        '<div class="script-view-layout"><section class="script-chars-panel sv-main">' +
+        '<div class="sv-section sv-s-synopsis"><div class="gen-sech-wrap"><h2 class="gen-sech">Synopsis</h2></div>' +
+        '<p class="script-desc">Body text looks like this, with a <a href="#">link</a> in it.</p></div>' +
+        '<div class="sv-section sv-s-characters"><div class="script-team-group"><h3 class="script-team-head good">Townsfolk <span class="script-team-count">(3)</span></h3>' +
         '<div class="script-char-list">' +
         row('washerwoman', 'Washerwoman', 'You start knowing that 1 of 2 players is a particular Townsfolk.') +
         row('librarian', 'Librarian', 'You start knowing that 1 of 2 players is a particular Outsider.') +
-        '</div></div></section>' +
-        '<div class="card"><h2 class="info-h">Information</h2><dl class="info"><dt>Author</dt><dd><a href="#">You</a></dd></dl></div>';
+        row('investigator', 'Investigator', 'You start knowing that 1 of 2 players is a particular Minion.') +
+        '</div></div></div></section>' +
+        '<aside class="script-json-panel"><div class="card"><h2 class="info-h">Information</h2><dl class="info"><dt>Author</dt><dd><a href="#">You</a></dd></dl></div></aside></div>';
     }
     var card = function (id, name, team, good, ab) {
       return '<a class="char-card" href="#"><span class="card-side"><img class="char-card-thumb" src="' + icon(id) + '" alt=""></span>' +
@@ -305,14 +320,18 @@
     var roster = '<div class="type-section"><h2 class="type-header good">Townsfolk <span class="coll-team-count">(2)</span></h2>' +
       '<div class="type-rule"></div><div class="char-grid">' +
       card('washerwoman', 'Washerwoman', 'Townsfolk', true, 'You start knowing that 1 of 2 players is a particular Townsfolk.') +
+      card('poisoner', 'Poisoner', 'Minion', false, 'Each night, choose a player: they are poisoned tonight and tomorrow day.') +
       card('imp', 'Imp', 'Demon', false, 'Each night*, choose a player: they die.') + '</div></div>';
     if (kind === 'profile') {
       return '<div class="home-hero"><h1>Your Name</h1><p class="profile-bio">A short bio goes here, with a <a href="#">link</a>.</p></div>' +
-        '<section class="prof-section"><h2 class="type-header">Characters</h2>' + roster + '</section>';
+        '<div class="prof-panel"><section class="prof-section" data-sec="characters"><h2 class="type-header">Characters</h2>' + roster + '</section>' +
+        '<section class="prof-section" data-sec="scripts"><h2 class="type-header">Scripts</h2><p>Your scripts appear here.</p></section></div>';
     }
-    return '<section class="script-chars-panel coll-prose"><div class="gen-sech-wrap"><h2 class="gen-sech">Synopsis</h2></div>' +
-      '<p class="script-desc">Body text looks like this, with a <a href="#">link</a> in it.</p></section>' +
-      '<p class="coll-chars-count">2 characters</p>' + roster;
+    return '<div class="coll-flow"><div class="coll-top"><h1 class="coll-title">Your Collection</h1></div>' +
+      '<div class="coll-meta-row"><div class="card"><h2 class="info-h">Information</h2><dl class="info"><dt>Author</dt><dd><a href="#">You</a></dd></dl></div></div>' +
+      '<section class="script-chars-panel coll-prose"><div class="sv-section sv-s-synopsis"><div class="gen-sech-wrap"><h2 class="gen-sech">Synopsis</h2></div>' +
+      '<p class="script-desc">Body text looks like this, with a <a href="#">link</a> in it.</p></div></section>' +
+      '<section class="coll-chars"><p class="coll-chars-count">3 characters</p>' + roster + '</section></div>';
   }
 
   function moreHTML(kind) {
@@ -404,8 +423,25 @@
       choiceRow('bgFit') + choiceRow('bgPos') + numRow('bgDim') + numRow('bgBlur'));
     h += sec('Boxes', 'See-through, rounded, bordered, shadowed',
       numRow('panelAlpha') + numRow('radius') + numRow('borderW') + choiceRow('shadow'));
-    h += sec('Layout & text', 'Width, size, heading style',
-      choiceRow('width') + numRow('textScale') + choiceRow('headCase') + choiceRow('align'));
+    h += sec('Text', 'Size, heading letters, paragraphs',
+      numRow('textScale') + choiceRow('headCase') + choiceRow('align'));
+    var lay = '<p class="thx-sub" style="margin-top:0">How big things are and where they sit. Phones keep a one-column page whatever you pick here.</p>';
+    if (kind !== 'page' && kind !== 'news') {
+      lay += '<div class="thx-lab">Character boxes</div>' +
+        numRow('cardW') + numRow('cardCols') + numRow('cardGap') + numRow('cardPad') +
+        choiceRow('cardLayout') + choiceRow('cardAlign') + choiceRow('cardAbility');
+    }
+    lay += '<div class="thx-lab">The page</div>' + choiceRow('width') + numRow('pageW') + numRow('panelPad');
+    if (kind !== 'profile') lay += numRow('titleSize') + choiceRow('topAlign');
+    if (kind === 'script' || kind === 'page') lay += choiceRow('infoPos') + numRow('infoW');
+    if ((PR().THEME_SECTIONS || {})[kind]) {
+      lay += numRow('secGap') + '<div class="thx-lab">Order of the sections</div>' +
+        '<p class="thx-sub">Move a section up or down the page. Sections your page does not have are skipped.</p>' +
+        '<ol class="thx-order" id="thx-order"></ol>' +
+        '<button type="button" class="thx-reset" data-reset="order">Back to the usual order</button>';
+    }
+    lay += '<div class="thx-foot"><button type="button" class="thx-reset" id="thx-reset-layout">Reset the whole layout</button></div>';
+    h += sec('Layout', 'Make boxes wider, change columns, move sections around', lay);
     h += sec('Custom CSS', 'Advanced: write your own styles',
       '<p class="thx-sub">Anything CSS can do, on your page only. <code>body</code> means your page area; the site\'s top bar, footer and comments stay as they are. Images can come from any <code>https://</code> link. Changes show in the sample above.</p>' +
       '<textarea id="thx-css" class="thx-css" spellcheck="false" maxlength="' + (PR().THEME_CSS_MAX || 30000) + '" placeholder="h1 {\n  color: gold;\n  text-shadow: 0 0 10px orange;\n}"></textarea>' +
@@ -490,7 +526,8 @@
       var i = $('thx-' + r[0]); if (!i) return;
       var has = theme[r[0]] != null;
       // Where an unset slider rests: the look the stylesheet already draws.
-      var rest = { bgAngle: 180, ruleW: 2, borderW: 2, cardBorderW: 4 }[r[0]];
+      var rest = { bgAngle: 180, ruleW: 2, borderW: 2, cardBorderW: 4, cardW: 240, cardCols: 3, cardGap: 18,
+        cardPad: 16, pageW: 1200, panelPad: 20, secGap: 20, infoW: 320 }[r[0]];
       i.value = has ? theme[r[0]] : (rest != null ? rest : (r[3] != null ? r[3] : r[1]));
       showNum(r[0], has ? theme[r[0]] : null);
     });
@@ -504,12 +541,43 @@
       i.value = theme[i.getAttribute('data-gfont')] || '';
     });
     var css = $('thx-css'); if (css) css.value = theme.css || '';
+    renderOrder(theme);
     renderStickers(theme);
     paintSample(theme);
   }
   function showNum(k, v) {
     var st = $('thx-' + k + '-state');
-    if (st) st.textContent = v == null ? 'default' : v + NUM_LABELS[k][1];
+    if (st) st.textContent = v == null ? (k === 'cardCols' ? 'automatic' : 'default') : v + NUM_LABELS[k][1];
+  }
+
+  /* ── Section order (theme.order; the keys are PageRender.THEME_SECTIONS) ──
+     The whole list for this kind is stored once anything moves, and nothing
+     once it is back in the usual order. */
+  function kindSections() { return ((PR().THEME_SECTIONS || {})[more && more.kind]) || []; }
+  function currentOrder(t) {
+    var keys = kindSections().map(function (x) { return x[0]; });
+    var saved = (Array.isArray(t && t.order) ? t.order : []).filter(function (k) { return keys.indexOf(k) >= 0; });
+    return saved.concat(keys.filter(function (k) { return saved.indexOf(k) < 0; }));
+  }
+  function renderOrder(t) {
+    var ol = $('thx-order'); if (!ol) return;
+    var names = {}; kindSections().forEach(function (x) { names[x[0]] = x[1]; });
+    var ord = currentOrder(t);
+    ol.innerHTML = ord.map(function (k, n) {
+      return '<li><span>' + (n + 1) + '. ' + escH(names[k]) + '</span>' +
+        '<button type="button" class="thx-reset" data-ord="' + n + '" data-dir="-1"' + (n ? '' : ' disabled') + ' aria-label="Move ' + escH(names[k]) + ' up">▲</button>' +
+        '<button type="button" class="thx-reset" data-ord="' + n + '" data-dir="1"' + (n < ord.length - 1 ? '' : ' disabled') + ' aria-label="Move ' + escH(names[k]) + ' down">▼</button></li>';
+    }).join('');
+  }
+  function moveSection(n, dir) {
+    update(function (t) {
+      var ord = currentOrder(t), m = n + dir;
+      if (m < 0 || m >= ord.length) return;
+      var x = ord[n]; ord[n] = ord[m]; ord[m] = x;
+      var usual = kindSections().map(function (s) { return s[0]; });
+      if (ord.join() === usual.join()) delete t.order; else t.order = ord;
+    });
+    renderOrder(more.opts.get() || {});
   }
 
   /* ── Stickers (theme.stickers; rules in PageRender.sanitizeStickers) ── */
@@ -669,6 +737,15 @@
         var ok = PR().sanitizeStickers ? PR().sanitizeStickers([{ src: src }], stBase()).length : 0;
         if (!ok) { stMsg('bad', 'That needs to be an https:// link to an image.'); return; }
         if (addSticker(src)) { u.value = ''; stMsg('ok', 'Added. Drag it into place in the sample, then save the page.'); }
+        return;
+      }
+      if (b.hasAttribute('data-ord')) {
+        moveSection(+b.getAttribute('data-ord'), +b.getAttribute('data-dir'));
+        return;
+      }
+      if (b.id === 'thx-reset-layout') {
+        update(function (t) { (PR().THEME_LAYOUT_KEYS || []).forEach(function (k) { delete t[k]; }); });
+        primeMore(opts.get() || {});
         return;
       }
       if (b.hasAttribute('data-stact')) {

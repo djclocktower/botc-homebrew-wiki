@@ -3636,6 +3636,97 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .tr-double .wiki-rule { border-top: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, var(--parch-frame)); }
 .tr-none .wiki-rule { border-top: none; }
 
+/* ── Theme kit: layout (sizes and positions) ──
+   tl-* classes from render-page.js themeAttrs, one per setting, each written
+   only when the owner chose it. Column rules stay out of the phone range:
+   on a small screen every page keeps its one-column layout whatever the
+   desktop arrangement says, and a box never asks for more than the screen. */
+/* Character boxes: width, boxes per row, spacing */
+.tl-cardw .char-grid { grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w), 100%), 1fr)); }
+.tl-cols .char-grid { grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+:is(.tl-cardw, .tl-cols) .script-char-list {
+  display: grid; column-gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w, 260px), 100%), 1fr));
+}
+.tl-cols .script-char-list { grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+:not(.tc-border):is(.tl-cardw, .tl-cols) .script-char-row + .script-char-row { border-top: 0; }
+@media (max-width: 640px) {
+  .tl-cols :is(.char-grid, .script-char-list) { grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w, 240px), 100%), 1fr)); }
+}
+.tl-gap :is(.char-grid, .script-char-list) { gap: var(--pg-card-gap); }
+.tl-pad :is(.char-card, .script-char-row) { padding: var(--pg-card-pad); }
+/* Where the icon sits in a box, how its text lines up, how much ability shows */
+.tl-card-top :is(.char-card, .script-char-row) { flex-direction: column; align-items: center; text-align: center; }
+.tl-card-top .card-side { flex-direction: row; }
+.tl-card-top .card-side .cq { min-height: 0; }
+.tl-card-top :is(.char-card-info, .script-char-text) { width: 100%; }
+.tl-card-right :is(.char-card, .script-char-row) { flex-direction: row-reverse; }
+.tl-card-right :is(.char-card-info, .script-char-text) { text-align: right; }
+.tl-calign-left :is(.char-card-info, .script-char-text) { text-align: left; }
+.tl-calign-center :is(.char-card-info, .script-char-text) { text-align: center; }
+.tl-calign-right :is(.char-card-info, .script-char-text) { text-align: right; }
+.tl-ab-short :is(.char-card-ability, .script-char-ability) {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+}
+.tl-ab-hide :is(.char-card-ability, .script-char-ability) { display: none; }
+/* The page: its width, the room inside its boxes */
+.tl-pagew :is(main.wrap, .home-panel, .wiki-page) { max-width: var(--pg-page-w); }
+.tl-ppad :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  padding: min(var(--pg-panel-pad), 6vw);
+}
+/* The title and the banner above it */
+.tl-title :is(.script-title-fallback, .coll-title, .wiki-title, .news-article h1) { zoom: var(--pg-title); }
+.tl-top-left :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: left; margin-left: 0; margin-right: auto; }
+.tl-top-center :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: center; margin-left: auto; margin-right: auto; }
+.tl-top-right :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: right; margin-left: auto; margin-right: 0; }
+/* The information box (a script's side column, a wiki page's fact box) */
+@media (min-width: 901px) {
+  .tl-infow .script-view-layout { grid-template-columns: minmax(0, 1fr) min(var(--pg-info-w), 45%); }
+  .tl-info-left .script-view-layout { grid-template-columns: minmax(300px, 1fr) minmax(0, 1.7fr); }
+  .tl-info-left.tl-infow .script-view-layout { grid-template-columns: min(var(--pg-info-w), 45%) minmax(0, 1fr); }
+  .tl-infow .wiki-layout:not(.wiki-layout-full) { grid-template-columns: minmax(0, 1fr) min(var(--pg-info-w), 45%); }
+  .tl-info-left .wiki-layout:not(.wiki-layout-full) { grid-template-columns: 300px minmax(0, 1fr); }
+  .tl-info-left.tl-infow .wiki-layout:not(.wiki-layout-full) { grid-template-columns: min(var(--pg-info-w), 45%) minmax(0, 1fr); }
+  /* On a phone "left" stays below the page, where a side box usually goes:
+     above it, the box and its JSON would push the characters a screen down. */
+  .tl-info-left :is(.script-json-panel, .wiki-side) { order: -1; }
+}
+.tl-info-top :is(.script-json-panel, .wiki-side) { order: -1; }
+:is(.tl-info-top, .tl-info-bottom) :is(.script-view-layout, .wiki-layout) { grid-template-columns: minmax(0, 1fr); }
+:is(.tl-info-top, .tl-info-bottom) .script-json-panel {
+  position: static; display: grid; gap: 14px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+:is(.tl-info-top, .tl-info-bottom) .wiki-side {
+  display: grid; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+/* Sections: their order and the space between them. Flex only when one of
+   the two is set, so an untouched page lays out exactly as before. */
+.tl-flow :is(.sv-main, .coll-flow, .prof-panel) { display: flex; flex-direction: column; }
+.tl-flow #page-wiki-links:empty { display: none; }
+.tl-gapy :is(.sv-main, .coll-flow, .prof-panel) { gap: var(--pg-sec-gap); }
+.tl-gapy :is(.sv-main, .coll-flow, .prof-panel) > * { margin-top: 0; margin-bottom: 0; }
+.tl-order .sv-main > .sv-s-synopsis { order: var(--pg-o-synopsis, 51); }
+.tl-order .sv-main > .sv-s-gameplay { order: var(--pg-o-gameplay, 52); }
+.tl-order .sv-main > #page-wiki-links { order: var(--pg-o-pages, 53); }
+.tl-order .sv-main > .sv-s-characters { order: var(--pg-o-characters, 54); }
+.tl-order .sv-main > #sec-bootlegger { order: var(--pg-o-bootlegger, 55); }
+.tl-order .sv-main > #sec-nightorder { order: var(--pg-o-night, 56); }
+.tl-order .sv-main > .script-missing { order: 99; }
+.tl-order .coll-flow > .coll-meta-row { order: var(--pg-o-info, 51); }
+.tl-order .coll-flow > .coll-prose { order: var(--pg-o-about, 52); }
+.tl-order .coll-flow > :is(.coll-filters, .coll-chars) { order: var(--pg-o-characters, 53); }
+.tl-order .coll-flow > .coll-jinx { order: var(--pg-o-jinx, 54); }
+.tl-order .prof-panel > * { order: 99; }
+.tl-order .prof-panel > [data-sec="pinned"] { order: var(--pg-o-pinned, 51); }
+.tl-order .prof-panel > [data-sec="characters"] { order: var(--pg-o-characters, 52); }
+.tl-order .prof-panel > [data-sec="scripts"] { order: var(--pg-o-scripts, 53); }
+.tl-order .prof-panel > [data-sec="collections"] { order: var(--pg-o-collections, 54); }
+.tl-order .prof-panel > [data-sec="pages"] { order: var(--pg-o-pages, 55); }
+
 /* ── Custom CSS frame (assets/custom-css.js) ──
    A page with a custom stylesheet has its content wrapped in
    .ucss-frame > .ucss, and every rule the author wrote is rewritten to sit

@@ -321,3 +321,49 @@ test('stickers: sanitized, drawn outside the custom-CSS frame, and uploaded only
   r = await f.request('/api/account/theme', post(1, { theme: { stickers: [{ src: 'avatars/u1-st3.gif' }, { src: 'avatars/u2-st1.gif' }] } }));
   assert.deepEqual((await r.json()).theme.stickers.map(s => s.src), ['avatars/u1-st3.gif']);
 });
+
+test('layout: sizes and positions are validated, become tl-* settings, and quick styles keep them', async t => {
+  const T = PageRender.sanitizeTheme({
+    cardW: 380, cardCols: 9, cardGap: 0, cardPad: '12', cardLayout: 'top', cardAlign: 'centre',
+    cardAbility: 'hide', pageW: 1600, panelPad: 0, secGap: 30, infoW: 420, infoPos: 'left',
+    titleSize: 100, topAlign: 'left',
+    order: ['characters', 'synopsis', 'characters', 'nope', '<b>', 'night']
+  }, 'scripts/x');
+  assert.deepEqual(T, {
+    cardW: 380, cardGap: 0, cardPad: 12, pageW: 1600, panelPad: 0, secGap: 30, infoW: 420,
+    cardLayout: 'top', cardAbility: 'hide', infoPos: 'left', topAlign: 'left',
+    order: ['characters', 'synopsis', 'night']
+  });
+  const a = PageRender.themeAttrs(T);
+  for (const c of ['tl-cardw', 'tl-gap', 'tl-pad', 'tl-card-top', 'tl-ab-hide', 'tl-pagew', 'tl-ppad',
+                   'tl-gapy', 'tl-infow', 'tl-info-left', 'tl-top-left', 'tl-order', 'tl-flow']) {
+    assert.ok(a.cls.split(' ').includes(c), c);
+  }
+  assert.doesNotMatch(a.cls, /tl-cols|tl-title|tl-calign/);
+  assert.match(a.style, /--pg-card-w:380px/);
+  assert.match(a.style, /--pg-o-characters:1;--pg-o-synopsis:2;--pg-o-night:3/);
+  // Defaults draw nothing: the usual icon side, full ability and info on the right.
+  assert.equal(PageRender.themeAttrs({ cardLayout: 'side', cardAbility: 'full', infoPos: 'right' }).cls, 'page-themed');
+  // A quick style recolours; it does not undo the arrangement.
+  for (const k of ['cardW', 'order', 'infoPos', 'width']) assert.ok(!PageRender.THEME_STYLE_KEYS.includes(k), k);
+  assert.ok(PageRender.THEME_LAYOUT_KEYS.includes('order'));
+
+  // The sections the CSS reorders are marked on the published pages.
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  let r = await f.request('/api/script', post(1, {
+    slug: 'laid', name: 'Laid', author: 'user-1', characters: [], status: 'published', synopsis: 'Hello',
+    theme: { order: ['characters', 'synopsis'], cardW: 300 }
+  }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const html = await (await f.request('/s/laid')).text();
+  assert.match(html, /<body class="[^"]*tl-order[^"]*tl-flow/);
+  assert.match(html, /class="script-chars-panel sv-main"/);
+  assert.match(html, /class="sv-section sv-s-synopsis"/);
+  assert.match(html, /class="sv-section sv-s-characters"/);
+  r = await f.request('/api/collection', post(1, { displayName: 'Flow Set', author: 'user-1', status: 'published' }));
+  const made = await r.json();
+  const coll = await (await f.request('/collection/' + made.id)).text();
+  assert.match(coll, /<div class="coll-flow"><div class="coll-top">/);
+});

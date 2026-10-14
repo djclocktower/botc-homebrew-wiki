@@ -132,7 +132,17 @@
     ['cardIcon',   50, 200, 100],
     // Team headings and dividers
     ['teamSize',   50, 250, 100],
-    ['ruleW',       0,  12, null]
+    ['ruleW',       0,  12, null],
+    // Layout: how big things are and where they sit (THEME_LAYOUT_KEYS)
+    ['cardW',     140, 700, null],
+    ['cardCols',    1,   8, null],
+    ['cardGap',     0,  80, null],
+    ['cardPad',     0,  48, null],
+    ['pageW',     600, 2400, null],
+    ['panelPad',    0,  64, null],
+    ['secGap',      0, 120, null],
+    ['infoW',     200, 640, null],
+    ['titleSize',  50, 250, 100]
   ];
   // The pick-one knobs and what each may say.
   var THEME_CHOICES = {
@@ -146,8 +156,36 @@
     cardHover:  ['none', 'lift', 'grow', 'glow'],
     teamAlign:  ['left', 'center', 'right'],
     teamCase:   ['upper', 'lower', 'caps', 'none'],
-    ruleStyle:  ['fade', 'solid', 'dashed', 'dotted', 'double', 'glow', 'none']
+    ruleStyle:  ['fade', 'solid', 'dashed', 'dotted', 'double', 'glow', 'none'],
+    cardLayout: ['side', 'top', 'right'],
+    cardAlign:  ['left', 'center', 'right'],
+    cardAbility: ['full', 'short', 'hide'],
+    infoPos:    ['right', 'left', 'top', 'bottom'],
+    topAlign:   ['left', 'center', 'right']
   };
+  /* The sections a page's owner may put in another order (theme.order).
+     Each page kind draws its own few; a key a page does not draw sets a
+     custom property nothing reads. Listed per kind for the editor. */
+  var THEME_SECTIONS = {
+    script: [['synopsis', 'Synopsis'], ['gameplay', 'Gameplay'], ['pages', 'Pages'],
+      ['characters', 'Characters and jinxes'], ['bootlegger', 'Bootlegger rules'], ['night', 'Night order']],
+    collection: [['info', 'Information and JSON'], ['about', 'Synopsis, gameplay and boxes'],
+      ['characters', 'Characters'], ['jinx', 'Jinxes']],
+    profile: [['pinned', 'Pinned'], ['characters', 'Characters'], ['scripts', 'Scripts'],
+      ['collections', 'Collections'], ['pages', 'Pages']]
+  };
+  var SECTION_KEYS = Object.create(null);
+  Object.keys(THEME_SECTIONS).forEach(function (k) {
+    THEME_SECTIONS[k].forEach(function (s) { SECTION_KEYS[s[0]] = true; });
+  });
+  function sanitizeOrder(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [];
+    list.forEach(function (k) {
+      if (typeof k === 'string' && SECTION_KEYS[k] && out.indexOf(k) < 0 && out.length < 16) out.push(k);
+    });
+    return out;
+  }
   var THEME_COLORS = ['accent', 'panel', 'text', 'link', 'bgColor', 'bgColor2', 'border', 'glow', 'heading',
     'cardBg', 'cardText', 'cardName', 'cardAccent', 'cardBorder',
     'teamColor', 'teamBg', 'teamGlow', 'ruleColor'];
@@ -220,6 +258,8 @@
     }
     var st = sanitizeStickers(theme.stickers, allowedBgBase);
     if (st.length) out.stickers = st;
+    var ord = sanitizeOrder(theme.order);
+    if (ord.length) out.order = ord;
     return Object.keys(out).length ? out : null;
   }
 
@@ -421,6 +461,28 @@
       if (theme.ruleW != null) style.push('--pg-rule-w:' + theme.ruleW + 'px');
     }
     if (theme.width) cls.push('theme-width-' + theme.width);
+    /* Layout: tl-* classes, read by the "Theme kit: layout" block of
+       styles.css. Sizes are custom properties; positions are classes. */
+    if (theme.cardW) on('tl-cardw', '--pg-card-w', theme.cardW + 'px');
+    if (theme.cardCols) on('tl-cols', '--pg-cols', theme.cardCols);
+    if (theme.cardGap != null) on('tl-gap', '--pg-card-gap', theme.cardGap + 'px');
+    if (theme.cardPad != null) on('tl-pad', '--pg-card-pad', theme.cardPad + 'px');
+    if (theme.cardLayout && theme.cardLayout !== 'side') cls.push('tl-card-' + theme.cardLayout);
+    if (theme.cardAlign) cls.push('tl-calign-' + theme.cardAlign);
+    if (theme.cardAbility && theme.cardAbility !== 'full') cls.push('tl-ab-' + theme.cardAbility);
+    if (theme.pageW) on('tl-pagew', '--pg-page-w', theme.pageW + 'px');
+    if (theme.panelPad != null) on('tl-ppad', '--pg-panel-pad', theme.panelPad + 'px');
+    if (theme.secGap != null) on('tl-gapy', '--pg-sec-gap', theme.secGap + 'px');
+    if (theme.infoW) on('tl-infow', '--pg-info-w', theme.infoW + 'px');
+    if (theme.infoPos && theme.infoPos !== 'right') cls.push('tl-info-' + theme.infoPos);
+    if (theme.titleSize) on('tl-title', '--pg-title', theme.titleSize / 100);
+    if (theme.topAlign) cls.push('tl-top-' + theme.topAlign);
+    var ord = sanitizeOrder(theme.order);
+    if (ord.length) {
+      cls.push('tl-order');
+      ord.forEach(function (k, n) { style.push('--pg-o-' + k + ':' + (n + 1)); });
+    }
+    if (ord.length || theme.secGap != null) cls.push('tl-flow');
     if (theme.headCase) cls.push('theme-hcase-' + theme.headCase);
     if (theme.align) cls.push('theme-align-' + theme.align);
 
@@ -479,9 +541,14 @@
      so a preset is just a starting point the knobs can then move. Applying
      one replaces the STYLE fields and leaves the page's own images, image
      sizes and custom CSS alone (see ThemeEditor.applyPreset). */
+  /* Layout is kept apart from the style fields: picking a quick style
+     recolours a page, it does not undo how the owner arranged it. */
+  var THEME_LAYOUT_KEYS = ['width', 'cardW', 'cardCols', 'cardGap', 'cardPad', 'cardLayout', 'cardAlign',
+    'cardAbility', 'pageW', 'panelPad', 'secGap', 'infoW', 'infoPos', 'titleSize', 'topAlign', 'order'];
   var THEME_STYLE_KEYS = THEME_FONTS.reduce(function (a, f) { return a.concat(f); }, []).concat(THEME_COLORS)
     .concat(THEME_NUMBERS.map(function (r) { return r[0]; }))
-    .concat(Object.keys(THEME_CHOICES));
+    .concat(Object.keys(THEME_CHOICES))
+    .filter(function (k) { return THEME_LAYOUT_KEYS.indexOf(k) < 0; });
   var THEME_PRESETS = {
     'default':  { label: 'Wiki default', t: {} },
     'midnight': { label: 'Midnight', t: { font: 'cinzel', accent: '#d9c27a', heading: '#f3e3a8', panel: '#141a2e', text: '#dfe4f2', link: '#8fb8ff', bgColor: '#05070f', bgColor2: '#1b2448', bgAngle: 160, panelAlpha: 92, radius: 10, border: '#3a4670', borderW: 1, shadow: 'strong' } },
@@ -1383,15 +1450,15 @@
     top += ownerBar(cfg.editHref, 'Edit this script');
 
     var main = '';
-    if (cfg.synopsis) main += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
+    if (cfg.synopsis) main += '<div class="sv-section sv-s-synopsis">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
     var gameplay = '';
     if (cfg.gameplay) gameplay += prose(cfg.gameplay);
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
-    if (gameplay) main += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    if (gameplay) main += '<div class="sv-section sv-s-gameplay">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
     main += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
 
-    main += '<div class="sv-section">' +
+    main += '<div class="sv-section sv-s-characters">' +
       (main ? sech('sec-characters', 'Characters') : '') +
       renderRoster(cfg.entries, root) +
       renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits) + '</div>';
@@ -1412,7 +1479,7 @@
 
     return top +
       '<div class="script-view-layout">' +
-      '<section class="script-chars-panel">' + main + '</section>' +
+      '<section class="script-chars-panel sv-main">' + main + '</section>' +
       '<aside class="script-json-panel">' + aside + '</aside>' +
       '</div>';
   }
@@ -1447,12 +1514,12 @@
 
     // Prose sections (synopsis / gameplay) in a parchment panel.
     var proseHTML = '';
-    if (cfg.synopsis) proseHTML += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
+    if (cfg.synopsis) proseHTML += '<div class="sv-section sv-s-synopsis">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
     var gameplay = '';
     if (cfg.gameplay) gameplay += prose(cfg.gameplay);
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
-    if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    if (gameplay) proseHTML += '<div class="sv-section sv-s-gameplay">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
     proseHTML += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
     // Custom boxes sit below the prose, full width, like the character-page ones.
     if (cfg.boxesHTML) proseHTML += '<div class="coll-boxes">' + cfg.boxesHTML + '</div>';
@@ -1470,7 +1537,10 @@
     var jinx = renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits);
     var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
 
-    return top + meta + prosePanel + filters + chars + jinxPanel;
+    // .coll-flow / .coll-top are what the layout settings reorder
+    // (styles.css, "Theme kit: layout"); untouched, they are plain blocks.
+    return '<div class="coll-flow"><div class="coll-top">' + top + '</div>' +
+      meta + prosePanel + filters + chars + jinxPanel + '</div>';
   }
 
   /* ── public renderers ── */
@@ -1559,6 +1629,8 @@
     themeFontLinks: themeFontLinks,
     THEME_PRESETS: THEME_PRESETS,
     THEME_STYLE_KEYS: THEME_STYLE_KEYS,
+    THEME_LAYOUT_KEYS: THEME_LAYOUT_KEYS,
+    THEME_SECTIONS: THEME_SECTIONS,
     THEME_NUMBERS: THEME_NUMBERS,
     THEME_CHOICES: THEME_CHOICES,
     THEME_CSS_MAX: THEME_CSS_MAX,

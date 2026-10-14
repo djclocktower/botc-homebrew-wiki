@@ -1277,6 +1277,27 @@ in this order by `assets/theme-editor.js`:
    frame and are out of reach. `migration/tests/customization.test.mjs` holds
    the escape attempts — add to it before loosening anything.
 
+**Layout** (sizes and positions, the editor's "Layout" section): character
+box width (`cardW`, the grid's minimum column), boxes per row (`cardCols`),
+the space between and inside them (`cardGap`, `cardPad`), the icon above or
+right of the text (`cardLayout`), text alignment (`cardAlign`), ability text
+full / 3 lines / hidden (`cardAbility`), an exact page width (`pageW`), the
+padding of the big boxes (`panelPad`), title size and title/banner alignment
+(`titleSize`, `topAlign`), the information box's side and width (`infoPos`,
+`infoW`: script side column and a wiki page's fact box) and the space between
+sections plus their ORDER (`secGap`, `order[]`). `order` is a list of keys
+from `PageRender.THEME_SECTIONS` (per kind: script, collection, profile),
+written as `--pg-o-{key}` and read by `order:` on the sections, which become a
+flex column (`tl-flow`) only when `order` or `secGap` is set; an unlisted
+section falls after the listed ones (CSS fallback 50+). The hooks are
+`.sv-main` + `.sv-s-*` on a script, `.coll-flow` / `.coll-top` on a
+collection, `.prof-panel` + `data-sec` on the creator page. Classes are
+`tl-*` ("Theme kit: layout" in styles.css). Column rules only apply above the
+phone breakpoints, and "left" keeps the info box below the page on a phone.
+`THEME_LAYOUT_KEYS` are excluded from `THEME_STYLE_KEYS`, so a quick style or
+"Reset every style setting" never undoes an arrangement; the Layout section
+has its own reset.
+
 **Stickers** (`theme.stickers`, up to `STICKERS_MAX` 24): free-standing
 GIF/PNG/JPEG/WebP images placed by their centre at `x`/`y` % of the page area
 (or of the screen when `pin: 'screen'`), `w` px wide (capped at 90vw), with
