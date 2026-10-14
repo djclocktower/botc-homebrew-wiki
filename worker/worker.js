@@ -13414,6 +13414,12 @@ const app = {
           // A NEW identity: never the official-roster prefix, and never one a
           // live page still answers on (see identityParked). /api/slug-check
           // steers every editor past both, so this is the hand-written request.
+          // ...and never one that starts with a hyphen: an importer once took a
+          // name with no a-z in it to '' and the batch numbered it "-2",
+          // which [[2]] then linked to.
+          if (!/^[a-z0-9]/.test(c.slug)) {
+            return jsonResponse({ error: 'A character\u2019s URL has to start with a letter or a number.' }, { status: 400 });
+          }
           if (officialPrefixed(c.slug)) {
             return jsonResponse({ error: 'A character\u2019s URL cannot start with \u201coff-\u201d. Pick a different name.' }, { status: 400 });
           }
