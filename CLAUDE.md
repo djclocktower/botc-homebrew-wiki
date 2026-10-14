@@ -698,7 +698,16 @@ assets/
   pageview.js          Client enhancements for /s/ and /collection/ SSR pages
                        (edit button, JSON download).
   theme-editor.js      Shared theme-kit form controls (font + color pickers) for
-                       publish-script/-collection/-page/-news.html.
+                       publish-script/-collection/-page/-news.html and the
+                       account page's Profile Appearance. wire() also builds
+                       the deeper layers into <div id="th-more"
+                       data-kind="…">: quick styles, every other knob, a live
+                       sample and the Custom CSS box. See "Page customization".
+  custom-css.js        CustomCSS.clean(): a page's custom stylesheet, cleaned
+                       and scoped under .ucss. Browser + Worker. SECURITY-
+                       CRITICAL — read its header before touching it.
+  custom-url.js        The "Custom URL" field on publish-script/-collection/
+                       -page (asks /api/custom-url-check as you type).
   wiki-editor.js       Shared editor widgets: the formatting toolbar, the
                        {title, content} custom-box repeater, the fact-box row
                        repeater, grow-with-content textareas, the image picker
@@ -1180,7 +1189,8 @@ Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a
 link or a `[[Character Name]]`. Every one of these is length-capped and
 theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is
-`{font, accent, panel, text, link, background, logoSize, logoPanel}` — colors
+`{font, accent, panel, text, link, background, logoSize, logoPanel}` plus the
+deeper fields in "Page customization" — colors
 must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
@@ -1220,6 +1230,66 @@ ids the widget would have to keep in step. Seeded collections have `owner_id NUL
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit,
 and **that assignment carries the set's characters with it** (see "Assigning an
 owner" below).
+
+## Page customization (theme kit, custom CSS, custom URLs)
+
+Scripts, collections, wiki pages/articles, news and creator pages (/u/) share
+ONE theme kit: `data.theme`, validated by `PageRender.sanitizeTheme()` (server
+on save AND at render, client in the editors) and applied by `themeAttrs()` as
+`theme-*` classes + `--pg-*` custom properties on `<body>`. Three layers, shown
+in this order by `assets/theme-editor.js`:
+
+1. **Quick styles** — `THEME_PRESETS`, each nothing but a bundle of theme
+   fields. Applying one replaces the `THEME_STYLE_KEYS` and keeps the page's
+   images, image sizes and custom CSS.
+2. **Knobs** — heading/body font (`FONT_PRESETS`/`FONT_STACKS`, all
+   self-hosted or system) or any Google Font (`gFont`/`gBodyFont`, letters,
+   digits and spaces only — `GOOGLE_FONT_RE`; the page then loads
+   fonts.googleapis.com, the owner's choice), nine colours
+   (`THEME_COLORS`), background colour/gradient/fit/position/darken/blur,
+   box opacity/corners/border/shadow, page width, "size of everything"
+   (`zoom`), heading case and glow, paragraph alignment. Ranges are in
+   `THEME_NUMBERS` with the value that means "not set", which is never
+   stored. The page background is ONE composed value (`--pg-bgl`) on the
+   fixed `body::before` layer; its url() stays root-absolute (see below).
+   CSS rules are in styles.css under "Theme kit: the deeper knobs", keyed on
+   the body classes, so an untouched page draws exactly as before.
+3. **Custom CSS** — `theme.css`, stored as typed (capped at
+   `THEME_CSS_MAX`), cleaned by `CustomCSS.clean()` at render time and
+   printed as `<style id="page-custom-css">` after the site's stylesheets.
+   `pageShell({customCss})` wraps the body in `.ucss-frame > .ucss`; every
+   author rule is rewritten under `.ucss` (`body`/`html`/`:root` mean the
+   page area), nesting and `&` are refused, only `url()` may fetch (https,
+   /assets/, data:image, #fragment; never `/api/`), image-set()/src()/…
+   and backslash escapes outside strings are refused, global at-rules are
+   dropped, @keyframes/@font-face names are prefixed `u-`, and `<` never
+   survives. `.ucss-frame` has `contain: paint`, so nothing an author writes
+   can draw over the top bar or outside the page. Comments mount after the
+   frame and are out of reach. `migration/tests/customization.test.mjs` holds
+   the escape attempts — add to it before loosening anything.
+
+**Creator pages** keep their theme in `users.profile_json.theme`, saved by
+`POST /api/account/theme` (never by `/api/account/profile`, which keeps it —
+`packProfileExtra()` is the one writer). Its background is uploaded through
+`/api/account/avatar` with `kind:'bg'` to `avatars/u{id}-bg.{ext}`
+(`profileThemeBase()`). `/api/user` returns it; profile.html applies it in the
+browser (`applyProfileTheme`), moving the hero and sections into the frame
+when there is custom CSS. The anonymous `/api/user` edge copy can lag a theme
+change by up to its 30-minute ttl; the owner, logged in, sees it at once.
+
+**Custom URLs** (scripts, collections, wiki pages and articles): the owner may
+give a page its own address (`data.customUrl`, owner-only like `publicEdit`;
+a save that does not send the field keeps it). The PK slug stays the identity
+— comments, views, pins and images do not move. A lazily ALTERed, UNIQUE
+`custom_url` column on scripts/collections/pages is what requests resolve by
+(`rowByCustomUrl`): slug first, then custom address, then `redirects` (old
+addresses). Arriving by anything but the custom address is a 301 to it, made
+AFTER the draft/deleted (and, for /p/, parent) gates. `settleCustomUrl()`
+validates before the write (`addressTaken()`: another page's slug, id, custom
+address or live redirect), `commitCustomUrl()` writes the column after it and
+leaves the old address as a redirect. A new script/collection/page never lands
+on somebody's custom address, `/api/slug-check` counts them as taken, and
+`prepareRestore` pins `customUrl`. Creator pages' URL is still the username.
 
 ## Night order (script pages)
 

@@ -2858,9 +2858,10 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* Custom page background: the theme classes + --pg-* props are emitted on
    <body>, so this simply swaps the image on the existing fixed background
    layer — same mobile-safe composited technique, no extra stacking layers. */
-body.theme-bg::before {
-  background: var(--pg-bg) center top / cover no-repeat var(--purple-deep);
-}
+body.theme-bg::before { background: var(--pg-bgl); }
+/* A blurred background is scaled up a touch so the soft edge the blur
+   leaves stays off screen. */
+body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); }
 
 /* ── Site-wide announcement banner (admin dashboard → Announcement) ──
    Injected by site.js at the very top of <body> on every page. */
@@ -3498,6 +3499,80 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .theme-text .news-body p { color: var(--pg-text); }
 .theme-link .wiki-body a,
 .theme-link .news-body a { color: var(--pg-link); }
+
+/* ── Theme kit: the deeper knobs (render-page.js themeAttrs) ──
+   Every rule here is keyed on a theme-* class on <body>, so a page that
+   never touched the setting draws exactly as before. The selector lists are
+   the same three page families each time: script/collection pages, wiki and
+   news pages, and the creator page (profile.html). */
+.page-themed .home-hero h1,
+.page-themed .prof-section .type-header { font-family: var(--pg-font, 'Dumbledor2', serif); }
+.theme-accent .home-hero h1,
+.theme-accent .prof-section .type-header { color: var(--pg-accent); }
+/* Heading colour: a separate knob from the accent, for pages that want the
+   titles one colour and the links and rules another. */
+.theme-heading :is(.script-title-fallback, .gen-sech, .gen-sech a, .script-team-head, .sv-subhead,
+  .info-h, .sv-night-head, .wiki-title, .wiki-h, .wiki-h a.sec-anchor, .wiki-toc-head,
+  .news-article h1, .home-hero h1, .prof-section .type-header, .coll-title) { color: var(--pg-heading); }
+/* Heading letter case and glow */
+.theme-hcase-upper :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: uppercase; }
+.theme-hcase-lower :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: lowercase; }
+.theme-hcase-none :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: none; }
+.theme-hcase-caps :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: none; font-variant: small-caps; }
+.theme-glow :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-shadow: var(--pg-glow); }
+/* Body font: set on the reading text itself, because most of it names a
+   font of its own and would not inherit one from the page. */
+.theme-bfont #content :is(p, li, dd, dt, td, th, blockquote, .script-char-ability, .script-desc,
+  .sv-tagline, .wiki-body, .news-body, .sv-night-reminder),
+.theme-bfont :is(.home-hero, .home-panel) :is(p, li, dd, dt, .profile-bio) { font-family: var(--pg-bfont); }
+.theme-align-center #content :is(.sv-section p, .wiki-body p, .news-body p),
+.theme-align-center .home-panel p { text-align: center; }
+.theme-align-justify #content :is(.sv-section p, .wiki-body p, .news-body p),
+.theme-align-justify .home-panel p { text-align: justify; hyphens: auto; }
+/* Text on the creator page, which is light-on-dark rather than parchment */
+.theme-text :is(.profile-bio, .profile-uname, .profile-joined, .profile-aka, .home-panel p) { color: var(--pg-text); }
+.theme-link :is(.profile-links a, .home-panel a:not(.card):not(.coll-card)) { color: var(--pg-link); }
+/* Panels: opacity, corners, border, shadow. color-mix keeps the text solid
+   while the box goes see-through; a browser without it keeps the solid
+   colour from the rule above. */
+.theme-alpha :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--pg-panel, #f0e8d5) var(--pg-alpha), transparent);
+}
+.theme-panel .prof-section { background-image: none; background-color: var(--pg-panel); }
+.theme-radius :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section,
+  .wiki-infobox, .wiki-callout, .script-header-img, .sv-logo) { border-radius: var(--pg-radius); }
+.theme-border :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  border: var(--pg-bw) solid var(--pg-border, rgba(120,90,50,.6));
+}
+.theme-shadow :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) { box-shadow: var(--pg-shadow); }
+/* The creator page's sections are bare until a panel setting asks for a
+   box, and a box needs room inside it. */
+:is(.theme-panel, .theme-alpha, .theme-border, .theme-shadow) .prof-section { padding: 12px clamp(12px, 2.5vw, 22px) 16px; margin-bottom: 18px; }
+/* Size of everything in the page (not the site's own bar). zoom scales the
+   rem-sized text the site uses, which a font-size on a wrapper cannot. */
+.theme-scale :is(main#content, .home-hero, .home-panel) { zoom: var(--pg-scale); }
+/* Page width */
+.theme-width-narrow :is(main.wrap, .home-panel) { max-width: 860px; }
+.theme-width-wide :is(main.wrap, .home-panel) { max-width: 1800px; }
+.theme-width-full :is(main.wrap, .home-panel) { max-width: none; }
+
+/* ── Custom CSS frame (assets/custom-css.js) ──
+   A page with a custom stylesheet has its content wrapped in
+   .ucss-frame > .ucss, and every rule the author wrote is rewritten to sit
+   under .ucss. The frame is what keeps it there visually: paint containment
+   clips anything drawn outside the page area (a negative margin, a transform,
+   a huge shadow) and makes the frame the containing block for position:fixed,
+   so a page can never cover the site's own bar or draw over the next page.
+   flow-root stops a child's negative margin collapsing out through it.
+   Nothing the author writes can select the frame itself. */
+.ucss-frame { display: flow-root; contain: paint; isolation: isolate; position: relative; min-width: 0; }
+.ucss { min-width: 0; }
 
 /* Page links on the dark list pages (author + /u/ profile). Same markup as
    the parchment version, inverted for the dark panel behind it. */

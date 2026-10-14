@@ -168,6 +168,7 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="/assets/render-page.js"></script>
+  <script src="/assets/custom-css.js"></script>
   <!-- sao.js first: card-filters.js only offers Steven Approved Order when
        window.saoCompare is already defined. -->
   <script src="/assets/sao.js"></script>
@@ -232,6 +233,46 @@
 
     var hero = document.getElementById('profile-hero');
     var panel = document.getElementById('panel');
+
+    /* The creator's own look (Account → Profile Appearance): the same theme
+       kit and custom CSS a script page takes, applied here in the browser
+       because this page is static. The server sanitized it already; it is
+       sanitized again against the one background slot an account has. With
+       custom CSS the hero and the sections are moved into the scoped frame
+       (.ucss-frame > .ucss) the server builds around an SSR page. */
+    function applyProfileTheme(theme) {
+      if (!theme || !PR || !PR.sanitizeTheme) return;
+      var bg = String(theme.background || '').match(/^(avatars\/u\d+)-bg\./);
+      var t = PR.sanitizeTheme(theme, bg ? bg[1] : null);
+      if (!t) return;
+      var ta = PR.themeAttrs(t);
+      ta.cls.split(' ').forEach(function (c) { if (c) document.body.classList.add(c); });
+      ta.style.split(';').forEach(function (decl) {
+        var i = decl.indexOf(':');
+        if (i > 0) document.body.style.setProperty(decl.slice(0, i), decl.slice(i + 1));
+      });
+      (ta.fonts || []).forEach(function (href) {
+        var l = document.createElement('link');
+        l.rel = 'stylesheet'; l.href = href;
+        document.head.appendChild(l);
+      });
+      var css = t.css && window.CustomCSS ? window.CustomCSS.clean(t.css).css : '';
+      if (css) {
+        var st = document.createElement('style');
+        st.id = 'page-custom-css';
+        st.textContent = css;
+        document.head.appendChild(st);
+        var heroWrap = hero.parentNode;   // .home-hero
+        var frame = document.createElement('div');
+        frame.className = 'ucss-frame';
+        var inner = document.createElement('div');
+        inner.className = 'ucss';
+        frame.appendChild(inner);
+        heroWrap.parentNode.insertBefore(frame, heroWrap);
+        inner.appendChild(heroWrap);
+        inner.appendChild(panel);
+      }
+    }
 
     function fail(msg) {
       hero.innerHTML = '<h1>Creator not found</h1>';
@@ -590,6 +631,7 @@
       var data = both[0], me = both[1] || {};
       if (!data || data.error) { fail((data && data.error) || 'Could not load this creator.'); return; }
       var p = data.profile;
+      applyProfileTheme(p.theme);
       document.title = (p.displayName || p.username || 'Creator') + ' — BOTC HomeBrew Wiki';
       var d = data.drafts || { characters: [], scripts: [], collections: [] };
       renderHero(p, {

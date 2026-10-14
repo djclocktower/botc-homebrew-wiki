@@ -50,19 +50,56 @@
   };
 
   /* ── Theme ──
-     Stored as data.theme = {font, accent, panel, text, link, background}.
-     Every value is validated by sanitizeTheme (server AND client) and only
-     ever applied as CSS custom properties / whitelisted class names — never
-     raw CSS. Font stacks live in styles.css (.theme-font-*). */
+     Stored as data.theme on scripts, collections, wiki pages, news and (in
+     profile_json) on an account's creator page. Every value is validated by
+     sanitizeTheme (server AND client) and only ever applied as CSS custom
+     properties / whitelisted class names. The one exception is `css`, the
+     custom stylesheet, which is cleaned and scoped by assets/custom-css.js
+     before it is printed — never by this file.
+
+     The kit has three layers, and the editor (assets/theme-editor.js) shows
+     them in that order: a one-click style (THEME_PRESETS — nothing but a
+     bundle of the same fields), the individual knobs below, and the custom
+     CSS box for everything else. */
   var FONT_PRESETS = {
-    'default':   'Dumbledor (wiki default)',
+    'default':   'Wiki default',
+    'dumbledor': 'Dumbledor',
     'trade':     'Trade Gothic',
     'oswald':    'Oswald',
+    'roboto':    'Roboto',
+    'franklin':  'Libre Franklin',
     'garamond':  'EB Garamond',
+    'notoserif': 'Noto Serif',
     'cinzel':    'Cinzel',
     'pirata':    'Pirata One',
     'imfell':    'IM Fell English',
-    'grenze':    'Grenze Gotisch'
+    'grenze':    'Grenze Gotisch',
+    'unlovable': 'LHF Unlovable',
+    'georgia':   'Georgia (classic serif)',
+    'system':    'System sans-serif',
+    'mono':      'Typewriter (monospace)',
+    'comic':     'Comic Sans'
+  };
+  /* The font stack each preset stands for. Every face here is self-hosted in
+     assets/fonts (declared in styles.css) or a system font, so a preset never
+     reaches another origin; a Google Font is the separate `gFont` field. */
+  var FONT_STACKS = {
+    'dumbledor': "'Dumbledor2', serif",
+    'trade':     "'TradeGothicLT', 'Libre Franklin', sans-serif",
+    'oswald':    "'Oswald', sans-serif",
+    'roboto':    "'Roboto', sans-serif",
+    'franklin':  "'Libre Franklin', sans-serif",
+    'garamond':  "'EB Garamond', serif",
+    'notoserif': "'Noto Serif', serif",
+    'cinzel':    "'Cinzel', serif",
+    'pirata':    "'Pirata One', serif",
+    'imfell':    "'IM Fell English', serif",
+    'grenze':    "'Grenze Gotisch', serif",
+    'unlovable': "'LHFUnlovable', 'Dumbledor2', serif",
+    'georgia':   "Georgia, 'Times New Roman', serif",
+    'system':    "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    'mono':      "'Courier New', Courier, monospace",
+    'comic':     "'Comic Sans MS', 'Comic Neue', 'Chalkboard SE', cursive"
   };
 
   /* How far the top graphic may be scaled, as a percentage of the wiki's own
@@ -71,16 +108,53 @@
      below the fold on a phone. */
   var LOGO_SIZE_MIN = 25;
   var LOGO_SIZE_MAX = 250;
+  /* The custom stylesheet's ceiling, in characters. Room for a real theme
+     with a few small data: images, small enough that it never dominates the
+     page it sits in. Cut, not refused, so a save never fails on it. */
+  var THEME_CSS_MAX = 30000;
+
+  /* The numeric knobs: [key, min, max, the value that means "not set"].
+     A value equal to the neutral one is never stored, so a page nobody
+     touched keeps following the stylesheet. `null` neutral: any in-range
+     value is a choice (0 corners and no border both mean something). */
+  var THEME_NUMBERS = [
+    ['bgAngle',    0, 360, null],
+    ['bgDim',      0,  90, 0],
+    ['bgBlur',     0,  20, 0],
+    ['panelAlpha', 0, 100, 100],
+    ['radius',     0,  40, null],
+    ['borderW',    0,   8, null],
+    ['textScale', 75, 150, 100]
+  ];
+  // The pick-one knobs and what each may say.
+  var THEME_CHOICES = {
+    bgFit:    ['cover', 'contain', 'tile', 'stretch', 'center'],
+    bgPos:    ['top', 'center', 'bottom'],
+    shadow:   ['none', 'soft', 'strong', 'glow'],
+    width:    ['narrow', 'wide', 'full'],
+    headCase: ['upper', 'lower', 'caps', 'none'],
+    align:    ['center', 'justify']
+  };
+  var THEME_COLORS = ['accent', 'panel', 'text', 'link', 'bgColor', 'bgColor2', 'border', 'glow', 'heading'];
+  /* A Google Fonts family name: letters, digits and spaces, which is every
+     family Google serves. Nothing else may reach the stylesheet URL or the
+     font stack, so a name can never close a quote or a url(). */
+  var GOOGLE_FONT_RE = /^[A-Za-z0-9][A-Za-z0-9 ]{0,48}[A-Za-z0-9]$/;
 
   function sanitizeTheme(theme, allowedBgBase) {
     if (!theme || typeof theme !== 'object') return null;
     var out = {};
-    if (typeof theme.font === 'string' &&
-        Object.prototype.hasOwnProperty.call(FONT_PRESETS, theme.font) &&
-        theme.font !== 'default') {
-      out.font = theme.font;
-    }
-    ['accent', 'panel', 'text', 'link'].forEach(function (k) {
+    ['font', 'bodyFont'].forEach(function (k) {
+      if (typeof theme[k] === 'string' &&
+          Object.prototype.hasOwnProperty.call(FONT_STACKS, theme[k])) {
+        out[k] = theme[k];
+      }
+    });
+    ['gFont', 'gBodyFont'].forEach(function (k) {
+      var v = typeof theme[k] === 'string' ? theme[k].trim().replace(/\s+/g, ' ') : '';
+      if (GOOGLE_FONT_RE.test(v)) out[k] = v;
+    });
+    THEME_COLORS.forEach(function (k) {
       var v = theme[k];
       if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v.trim())) {
         out[k] = v.trim().toLowerCase();
@@ -115,36 +189,137 @@
     if (theme.logoPanel === true || theme.logoPanel === 'on' || theme.logoPanel === 1) {
       out.logoPanel = true;
     }
+    THEME_NUMBERS.forEach(function (r) {
+      var v = theme[r[0]];
+      // '' and null are "not set", not zero (Number('') is 0).
+      if (v === '' || v == null || typeof v === 'boolean') return;
+      var n = Math.round(Number(v));
+      if (isFinite(n) && n >= r[1] && n <= r[2] && n !== r[3]) out[r[0]] = n;
+    });
+    Object.keys(THEME_CHOICES).forEach(function (k) {
+      if (THEME_CHOICES[k].indexOf(theme[k]) >= 0) out[k] = theme[k];
+    });
+    if (typeof theme.css === 'string' && theme.css.trim()) {
+      out.css = theme.css.slice(0, THEME_CSS_MAX);
+    }
     return Object.keys(out).length ? out : null;
+  }
+
+  var SHADOWS = {
+    none:   'none',
+    soft:   '0 4px 14px rgba(0,0,0,.28)',
+    strong: '0 12px 32px rgba(0,0,0,.6)'
+  };
+  var BG_FIT = {
+    cover: 'cover no-repeat', contain: 'contain no-repeat', tile: 'auto repeat',
+    stretch: '100% 100% no-repeat', center: 'auto no-repeat'
+  };
+
+  function hexA(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
+  /* The Google Fonts stylesheets a sanitized theme asks for (0, 1 or 2). The
+     plain family request: asking for weights a family does not have fails the
+     whole stylesheet, and the browser synthesises bold well enough. */
+  function themeFontLinks(theme) {
+    var out = [];
+    if (!theme) return out;
+    ['gFont', 'gBodyFont'].forEach(function (k) {
+      if (theme[k] && GOOGLE_FONT_RE.test(theme[k])) {
+        var href = 'https://fonts.googleapis.com/css2?family=' +
+          theme[k].replace(/ /g, '+') + '&display=swap';
+        if (out.indexOf(href) < 0) out.push(href);
+      }
+    });
+    return out;
   }
 
   /* Build the class list + inline style for <body> from a sanitized theme.
      Callers MUST pass the theme through sanitizeTheme first (the Worker does
      this on save and again at render time). `linkRoot` is accepted for the
      callers that pass it but no longer shapes anything — see the background
-     note below for why the one URL here must not be relative. */
+     note below for why the one URL here must not be relative.
+     Every value written into `style` is a validated hex colour, a number, a
+     constant from this file or a GOOGLE_FONT_RE name, so nothing a writer
+     typed can close the declaration it sits in. */
   function themeAttrs(theme, linkRoot) {
-    if (!theme) return { cls: '', style: '' };
+    if (!theme) return { cls: '', style: '', fonts: [] };
     var cls = ['page-themed'];
     var style = [];
     if (theme.font) cls.push('theme-font-' + theme.font);
+    if (theme.gFont) style.push("--pg-font:'" + theme.gFont + "', serif");
+    else if (theme.font && FONT_STACKS[theme.font]) style.push('--pg-font:' + FONT_STACKS[theme.font]);
+    var bodyStack = theme.gBodyFont ? ("'" + theme.gBodyFont + "', sans-serif")
+      : (theme.bodyFont && FONT_STACKS[theme.bodyFont]);
+    if (bodyStack) { cls.push('theme-bfont'); style.push('--pg-bfont:' + bodyStack); }
     if (theme.accent) { cls.push('theme-accent'); style.push('--pg-accent:' + theme.accent); }
+    if (theme.heading) { cls.push('theme-heading'); style.push('--pg-heading:' + theme.heading); }
     if (theme.panel)  { cls.push('theme-panel');  style.push('--pg-panel:' + theme.panel); }
     if (theme.text)   { cls.push('theme-text');   style.push('--pg-text:' + theme.text); }
     if (theme.link)   { cls.push('theme-link');   style.push('--pg-link:' + theme.link); }
-    if (theme.background) {
-      cls.push('theme-bg');
-      /* ROOT-ABSOLUTE, never linkRoot-relative. This url() sits inside a
-         custom property on <body>, and Chromium resolves a relative url() in
-         a custom property against the STYLESHEET where var() consumes it,
-         not the document that declared it. The stylesheet used to live at
-         /assets/styles.css, where '../assets/x-bg.png' came out right by
-         accident; the build now serves it from /assets/immutable/, so the
-         same string resolved to /assets/assets/x-bg.png and every custom
-         background on the site 404'd. '/assets/...' reads the same from any
-         base URL, so no stylesheet move can break it again. */
-      style.push('--pg-bg:url("/assets/' + theme.background + '")');
+    if (theme.panelAlpha != null && theme.panelAlpha !== 100) {
+      cls.push('theme-alpha');
+      style.push('--pg-alpha:' + theme.panelAlpha + '%');
     }
+    if (theme.radius != null) { cls.push('theme-radius'); style.push('--pg-radius:' + theme.radius + 'px'); }
+    if (theme.borderW != null || theme.border) {
+      cls.push('theme-border');
+      style.push('--pg-bw:' + (theme.borderW != null ? theme.borderW : 2) + 'px');
+      if (theme.border) style.push('--pg-border:' + theme.border);
+    }
+    if (theme.shadow) {
+      cls.push('theme-shadow');
+      style.push('--pg-shadow:' + (theme.shadow === 'glow'
+        ? '0 0 22px ' + hexA(theme.glow || theme.accent || '#e8c66a', .75)
+        : SHADOWS[theme.shadow]));
+    }
+    if (theme.glow) {
+      cls.push('theme-glow');
+      style.push('--pg-glow:0 0 6px ' + hexA(theme.glow, .9) + ',0 0 16px ' + hexA(theme.glow, .6));
+    }
+    if (theme.textScale) { cls.push('theme-scale'); style.push('--pg-scale:' + (theme.textScale / 100)); }
+    if (theme.width) cls.push('theme-width-' + theme.width);
+    if (theme.headCase) cls.push('theme-hcase-' + theme.headCase);
+    if (theme.align) cls.push('theme-align-' + theme.align);
+
+    /* The page background: one composed `background` value on the fixed
+       body::before layer (the same mobile-safe layer the wiki always paints
+       on), so image, darkening, fit and colour/gradient cannot fight each
+       other across rules. Layers, top first: the darkening veil, the image,
+       then the colour or gradient underneath. */
+    if (theme.background || theme.bgColor || theme.bgColor2 || theme.bgDim) {
+      var layers = [];
+      if (theme.bgDim) {
+        var dim = 'rgba(0,0,0,' + (theme.bgDim / 100) + ')';
+        layers.push('linear-gradient(' + dim + ',' + dim + ')');
+      }
+      if (theme.background) {
+        /* ROOT-ABSOLUTE, never linkRoot-relative. This url() sits inside a
+           custom property on <body>, and Chromium resolves a relative url() in
+           a custom property against the STYLESHEET where var() consumes it,
+           not the document that declared it. The stylesheet used to live at
+           /assets/styles.css, where '../assets/x-bg.png' came out right by
+           accident; the build now serves it from /assets/immutable/, so the
+           same string resolved to /assets/assets/x-bg.png and every custom
+           background on the site 404'd. '/assets/...' reads the same from any
+           base URL, so no stylesheet move can break it again. */
+        layers.push('url("/assets/' + theme.background + '") center ' +
+          (theme.bgPos || 'top') + ' / ' + BG_FIT[theme.bgFit || 'cover']);
+      }
+      if (theme.bgColor2) {
+        layers.push('linear-gradient(' + (theme.bgAngle != null ? theme.bgAngle : 180) + 'deg,' +
+          (theme.bgColor || '#2a0f24') + ',' + theme.bgColor2 + ')');
+      }
+      // The colour goes on the last layer, the only one allowed one.
+      var base = theme.bgColor || 'var(--purple-deep)';
+      if (layers.length) layers[layers.length - 1] += ' ' + base;
+      else layers.push(base);
+      cls.push('theme-bg');
+      style.push('--pg-bgl:' + layers.join(','));
+    }
+    if (theme.bgBlur) { cls.push('theme-blur'); style.push('--pg-blur:' + theme.bgBlur + 'px'); }
     /* Both of these are carried by the class list on <body> and read by
        styles.css, so the page markup itself is untouched: the same rules
        cover the script header, the collection header and the bare logo. */
@@ -157,8 +332,29 @@
       style.push('--pg-header-scale:' + (theme.headerSize / 100));
     }
     if (theme.logoPanel) cls.push('theme-logo-panel');
-    return { cls: cls.join(' '), style: style.join(';') };
+    return { cls: cls.join(' '), style: style.join(';'), fonts: themeFontLinks(theme) };
   }
+
+  /* One-click styles: each is a bundle of the fields above and nothing else,
+     so a preset is just a starting point the knobs can then move. Applying
+     one replaces the STYLE fields and leaves the page's own images, image
+     sizes and custom CSS alone (see ThemeEditor.applyPreset). */
+  var THEME_STYLE_KEYS = ['font', 'bodyFont', 'gFont', 'gBodyFont'].concat(THEME_COLORS)
+    .concat(THEME_NUMBERS.map(function (r) { return r[0]; }))
+    .concat(Object.keys(THEME_CHOICES));
+  var THEME_PRESETS = {
+    'default':  { label: 'Wiki default', t: {} },
+    'midnight': { label: 'Midnight', t: { font: 'cinzel', accent: '#d9c27a', heading: '#f3e3a8', panel: '#141a2e', text: '#dfe4f2', link: '#8fb8ff', bgColor: '#05070f', bgColor2: '#1b2448', bgAngle: 160, panelAlpha: 92, radius: 10, border: '#3a4670', borderW: 1, shadow: 'strong' } },
+    'bloodmoon': { label: 'Blood Moon', t: { font: 'grenze', accent: '#ff5a4f', heading: '#ffb3a8', panel: '#1e0607', text: '#f1d9d4', link: '#ff8c7a', bgColor: '#120000', bgColor2: '#5c0a0a', bgAngle: 200, panelAlpha: 90, radius: 4, border: '#7a1414', borderW: 2, shadow: 'glow', glow: '#ff2a1a' } },
+    'grimoire': { label: 'Grimoire Green', t: { font: 'imfell', accent: '#2f5a2a', panel: '#e8ecd6', text: '#1d2a17', link: '#3d6f2f', bgColor: '#0f2410', bgColor2: '#2f4a1f', bgAngle: 135, radius: 6, border: '#6d7c4a', borderW: 2, shadow: 'soft' } },
+    'royal':    { label: 'Royal Purple', t: { font: 'cinzel', accent: '#6a2c91', heading: '#4b1a6b', panel: '#f3ecfa', text: '#2a1838', link: '#8b3fc4', bgColor: '#1a0629', bgColor2: '#4a1470', bgAngle: 170, radius: 14, border: '#c9a227', borderW: 2, shadow: 'soft' } },
+    'paper':    { label: 'Paper & Ink', t: { font: 'garamond', bodyFont: 'garamond', accent: '#111111', panel: '#fbfaf6', text: '#1a1a1a', link: '#1d4ed8', bgColor: '#e9e5da', radius: 2, border: '#c8c2b0', borderW: 1, shadow: 'none' } },
+    'neon':     { label: 'Neon Arcade', t: { font: 'mono', bodyFont: 'mono', accent: '#39ff14', heading: '#ff2bd6', panel: '#0a0a12', text: '#e6e6ff', link: '#00e5ff', bgColor: '#000000', bgColor2: '#1a0033', bgAngle: 135, panelAlpha: 88, radius: 0, border: '#ff2bd6', borderW: 2, shadow: 'glow', glow: '#00e5ff', headCase: 'upper' } },
+    'sunset':   { label: 'Sunset', t: { font: 'pirata', accent: '#b8461c', heading: '#7a2a0c', panel: '#fff3e2', text: '#3b2214', link: '#c2410c', bgColor: '#ff9a3c', bgColor2: '#6a1b4d', bgAngle: 180, radius: 16, shadow: 'soft' } },
+    'ocean':    { label: 'Deep Ocean', t: { font: 'oswald', bodyFont: 'roboto', accent: '#7fdbff', heading: '#bdf0ff', panel: '#06223a', text: '#d6eefc', link: '#5ad1ff', bgColor: '#01101f', bgColor2: '#05486b', bgAngle: 190, panelAlpha: 85, radius: 12, border: '#1b6b93', borderW: 1, shadow: 'strong', headCase: 'upper' } },
+    'retro':    { label: 'Retro Web', t: { font: 'comic', bodyFont: 'comic', accent: '#0000ee', heading: '#ff00ff', panel: '#ffffcc', text: '#000000', link: '#0000ee', bgColor: '#008080', radius: 0, border: '#000000', borderW: 3, shadow: 'none' } },
+    'ghost':    { label: 'Ghostly', t: { font: 'unlovable', accent: '#cfd8e3', heading: '#ffffff', panel: '#1c2027', text: '#cfd6df', link: '#a9c6e8', bgColor: '#0b0d10', bgColor2: '#2b313a', bgAngle: 180, panelAlpha: 70, radius: 18, shadow: 'glow', glow: '#b7c9e2', bgBlur: 3 } }
+  };
 
   /* ── Hybrid collection membership ──
      Auto-matched by the character's "Appears in" text (normalized against
@@ -1197,6 +1393,13 @@
     resolveCollectionMembers: resolveCollectionMembers,
     sortCollectionMembers: sortCollectionMembers,
     sanitizeTheme: sanitizeTheme,
+    themeFontLinks: themeFontLinks,
+    THEME_PRESETS: THEME_PRESETS,
+    THEME_STYLE_KEYS: THEME_STYLE_KEYS,
+    THEME_NUMBERS: THEME_NUMBERS,
+    THEME_CHOICES: THEME_CHOICES,
+    THEME_CSS_MAX: THEME_CSS_MAX,
+    FONT_STACKS: FONT_STACKS,
     themeAttrs: themeAttrs,
     LOGO_SIZE_MIN: LOGO_SIZE_MIN,
     LOGO_SIZE_MAX: LOGO_SIZE_MAX,

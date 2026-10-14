@@ -1,0 +1,243 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { fixture } from './worker-fixture.mjs';
+
+const require = createRequire(import.meta.url);
+const CustomCSS = require('../../assets/custom-css.js');
+const PageRender = require('../../assets/render-page.js');
+
+const member = id => ({ headers: { Cookie: 'botc_session=user-' + id } });
+const post = (id, body) => ({
+  method: 'POST',
+  headers: { Cookie: 'botc_session=user-' + id, 'Content-Type': 'application/json' },
+  body: JSON.stringify(body)
+});
+function users(f) {
+  for (const id of [1, 2]) {
+    f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(?,?,'')").run(id, 'user-' + id);
+    f.state.sessions.set('sess:user-' + id, { userId: id, username: 'user-' + id });
+  }
+}
+const css = text => CustomCSS.clean(text).css;
+
+test('custom CSS: every rule is scoped under .ucss, body/html/:root mean the page area', () => {
+  assert.equal(css('body{color:red}'), '.ucss{color:red}');
+  assert.equal(css('html body .card{color:red}'), '.ucss .card{color:red}');
+  assert.equal(css(':root{--x:1}'), '.ucss{--x:1}');
+  assert.equal(css('body.dark::before{content:"x"}'), '.ucss.dark::before{content:"x"}');
+  assert.equal(css('h1, .a:hover{color:blue}'), '.ucss h1,.ucss .a:hover{color:blue}');
+  assert.equal(css('@media (max-width:600px){h1{color:red}}'), '@media (max-width:600px){.ucss h1{color:red}}');
+  assert.equal(css('@supports (display:grid){@media screen{.g{display:grid}}}'),
+    '@supports (display:grid){@media screen{.ucss .g{display:grid}}}');
+  // An unfinished stylesheet still means what it says.
+  assert.equal(css('a{color:red'), '.ucss a{color:red}');
+});
+
+test('custom CSS: the ways out of the page are closed', () => {
+  // The <style> element can never be closed from inside it.
+  for (const evil of ['</style><script>alert(1)</script>', 'a{content:"</style><script>x</script>"}',
+                      'a{b:c}</StYlE>', 'a{background:url("data:image/svg+xml,<svg></svg>")}']) {
+    assert.doesNotMatch(css(evil), /</, evil);
+  }
+  // Nesting and & could point a selector back outside the scope.
+  assert.equal(css('.topbar:not(&){display:none}'), '');
+  assert.equal(css('.a{ .b{x:y} & ~ .topbar{x:y} color:blue }'), '.ucss .a{color:blue}');
+  // Fetches: only url(), only https/assets/data:image/#fragment, never /api/.
+  assert.equal(css('@import url(https://e.com/a.css); .a{b:c}'), '.ucss .a{b:c}');
+  assert.equal(css('a{background:url(https://e.com/a.png)}'), '.ucss a{background:url("https://e.com/a.png")}');
+  assert.equal(css('a{background:url(/assets/art/x.png)}'), '.ucss a{background:url("/assets/art/x.png")}');
+  for (const bad of ['url(http://e.com/a.png)', 'url(//e.com/a.png)', 'url(/api/logout)', 'url(/assets/../api/x)',
+                     'url(https://botchomebrew.wiki/api/auth/discord)', 'url(javascript:alert(1))',
+                     'image-set("https://e/x" 1x)', 'src("https://e/x")', 'cross-fade(url(a),url(b))',
+                     'u\\72 l(https://e/x)', 'expression(alert(1))']) {
+    assert.equal(css('a{background:' + bad + '}'), '', bad);
+  }
+  // Global names are renamed so the site's own fonts and animations stay its own.
+  assert.equal(css('@font-face{font-family:"Dumbledor2";src:url(https://e/f.woff2)} h1{font-family:Dumbledor2,serif}'),
+    '@font-face{font-family:"u-Dumbledor2";src:url("https://e/f.woff2")}.ucss h1{font-family:"u-Dumbledor2",serif}');
+  assert.equal(css('@keyframes spin{to{transform:rotate(1turn)}} .a{animation:spin 2s infinite}'),
+    '@keyframes u-spin{to{transform:rotate(1turn)}}.ucss .a{animation:u-spin 2s infinite}');
+  // Site-wide at-rules go entirely.
+  for (const g of ['@property --purple-deep{syntax:"<color>";inherits:false;initial-value:red}',
+                   '@layer x{.a{color:red}}', '@counter-style x{system:cyclic}', '@page{margin:0}',
+                   '@namespace svg url(http://www.w3.org/2000/svg);']) {
+    assert.equal(css(g), '', g);
+  }
+  assert.equal(css('a{behavior:url(x.htc);color:red}'), '.ucss a{color:red}');
+  assert.ok(CustomCSS.clean('@import "x";').warnings.length);
+});
+
+test('theme kit: only validated values survive, and attributes are built from them', () => {
+  const t = PageRender.sanitizeTheme({
+    font: 'cinzel', bodyFont: 'nope', gFont: 'Creepster', gBodyFont: "Evil'); x{",
+    accent: '#AABBCC', bgColor: 'red', bgColor2: '#000000', bgAngle: 400, bgDim: '40', panelAlpha: 100,
+    radius: 0, borderW: 0, shadow: 'glow', width: 'huge', headCase: 'upper', textScale: 120,
+    css: 'x'.repeat(40000), background: 'scripts/other-bg.png'
+  }, 'scripts/mine');
+  assert.deepEqual(Object.keys(t).sort(), ['accent', 'bgColor2', 'bgDim', 'borderW', 'css', 'font', 'gFont',
+    'headCase', 'radius', 'shadow', 'textScale'].sort());
+  assert.equal(t.accent, '#aabbcc');
+  assert.equal(t.css.length, PageRender.THEME_CSS_MAX);
+  const a = PageRender.themeAttrs(t);
+  assert.match(a.cls, /theme-radius/);
+  assert.match(a.cls, /theme-hcase-upper/);
+  assert.match(a.style, /--pg-font:'Creepster', serif/);
+  assert.deepEqual(a.fonts, ['https://fonts.googleapis.com/css2?family=Creepster&display=swap']);
+  // Nothing in the style attribute can close a declaration early.
+  assert.doesNotMatch(a.style, /[<>"{}]/);
+  // Every preset is a valid theme on its own.
+  for (const [k, p] of Object.entries(PageRender.THEME_PRESETS)) {
+    const s = PageRender.sanitizeTheme(p.t, 'x') || {};
+    assert.equal(Object.keys(s).length, Object.keys(p.t).length, k);
+  }
+});
+
+test('a script page carries its theme, fonts and scoped custom CSS', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  const r = await f.request('/api/script', post(1, {
+    slug: 'themed', name: 'Themed', author: 'user-1', characters: [], status: 'published',
+    theme: { accent: '#ff0000', gFont: 'Creepster', css: 'body{background:#000} h1{color:gold} </style><b>x</b>' }
+  }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const html = await (await f.request('/s/themed')).text();
+  assert.match(html, /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=Creepster&amp;display=swap">/);
+  const style = html.match(/<style id="page-custom-css">([\s\S]*?)<\/style>/);
+  assert.ok(style, 'custom stylesheet printed');
+  assert.match(style[1], /^\.ucss\{background:#000\}\.ucss h1\{color:gold\}/);
+  assert.doesNotMatch(style[1], /</);
+  assert.match(html, /<main class="wrap" id="content"><div class="ucss-frame"><div class="ucss">/);
+  assert.match(html, /<body class="[^"]*theme-accent/);
+  // Without custom CSS there is no frame and no style element.
+  await f.request('/api/script', post(1, { slug: 'plain', name: 'Plain', author: 'user-1', characters: [], status: 'published' }));
+  const plain = await (await f.request('/s/plain')).text();
+  assert.doesNotMatch(plain, /ucss-frame|page-custom-css|fonts\.googleapis/);
+});
+
+test('custom URLs: a script answers at its own address, the slug and old addresses forward to it', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  let r = await f.request('/api/script', post(1, { slug: 'long-auto-name', name: 'Long Auto Name', author: 'user-1',
+    characters: [], status: 'published', customUrl: 'Cool Script!' }));
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.equal((await r.json()).customUrl, 'cool-script');
+
+  r = await f.request('/s/cool-script');
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /<link rel="canonical" href="[^"]*\/s\/cool-script">/);
+  r = await f.request('/s/long-auto-name', { redirect: 'manual' });
+  assert.equal(r.status, 301);
+  assert.match(r.headers.get('Location'), /\/s\/cool-script$/);
+
+  // Somebody else cannot take it, as a custom URL or as a new script's slug.
+  r = await f.request('/api/custom-url-check?type=script&url=cool-script', member(2));
+  assert.equal((await r.json()).free, false);
+  r = await f.request('/api/script', post(2, { slug: 'other', name: 'Other', author: 'user-2', characters: [], customUrl: 'cool-script' }));
+  assert.equal(r.status, 409);
+  r = await f.request('/api/script', post(2, { slug: 'cool-script', name: 'Cool Script', author: 'user-2', characters: [] }));
+  assert.equal(r.status, 409);
+  r = await f.request('/api/script', post(2, { slug: 'other2', name: 'Other', author: 'user-2', characters: [], customUrl: 'long-auto-name' }));
+  assert.equal(r.status, 409, 'another page\'s slug is not free either');
+  // Too short.
+  r = await f.request('/api/script', post(1, { slug: 'long-auto-name', name: 'Long Auto Name', author: 'user-1', characters: [], customUrl: 'ab' }));
+  assert.equal(r.status, 400);
+
+  // Moving it leaves the old address forwarding; a save that does not send
+  // the field keeps it.
+  r = await f.request('/api/script', post(1, { slug: 'long-auto-name', name: 'Long Auto Name', author: 'user-1', characters: [], customUrl: 'cooler' }));
+  assert.equal((await r.json()).customUrl, 'cooler');
+  r = await f.request('/s/cool-script', { redirect: 'manual' });
+  assert.equal(r.status, 301);
+  assert.match(r.headers.get('Location'), /\/s\/cooler$/);
+  r = await f.request('/api/script', post(1, { slug: 'long-auto-name', name: 'Renamed', author: 'user-1', characters: [] }));
+  assert.equal((await r.json()).customUrl, 'cooler');
+  // And a public-edit guest cannot move it.
+  r = await f.request('/api/script', post(1, { slug: 'long-auto-name', name: 'Renamed', author: 'user-1', characters: [], publicEdit: 'all' }));
+  assert.equal(r.status, 200);
+  r = await f.request('/api/script', post(2, { slug: 'long-auto-name', name: 'Renamed', author: 'user-1', characters: [], customUrl: 'mine-now' }));
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.equal((await r.json()).customUrl, 'cooler');
+  // Clearing it puts the page back on its slug, and the old address forwards.
+  r = await f.request('/api/script', post(1, { slug: 'long-auto-name', name: 'Renamed', author: 'user-1', characters: [], customUrl: '' }));
+  assert.equal((await r.json()).customUrl, '');
+  assert.equal((await f.request('/s/long-auto-name')).status, 200);
+  r = await f.request('/s/cooler', { redirect: 'manual' });
+  assert.equal(r.status, 301);
+  assert.match(r.headers.get('Location'), /\/s\/long-auto-name$/);
+});
+
+test('custom URLs: a draft never redirects a stranger, and a wiki page takes one too', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  await f.request('/api/script', post(1, { slug: 'secret', name: 'Secret', author: 'user-1', characters: [], status: 'draft', customUrl: 'hidden-one' }));
+  assert.equal((await f.request('/s/secret', { redirect: 'manual' })).status, 404);
+  assert.equal((await f.request('/s/hidden-one', { redirect: 'manual' })).status, 404);
+  assert.equal((await f.request('/s/secret', { ...member(1), redirect: 'manual' })).status, 301);
+
+  let r = await f.request('/api/wiki-page', post(1, { parentType: 'article', title: 'A Very Long Guide Title', body: 'x', status: 'published', customUrl: 'guide' }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const made = await r.json();
+  assert.equal(made.customUrl, 'guide');
+  r = await f.request('/p/guide');
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /<link rel="canonical" href="[^"]*\/p\/guide">/);
+  r = await f.request('/p/' + made.slug, { redirect: 'manual' });
+  assert.equal(r.status, 301);
+  // A new page titled like the custom address does not land on it.
+  r = await f.request('/api/wiki-page', post(2, { parentType: 'article', title: 'Guide', body: 'y', status: 'published' }));
+  assert.equal((await r.json()).slug, 'guide-2');
+  const sm = await (await f.request('/sitemap.xml')).text();
+  assert.match(sm, /\/p\/guide</);
+});
+
+test('profile appearance: saved on its own, kept by a profile save, returned to the creator page', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  let r = await f.request('/api/account/theme', post(1, { theme: {
+    accent: '#123456', css: 'h1{color:red}', background: 'avatars/u1-bg.jpg', bgDim: 30
+  } }));
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.equal((await r.json()).theme.accent, '#123456');
+  // Somebody else's background slot is never accepted.
+  r = await f.request('/api/account/theme', post(2, { theme: { background: 'avatars/u1-bg.jpg', accent: '#000000' } }));
+  assert.equal((await r.json()).theme.background, undefined);
+
+  // The links-and-pins save leaves the theme alone.
+  r = await f.request('/api/account/profile', post(1, { displayName: 'One', bio: '', links: { website: 'https://e.com' }, pinned: [] }));
+  assert.equal(r.status, 200);
+  const u = await (await f.request('/api/user?u=user-1')).json();
+  assert.equal(u.profile.theme.accent, '#123456');
+  assert.equal(u.profile.theme.css, 'h1{color:red}');
+  assert.equal(u.profile.theme.background, 'avatars/u1-bg.jpg');
+  assert.equal(u.profile.links.website, 'https://e.com');
+  // Clearing it.
+  r = await f.request('/api/account/theme', post(1, { theme: null }));
+  assert.equal((await r.json()).theme, null);
+});
+
+test('custom URLs: a collection answers at its own address, by id and PK it forwards', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  let r = await f.request('/api/collection', post(1, { displayName: 'My Big Set', author: 'user-1', status: 'published', customUrl: 'bigset' }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const made = await r.json();
+  assert.equal(made.customUrl, 'bigset');
+  assert.equal((await f.request('/collection/bigset')).status, 200);
+  r = await f.request('/collection/' + made.id, { redirect: 'manual' });
+  assert.equal(r.status, 301);
+  assert.match(r.headers.get('Location'), /\/collection\/bigset$/);
+  // Its own id is not a custom address: asking for it clears the custom one.
+  r = await f.request('/api/collection', post(1, { slug: made.slug, id: made.id, displayName: 'My Big Set', author: 'user-1', customUrl: made.id }));
+  assert.equal((await r.json()).customUrl, '');
+  assert.equal((await f.request('/collection/' + made.id)).status, 200);
+  // A new collection cannot be created onto a custom address.
+  await f.request('/api/collection', post(1, { slug: made.slug, id: made.id, displayName: 'My Big Set', author: 'user-1', customUrl: 'bigset' }));
+  r = await f.request('/api/collection', post(2, { displayName: 'Bigset', author: 'user-2' }));
+  assert.equal(r.status, 409);
+});

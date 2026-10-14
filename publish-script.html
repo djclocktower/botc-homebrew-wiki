@@ -355,9 +355,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- The page's own address (assets/custom-url.js) -->
+    <details class="sb-details" id="sb-url-sec">
+      <summary>Custom URL <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Pick your page's address, like botchomebrew.wiki/s/my-script.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-custom-url">Custom URL</label>
+          <div class="cu-row"><span class="cu-prefix">botchomebrew.wiki/s/</span><input type="text" id="sb-custom-url" maxlength="60" placeholder="my-script" autocomplete="off" spellcheck="false"></div>
+          <div class="cu-state" id="sb-custom-url-state"></div>
+          <p class="sub" style="margin:6px 0 0">Letters, numbers and hyphens. The automatic address and any old one keep working and forward here. Leave it empty to use the automatic address.</p>
+        </div>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
-      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Logo, background image, fonts and colors for your script's wiki page.</span></summary>
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Quick styles, fonts (any Google Font), colours, gradients, see-through boxes, layout, and your own custom CSS.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
@@ -398,7 +411,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
           <p class="sub" style="margin:6px 0 0">For an image drawn on a light background that gets lost on the wiki's purple.</p>
         </div>
-      </div>
+        <div id="th-more" data-kind="script"></div>
+        </div>
     </details>
 
     <div class="pub-actions">
@@ -423,6 +437,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/jinx-editor.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/sao.js"></script>
+  <script src="assets/custom-css.js"></script>
+  <script src="assets/custom-url.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
@@ -797,6 +813,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       get: function(){ return getMeta().theme || {}; },
       set: function(t){ var m = getMeta(); m.theme = t; setMeta(m); }
     });
+    // ── Custom URL: the box is the truth while the page is open, and the
+    // stored meta carries it across a reload of an unsaved form. ──
+    var cuField = window.CustomUrl.mount({
+      input: $('sb-custom-url'), state: $('sb-custom-url-state'), type: 'script',
+      slug: function(){ return EDIT_SLUG || getMeta().editSlug || ''; },
+      onChange: function(v){ var m = getMeta(); m.customUrl = v; setMeta(m); }
+    });
     function primeTheme(theme){
       if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
     }
@@ -804,6 +827,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function primeFields(m){
       if (m.name)        $('sb-name').value = m.name;
       if (m.author)      $('sb-author').value = m.author;
+      if (m.customUrl !== undefined) {
+        cuField.set(m.customUrl || '');
+        if (m.customUrl) $('sb-url-sec').open = true;
+      }
       $('sb-credit-unlinked').checked = !!m.creditUnlinked;
       if (m.description) $('sb-desc').value = m.description;
       if (m.tagline)     $('sb-tagline').value = m.tagline;
@@ -1040,6 +1067,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : []
         };
+        // Only sent once the box is known (loaded or typed in), so a form that
+        // never saw the stored address cannot clear it.
+        if (cuField.known()) entry.customUrl = cuField.get();
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
         if (EDIT_SLUG && m0.updatedAt) entry.baseUpdatedAt = m0.updatedAt;
@@ -1070,7 +1100,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         m.editSlug = slug; setMeta(m);
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
         renderEditStatus();   // the page exists now, so it has a status to state
-        var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
+        if (saved && cuField.known()) {
+          var mu = getMeta(); mu.customUrl = saved.customUrl || ''; setMeta(mu);
+          cuField.set(saved.customUrl || '');
+        }
+        var url = SITE_ROOT + 's/' + encodeURIComponent((saved && saved.customUrl) || slug);
         // The name was already spoken for, so this page took the next free
         // address. Say so: silently landing somewhere else would read as the
         // save having failed, and "did it overwrite the other one?" is the
@@ -1079,6 +1113,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? ' <em><code>/s/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
             'To change an existing script, open it from <a href="account">your account</a>.</em>'
           : '';
+        if (saved && saved.customUrlError) note += ' <em>' + esc(saved.customUrlError) + '</em>';
         if (currentStatus === 'draft') {
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> ' +
             (isDraft ? 'Draft saved (not public).' : 'Saved. It is still a draft: only its creator can publish it.') +
@@ -1229,6 +1264,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // stored setting AND the stored editor list forward whatever a guest
       // posts, so leaving them on screen would be a promise the save breaks.
       $('sb-open-sec').style.display = 'none';
+      // The address is the creator's too (the Worker keeps the stored one).
+      $('sb-url-sec').style.display = 'none';
       // And the credit tick with it: whose work the page is said to be is the
       // creator's answer, and the Worker pins it from the stored row whatever
       // a guest posts.
@@ -1286,6 +1323,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             publicEdit: PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '',
             editors: entry.editors || [],
             theme: entry.theme || {},
+            customUrl: entry.customUrl || '',
             updatedAt: res.updatedAt || ''
           };
           if (!m.updatedAt) delete m.updatedAt;
