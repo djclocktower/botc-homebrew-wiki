@@ -3152,6 +3152,10 @@ uploaded — except for the one opt-in save described below.
      plain tiling possible — it grows each sheet once into a seamless,
      symmetry-free 2× mosaic (see the guide's Stage D). Its crop size is a
      fraction of the SOURCE texture, never of the grown sheet.
+     The one exception is opt-in: the "Original tiled texture" switch
+     (`texTile`, off by default) tiles the plain sheet mirrored with its
+     corner at the centre, exactly as before — the owner asked for it back
+     as a choice. Keep it in `TEX_OPTS` or the field cache ignores it.
   3. `clipToMask()` and `adjustField()` **mutate their input canvas**. Cached
      stages are `cloneCanvas()`d before being fed to them — keep the clones.
      Also: any helper that sets a canvas transform resets it before returning.
