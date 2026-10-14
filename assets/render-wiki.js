@@ -386,7 +386,10 @@
       // and no a-z, so caseless scripts (a wholly Han or kana name) keep
       // linking as before. [[Undead]] still means the character.
       var allCaps = /[A-Z]/.test(target) && !/[a-z]/.test(target);
-      if (isReminderToken(key) || allCaps) return '<span class="tok">' + shown + '</span>';
+      // No letters at all ([[1]], [[2]]) is a number token, never a name: the
+      // Deliverer's identity is "-2", which keys as "2", so every [[2]] on the
+      // wiki linked to it.
+      if (isReminderToken(key) || allCaps || !/\p{L}/u.test(target)) return '<span class="tok">' + shown + '</span>';
       var official = own(officialNames, key) ? officialNames[key] : '';
       if (official) {
         return '<a class="wiki-charlink wiki-charlink-off" href="' +
