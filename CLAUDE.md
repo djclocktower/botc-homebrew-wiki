@@ -3263,7 +3263,10 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   path must not grow: each row stores `names`, the credit names it is drawn
   beside (`markNamesFor()`: what the /creators list gives that account, plus
   its handle and display name unless another person's credit uses them),
-  computed on save and refreshed by the nightly cron (`refreshMarkNames()`).
+  computed on save and refreshed by the nightly cron (`refreshMarkNames()`),
+  and at once when a page is saved crediting its owner under a name the mark
+  does not list yet (`markNamesAfterSave()`, from `logActivity()`: one PK read
+  for an owner with no mark) or an admin links/unlinks a creator name.
   Cached on the content version; every mark change bumps it (scope `all`), so
   the SSR pages that draw marks roll with it. `setMarkRegistry()` installs it
   before an SSR render; a failed read falls back to the legacy table and marks

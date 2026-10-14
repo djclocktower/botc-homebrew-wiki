@@ -2023,6 +2023,11 @@ async function logActivity(env, sess, action, entityType, slug, name) {
   if (FEED_CHANGING_ACTIONS.has(action) || String(action || '').startsWith('bulk-')) {
     await bumpContentVersion(env, entityType);
   }
+  // Creator marks follow new credit names straight away (see refreshMarkNames).
+  if (entityType === 'creator') await refreshMarkNames(env).catch(() => {});
+  else if (['create', 'update', 'publish', 'restore', 'rollback', 'suggestion-approve'].includes(action)) {
+    await markNamesAfterSave(env, entityType, slug);
+  }
   let username = null;
   try {
     const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
@@ -6284,15 +6289,18 @@ async function creatorsListParsed(env, ctx) {
   const list = JSON.parse(await cachedCreatorsBody(env, ctx, flags)).creators || [];
   return flags.degraded ? null : list;
 }
-// The nightly pass: re-work every mark's names, since a member may have
+// Re-work marks' names (one account's, or all of them): a member may have
 // published under a new credit, or an admin linked one, since they saved it.
-async function refreshMarkNames(env) {
+// Run nightly for everyone, and at once by markNamesAfterSave() and when an
+// admin links or unlinks a creator name.
+async function refreshMarkNames(env, userId) {
   let rows;
   try {
     rows = (await env.DB.prepare(
       `SELECT m.user_id, m.names, u.username, u.display_name
-         FROM creator_marks m JOIN users u ON u.id = m.user_id`
-    ).all()).results || [];
+         FROM creator_marks m JOIN users u ON u.id = m.user_id
+        WHERE ?1 IS NULL OR m.user_id = ?1`
+    ).bind(userId == null ? null : Number(userId)).all()).results || [];
   } catch (e) { if (isMissingSchema(e)) return { changed: 0 }; throw e; }
   if (!rows.length) return { changed: 0 };
   const creators = await creatorsListParsed(env, null);
@@ -6306,6 +6314,30 @@ async function refreshMarkNames(env) {
   }
   if (changed) await bumpContentVersion(env, 'mark');
   return { changed };
+}
+
+/* After a page is saved: if it is published and credits its owner under a
+   name their mark does not list yet, refresh that mark now rather than at
+   the nightly pass. Costs one primary-key read for an owner with no mark
+   (almost everyone) and a second for one with; the creators list is only
+   rebuilt when a credit is genuinely new to the mark. */
+async function markNamesAfterSave(env, type, slug) {
+  const table = type === 'character' ? 'characters' : type === 'script' ? 'scripts' : '';
+  if (!table || !slug) return;
+  try {
+    const row = await env.DB.prepare(
+      `SELECT owner_id, ${type === 'character' ? 'creator' : 'author'} AS c, status FROM ${table} WHERE slug=?`
+    ).bind(slug).first();
+    if (!row || !row.owner_id || row.status !== 'published') return;
+    const m = await env.DB.prepare('SELECT names FROM creator_marks WHERE user_id=?').bind(row.owner_id).first();
+    if (!m) return;
+    const have = new Set(JSON.parse(m.names || '[]'));
+    // ponytail: a credit the owner cannot claim (disowned, or another account
+    // owns more pages under it) re-checks on every save of that page; it costs
+    // a creators-list build and writes nothing. Cache the misses if that shows up.
+    if (creditNames(row.c).every(n => have.has(n))) return;
+    await refreshMarkNames(env, row.owner_id);
+  } catch { /* no marks table yet, or a read failed: the nightly pass catches up */ }
 }
 
 /* Every mark on the wiki, as the list assets/creators.js setMarks() takes.
@@ -14697,6 +14729,7 @@ const app = {
           // link/unlink branches bump it through logActivity('update'), and
           // without this one an unlink could take the PEOPLE ttl to show.
           await bumpContentVersion(env);
+          await refreshMarkNames(env).catch(() => {});
           const acct = await resolveCreatorAccount(env, name);
           return jsonResponse({ ok: true, username: acct ? acct.username : null, cleared: true });
         }

@@ -70,6 +70,14 @@ test('creator marks: claim, uniqueness, the legacy list, pages, hiding, export',
   assert.equal(reg.find(m => m.u === 'user-2').img, 'marks/u2.png');
   assert.equal((await f.request('/api/account/mark', post(2, { image: 'data:image/svg+xml;base64,PHN2Zz4=' }))).status, 400);
 
+  // Publishing under a credit the mark has not seen yet takes effect on that
+  // save, not at the nightly refresh.
+  f.insert('characters', 'n', { slug: 'n', name: 'Newcomer', team: 'townsfolk', creator: 'Moth Queen', art: 'art/n.png', ability: 'X.' });
+  f.db.prepare('UPDATE characters SET owner_id=1, creator=? WHERE slug=?').run('Moth Queen', 'n');
+  await f.hooks.logActivity(f.env, { userId: 1 }, 'update', 'character', 'n', 'Newcomer');
+  reg = (await (await f.request('/api/creator-marks')).json()).marks;
+  assert.ok(reg.find(m => m.u === 'user-1').n.includes('moth queen'));
+
   // Giving it up frees the glyph and the picture.
   assert.equal((await f.request('/api/account/mark', post(2, { remove: true }))).status, 200);
   assert.ok(!r2.has('marks/u2.png'));
