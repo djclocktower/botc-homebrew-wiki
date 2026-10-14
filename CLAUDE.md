@@ -698,7 +698,32 @@ assets/
   pageview.js          Client enhancements for /s/ and /collection/ SSR pages
                        (edit button, JSON download).
   theme-editor.js      Shared theme-kit form controls (font + color pickers) for
-                       publish-script/-collection/-page/-news.html.
+                       publish-script/-collection/-page/-news.html and the
+                       account page's Profile Appearance. wire() also builds
+                       the deeper layers into <div id="th-more"
+                       data-kind="…">: quick styles, every other knob, a live
+                       sample and the Custom CSS box. See "Page customization".
+  custom-css.js        CustomCSS.clean(): a page's custom stylesheet, cleaned
+                       and scoped under .ucss. Browser + Worker. SECURITY-
+                       CRITICAL — read its header before touching it.
+  custom-url.js        The "Custom URL" field on publish-script/-collection/
+                       -page (asks /api/custom-url-check as you type).
+  page-preview.js      The live page beside every page editor (script,
+                       collection, wiki page, news, and the account page's
+                       Profile Appearance): PagePreview.attach() adds the box,
+                       mounts it beside the form with splitPreview, and redraws
+                       on any input. An iframe with the site's stylesheet at a
+                       real 1280px desktop width scaled to the column, or a
+                       390px phone (phones open on it); content comes from the
+                       same renderScriptPage/renderCollectionPage/
+                       renderWikiPage/renderArticle the Worker uses. The
+                       creator page preview is the REAL /u/{name}?preview=1 in
+                       the frame, re-themed through profile.html's
+                       window.__botcApplyTheme, which calls
+                       parent.__botcProfileFrame once drawn. "Move things"
+                       makes every movable part draggable (pointer events,
+                       arrow keys nudge, "Put it back") and stores theme.moves
+                       through ThemeEditor.store — see "Page customization".
   wiki-editor.js       Shared editor widgets: the formatting toolbar, the
                        {title, content} custom-box repeater, the fact-box row
                        repeater, grow-with-content textareas, the image picker
@@ -1180,7 +1205,8 @@ Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a
 link or a `[[Character Name]]`. Every one of these is length-capped and
 theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is
-`{font, accent, panel, text, link, background, logoSize, logoPanel}` — colors
+`{font, accent, panel, text, link, background, logoSize, logoPanel}` plus the
+deeper fields in "Page customization" — colors
 must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
@@ -1220,6 +1246,127 @@ ids the widget would have to keep in step. Seeded collections have `owner_id NUL
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit,
 and **that assignment carries the set's characters with it** (see "Assigning an
 owner" below).
+
+## Page customization (theme kit, custom CSS, custom URLs)
+
+Scripts, collections, wiki pages/articles, news and creator pages (/u/) share
+ONE theme kit: `data.theme`, validated by `PageRender.sanitizeTheme()` (server
+on save AND at render, client in the editors) and applied by `themeAttrs()` as
+`theme-*` classes + `--pg-*` custom properties on `<body>`. Three layers, shown
+in this order by `assets/theme-editor.js`:
+
+1. **Quick styles** — `THEME_PRESETS`, each nothing but a bundle of theme
+   fields. Applying one replaces the `THEME_STYLE_KEYS` and keeps the page's
+   images, image sizes and custom CSS.
+2. **Knobs** — heading/body font (`FONT_PRESETS`/`FONT_STACKS`, all
+   self-hosted or system) or any Google Font (`gFont`/`gBodyFont`, letters,
+   digits and spaces only — `GOOGLE_FONT_RE`; the page then loads
+   fonts.googleapis.com, the owner's choice), nine colours
+   (`THEME_COLORS`), background colour/gradient/fit/position/darken/blur,
+   box opacity/corners/border/shadow, page width, "size of everything"
+   (`zoom`), heading case and glow, paragraph alignment. Ranges are in
+   `THEME_NUMBERS` with the value that means "not set", which is never
+   stored. The page background is ONE composed value (`--pg-bgl`) on the
+   fixed `body::before` layer; its url() stays root-absolute (see below).
+   CSS rules are in styles.css under "Theme kit: the deeper knobs", keyed on
+   the body classes, so an untouched page draws exactly as before.
+   **Character boxes, team headings and dividers** have knobs of their own
+   (`card*`, `team*`, `rule*` fields; `tc-*` / `tt-*` / `tr-*` classes in
+   styles.css under "Theme kit: character boxes, team headings, dividers"):
+   the boxes are a collection/creator page's `.char-card` AND a script
+   page's `.script-char-row`; the headings `.type-header` and
+   `.script-team-head`; the dividers `.type-rule`, the script heading's
+   border, `.gen-sech-wrap`'s side lines and `.wiki-rule`. Fonts are
+   `THEME_FONTS` pairs (preset key + Google family). Every preset derives
+   these from its own panel colours unless it names them.
+3. **Custom CSS** — `theme.css`, stored as typed (capped at
+   `THEME_CSS_MAX`), cleaned by `CustomCSS.clean()` at render time and
+   printed as `<style id="page-custom-css">` after the site's stylesheets.
+   `pageShell({customCss})` wraps the body in `.ucss-frame > .ucss`; every
+   author rule is rewritten under `.ucss` (`body`/`html`/`:root` mean the
+   page area), nesting and `&` are refused, only `url()` may fetch (https,
+   /assets/, data:image, #fragment; never `/api/`), image-set()/src()/…
+   and backslash escapes outside strings are refused, global at-rules are
+   dropped, @keyframes/@font-face names are prefixed `u-`, and `<` never
+   survives. `.ucss-frame` has `contain: paint`, so nothing an author writes
+   can draw over the top bar or outside the page. Comments mount after the
+   frame and are out of reach. `migration/tests/customization.test.mjs` holds
+   the escape attempts — add to it before loosening anything.
+
+**Layout** (sizes and positions, the editor's "Layout" section): character
+box width (`cardW`, the grid's minimum column), boxes per row (`cardCols`),
+the space between and inside them (`cardGap`, `cardPad`), the icon above or
+right of the text (`cardLayout`), text alignment (`cardAlign`), ability text
+full / 3 lines / hidden (`cardAbility`), an exact page width (`pageW`), the
+padding of the big boxes (`panelPad`), title size and title/banner alignment
+(`titleSize`, `topAlign`), the information box's side and width (`infoPos`,
+`infoW`: script side column and a wiki page's fact box) and the space between
+sections plus their ORDER (`secGap`, `order[]`). `order` is a list of keys
+from `PageRender.THEME_SECTIONS` (per kind: script, collection, profile),
+written as `--pg-o-{key}` and read by `order:` on the sections, which become a
+flex column (`tl-flow`) only when `order` or `secGap` is set; an unlisted
+section falls after the listed ones (CSS fallback 50+). The hooks are
+`.sv-main` + `.sv-s-*` on a script, `.coll-flow` / `.coll-top` on a
+collection, `.prof-panel` + `data-sec` on the creator page. Classes are
+`tl-*` ("Theme kit: layout" in styles.css). Column rules only apply above the
+phone breakpoints, and "left" keeps the info box below the page on a phone.
+`THEME_LAYOUT_KEYS` are excluded from `THEME_STYLE_KEYS`, so a quick style or
+"Reset every style setting" never undoes an arrangement; the Layout section
+has its own reset.
+
+**Moves** (`theme.moves = {key: [x, y]}`): any part of a page dragged to
+where its owner wants it, in the live preview's "Move things" mode. A key is a
+named part (`PageRender.MOVABLE`: title, banner, info box, each section…), a
+character box (`c:{identity}`, matched on `data-slug` — script roster rows
+carry it too), a team block (`t:{team}`, `data-team`) or a creator-page
+section (`s:{sec}`). `sanitizeMoves()` validates keys and clamps integers;
+`movesCSS()` turns them into `translate` rules (+ `position:relative;z-index`
+so a moved part draws on top), printed as `<style id="page-moves">` by
+`pageShell()` and by profile.html, inside `@media (min-width: 901px)` only:
+offsets made on a desktop would wreck a phone's one-column page. The flow is
+untouched (a moved part leaves its space), so taking a move off restores the
+page exactly; `body.tl-moved` clips sideways overflow. `moves` is a layout
+key, so quick styles keep it.
+
+**Stickers** (`theme.stickers`, up to `STICKERS_MAX` 24): free-standing
+GIF/PNG/JPEG/WebP images placed by their centre at `x`/`y` % of the page area
+(or of the screen when `pin: 'screen'`), `w` px wide (capped at 90vw), with
+turn, see-through, mirror, `layer` front/back, an animation and "hide on
+phones". `PageRender.sanitizeStickers()` whitelists `src`: an https link
+(never `/api/`) or the page's own slot `{base}-st{n}.{ext}` — the same base its
+background uses (`scripts/{slug}`, `collections/{id}`, `pages/{slug}`,
+`news/{slug}`, `avatars/u{id}`). `uploadSlotDenied()` strips `-st{n}` like
+`-logo`/`-bg`, so a sticker slot is the page's; a creator page uploads through
+`/api/account/avatar` with `kind:'st', n` (the only avatar slot taking a GIF).
+`stickersHTML()` is drawn first inside `<main>` (on body in profile.html),
+OUTSIDE the custom-CSS frame, so author CSS cannot reach them and the frame
+cannot trap a pinned one. They never take a click (`pointer-events: none`),
+the layer clips overhang (no sideways page scroll on a phone), and front ones
+stay under the top bar (z 30). The editor (theme-editor.js) uploads on pick —
+so only once the page exists — and lets them be dragged in the live sample.
+
+**Creator pages** keep their theme in `users.profile_json.theme`, saved by
+`POST /api/account/theme` (never by `/api/account/profile`, which keeps it —
+`packProfileExtra()` is the one writer). Its background is uploaded through
+`/api/account/avatar` with `kind:'bg'` to `avatars/u{id}-bg.{ext}`
+(`profileThemeBase()`). `/api/user` returns it; profile.html applies it in the
+browser (`applyProfileTheme`), moving the hero and sections into the frame
+when there is custom CSS. The anonymous `/api/user` edge copy can lag a theme
+change by up to its 30-minute ttl; the owner, logged in, sees it at once.
+
+**Custom URLs** (scripts, collections, wiki pages and articles): the owner may
+give a page its own address (`data.customUrl`, owner-only like `publicEdit`;
+a save that does not send the field keeps it). The PK slug stays the identity
+— comments, views, pins and images do not move. A lazily ALTERed, UNIQUE
+`custom_url` column on scripts/collections/pages is what requests resolve by
+(`rowByCustomUrl`): slug first, then custom address, then `redirects` (old
+addresses). Arriving by anything but the custom address is a 301 to it, made
+AFTER the draft/deleted (and, for /p/, parent) gates. `settleCustomUrl()`
+validates before the write (`addressTaken()`: another page's slug, id, custom
+address or live redirect), `commitCustomUrl()` writes the column after it and
+leaves the old address as a redirect. A new script/collection/page never lands
+on somebody's custom address, `/api/slug-check` counts them as taken, and
+`prepareRestore` pins `customUrl`. Creator pages' URL is still the username.
 
 ## Night order (script pages)
 

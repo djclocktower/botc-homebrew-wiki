@@ -50,19 +50,56 @@
   };
 
   /* ── Theme ──
-     Stored as data.theme = {font, accent, panel, text, link, background}.
-     Every value is validated by sanitizeTheme (server AND client) and only
-     ever applied as CSS custom properties / whitelisted class names — never
-     raw CSS. Font stacks live in styles.css (.theme-font-*). */
+     Stored as data.theme on scripts, collections, wiki pages, news and (in
+     profile_json) on an account's creator page. Every value is validated by
+     sanitizeTheme (server AND client) and only ever applied as CSS custom
+     properties / whitelisted class names. The one exception is `css`, the
+     custom stylesheet, which is cleaned and scoped by assets/custom-css.js
+     before it is printed — never by this file.
+
+     The kit has three layers, and the editor (assets/theme-editor.js) shows
+     them in that order: a one-click style (THEME_PRESETS — nothing but a
+     bundle of the same fields), the individual knobs below, and the custom
+     CSS box for everything else. */
   var FONT_PRESETS = {
-    'default':   'Dumbledor (wiki default)',
+    'default':   'Wiki default',
+    'dumbledor': 'Dumbledor',
     'trade':     'Trade Gothic',
     'oswald':    'Oswald',
+    'roboto':    'Roboto',
+    'franklin':  'Libre Franklin',
     'garamond':  'EB Garamond',
+    'notoserif': 'Noto Serif',
     'cinzel':    'Cinzel',
     'pirata':    'Pirata One',
     'imfell':    'IM Fell English',
-    'grenze':    'Grenze Gotisch'
+    'grenze':    'Grenze Gotisch',
+    'unlovable': 'LHF Unlovable',
+    'georgia':   'Georgia (classic serif)',
+    'system':    'System sans-serif',
+    'mono':      'Typewriter (monospace)',
+    'comic':     'Comic Sans'
+  };
+  /* The font stack each preset stands for. Every face here is self-hosted in
+     assets/fonts (declared in styles.css) or a system font, so a preset never
+     reaches another origin; a Google Font is the separate `gFont` field. */
+  var FONT_STACKS = {
+    'dumbledor': "'Dumbledor2', serif",
+    'trade':     "'TradeGothicLT', 'Libre Franklin', sans-serif",
+    'oswald':    "'Oswald', sans-serif",
+    'roboto':    "'Roboto', sans-serif",
+    'franklin':  "'Libre Franklin', sans-serif",
+    'garamond':  "'EB Garamond', serif",
+    'notoserif': "'Noto Serif', serif",
+    'cinzel':    "'Cinzel', serif",
+    'pirata':    "'Pirata One', serif",
+    'imfell':    "'IM Fell English', serif",
+    'grenze':    "'Grenze Gotisch', serif",
+    'unlovable': "'LHFUnlovable', 'Dumbledor2', serif",
+    'georgia':   "Georgia, 'Times New Roman', serif",
+    'system':    "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    'mono':      "'Courier New', Courier, monospace",
+    'comic':     "'Comic Sans MS', 'Comic Neue', 'Chalkboard SE', cursive"
   };
 
   /* How far the top graphic may be scaled, as a percentage of the wiki's own
@@ -71,16 +108,186 @@
      below the fold on a phone. */
   var LOGO_SIZE_MIN = 25;
   var LOGO_SIZE_MAX = 250;
+  /* The custom stylesheet's ceiling, in characters. Room for a real theme
+     with a few small data: images, small enough that it never dominates the
+     page it sits in. Cut, not refused, so a save never fails on it. */
+  var THEME_CSS_MAX = 30000;
+
+  /* The numeric knobs: [key, min, max, the value that means "not set"].
+     A value equal to the neutral one is never stored, so a page nobody
+     touched keeps following the stylesheet. `null` neutral: any in-range
+     value is a choice (0 corners and no border both mean something). */
+  var THEME_NUMBERS = [
+    ['bgAngle',    0, 360, null],
+    ['bgDim',      0,  90, 0],
+    ['bgBlur',     0,  20, 0],
+    ['panelAlpha', 0, 100, 100],
+    ['radius',     0,  40, null],
+    ['borderW',    0,   8, null],
+    ['textScale', 75, 150, 100],
+    // Character boxes (collection/creator cards, script roster rows)
+    ['cardAlpha',   0, 100, 100],
+    ['cardBorderW', 0,   8, null],
+    ['cardRadius',  0,  40, null],
+    ['cardIcon',   50, 200, 100],
+    // Team headings and dividers
+    ['teamSize',   50, 250, 100],
+    ['ruleW',       0,  12, null],
+    // Layout: how big things are and where they sit (THEME_LAYOUT_KEYS)
+    ['cardW',     140, 700, null],
+    ['cardCols',    1,   8, null],
+    ['cardGap',     0,  80, null],
+    ['cardPad',     0,  48, null],
+    ['pageW',     600, 2400, null],
+    ['panelPad',    0,  64, null],
+    ['secGap',      0, 120, null],
+    ['infoW',     200, 640, null],
+    ['titleSize',  50, 250, 100]
+  ];
+  // The pick-one knobs and what each may say.
+  var THEME_CHOICES = {
+    bgFit:    ['cover', 'contain', 'tile', 'stretch', 'center'],
+    bgPos:    ['top', 'center', 'bottom'],
+    shadow:   ['none', 'soft', 'strong', 'glow'],
+    width:    ['narrow', 'wide', 'full'],
+    headCase: ['upper', 'lower', 'caps', 'none'],
+    align:    ['center', 'justify'],
+    cardShadow: ['none', 'soft', 'strong', 'glow'],
+    cardHover:  ['none', 'lift', 'grow', 'glow'],
+    teamAlign:  ['left', 'center', 'right'],
+    teamCase:   ['upper', 'lower', 'caps', 'none'],
+    ruleStyle:  ['fade', 'solid', 'dashed', 'dotted', 'double', 'glow', 'none'],
+    cardLayout: ['side', 'top', 'right'],
+    cardAlign:  ['left', 'center', 'right'],
+    cardAbility: ['full', 'short', 'hide'],
+    infoPos:    ['right', 'left', 'top', 'bottom'],
+    topAlign:   ['left', 'center', 'right']
+  };
+  /* The sections a page's owner may put in another order (theme.order).
+     Each page kind draws its own few; a key a page does not draw sets a
+     custom property nothing reads. Listed per kind for the editor. */
+  var THEME_SECTIONS = {
+    script: [['synopsis', 'Synopsis'], ['gameplay', 'Gameplay'], ['pages', 'Pages'],
+      ['characters', 'Characters and jinxes'], ['bootlegger', 'Bootlegger rules'], ['night', 'Night order']],
+    collection: [['info', 'Information and JSON'], ['about', 'Synopsis, gameplay and boxes'],
+      ['characters', 'Characters'], ['jinx', 'Jinxes']],
+    profile: [['pinned', 'Pinned'], ['characters', 'Characters'], ['scripts', 'Scripts'],
+      ['collections', 'Collections'], ['pages', 'Pages']]
+  };
+  var SECTION_KEYS = Object.create(null);
+  Object.keys(THEME_SECTIONS).forEach(function (k) {
+    THEME_SECTIONS[k].forEach(function (s) { SECTION_KEYS[s[0]] = true; });
+  });
+  /* ── Moves: any part of a page dragged to where its owner wants it ──
+     theme.moves = {key: [x, y]}, an offset in CSS pixels from where the page
+     would have put that part. A key names a part (MOVABLE), a character box
+     ('c:' + identity), a team block ('t:' + team) or a creator-page section
+     ('s:' + section). They become `translate` rules (movesCSS), so the page
+     keeps its flow and its space: a moved part only LOOKS moved, nothing
+     else reflows around it, and taking a move off puts it back exactly.
+     Wide screens only: offsets made on a desktop would throw a phone's
+     one-column page apart, so a phone always gets the page as laid out. */
+  var MOVABLE = {
+    title:      ['Title', '.script-title-fallback, .coll-title, .wiki-title, .news-article h1'],
+    banner:     ['Banner', '.script-header-wrap, .coll-header-wrap, .wiki-banner-wrap, .news-hero'],
+    logo:       ['Logo', '.sv-logo-wrap'],
+    tagline:    ['Tagline', '.sv-tagline, .wiki-subtitle'],
+    desc:       ['Description', '.script-desc'],
+    meta:       ['Byline', '.script-meta-line, .wiki-meta'],
+    favs:       ['Favorites button', '.page-fav-bar'],
+    head:       ['Title box', '.wiki-page-head'],
+    info:       ['Information box', '.script-json-panel, .coll-meta-row, .wiki-side'],
+    main:       ['Main box', '.sv-main, .coll-prose, .wiki-body, .news-body'],
+    synopsis:   ['Synopsis', '.sv-s-synopsis'],
+    gameplay:   ['Gameplay', '.sv-s-gameplay'],
+    pages:      ['Pages', '#page-wiki-links'],
+    characters: ['Characters', '.sv-s-characters, .coll-chars'],
+    filters:    ['Filter box', '.coll-filters'],
+    count:      ['Character count', '.coll-chars-count'],
+    jinx:       ['Jinxes', '.coll-jinx'],
+    night:      ['Night order', '#sec-nightorder'],
+    bootlegger: ['Bootlegger rules', '#sec-bootlegger'],
+    hero:       ['Top of the page', '.home-hero'],
+    avatar:     ['Picture', '.profile-avatar'],
+    name:       ['Name', '.profile-hero-text h1'],
+    bio:        ['Bio', '.profile-bio'],
+    links:      ['Links', '.profile-links']
+  };
+  var MOVE_TEAMS = /^t:(townsfolk|outsider|minion|demon|traveller|fabled|loric|other)$/;
+  var MOVE_SECS = /^s:(pinned|characters|scripts|collections|pages)$/;
+  var MOVE_CHAR = /^c:[a-z0-9][a-z0-9_-]{0,119}$/;
+  var MOVES_MAX = 400, MOVE_LIMIT = 3000;
+  function moveSelector(key) {
+    if (Object.prototype.hasOwnProperty.call(MOVABLE, key)) return MOVABLE[key][1];
+    var v = key.slice(2);
+    if (MOVE_CHAR.test(key)) return '.char-card[data-slug="' + v + '"], .script-char-row[data-slug="' + v + '"]';
+    if (MOVE_TEAMS.test(key)) return '.type-section[data-team="' + v + '"], .script-team-group[data-team="' + v + '"]';
+    if (MOVE_SECS.test(key)) return '.prof-panel > [data-sec="' + v + '"]';
+    return '';
+  }
+  function sanitizeMoves(m) {
+    var out = {}, n = 0;
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return out;
+    Object.keys(m).forEach(function (k) {
+      if (n >= MOVES_MAX || !moveSelector(k)) return;
+      var v = m[k];
+      if (!Array.isArray(v) || v.length !== 2) return;
+      var x = Math.round(Number(v[0])), y = Math.round(Number(v[1]));
+      if (!isFinite(x) || !isFinite(y)) return;
+      x = Math.max(-MOVE_LIMIT, Math.min(MOVE_LIMIT, x));
+      y = Math.max(-MOVE_LIMIT, Math.min(MOVE_LIMIT, y));
+      if (!x && !y) return;
+      out[k] = [x, y]; n++;
+    });
+    return out;
+  }
+  // Built only from whitelisted selectors, validated keys and integers.
+  function movesCSS(moves) {
+    var m = sanitizeMoves(moves), rules = [];
+    Object.keys(m).forEach(function (k) {
+      // On top of what it was dragged over. `position` is what lets z-index
+      // work on an ordinary block; a script's side column is sticky (already
+      // positioned), so it keeps its own.
+      moveSelector(k).split(',').forEach(function (sel) {
+        sel = sel.trim();
+        rules.push('.tl-moved ' + sel + '{translate:' + m[k][0] + 'px ' + m[k][1] + 'px;' +
+          (sel === '.script-json-panel' ? '' : 'position:relative;') + 'z-index:5}');
+      });
+    });
+    return rules.length ? '@media (min-width: 901px){' + rules.join('') + '}' : '';
+  }
+
+  function sanitizeOrder(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [];
+    list.forEach(function (k) {
+      if (typeof k === 'string' && SECTION_KEYS[k] && out.indexOf(k) < 0 && out.length < 16) out.push(k);
+    });
+    return out;
+  }
+  var THEME_COLORS = ['accent', 'panel', 'text', 'link', 'bgColor', 'bgColor2', 'border', 'glow', 'heading',
+    'cardBg', 'cardText', 'cardName', 'cardAccent', 'cardBorder',
+    'teamColor', 'teamBg', 'teamGlow', 'ruleColor'];
+  // The font slots: a preset key each, or a Google family that replaces it.
+  var THEME_FONTS = [['font', 'gFont'], ['bodyFont', 'gBodyFont'], ['cardFont', 'gCardFont'], ['teamFont', 'gTeamFont']];
+  /* A Google Fonts family name: letters, digits and spaces, which is every
+     family Google serves. Nothing else may reach the stylesheet URL or the
+     font stack, so a name can never close a quote or a url(). */
+  var GOOGLE_FONT_RE = /^[A-Za-z0-9][A-Za-z0-9 ]{0,48}[A-Za-z0-9]$/;
 
   function sanitizeTheme(theme, allowedBgBase) {
     if (!theme || typeof theme !== 'object') return null;
     var out = {};
-    if (typeof theme.font === 'string' &&
-        Object.prototype.hasOwnProperty.call(FONT_PRESETS, theme.font) &&
-        theme.font !== 'default') {
-      out.font = theme.font;
-    }
-    ['accent', 'panel', 'text', 'link'].forEach(function (k) {
+    THEME_FONTS.forEach(function (f) {
+      var k = f[0], g = f[1];
+      if (typeof theme[k] === 'string' &&
+          Object.prototype.hasOwnProperty.call(FONT_STACKS, theme[k])) {
+        out[k] = theme[k];
+      }
+      var v = typeof theme[g] === 'string' ? theme[g].trim().replace(/\s+/g, ' ') : '';
+      if (GOOGLE_FONT_RE.test(v)) out[g] = v;
+    });
+    THEME_COLORS.forEach(function (k) {
       var v = theme[k];
       if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v.trim())) {
         out[k] = v.trim().toLowerCase();
@@ -115,36 +322,289 @@
     if (theme.logoPanel === true || theme.logoPanel === 'on' || theme.logoPanel === 1) {
       out.logoPanel = true;
     }
+    THEME_NUMBERS.forEach(function (r) {
+      var v = theme[r[0]];
+      // '' and null are "not set", not zero (Number('') is 0).
+      if (v === '' || v == null || typeof v === 'boolean') return;
+      var n = Math.round(Number(v));
+      if (isFinite(n) && n >= r[1] && n <= r[2] && n !== r[3]) out[r[0]] = n;
+    });
+    Object.keys(THEME_CHOICES).forEach(function (k) {
+      if (THEME_CHOICES[k].indexOf(theme[k]) >= 0) out[k] = theme[k];
+    });
+    if (typeof theme.css === 'string' && theme.css.trim()) {
+      out.css = theme.css.slice(0, THEME_CSS_MAX);
+    }
+    var st = sanitizeStickers(theme.stickers, allowedBgBase);
+    if (st.length) out.stickers = st;
+    var ord = sanitizeOrder(theme.order);
+    if (ord.length) out.order = ord;
+    var mv = sanitizeMoves(theme.moves);
+    if (Object.keys(mv).length) out.moves = mv;
     return Object.keys(out).length ? out : null;
+  }
+
+  /* ── Stickers: free-standing images on the page ──
+     A GIF, PNG, JPEG or WebP placed anywhere on a page, at any size, turned,
+     faded, flipped, animated, in front of the page's boxes or behind them,
+     scrolling with the page or pinned to the screen. Stored as
+     theme.stickers = [{src, x, y, w, rot, opacity, flip, layer, pin, anim,
+     hideSmall}]. x and y are the sticker's CENTRE as a percentage of the
+     page area (or of the screen, for a pinned one), so a placement survives a
+     phone's narrower, taller page; w is its width in px, never wider than
+     90% of the screen.
+
+     `src` is the one thing a writer controls that reaches markup, so it is
+     whitelisted: an https:// address (never an /api/ path), or an image this
+     page uploaded into its own slot, {base}-st{n}.{ext} — the same base its
+     background lives under. Every number is clamped and rounded, every word
+     is from a list, and stickersHTML() escapes on top of that. A sticker
+     never takes a click (pointer-events: none in styles.css), so an image
+     can be anything but a link. */
+  var STICKERS_MAX = 24;
+  var STICKER_ANIMS = ['spin', 'bob', 'wiggle', 'pulse', 'blink'];
+  var STICKER_DEFAULTS = { x: 85, y: 12, w: 140, rot: 0, opacity: 100 };
+  function clampNum(v, lo, hi, dflt) {
+    var n = Math.round(Number(v));
+    return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
+  }
+  function stickerSrcOk(src, base) {
+    src = typeof src === 'string' ? src.trim() : '';
+    if (!src || src.length > 2000) return '';
+    var m = src.match(/^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(\/[^\s"'<>\\()`]*)?$/);
+    if (m) return /^\/api(\/|$)/i.test(m[1] || '') ? '' : src;
+    if (!base) return '';
+    var esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('^' + esc + '-st\\d{1,2}\\.(png|jpe?g|gif|webp)$', 'i').test(src) ? src : '';
+  }
+  function sanitizeStickers(list, base) {
+    var out = [];
+    if (!Array.isArray(list)) return out;
+    for (var i = 0; i < list.length && out.length < STICKERS_MAX; i++) {
+      var t = list[i];
+      if (!t || typeof t !== 'object') continue;
+      var src = stickerSrcOk(t.src, base);
+      if (!src) continue;
+      var o = {
+        src: src,
+        x: clampNum(t.x, -20, 120, STICKER_DEFAULTS.x),
+        y: clampNum(t.y, -20, 120, STICKER_DEFAULTS.y),
+        w: clampNum(t.w, 12, 1200, STICKER_DEFAULTS.w),
+        rot: clampNum(t.rot, -180, 180, 0),
+        opacity: clampNum(t.opacity, 5, 100, 100),
+        layer: t.layer === 'back' ? 'back' : 'front',
+        pin: t.pin === 'screen' ? 'screen' : 'page'
+      };
+      if (t.flip === true) o.flip = true;
+      if (STICKER_ANIMS.indexOf(t.anim) >= 0) o.anim = t.anim;
+      if (t.hideSmall === true) o.hideSmall = true;
+      out.push(o);
+    }
+    return out;
+  }
+  /* The markup for a SANITIZED list (sanitizeTheme's output). The page
+     draws it inside its main area, outside the custom-CSS frame, so an
+     author's stylesheet cannot reach the stickers and the frame's paint
+     containment cannot trap a pinned one. */
+  function stickersHTML(list) {
+    if (!Array.isArray(list) || !list.length) return '';
+    return '<div class="pg-stickers" aria-hidden="true">' + list.map(function (s) {
+      var src = /^https:/i.test(s.src) ? s.src : '/assets/' + s.src;
+      var cls = 'pg-sticker pgs-' + (s.layer === 'back' ? 'back' : 'front') +
+        (s.pin === 'screen' ? ' pgs-fixed' : '') +
+        (STICKER_ANIMS.indexOf(s.anim) >= 0 ? ' pgs-anim-' + s.anim : '') +
+        (s.hideSmall ? ' pgs-hide-small' : '');
+      var style = 'left:' + Number(s.x) + '%;top:' + Number(s.y) + '%;width:' + Number(s.w) + 'px;' +
+        '--pgs-r:' + Number(s.rot) + 'deg;--pgs-o:' + (Number(s.opacity) / 100) + ';--pgs-fx:' + (s.flip ? -1 : 1);
+      return '<img class="' + cls + '" src="' + esc(src) + '" alt="" loading="lazy" decoding="async" ' +
+        'referrerpolicy="no-referrer" draggable="false" style="' + style + '">';
+    }).join('') + '</div>';
+  }
+
+  var SHADOWS = {
+    none:   'none',
+    soft:   '0 4px 14px rgba(0,0,0,.28)',
+    strong: '0 12px 32px rgba(0,0,0,.6)'
+  };
+  var BG_FIT = {
+    cover: 'cover no-repeat', contain: 'contain no-repeat', tile: 'auto repeat',
+    stretch: '100% 100% no-repeat', center: 'auto no-repeat'
+  };
+
+  function hexA(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
+  /* The Google Fonts stylesheets a sanitized theme asks for (0, 1 or 2). The
+     plain family request: asking for weights a family does not have fails the
+     whole stylesheet, and the browser synthesises bold well enough. */
+  function themeFontLinks(theme) {
+    var out = [];
+    if (!theme) return out;
+    THEME_FONTS.forEach(function (f) {
+      var k = f[1];
+      if (theme[k] && GOOGLE_FONT_RE.test(theme[k])) {
+        var href = 'https://fonts.googleapis.com/css2?family=' +
+          theme[k].replace(/ /g, '+') + '&display=swap';
+        if (out.indexOf(href) < 0) out.push(href);
+      }
+    });
+    return out;
   }
 
   /* Build the class list + inline style for <body> from a sanitized theme.
      Callers MUST pass the theme through sanitizeTheme first (the Worker does
      this on save and again at render time). `linkRoot` is accepted for the
      callers that pass it but no longer shapes anything — see the background
-     note below for why the one URL here must not be relative. */
+     note below for why the one URL here must not be relative.
+     Every value written into `style` is a validated hex colour, a number, a
+     constant from this file or a GOOGLE_FONT_RE name, so nothing a writer
+     typed can close the declaration it sits in. */
   function themeAttrs(theme, linkRoot) {
-    if (!theme) return { cls: '', style: '' };
+    if (!theme) return { cls: '', style: '', fonts: [], movesCss: '' };
     var cls = ['page-themed'];
     var style = [];
     if (theme.font) cls.push('theme-font-' + theme.font);
+    if (theme.gFont) style.push("--pg-font:'" + theme.gFont + "', serif");
+    else if (theme.font && FONT_STACKS[theme.font]) style.push('--pg-font:' + FONT_STACKS[theme.font]);
+    var bodyStack = theme.gBodyFont ? ("'" + theme.gBodyFont + "', sans-serif")
+      : (theme.bodyFont && FONT_STACKS[theme.bodyFont]);
+    if (bodyStack) { cls.push('theme-bfont'); style.push('--pg-bfont:' + bodyStack); }
     if (theme.accent) { cls.push('theme-accent'); style.push('--pg-accent:' + theme.accent); }
+    if (theme.heading) { cls.push('theme-heading'); style.push('--pg-heading:' + theme.heading); }
     if (theme.panel)  { cls.push('theme-panel');  style.push('--pg-panel:' + theme.panel); }
     if (theme.text)   { cls.push('theme-text');   style.push('--pg-text:' + theme.text); }
     if (theme.link)   { cls.push('theme-link');   style.push('--pg-link:' + theme.link); }
-    if (theme.background) {
-      cls.push('theme-bg');
-      /* ROOT-ABSOLUTE, never linkRoot-relative. This url() sits inside a
-         custom property on <body>, and Chromium resolves a relative url() in
-         a custom property against the STYLESHEET where var() consumes it,
-         not the document that declared it. The stylesheet used to live at
-         /assets/styles.css, where '../assets/x-bg.png' came out right by
-         accident; the build now serves it from /assets/immutable/, so the
-         same string resolved to /assets/assets/x-bg.png and every custom
-         background on the site 404'd. '/assets/...' reads the same from any
-         base URL, so no stylesheet move can break it again. */
-      style.push('--pg-bg:url("/assets/' + theme.background + '")');
+    if (theme.panelAlpha != null && theme.panelAlpha !== 100) {
+      cls.push('theme-alpha');
+      style.push('--pg-alpha:' + theme.panelAlpha + '%');
     }
+    if (theme.radius != null) { cls.push('theme-radius'); style.push('--pg-radius:' + theme.radius + 'px'); }
+    if (theme.borderW != null || theme.border) {
+      cls.push('theme-border');
+      style.push('--pg-bw:' + (theme.borderW != null ? theme.borderW : 2) + 'px');
+      if (theme.border) style.push('--pg-border:' + theme.border);
+    }
+    if (theme.shadow) {
+      cls.push('theme-shadow');
+      style.push('--pg-shadow:' + (theme.shadow === 'glow'
+        ? '0 0 22px ' + hexA(theme.glow || theme.accent || '#e8c66a', .75)
+        : SHADOWS[theme.shadow]));
+    }
+    if (theme.glow) {
+      cls.push('theme-glow');
+      style.push('--pg-glow:0 0 6px ' + hexA(theme.glow, .9) + ',0 0 16px ' + hexA(theme.glow, .6));
+    }
+    if (theme.textScale) { cls.push('theme-scale'); style.push('--pg-scale:' + (theme.textScale / 100)); }
+
+    /* Character boxes, team headings and dividers: one class per setting
+       (tc-* / tt-* / tr-*), so an untouched setting keeps the stylesheet's
+       own look, and a custom property carrying the value. */
+    function stack(k, g, fallback) {
+      return theme[g] ? "'" + theme[g] + "', " + fallback : (theme[k] && FONT_STACKS[theme[k]]);
+    }
+    function on(c, prop, val) { cls.push(c); if (prop) style.push(prop + ':' + val); }
+    if (theme.cardBg || theme.cardAlpha != null) {
+      on('tc-bg', theme.cardBg ? '--pg-card-bg' : '', theme.cardBg);
+      if (theme.cardAlpha != null) style.push('--pg-card-alpha:' + theme.cardAlpha + '%');
+    }
+    if (theme.cardText) on('tc-text', '--pg-card-text', theme.cardText);
+    if (theme.cardName) on('tc-name', '--pg-card-name', theme.cardName);
+    if (theme.cardAccent) on('tc-accent', '--pg-card-accent', theme.cardAccent);
+    var cardStack = stack('cardFont', 'gCardFont', 'serif');
+    if (cardStack) on('tc-font', '--pg-card-font', cardStack);
+    if (theme.cardBorder || theme.cardBorderW != null) {
+      cls.push('tc-border');
+      style.push('--pg-card-bw:' + (theme.cardBorderW != null ? theme.cardBorderW : 2) + 'px');
+      if (theme.cardBorder) style.push('--pg-card-border:' + theme.cardBorder);
+    }
+    if (theme.cardRadius != null) on('tc-radius', '--pg-card-radius', theme.cardRadius + 'px');
+    var cardGlow = hexA(theme.cardAccent || theme.glow || theme.accent || '#e8c66a', .8);
+    if (theme.cardShadow) {
+      on('tc-shadow', '--pg-card-shadow', theme.cardShadow === 'glow' ? '0 0 18px ' + cardGlow : SHADOWS[theme.cardShadow]);
+    }
+    if (theme.cardHover) { cls.push('tc-hover-' + theme.cardHover); style.push('--pg-card-glow:' + cardGlow); }
+    if (theme.cardBg || theme.cardAlpha != null || theme.cardBorder || theme.cardBorderW != null ||
+        theme.cardRadius != null || theme.cardShadow) cls.push('tc-box');
+    if (theme.cardIcon) on('tc-icon', '--pg-card-icon', theme.cardIcon / 100);
+    var teamStack = stack('teamFont', 'gTeamFont', 'serif');
+    if (teamStack) on('tt-font', '--pg-team-font', teamStack);
+    if (theme.teamColor) on('tt-color', '--pg-team-color', theme.teamColor);
+    if (theme.teamBg) on('tt-bg', '--pg-team-bg', theme.teamBg);
+    if (theme.teamGlow) on('tt-glow', '--pg-team-glow', '0 0 6px ' + hexA(theme.teamGlow, .9) + ',0 0 14px ' + hexA(theme.teamGlow, .6));
+    if (theme.teamSize) on('tt-size', '--pg-team-size', theme.teamSize / 100);
+    if (theme.teamAlign) cls.push('tt-align-' + theme.teamAlign);
+    if (theme.teamCase) cls.push('tt-case-' + theme.teamCase);
+    if (theme.ruleStyle || theme.ruleColor || theme.ruleW != null) {
+      cls.push('tr-' + (theme.ruleStyle || 'fade'));
+      if (theme.ruleColor) style.push('--pg-rule:' + theme.ruleColor);
+      if (theme.ruleW != null) style.push('--pg-rule-w:' + theme.ruleW + 'px');
+    }
+    if (theme.width) cls.push('theme-width-' + theme.width);
+    /* Layout: tl-* classes, read by the "Theme kit: layout" block of
+       styles.css. Sizes are custom properties; positions are classes. */
+    if (theme.cardW) on('tl-cardw', '--pg-card-w', theme.cardW + 'px');
+    if (theme.cardCols) on('tl-cols', '--pg-cols', theme.cardCols);
+    if (theme.cardGap != null) on('tl-gap', '--pg-card-gap', theme.cardGap + 'px');
+    if (theme.cardPad != null) on('tl-pad', '--pg-card-pad', theme.cardPad + 'px');
+    if (theme.cardLayout && theme.cardLayout !== 'side') cls.push('tl-card-' + theme.cardLayout);
+    if (theme.cardAlign) cls.push('tl-calign-' + theme.cardAlign);
+    if (theme.cardAbility && theme.cardAbility !== 'full') cls.push('tl-ab-' + theme.cardAbility);
+    if (theme.pageW) on('tl-pagew', '--pg-page-w', theme.pageW + 'px');
+    if (theme.panelPad != null) on('tl-ppad', '--pg-panel-pad', theme.panelPad + 'px');
+    if (theme.secGap != null) on('tl-gapy', '--pg-sec-gap', theme.secGap + 'px');
+    if (theme.infoW) on('tl-infow', '--pg-info-w', theme.infoW + 'px');
+    if (theme.infoPos && theme.infoPos !== 'right') cls.push('tl-info-' + theme.infoPos);
+    if (theme.titleSize) on('tl-title', '--pg-title', theme.titleSize / 100);
+    if (theme.topAlign) cls.push('tl-top-' + theme.topAlign);
+    var ord = sanitizeOrder(theme.order);
+    if (ord.length) {
+      cls.push('tl-order');
+      ord.forEach(function (k, n) { style.push('--pg-o-' + k + ':' + (n + 1)); });
+    }
+    if (ord.length || theme.secGap != null) cls.push('tl-flow');
+    var movesCss = movesCSS(theme.moves);
+    if (movesCss) cls.push('tl-moved');
+    if (theme.headCase) cls.push('theme-hcase-' + theme.headCase);
+    if (theme.align) cls.push('theme-align-' + theme.align);
+
+    /* The page background: one composed `background` value on the fixed
+       body::before layer (the same mobile-safe layer the wiki always paints
+       on), so image, darkening, fit and colour/gradient cannot fight each
+       other across rules. Layers, top first: the darkening veil, the image,
+       then the colour or gradient underneath. */
+    if (theme.background || theme.bgColor || theme.bgColor2 || theme.bgDim) {
+      var layers = [];
+      if (theme.bgDim) {
+        var dim = 'rgba(0,0,0,' + (theme.bgDim / 100) + ')';
+        layers.push('linear-gradient(' + dim + ',' + dim + ')');
+      }
+      if (theme.background) {
+        /* ROOT-ABSOLUTE, never linkRoot-relative. This url() sits inside a
+           custom property on <body>, and Chromium resolves a relative url() in
+           a custom property against the STYLESHEET where var() consumes it,
+           not the document that declared it. The stylesheet used to live at
+           /assets/styles.css, where '../assets/x-bg.png' came out right by
+           accident; the build now serves it from /assets/immutable/, so the
+           same string resolved to /assets/assets/x-bg.png and every custom
+           background on the site 404'd. '/assets/...' reads the same from any
+           base URL, so no stylesheet move can break it again. */
+        layers.push('url("/assets/' + theme.background + '") center ' +
+          (theme.bgPos || 'top') + ' / ' + BG_FIT[theme.bgFit || 'cover']);
+      }
+      if (theme.bgColor2) {
+        layers.push('linear-gradient(' + (theme.bgAngle != null ? theme.bgAngle : 180) + 'deg,' +
+          (theme.bgColor || '#2a0f24') + ',' + theme.bgColor2 + ')');
+      }
+      // The colour goes on the last layer, the only one allowed one.
+      var base = theme.bgColor || 'var(--purple-deep)';
+      if (layers.length) layers[layers.length - 1] += ' ' + base;
+      else layers.push(base);
+      cls.push('theme-bg');
+      style.push('--pg-bgl:' + layers.join(','));
+    }
+    if (theme.bgBlur) { cls.push('theme-blur'); style.push('--pg-blur:' + theme.bgBlur + 'px'); }
     /* Both of these are carried by the class list on <body> and read by
        styles.css, so the page markup itself is untouched: the same rules
        cover the script header, the collection header and the bare logo. */
@@ -157,8 +617,52 @@
       style.push('--pg-header-scale:' + (theme.headerSize / 100));
     }
     if (theme.logoPanel) cls.push('theme-logo-panel');
-    return { cls: cls.join(' '), style: style.join(';') };
+    return { cls: cls.join(' '), style: style.join(';'), fonts: themeFontLinks(theme), movesCss: movesCss };
   }
+
+  /* One-click styles: each is a bundle of the fields above and nothing else,
+     so a preset is just a starting point the knobs can then move. Applying
+     one replaces the STYLE fields and leaves the page's own images, image
+     sizes and custom CSS alone (see ThemeEditor.applyPreset). */
+  /* Layout is kept apart from the style fields: picking a quick style
+     recolours a page, it does not undo how the owner arranged it. */
+  var THEME_LAYOUT_KEYS = ['width', 'cardW', 'cardCols', 'cardGap', 'cardPad', 'cardLayout', 'cardAlign',
+    'cardAbility', 'pageW', 'panelPad', 'secGap', 'infoW', 'infoPos', 'titleSize', 'topAlign', 'order', 'moves'];
+  var THEME_STYLE_KEYS = THEME_FONTS.reduce(function (a, f) { return a.concat(f); }, []).concat(THEME_COLORS)
+    .concat(THEME_NUMBERS.map(function (r) { return r[0]; }))
+    .concat(Object.keys(THEME_CHOICES))
+    .filter(function (k) { return THEME_LAYOUT_KEYS.indexOf(k) < 0; });
+  var THEME_PRESETS = {
+    'default':  { label: 'Wiki default', t: {} },
+    'midnight': { label: 'Midnight', t: { font: 'cinzel', accent: '#d9c27a', heading: '#f3e3a8', panel: '#141a2e', text: '#dfe4f2', link: '#8fb8ff', bgColor: '#05070f', bgColor2: '#1b2448', bgAngle: 160, panelAlpha: 92, radius: 10, border: '#3a4670', borderW: 1, shadow: 'strong' } },
+    'bloodmoon': { label: 'Blood Moon', t: { font: 'grenze', accent: '#ff5a4f', heading: '#ffb3a8', panel: '#1e0607', text: '#f1d9d4', link: '#ff8c7a', bgColor: '#120000', bgColor2: '#5c0a0a', bgAngle: 200, panelAlpha: 90, radius: 4, border: '#7a1414', borderW: 2, shadow: 'glow', glow: '#ff2a1a' } },
+    'grimoire': { label: 'Grimoire Green', t: { font: 'imfell', accent: '#2f5a2a', panel: '#e8ecd6', text: '#1d2a17', link: '#3d6f2f', bgColor: '#0f2410', bgColor2: '#2f4a1f', bgAngle: 135, radius: 6, border: '#6d7c4a', borderW: 2, shadow: 'soft' } },
+    'royal':    { label: 'Royal Purple', t: { font: 'cinzel', accent: '#6a2c91', heading: '#4b1a6b', panel: '#f3ecfa', text: '#2a1838', link: '#8b3fc4', bgColor: '#1a0629', bgColor2: '#4a1470', bgAngle: 170, radius: 14, border: '#c9a227', borderW: 2, shadow: 'soft' } },
+    'paper':    { label: 'Paper & Ink', t: { font: 'garamond', bodyFont: 'garamond', accent: '#111111', panel: '#fbfaf6', text: '#1a1a1a', link: '#1d4ed8', bgColor: '#e9e5da', radius: 2, border: '#c8c2b0', borderW: 1, shadow: 'none' } },
+    'neon':     { label: 'Neon Arcade', t: { font: 'mono', bodyFont: 'mono', accent: '#39ff14', heading: '#ff2bd6', panel: '#0a0a12', text: '#e6e6ff', link: '#00e5ff', bgColor: '#000000', bgColor2: '#1a0033', bgAngle: 135, panelAlpha: 88, radius: 0, border: '#ff2bd6', borderW: 2, shadow: 'glow', glow: '#00e5ff', headCase: 'upper' } },
+    'sunset':   { label: 'Sunset', t: { font: 'pirata', accent: '#b8461c', heading: '#7a2a0c', panel: '#fff3e2', text: '#3b2214', link: '#c2410c', bgColor: '#ff9a3c', bgColor2: '#6a1b4d', bgAngle: 180, radius: 16, shadow: 'soft' } },
+    'ocean':    { label: 'Deep Ocean', t: { font: 'oswald', bodyFont: 'roboto', accent: '#7fdbff', heading: '#bdf0ff', panel: '#06223a', text: '#d6eefc', link: '#5ad1ff', bgColor: '#01101f', bgColor2: '#05486b', bgAngle: 190, panelAlpha: 85, radius: 12, border: '#1b6b93', borderW: 1, shadow: 'strong', headCase: 'upper' } },
+    'retro':    { label: 'Retro Web', t: { font: 'comic', bodyFont: 'comic', accent: '#0000ee', heading: '#ff00ff', panel: '#ffffcc', text: '#000000', link: '#0000ee', bgColor: '#008080', radius: 0, border: '#000000', borderW: 3, shadow: 'none' } },
+    'ghost':    { label: 'Ghostly', t: { font: 'unlovable', accent: '#cfd8e3', heading: '#ffffff', panel: '#1c2027', text: '#cfd6df', link: '#a9c6e8', bgColor: '#0b0d10', bgColor2: '#2b313a', bgAngle: 180, panelAlpha: 70, radius: 18, shadow: 'glow', glow: '#b7c9e2', bgBlur: 3 } }
+  };
+  /* Every quick style dresses the character boxes, team headings and
+     dividers too, from its own colours, so a preset never leaves parchment
+     cards sitting on a neon page. A preset that names one of these itself
+     keeps its own. */
+  Object.keys(THEME_PRESETS).forEach(function (k) {
+    var t = THEME_PRESETS[k].t;
+    if (!t.panel) return;
+    var derived = {
+      cardBg: t.panel, cardText: t.text, cardName: t.heading || t.accent, cardAccent: t.link,
+      cardBorder: t.border, cardBorderW: t.borderW, cardRadius: t.radius, cardShadow: t.shadow,
+      cardAlpha: t.panelAlpha, cardFont: t.font,
+      teamColor: t.heading || t.accent, teamFont: t.font, teamGlow: t.glow,
+      ruleColor: t.border || t.accent
+    };
+    Object.keys(derived).forEach(function (d) {
+      if (derived[d] != null && t[d] == null) t[d] = derived[d];
+    });
+  });
 
   /* ── Hybrid collection membership ──
      Auto-matched by the character's "Appears in" text (normalized against
@@ -300,6 +804,8 @@
     p = String(p || '');
     if (!p) return '';
     if (/^https?:\/\//i.test(p)) return p;
+    // An image picked in an editor and not uploaded yet (the live preview).
+    if (/^data:image\/(png|jpeg|gif|webp);base64,/i.test(p)) return p;
     return root + 'assets/' + p + (version
       ? (p.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(version)) : '');
   }
@@ -370,11 +876,11 @@
     TEAMS.forEach(function (t) {
       var grp = entries.filter(function (c) { return c.team === t[0]; });
       if (!grp.length) return;
-      html += '<div class="script-team-group"><h3 class="script-team-head' + (GOOD[t[0]] ? ' good' : '') + '">' +
+      html += '<div class="script-team-group" data-team="' + t[0] + '"><h3 class="script-team-head' + (GOOD[t[0]] ? ' good' : '') + '">' +
         t[1] + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
           quickSlot(c) + '</span>' +
@@ -388,9 +894,9 @@
       return !TEAMS.some(function (t) { return t[0] === c.team; });
     });
     if (other.length) {
-      html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
+      html += '<div class="script-team-group" data-team="other"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), '') + '>' +
           quickSlot(c) + '</span>' +
@@ -1029,15 +1535,15 @@
     top += ownerBar(cfg.editHref, 'Edit this script');
 
     var main = '';
-    if (cfg.synopsis) main += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
+    if (cfg.synopsis) main += '<div class="sv-section sv-s-synopsis">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
     var gameplay = '';
     if (cfg.gameplay) gameplay += prose(cfg.gameplay);
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
-    if (gameplay) main += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    if (gameplay) main += '<div class="sv-section sv-s-gameplay">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
     main += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
 
-    main += '<div class="sv-section">' +
+    main += '<div class="sv-section sv-s-characters">' +
       (main ? sech('sec-characters', 'Characters') : '') +
       renderRoster(cfg.entries, root) +
       renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits) + '</div>';
@@ -1058,7 +1564,7 @@
 
     return top +
       '<div class="script-view-layout">' +
-      '<section class="script-chars-panel">' + main + '</section>' +
+      '<section class="script-chars-panel sv-main">' + main + '</section>' +
       '<aside class="script-json-panel">' + aside + '</aside>' +
       '</div>';
   }
@@ -1093,12 +1599,12 @@
 
     // Prose sections (synopsis / gameplay) in a parchment panel.
     var proseHTML = '';
-    if (cfg.synopsis) proseHTML += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
+    if (cfg.synopsis) proseHTML += '<div class="sv-section sv-s-synopsis">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
     var gameplay = '';
     if (cfg.gameplay) gameplay += prose(cfg.gameplay);
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
-    if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    if (gameplay) proseHTML += '<div class="sv-section sv-s-gameplay">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
     proseHTML += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
     // Custom boxes sit below the prose, full width, like the character-page ones.
     if (cfg.boxesHTML) proseHTML += '<div class="coll-boxes">' + cfg.boxesHTML + '</div>';
@@ -1116,7 +1622,10 @@
     var jinx = renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits);
     var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
 
-    return top + meta + prosePanel + filters + chars + jinxPanel;
+    // .coll-flow / .coll-top are what the layout settings reorder
+    // (styles.css, "Theme kit: layout"); untouched, they are plain blocks.
+    return '<div class="coll-flow"><div class="coll-top">' + top + '</div>' +
+      meta + prosePanel + filters + chars + jinxPanel + '</div>';
   }
 
   /* ── public renderers ── */
@@ -1197,6 +1706,24 @@
     resolveCollectionMembers: resolveCollectionMembers,
     sortCollectionMembers: sortCollectionMembers,
     sanitizeTheme: sanitizeTheme,
+    sanitizeStickers: sanitizeStickers,
+    stickersHTML: stickersHTML,
+    STICKERS_MAX: STICKERS_MAX,
+    STICKER_ANIMS: STICKER_ANIMS,
+    STICKER_DEFAULTS: STICKER_DEFAULTS,
+    themeFontLinks: themeFontLinks,
+    THEME_PRESETS: THEME_PRESETS,
+    THEME_STYLE_KEYS: THEME_STYLE_KEYS,
+    THEME_LAYOUT_KEYS: THEME_LAYOUT_KEYS,
+    MOVABLE: MOVABLE,
+    moveSelector: moveSelector,
+    sanitizeMoves: sanitizeMoves,
+    movesCSS: movesCSS,
+    THEME_SECTIONS: THEME_SECTIONS,
+    THEME_NUMBERS: THEME_NUMBERS,
+    THEME_CHOICES: THEME_CHOICES,
+    THEME_CSS_MAX: THEME_CSS_MAX,
+    FONT_STACKS: FONT_STACKS,
     themeAttrs: themeAttrs,
     LOGO_SIZE_MIN: LOGO_SIZE_MIN,
     LOGO_SIZE_MAX: LOGO_SIZE_MAX,
