@@ -673,6 +673,15 @@
     var c = creatorsApi();
     return (c && c.creatorSymbol) ? c.creatorSymbol(name) : '';
   }
+  // A creator's mark as markup ('' when they have none or chose to hide it).
+  function creatorMarkHTML(name, opts) {
+    var c = creatorsApi();
+    return (c && c.markHTMLFor) ? c.markHTMLFor(name, opts) : '';
+  }
+  function nameWithMarks(name, creator) {
+    var c = creatorsApi();
+    return (c && c.nameWithMarks) ? c.nameWithMarks(name, creator) : String(name == null ? '' : name);
+  }
   function stripCreatorMark(name, creator) {
     var c = creatorsApi();
     return (c && c.stripCreatorMark) ? c.stripCreatorMark(name, creator)
@@ -1271,8 +1280,9 @@
       (splitCreators(d.creator).length
         ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +
           splitCreators(d.creator).map(function (n) {
+            var mk = creatorMarkHTML(n);
             return '<a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(n) + '">' + esc(n) + '</a>' +
-              (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
+              (mk ? ' ' + mk : '');
           }).join('<span class="tag-sep">, </span>') +
           '</dd>' : '') +
       appearsInRow(d, root, opts && opts.appearsInHref) +
@@ -1497,6 +1507,9 @@
     window.setCreators = setCreators;
     window.setCurataMark = setCurataMark;
     window.creatorSymbol = creatorSymbol;
+    window.creatorMarkHTML = creatorMarkHTML;
+    window.nameWithMarks = nameWithMarks;
+    window.stripCreatorMark = stripCreatorMark;
     window.splitCreators = splitCreators;
     window.editStatusHTML = editStatusHTML;
     window.draftedNoticeHTML = draftedNoticeHTML;
@@ -1526,6 +1539,7 @@
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
+      creatorMarkHTML: creatorMarkHTML, nameWithMarks: nameWithMarks,
       splitCreators: splitCreators,
       editStatusHTML: editStatusHTML, EDIT_STATUS: EDIT_STATUS,
       draftedNoticeHTML: draftedNoticeHTML

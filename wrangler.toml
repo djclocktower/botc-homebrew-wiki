@@ -50,7 +50,9 @@ run_worker_first = [
   "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*",
   "/assets/avatars/*", "/assets/pages/*", "/assets/news/*",
   # Images posted on comments and modmail messages (see ATTACH_PREFIX).
-  "/assets/attachments/*"
+  "/assets/attachments/*",
+  # Creator mark pictures (marks/u{id}.png, written by /api/account/mark).
+  "/assets/marks/*"
 ]
 
 # ---- D1 database (the source of truth) ----

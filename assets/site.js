@@ -968,8 +968,9 @@
           sub = mark(clip(d.tagline || d.description || d.author || '', 90));
           break;
         case 'creator':
+          // markHTML is drawn by the Worker (the search index), never typed.
           pic = d.avatarUrl ? thumbHTML(d.avatarUrl, true)
-            : iconHTML(esc((window.CreatorSymbols && window.CreatorSymbols.creatorSymbol(d.name)) || '\u00b7'), 'round');
+            : iconHTML(d.markHTML || '\u00b7', 'round');
           sub = esc(countLabel(d)) + (d.username ? ' · @' + mark(d.username) : '');
           break;
         case 'user':

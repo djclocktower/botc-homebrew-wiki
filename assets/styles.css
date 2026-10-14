@@ -1307,16 +1307,52 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .info-credit a { color: var(--good-name); text-decoration: none; }
 .info-credit a:hover { text-decoration: underline; }
 
-/* Creator's credit symbol next to their name in a character's info box.
-   The glyph itself lives in the shared registry (assets/creators.js). */
+/* A creator's mark beside their name (credit lines, comments, the creator
+   page, rosters). Drawn by markHTML() in assets/creators.js: a glyph, or an
+   uploaded picture painted as a mask over the text colour, so a picture mark
+   takes the colour of whatever it sits in exactly as a glyph does. */
 .creator-mark {
+  position: relative;
+  display: inline-block;
   margin-left: 2px;
   font-family: serif;
   color: var(--good-name);
   font-weight: 700;
   white-space: nowrap;
+  line-height: 1;
+  cursor: help;
 }
 .theme-text .creator-mark { color: var(--pg-text); }
+.creator-mark-img {
+  width: 1.05em; height: 1.05em;
+  vertical-align: -.16em;
+}
+.creator-mark-img::before {
+  content: ''; position: absolute; inset: 0;
+  background: currentColor;
+  -webkit-mask: var(--mark) center / contain no-repeat;
+          mask: var(--mark) center / contain no-repeat;
+}
+/* Who the mark belongs to: shown at once on hover, and on a tap (the mark is
+   focusable), rather than after the browser's own title delay. */
+.creator-mark[data-tip]:hover::after,
+.creator-mark[data-tip]:focus-visible::after,
+.creator-mark[data-tip]:focus::after {
+  content: attr(data-tip);
+  position: absolute; z-index: 60;
+  left: 50%; bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  background: #241a12; color: #f7ecd0;
+  font: 600 .78rem/1.3 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  letter-spacing: .02em; text-transform: none;
+  white-space: nowrap; border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+.creator-mark:focus { outline: none; }
+.creator-mark:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
+.creator-mark-hero { font-size: .8em; margin-left: .25em; color: inherit; }
 
 /* ════════════════════════════════════════════════════════════════
    CREATOR ICONS SIDEBAR — fixed to left of screen
@@ -1449,6 +1485,103 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   font-size: 1.2rem;
   min-width: 26px;
 }
+/* ── Creators page: one card per person, the mark on a disc ──────── */
+.cr-intro {
+  max-width: 1440px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 12px 24px; padding: 16px 20px;
+  background: var(--parch); border: 2px solid var(--parch-frame);
+}
+.cr-intro-text { flex: 1 1 420px; min-width: 0; }
+.cr-intro h2 {
+  margin: 0 0 4px; font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; letter-spacing: .05em; color: var(--maroon);
+}
+.cr-intro p { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--ink); }
+.cr-claim {
+  flex: none; padding: 9px 16px; background: var(--maroon); color: #f7ecd0;
+  text-decoration: none; font-weight: 700; font-size: .9rem; border-radius: 4px;
+}
+.cr-claim:hover { background: var(--evil); }
+.cr-summary { margin: 0 0 14px; font-size: .84rem; opacity: .75; text-align: center; }
+.cr-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.cr-card { position: relative; min-width: 0; }
+.cr-link {
+  display: flex; align-items: center; gap: 14px; height: 100%; box-sizing: border-box;
+  padding: 12px 14px; text-decoration: none; color: var(--maroon);
+  background: rgba(255,253,248,.55); border: 2px solid var(--parch-frame);
+  transition: background .15s, transform .15s;
+}
+.cr-link:hover { background: rgba(255,253,248,.9); transform: translateY(-1px); }
+.cr-card-nomark .cr-link { opacity: .82; }
+.cr-disc {
+  flex: none; width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #fffaf0, #eadbb8);
+  border: 2px solid var(--parch-frame);
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.5);
+  color: var(--maroon);
+}
+.cr-mark.creator-mark { font-size: 2.1rem; margin: 0; color: var(--maroon); }
+.cr-mark-empty { width: 26px; height: 26px; border-radius: 50%; border: 2px dashed rgba(91,31,33,.3); }
+.cr-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cr-name {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-weight: 700; font-size: .98rem;
+  overflow-wrap: anywhere;
+}
+.cr-av { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex: none; border: 1px solid var(--parch-frame); }
+.cr-at, .cr-aka, .cr-count { font-size: .78rem; color: var(--ink); overflow-wrap: anywhere; }
+.cr-at { opacity: .8; }
+.cr-aka { font-style: italic; opacity: .75; }
+.cr-state { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #726348; margin-top: 2px; }
+.cr-state-own { color: #2f6b3a; }
+.cr-state-reserved { color: #8a5a12; }
+.cr-state-none { opacity: .7; }
+@media (max-width: 640px) {
+  .creators-page-box { padding: 16px 12px; }
+  .cr-link { gap: 10px; padding: 10px; }
+  .cr-disc { width: 52px; height: 52px; }
+  .cr-mark.creator-mark { font-size: 1.7rem; }
+}
+.cr-admin {
+  position: absolute; top: 6px; right: 6px; font-size: .7rem; padding: 2px 6px;
+  background: #fff; border: 1px solid #c9a; color: var(--evil); cursor: pointer;
+}
+
+/* ── Account page: "Your Creator Mark" (assets/mark-editor.js) ── */
+.mark-ed { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: flex-start; }
+.mark-ed-preview { flex: none; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 160px; }
+.mark-ed-preview .mark-disc { width: 110px; height: 110px; }
+.mark-disc {
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #fffaf0, #eadbb8);
+  border: 3px solid var(--parch-frame); color: var(--maroon);
+}
+.mark-disc .creator-mark { font-size: 3.6rem; margin: 0; color: var(--maroon); cursor: default; }
+.mark-disc-empty { font-size: 2.4rem; opacity: .25; font-family: serif; }
+.mark-ed-sample { margin: 0; font-size: .9rem; text-align: center; overflow-wrap: anywhere; }
+.mark-ed-sample .creator-mark { cursor: default; }
+.mark-ed-form { flex: 1 1 300px; min-width: 0; }
+.mark-ed-status { margin: 0 0 10px; font-size: .88rem; }
+.mark-ed-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mark-ed .mark-ed-row input { width: 9em; max-width: 100%; font-size: 1.3rem; text-align: center; font-family: serif; }
+.mark-ed-avail { font-size: .82rem; font-weight: 700; }
+.mark-ed-avail.ok { color: #2f6b3a; }
+.mark-ed-avail.err { color: var(--evil); }
+.mark-ed-hint { margin: 6px 0 0; font-size: .8rem; opacity: .8; line-height: 1.45; }
+.mark-ed-opt { font-weight: 400; opacity: .7; }
+.mark-ed-palette { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.mark-pick {
+  width: 34px; height: 34px; font-size: 1.15rem; font-family: serif; line-height: 1;
+  background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 4px; color: var(--maroon); cursor: pointer;
+}
+.mark-pick:hover { background: var(--parch-frame); color: #fff; }
+.mark-ed-check { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: .9rem; cursor: pointer; }
+.mark-ed-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+
 /* Creator index tiles: symbol (or profile picture) + name + what they made.
    The name column stacks, so the wide pill needs to stop forcing one line. */
 .creators-filter {

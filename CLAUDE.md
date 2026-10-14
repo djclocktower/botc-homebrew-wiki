@@ -368,6 +368,12 @@ assets/
                        site.js fetches favorites.js + card-actions.js with the
                        search feeds on pages that have neither. Fires
                        'botc-script-change', which script.html redraws on.
+  creators.js          Creator marks: the legacy name->glyph table, the live
+                       registry (setMarks/load), markKey/markProblem (the
+                       glyph rules, shared with the Worker), markHTML (the ONE
+                       way a mark is drawn, tooltip included), splitCreators.
+                       Browser + Worker. See "Creator marks".
+  mark-editor.js       "Your Creator Mark" on the account page (account#mark).
   favorites.js         Favorites, the browser half: ONE module for the button
                        on a character page (charpage.js), the one on a script
                        or collection page (pageview.js), the Favorites chip
@@ -788,9 +794,12 @@ team/tag/tags.html     Browse pages. team.html and tag.html draw one grid
                        a screen at a time (mountCardBatches over
                        CharFilters.singleGrid(); a team is up to 1,000+
                        cards and used to be drawn as 16,000 nodes at once).
-creators.html          The one creator index: every name that has published
-                       something, with its symbol, account (if any) and counts,
-                       from /api/creators. authors.html is a redirect stub to it.
+creators.html          The one creator index AND the creator-mark list: one card
+                       per person (an account's credit names folded into its
+                       card), the mark on a disc, who it belongs to, counts.
+                       From /api/creators + /api/creator-marks. Admins get a
+                       "Remove mark" button. authors.html is a redirect stub.
+                       See "Creator marks".
 create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
@@ -1079,6 +1088,9 @@ alone. Purge deletes a comment and its replies for good. A lazily-ALTERed
 `comments.images` column holds the JSON array of attachment paths — see
 "Images on a message" below) and a lazily ALTERed `users.comment_terms` column
 holding the comment-guidelines version that account agreed to,
+`creator_marks` (one per account: glyph, its UNIQUE comparison key, an
+optional picture, show flag, the credit names it is drawn beside — see
+"Creator marks"),
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` + `modmail_replies` (modmail — the
 contact-the-admins inbox, NOT user DMs. See "Modmail" below: a `messages` row
@@ -3223,6 +3235,51 @@ uploaded — except for the one opt-in save described below.
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
 
+
+## Creator marks (a creator's own symbol)
+
+A mark is a symbol that belongs to ONE creator, drawn beside their name: the
+`/c/` credit line, a script/collection's author line and Character Credits
+box, comments, the creator page hero, search results, `/creators` — and, when
+a script asks for it, after its characters' names. `assets/creators.js` holds
+the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
+`data-tip`, says whose it is on hover or tap).
+
+- **Account marks** live in `creator_marks` (one row per account, created
+  lazily). A mark has a text **glyph** (required; it is what goes where a
+  picture cannot — exported JSON, the official script tool, Discord) and may
+  carry a **picture**, `marks/u{id}.png` in R2, which the browser turns into a
+  128px alpha mask (`mark-editor.js toMask()`) and every page paints as a CSS
+  mask over `currentColor`, so a picture mark takes the text colour exactly
+  as a glyph does. Uniqueness is `glyph_key`'s UNIQUE constraint, the key
+  being `Creators.markKey()` (NFKC, variation selectors dropped, lower-cased);
+  `markProblem()` is the glyph rule, asked by the account page and the Worker.
+  `show = 0` keeps the mark the owner's but draws it nowhere.
+- **The legacy table** (`CREATOR_SYMBOLS` in creators.js) is the symbols
+  handed out by hand, keyed by creator NAME. Never add to it. A legacy glyph
+  stays reserved for its name; the account that name resolves to may claim it
+  (and nobody else), and an account choosing any mark of its own releases it.
+- **The registry is one query** (`buildMarkRegistry()`), because the SSR read
+  path must not grow: each row stores `names`, the credit names it is drawn
+  beside (`markNamesFor()`: what the /creators list gives that account, plus
+  its handle and display name unless another person's credit uses them),
+  computed on save and refreshed by the nightly cron (`refreshMarkNames()`).
+  Cached on the content version; every mark change bumps it (scope `all`), so
+  the SSR pages that draw marks roll with it. `setMarkRegistry()` installs it
+  before an SSR render; a failed read falls back to the legacy table and marks
+  the page degraded. Browser pages call `CreatorSymbols.load()`
+  (`/api/creator-marks`); comments and the search index carry `markHTML`
+  drawn by the Worker.
+- **Routes**: `GET /api/creator-marks` (public), `GET/POST /api/account/mark`
+  (own mark; POST `{glyph, show, image|null}` or `{remove:true}`),
+  `POST /api/admin/creator-mark {username}` (take one away).
+- **Creator marks on names**: a script's `creatorMarks: true` (the Script
+  Builder's tick and publish-script's "In the Official App" panel, both on
+  `botc_script_meta`) puts each homebrew character's creators' marks after its
+  name — the roster draws the mark itself (`rosterName()`), the export
+  appends the glyph (`nameWithMarks()` in `buildPageExport`, so the official
+  script tool prints it). A name with the mark already typed in is not given
+  it twice.
 
 ## Featured Character (the homepage slot)
 
