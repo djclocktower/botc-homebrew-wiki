@@ -4200,3 +4200,36 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .ico-grip { --ico: var(--ico-grip); }
 .ico-copy { --ico: var(--ico-copy); }
 .ico-quote { --ico: var(--ico-quote); }
+
+/* ── Stickers: free-standing images on a page (render-page.js stickersHTML)
+   The layer sits inside the page's main area (or <body> on a creator page)
+   and covers it exactly; each sticker is placed by its CENTRE at x%/y% of
+   that area, or of the screen when pinned (.pgs-fixed). They never take a
+   click, so an image can never be a link or sit between a reader and a
+   button. The layer clips what hangs over its edges, or a sticker at the
+   right edge would widen the page sideways on a phone; a pinned one is
+   measured against the screen and is not clipped by it. Behind (.pgs-back)
+   is under the page's boxes and over its background; in front stays under
+   the site's own top bar (z-index 30). */
+.pg-stickers { position: absolute; inset: 0; pointer-events: none; overflow: clip; }
+.pg-sticker {
+  position: absolute; height: auto; max-width: 90vw;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  translate: -50% -50%; rotate: var(--pgs-r, 0deg); scale: var(--pgs-fx, 1) 1;
+  opacity: var(--pgs-o, 1);
+}
+.pg-sticker.pgs-fixed { position: fixed; }
+.pg-sticker.pgs-back { z-index: -1; }
+.pg-sticker.pgs-front { z-index: 6; }
+@media (max-width: 640px) { .pg-sticker.pgs-hide-small { display: none; } }
+@keyframes pgs-spin { to { transform: rotate(360deg); } }
+@keyframes pgs-bob { 50% { transform: translateY(-14px); } }
+@keyframes pgs-wiggle { 25% { transform: rotate(-9deg); } 75% { transform: rotate(9deg); } }
+@keyframes pgs-pulse { 50% { transform: scale(1.14); } }
+@keyframes pgs-blink { 50% { opacity: .15; } }
+.pgs-anim-spin { animation: pgs-spin 6s linear infinite; }
+.pgs-anim-bob { animation: pgs-bob 2.4s ease-in-out infinite; }
+.pgs-anim-wiggle { animation: pgs-wiggle 1.2s ease-in-out infinite; }
+.pgs-anim-pulse { animation: pgs-pulse 1.8s ease-in-out infinite; }
+.pgs-anim-blink { animation: pgs-blink 1.6s steps(2, jump-none) infinite; }
+@media (prefers-reduced-motion: reduce) { .pg-sticker { animation: none !important; } }

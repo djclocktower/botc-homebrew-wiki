@@ -622,7 +622,17 @@
     function paMark(on) { paDirty = on; $('pa-dirty').hidden = !on; }
     window.ThemeEditor.wire({
       get: function(){ return paTheme; },
-      set: function(t){ paTheme = t || {}; paMark(true); }
+      set: function(t){ paTheme = t || {}; paMark(true); },
+      // A creator page's stickers go through the avatar route (kind 'st'),
+      // which keys them on the account: avatars/u{id}-st{n}.*.
+      stickerBase: function(){ return PROFILE && PROFILE.themeBase || ''; },
+      stickerMaxMB: 5,
+      stickerUpload: function(n, dataUrl){
+        return postJSON('/api/account/avatar', { kind: 'st', n: n, data: dataUrl }).then(function(res){
+          if (!res.ok || !res.body.ok) throw new Error((res.body && res.body.error) || 'Upload failed.');
+          return res.body.path;
+        });
+      }
     });
     function paShowBg() {
       var bg = paTheme.background;

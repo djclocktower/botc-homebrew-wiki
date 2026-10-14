@@ -752,7 +752,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // ── theme controls (shared widget) ──
     window.ThemeEditor.wire({
       get: function(){ return theme; },
-      set: function(t){ theme = t; }
+      set: function(t){ theme = t; },
+      // Stickers upload into collections/{id}-st{n}.*, so only once it exists.
+      stickerBase: function(){ return EDIT_KEY ? 'collections/' + EDIT_KEY : ''; }
     });
 
     // ── custom boxes (shared widget — wiki-editor.js) ──

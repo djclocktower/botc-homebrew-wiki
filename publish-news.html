@@ -568,7 +568,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       window.ThemeEditor.wire({
         get: function(){ return theme; },
         set: function(t){ theme = t; },
-        onChange: preview
+        onChange: preview,
+        stickerBase: function(){ return editingSlug ? 'news/' + editingSlug : ''; }
       });
       ['n-title','n-author','n-summary','n-image','n-body','n-info-title','n-info-image'].forEach(function(id){
         $(id).addEventListener('input', preview);

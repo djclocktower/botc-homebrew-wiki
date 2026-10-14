@@ -263,3 +263,61 @@ test('theme kit: character boxes, team headings and dividers each get their own 
   // Untouched, nothing at all is added.
   assert.equal(PageRender.themeAttrs(PageRender.sanitizeTheme({ accent: '#000000' }, 'x')).cls, 'page-themed theme-accent');
 });
+
+function bucket(f) {
+  const objects = new Map();
+  f.env.ART = {
+    objects,
+    async put(key, body, opts) { objects.set(key, { body: Buffer.from(body), custom: opts && opts.customMetadata }); return { etag: 'e' }; },
+    async head(key) { const o = objects.get(key); return o ? { key, customMetadata: o.custom || {} } : null; },
+    async get() { return null; },
+    async delete(keys) { for (const k of [].concat(keys)) objects.delete(k); },
+    async list() { return { truncated: false, objects: [] }; }
+  };
+  return objects;
+}
+const GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+test('stickers: sanitized, drawn outside the custom-CSS frame, and uploaded only into the page\'s own slots', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  const objects = bucket(f);
+  let r = await f.request('/api/script', post(1, { slug: 'decorated', name: 'Decorated', author: 'user-1', characters: [], status: 'published' }));
+  assert.equal(r.status, 200);
+
+  // The owner uploads a GIF into the script's sticker slot; somebody else cannot.
+  const up = (id, key) => f.request('/api/upload', post(id, { key, data: GIF }));
+  assert.equal((await up(1, 'scripts/decorated-st1.gif')).status, 200);
+  assert.equal((await up(2, 'scripts/decorated-st2.gif')).status, 403);
+  assert.ok(objects.has('scripts/decorated-st1.gif'));
+
+  r = await f.request('/api/script', post(1, { slug: 'decorated', name: 'Decorated', author: 'user-1', characters: [], status: 'published',
+    theme: { css: 'h1{color:red}', stickers: [
+      { src: 'scripts/decorated-st1.gif', x: 90, y: 5, w: 200, anim: 'spin', layer: 'back', pin: 'screen', hideSmall: true },
+      { src: 'scripts/someone-else-st1.gif' },
+      { src: 'https://e.com/dance.gif"><script>', x: 10 },
+      { src: 'https://e.com/dance.gif', x: 500, w: -3, rot: 'x', layer: 'sideways' }
+    ] } }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const html = await (await f.request('/s/decorated')).text();
+  const layer = html.match(/<main[^>]*><div class="pg-stickers" aria-hidden="true">([\s\S]*?)<\/div><div class="ucss-frame">/);
+  assert.ok(layer, 'the stickers come first in <main>, outside the custom-CSS frame');
+  const imgs = layer[1].match(/<img [^>]*>/g);
+  assert.equal(imgs.length, 2);
+  assert.match(imgs[0], /class="pg-sticker pgs-back pgs-fixed pgs-anim-spin pgs-hide-small" src="\/assets\/scripts\/decorated-st1\.gif"/);
+  assert.match(imgs[0], /style="left:90%;top:5%;width:200px;/);
+  assert.match(imgs[1], /src="https:\/\/e\.com\/dance\.gif"/);
+  assert.match(imgs[1], /left:120%;top:12%;width:12px;--pgs-r:0deg/, 'numbers clamped, junk replaced by defaults');
+  assert.match(imgs[1], /pgs-front/);
+  assert.doesNotMatch(layer[1], /<script|someone-else/);
+
+  // A creator page's stickers go through the avatar route, GIF allowed.
+  r = await f.request('/api/account/avatar', post(1, { kind: 'st', n: 3, data: GIF }));
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.equal((await r.json()).path, 'avatars/u1-st3.gif');
+  assert.equal((await f.request('/api/account/avatar', post(1, { kind: 'st', n: 99, data: GIF }))).status, 400);
+  assert.equal((await f.request('/api/account/avatar', post(1, { data: GIF }))).status, 400, 'a profile picture still cannot be a GIF');
+  r = await f.request('/api/account/theme', post(1, { theme: { stickers: [{ src: 'avatars/u1-st3.gif' }, { src: 'avatars/u2-st1.gif' }] } }));
+  assert.deepEqual((await r.json()).theme.stickers.map(s => s.src), ['avatars/u1-st3.gif']);
+});

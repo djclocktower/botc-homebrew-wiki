@@ -674,7 +674,7 @@ async function imageReferences(env) {
 function imageOrphaned(key, refs, userIds) {
   // avatars/u{id}.{ext} is orphaned when that account no longer exists
   if (key.startsWith('avatars/')) {
-    const m = key.match(/^avatars\/u(\d+)(?:-bg)?\./);
+    const m = key.match(/^avatars\/u(\d+)(?:-bg|-st\d{1,2})?\./);
     return !!m && !userIds.has(m[1]);
   }
   // A copy stands or falls with its original: purging orphaned art used to
@@ -1548,7 +1548,9 @@ async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('scripts/') || key.startsWith('collections/')) {
     const type = key.startsWith('scripts/') ? 'script' : 'collection';
     const named = key.slice(type === 'script' ? 8 : 12).replace(/\.[a-z0-9]+$/i, '');
-    const stripped = /-(logo|bg)$/.test(named) ? named.replace(/-(logo|bg)$/, '') : '';
+    // -st{n}: the page's stickers (theme.stickers), which belong to the page
+    // exactly as its logo and background do.
+    const stripped = /-(logo|bg|st\d{1,2})$/.test(named) ? named.replace(/-(logo|bg|st\d{1,2})$/, '') : '';
     const find = k => type === 'script' ? getEntityRow(env, 'script', k) : findCollectionRow(env, k);
     const exact = await find(named);
     const base = stripped ? await find(stripped) : null;
@@ -7286,7 +7288,7 @@ const EARLY_ANNOUNCEMENT = String.raw`<script>(function(){try{var c=JSON.parse(l
 function pageShell(o) {
   // o: {title, ogTitle, desc, canonicalUrl, ogImage, ogCard, themeColor, body,
   //     bodyClass, bodyStyle, mainClass, mainStyle, bootstrap, scripts[],
-  //     draftBanner, noindex, root, fonts[], customCss}
+  //     draftBanner, noindex, root, fonts[], customCss, stickers}
   // `ogTitle` is the headline a LINK UNFURL shows and defaults to `title`.
   // They are split because the two are read in different places: <title> is
   // the browser tab and the Google result, where anything past the page's own
@@ -7386,7 +7388,7 @@ ${o.draftBanner || ''}
   <a href="${R}script">Script Builder</a>
 </nav>
 
-  <main${mainAttrs} id="content">${mainBody}</main>
+  <main${mainAttrs} id="content">${o.stickers || ''}${mainBody}</main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
@@ -7402,7 +7404,8 @@ function themeShellOpts(theme) {
   const ta = PageRender.themeAttrs(theme, '../');
   return {
     bodyClass: ta.cls, bodyStyle: ta.style, fonts: ta.fonts,
-    customCss: theme && theme.css ? CustomCSS.clean(theme.css).css : ''
+    customCss: theme && theme.css ? CustomCSS.clean(theme.css).css : '',
+    stickers: PageRender.stickersHTML(theme && theme.stickers)
   };
 }
 
@@ -12856,12 +12859,20 @@ const app = {
           return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
-        const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
+        const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
         // kind:'bg' is the creator page's background (avatars/u{id}-bg.*),
         // the same slot shape a script's background has, so sanitizeTheme
         // takes its path. It never touches avatar_url.
         const isBg = b.kind === 'bg';
-        const slotBase = profileThemeBase(sess.userId) + (isBg ? '-bg' : '');
+        // kind:'st' + n (1-24): one of the creator page's stickers
+        // (theme.stickers), avatars/u{id}-st{n}.*, and the one slot here that
+        // takes a GIF — a sticker is often an animated one.
+        const stN = b.kind === 'st' ? Math.round(Number(b.n)) : 0;
+        if (b.kind === 'st' && !(stN >= 1 && stN <= PageRender.STICKERS_MAX)) {
+          return jsonResponse({ error: 'That sticker slot is not valid.' }, { status: 400 });
+        }
+        const isSt = stN > 0;
+        const slotBase = profileThemeBase(sess.userId) + (isBg ? '-bg' : isSt ? '-st' + stN : '');
         async function deleteOwnAvatars(keep) {
           for (const e of AVATAR_EXTS) {
             const k = slotBase + '.' + e;
@@ -12871,20 +12882,20 @@ const app = {
         }
         if (b.remove) {
           await deleteOwnAvatars();
-          if (isBg) return jsonResponse({ ok: true, background: null });
+          if (isBg || isSt) return jsonResponse({ ok: true, background: null });
           await env.DB.prepare('UPDATE users SET avatar_url=NULL WHERE id=?').bind(sess.userId).run();
           return jsonResponse({ ok: true, avatarUrl: null });
         }
         let data = String(b.data || '');
         if (!data.startsWith('data:')) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
         const contentType = data.slice(5, data.indexOf(';'));
-        const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[contentType];
-        if (!ext) return jsonResponse({ error: 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
+        const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': isSt ? 'gif' : '' }[contentType];
+        if (!ext) return jsonResponse({ error: isSt ? 'Stickers must be PNG, JPEG, GIF or WebP.' : 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
         data = data.slice(data.indexOf(',') + 1);
         let bytes;
         try { bytes = base64ToBytes(data); } catch { return jsonResponse({ error: 'Could not read that image.' }, { status: 400 }); }
         if (!bytes.length) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
-        const maxMB = isBg ? 5 : 2;
+        const maxMB = isBg || isSt ? 5 : 2;
         if (bytes.length > maxMB * 1024 * 1024) return jsonResponse({ error: 'Picture is too large (' + maxMB + ' MB max).' }, { status: 413 });
         const key = slotBase + '.' + ext;
         await env.ART.put(key, bytes, {
@@ -12896,6 +12907,7 @@ const app = {
         // avatar_url pointing at nothing.
         await deleteOwnAvatars(key);
         if (isBg) return jsonResponse({ ok: true, background: key });
+        if (isSt) return jsonResponse({ ok: true, path: key });
         // ?v= busts any cached copy the browser holds of the previous picture
         const avatarUrl = '/assets/' + key + '?v=' + Date.now();
         await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, sess.userId).run();

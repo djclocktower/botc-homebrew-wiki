@@ -508,3 +508,27 @@ html.textedit-on .te-live-hit {
 .cu-state { font-size: .8rem; margin-top: 5px; color: #6b5d49; min-height: 1em; overflow-wrap: anywhere; }
 .cu-state.cu-ok { color: #2e6b2e; font-weight: 600; }
 .cu-state.cu-bad { color: #b3261e; font-weight: 600; }
+
+/* ── Stickers in the theme kit (theme-editor.js) ── */
+.thx-sample-in { position: relative; }
+.thx-sample .pg-sticker { pointer-events: auto; cursor: grab; touch-action: none; }
+.thx-sample .pg-sticker.thx-st-dragging { cursor: grabbing; outline: 2px dashed #c9a227; outline-offset: 2px; }
+.thx-st-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 6px; }
+.thx-st-add input[type=text] { flex: 1 1 200px; min-width: 0; font: .86rem 'Libre Franklin', sans-serif;
+  border: 1px solid #cdbfa0; background: #fffdf8; padding: 5px 8px; color: #241a12; }
+.thx-st-msg { font-size: .8rem; min-height: 1em; color: #6b5d49; margin-bottom: 6px; overflow-wrap: anywhere; }
+.thx-st-msg.thx-st-ok { color: #2e6b2e; font-weight: 600; }
+.thx-st-msg.thx-st-bad { color: #b3261e; font-weight: 600; }
+.thx-st { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid rgba(180,160,120,.3); }
+.thx-st-thumb { flex: 0 0 64px; height: 64px; display: grid; place-items: center;
+  background: repeating-conic-gradient(#e9e2d0 0 25%, #fffdf8 0 50%) 0 0 / 12px 12px; border: 1px solid #cdbfa0; }
+.thx-st-thumb img { max-width: 60px; max-height: 60px; }
+.thx-st-body { flex: 1; min-width: 0; }
+.thx-st-row { display: flex; align-items: center; gap: 8px; font: 600 .76rem 'Roboto', sans-serif; color: #5b4632; margin: 0 0 2px; }
+.thx-st-row span { flex: 0 0 74px; }
+.thx-st-row input[type=range] { flex: 1; min-width: 0; }
+.thx-st-row em { flex: 0 0 52px; font-style: normal; font-weight: 400; color: #6b5d49; text-align: right; }
+.thx-st-opts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.thx-st-opts select { flex: 1 1 140px; min-width: 0; font: .82rem 'Libre Franklin', sans-serif;
+  border: 1px solid #cdbfa0; background: #fffdf8; padding: 4px 6px; color: #241a12; }
+.thx-st-check { display: inline-flex; align-items: center; gap: 4px; font: .8rem 'Libre Franklin', sans-serif; color: #4a3b2a; }

@@ -33,7 +33,9 @@
   function wire(opts) {
     // Every write from the controls above repaints the sample below as well.
     var rawSet = opts.set;
-    opts = { get: opts.get, onChange: opts.onChange, set: function (t) {
+    opts = { get: opts.get, onChange: opts.onChange,
+      stickerBase: opts.stickerBase, stickerUpload: opts.stickerUpload, stickerMaxMB: opts.stickerMaxMB,
+      set: function (t) {
       rawSet(t);
       if (more) { paintSample(t); }
       if (opts.onChange) opts.onChange(t);
@@ -330,6 +332,17 @@
     h += '<div class="thx-block"><div class="thx-lab">Live sample</div>' +
       '<div class="thx-sample-frame"><div class="thx-sample ucss" id="thx-sample"><div class="thx-sample-in">' + sampleHTML(kind) + '</div></div></div></div>';
 
+    h += '<details class="thx-sec thx-sec-st" open><summary>Stickers &amp; images<span>GIFs and pictures placed anywhere on your page</span></summary><div class="thx-sec-body">' +
+      '<p class="thx-sub" style="margin-top:0">Add a GIF, PNG, JPEG or WebP and put it anywhere: drag it around in the live sample above, or use the sliders. ' +
+      'Stickers can sit in front of your page or behind its boxes, stay on screen while the page scrolls, spin, bob and more.</p>' +
+      '<div class="thx-st-add">' +
+        '<input type="file" id="thx-st-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>' +
+        '<button type="button" class="thx-snip" id="thx-st-upload">+ Upload an image</button>' +
+        '<input type="text" id="thx-st-url" placeholder="…or paste an https:// image link" maxlength="2000">' +
+        '<button type="button" class="thx-snip" id="thx-st-addurl">Add link</button>' +
+      '</div>' +
+      '<div class="thx-st-msg" id="thx-st-msg"></div>' +
+      '<div id="thx-st-list"></div></div></details>';
     function sec(title, sub, body) {
       return '<details class="thx-sec"><summary>' + escH(title) + (sub ? '<span>' + escH(sub) + '</span>' : '') + '</summary><div class="thx-sec-body">' + body + '</div></details>';
     }
@@ -418,7 +431,7 @@
   var cssTimer = null;
   function paintSample(theme) {
     if (!more) return;
-    var t = PR().sanitizeTheme ? (PR().sanitizeTheme(theme || {}, 'x') || {}) : {};
+    var t = PR().sanitizeTheme ? (PR().sanitizeTheme(theme || {}, stBase() || 'x') || {}) : {};
     // The sample cannot show an image that is not uploaded yet, but it can
     // show one the page already has (its path survives sanitizeTheme only
     // with the right base, so keep whatever the caller stored).
@@ -428,6 +441,16 @@
     if (el) {
       el.className = 'thx-sample ucss ' + ta.cls;
       el.setAttribute('style', ta.style);
+      var inner = el.querySelector('.thx-sample-in');
+      var old = inner && inner.querySelector(':scope > .pg-stickers');
+      if (old) old.remove();
+      if (inner && t.stickers && PR().stickersHTML) {
+        inner.insertAdjacentHTML('afterbegin', PR().stickersHTML(t.stickers));
+        Array.prototype.forEach.call(inner.querySelectorAll(':scope > .pg-stickers > .pg-sticker'), function (img, n) {
+          img.setAttribute('data-i', n);
+          img.removeAttribute('loading');
+        });
+      }
     }
     (ta.fonts || []).forEach(loadFont);
     clearTimeout(cssTimer);
@@ -481,11 +504,151 @@
       i.value = theme[i.getAttribute('data-gfont')] || '';
     });
     var css = $('thx-css'); if (css) css.value = theme.css || '';
+    renderStickers(theme);
     paintSample(theme);
   }
   function showNum(k, v) {
     var st = $('thx-' + k + '-state');
     if (st) st.textContent = v == null ? 'default' : v + NUM_LABELS[k][1];
+  }
+
+  /* ── Stickers (theme.stickers; rules in PageRender.sanitizeStickers) ── */
+  function stBase() { return (more && more.opts.stickerBase && more.opts.stickerBase()) || ''; }
+  function stList(t) { return Array.isArray(t && t.stickers) ? t.stickers : []; }
+  function stSrc(src) { return /^https:/i.test(src) ? src : '/assets/' + src; }
+  function stMsg(cls, text) {
+    var m = $('thx-st-msg'); if (!m) return;
+    m.className = 'thx-st-msg' + (cls ? ' thx-st-' + cls : ''); m.textContent = text || '';
+  }
+  var ST_ROWS = [
+    ['x', 'Across', -20, 120, '%'], ['y', 'Down', -20, 120, '%'], ['w', 'Size', 12, 1200, 'px'],
+    ['rot', 'Turn', -180, 180, '°'], ['opacity', 'See-through', 5, 100, '%']
+  ];
+  function stickerCard(st, i) {
+    var D = PR().STICKER_DEFAULTS || {};
+    function v(k) { return st[k] != null ? st[k] : (D[k] != null ? D[k] : 0); }
+    function sel(k, opts) {
+      return '<select data-stk="' + k + '">' + opts.map(function (o) {
+        return '<option value="' + o[0] + '"' + ((st[k] || opts[0][0]) === o[0] ? ' selected' : '') + '>' + escH(o[1]) + '</option>';
+      }).join('') + '</select>';
+    }
+    return '<div class="thx-st" data-st="' + i + '">' +
+      '<div class="thx-st-thumb"><img src="' + escH(stSrc(st.src)) + '" alt="" referrerpolicy="no-referrer"></div>' +
+      '<div class="thx-st-body">' +
+      ST_ROWS.map(function (r) {
+        return '<label class="thx-st-row"><span>' + r[1] + '</span>' +
+          '<input type="range" data-stk="' + r[0] + '" min="' + r[2] + '" max="' + r[3] + '" value="' + v(r[0]) + '">' +
+          '<em data-stv="' + r[0] + '">' + v(r[0]) + r[4] + '</em></label>';
+      }).join('') +
+      '<div class="thx-st-opts">' +
+        sel('layer', [['front', 'In front of the page'], ['back', 'Behind the boxes']]) +
+        sel('pin', [['page', 'Scrolls with the page'], ['screen', 'Stays on screen']]) +
+        sel('anim', [['', 'No animation'], ['spin', 'Spin'], ['bob', 'Bob up and down'], ['wiggle', 'Wiggle'], ['pulse', 'Pulse'], ['blink', 'Blink']]) +
+      '</div><div class="thx-st-opts">' +
+        '<label class="thx-st-check"><input type="checkbox" data-stk="flip"' + (st.flip ? ' checked' : '') + '> Mirror</label>' +
+        '<label class="thx-st-check"><input type="checkbox" data-stk="hideSmall"' + (st.hideSmall ? ' checked' : '') + '> Hide on phones</label>' +
+        '<button type="button" class="thx-reset" data-stact="dup">Duplicate</button>' +
+        '<button type="button" class="thx-reset" data-stact="del">Remove</button>' +
+      '</div></div></div>';
+  }
+  function renderStickers(theme) {
+    var box = $('thx-st-list'); if (!box) return;
+    var list = stList(theme);
+    box.innerHTML = list.length ? list.map(stickerCard).join('')
+      : '<p class="thx-sub" style="margin:4px 0 0">No stickers yet.</p>';
+    var up = $('thx-st-upload');
+    if (up) up.title = stBase() ? '' : 'Save this page once (a draft is fine) to upload images. Image links work now.';
+  }
+  function setStickers(list, redraw) {
+    update(function (t) { if (list.length) t.stickers = list; else delete t.stickers; });
+    if (redraw) renderStickers(more.opts.get() || {});
+  }
+  function addSticker(src) {
+    var list = stList(more.opts.get()).slice();
+    var max = PR().STICKERS_MAX || 24;
+    if (list.length >= max) { stMsg('bad', 'A page can have up to ' + max + ' stickers.'); return false; }
+    var D = PR().STICKER_DEFAULTS || {};
+    // Each new one a little lower down, so two in a row do not stack.
+    list.push({ src: src, x: D.x, y: Math.min(110, (D.y || 12) + list.length * 8), w: D.w, rot: 0, opacity: 100,
+                layer: 'front', pin: 'page' });
+    setStickers(list, true);
+    return true;
+  }
+  function nextStickerN(list) {
+    var used = {};
+    list.forEach(function (s) { var m = String(s.src).match(/-st(\d{1,2})\.[a-z]+$/i); if (m) used[+m[1]] = 1; });
+    for (var n = 1; n <= (PR().STICKERS_MAX || 24); n++) if (!used[n]) return n;
+    return 0;
+  }
+  function uploadSticker(file) {
+    var base = stBase();
+    if (!base) { stMsg('bad', 'Save this page once (a draft is fine), then you can upload images. Image links work now.'); return; }
+    var ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }[file.type];
+    if (!ext) { stMsg('bad', 'Stickers can be PNG, JPEG, GIF or WebP.'); return; }
+    var maxMB = more.opts.stickerMaxMB || 8;
+    if (file.size > maxMB * 1024 * 1024) { stMsg('bad', 'That file is over ' + maxMB + ' MB. Try a smaller one.'); return; }
+    var n = nextStickerN(stList(more.opts.get()));
+    if (!n) { stMsg('bad', 'A page can have up to ' + (PR().STICKERS_MAX || 24) + ' stickers.'); return; }
+    stMsg('', 'Uploading…');
+    // Read as it is: a GIF through a canvas would lose its animation.
+    var fr = new FileReader();
+    fr.onload = function () {
+      var key = base + '-st' + n + '.' + ext;
+      var send = more.opts.stickerUpload
+        ? more.opts.stickerUpload(n, fr.result, key)
+        : fetch('/api/upload', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key, data: fr.result }) })
+            .then(function (r) { return r.json(); })
+            .then(function (j) { if (!j || j.error) throw new Error((j && j.error) || 'Upload failed.'); return key; });
+      send.then(function (path) {
+        // The same slot re-used for a new file: ask for it fresh.
+        if (addSticker(path)) stMsg('ok', 'Added. Drag it into place in the sample, then save the page.');
+      }, function (e) { stMsg('bad', (e && e.message) || 'Upload failed.'); });
+    };
+    fr.onerror = function () { stMsg('bad', 'That file could not be read.'); };
+    fr.readAsDataURL(file);
+  }
+  /* Drag a sticker in the live sample: the sample stands for the page, so a
+     drop at 40% across it is 40% across the page. */
+  function wireStickerDrag(sample) {
+    var drag = null;
+    sample.addEventListener('pointerdown', function (e) {
+      var img = e.target.closest('.pg-sticker');
+      if (!img || !sample.contains(img)) return;
+      e.preventDefault();
+      var frame = img.classList.contains('pgs-fixed') ? sample : img.parentNode;
+      drag = { img: img, i: +img.getAttribute('data-i'), rect: frame.getBoundingClientRect(), id: e.pointerId };
+      img.setPointerCapture(e.pointerId);
+      img.classList.add('thx-st-dragging');
+    });
+    sample.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var r = drag.rect;
+      drag.x = Math.max(-20, Math.min(120, Math.round((e.clientX - r.left) / r.width * 100)));
+      drag.y = Math.max(-20, Math.min(120, Math.round((e.clientY - r.top) / r.height * 100)));
+      drag.img.style.left = drag.x + '%'; drag.img.style.top = drag.y + '%';
+    });
+    function end(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null;
+      d.img.classList.remove('thx-st-dragging');
+      if (d.x == null) return;
+      var list = stList(more.opts.get()).slice();
+      if (!list[d.i]) return;
+      list[d.i] = Object.assign({}, list[d.i], { x: d.x, y: d.y });
+      setStickers(list, false);
+      syncStickerCard(d.i, list[d.i]);
+    }
+    sample.addEventListener('pointerup', end);
+    sample.addEventListener('pointercancel', end);
+  }
+  function syncStickerCard(i, st) {
+    var card = document.querySelector('.thx-st[data-st="' + i + '"]');
+    if (!card) return;
+    ST_ROWS.forEach(function (r) {
+      var inp = card.querySelector('[data-stk="' + r[0] + '"]'), lab = card.querySelector('[data-stv="' + r[0] + '"]');
+      if (inp) inp.value = st[r[0]]; if (lab) lab.textContent = st[r[0]] + r[4];
+    });
   }
 
   function mountMore(el, opts) {
@@ -495,6 +658,28 @@
     el.addEventListener('click', function (e) {
       var b = e.target.closest('button');
       if (!b || !el.contains(b)) return;
+      if (b.id === 'thx-st-upload') {
+        // A page that has not been saved has no image slot yet.
+        if (!stBase()) stMsg('bad', 'Save this page once (a draft is fine), then you can upload images. Image links work now.');
+        else $('thx-st-file').click();
+        return;
+      }
+      if (b.id === 'thx-st-addurl') {
+        var u = $('thx-st-url'), src = u.value.trim();
+        var ok = PR().sanitizeStickers ? PR().sanitizeStickers([{ src: src }], stBase()).length : 0;
+        if (!ok) { stMsg('bad', 'That needs to be an https:// link to an image.'); return; }
+        if (addSticker(src)) { u.value = ''; stMsg('ok', 'Added. Drag it into place in the sample, then save the page.'); }
+        return;
+      }
+      if (b.hasAttribute('data-stact')) {
+        var ci = +b.closest('.thx-st').getAttribute('data-st');
+        var cur = stList(opts.get()).slice();
+        if (!cur[ci]) return;
+        if (b.getAttribute('data-stact') === 'del') cur.splice(ci, 1);
+        else if (cur.length < (PR().STICKERS_MAX || 24)) cur.splice(ci + 1, 0, Object.assign({}, cur[ci], { x: Math.min(120, cur[ci].x + 6), y: Math.min(120, cur[ci].y + 6) }));
+        setStickers(cur, true);
+        return;
+      }
       if (b.hasAttribute('data-preset')) {
         var p = (PR().THEME_PRESETS || {})[b.getAttribute('data-preset')];
         if (!p) return;
@@ -522,6 +707,10 @@
     });
     el.addEventListener('input', function (e) {
       var i = e.target, k;
+      if ((k = i.getAttribute('data-stk')) && i.type === 'range') {
+        stickerField(i, k, Math.round(Number(i.value)));
+        return;
+      }
       if ((k = i.getAttribute('data-color'))) {
         update(function (t) { t[k] = i.value; });
         var st = $('thx-' + k + '-state'); if (st) st.textContent = i.value;
@@ -540,12 +729,35 @@
     });
     el.addEventListener('change', function (e) {
       var i = e.target, k;
+      if (i.id === 'thx-st-file') {
+        var f = i.files && i.files[0]; i.value = '';
+        if (f) uploadSticker(f);
+        return;
+      }
+      if ((k = i.getAttribute('data-stk')) && i.type !== 'range') {
+        stickerField(i, k, i.type === 'checkbox' ? i.checked : i.value);
+        return;
+      }
       if ((k = i.getAttribute('data-choice'))) {
         update(function (t) { if (i.value) t[k] = i.value; else delete t[k]; });
       } else if ((k = i.getAttribute('data-font'))) {
         update(function (t) { if (i.value && i.value !== 'default') t[k] = i.value; else delete t[k]; });
       }
     });
+    function stickerField(input, key, val) {
+      var ci = +input.closest('.thx-st').getAttribute('data-st');
+      var list = stList(opts.get()).slice();
+      if (!list[ci]) return;
+      var s2 = Object.assign({}, list[ci]);
+      if (val === false || val === '') delete s2[key]; else s2[key] = val;
+      list[ci] = s2;
+      setStickers(list, false);
+      var row = ST_ROWS.filter(function (r) { return r[0] === key; })[0];
+      var lab = input.closest('.thx-st').querySelector('[data-stv="' + key + '"]');
+      if (row && lab) lab.textContent = val + row[4];
+    }
+    var sample = $('thx-sample');
+    if (sample) wireStickerDrag(sample);
     primeMore(opts.get() || {});
   }
 
@@ -554,9 +766,12 @@
      published page gets, on that element instead of <body>. */
   function applyTo(el, theme) {
     if (!el) return;
-    var t = PR().sanitizeTheme ? (PR().sanitizeTheme(theme || {}, 'x') || {}) : {};
+    var t = PR().sanitizeTheme ? (PR().sanitizeTheme(theme || {}, stBase() || 'x') || {}) : {};
     if (theme && theme.background && /^[a-z0-9/-]+-bg\.(png|jpe?g|webp)$/i.test(theme.background)) t.background = theme.background;
     var ta = PR().themeAttrs ? PR().themeAttrs(t) : { cls: '', style: '', fonts: [] };
+    var oldSt = el.querySelector(':scope > .pg-stickers');
+    if (oldSt) oldSt.remove();
+    if (t.stickers && PR().stickersHTML) el.insertAdjacentHTML('afterbegin', PR().stickersHTML(t.stickers));
     var keep = (el.getAttribute('data-thx-base') || el.className.replace(/\b(page-themed|theme-\S+|ucss|thx-preview)\b/g, '').trim());
     el.setAttribute('data-thx-base', keep);
     el.className = (keep + ' thx-preview ucss ' + ta.cls).trim();

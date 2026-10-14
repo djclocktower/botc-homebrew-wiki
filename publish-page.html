@@ -695,7 +695,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       window.ThemeEditor.wire({
         get: function(){ return theme; },
         set: function(t){ theme = t; },
-        onChange: preview
+        onChange: preview,
+        stickerBase: function(){ return slug ? 'pages/' + slug : ''; }
       });
       ['p-title','p-subtitle','p-blurb','p-author','p-body','p-info-title','p-info-image'].forEach(function(id){
         $(id).addEventListener('input', preview);

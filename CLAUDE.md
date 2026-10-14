@@ -1277,6 +1277,23 @@ in this order by `assets/theme-editor.js`:
    frame and are out of reach. `migration/tests/customization.test.mjs` holds
    the escape attempts — add to it before loosening anything.
 
+**Stickers** (`theme.stickers`, up to `STICKERS_MAX` 24): free-standing
+GIF/PNG/JPEG/WebP images placed by their centre at `x`/`y` % of the page area
+(or of the screen when `pin: 'screen'`), `w` px wide (capped at 90vw), with
+turn, see-through, mirror, `layer` front/back, an animation and "hide on
+phones". `PageRender.sanitizeStickers()` whitelists `src`: an https link
+(never `/api/`) or the page's own slot `{base}-st{n}.{ext}` — the same base its
+background uses (`scripts/{slug}`, `collections/{id}`, `pages/{slug}`,
+`news/{slug}`, `avatars/u{id}`). `uploadSlotDenied()` strips `-st{n}` like
+`-logo`/`-bg`, so a sticker slot is the page's; a creator page uploads through
+`/api/account/avatar` with `kind:'st', n` (the only avatar slot taking a GIF).
+`stickersHTML()` is drawn first inside `<main>` (on body in profile.html),
+OUTSIDE the custom-CSS frame, so author CSS cannot reach them and the frame
+cannot trap a pinned one. They never take a click (`pointer-events: none`),
+the layer clips overhang (no sideways page scroll on a phone), and front ones
+stay under the top bar (z 30). The editor (theme-editor.js) uploads on pick —
+so only once the page exists — and lets them be dragged in the live sample.
+
 **Creator pages** keep their theme in `users.profile_json.theme`, saved by
 `POST /api/account/theme` (never by `/api/account/profile`, which keeps it —
 `packProfileExtra()` is the one writer). Its background is uploaded through

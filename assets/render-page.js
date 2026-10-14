@@ -218,7 +218,86 @@
     if (typeof theme.css === 'string' && theme.css.trim()) {
       out.css = theme.css.slice(0, THEME_CSS_MAX);
     }
+    var st = sanitizeStickers(theme.stickers, allowedBgBase);
+    if (st.length) out.stickers = st;
     return Object.keys(out).length ? out : null;
+  }
+
+  /* ── Stickers: free-standing images on the page ──
+     A GIF, PNG, JPEG or WebP placed anywhere on a page, at any size, turned,
+     faded, flipped, animated, in front of the page's boxes or behind them,
+     scrolling with the page or pinned to the screen. Stored as
+     theme.stickers = [{src, x, y, w, rot, opacity, flip, layer, pin, anim,
+     hideSmall}]. x and y are the sticker's CENTRE as a percentage of the
+     page area (or of the screen, for a pinned one), so a placement survives a
+     phone's narrower, taller page; w is its width in px, never wider than
+     90% of the screen.
+
+     `src` is the one thing a writer controls that reaches markup, so it is
+     whitelisted: an https:// address (never an /api/ path), or an image this
+     page uploaded into its own slot, {base}-st{n}.{ext} — the same base its
+     background lives under. Every number is clamped and rounded, every word
+     is from a list, and stickersHTML() escapes on top of that. A sticker
+     never takes a click (pointer-events: none in styles.css), so an image
+     can be anything but a link. */
+  var STICKERS_MAX = 24;
+  var STICKER_ANIMS = ['spin', 'bob', 'wiggle', 'pulse', 'blink'];
+  var STICKER_DEFAULTS = { x: 85, y: 12, w: 140, rot: 0, opacity: 100 };
+  function clampNum(v, lo, hi, dflt) {
+    var n = Math.round(Number(v));
+    return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
+  }
+  function stickerSrcOk(src, base) {
+    src = typeof src === 'string' ? src.trim() : '';
+    if (!src || src.length > 2000) return '';
+    var m = src.match(/^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(\/[^\s"'<>\\()`]*)?$/);
+    if (m) return /^\/api(\/|$)/i.test(m[1] || '') ? '' : src;
+    if (!base) return '';
+    var esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('^' + esc + '-st\\d{1,2}\\.(png|jpe?g|gif|webp)$', 'i').test(src) ? src : '';
+  }
+  function sanitizeStickers(list, base) {
+    var out = [];
+    if (!Array.isArray(list)) return out;
+    for (var i = 0; i < list.length && out.length < STICKERS_MAX; i++) {
+      var t = list[i];
+      if (!t || typeof t !== 'object') continue;
+      var src = stickerSrcOk(t.src, base);
+      if (!src) continue;
+      var o = {
+        src: src,
+        x: clampNum(t.x, -20, 120, STICKER_DEFAULTS.x),
+        y: clampNum(t.y, -20, 120, STICKER_DEFAULTS.y),
+        w: clampNum(t.w, 12, 1200, STICKER_DEFAULTS.w),
+        rot: clampNum(t.rot, -180, 180, 0),
+        opacity: clampNum(t.opacity, 5, 100, 100),
+        layer: t.layer === 'back' ? 'back' : 'front',
+        pin: t.pin === 'screen' ? 'screen' : 'page'
+      };
+      if (t.flip === true) o.flip = true;
+      if (STICKER_ANIMS.indexOf(t.anim) >= 0) o.anim = t.anim;
+      if (t.hideSmall === true) o.hideSmall = true;
+      out.push(o);
+    }
+    return out;
+  }
+  /* The markup for a SANITIZED list (sanitizeTheme's output). The page
+     draws it inside its main area, outside the custom-CSS frame, so an
+     author's stylesheet cannot reach the stickers and the frame's paint
+     containment cannot trap a pinned one. */
+  function stickersHTML(list) {
+    if (!Array.isArray(list) || !list.length) return '';
+    return '<div class="pg-stickers" aria-hidden="true">' + list.map(function (s) {
+      var src = /^https:/i.test(s.src) ? s.src : '/assets/' + s.src;
+      var cls = 'pg-sticker pgs-' + (s.layer === 'back' ? 'back' : 'front') +
+        (s.pin === 'screen' ? ' pgs-fixed' : '') +
+        (STICKER_ANIMS.indexOf(s.anim) >= 0 ? ' pgs-anim-' + s.anim : '') +
+        (s.hideSmall ? ' pgs-hide-small' : '');
+      var style = 'left:' + Number(s.x) + '%;top:' + Number(s.y) + '%;width:' + Number(s.w) + 'px;' +
+        '--pgs-r:' + Number(s.rot) + 'deg;--pgs-o:' + (Number(s.opacity) / 100) + ';--pgs-fx:' + (s.flip ? -1 : 1);
+      return '<img class="' + cls + '" src="' + esc(src) + '" alt="" loading="lazy" decoding="async" ' +
+        'referrerpolicy="no-referrer" draggable="false" style="' + style + '">';
+    }).join('') + '</div>';
   }
 
   var SHADOWS = {
@@ -1472,6 +1551,11 @@
     resolveCollectionMembers: resolveCollectionMembers,
     sortCollectionMembers: sortCollectionMembers,
     sanitizeTheme: sanitizeTheme,
+    sanitizeStickers: sanitizeStickers,
+    stickersHTML: stickersHTML,
+    STICKERS_MAX: STICKERS_MAX,
+    STICKER_ANIMS: STICKER_ANIMS,
+    STICKER_DEFAULTS: STICKER_DEFAULTS,
     themeFontLinks: themeFontLinks,
     THEME_PRESETS: THEME_PRESETS,
     THEME_STYLE_KEYS: THEME_STYLE_KEYS,

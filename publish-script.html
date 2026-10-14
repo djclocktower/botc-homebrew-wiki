@@ -811,7 +811,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // Values validated by sanitizeTheme client-side AND server-side. ──
     window.ThemeEditor.wire({
       get: function(){ return getMeta().theme || {}; },
-      set: function(t){ var m = getMeta(); m.theme = t; setMeta(m); }
+      set: function(t){ var m = getMeta(); m.theme = t; setMeta(m); },
+      // Stickers upload into scripts/{slug}-st{n}.*, so only once the page exists.
+      stickerBase: function(){ var s = EDIT_SLUG || getMeta().editSlug; return s ? 'scripts/' + s : ''; }
     });
     // ── Custom URL: the box is the truth while the page is open, and the
     // stored meta carries it across a reload of an unsaved form. ──

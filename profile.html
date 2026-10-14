@@ -256,6 +256,9 @@
         l.rel = 'stylesheet'; l.href = href;
         document.head.appendChild(l);
       });
+      // Stickers sit on <body> here (the page has no single main area around
+      // its hero and sections), placed against the whole page.
+      if (t.stickers && PR.stickersHTML) document.body.insertAdjacentHTML('beforeend', PR.stickersHTML(t.stickers));
       var css = t.css && window.CustomCSS ? window.CustomCSS.clean(t.css).css : '';
       if (css) {
         var st = document.createElement('style');
