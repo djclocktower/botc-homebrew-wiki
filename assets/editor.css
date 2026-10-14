@@ -541,3 +541,27 @@ html.textedit-on .te-live-hit {
 .thx-st-opts select { flex: 1 1 140px; min-width: 0; font: .82rem 'Libre Franklin', sans-serif;
   border: 1px solid #cdbfa0; background: #fffdf8; padding: 4px 6px; color: #241a12; }
 .thx-st-check { display: inline-flex; align-items: center; gap: 4px; font: .8rem 'Libre Franklin', sans-serif; color: #4a3b2a; }
+
+/* ── Live page preview (assets/page-preview.js) ──
+   The page drawn at a real desktop width and scaled into the column, or at a
+   phone's width; a bar above it switches size and turns on moving things. */
+.pp { display: flex; flex-direction: column; gap: 8px; }
+.pp-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pp-seg { display: inline-flex; border: 1px solid #b9a77f; border-radius: 6px; overflow: hidden; }
+.pp-dev, .pp-move, .pp-btn {
+  font: 600 .82rem/1 'Roboto', sans-serif; letter-spacing: .03em; cursor: pointer;
+  background: #f6f0e1; color: #4a2a1c; border: 0; padding: 8px 12px;
+}
+.pp-dev + .pp-dev { border-left: 1px solid #b9a77f; }
+.pp-dev.on { background: #5b1f21; color: #fff; }
+.pp-move, .pp-btn { border: 1px solid #b9a77f; border-radius: 6px; }
+.pp-move.on { background: #f5c542; border-color: #c99a14; color: #2a1608; }
+.pp-movebar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .82rem; color: #4a2a1c; }
+.pp-movebar[hidden], .pp-phone-note[hidden] { display: none; }
+.pp-picked-name { flex: 1 1 200px; min-width: 0; }
+.pp-phone-note { margin: 0; font-size: .82rem; color: #6a5434; }
+.pp-view {
+  position: relative; overflow: hidden; border: 1px solid #b9a77f; border-radius: 6px;
+  height: max(420px, calc(100vh - 210px)); background: #1a0a16;
+}
+.pp-frame { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #2a0f24; }

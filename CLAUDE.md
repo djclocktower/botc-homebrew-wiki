@@ -708,6 +708,22 @@ assets/
                        CRITICAL — read its header before touching it.
   custom-url.js        The "Custom URL" field on publish-script/-collection/
                        -page (asks /api/custom-url-check as you type).
+  page-preview.js      The live page beside every page editor (script,
+                       collection, wiki page, news, and the account page's
+                       Profile Appearance): PagePreview.attach() adds the box,
+                       mounts it beside the form with splitPreview, and redraws
+                       on any input. An iframe with the site's stylesheet at a
+                       real 1280px desktop width scaled to the column, or a
+                       390px phone (phones open on it); content comes from the
+                       same renderScriptPage/renderCollectionPage/
+                       renderWikiPage/renderArticle the Worker uses. The
+                       creator page preview is the REAL /u/{name}?preview=1 in
+                       the frame, re-themed through profile.html's
+                       window.__botcApplyTheme, which calls
+                       parent.__botcProfileFrame once drawn. "Move things"
+                       makes every movable part draggable (pointer events,
+                       arrow keys nudge, "Put it back") and stores theme.moves
+                       through ThemeEditor.store — see "Page customization".
   wiki-editor.js       Shared editor widgets: the formatting toolbar, the
                        {title, content} custom-box repeater, the fact-box row
                        repeater, grow-with-content textareas, the image picker
@@ -1297,6 +1313,20 @@ phone breakpoints, and "left" keeps the info box below the page on a phone.
 `THEME_LAYOUT_KEYS` are excluded from `THEME_STYLE_KEYS`, so a quick style or
 "Reset every style setting" never undoes an arrangement; the Layout section
 has its own reset.
+
+**Moves** (`theme.moves = {key: [x, y]}`): any part of a page dragged to
+where its owner wants it, in the live preview's "Move things" mode. A key is a
+named part (`PageRender.MOVABLE`: title, banner, info box, each section…), a
+character box (`c:{identity}`, matched on `data-slug` — script roster rows
+carry it too), a team block (`t:{team}`, `data-team`) or a creator-page
+section (`s:{sec}`). `sanitizeMoves()` validates keys and clamps integers;
+`movesCSS()` turns them into `translate` rules (+ `position:relative;z-index`
+so a moved part draws on top), printed as `<style id="page-moves">` by
+`pageShell()` and by profile.html, inside `@media (min-width: 901px)` only:
+offsets made on a desktop would wreck a phone's one-column page. The flow is
+untouched (a moved part leaves its space), so taking a move off restores the
+page exactly; `body.tl-moved` clips sideways overflow. `moves` is a layout
+key, so quick styles keep it.
 
 **Stickers** (`theme.stickers`, up to `STICKERS_MAX` 24): free-standing
 GIF/PNG/JPEG/WebP images placed by their centre at `x`/`y` % of the page area

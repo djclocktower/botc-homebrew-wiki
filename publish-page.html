@@ -267,11 +267,6 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
       </details>
 
-      <div class="we-preview">
-        <h2>Preview</h2>
-        <div id="p-preview"></div>
-      </div>
-
       <div class="pub-actions">
         <button type="button" class="sb-btn sb-btn-publish" id="p-publish"><span class="ico ico-star" aria-hidden="true"></span> Publish Page</button>
         <button type="button" class="sb-btn sb-btn-draft" id="p-draft">Save as Draft</button>
@@ -304,6 +299,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/custom-url.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script>
   (function(){
     function $(id){ return document.getElementById(id); }
@@ -383,22 +379,24 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       };
     }
 
-    function preview(){
+    // The live page beside the form (page-preview.js), drawn by the same
+    // renderWikiPage() the Worker uses for /p/.
+    var live = null;
+    function preview(){ if (live) live.refresh(); }
+    function previewRender(){
       var p = collect();
       p.parentName = parentName;
       p.parentKey = parentKey;
       p.updatedAt = new Date().toISOString();
-      // A banner chosen but not yet uploaded previews from the data URL.
-      var shown = {};
-      Object.keys(p).forEach(function(k){ shown[k] = p[k]; });
-      $('p-preview').innerHTML = window.WikiRender.renderWikiPage(shown, { linkRoot: '' });
-      // The page's own look, on the preview box: the same classes and scoped
-      // custom CSS the published page carries on its <body>.
-      window.ThemeEditor.applyTo($('p-preview'), theme);
-      if (headerData) {
-        var img = $('p-preview').querySelector('.wiki-banner');
-        if (img) img.src = headerData;
-      }
+      return {
+        html: window.WikiRender.renderWikiPage(p, { linkRoot: '' }),
+        theme: theme, base: 'pages/' + (slug || 'new'),
+        // A banner chosen but not yet uploaded previews from the data URL.
+        after: function(doc){
+          var img = headerData && doc.querySelector('.wiki-banner');
+          if (img) img.src = headerData;
+        }
+      };
     }
 
     // An approved editor of the parent script/collection (not the page's
@@ -702,7 +700,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $(id).addEventListener('input', preview);
       });
       ['p-toc','p-comments'].forEach(function(id){ $(id).addEventListener('change', preview); });
-      window.WikiEditor.splitPreview($('editor'), document.querySelector('#editor .we-preview'));
+      live = window.PagePreview.attach({ editor: $('editor'), kind: 'page', render: previewRender });
       window.WikiEditor.loadCharLinks().then(preview);
     }
 

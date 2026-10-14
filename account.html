@@ -558,6 +558,8 @@
   <script src="assets/render-page.js"></script>
   <script src="assets/custom-css.js"></script>
   <script src="assets/theme-editor.js"></script>
+  <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script>
     // Login state may have just changed (OAuth redirect lands here) — drop the nav cache.
     try { sessionStorage.removeItem('botc_me'); } catch(e){}
@@ -715,6 +717,10 @@
         window.ThemeEditor.prime(paTheme);
         paShowBg();
         paMark(false);
+        // Your real creator page beside the settings, re-themed as you
+        // change them, with everything on it draggable (page-preview.js).
+        window.PagePreview.attach({ editor: $('appearance'), kind: 'profile', wide: false,
+                                    src: pageHref + '?preview=1' });
       }
       var initial = (p.displayName || p.username || '?').charAt(0).toUpperCase();
       [$('avatar'), $('s-avatar-preview')].forEach(function(av){

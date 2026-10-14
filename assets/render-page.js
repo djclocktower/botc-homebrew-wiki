@@ -178,6 +178,85 @@
   Object.keys(THEME_SECTIONS).forEach(function (k) {
     THEME_SECTIONS[k].forEach(function (s) { SECTION_KEYS[s[0]] = true; });
   });
+  /* ── Moves: any part of a page dragged to where its owner wants it ──
+     theme.moves = {key: [x, y]}, an offset in CSS pixels from where the page
+     would have put that part. A key names a part (MOVABLE), a character box
+     ('c:' + identity), a team block ('t:' + team) or a creator-page section
+     ('s:' + section). They become `translate` rules (movesCSS), so the page
+     keeps its flow and its space: a moved part only LOOKS moved, nothing
+     else reflows around it, and taking a move off puts it back exactly.
+     Wide screens only: offsets made on a desktop would throw a phone's
+     one-column page apart, so a phone always gets the page as laid out. */
+  var MOVABLE = {
+    title:      ['Title', '.script-title-fallback, .coll-title, .wiki-title, .news-article h1'],
+    banner:     ['Banner', '.script-header-wrap, .coll-header-wrap, .wiki-banner-wrap, .news-hero'],
+    logo:       ['Logo', '.sv-logo-wrap'],
+    tagline:    ['Tagline', '.sv-tagline, .wiki-subtitle'],
+    desc:       ['Description', '.script-desc'],
+    meta:       ['Byline', '.script-meta-line, .wiki-meta'],
+    favs:       ['Favorites button', '.page-fav-bar'],
+    head:       ['Title box', '.wiki-page-head'],
+    info:       ['Information box', '.script-json-panel, .coll-meta-row, .wiki-side'],
+    main:       ['Main box', '.sv-main, .coll-prose, .wiki-body, .news-body'],
+    synopsis:   ['Synopsis', '.sv-s-synopsis'],
+    gameplay:   ['Gameplay', '.sv-s-gameplay'],
+    pages:      ['Pages', '#page-wiki-links'],
+    characters: ['Characters', '.sv-s-characters, .coll-chars'],
+    filters:    ['Filter box', '.coll-filters'],
+    count:      ['Character count', '.coll-chars-count'],
+    jinx:       ['Jinxes', '.coll-jinx'],
+    night:      ['Night order', '#sec-nightorder'],
+    bootlegger: ['Bootlegger rules', '#sec-bootlegger'],
+    hero:       ['Top of the page', '.home-hero'],
+    avatar:     ['Picture', '.profile-avatar'],
+    name:       ['Name', '.profile-hero-text h1'],
+    bio:        ['Bio', '.profile-bio'],
+    links:      ['Links', '.profile-links']
+  };
+  var MOVE_TEAMS = /^t:(townsfolk|outsider|minion|demon|traveller|fabled|loric|other)$/;
+  var MOVE_SECS = /^s:(pinned|characters|scripts|collections|pages)$/;
+  var MOVE_CHAR = /^c:[a-z0-9][a-z0-9_-]{0,119}$/;
+  var MOVES_MAX = 400, MOVE_LIMIT = 3000;
+  function moveSelector(key) {
+    if (Object.prototype.hasOwnProperty.call(MOVABLE, key)) return MOVABLE[key][1];
+    var v = key.slice(2);
+    if (MOVE_CHAR.test(key)) return '.char-card[data-slug="' + v + '"], .script-char-row[data-slug="' + v + '"]';
+    if (MOVE_TEAMS.test(key)) return '.type-section[data-team="' + v + '"], .script-team-group[data-team="' + v + '"]';
+    if (MOVE_SECS.test(key)) return '.prof-panel > [data-sec="' + v + '"]';
+    return '';
+  }
+  function sanitizeMoves(m) {
+    var out = {}, n = 0;
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return out;
+    Object.keys(m).forEach(function (k) {
+      if (n >= MOVES_MAX || !moveSelector(k)) return;
+      var v = m[k];
+      if (!Array.isArray(v) || v.length !== 2) return;
+      var x = Math.round(Number(v[0])), y = Math.round(Number(v[1]));
+      if (!isFinite(x) || !isFinite(y)) return;
+      x = Math.max(-MOVE_LIMIT, Math.min(MOVE_LIMIT, x));
+      y = Math.max(-MOVE_LIMIT, Math.min(MOVE_LIMIT, y));
+      if (!x && !y) return;
+      out[k] = [x, y]; n++;
+    });
+    return out;
+  }
+  // Built only from whitelisted selectors, validated keys and integers.
+  function movesCSS(moves) {
+    var m = sanitizeMoves(moves), rules = [];
+    Object.keys(m).forEach(function (k) {
+      // On top of what it was dragged over. `position` is what lets z-index
+      // work on an ordinary block; a script's side column is sticky (already
+      // positioned), so it keeps its own.
+      moveSelector(k).split(',').forEach(function (sel) {
+        sel = sel.trim();
+        rules.push('.tl-moved ' + sel + '{translate:' + m[k][0] + 'px ' + m[k][1] + 'px;' +
+          (sel === '.script-json-panel' ? '' : 'position:relative;') + 'z-index:5}');
+      });
+    });
+    return rules.length ? '@media (min-width: 901px){' + rules.join('') + '}' : '';
+  }
+
   function sanitizeOrder(list) {
     if (!Array.isArray(list)) return [];
     var out = [];
@@ -260,6 +339,8 @@
     if (st.length) out.stickers = st;
     var ord = sanitizeOrder(theme.order);
     if (ord.length) out.order = ord;
+    var mv = sanitizeMoves(theme.moves);
+    if (Object.keys(mv).length) out.moves = mv;
     return Object.keys(out).length ? out : null;
   }
 
@@ -381,7 +462,7 @@
      constant from this file or a GOOGLE_FONT_RE name, so nothing a writer
      typed can close the declaration it sits in. */
   function themeAttrs(theme, linkRoot) {
-    if (!theme) return { cls: '', style: '', fonts: [] };
+    if (!theme) return { cls: '', style: '', fonts: [], movesCss: '' };
     var cls = ['page-themed'];
     var style = [];
     if (theme.font) cls.push('theme-font-' + theme.font);
@@ -483,6 +564,8 @@
       ord.forEach(function (k, n) { style.push('--pg-o-' + k + ':' + (n + 1)); });
     }
     if (ord.length || theme.secGap != null) cls.push('tl-flow');
+    var movesCss = movesCSS(theme.moves);
+    if (movesCss) cls.push('tl-moved');
     if (theme.headCase) cls.push('theme-hcase-' + theme.headCase);
     if (theme.align) cls.push('theme-align-' + theme.align);
 
@@ -534,7 +617,7 @@
       style.push('--pg-header-scale:' + (theme.headerSize / 100));
     }
     if (theme.logoPanel) cls.push('theme-logo-panel');
-    return { cls: cls.join(' '), style: style.join(';'), fonts: themeFontLinks(theme) };
+    return { cls: cls.join(' '), style: style.join(';'), fonts: themeFontLinks(theme), movesCss: movesCss };
   }
 
   /* One-click styles: each is a bundle of the fields above and nothing else,
@@ -544,7 +627,7 @@
   /* Layout is kept apart from the style fields: picking a quick style
      recolours a page, it does not undo how the owner arranged it. */
   var THEME_LAYOUT_KEYS = ['width', 'cardW', 'cardCols', 'cardGap', 'cardPad', 'cardLayout', 'cardAlign',
-    'cardAbility', 'pageW', 'panelPad', 'secGap', 'infoW', 'infoPos', 'titleSize', 'topAlign', 'order'];
+    'cardAbility', 'pageW', 'panelPad', 'secGap', 'infoW', 'infoPos', 'titleSize', 'topAlign', 'order', 'moves'];
   var THEME_STYLE_KEYS = THEME_FONTS.reduce(function (a, f) { return a.concat(f); }, []).concat(THEME_COLORS)
     .concat(THEME_NUMBERS.map(function (r) { return r[0]; }))
     .concat(Object.keys(THEME_CHOICES))
@@ -721,6 +804,8 @@
     p = String(p || '');
     if (!p) return '';
     if (/^https?:\/\//i.test(p)) return p;
+    // An image picked in an editor and not uploaded yet (the live preview).
+    if (/^data:image\/(png|jpeg|gif|webp);base64,/i.test(p)) return p;
     return root + 'assets/' + p + (version
       ? (p.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(version)) : '');
   }
@@ -791,11 +876,11 @@
     TEAMS.forEach(function (t) {
       var grp = entries.filter(function (c) { return c.team === t[0]; });
       if (!grp.length) return;
-      html += '<div class="script-team-group"><h3 class="script-team-head' + (GOOD[t[0]] ? ' good' : '') + '">' +
+      html += '<div class="script-team-group" data-team="' + t[0] + '"><h3 class="script-team-head' + (GOOD[t[0]] ? ' good' : '') + '">' +
         t[1] + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
           quickSlot(c) + '</span>' +
@@ -809,9 +894,9 @@
       return !TEAMS.some(function (t) { return t[0] === c.team; });
     });
     if (other.length) {
-      html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
+      html += '<div class="script-team-group" data-team="other"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), '') + '>' +
           quickSlot(c) + '</span>' +
@@ -1630,6 +1715,10 @@
     THEME_PRESETS: THEME_PRESETS,
     THEME_STYLE_KEYS: THEME_STYLE_KEYS,
     THEME_LAYOUT_KEYS: THEME_LAYOUT_KEYS,
+    MOVABLE: MOVABLE,
+    moveSelector: moveSelector,
+    sanitizeMoves: sanitizeMoves,
+    movesCSS: movesCSS,
     THEME_SECTIONS: THEME_SECTIONS,
     THEME_NUMBERS: THEME_NUMBERS,
     THEME_CHOICES: THEME_CHOICES,

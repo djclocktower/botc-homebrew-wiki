@@ -441,6 +441,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/custom-url.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script src="assets/approved-editors.js"></script>
   <script>
   (function () {
@@ -698,6 +699,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     // ── Summary of the current script ──
     function renderSummary(){
+      if (live) live.refresh();
       var roster = orderedRoster();
       var chars = roster.chars;
       var body = $('pub-summary-body');
@@ -822,6 +824,33 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       slug: function(){ return EDIT_SLUG || getMeta().editSlug || ''; },
       onChange: function(v){ var m = getMeta(); m.customUrl = v; setMeta(m); }
     });
+    // ── The live page, beside the form (page-preview.js): the same
+    // renderScriptPage() the Worker draws /s/ with, fed from the form. ──
+    var live = window.PagePreview.attach({
+      editor: document.querySelector('.pub-main'), kind: 'script',
+      render: function(){
+        var name = $('sb-name').value.trim();
+        var slug = EDIT_SLUG || getMeta().editSlug || slugify(name) || 'preview';
+        var sc = {
+          slug: slug, name: name || 'Untitled Script', author: $('sb-author').value.trim(),
+          description: $('sb-desc').value.trim(), characters: getScript(),
+          header: headerDataURL || (removeHeader ? '' : (existingHeader || '')),
+          logo: logoDataURL || (removeLogo ? '' : (existingLogo || '')),
+          tagline: $('sb-tagline').value.trim(), version: $('sb-version').value.trim(),
+          difficulty: $('sb-difficulty').value,
+          synopsis: $('sb-synopsis').value.trim(), gameplay: $('sb-gameplay').value.trim(),
+          strategyGood: $('sb-strat-good').value.trim(), strategyEvil: $('sb-strat-evil').value.trim(),
+          nightOrder: gatherNightOrder(), jinxEdits: getJinxEdits(), bootlegger: gatherBoot()
+        };
+        var all = Object.keys(bySlug).map(function(k){ return bySlug[k]; });
+        var boxes = window.WikiRender && window.WikiRender.renderBoxes ? window.WikiRender.renderBoxes(boxesUI.gather(), { linkRoot: '' }) : '';
+        var theme = Object.assign({}, getMeta().theme || {});
+        if (removeBg) delete theme.background;
+        return { html: window.PageRender.renderScriptPage(sc, all, { linkRoot: '', boxesHTML: boxes }),
+                 theme: theme, base: 'scripts/' + slug, bgUrl: bgDataURL };
+      }
+    });
+
     function primeTheme(theme){
       if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
     }
@@ -1370,6 +1399,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(r){ return r.json(); })
       .then(function(list){
         (list || []).forEach(function(c){ bySlug[c.slug] = c; });
+        setTimeout(live.refresh, 300);
         var slug = new URLSearchParams(location.search).get('s');
         if (slug){
           loadForEdit(slug).then(renderSummary);

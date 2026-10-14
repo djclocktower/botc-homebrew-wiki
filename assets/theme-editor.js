@@ -30,6 +30,7 @@
   // opts.get() -> current theme object (may be null); opts.set(theme) persists it.
   // opts.onChange(theme), optional: called after any change made in here, so
   // an editor with a live preview can redraw it.
+  var wired = null, listeners = [];
   function wire(opts) {
     // Every write from the controls above repaints the sample below as well.
     var rawSet = opts.set;
@@ -39,7 +40,9 @@
       rawSet(t);
       if (more) { paintSample(t); }
       if (opts.onChange) opts.onChange(t);
+      listeners.forEach(function (f) { f(t); });
     } };
+    wired = opts;
     var sel = $('th-font');
     if (sel && !sel.options.length) {
       var presets = (window.PageRender && window.PageRender.FONT_PRESETS) || { 'default': 'Wiki default' };
@@ -857,6 +860,14 @@
     if (!more) paintCss(t.css || '');
   }
 
+  /* For the live page preview (page-preview.js): read the theme, write one
+     (a drag stores theme.moves through here, so the editor saves it), and
+     hear about every change the controls make. */
+  function current() { return wired ? (wired.get() || {}) : {}; }
+  function store(t) { if (wired) wired.set(t); }
+  function listen(f) { listeners.push(f); }
+
   window.ThemeEditor = { wire: wire, prime: prime, paintPreviews: paintPreviews,
-                         syncSizerRows: syncSizerRows, mountMore: mountMore, applyTo: applyTo };
+                         syncSizerRows: syncSizerRows, mountMore: mountMore, applyTo: applyTo,
+                         current: current, store: store, listen: listen };
 })();

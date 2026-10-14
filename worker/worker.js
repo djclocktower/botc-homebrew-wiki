@@ -7323,7 +7323,8 @@ function pageShell(o) {
     ? '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
       fontLinks.map(h => '<link rel="stylesheet" href="' + attr(h) + '">').join('\n') + '\n'
     : '') +
-    (o.customCss ? '<style id="page-custom-css">' + String(o.customCss).replace(/</g, '\\3c ') + '</style>\n' : '');
+    (o.customCss ? '<style id="page-custom-css">' + String(o.customCss).replace(/</g, '\\3c ') + '</style>\n' : '') +
+    (o.movesCss ? '<style id="page-moves">' + String(o.movesCss).replace(/</g, '') + '</style>\n' : '');
   const mainBody = o.customCss
     ? '<div class="ucss-frame"><div class="ucss">' + o.body + '</div></div>'
     : o.body;
@@ -7405,6 +7406,7 @@ function themeShellOpts(theme) {
   return {
     bodyClass: ta.cls, bodyStyle: ta.style, fonts: ta.fonts,
     customCss: theme && theme.css ? CustomCSS.clean(theme.css).css : '',
+    movesCss: ta.movesCss || '',
     stickers: PageRender.stickersHTML(theme && theme.stickers)
   };
 }

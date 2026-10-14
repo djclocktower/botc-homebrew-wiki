@@ -367,3 +367,34 @@ test('layout: sizes and positions are validated, become tl-* settings, and quick
   const coll = await (await f.request('/collection/' + made.id)).text();
   assert.match(coll, /<div class="coll-flow"><div class="coll-top">/);
 });
+
+test('moves: dragged parts are validated, printed as desktop-only translate rules, and kept apart from styles', async t => {
+  const T = PageRender.sanitizeTheme({ moves: {
+    title: [12.4, -30], 'c:imp': [5, 5], 'c:Bad"x': [1, 1], 't:demon': [0, 40], 't:nope': [1, 1],
+    's:pinned': [99999, 1], info: [0, 0], nope: [3, 3], '__proto__': [1, 1], banner: 'x', logo: [1]
+  } }, 'scripts/x');
+  assert.deepEqual(T, { moves: { title: [12, -30], 'c:imp': [5, 5], 't:demon': [0, 40], 's:pinned': [3000, 1] } });
+  const a = PageRender.themeAttrs(T);
+  assert.ok(a.cls.split(' ').includes('tl-moved'));
+  assert.match(a.movesCss, /^@media \(min-width: 901px\)\{/);
+  assert.match(a.movesCss, /\.tl-moved \.char-card\[data-slug="imp"\]\{translate:5px 5px;position:relative;z-index:5\}/);
+  assert.match(a.movesCss, /\.tl-moved \.script-team-group\[data-team="demon"\]\{translate:0px 40px/);
+  assert.doesNotMatch(a.movesCss, /Bad|nope|</);
+  assert.ok(PageRender.THEME_LAYOUT_KEYS.includes('moves'));
+  assert.ok(!PageRender.THEME_STYLE_KEYS.includes('moves'));
+
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  const r = await f.request('/api/script', post(1, {
+    slug: 'moved', name: 'Moved', author: 'user-1', characters: [], status: 'published',
+    theme: { moves: { title: [40, 10], '</style>': [1, 1] } }
+  }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const html = await (await f.request('/s/moved')).text();
+  const st = html.match(/<style id="page-moves">([\s\S]*?)<\/style>/);
+  assert.ok(st, 'moves printed');
+  assert.match(st[1], /\.tl-moved \.script-title-fallback\{translate:40px 10px/);
+  assert.match(html, /<body class="[^"]*tl-moved/);
+  assert.match(html, /class="script-char-row" href="[^"]*" data-slug=|No characters on this page yet/);
+});

@@ -229,7 +229,7 @@
      the bottom of the form AND a floating Preview button opens it over the
      form; closing it puts you back exactly where you were typing.
      Nodes are moved, never re-created, so every id and listener survives. */
-  function splitPreview(editor, preview) {
+  function splitPreview(editor, preview, opts) {
     if (!editor || !preview || editor.querySelector('.we-split')) return;
     var split = el('div', 'we-split');
     var form = el('div', 'we-split-form');
@@ -251,7 +251,7 @@
     editor.appendChild(fab);
 
     var main = editor.closest && editor.closest('main');
-    if (main) main.classList.add('we-wide');
+    if (main && !(opts && opts.wide === false)) main.classList.add('we-wide');
 
     var prevOverflow = '';
     function setOpen(on) {

@@ -3727,6 +3727,11 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .tl-order .prof-panel > [data-sec="collections"] { order: var(--pg-o-collections, 54); }
 .tl-order .prof-panel > [data-sec="pages"] { order: var(--pg-o-pages, 55); }
 
+/* Moved parts (theme.moves, render-page.js movesCSS) are drawn with
+   `translate`, which still counts towards the page's scrollable width: a part
+   dragged past the edge must not give a desktop page a sideways scrollbar. */
+@media (min-width: 901px) { body.tl-moved { overflow-x: clip; } }
+
 /* ── Custom CSS frame (assets/custom-css.js) ──
    A page with a custom stylesheet has its content wrapped in
    .ucss-frame > .ucss, and every rule the author wrote is rewritten to sit
