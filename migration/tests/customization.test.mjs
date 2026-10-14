@@ -241,3 +241,25 @@ test('custom URLs: a collection answers at its own address, by id and PK it forw
   r = await f.request('/api/collection', post(2, { displayName: 'Bigset', author: 'user-2' }));
   assert.equal(r.status, 409);
 });
+
+test('theme kit: character boxes, team headings and dividers each get their own setting', () => {
+  const t = PageRender.sanitizeTheme({
+    cardBg: '#112233', cardAlpha: 80, cardName: '#ff0000', cardFont: 'cinzel', gTeamFont: 'Metal Mania',
+    cardBorderW: 0, cardHover: 'glow', cardIcon: 150, teamColor: '#00ff00', teamBg: '#000000',
+    teamSize: 140, teamAlign: 'center', teamCase: 'lower', ruleStyle: 'dashed', ruleColor: '#abcdef', ruleW: 3,
+    cardShadow: 'huge', ruleW2: 5
+  }, 'x');
+  assert.equal(t.cardShadow, undefined);
+  assert.equal(t.cardBorderW, 0, 'no border is a choice, not "not set"');
+  const a = PageRender.themeAttrs(t);
+  for (const c of ['tc-bg', 'tc-name', 'tc-font', 'tc-border', 'tc-hover-glow', 'tc-icon', 'tc-box',
+                   'tt-font', 'tt-color', 'tt-bg', 'tt-size', 'tt-align-center', 'tt-case-lower', 'tr-dashed']) {
+    assert.match(a.cls, new RegExp('(^| )' + c + '( |$)'), c);
+  }
+  assert.match(a.style, /--pg-team-font:'Metal Mania', serif/);
+  assert.match(a.style, /--pg-rule:#abcdef/);
+  assert.ok(a.fonts.some(h => h.includes('family=Metal+Mania')));
+  assert.doesNotMatch(a.style, /[<>"{}]/);
+  // Untouched, nothing at all is added.
+  assert.equal(PageRender.themeAttrs(PageRender.sanitizeTheme({ accent: '#000000' }, 'x')).cls, 'page-themed theme-accent');
+});

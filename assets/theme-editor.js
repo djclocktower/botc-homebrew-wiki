@@ -216,7 +216,13 @@
     panelAlpha: ['Box opacity', '%'],
     radius:     ['Rounded corners', 'px'],
     borderW:    ['Border thickness', 'px'],
-    textScale:  ['Size of everything', '%']
+    textScale:  ['Size of everything', '%'],
+    cardAlpha:   ['Box opacity', '%'],
+    cardBorderW: ['Border thickness', 'px'],
+    cardRadius:  ['Rounded corners', 'px'],
+    cardIcon:    ['Icon size', '%'],
+    teamSize:    ['Heading size', '%'],
+    ruleW:       ['Divider thickness', 'px']
   };
   var CHOICE_LABELS = {
     bgFit:    ['Image fit', { cover: 'Fill the screen', contain: 'Whole image', tile: 'Tile / repeat', stretch: 'Stretch', center: 'Actual size, centred' }],
@@ -224,11 +230,20 @@
     shadow:   ['Box shadow', { none: 'None', soft: 'Soft', strong: 'Strong', glow: 'Glow' }],
     width:    ['Page width', { narrow: 'Narrow', wide: 'Wide', full: 'Full screen' }],
     headCase: ['Heading letters', { upper: 'UPPERCASE', lower: 'lowercase', caps: 'Small Caps', none: 'As typed' }],
-    align:    ['Paragraphs', { center: 'Centred', justify: 'Justified' }]
+    align:    ['Paragraphs', { center: 'Centred', justify: 'Justified' }],
+    cardShadow: ['Box shadow', { none: 'None', soft: 'Soft', strong: 'Strong', glow: 'Glow' }],
+    cardHover:  ['When the mouse is over a box', { lift: 'Lift up', grow: 'Grow', glow: 'Glow', none: 'Stay still' }],
+    teamAlign:  ['Heading position', { left: 'Left', center: 'Centred', right: 'Right' }],
+    teamCase:   ['Heading letters', { upper: 'UPPERCASE', lower: 'lowercase', caps: 'Small Caps', none: 'As typed' }],
+    ruleStyle:  ['Divider style', { fade: 'Fading line', solid: 'Solid line', dashed: 'Dashed', dotted: 'Dotted', double: 'Double line', glow: 'Glowing line', none: 'No divider' }]
   };
   var COLOR_LABELS = {
     heading: 'Headings (if different from the accent)', bgColor: 'Page background colour',
-    bgColor2: 'Gradient second colour', border: 'Box border', glow: 'Heading glow'
+    bgColor2: 'Gradient second colour', border: 'Box border', glow: 'Heading glow',
+    cardBg: 'Box colour', cardText: 'Ability text', cardName: 'Character name',
+    cardAccent: 'Team label and "View Character" link', cardBorder: 'Box border',
+    teamColor: 'Heading colour', teamBg: 'Band behind the heading', teamGlow: 'Heading glow',
+    ruleColor: 'Divider colour'
   };
   var POPULAR_FONTS = ['Lobster', 'Pacifico', 'Creepster', 'Nosifer', 'Metal Mania', 'UnifrakturMaguntia',
     'Uncial Antiqua', 'MedievalSharp', 'Almendra', 'Cormorant Garamond', 'Playfair Display', 'Abril Fatface',
@@ -260,11 +275,42 @@
     }
     if (kind === 'page' || kind === 'news') {
       return '<div class="wiki-page-head"><h1 class="wiki-title">Page Title</h1></div>' +
-        '<div class="wiki-body"><h2 class="wiki-h">A heading</h2><p>Body text looks like this, with a <a href="#">link</a> in it.</p></div>';
+        '<div class="wiki-body"><h2 class="wiki-h">A heading</h2><p>Body text looks like this, with a <a href="#">link</a> in it.</p>' +
+        '<hr class="wiki-rule"><p>More text after a divider.</p></div>';
     }
-    return '<section class="script-chars-panel"><h2 class="gen-sech">Synopsis</h2>' +
+    var icon = function (id) { return '/assets/icons-sm/' + id + '.webp'; };
+    if (kind === 'script') {
+      var row = function (id, name, ab) {
+        return '<a class="script-char-row" href="#"><img class="script-char-thumb" src="' + icon(id) + '" alt="">' +
+          '<div class="script-char-text"><span class="script-char-name">' + name + '</span>' +
+          '<span class="script-char-ability">' + ab + '</span></div></a>';
+      };
+      return '<section class="script-chars-panel"><div class="gen-sech-wrap"><h2 class="gen-sech">Synopsis</h2></div>' +
+        '<p class="script-desc">Body text looks like this, with a <a href="#">link</a> in it.</p>' +
+        '<div class="script-team-group"><h3 class="script-team-head good">Townsfolk <span class="script-team-count">(2)</span></h3>' +
+        '<div class="script-char-list">' +
+        row('washerwoman', 'Washerwoman', 'You start knowing that 1 of 2 players is a particular Townsfolk.') +
+        row('librarian', 'Librarian', 'You start knowing that 1 of 2 players is a particular Outsider.') +
+        '</div></div></section>' +
+        '<div class="card"><h2 class="info-h">Information</h2><dl class="info"><dt>Author</dt><dd><a href="#">You</a></dd></dl></div>';
+    }
+    var card = function (id, name, team, good, ab) {
+      return '<a class="char-card" href="#"><span class="card-side"><img class="char-card-thumb" src="' + icon(id) + '" alt=""></span>' +
+        '<div class="char-card-info"><div class="char-card-name">' + name + '</div>' +
+        '<div class="char-card-type' + (good ? ' good' : '') + '">' + team + '</div>' +
+        '<div class="char-card-ability">' + ab + '</div><span class="char-card-link">View Character &rarr;</span></div></a>';
+    };
+    var roster = '<div class="type-section"><h2 class="type-header good">Townsfolk <span class="coll-team-count">(2)</span></h2>' +
+      '<div class="type-rule"></div><div class="char-grid">' +
+      card('washerwoman', 'Washerwoman', 'Townsfolk', true, 'You start knowing that 1 of 2 players is a particular Townsfolk.') +
+      card('imp', 'Imp', 'Demon', false, 'Each night*, choose a player: they die.') + '</div></div>';
+    if (kind === 'profile') {
+      return '<div class="home-hero"><h1>Your Name</h1><p class="profile-bio">A short bio goes here, with a <a href="#">link</a>.</p></div>' +
+        '<section class="prof-section"><h2 class="type-header">Characters</h2>' + roster + '</section>';
+    }
+    return '<section class="script-chars-panel coll-prose"><div class="gen-sech-wrap"><h2 class="gen-sech">Synopsis</h2></div>' +
       '<p class="script-desc">Body text looks like this, with a <a href="#">link</a> in it.</p></section>' +
-      '<div class="card"><h2 class="info-h">Information</h2><dl class="info"><dt>Author</dt><dd><a href="#">You</a></dd></dl></div>';
+      '<p class="coll-chars-count">2 characters</p>' + roster;
   }
 
   function moreHTML(kind) {
@@ -311,13 +357,33 @@
     var fontOpts = Object.keys(fonts).map(function (k) {
       return '<option value="' + escH(k) + '">' + escH(fonts[k]) + '</option>';
     }).join('');
+    function fontRow(k, label) {
+      return '<div class="thx-row"><label for="thx-' + k + '">' + escH(label) + '</label><select id="thx-' + k + '" data-font="' + k + '">' + fontOpts + '</select></div>';
+    }
+    function gfontRow(k, label, eg) {
+      return '<div class="thx-row"><label for="thx-' + k + '">' + escH(label) + '</label><input type="text" id="thx-' + k + '" data-gfont="' + k + '" list="thx-gfonts" placeholder="e.g. ' + escH(eg) + '" maxlength="50"></div>';
+    }
 
     h += sec('Fonts', 'Body text font and any Google Font', 
-      '<div class="thx-row"><label for="thx-bodyFont">Body text font</label><select id="thx-bodyFont" data-font="bodyFont">' + fontOpts + '</select></div>' +
-      '<div class="thx-row"><label for="thx-gFont">Google Font for headings</label><input type="text" id="thx-gFont" data-gfont="gFont" list="thx-gfonts" placeholder="e.g. Creepster" maxlength="50"></div>' +
-      '<div class="thx-row"><label for="thx-gBodyFont">Google Font for body text</label><input type="text" id="thx-gBodyFont" data-gfont="gBodyFont" list="thx-gfonts" placeholder="e.g. Lora" maxlength="50"></div>' +
+      fontRow('bodyFont', 'Body text font') +
+      gfontRow('gFont', 'Google Font for headings', 'Creepster') +
+      gfontRow('gBodyFont', 'Google Font for body text', 'Lora') +
       '<datalist id="thx-gfonts">' + POPULAR_FONTS.map(function (f) { return '<option value="' + escH(f) + '">'; }).join('') + '</datalist>' +
       '<p class="thx-sub">Type the exact name of any font on <a href="https://fonts.google.com" target="_blank" rel="noopener">fonts.google.com</a>. It replaces the font picked above it.</p>');
+    if (kind !== 'page' && kind !== 'news') {
+      h += sec('Character boxes', 'The box each character sits in: colour, font, border, shadow',
+        ['cardBg'].map(colorRow).join('') + numRow('cardAlpha') +
+        ['cardName', 'cardText', 'cardAccent'].map(colorRow).join('') +
+        fontRow('cardFont', 'Character name font') + gfontRow('gCardFont', 'Google Font for names', 'Cinzel Decorative') +
+        colorRow('cardBorder') + numRow('cardBorderW') + numRow('cardRadius') +
+        choiceRow('cardShadow') + choiceRow('cardHover') + numRow('cardIcon'));
+      h += sec('Team headings', 'The Townsfolk / Outsider / Minion / Demon titles',
+        fontRow('teamFont', 'Heading font') + gfontRow('gTeamFont', 'Google Font for headings', 'Metal Mania') +
+        ['teamColor', 'teamBg', 'teamGlow'].map(colorRow).join('') +
+        numRow('teamSize') + choiceRow('teamAlign') + choiceRow('teamCase'));
+    }
+    h += sec('Dividers', 'The lines under headings and between sections',
+      choiceRow('ruleStyle') + colorRow('ruleColor') + numRow('ruleW'));
     h += sec('More colours', 'Background colour, gradient, borders, glow',
       ['heading', 'bgColor', 'bgColor2', 'border', 'glow'].map(colorRow).join('') + numRow('bgAngle') +
       '<p class="thx-sub">Pick a second colour to turn the background into a gradient.</p>');
@@ -400,14 +466,20 @@
     (PR().THEME_NUMBERS || []).forEach(function (r) {
       var i = $('thx-' + r[0]); if (!i) return;
       var has = theme[r[0]] != null;
-      i.value = has ? theme[r[0]] : (r[0] === 'bgAngle' ? 180 : (r[3] != null ? r[3] : r[1]));
+      // Where an unset slider rests: the look the stylesheet already draws.
+      var rest = { bgAngle: 180, ruleW: 2, borderW: 2, cardBorderW: 4 }[r[0]];
+      i.value = has ? theme[r[0]] : (rest != null ? rest : (r[3] != null ? r[3] : r[1]));
       showNum(r[0], has ? theme[r[0]] : null);
     });
     Array.prototype.forEach.call(root.querySelectorAll('[data-choice]'), function (i) {
       i.value = theme[i.getAttribute('data-choice')] || '';
     });
-    var bf = $('thx-bodyFont'); if (bf) bf.value = theme.bodyFont || 'default';
-    ['gFont', 'gBodyFont'].forEach(function (k) { var i = $('thx-' + k); if (i) i.value = theme[k] || ''; });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-font]'), function (i) {
+      i.value = theme[i.getAttribute('data-font')] || 'default';
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-gfont]'), function (i) {
+      i.value = theme[i.getAttribute('data-gfont')] || '';
+    });
     var css = $('thx-css'); if (css) css.value = theme.css || '';
     paintSample(theme);
   }

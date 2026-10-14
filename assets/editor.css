@@ -450,7 +450,7 @@ html.textedit-on .te-live-hit {
 .thx-swatch:hover, .thx-swatch:focus-visible { outline: 2px solid #c9a227; outline-offset: 1px; }
 .thx-sample-frame { border: 1px solid #cdbfa0; border-radius: 6px; overflow: hidden; }
 .thx-sample { position: relative; contain: paint; padding: 14px; background: var(--purple-deep, #2a0f24);
-  max-height: 360px; overflow: auto; }
+  max-height: 480px; overflow: auto; }
 .thx-sample-in { zoom: .8; display: grid; gap: 12px; }
 .thx-sample .home-hero { padding: 10px; }
 .thx-sample .script-chars-panel, .thx-sample .card, .thx-sample .wiki-body,
@@ -458,7 +458,7 @@ html.textedit-on .te-live-hit {
 .thx-sample.theme-bg, .thx-preview.theme-bg { background: var(--pg-bgl); }
 .thx-sample.theme-scale .thx-sample-in { zoom: calc(.8 * var(--pg-scale)); }
 .thx-preview.theme-scale > * { zoom: var(--pg-scale); }
-.thx-sample.theme-bfont :is(p, li, dd, dt, .profile-bio),
+.thx-sample.theme-bfont :is(p, li, dd, dt, .profile-bio, .char-card-ability, .script-char-ability),
 .thx-preview.theme-bfont :is(p, li, dd, dt, td, blockquote, .wiki-body, .news-body) { font-family: var(--pg-bfont); }
 .thx-sample.theme-align-center p, .thx-preview.theme-align-center p { text-align: center; }
 .thx-sample.theme-align-justify p, .thx-preview.theme-align-justify p { text-align: justify; }

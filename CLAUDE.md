@@ -1254,6 +1254,15 @@ in this order by `assets/theme-editor.js`:
    fixed `body::before` layer; its url() stays root-absolute (see below).
    CSS rules are in styles.css under "Theme kit: the deeper knobs", keyed on
    the body classes, so an untouched page draws exactly as before.
+   **Character boxes, team headings and dividers** have knobs of their own
+   (`card*`, `team*`, `rule*` fields; `tc-*` / `tt-*` / `tr-*` classes in
+   styles.css under "Theme kit: character boxes, team headings, dividers"):
+   the boxes are a collection/creator page's `.char-card` AND a script
+   page's `.script-char-row`; the headings `.type-header` and
+   `.script-team-head`; the dividers `.type-rule`, the script heading's
+   border, `.gen-sech-wrap`'s side lines and `.wiki-rule`. Fonts are
+   `THEME_FONTS` pairs (preset key + Google family). Every preset derives
+   these from its own panel colours unless it names them.
 3. **Custom CSS** — `theme.css`, stored as typed (capped at
    `THEME_CSS_MAX`), cleaned by `CustomCSS.clean()` at render time and
    printed as `<style id="page-custom-css">` after the site's stylesheets.

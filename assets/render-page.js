@@ -124,7 +124,15 @@
     ['panelAlpha', 0, 100, 100],
     ['radius',     0,  40, null],
     ['borderW',    0,   8, null],
-    ['textScale', 75, 150, 100]
+    ['textScale', 75, 150, 100],
+    // Character boxes (collection/creator cards, script roster rows)
+    ['cardAlpha',   0, 100, 100],
+    ['cardBorderW', 0,   8, null],
+    ['cardRadius',  0,  40, null],
+    ['cardIcon',   50, 200, 100],
+    // Team headings and dividers
+    ['teamSize',   50, 250, 100],
+    ['ruleW',       0,  12, null]
   ];
   // The pick-one knobs and what each may say.
   var THEME_CHOICES = {
@@ -133,9 +141,18 @@
     shadow:   ['none', 'soft', 'strong', 'glow'],
     width:    ['narrow', 'wide', 'full'],
     headCase: ['upper', 'lower', 'caps', 'none'],
-    align:    ['center', 'justify']
+    align:    ['center', 'justify'],
+    cardShadow: ['none', 'soft', 'strong', 'glow'],
+    cardHover:  ['none', 'lift', 'grow', 'glow'],
+    teamAlign:  ['left', 'center', 'right'],
+    teamCase:   ['upper', 'lower', 'caps', 'none'],
+    ruleStyle:  ['fade', 'solid', 'dashed', 'dotted', 'double', 'glow', 'none']
   };
-  var THEME_COLORS = ['accent', 'panel', 'text', 'link', 'bgColor', 'bgColor2', 'border', 'glow', 'heading'];
+  var THEME_COLORS = ['accent', 'panel', 'text', 'link', 'bgColor', 'bgColor2', 'border', 'glow', 'heading',
+    'cardBg', 'cardText', 'cardName', 'cardAccent', 'cardBorder',
+    'teamColor', 'teamBg', 'teamGlow', 'ruleColor'];
+  // The font slots: a preset key each, or a Google family that replaces it.
+  var THEME_FONTS = [['font', 'gFont'], ['bodyFont', 'gBodyFont'], ['cardFont', 'gCardFont'], ['teamFont', 'gTeamFont']];
   /* A Google Fonts family name: letters, digits and spaces, which is every
      family Google serves. Nothing else may reach the stylesheet URL or the
      font stack, so a name can never close a quote or a url(). */
@@ -144,15 +161,14 @@
   function sanitizeTheme(theme, allowedBgBase) {
     if (!theme || typeof theme !== 'object') return null;
     var out = {};
-    ['font', 'bodyFont'].forEach(function (k) {
+    THEME_FONTS.forEach(function (f) {
+      var k = f[0], g = f[1];
       if (typeof theme[k] === 'string' &&
           Object.prototype.hasOwnProperty.call(FONT_STACKS, theme[k])) {
         out[k] = theme[k];
       }
-    });
-    ['gFont', 'gBodyFont'].forEach(function (k) {
-      var v = typeof theme[k] === 'string' ? theme[k].trim().replace(/\s+/g, ' ') : '';
-      if (GOOGLE_FONT_RE.test(v)) out[k] = v;
+      var v = typeof theme[g] === 'string' ? theme[g].trim().replace(/\s+/g, ' ') : '';
+      if (GOOGLE_FONT_RE.test(v)) out[g] = v;
     });
     THEME_COLORS.forEach(function (k) {
       var v = theme[k];
@@ -226,7 +242,8 @@
   function themeFontLinks(theme) {
     var out = [];
     if (!theme) return out;
-    ['gFont', 'gBodyFont'].forEach(function (k) {
+    THEME_FONTS.forEach(function (f) {
+      var k = f[1];
       if (theme[k] && GOOGLE_FONT_RE.test(theme[k])) {
         var href = 'https://fonts.googleapis.com/css2?family=' +
           theme[k].replace(/ /g, '+') + '&display=swap';
@@ -280,6 +297,50 @@
       style.push('--pg-glow:0 0 6px ' + hexA(theme.glow, .9) + ',0 0 16px ' + hexA(theme.glow, .6));
     }
     if (theme.textScale) { cls.push('theme-scale'); style.push('--pg-scale:' + (theme.textScale / 100)); }
+
+    /* Character boxes, team headings and dividers: one class per setting
+       (tc-* / tt-* / tr-*), so an untouched setting keeps the stylesheet's
+       own look, and a custom property carrying the value. */
+    function stack(k, g, fallback) {
+      return theme[g] ? "'" + theme[g] + "', " + fallback : (theme[k] && FONT_STACKS[theme[k]]);
+    }
+    function on(c, prop, val) { cls.push(c); if (prop) style.push(prop + ':' + val); }
+    if (theme.cardBg || theme.cardAlpha != null) {
+      on('tc-bg', theme.cardBg ? '--pg-card-bg' : '', theme.cardBg);
+      if (theme.cardAlpha != null) style.push('--pg-card-alpha:' + theme.cardAlpha + '%');
+    }
+    if (theme.cardText) on('tc-text', '--pg-card-text', theme.cardText);
+    if (theme.cardName) on('tc-name', '--pg-card-name', theme.cardName);
+    if (theme.cardAccent) on('tc-accent', '--pg-card-accent', theme.cardAccent);
+    var cardStack = stack('cardFont', 'gCardFont', 'serif');
+    if (cardStack) on('tc-font', '--pg-card-font', cardStack);
+    if (theme.cardBorder || theme.cardBorderW != null) {
+      cls.push('tc-border');
+      style.push('--pg-card-bw:' + (theme.cardBorderW != null ? theme.cardBorderW : 2) + 'px');
+      if (theme.cardBorder) style.push('--pg-card-border:' + theme.cardBorder);
+    }
+    if (theme.cardRadius != null) on('tc-radius', '--pg-card-radius', theme.cardRadius + 'px');
+    var cardGlow = hexA(theme.cardAccent || theme.glow || theme.accent || '#e8c66a', .8);
+    if (theme.cardShadow) {
+      on('tc-shadow', '--pg-card-shadow', theme.cardShadow === 'glow' ? '0 0 18px ' + cardGlow : SHADOWS[theme.cardShadow]);
+    }
+    if (theme.cardHover) { cls.push('tc-hover-' + theme.cardHover); style.push('--pg-card-glow:' + cardGlow); }
+    if (theme.cardBg || theme.cardAlpha != null || theme.cardBorder || theme.cardBorderW != null ||
+        theme.cardRadius != null || theme.cardShadow) cls.push('tc-box');
+    if (theme.cardIcon) on('tc-icon', '--pg-card-icon', theme.cardIcon / 100);
+    var teamStack = stack('teamFont', 'gTeamFont', 'serif');
+    if (teamStack) on('tt-font', '--pg-team-font', teamStack);
+    if (theme.teamColor) on('tt-color', '--pg-team-color', theme.teamColor);
+    if (theme.teamBg) on('tt-bg', '--pg-team-bg', theme.teamBg);
+    if (theme.teamGlow) on('tt-glow', '--pg-team-glow', '0 0 6px ' + hexA(theme.teamGlow, .9) + ',0 0 14px ' + hexA(theme.teamGlow, .6));
+    if (theme.teamSize) on('tt-size', '--pg-team-size', theme.teamSize / 100);
+    if (theme.teamAlign) cls.push('tt-align-' + theme.teamAlign);
+    if (theme.teamCase) cls.push('tt-case-' + theme.teamCase);
+    if (theme.ruleStyle || theme.ruleColor || theme.ruleW != null) {
+      cls.push('tr-' + (theme.ruleStyle || 'fade'));
+      if (theme.ruleColor) style.push('--pg-rule:' + theme.ruleColor);
+      if (theme.ruleW != null) style.push('--pg-rule-w:' + theme.ruleW + 'px');
+    }
     if (theme.width) cls.push('theme-width-' + theme.width);
     if (theme.headCase) cls.push('theme-hcase-' + theme.headCase);
     if (theme.align) cls.push('theme-align-' + theme.align);
@@ -339,7 +400,7 @@
      so a preset is just a starting point the knobs can then move. Applying
      one replaces the STYLE fields and leaves the page's own images, image
      sizes and custom CSS alone (see ThemeEditor.applyPreset). */
-  var THEME_STYLE_KEYS = ['font', 'bodyFont', 'gFont', 'gBodyFont'].concat(THEME_COLORS)
+  var THEME_STYLE_KEYS = THEME_FONTS.reduce(function (a, f) { return a.concat(f); }, []).concat(THEME_COLORS)
     .concat(THEME_NUMBERS.map(function (r) { return r[0]; }))
     .concat(Object.keys(THEME_CHOICES));
   var THEME_PRESETS = {
@@ -355,6 +416,24 @@
     'retro':    { label: 'Retro Web', t: { font: 'comic', bodyFont: 'comic', accent: '#0000ee', heading: '#ff00ff', panel: '#ffffcc', text: '#000000', link: '#0000ee', bgColor: '#008080', radius: 0, border: '#000000', borderW: 3, shadow: 'none' } },
     'ghost':    { label: 'Ghostly', t: { font: 'unlovable', accent: '#cfd8e3', heading: '#ffffff', panel: '#1c2027', text: '#cfd6df', link: '#a9c6e8', bgColor: '#0b0d10', bgColor2: '#2b313a', bgAngle: 180, panelAlpha: 70, radius: 18, shadow: 'glow', glow: '#b7c9e2', bgBlur: 3 } }
   };
+  /* Every quick style dresses the character boxes, team headings and
+     dividers too, from its own colours, so a preset never leaves parchment
+     cards sitting on a neon page. A preset that names one of these itself
+     keeps its own. */
+  Object.keys(THEME_PRESETS).forEach(function (k) {
+    var t = THEME_PRESETS[k].t;
+    if (!t.panel) return;
+    var derived = {
+      cardBg: t.panel, cardText: t.text, cardName: t.heading || t.accent, cardAccent: t.link,
+      cardBorder: t.border, cardBorderW: t.borderW, cardRadius: t.radius, cardShadow: t.shadow,
+      cardAlpha: t.panelAlpha, cardFont: t.font,
+      teamColor: t.heading || t.accent, teamFont: t.font, teamGlow: t.glow,
+      ruleColor: t.border || t.accent
+    };
+    Object.keys(derived).forEach(function (d) {
+      if (derived[d] != null && t[d] == null) t[d] = derived[d];
+    });
+  });
 
   /* ── Hybrid collection membership ──
      Auto-matched by the character's "Appears in" text (normalized against
