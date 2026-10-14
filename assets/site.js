@@ -359,7 +359,11 @@
     // Everything already painted onto this page, backwards. Rebuilt on every
     // change, because "undo" and "change it again" both need the source
     // wording back before the new wording can go on.
+    // An edit that only DELETES words (". Every page credits…" -> ".") cannot
+    // be undone by text: its new wording is inside the old, so the undo rule
+    // would match every "." on the page and paste the sentence after each.
     undoRules = appliedItems.filter(usable)
+      .filter(function (it) { return it.o.indexOf(it.r) < 0; })
       .map(function (it) { return { o: it.r, r: it.o, s: it.s }; })
       .sort(bylen).map(compile);
 
