@@ -457,6 +457,10 @@
     var ownByName = {};
     function resolveSlug(name, appearsIn){
       var base = slugify(name);
+      // A name with no a-z/0-9 in it (blank, or all Han, Cyrillic…) slugs to
+      // '': it used to be saved as '' and then "-2", "-3". Give it a fresh
+      // identity of its own instead, as create.html does for a nameless draft.
+      if (!base) return Promise.resolve({ slug: 'untitled-' + Math.random().toString(36).slice(2, 10), mine: false });
       var q = '/api/slug-check?type=character&name=' + encodeURIComponent(name) +
               '&appearsIn=' + encodeURIComponent(appearsIn || '');
       return fetch(q, { credentials:'same-origin' })

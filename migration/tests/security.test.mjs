@@ -339,3 +339,17 @@ test('a page\'s editor list is the owner\'s; a deleted page is not republished b
     assert.equal(t.f.db.prepare("SELECT status FROM characters WHERE slug='shared-one'").get().status, 'deleted');
   } finally { await t.finish(); }
 });
+
+test('a new character identity cannot start with a hyphen; [[2]] is never a link', async () => {
+  const t = await setup();
+  try {
+    const owner = t.cookieOf(await t.post('/api/signup', { username: 'hyph', email: 'hyph@example.com', password: 'hyphs-password-1' }));
+    const res = await t.post('/api/character', { slug: '-2', name: '太一', team: 'townsfolk', status: 'draft' }, owner);
+    assert.equal(res.status, 400);
+    assert.equal(t.f.db.prepare("SELECT 1 FROM characters WHERE slug='-2'").get(), undefined);
+    const { default: W } = await import('../../assets/render-wiki.js');
+    W.setCharLinks({ 2: 'forgetful-brewing/deliverer' });
+    assert.equal(W.inlineFormat('[[2]]', { marks: 'links' }), '<span class="tok">2</span>');
+    W.setCharLinks({});
+  } finally { await t.finish(); }
+});
