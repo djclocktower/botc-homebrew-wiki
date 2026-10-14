@@ -49,6 +49,8 @@
  *   texScale        Texture zoom; 1 = texture spans the whole icon.
  *   texRotation     Texture rotation in degrees.
  *   texOffsetX/Y    Texture pan, −1…1 of the field half-width.
+ *   texTile         Tile the plain 591 px sheet, mirrored, laid out from the
+ *                   centre — the original look, before the grain mosaic.
  *   colorSat/Bright/Vib/Grad   Colour texture grade (1/1/0/0 = unchanged).
  *   whiteSat/Bright/Vib/Grad   Parchment texture grade.
  *   borderWidth     Border width, output px (0–40).
@@ -102,6 +104,7 @@ export const DEFAULT_OPTIONS = {
   texRotation: 0,
   texOffsetX: 0,
   texOffsetY: 0,
+  texTile: false,
   colorSat: 1,
   colorBright: 1,
   colorVib: 0,
@@ -974,6 +977,12 @@ function grainSheet(tex) {
   sheetCache.set(tex, sheet);
   return sheet;
 }
+const tileCache = new WeakMap();
+function tiledSheet(tex) {
+  let sheet = tileCache.get(tex);
+  if (!sheet) tileCache.set(tex, (sheet = mirroredBlock(tex)));
+  return sheet;
+}
 /** Render one texture as a continuous transformed field covering the canvas.
  *  Tiles the grain sheet with plain drawImage calls (instead of a
  *  CanvasPattern) so coverage is guaranteed at any pan/zoom/rotation. The
@@ -983,7 +992,9 @@ function grainSheet(tex) {
  *  the icon across, so at the usual zooms one crop covers the whole icon
  *  and there is no join at all. */
 function textureField(tex, W, opts) {
-  const sheet = grainSheet(tex);
+  // texTile: the original small sheet, mirror-tiled with its corner at the
+  // centre. The mirrored block tiled plainly is exactly that old layout.
+  const sheet = opts.texTile ? tiledSheet(tex) : grainSheet(tex);
   const out = makeCanvas(W);
   const ctx = ctx2d(out);
   // Grain scale follows the ORIGINAL texture, not the grown sheet, so
@@ -997,7 +1008,7 @@ function textureField(tex, W, opts) {
     )
     .rotate(opts.texRotation)
     .scale(s)
-    .translate(-sheet.width / 2, -sheet.height / 2);
+    .translate(opts.texTile ? 0 : -sheet.width / 2, opts.texTile ? 0 : -sheet.height / 2);
   // Map the canvas corners back into texture space to find the needed tiles.
   const inv = m.inverse();
   const xs = [];
@@ -1188,7 +1199,7 @@ const MASK_OPTS = [
   'bevelSize',
 ];
 /** Options that affect a tiled texture field (before colour adjustment). */
-const TEX_OPTS = ['texScale', 'texRotation', 'texOffsetX', 'texOffsetY'];
+const TEX_OPTS = ['texScale', 'texRotation', 'texOffsetX', 'texOffsetY', 'texTile'];
 /** Object identity -> small integer, for cache keys. */
 const idMap = new WeakMap();
 let nextId = 1;
