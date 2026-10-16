@@ -4535,6 +4535,11 @@ keeps `content-visibility: auto`.
    deliberately beats this wiki: 291 of the ~320 jinxes on the site name an
    official character, and a homebrew page sharing a name (there is more than
    one "Sculptor") must not steal their link. Don't rename icon files.
+   Code that MATCHES a jinx without drawing it (the Worker's jinx index —
+   mirroring and /jinxes — `findScriptJinxes`, `jinxTargetCheck`) asks
+   `Render.jinxOfficialId()` for the same step; the index once skipped it, and
+   a homebrew "Atheist*" with identity `atheist` collected every jinx written
+   with the official Atheist.
    **Name clashes are settled by the SET.** 166 names on this wiki belong to
    more than one page — there are four Wardens and two Changelings — and
    matching a jinx on the bare name landed whichever page was registered

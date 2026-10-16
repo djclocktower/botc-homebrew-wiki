@@ -199,6 +199,23 @@ test('/api/jinxes draws versioned thumbnails and small official icons', async t 
   assert.equal(body.nodes.find(n => n.id === 'o:imp').icon, 'https://botchomebrew.wiki/assets/icons-sm/imp.webp');
 });
 
+test('a homebrew page named like an official character does not take its jinxes', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  // The live case: a homebrew "Atheist*" whose identity is the official id.
+  f.insert('characters', 'atheist', { slug: 'atheist', name: 'Atheist*', team: 'demon', ability: 'x' });
+  f.insert('characters', 'actor', { slug: 'actor', name: 'Actor', team: 'townsfolk', ability: 'x',
+    jinxes: [{ name: 'Atheist', id: 'atheist', text: 'Rule.' }, { name: 'Atheist*', slug: 'atheist', text: 'Picked.' }] });
+  const body = await (await f.request('/api/jinxes')).json();
+  const ab = e => [e.a, e.b].sort().join(' ');
+  assert.deepEqual(body.edges.map(ab).sort(), ['c:actor c:atheist', 'c:actor o:atheist']);
+  assert.equal(body.edges.find(e => e.b === 'o:atheist' || e.a === 'o:atheist').text, 'Rule.');
+  // A script holding both pages pairs only the one the picker named.
+  Render.setOfficialNames({ atheist: 'Atheist' });
+  t.after(() => Render.setOfficialNames(null));
+  const actor = { slug: 'actor', name: 'Actor', jinxes: [{ name: 'Atheist', id: 'atheist', text: 'Rule.' }] };
+  assert.equal(Render.findScriptJinxes([actor, { slug: 'atheist', name: 'Atheist*' }]).length, 0);
+});
+
 test('no static page still loads the 64 KB parchment JPEG', async () => {
   for (const file of await readdir(new URL('../../', import.meta.url))) {
     if (!file.endsWith('.html')) continue;
