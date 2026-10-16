@@ -474,6 +474,20 @@
     var n = OFFICIAL_NAMES[slugId(id)];
     return (typeof n === 'string' && n) ? n : '';
   }
+  /* Does this jinx name an OFFICIAL character? The one test behind "official
+     beats this wiki" (gotcha 8) for everything that matches a jinx without
+     drawing it: the Worker's jinx index (mirroring, /jinxes), a script's
+     pairs and the importers' warning. Without it a homebrew page whose
+     identity is an official id ("atheist") collected every jinx written with
+     the real one. Answers the official id it matched, or ''. `names` is an
+     official-name map; the registry by default. */
+  function jinxOfficialId(j, names) {
+    names = names || OFFICIAL_NAMES;
+    if (!names || !j) return '';
+    var id = slugId(String(j.id || '').replace(/_festival_of_lanterns$/, ''));
+    var nm = slugId(jinxDisplayName(j));
+    return (id && names[id]) ? id : (nm && names[nm]) ? nm : '';
+  }
 
   /* This wiki's own characters, keyed by normJinxId() of slug and of name, so a
      jinx naming another homebrew page can find it. Same injection pattern as
@@ -1068,7 +1082,7 @@
     // needs setOfficialNames() to have been called — without it every jinx
     // with an official character looks homebrew, which is a warning on almost
     // every import.
-    out.official = !!(officialName(j.id || '') || officialName(out.name));
+    out.official = !!jinxOfficialId(j);
     if (out.official) return out;
     var keys = jinxLookupKeys(j, host), hit = '';
     for (var i = 0; i < keys.length && !out.picked; i++) {
@@ -1098,6 +1112,9 @@
         // An entry written by the jinx picker names its target outright; the
         // older ones have to be matched by id or by name.
         var target = j.slug && byId[normJinxId(j.slug)];
+        // One naming an official character is never a wiki pair
+        // (officialJinxesOnScript in render-page.js draws those).
+        if (!target && jinxOfficialId(j)) return;
         if (!target) {
           var ks = jinxLookupKeys(j, c);
           for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
@@ -1519,7 +1536,7 @@
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       jinxExportId: jinxExportId,
-      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,
+      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
       jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
       charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,

@@ -7537,7 +7537,7 @@ async function loadOfficialJinxes(env, origin) {
 // carrying contentVersion(), which logActivity() bumps on every content write.
 // Cold cost is one narrow read of the characters table (loadJinxRows).
 let _jinxIndexCache = null;      // { version, index }
-async function jinxIndex(env, ctx) {
+async function jinxIndex(env, ctx, origin) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
 
@@ -7547,7 +7547,7 @@ async function jinxIndex(env, ctx) {
   // build rides in the key too: the index's keys are worked out by render.js
   // (normJinxId), so a deploy that changes how they fold must not be served
   // an index keyed the old way.
-  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}&f=2&s=3&build=${BUILD_ID}`, { method: 'GET' });
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}&f=2&s=4&build=${BUILD_ID}`, { method: 'GET' });
   try {
     const hit = await caches.default.match(cacheKey);
     if (hit) {
@@ -7564,7 +7564,11 @@ async function jinxIndex(env, ctx) {
   // version yet.
   const rows = (_cardCharsCache && _cardCharsCache.version === version)
     ? _cardCharsCache.rows : await loadJinxRows(env);
-  const index = buildJinxIndex(rows);
+  // Official characters win (gotcha 8), so the index needs the roster. A
+  // failed roster load builds for this request only, never into a cache.
+  const names = await officialNameMap(env, origin).catch(() => ({}));
+  const index = buildJinxIndex(rows, names);
+  if (!Object.keys(names).length) return index;
   _jinxIndexCache = { version, index };
   try {
     const stored = new Response(JSON.stringify(packJinxIndex(index)), {
@@ -7671,7 +7675,7 @@ function mergeMirroredJinxes(d, slug, jx) {
 
 // Pure, so it can be reasoned about (and tested) without a database.
 // `chars` -> { chars: {key: row}, bySlug: {slug: [edge]}, edges: [edge] }.
-function buildJinxIndex(chars) {
+function buildJinxIndex(chars, officialNames) {
   // Keyed by identity, by name and by set (Render.jinxCharIndex owns that
   // order — the set-qualified keys are what tells two homebrew characters of
   // the same name apart, and they claim only what is still free). The compact
@@ -7706,7 +7710,11 @@ function buildJinxIndex(chars) {
       // from the picker skips all of it.
       const picked = Render.normJinxId(j.slug || '');
       let key = picked && byKey[picked] ? picked : '';
-      if (!key) {
+      // An official character beats any page here that shares its name or
+      // id (resolveJinxTarget step 2): the edge points at no wiki page.
+      const official = key ? '' : Render.jinxOfficialId(j, officialNames);
+      if (official) key = official;
+      else if (!key) {
         for (const k of Render.jinxLookupKeys(j, c)) {
           if (byKey[k]) { key = k; break; }
         }
@@ -7714,7 +7722,7 @@ function buildJinxIndex(chars) {
       // Nothing on the wiki answers to it (an official character, a draft, a
       // typo): the edge still records what it was pointing at.
       if (!key) key = Render.normJinxId(j.id || Render.slugId(j.name || ''));
-      const target = byKey[key];
+      const target = official ? null : byKey[key];
       // A page jinxed with itself is a data slip, not a relationship.
       if (target && target.slug === c.slug) continue;
       const text = j.text || j.reason || '';
@@ -9336,7 +9344,7 @@ const app = {
             const [setHref, icons, names, jx, ownLinkMap] = await Promise.all([
               appearsInHref(env, ctx, d.appearsIn).catch(() => undefined),
               officialIconMap(env, url.origin), officialNameMap(env, url.origin),
-              jinxIndex(env, ctx).catch(() => null),
+              jinxIndex(env, ctx, url.origin).catch(() => null),
               ownLinks ? cachedCharLinkMap(env, ctx) : null,
               curataCollections(env).catch(() => null),
               includeCollections(env).catch(() => null)
@@ -9856,7 +9864,7 @@ const app = {
     if (method === 'GET' && path === '/api/jinxes') {
       let index;
       try {
-        index = await jinxIndex(env, ctx);
+        index = await jinxIndex(env, ctx, url.origin);
       } catch {
         return jsonResponse({ nodes: [], edges: [] });
       }
@@ -12225,7 +12233,7 @@ const app = {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
-      const index = await jinxIndex(env, ctx);
+      const index = await jinxIndex(env, ctx, url.origin);
       const icons = await officialIconMap(env, url.origin).catch(() => ({}));
       const names = await officialNameMap(env, url.origin).catch(() => ({}));
 

@@ -199,6 +199,42 @@ test('/api/jinxes draws versioned thumbnails and small official icons', async t 
   assert.equal(body.nodes.find(n => n.id === 'o:imp').icon, 'https://botchomebrew.wiki/assets/icons-sm/imp.webp');
 });
 
+test('a homebrew page named like an official character does not take its jinxes', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  // The live case: a homebrew "Atheist*" whose identity is the official id.
+  f.insert('characters', 'atheist', { slug: 'atheist', name: 'Atheist*', team: 'demon', ability: 'x' });
+  f.insert('characters', 'actor', { slug: 'actor', name: 'Actor', team: 'townsfolk', ability: 'x',
+    jinxes: [{ name: 'Atheist', id: 'atheist', text: 'Rule.' }, { name: 'Atheist*', slug: 'atheist', text: 'Picked.' }] });
+  const body = await (await f.request('/api/jinxes')).json();
+  const ab = e => [e.a, e.b].sort().join(' ');
+  assert.deepEqual(body.edges.map(ab).sort(), ['c:actor c:atheist', 'c:actor o:atheist']);
+  assert.equal(body.edges.find(e => e.b === 'o:atheist' || e.a === 'o:atheist').text, 'Rule.');
+  // A script holding both pages pairs only the one the picker named.
+  Render.setOfficialNames({ atheist: 'Atheist' });
+  t.after(() => Render.setOfficialNames(null));
+  const actor = { slug: 'actor', name: 'Actor', jinxes: [{ name: 'Atheist', id: 'atheist', text: 'Rule.' }] };
+  assert.equal(Render.findScriptJinxes([actor, { slug: 'atheist', name: 'Atheist*' }]).length, 0);
+});
+
+test('no official character can lose its jinxes to a homebrew page', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  // Every official id gets a homebrew page squatting on it (identity = the
+  // id, name = the official name), and one host jinxed with each by id and
+  // by name. Not one edge may land on a homebrew page.
+  const roles = JSON.parse(await read('assets/roles.json')).filter(r => r && r.id && r.name);
+  const jinxes = [];
+  for (const r of roles) {
+    const slug = Render.slugId(r.id);
+    f.insert('characters', slug, { slug, name: r.name + '*', team: 'demon', ability: 'x' });
+    jinxes.push({ id: r.id, name: r.name, text: 'By id.' }, { name: r.name, text: 'By name.' });
+  }
+  f.insert('characters', 'host-x', { slug: 'host-x', name: 'Host X', team: 'townsfolk', ability: 'x', jinxes });
+  const body = await (await f.request('/api/jinxes')).json();
+  const stolen = body.edges.filter(e => [e.a, e.b].some(n => n.startsWith('c:') && n !== 'c:host-x'));
+  assert.deepEqual(stolen, []);
+  assert.equal(body.edges.length, roles.length * 2);
+});
+
 test('no static page still loads the 64 KB parchment JPEG', async () => {
   for (const file of await readdir(new URL('../../', import.meta.url))) {
     if (!file.endsWith('.html')) continue;
