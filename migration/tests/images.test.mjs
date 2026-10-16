@@ -216,6 +216,25 @@ test('a homebrew page named like an official character does not take its jinxes'
   assert.equal(Render.findScriptJinxes([actor, { slug: 'atheist', name: 'Atheist*' }]).length, 0);
 });
 
+test('no official character can lose its jinxes to a homebrew page', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  // Every official id gets a homebrew page squatting on it (identity = the
+  // id, name = the official name), and one host jinxed with each by id and
+  // by name. Not one edge may land on a homebrew page.
+  const roles = JSON.parse(await read('assets/roles.json')).filter(r => r && r.id && r.name);
+  const jinxes = [];
+  for (const r of roles) {
+    const slug = Render.slugId(r.id);
+    f.insert('characters', slug, { slug, name: r.name + '*', team: 'demon', ability: 'x' });
+    jinxes.push({ id: r.id, name: r.name, text: 'By id.' }, { name: r.name, text: 'By name.' });
+  }
+  f.insert('characters', 'host-x', { slug: 'host-x', name: 'Host X', team: 'townsfolk', ability: 'x', jinxes });
+  const body = await (await f.request('/api/jinxes')).json();
+  const stolen = body.edges.filter(e => [e.a, e.b].some(n => n.startsWith('c:') && n !== 'c:host-x'));
+  assert.deepEqual(stolen, []);
+  assert.equal(body.edges.length, roles.length * 2);
+});
+
 test('no static page still loads the 64 KB parchment JPEG', async () => {
   for (const file of await readdir(new URL('../../', import.meta.url))) {
     if (!file.endsWith('.html')) continue;
