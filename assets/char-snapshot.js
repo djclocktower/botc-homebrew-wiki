@@ -750,7 +750,7 @@
     var draw = Math.min(inner, 246);
     var shown = url.replace(/^https?:\/\/(www\.)?/i, '');
     var parts = [
-      heading(ctx, 'Read it on the wiki', inner, { after: 10 }),
+      heading(ctx, 'Wiki Link', inner, { after: 10 }),
       blk(draw, function (c, x, y) {
         var px = x + (inner - draw) / 2;
         c.save();
