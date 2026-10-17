@@ -354,27 +354,38 @@
     return blk(laid.height, function (c, x, y) { drawLines(c, laid, x, y); });
   }
 
-  function bullets(ctx, items, width, sty) {
+  var BULLET_GAP = 8.5;                    // li margin-bottom: .85em, minus leading
+  function bulletItems(ctx, items, width, sty) {
     sty = assign({ size: 17, lh: 1.42, family: FAM.body, color: C.ink }, sty);
     var indent = sty.size * 1.1;
-    var gap = sty.size * 0.5;                       // li margin-bottom: .85em, minus leading
-    var laids = items.map(function (t) {
-      return layout(ctx, marked(t), width - indent, sty);
-    });
-    var h = 0;
-    laids.forEach(function (l, i) { h += l.height + (i ? gap : 0); });
-    return blk(h, function (c, x, y) {
-      var at = y;
-      laids.forEach(function (l, i) {
-        if (i) at += gap;
+    return items.map(function (t) {
+      var l = layout(ctx, marked(t), width - indent, sty);
+      return blk(l.height, function (c, x, y) {
         c.font = fontFor(sty, { bold: true });
         c.fillStyle = C.evil;
         c.textBaseline = 'alphabetic';
-        c.fillText('•', x, at + sty.size * (sty.ascent || 0.78));
-        drawLines(c, l, x + indent, at);
-        at += l.height;
+        c.fillText('•', x, y + sty.size * (sty.ascent || 0.78));
+        drawLines(c, l, x + indent, y);
       });
     });
+  }
+  function bullets(ctx, items, width, sty) {
+    return stack(bulletItems(ctx, items, width, sty), BULLET_GAP);
+  }
+
+  /* Items in two columns, read down the left and then the right, split where
+     the two come out closest in height. Used under the sidebar, where a
+     single column across the whole poster would be a line far too long. */
+  var COLS_GAP = 34;
+  function twoCols(items, colW, gap) {
+    if (items.length < 2) return stack(items, gap);
+    var best = 1, bestH = Infinity;
+    for (var s = 1; s < items.length; s++) {
+      var h = Math.max(stack(items.slice(0, s), gap).h, stack(items.slice(s), gap).h);
+      if (h < bestH) { bestH = h; best = s; }
+    }
+    var a = stack(items.slice(0, best), gap), b = stack(items.slice(best), gap);
+    return blk(bestH, function (c, x, y) { a.draw(c, x, y); b.draw(c, x + colW + COLS_GAP, y); });
   }
 
   /* A section heading: the wiki's display face, uppercase, with a hairline
@@ -536,87 +547,91 @@
   }
 
   /* ── the left-hand parchment ── */
-  function buildParchment(ctx, d, assets, width) {
-    var inner = width - BORDER * 2 - PANEL_PAD_X * 2;
-    var colGap = 34;
-    var colW = Math.floor((inner - colGap) / 2);
-    var blocks = [];
-
+  /* The parchment as SECTIONS, each of which can be laid out in either of two
+     places: beside the sidebar (the page's own column), or under it across
+     the whole poster (`wide`), where its items flow in two columns. compose()
+     decides where the cut goes. Each section carries the rule that separates
+     it from the one before; the first in a panel draws none. */
+  function parchmentSections(ctx, d, assets) {
     var bulletLines = list(d.summaryBullets);
     var howLines = list(d.howToRun);
     var examples = list(d.examples);
-    var tips = list(d.tips);
-    var bluffing = list(d.bluffing);
-    var fighting = list(d.fighting);
     // A list since How to Run grew several notes; old rows hold one string.
     var callouts = (Array.isArray(d.callout) ? d.callout : [d.callout])
       .filter(function (x) { return typeof x === 'string' && x.trim(); });
+    var secs = [];
+    function colWidth(inner) { return Math.floor((inner - COLS_GAP) / 2); }
 
-    var related = relatedBlock(ctx, d, assets, colW);
-    var summary = [];
-    if (d.ability || d.lede || bulletLines.length || related) {
-      summary.push(heading(ctx, 'Summary', colW, { after: 12 }));
-      // The ability stays escaped, exactly as it is on the page: it is the
-      // character's rule, not writing about the character.
-      if (d.ability) summary.push(para(ctx, textRuns(d.ability), colW,
-        { size: 18, bold: true, lh: 1.34 }));
-      if (d.ability && (d.lede || bulletLines.length)) summary.push(spacer(12));
-      if (d.lede) summary.push(para(ctx, marked(d.lede), colW, {}));
-      if (d.lede && bulletLines.length) summary.push(spacer(11));
-      if (bulletLines.length) summary.push(bullets(ctx, bulletLines, colW, {}));
-      // The Related ribbons close the summary column, as on the page.
-      if (related) { if (summary.length > 1) summary.push(spacer(20)); summary.push(related); }
-    }
-
-    var how = [];
-    if (howLines.length || callouts.length) {
-      how.push(heading(ctx, 'How to Run', colW, { after: 12 }));
-      howLines.forEach(function (p, i) {
-        if (i) how.push(spacer(11));
-        how.push(para(ctx, marked(p), colW, {}));
-      });
-      callouts.forEach(function (c, i) {
-        if (howLines.length || i) how.push(spacer(16));
-        how.push(calloutBox(ctx, c, colW, assets));
-      });
-    }
-
-    if (summary.length || how.length) {
-      var left = stack(summary), right = stack(how);
-      var colsH = Math.max(left.h, right.h);
-      blocks.push(blk(colsH + 16, function (c, x, y) {
-        if (summary.length) left.draw(c, x, y);
-        if (how.length) right.draw(c, x + colW + colGap, y);
-      }));
-      // The rule under the two columns separates them from what follows; with
-      // nothing following it would just be a line hanging off the bottom of
-      // the parchment.
-      if (examples.length || tips.length || bluffing.length || fighting.length) {
-        blocks.push(hairline(inner, { below: 18 }));
-      }
+    if (d.ability || d.lede || bulletLines.length || assets.related.length || howLines.length || callouts.length) {
+      secs.push({ sep: function () { return []; }, build: function (inner) {
+        var colW = colWidth(inner);
+        var related = relatedBlock(ctx, d, assets, colW);
+        var summary = [];
+        if (d.ability || d.lede || bulletLines.length || related) {
+          summary.push(heading(ctx, 'Summary', colW, { after: 12 }));
+          // The ability stays escaped, exactly as it is on the page: it is the
+          // character's rule, not writing about the character.
+          if (d.ability) summary.push(para(ctx, textRuns(d.ability), colW,
+            { size: 18, bold: true, lh: 1.34 }));
+          if (d.ability && (d.lede || bulletLines.length)) summary.push(spacer(12));
+          if (d.lede) summary.push(para(ctx, marked(d.lede), colW, {}));
+          if (d.lede && bulletLines.length) summary.push(spacer(11));
+          if (bulletLines.length) summary.push(bullets(ctx, bulletLines, colW, {}));
+          // The Related ribbons close the summary column, as on the page.
+          if (related) { if (summary.length > 1) summary.push(spacer(20)); summary.push(related); }
+        }
+        var how = [];
+        if (howLines.length || callouts.length) {
+          how.push(heading(ctx, 'How to Run', colW, { after: 12 }));
+          howLines.forEach(function (p, i) {
+            if (i) how.push(spacer(11));
+            how.push(para(ctx, marked(p), colW, {}));
+          });
+          callouts.forEach(function (c, i) {
+            if (howLines.length || i) how.push(spacer(16));
+            how.push(calloutBox(ctx, c, colW, assets));
+          });
+        }
+        var left = stack(summary), right = stack(how);
+        return [blk(Math.max(left.h, right.h) + 16, function (c, x, y) {
+          if (summary.length) left.draw(c, x, y);
+          if (how.length) right.draw(c, x + colW + COLS_GAP, y);
+        })];
+      } });
     }
 
     if (examples.length) {
-      blocks.push(heading(ctx, 'Examples', inner));
-      examples.forEach(function (e, i) {
-        if (i) blocks.push(spacer(16));
-        blocks.push(exampleBox(ctx, e, inner, assets));
-      });
+      secs.push({ sep: function (inner) { return [hairline(inner, { below: 18 })]; },
+        build: function (inner, wide) {
+          var w = wide ? colWidth(inner) : inner;
+          var boxes = examples.map(function (e) { return exampleBox(ctx, e, w, assets); });
+          return [heading(ctx, 'Examples', inner), wide ? twoCols(boxes, w, 16) : stack(boxes, 16)];
+        } });
     }
 
-    function listSection(title, items) {
-      if (!items.length) return;
-      blocks.push(spacer(24));
-      blocks.push(hairline(inner, { below: 14 }));
-      blocks.push(heading(ctx, title, inner));
-      blocks.push(bullets(ctx, items, inner, {}));
-    }
     var charName = (d.name || 'Character').trim();
-    listSection('Tips & Tricks', tips);
-    listSection('Bluffing as the ' + charName, bluffing);
-    listSection('Fighting the ' + charName, fighting);
+    [['Tips & Tricks', d.tips], ['Bluffing as the ' + charName, d.bluffing],
+     ['Fighting the ' + charName, d.fighting]].forEach(function (s) {
+      var items = list(s[1]);
+      if (!items.length) return;
+      secs.push({ sep: function (inner) { return [spacer(24), hairline(inner, { below: 14 })]; },
+        build: function (inner, wide) {
+          var w = wide ? colWidth(inner) : inner;
+          var li = bulletItems(ctx, items, w, {});
+          return [heading(ctx, s[0], inner), wide ? twoCols(li, w, BULLET_GAP) : stack(li, BULLET_GAP)];
+        } });
+    });
+    return secs;
+  }
 
-    if (!blocks.length) return null;
+  // Some sections laid into one parchment panel `width` wide.
+  function parchmentPanel(secs, width, wide, assets) {
+    var inner = width - BORDER * 2 - PANEL_PAD_X * 2;
+    var blocks = [];
+    secs.forEach(function (s, i) {
+      if (i) blocks = blocks.concat(s.sep(inner));
+      blocks = blocks.concat(s.build(inner, wide));
+    });
     var body = stack(blocks);
     var h = body.h + (PANEL_PAD_Y + BORDER) * 2;
     return blk(h, function (ctx2, x, y) {
@@ -852,16 +867,14 @@
       var t = global.resolveJinxTarget ? global.resolveJinxTarget(j, root) : null;
       var id = String(j.id || (global.slugId ? global.slugId(j.name || '') : ''))
         .replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-      return loadFirst(sameOriginFirst([t && t.iconSrc, id && root + 'assets/icons/' + id + '.png',
-        t && t.iconFallback]));
+      return loadFirst(officialIcons(t, id, root));
     });
     var related = (Array.isArray(d.related) ? d.related : []).map(function (r) {
       var t = r && global.resolveRelatedTarget ? global.resolveRelatedTarget(r, root) : null;
-      return t && t.name ? { t: t, note: String(r.note || '').trim() } : null;
+      return t && t.name ? { t: t, note: String(r.note || '').trim(),
+        id: r.type === 'official' && global.slugId ? global.slugId(r.id || r.name || '') : '' } : null;
     }).filter(Boolean);
-    var relJobs = related.map(function (r) {
-      return loadFirst(sameOriginFirst([r.t.iconSrc, r.t.iconFallback]));
-    });
+    var relJobs = related.map(function (r) { return loadFirst(officialIcons(r.t, r.id, root)); });
     return Promise.all([
       ensureFonts(),
       loadImage(root + 'assets/bg.webp'),
@@ -876,6 +889,20 @@
       return { bg: r[1], parchment: r[2], art: r[3], ornEx: r[4], ornCall: r[5],
                jinxIcons: r[6], jinxes: jinxes, related: related };
     });
+  }
+  /* An icon in the order to try it: what the page draws, then the official
+     art in its CURRENT style by id (icons-sm, which is what the page draws
+     for an official character once roles.json has loaded — a snapshot taken
+     before then, or a jinx typed by hand, still gets the modern picture),
+     then the CDN, and the old-style assets/icons/ copy only as a last
+     resort. */
+  function officialIcons(t, id, root) {
+    var all = sameOriginFirst([t && t.iconSrc, id && root + 'assets/icons-sm/' + id + '.webp',
+      t && t.iconFallback, id && root + 'assets/icons/' + id + '.png']);
+    // resolveJinxTarget's own last resort is that old copy, so it can be
+    // t.iconSrc: whatever its source, it goes to the back.
+    var old = function (s) { return /\/assets\/icons\//.test(s); };
+    return all.filter(function (s) { return !old(s); }).concat(all.filter(old));
   }
   /* Our own files before anybody else's: another host need not send CORS
      headers, and a picture we cannot read back is worse than one we never
@@ -894,7 +921,6 @@
     var titleName = strip ? (strip(name, creators[0] || '') || name) : name;
 
     var title = titleBlock(ctx, titleName, LEFT_W);
-    var panel = buildParchment(ctx, d, assets, LEFT_W);
 
     var sideCards = [infoCard(ctx, d, assets, RIGHT_W, opts)];
     var qr = qrCard(ctx, opts.pageUrl, RIGHT_W, assets);
@@ -906,10 +932,27 @@
 
     var titleTop = 14;
     var panelTop = titleTop + title.h + 12;
-    var leftBottom = panelTop + (panel ? panel.h : 0);
-    var rightBottom = RIGHT_TOP + side.h;
+    var sideBottom = RIGHT_TOP + side.h;
+
+    /* Where the parchment is cut. Everything beside the sidebar is the page's
+       own layout; once the sidebar has run out, the rest can go under it
+       across the whole poster instead of leaving that side empty. Every cut
+       between sections is tried and the shortest poster wins, so a long
+       almanac fills the width and a short one stays exactly as the page
+       draws it (a cut has to save a real amount to be taken). */
+    var secs = parchmentSections(ctx, d, assets);
+    var best = { top: null, rest: null, bottom: sideBottom };
+    for (var k = secs.length; k >= 1; k--) {
+      var top = parchmentPanel(secs.slice(0, k), LEFT_W, false, assets);
+      var rest = k < secs.length ? parchmentPanel(secs.slice(k), W - MARGIN * 2, true, assets) : null;
+      var restTop = Math.max(panelTop + top.h, sideBottom) + CARD_GAP;
+      var bottom = rest ? restTop + rest.h : Math.max(panelTop + top.h, sideBottom);
+      if (!best.top || bottom < best.bottom - 40) {
+        best = { top: top, rest: rest, restTop: restTop, bottom: bottom };
+      }
+    }
     var FOOT = 34;
-    var height = Math.max(leftBottom, rightBottom) + MARGIN + 8 + FOOT;
+    var height = best.bottom + MARGIN + 8 + FOOT;
 
     return {
       height: height,
@@ -924,7 +967,8 @@
           c.restore();
         }
         title.draw(c, MARGIN, titleTop);
-        if (panel) panel.draw(c, MARGIN, panelTop);
+        if (best.top) best.top.draw(c, MARGIN, panelTop);
+        if (best.rest) best.rest.draw(c, MARGIN, best.restTop);
         side.draw(c, MARGIN + LEFT_W + COL_GAP, RIGHT_TOP);
         // Where the picture came from, for wherever it ends up.
         c.font = '400 20px ' + FAM.display;

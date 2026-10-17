@@ -642,13 +642,22 @@ assets/
                        safe. A picture on another host is fetched with
                        crossOrigin and DROPPED when that fails, because one
                        unreadable image taints the canvas and the whole poster
-                       stops being exportable (official jinx icons therefore
-                       prefer the committed assets/icons/ copy over the CDN's).
+                       stops being exportable (official icons therefore come
+                       from our own icons-sm/ — the modern art — before the
+                       CDN, and the OLD-style assets/icons/ copy only last).
                        And the poster is not the page: the jinx dropdown mode,
                        the JSON box and the Curata wreath are interface, so a
                        still image gets the jinx card, the QR and the almanac.
                        Layout is in units of a 1360-wide poster, scaled once at
                        the end to fit MAX_PIXELS (a phone's canvas is capped).
+                       The parchment is a list of SECTIONS (the Summary / How
+                       to Run columns, Examples, each list); compose() tries
+                       every cut between them and keeps the shortest poster:
+                       what is above the cut sits beside the sidebar as on the
+                       page, what is below runs the full width under it with
+                       its items in two balanced columns (twoCols). A cut must
+                       save 40 units to be taken, so a short page keeps the
+                       page's own layout.
                        Browser only (canvas + DOM); styles are .snap-* in
                        styles.css.
   qr.js                A QR code as a grid of true/false, for that square.
