@@ -2080,6 +2080,14 @@ the bulk tool asks for it — an editor re-fitting a freshly picked file
 wants the answer either way. Adding a future standard means appending the
 one being retired to `LEGACY_FILLS`, or every icon it fitted will read as
 placed and stay where it is.
+**Placed by hand has a ceiling: `PLACED_MAX` (0.70).** A 591 square whose
+figure is longer than that is re-fitted however it got there — Icon Forge
+used to save at ~0.90 and every one of those read as "placed", so the bulk
+run never touched them and they printed half again the size of the icons
+beside them (Huli Jing on Tick Tock, 0.85). Icon Forge's "Save to a
+character" now standardizes before uploading (its Download keeps its own
+margin), and Adjust by hand's Size slider stops at the same ceiling, so no
+hand placement is one the bulk run would undo.
 
 **A creator can still make their icon draw bigger (or smaller) on its own
 page: `artScale`**, the "Change how big the icon is displayed on this page"

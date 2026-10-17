@@ -42,6 +42,13 @@
      frame at any other size or position was placed by a person (Adjust by
      hand, or Icon Forge with its own margin) and is theirs. */
   var LEGACY_FILLS = [0.70];
+  /* The biggest a hand-placed icon may be and still count as a choice. A
+     figure past this was never placed for the frame (Icon Forge used to
+     save at ~0.90; a 591 square cropped to its ink reads the same) and
+     prints far larger than the official icon beside it, so the bulk run
+     re-fits it however it got there. art-adjust.js caps its slider here so
+     a hand placement can never be one the bulk run would undo. */
+  var PLACED_MAX = 0.70;
   var CENTER_TOLERANCE = 4;  // px the figure's centre may sit off the frame's
   var ALPHA_THRESHOLD = 16;  // pixels with alpha above this count as "figure"
 
@@ -109,6 +116,7 @@
   function isPlacedFrame(iw, ih, box, target, fill) {
     if (iw !== target || ih !== target) return false;
     if (isStandardFrame(iw, ih, box, target, fill)) return false;
+    if (Math.max(box.w, box.h) / target > PLACED_MAX) return false;
     for (var i = 0; i < LEGACY_FILLS.length; i++) {
       if (isStandardFrame(iw, ih, box, target, LEGACY_FILLS[i])) return false;
     }
@@ -168,5 +176,6 @@
   global.ART_TARGET = TARGET;
   global.ART_FILL = FILL;
   global.ART_FILL_TOLERANCE = FILL_TOLERANCE;
+  global.ART_PLACED_MAX = PLACED_MAX;
   global.ART_LEGACY_FILLS = LEGACY_FILLS.slice();
 })(typeof window !== 'undefined' ? window : this);

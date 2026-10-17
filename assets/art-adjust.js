@@ -35,7 +35,7 @@
   // the one Resize gives, and the whole point is that it opens on that.
   var FILL = global.ART_FILL || 0.60;
   var MIN_FILL = 15;  // slider range, in percent of the frame
-  var MAX_FILL = 130;
+  var MAX_FILL = Math.round((global.ART_PLACED_MAX || 0.70) * 100); // bigger prints oversized
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);

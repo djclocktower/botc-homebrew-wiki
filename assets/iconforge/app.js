@@ -947,7 +947,13 @@ $('if-save').addEventListener('click', async () => {
   setSaveMsg('', 'Forging the icon at 591 px…');
   try {
     const out = renderFinal(591);
-    const dataUrl = out.toDataURL('image/png');
+    let dataUrl = out.toDataURL('image/png');
+    // The forge leaves only a thin margin, which the official script tool
+    // prints far larger than its own icons; fit it to the wiki's standard
+    // (assets/art-normalize.js). The Download button keeps the forge's own.
+    if (typeof window.normalizeArtDataURL === 'function') {
+      dataUrl = await window.normalizeArtDataURL(dataUrl).catch(() => dataUrl);
+    }
 
     setSaveMsg('', 'Uploading…');
     const page = await fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), {
