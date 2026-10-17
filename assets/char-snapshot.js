@@ -1018,6 +1018,11 @@
       function (d) { d.quote = ''; d.flavor = ''; }],
     ['pronunciation', 'Pronunciation', function (d) { return d.pronunciation || d.ipa || d.respelling; },
       function (d) { d.pronunciation = ''; d.ipa = ''; d.respelling = ''; }],
+    ['creator', 'Creator credit', function (d) { return String(d.creator || '').trim(); },
+      function (d) { d.creator = ''; }],
+    ['appearsIn', 'Collection (Appears in)', function (d) {
+      return String(d.appearsIn || '').trim() || list(d.appearsInFrom).length;
+    }, function (d) { d.appearsIn = ''; d.appearsInFrom = []; }],
     ['info', 'Information', function () { return true; }, function () {}],   // infoCard reads opts.hide
     ['qr', 'Wiki Link', function (d, o) { return o.pageUrl; }, function (d, o) { o.pageUrl = ''; }],
     ['jinxes', 'Jinxes', function (d) { return list(d.jinxes).length; }, function (d) { d.jinxes = []; }]
@@ -1059,7 +1064,12 @@
     d = h.d; opts = h.opts;
     return gatherAssets(d, opts).then(function (assets) {
       var measure = doc.createElement('canvas').getContext('2d');
-      var poster = compose(measure, d, assets, opts);
+      // "[[Drunk]]" is this character's reminder token when it carries one,
+      // as on the page (renderCharacter sets the same registry, and clears it).
+      var W2 = global.WikiRender, poster;
+      if (W2 && W2.setReminderTokens) W2.setReminderTokens(list(d.reminders).concat(list(d.remindersGlobal)));
+      try { poster = compose(measure, d, assets, opts); }
+      finally { if (W2 && W2.setReminderTokens) W2.setReminderTokens(null); }
       // A chosen shape adds background around the poster rather than
       // shrinking or squashing it.
       var cw = W, ch = poster.height, r = RATIOS[opts.ratio] || 0;

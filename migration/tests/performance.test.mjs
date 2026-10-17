@@ -275,7 +275,7 @@ test('resolved Appears in markup skips both browser feed requests', async () => 
   const field = { textContent: 'A Set', querySelector() { return null; }, getAttribute() { return 'A Set'; } };
   const context = vm.createContext({
     window: { CHAR_SLUG: 'demo', APPEARS_IN_RESOLVED: true }, location: { hash: '' },
-    document: { getElementById: id => id === 'content' ? {} : null,
+    document: { getElementById: id => id === 'content' ? {} : null, addEventListener() {},
       querySelector: selector => selector === '.info-appears-in' ? field : null },
     fetch: async () => { requests++; return ok([]); }
   });

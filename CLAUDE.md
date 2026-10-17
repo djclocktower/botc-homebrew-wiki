@@ -614,7 +614,18 @@ assets/
                        preview's scroll position. The in-frame script keeps the
                        JSON box, the jinx dropdown and the title fit working;
                        __cpFit() is re-run after each repaint. Browser only.
-  char-snapshot.js     The "Snapshot" button on both character editors: the
+  char-snapshot.js     The "Snapshot" button on both character editors AND on
+                       every /c/ page (a square camera button in the info
+                       card's corner, beside Copy link, which then shrinks to
+                       its icon; charpage.js answers it by loading
+                       render-wiki/render/creators/qr/this file and roles.json
+                       on the first press and reading the page through
+                       /api/page, which serves a published page to anyone).
+                       The page's owner can switch either corner button off
+                       in Advanced Options → Page buttons (`hideSnapshot`,
+                       `hideCopyLink` on the row's data, stored only when
+                       ticked, in CARD_DROP_FIELDS); with Snapshot off, Copy
+                       link is the labelled tab it always was. The poster:
                        whole almanac entry drawn onto a CANVAS as one poster —
                        title, the parchment panel (Summary / How to Run / the
                        callout / Examples / Tips / Bluffing / Fighting), then
@@ -627,8 +638,9 @@ assets/
                        browser can share files), Copy image and a Download
                        PNG button naming it {Charactername}_Almanac.png.
                        A settings wheel in the window's head opens: a tick
-                       per section the character actually has (SECTIONS, plus
-                       one per custom box, keyed by its title), Shape (Fit
+                       per section the character actually has (SECTIONS —
+                       Creator credit and Collection (Appears in) included —
+                       plus one per custom box, keyed by its title), Shape (Fit
                        the page, 1:1, 4:5, 9:16, 16:9 — a shape ADDS
                        background round the centred poster, never shrinks
                        or squashes it) and Size (Small 1600px longest side,

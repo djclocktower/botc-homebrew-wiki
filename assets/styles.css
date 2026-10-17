@@ -2179,6 +2179,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .char-infocard { position: relative; min-width: 0; }
 .card-actions {
   position: absolute; top: 0; right: 0; z-index: 2;
+  display: flex;
 }
 .copy-link-btn {
   flex-shrink: 0;
@@ -2192,6 +2193,23 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   padding: 6px 12px 5px; transition: background .15s, color .15s;
 }
 .copy-link-btn:hover { background: var(--parch-frame); color: #fff; }
+/* With the Snapshot square beside it the link tab is its icon alone, and the
+   two are the same square: each draws its own left and bottom edge, so the
+   pair reads as one tab cut in two. */
+.copy-link-btn.copy-link-short, .snap-page-btn {
+  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.snap-page-btn {
+  cursor: pointer; border: none;
+  border-left: 2px solid var(--parch-frame);
+  border-bottom: 2px solid var(--parch-frame);
+  background: var(--parch); color: var(--maroon);
+  transition: background .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.snap-page-btn:hover { background: var(--parch-frame); color: #fff; }
+.snap-page-btn:disabled { opacity: .55; cursor: progress; }
 
 /* Keep the title from getting oversized on small screens ("large" but not huge). */
 @media (max-width: 640px) {

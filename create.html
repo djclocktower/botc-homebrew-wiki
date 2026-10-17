@@ -455,6 +455,19 @@
       </fieldset>
 
       <fieldset>
+        <legend>Page buttons</legend>
+        <p class="sub" style="margin:0 0 10px">The two small buttons in the corner of the information box on the character page.</p>
+        <div class="fld ck">
+          <input type="checkbox" id="hideSnapshot">
+          <label for="hideSnapshot" style="margin:0">Hide the Snapshot button (the Copy link button goes back to its full label)</label>
+        </div>
+        <div class="fld ck" style="margin-bottom:0">
+          <input type="checkbox" id="hideCopyLink">
+          <label for="hideCopyLink" style="margin:0">Hide the Copy link button</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Replaces the automatic JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -784,6 +797,9 @@
         special: specialUI ? specialUI.gather() : [],
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value,
+        // The corner buttons on the page. Only a tick is stored.
+        hideSnapshot: $('hideSnapshot').checked || undefined,
+        hideCopyLink: $('hideCopyLink').checked || undefined,
         customBoxes: gatherBoxes(),
         related: relatedUI ? relatedUI.gather() : [],
         customJson: $('customJson').value.trim(),
@@ -840,7 +856,7 @@
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
      'quote','appears','tags','pronunciation','ipa','respelling','edition','firstNight','otherNight','fnReminder','onReminder',
-     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson'].forEach(function (id) {
+     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson','hideSnapshot','hideCopyLink'].forEach(function (id) {
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
@@ -1363,6 +1379,7 @@
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
             setup: d.setup, special: d.special, jinxes: d.jinxes,
             jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
+            hideSnapshot: d.hideSnapshot, hideCopyLink: d.hideCopyLink,
             related: d.related,
             customJson: d.customJson,
             // Who may edit the page once it exists, and (for approved editing)
