@@ -6,7 +6,7 @@
  * page as a poster — the thing people paste into Discord, print for a table or
  * post next to a script.
  *
- *   CharSnapshot.open(d, {artSrc, pageUrl, siteRoot})   // preview + download
+ *   CharSnapshot.open(d, {artSrc, pageUrl, siteRoot})   // preview + copy/share/download
  *   CharSnapshot.render(d, opts) -> Promise<canvas>     // just the canvas
  *
  * `d` is exactly what the editors' gather() returns — the same object the live
@@ -70,7 +70,8 @@
     parch: '#F0E8D5', frame: '#bda89a',
     exBg: '#ded3cd', exFrame: '#bcae93',
     maroon: '#5B1F21', ink: '#000',
-    good: '#2f6fb8', evil: '#9A0D12',
+    good: '#2C7BD0', goodName: '#2f6fb8', evil: '#9A0D12',
+    outsider: '#1a6a80', minion: '#b5441a', fabled: '#8f6d1a', loric: '#2f6b3f',
     rule: '#b79c6f', purple: '#1a0820',
     hair: 'rgba(180,160,120,.45)',
     quiet: '#8a7a62', pronounce: '#6b5d49'
@@ -78,15 +79,25 @@
   var FAM = {
     body: '"TradeGothicLT","Libre Franklin",-apple-system,sans-serif',
     display: '"Dumbledor2",serif',
-    quote: '"EB Garamond",Garamond,serif',
-    name: '"Oswald",sans-serif',
+    quote: '"Noto Serif",Georgia,serif',
+    name: '"Roboto",sans-serif',
     mono: 'ui-monospace,Menlo,Consolas,monospace'
   };
 
-  var TEAM_LABEL = {
-    townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+  // render.js's, which both editors load before this file.
+  var TEAM_LABEL = global.TEAM_LABEL || {};
+
+  /* The colour marks, by the class render-wiki.js puts on them — the same
+     colours as .wiki-* in styles.css. 'traveller' is the half-blue,
+     half-red split, drawn as a gradient in drawLines(). */
+  var MARK_COLOR = {
+    'wiki-red': C.evil, 'wiki-blue': C.good, 'wiki-townsfolk': C.good,
+    'wiki-demon': C.evil, 'wiki-outsider': C.outsider, 'wiki-minion': C.minion,
+    'wiki-fabled': C.fabled, 'wiki-loric': C.loric, 'wiki-traveller': 'traveller'
   };
+  // The Related ribbons' left edge, as .rel-* in styles.css.
+  var RIBBON = { good: C.good, evil: C.evil, fabled: '#b8952a', loric: '#3a7a4a',
+                 page: '#cdb488', ext: '#ffffff', traveller: 'traveller' };
 
   /* The two flourishes the page draws inside an example box and a callout,
      lifted from styles.css so the poster's ornaments are the page's ornaments.
@@ -115,7 +126,7 @@
      its fallback, exactly as the page would. */
   var FONT_PROBES = [
     '400 100px "Dumbledor2"', '400 17px "TradeGothicLT"', '700 17px "TradeGothicLT"',
-    'italic 400 20px "EB Garamond"', '600 17px "Oswald"'
+    'italic 400 20px "Noto Serif"', '600 17px "Roboto"'
   ];
   function ensureFonts() {
     var fonts = doc && doc.fonts;
@@ -186,15 +197,17 @@
           italic: st.italic || tag === 'EM' || tag === 'I',
           strike: st.strike || tag === 'S' || tag === 'DEL' || tag === 'STRIKE',
           mono: st.mono || tag === 'CODE',
-          under: st.under, color: st.color, token: st.token
+          under: st.under, color: st.color, token: st.token, drop: st.drop
         };
-        var cls = ' ' + (typeof n.className === 'string' ? n.className : '') + ' ';
         // The colour marks win over a link inside them, exactly as
         // `.wiki-red a { color: inherit !important }` does on the page.
-        if (cls.indexOf(' wiki-red ') !== -1) { next.color = C.evil; next.bold = true; }
-        else if (cls.indexOf(' wiki-blue ') !== -1) { next.color = C.good; next.bold = true; }
-        else if (cls.indexOf(' tok ') !== -1) next.token = true;
-        if (tag === 'A') { next.under = true; if (!next.color) next.color = C.good; }
+        for (var k = 0; k < n.classList.length; k++) {
+          var c = n.classList[k];
+          if (MARK_COLOR[c]) { next.color = MARK_COLOR[c]; next.bold = true; }
+          else if (c === 'tok') next.token = true;
+          else if (c === 'dropcap') next.drop = true;
+        }
+        if (tag === 'A') { next.under = true; if (!next.color) next.color = C.goodName; }
         walk(n, next);
       }
     })(host, {});
@@ -210,6 +223,9 @@
      measured is what appears. */
   function fontFor(sty, run) {
     run = run || {};
+    // A drop cap is drawn the way the page draws one inside a list or a box:
+    // a big initial on the line, not a float (a float is a layout engine).
+    if (run.drop) return '400 ' + (sty.size * 1.5) + 'px ' + FAM.display;
     var fam = run.token ? FAM.name : run.mono ? FAM.mono : (sty.family || FAM.body);
     var weight = run.token ? 600 : (run.bold || sty.bold) ? 700 : (sty.weight || 400);
     return ((run.italic || sty.italic) ? 'italic ' : '') + weight + ' ' + sty.size + 'px ' + fam;
@@ -291,9 +307,10 @@
           ctx.fillStyle = C.maroon;
           ctx.fillText(it.text, lx + pad, by);
         } else {
-          ctx.fillStyle = run.color || sty.color || C.ink;
+          ctx.fillStyle = paint(ctx, run.drop && !run.color ? C.maroon : (run.color || sty.color || C.ink),
+            by - ascent, by + sty.size * 0.22);
           ctx.fillText(it.text, lx, by);
-          if (run.under && it.text !== ' ') {
+          if (run.under) {
             ctx.fillRect(lx, by + Math.max(1, sty.size * 0.09), it.w, Math.max(1, sty.size * 0.05));
           }
           if (run.strike && it.text !== ' ') {
@@ -304,6 +321,15 @@
       });
     });
     ctx.letterSpacing = '0px';
+  }
+
+  // A colour, or the traveller's split: blue over red across the line's glyphs.
+  function paint(ctx, color, top, bottom) {
+    if (color !== 'traveller') return color;
+    var g = ctx.createLinearGradient(0, top, 0, bottom);
+    g.addColorStop(0, C.good); g.addColorStop(0.5, C.good);
+    g.addColorStop(0.5, C.evil); g.addColorStop(1, C.evil);
+    return g;
   }
 
   /* ── blocks ──
@@ -472,6 +498,43 @@
     });
   }
 
+  /* The Related ribbons: a coloured edge, the icon, the name and the note —
+     .rel-card on the page. Who each one points at was settled in
+     gatherAssets() through render.js's resolveRelatedTarget(), the page's
+     own answer, so a character's live name and team win over the stored one. */
+  function relatedBlock(ctx, d, assets, width) {
+    var rows = assets.related;
+    if (!rows.length) return null;
+    var edge = 6, ico = 44, pad = 10, padL = 17;
+    var parts = [heading(ctx, 'Related', width, { after: 12 })];
+    rows.forEach(function (r, i) {
+      if (i) parts.push(spacer(9));
+      var img = r.icon;
+      var textX = padL + (img ? ico + pad : 0);
+      var textW = width - textX - 12;
+      var color = r.t.ribbon === 'good' ? C.goodName : r.t.ribbon === 'evil' ? C.evil : C.maroon;
+      var name = layout(ctx, textRuns(r.t.name + (r.t.external ? ' ↗' : '')), textW,
+        { size: 17, family: FAM.name, weight: 600, lh: 1.2, color: color });
+      var note = r.note ? layout(ctx, marked(r.note, 'full'), textW,
+        { size: 16, family: '"EB Garamond",Georgia,serif', italic: true, lh: 1.28, color: C.ink }) : null;
+      var textH = name.height + (note ? note.height + 2 : 0);
+      var h = Math.max(img ? ico : 0, textH) + 18;
+      parts.push(blk(h, function (c, x, y) {
+        c.fillStyle = 'rgba(255,252,244,.55)';
+        c.fillRect(x, y, width, h);
+        c.lineWidth = 1;
+        c.strokeStyle = '#d7c9ab';
+        c.strokeRect(x + 0.5, y + 0.5, width - 1, h - 1);
+        c.fillStyle = paint(c, RIBBON[r.t.ribbon] || RIBBON.page, y, y + h);
+        c.fillRect(x, y, edge, h);
+        if (img) fitInto(c, img, x + padL, y + 9, ico, ico);
+        drawLines(c, name, x + textX, y + 9);
+        if (note) drawLines(c, note, x + textX, y + 9 + name.height + 2);
+      }));
+    });
+    return stack(parts);
+  }
+
   /* ── the left-hand parchment ── */
   function buildParchment(ctx, d, assets, width) {
     var inner = width - BORDER * 2 - PANEL_PAD_X * 2;
@@ -485,32 +548,37 @@
     var tips = list(d.tips);
     var bluffing = list(d.bluffing);
     var fighting = list(d.fighting);
-    var callout = (d.callout || '').trim();
+    // A list since How to Run grew several notes; old rows hold one string.
+    var callouts = (Array.isArray(d.callout) ? d.callout : [d.callout])
+      .filter(function (x) { return typeof x === 'string' && x.trim(); });
 
+    var related = relatedBlock(ctx, d, assets, colW);
     var summary = [];
-    if (d.ability || d.lede || bulletLines.length) {
+    if (d.ability || d.lede || bulletLines.length || related) {
       summary.push(heading(ctx, 'Summary', colW, { after: 12 }));
       // The ability stays escaped, exactly as it is on the page: it is the
       // character's rule, not writing about the character.
-      if (d.ability) summary.push(para(ctx, textRuns('“' + d.ability + '”'), colW,
-        { size: 18, bold: true, align: 'center', lh: 1.34 }));
+      if (d.ability) summary.push(para(ctx, textRuns(d.ability), colW,
+        { size: 18, bold: true, lh: 1.34 }));
       if (d.ability && (d.lede || bulletLines.length)) summary.push(spacer(12));
       if (d.lede) summary.push(para(ctx, marked(d.lede), colW, {}));
       if (d.lede && bulletLines.length) summary.push(spacer(11));
       if (bulletLines.length) summary.push(bullets(ctx, bulletLines, colW, {}));
+      // The Related ribbons close the summary column, as on the page.
+      if (related) { if (summary.length > 1) summary.push(spacer(20)); summary.push(related); }
     }
 
     var how = [];
-    if (howLines.length || callout) {
+    if (howLines.length || callouts.length) {
       how.push(heading(ctx, 'How to Run', colW, { after: 12 }));
       howLines.forEach(function (p, i) {
         if (i) how.push(spacer(11));
         how.push(para(ctx, marked(p), colW, {}));
       });
-      if (callout) {
-        if (howLines.length) how.push(spacer(16));
-        how.push(calloutBox(ctx, callout, colW, assets));
-      }
+      callouts.forEach(function (c, i) {
+        if (howLines.length || i) how.push(spacer(16));
+        how.push(calloutBox(ctx, c, colW, assets));
+      });
     }
 
     if (summary.length || how.length) {
@@ -574,7 +642,7 @@
     if (appears) rows.push(['Appears in:', textRuns(appears)]);
     var tags = String(d.tags || '').split(',').map(function (t) { return t.trim(); })
       .filter(Boolean).map(function (t) {
-        return t.toLowerCase().replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
+        return t.toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
       });
     if (tags.length) rows.push(['Tags:', textRuns(tags.join(', '))]);
     if (d.translatedBy && d.translatedBy.trim()) rows.push(['Translated by:', marked(d.translatedBy.trim(), 'full')]);
@@ -680,8 +748,9 @@
       }
     }
     var draw = Math.min(inner, 246);
+    var shown = url.replace(/^https?:\/\/(www\.)?/i, '');
     var parts = [
-      heading(ctx, 'JSON & Tokens', inner, { after: 10 }),
+      heading(ctx, 'Read it on the wiki', inner, { after: 10 }),
       blk(draw, function (c, x, y) {
         var px = x + (inner - draw) / 2;
         c.save();
@@ -691,7 +760,9 @@
         c.lineWidth = 1;
         c.strokeStyle = C.frame;
         c.strokeRect(px + 0.5, y + 0.5, draw - 1, draw - 1);
-      })
+      }),
+      spacer(8),
+      para(ctx, textRuns(shown), inner, { size: 14, align: 'center', color: C.quiet, lh: 1.3 })
     ];
     return card(stack(parts), width, assets.parchment);
   }
@@ -779,29 +850,40 @@
     var jinxes = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id || j.slug); });
     var iconJobs = jinxes.map(function (j) {
       var t = global.resolveJinxTarget ? global.resolveJinxTarget(j, root) : null;
-      var srcs = [];
-      // The committed copy first for anything official: release.botc.app does
-      // not promise CORS headers, and a picture we cannot read back is worse
-      // than one we never asked for.
       var id = String(j.id || (global.slugId ? global.slugId(j.name || '') : ''))
         .replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-      if (t && !t.external && t.iconSrc) srcs.push(t.iconSrc);
-      if (id) srcs.push(root + 'assets/icons/' + id + '.png');
-      if (t && t.iconSrc && srcs.indexOf(t.iconSrc) === -1) srcs.push(t.iconSrc);
-      return loadFirst(srcs);
+      return loadFirst(sameOriginFirst([t && t.iconSrc, id && root + 'assets/icons/' + id + '.png',
+        t && t.iconFallback]));
+    });
+    var related = (Array.isArray(d.related) ? d.related : []).map(function (r) {
+      var t = r && global.resolveRelatedTarget ? global.resolveRelatedTarget(r, root) : null;
+      return t && t.name ? { t: t, note: String(r.note || '').trim() } : null;
+    }).filter(Boolean);
+    var relJobs = related.map(function (r) {
+      return loadFirst(sameOriginFirst([r.t.iconSrc, r.t.iconFallback]));
     });
     return Promise.all([
       ensureFonts(),
-      loadImage(root + 'assets/bg.jpg'),
-      loadImage(root + 'assets/parchment.jpg'),
+      loadImage(root + 'assets/bg.webp'),
+      loadImage(root + 'assets/parchment.webp'),
       loadImage(opts.artSrc || ''),
       loadImage(ORN_EX),
       loadImage(ORN_CALL),
-      Promise.all(iconJobs)
+      Promise.all(iconJobs),
+      Promise.all(relJobs)
     ]).then(function (r) {
+      related.forEach(function (x, i) { x.icon = r[7][i]; });
       return { bg: r[1], parchment: r[2], art: r[3], ornEx: r[4], ornCall: r[5],
-               jinxIcons: r[6], jinxes: jinxes };
+               jinxIcons: r[6], jinxes: jinxes, related: related };
     });
+  }
+  /* Our own files before anybody else's: another host need not send CORS
+     headers, and a picture we cannot read back is worse than one we never
+     asked for (it is dropped, see loadImage). */
+  function sameOriginFirst(srcs) {
+    srcs = srcs.filter(function (s, i) { return s && srcs.indexOf(s) === i; });
+    return srcs.filter(function (s) { return !foreign(s); })
+      .concat(srcs.filter(function (s) { return foreign(s); }));
   }
 
   /* ── the whole thing ── */
@@ -826,7 +908,8 @@
     var panelTop = titleTop + title.h + 12;
     var leftBottom = panelTop + (panel ? panel.h : 0);
     var rightBottom = RIGHT_TOP + side.h;
-    var height = Math.max(leftBottom, rightBottom) + MARGIN + 8;
+    var FOOT = 34;
+    var height = Math.max(leftBottom, rightBottom) + MARGIN + 8 + FOOT;
 
     return {
       height: height,
@@ -843,6 +926,14 @@
         title.draw(c, MARGIN, titleTop);
         if (panel) panel.draw(c, MARGIN, panelTop);
         side.draw(c, MARGIN + LEFT_W + COL_GAP, RIGHT_TOP);
+        // Where the picture came from, for wherever it ends up.
+        c.font = '400 20px ' + FAM.display;
+        c.letterSpacing = '1.5px';
+        c.fillStyle = 'rgba(240,232,213,.72)';
+        c.textAlign = 'right';
+        c.fillText('BOTCHOMEBREW.WIKI', W - MARGIN, height - MARGIN + 2);
+        c.textAlign = 'left';
+        c.letterSpacing = '0px';
       }
     };
   }
@@ -878,7 +969,8 @@
      The canvas is turned into a blob and shown as an <img>: an image is what
      a browser lets you right-click and copy, and on a phone a long press
      offers the same. The Download button carries the name; Copy image is
-     there because a right-click is not a gesture a phone has. */
+     there because a right-click is not a gesture a phone has, and Share
+     (phones, mostly) hands the file straight to Discord or Messages. */
   function el(tag, cls, text) {
     var n = doc.createElement(tag);
     if (cls) n.className = cls;
@@ -908,6 +1000,9 @@
     panel.appendChild(stage);
 
     var actions = el('div', 'snap-actions');
+    var shareBtn = el('button', 'snap-btn snap-share', 'Share');
+    shareBtn.type = 'button';
+    shareBtn.hidden = true;
     var copyBtn = el('button', 'snap-btn snap-copy', 'Copy image');
     copyBtn.type = 'button';
     copyBtn.disabled = true;
@@ -915,6 +1010,7 @@
     dl.setAttribute('role', 'button');
     var done = el('button', 'snap-btn snap-close', 'Close');
     done.type = 'button';
+    actions.appendChild(shareBtn);
     actions.appendChild(copyBtn);
     actions.appendChild(dl);
     actions.appendChild(done);
@@ -960,6 +1056,14 @@
         'or use the buttons below. ' + out.canvas.width + '×' + out.canvas.height + ' pixels.';
       dl.href = url;
       dl.download = fileName(d);
+      var file = global.File ? new global.File([out.blob], fileName(d), { type: 'image/png' }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        shareBtn.hidden = false;
+        shareBtn.addEventListener('click', function () {
+          navigator.share({ files: [file], title: (d.name || 'Character') + ' almanac' })
+            .catch(function () {});   // closing the share sheet is not an error
+        });
+      }
       if (navigator.clipboard && global.ClipboardItem) {
         copyBtn.disabled = false;
         copyBtn.addEventListener('click', function () {
@@ -981,6 +1085,7 @@
       hint.textContent = (err && err.message) ||
         'The picture could not be built. Art hosted on another site can stop it being saved.';
       copyBtn.remove();
+      shareBtn.remove();
       dl.remove();
     });
   }

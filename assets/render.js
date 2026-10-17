@@ -1502,6 +1502,7 @@
     window.ART_ABS = ART_ABS;
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
+    window.resolveRelatedTarget = resolveRelatedTarget;
     window.normJinxId = normJinxId;
     window.jinxExportId = jinxExportId;
     window.jinxQualKeys = jinxQualKeys;

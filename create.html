@@ -482,8 +482,6 @@
   <script src="assets/render-wiki.js"></script>
   <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
-  <script src="assets/qr.js"></script>
-  <script src="assets/char-snapshot.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
@@ -1437,14 +1435,16 @@
     // ── snapshot: the whole almanac entry as one picture ──
     // Same data the live preview is painted from. A character that has never
     // been saved has no page to point a QR square at, so it goes without one
-    // until it has been published and is opened in the editor.
+    // until it has been published and is opened in the editor. The tool is
+    // loaded on the first press: most visits never ask for it.
     $('snapshot').addEventListener('click', function () {
-      if (!window.CharSnapshot) return;
       var d = gather();
-      window.CharSnapshot.open(d, {
-        artSrc: artDataURL || importedImage || '',
-        siteRoot: SITE_ROOT
-      });
+      Promise.all([BotcData.script('qr.js'), BotcData.script('char-snapshot.js')]).then(function () {
+        window.CharSnapshot.open(d, {
+          artSrc: artDataURL || importedImage || '',
+          siteRoot: SITE_ROOT
+        });
+      }, function () { setStatus('err', 'The snapshot tool could not load. Check your connection and try again.'); });
     });
 
     addJinx();

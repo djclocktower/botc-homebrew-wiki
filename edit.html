@@ -489,8 +489,6 @@
   <script src="assets/render-wiki.js"></script>
   <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
-  <script src="assets/qr.js"></script>
-  <script src="assets/char-snapshot.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
@@ -2020,16 +2018,20 @@
 
     // ── snapshot: the whole almanac entry as one picture ──
     // Same data the live preview is painted from, so the two cannot disagree.
+    // The QR square only goes on a published page: a draft's address is a
+    // 404 to whoever scans it. Loaded on the first press.
     $('snapshot').addEventListener('click', function(){
-      if (!window.CharSnapshot) return;
       var d = gather();
-      var src = artDataURL || (originalEntry ? SITE_ROOT + 'assets/' + originalEntry.art : '');
+      var main = originalEntry ? (window.artVersions(originalEntry, SITE_ROOT)[0] || {}) : {};
+      var src = artDataURL || main.src || '';
       var id = pageIdentity || originalSlug;
-      window.CharSnapshot.open(d, {
-        artSrc: src,
-        siteRoot: SITE_ROOT,
-        pageUrl: id ? CANONICAL_ORIGIN + 'c/' + id : ''
-      });
+      Promise.all([BotcData.script('qr.js'), BotcData.script('char-snapshot.js')]).then(function(){
+        window.CharSnapshot.open(d, {
+          artSrc: src,
+          siteRoot: SITE_ROOT,
+          pageUrl: id && currentStatus === 'published' ? CANONICAL_ORIGIN + 'c/' + id : ''
+        });
+      }, function(){ setStatus('err', 'The snapshot tool could not load. Check your connection and try again.'); });
     });
 
     // ── delete: soft-delete this character (recoverable by an admin) ──

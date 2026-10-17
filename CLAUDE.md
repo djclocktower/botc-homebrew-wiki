@@ -619,10 +619,21 @@ assets/
                        title, the parchment panel (Summary / How to Run / the
                        callout / Examples / Tips / Bluffing / Fighting), then
                        the sidebar (art, information box, a QR square, the
-                       jinxes and every custom sidebar box). Shown as an <img>
-                       so it can be right-clicked or long-pressed and copied,
-                       with a Download PNG button naming it
-                       {Charactername}_Almanac.png.
+                       jinxes and every custom sidebar box), with the Related
+                       ribbons closing the Summary column as on the page and
+                       "botchomebrew.wiki" in the bottom corner. Shown as an
+                       <img> so it can be right-clicked or long-pressed and
+                       copied, with Share (the phone's share sheet, where the
+                       browser can share files), Copy image and a Download
+                       PNG button naming it {Charactername}_Almanac.png.
+                       Loaded on the first press (BotcData.script, with
+                       qr.js), never with the editor. The QR goes on a
+                       PUBLISHED page only — a draft's address 404s for
+                       whoever scans it — and its address is printed under
+                       it. Fonts, colours and marks follow styles.css by
+                       hand (FAM / C / MARK_COLOR / RIBBON): a new colour
+                       mark or a font change on the page needs a line here
+                       too, or the poster draws it plain.
                        Three things about it are load-bearing. The marks go
                        through render-wiki.js — the same inlineFormat() call
                        the page makes, in the same links-only mode — and the
