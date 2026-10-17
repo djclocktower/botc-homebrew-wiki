@@ -65,6 +65,10 @@
      fixed — a short page gets the full 2x, a very long one a little less. */
   var MAX_PIXELS = 9e6;
   var SCALE_MAX = 2;
+  // "Large": up to 3x, within the 16.7 million pixels a phone's canvas allows.
+  var LARGE_PIXELS = 16e6, LARGE_SCALE = 3;
+  // "Small": the longest side, about what Discord shows before you click it.
+  var SMALL_SIDE = 1600;
 
   var C = {
     parch: '#F0E8D5', frame: '#bda89a',
@@ -692,7 +696,8 @@
     var pron = pronounceBlock(ctx, d, inner);
     if (pron) { parts.push(pron); parts.push(spacer(12)); }
 
-    parts.push(hairline(inner, { above: 12, below: 12, color: C.hair }));
+    if (opts.hide && opts.hide.info) return parts.length ? card(stack(parts), width, assets.parchment) : null;
+    if (parts.length) parts.push(hairline(inner, { above: 12, below: 12, color: C.hair }));
     parts.push(para(ctx, textRuns('Information'), inner, {
       size: 20, bold: true, align: 'center', spacing: '0.4px'
     }));
@@ -942,12 +947,14 @@
        draws it (a cut has to save a real amount to be taken). */
     var secs = parchmentSections(ctx, d, assets);
     var best = { top: null, rest: null, bottom: sideBottom };
-    for (var k = secs.length; k >= 1; k--) {
-      var top = parchmentPanel(secs.slice(0, k), LEFT_W, false, assets);
+    for (var k = secs.length; k >= 0; k--) {
+      var top = k ? parchmentPanel(secs.slice(0, k), LEFT_W, false, assets) : null;
       var rest = k < secs.length ? parchmentPanel(secs.slice(k), W - MARGIN * 2, true, assets) : null;
-      var restTop = Math.max(panelTop + top.h, sideBottom) + CARD_GAP;
-      var bottom = rest ? restTop + rest.h : Math.max(panelTop + top.h, sideBottom);
-      if (!best.top || bottom < best.bottom - 40) {
+      var leftBottom = top ? panelTop + top.h : panelTop;
+      // With nothing in the sidebar the full-width part starts under the title.
+      var restTop = side.h ? Math.max(leftBottom, sideBottom) + CARD_GAP : leftBottom + (top ? CARD_GAP : 0);
+      var bottom = rest ? restTop + rest.h : Math.max(leftBottom, sideBottom);
+      if (!best.top && !best.rest || bottom < best.bottom - 40) {
         best = { top: top, rest: rest, restTop: restTop, bottom: bottom };
       }
     }
@@ -956,46 +963,119 @@
 
     return {
       height: height,
-      draw: function (c) {
-        // background: the site's own, covering the poster from the top
+      // cw x ch is the picture, which a chosen shape can make larger than the
+      // poster: the site's background fills all of it and the poster sits in
+      // the middle, at the size it was laid out at.
+      draw: function (c, cw, ch) {
         c.fillStyle = C.purple;
-        c.fillRect(0, 0, W, height);
+        c.fillRect(0, 0, cw, ch);
         if (assets.bg) {
           c.save();
-          c.beginPath(); c.rect(0, 0, W, height); c.clip();
-          drawCover(c, assets.bg, 0, 0, W, height, true);
+          c.beginPath(); c.rect(0, 0, cw, ch); c.clip();
+          drawCover(c, assets.bg, 0, 0, cw, ch, true);
           c.restore();
         }
+        c.save();
+        c.translate((cw - W) / 2, (ch - height) / 2);
         title.draw(c, MARGIN, titleTop);
         if (best.top) best.top.draw(c, MARGIN, panelTop);
         if (best.rest) best.rest.draw(c, MARGIN, best.restTop);
         side.draw(c, MARGIN + LEFT_W + COL_GAP, RIGHT_TOP);
+        c.restore();
         // Where the picture came from, for wherever it ends up.
         c.font = '400 20px ' + FAM.display;
         c.letterSpacing = '1.5px';
         c.fillStyle = 'rgba(240,232,213,.72)';
         c.textAlign = 'right';
-        c.fillText('BOTCHOMEBREW.WIKI', W - MARGIN, height - MARGIN + 2);
+        c.fillText('BOTCHOMEBREW.WIKI', cw - MARGIN, ch - MARGIN + 2);
         c.textAlign = 'left';
         c.letterSpacing = '0px';
       }
     };
   }
 
+  /* ── the settings wheel ───────────────────────────────────────────────
+     What can be left out, as [key, label, has(d, opts), drop(d, opts)]. A
+     hidden section is emptied out of a COPY of the character before anything
+     is laid out, so nothing below has to know the wheel exists. Only the
+     sections this character actually has are offered. */
+  function callouts(d) {
+    return (Array.isArray(d.callout) ? d.callout : [d.callout])
+      .filter(function (x) { return typeof x === 'string' && x.trim(); });
+  }
+  var SECTIONS = [
+    ['summary', 'Summary', function (d) { return d.ability || d.lede || list(d.summaryBullets).length; },
+      function (d) { d.ability = ''; d.lede = ''; d.summaryBullets = []; }],
+    ['related', 'Related', function (d) { return list(d.related).length; }, function (d) { d.related = []; }],
+    ['howToRun', 'How to Run', function (d) { return list(d.howToRun).length || callouts(d).length; },
+      function (d) { d.howToRun = []; d.callout = ''; }],
+    ['examples', 'Examples', function (d) { return list(d.examples).length; }, function (d) { d.examples = []; }],
+    ['tips', 'Tips & Tricks', function (d) { return list(d.tips).length; }, function (d) { d.tips = []; }],
+    ['bluffing', 'Bluffing', function (d) { return list(d.bluffing).length; }, function (d) { d.bluffing = []; }],
+    ['fighting', 'Fighting', function (d) { return list(d.fighting).length; }, function (d) { d.fighting = []; }],
+    ['art', 'Icon', function (d, o) { return o.artSrc; }, function (d, o) { o.artSrc = ''; }],
+    ['quote', 'Flavour quote', function (d) { return String(d.quote || d.flavor || '').trim(); },
+      function (d) { d.quote = ''; d.flavor = ''; }],
+    ['pronunciation', 'Pronunciation', function (d) { return d.pronunciation || d.ipa || d.respelling; },
+      function (d) { d.pronunciation = ''; d.ipa = ''; d.respelling = ''; }],
+    ['info', 'Information', function () { return true; }, function () {}],   // infoCard reads opts.hide
+    ['qr', 'Wiki Link', function (d, o) { return o.pageUrl; }, function (d, o) { o.pageUrl = ''; }],
+    ['jinxes', 'Jinxes', function (d) { return list(d.jinxes).length; }, function (d) { d.jinxes = []; }]
+  ];
+  // A custom box is keyed by its title, so leaving out "Credits" sticks
+  // from one character to the next.
+  function boxKey(b, i) { return 'box:' + (String((b && b.title) || '').trim() || '#' + i); }
+  function realBoxes(d) {
+    return (Array.isArray(d.customBoxes) ? d.customBoxes : []).filter(function (b) {
+      return b && (String(b.title || '').trim() || String(b.content || '').trim());
+    });
+  }
+  function offered(d, opts) {
+    var out = SECTIONS.filter(function (s) { return s[2](d, opts); })
+      .map(function (s) { return { key: s[0], label: s[1] }; });
+    realBoxes(d).forEach(function (b, i) {
+      out.push({ key: boxKey(b, i), label: String(b.title || '').trim() || 'Untitled box' });
+    });
+    return out;
+  }
+  function applyHidden(d, opts) {
+    var hide = opts.hide || {};
+    d = assign(d, {});
+    opts = assign(opts, {});
+    SECTIONS.forEach(function (s) { if (hide[s[0]]) s[3](d, opts); });
+    d.customBoxes = realBoxes(d).filter(function (b, i) { return !hide[boxKey(b, i)]; });
+    return { d: d, opts: opts };
+  }
+
+  // Width over height; 0 is "fit the page".
+  var RATIOS = { auto: 0, '1:1': 1, '4:5': 4 / 5, '9:16': 9 / 16, '16:9': 16 / 9 };
+  var RATIO_LABELS = [['auto', 'Fit the page'], ['1:1', 'Square (1:1)'], ['4:5', 'Portrait (4:5)'],
+    ['9:16', 'Phone screen (9:16)'], ['16:9', 'Widescreen (16:9)']];
+  var SIZE_LABELS = [['small', 'Small: quick to share'], ['standard', 'Standard'], ['large', 'Large: for printing']];
+
+  /* opts: {artSrc, pageUrl, siteRoot, hide: {key: true}, ratio, size}. */
   function render(d, opts) {
-    opts = opts || {};
+    var h = applyHidden(d, opts || {});
+    d = h.d; opts = h.opts;
     return gatherAssets(d, opts).then(function (assets) {
       var measure = doc.createElement('canvas').getContext('2d');
       var poster = compose(measure, d, assets, opts);
-      var scale = Math.min(SCALE_MAX, Math.sqrt(MAX_PIXELS / (W * poster.height)));
-      scale = Math.max(1, Math.min(SCALE_MAX, scale));
+      // A chosen shape adds background around the poster rather than
+      // shrinking or squashing it.
+      var cw = W, ch = poster.height, r = RATIOS[opts.ratio] || 0;
+      if (r) { if (cw / ch > r) ch = cw / r; else cw = ch * r; }
+      var area = cw * ch;
+      var std = Math.max(1, Math.min(SCALE_MAX, Math.sqrt(MAX_PIXELS / area)));
+      var scale = opts.size === 'small' ? Math.min(SCALE_MAX, SMALL_SIDE / Math.max(cw, ch))
+        : opts.size === 'large' ? Math.max(std, Math.min(LARGE_SCALE, Math.sqrt(LARGE_PIXELS / area)))
+        : std;
       var canvas = doc.createElement('canvas');
-      canvas.width = Math.round(W * scale);
-      canvas.height = Math.round(poster.height * scale);
+      canvas.width = Math.round(cw * scale);
+      canvas.height = Math.round(ch * scale);
       var ctx = canvas.getContext('2d');
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
       ctx.textBaseline = 'alphabetic';
-      poster.draw(ctx);
+      poster.draw(ctx, cw, ch);
       return canvas;
     });
   }
@@ -1022,38 +1102,113 @@
     return n;
   }
 
+  /* The wheel's choices are kept per browser, so a creator who always
+     leaves the QR off or always wants a square sets it once. */
+  var PREFS_KEY = 'botc_snap_opts';
+  function loadPrefs() {
+    try {
+      var p = JSON.parse(global.localStorage.getItem(PREFS_KEY) || 'null');
+      if (p && typeof p === 'object') {
+        return { hide: p.hide && typeof p.hide === 'object' ? p.hide : {},
+                 ratio: RATIOS.hasOwnProperty(p.ratio) ? p.ratio : 'auto',
+                 size: /^(small|standard|large)$/.test(p.size) ? p.size : 'standard' };
+      }
+    } catch (e) {}
+    return { hide: {}, ratio: 'auto', size: 'standard' };
+  }
+  function savePrefs(p) {
+    try { global.localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) {}
+  }
+
+  function button(cls, text) {
+    var b = el('button', cls, text);
+    b.type = 'button';
+    return b;
+  }
+  function select(choices, value) {
+    var s = el('select', 'snap-select');
+    choices.forEach(function (c) {
+      var o = el('option', null, c[1]);
+      o.value = c[0];
+      if (c[0] === value) o.selected = true;
+      s.appendChild(o);
+    });
+    return s;
+  }
+
   function open(d, opts) {
     opts = opts || {};
     // Building the picture takes a second or two, which is long enough for a
     // second click: one preview at a time.
     if (doc.querySelector('.snap-backdrop')) return;
+    var prefs = loadPrefs();
+
     var back = el('div', 'snap-backdrop');
     var panel = el('div', 'snap-panel');
     var head = el('div', 'snap-head');
     head.appendChild(el('h2', 'snap-title', 'Almanac snapshot'));
-    var closeX = el('button', 'snap-x', '✕');
-    closeX.type = 'button';
+    // U+FE0E asks for the plain glyph, or a phone draws a coloured emoji.
+    var gear = button('snap-x snap-gear', '⚙︎');
+    gear.setAttribute('aria-label', 'Picture settings');
+    gear.setAttribute('aria-expanded', 'false');
+    gear.title = 'Picture settings';
+    var closeX = button('snap-x', '✕');
     closeX.setAttribute('aria-label', 'Close');
+    head.appendChild(gear);
     head.appendChild(closeX);
     panel.appendChild(head);
 
+    // ── the settings, hidden until the wheel is pressed ──
+    var settings = el('div', 'snap-settings');
+    settings.hidden = true;
+    var showBox = el('fieldset', 'snap-show');
+    showBox.appendChild(el('legend', null, 'Show'));
+    offered(d, opts).forEach(function (s) {
+      var lab = el('label', 'snap-check');
+      var cb = el('input');
+      cb.type = 'checkbox';
+      cb.checked = !prefs.hide[s.key];
+      cb.addEventListener('change', function () {
+        if (cb.checked) delete prefs.hide[s.key]; else prefs.hide[s.key] = true;
+        changed();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(doc.createTextNode(' ' + s.label));
+      showBox.appendChild(lab);
+    });
+    settings.appendChild(showBox);
+    var shape = select(RATIO_LABELS, prefs.ratio);
+    var size = select(SIZE_LABELS, prefs.size);
+    [['Shape', shape], ['Size', size]].forEach(function (f) {
+      var lab = el('label', 'snap-field');
+      lab.appendChild(el('span', null, f[0]));
+      lab.appendChild(f[1]);
+      settings.appendChild(lab);
+      f[1].addEventListener('change', function () {
+        prefs.ratio = shape.value; prefs.size = size.value;
+        changed();
+      });
+    });
+    panel.appendChild(settings);
+    gear.addEventListener('click', function () {
+      settings.hidden = !settings.hidden;
+      gear.setAttribute('aria-expanded', String(!settings.hidden));
+      gear.classList.toggle('on', !settings.hidden);
+    });
+
     var hint = el('p', 'snap-hint', 'Building the picture…');
     panel.appendChild(hint);
-
     var stage = el('div', 'snap-stage');
     panel.appendChild(stage);
 
     var actions = el('div', 'snap-actions');
-    var shareBtn = el('button', 'snap-btn snap-share', 'Share');
-    shareBtn.type = 'button';
+    var shareBtn = button('snap-btn snap-share', 'Share');
     shareBtn.hidden = true;
-    var copyBtn = el('button', 'snap-btn snap-copy', 'Copy image');
-    copyBtn.type = 'button';
+    var copyBtn = button('snap-btn snap-copy', 'Copy image');
     copyBtn.disabled = true;
     var dl = el('a', 'snap-btn snap-dl', 'Download PNG');
     dl.setAttribute('role', 'button');
-    var done = el('button', 'snap-btn snap-close', 'Close');
-    done.type = 'button';
+    var done = button('snap-btn snap-close', 'Close');
     actions.appendChild(shareBtn);
     actions.appendChild(copyBtn);
     actions.appendChild(dl);
@@ -1062,76 +1217,98 @@
     back.appendChild(panel);
     doc.body.appendChild(back);
 
-    var url = null;
-    function shut() {
+    var img = el('img', 'snap-img');
+    img.alt = (d.name || 'Character') + ' almanac';
+    img.title = 'Tap to zoom in';
+    // A click zooms; a right-click or a long press still offers Copy image,
+    // which is what the picture is here for.
+    img.addEventListener('click', function () {
+      var full = img.classList.toggle('snap-full');
+      img.title = full ? 'Tap to see the whole page' : 'Tap to zoom in';
+    });
+
+    // The picture on screen. Every button reads it at the moment it is
+    // pressed, so a rebuild never leaves a button holding an old one.
+    var cur = null, url = null, shut = false, run = 0, timer = null;
+    function close() {
+      shut = true;
       if (url) URL.revokeObjectURL(url);
       doc.removeEventListener('keydown', onKey);
       if (back.parentNode) back.parentNode.removeChild(back);
     }
-    function onKey(e) { if (e.key === 'Escape') shut(); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
     doc.addEventListener('keydown', onKey);
-    closeX.addEventListener('click', shut);
-    done.addEventListener('click', shut);
-    back.addEventListener('click', function (e) { if (e.target === back) shut(); });
+    closeX.addEventListener('click', close);
+    done.addEventListener('click', close);
+    back.addEventListener('click', function (e) { if (e.target === back) close(); });
 
-    render(d, opts).then(function (canvas) {
-      return new Promise(function (resolve, reject) {
-        try {
-          canvas.toBlob(function (blob) {
-            if (blob) resolve({ blob: blob, canvas: canvas });
-            else reject(new Error('The picture could not be saved.'));
-          }, 'image/png');
-        } catch (e) { reject(e); }
-      });
-    }).then(function (out) {
-      url = URL.createObjectURL(out.blob);
-      var img = el('img', 'snap-img');
-      img.alt = (d.name || 'Character') + ' almanac';
-      img.src = url;
-      img.title = 'Tap to zoom in';
-      // A click zooms; a right-click or a long press still offers Copy image,
-      // which is what the picture is here for.
-      img.addEventListener('click', function () {
-        var full = img.classList.toggle('snap-full');
-        img.title = full ? 'Tap to see the whole page' : 'Tap to zoom in';
-      });
-      stage.appendChild(img);
-      hint.textContent = 'Right-click (or long-press) the picture to copy it, tap it to zoom in, ' +
-        'or use the buttons below. ' + out.canvas.width + '×' + out.canvas.height + ' pixels.';
-      dl.href = url;
-      dl.download = fileName(d);
-      var file = global.File ? new global.File([out.blob], fileName(d), { type: 'image/png' }) : null;
-      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        shareBtn.hidden = false;
-        shareBtn.addEventListener('click', function () {
-          navigator.share({ files: [file], title: (d.name || 'Character') + ' almanac' })
-            .catch(function () {});   // closing the share sheet is not an error
-        });
-      }
-      if (navigator.clipboard && global.ClipboardItem) {
-        copyBtn.disabled = false;
-        copyBtn.addEventListener('click', function () {
-          var item = {};
-          item['image/png'] = out.blob;
-          navigator.clipboard.write([new global.ClipboardItem(item)]).then(function () {
-            copyBtn.textContent = 'Copied!';
-            setTimeout(function () { copyBtn.textContent = 'Copy image'; }, 1600);
-          }, function () {
-            copyBtn.textContent = 'Copy failed';
-            setTimeout(function () { copyBtn.textContent = 'Copy image'; }, 1600);
-          });
-        });
-      } else {
-        copyBtn.remove();
-      }
-    }).catch(function (err) {
-      hint.className = 'snap-hint snap-error';
-      hint.textContent = (err && err.message) ||
-        'The picture could not be built. Art hosted on another site can stop it being saved.';
-      copyBtn.remove();
-      shareBtn.remove();
-      dl.remove();
+    var canShareFiles = !!(global.File && navigator.canShare &&
+      navigator.canShare({ files: [new global.File([''], 'x.png', { type: 'image/png' })] }));
+    shareBtn.addEventListener('click', function () {
+      if (!cur) return;
+      var file = new global.File([cur.blob], fileName(d), { type: 'image/png' });
+      navigator.share({ files: [file], title: (d.name || 'Character') + ' almanac' })
+        .catch(function () {});   // closing the share sheet is not an error
     });
+    if (!(navigator.clipboard && global.ClipboardItem)) copyBtn.remove();
+    copyBtn.addEventListener('click', function () {
+      if (!cur) return;
+      var item = {};
+      item['image/png'] = cur.blob;
+      navigator.clipboard.write([new global.ClipboardItem(item)]).then(function () {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function () { copyBtn.textContent = 'Copy image'; }, 1600);
+      }, function () {
+        copyBtn.textContent = 'Copy failed';
+        setTimeout(function () { copyBtn.textContent = 'Copy image'; }, 1600);
+      });
+    });
+
+    function changed() {
+      savePrefs(prefs);
+      clearTimeout(timer);
+      timer = setTimeout(build, 250);   // a run of ticks is one rebuild
+    }
+    function build() {
+      var mine = ++run;
+      hint.className = 'snap-hint';
+      hint.textContent = cur ? 'Updating the picture…' : 'Building the picture…';
+      render(d, assign(opts, { hide: prefs.hide, ratio: prefs.ratio, size: prefs.size }))
+        .then(function (canvas) {
+          return new Promise(function (resolve, reject) {
+            try {
+              canvas.toBlob(function (blob) {
+                if (blob) resolve({ blob: blob, canvas: canvas });
+                else reject(new Error('The picture could not be saved.'));
+              }, 'image/png');
+            } catch (e) { reject(e); }
+          });
+        }).then(function (out) {
+          if (shut || mine !== run) return;   // closed, or a newer build is on its way
+          if (url) URL.revokeObjectURL(url);
+          cur = out;
+          url = URL.createObjectURL(out.blob);
+          img.src = url;
+          if (!img.parentNode) stage.appendChild(img);
+          hint.textContent = 'Right-click (or long-press) the picture to copy it, tap it to zoom in, ' +
+            'or use the buttons below. ' + out.canvas.width + '×' + out.canvas.height + ' pixels.';
+          dl.href = url;
+          dl.download = fileName(d);
+          dl.hidden = false;
+          copyBtn.disabled = false;
+          shareBtn.hidden = !canShareFiles;
+        }).catch(function (err) {
+          if (shut || mine !== run) return;
+          hint.className = 'snap-hint snap-error';
+          hint.textContent = (err && err.message) ||
+            'The picture could not be built. Art hosted on another site can stop it being saved.';
+          cur = null;
+          copyBtn.disabled = true;
+          shareBtn.hidden = true;
+          dl.hidden = true;
+        });
+    }
+    build();
   }
 
   global.CharSnapshot = { open: open, render: render, fileName: fileName };

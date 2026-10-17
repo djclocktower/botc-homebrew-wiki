@@ -3667,6 +3667,27 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   background: transparent; border: none; cursor: pointer; font-size: 1.1rem;
   color: var(--maroon); padding: 4px 8px; line-height: 1;
 }
+/* The settings wheel and what it opens: which sections the picture shows,
+   its shape and its size. */
+.snap-gear { font-size: 1.25rem; opacity: .7; }
+.snap-gear:hover, .snap-gear.on { opacity: 1; }
+.snap-settings {
+  margin: 8px 0 4px; padding: 10px 12px;
+  background: rgba(255,253,248,.55); border: 1px solid rgba(122,45,47,.25); border-radius: 6px;
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-end;
+}
+.snap-settings[hidden] { display: none; }
+.snap-show { border: 0; margin: 0; padding: 0; flex: 1 1 100%;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 4px 12px; }
+.snap-show legend, .snap-field span {
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); padding: 0; margin-bottom: 4px;
+}
+.snap-check { font-size: .88rem; color: var(--ink); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.snap-check input { accent-color: var(--maroon); width: 16px; height: 16px; margin: 0; }
+.snap-field { display: flex; flex-direction: column; flex: 1 1 180px; }
+.snap-select { font: inherit; font-size: .9rem; padding: 6px 8px; border: 1px solid #cdbfa0; border-radius: 4px; background: #fffdf8; color: var(--ink); }
+.snap-btn[hidden] { display: none; }
 .snap-hint { font-size: .82rem; color: var(--ink); opacity: .8; margin: 4px 0 10px; }
 .snap-hint.snap-error { color: var(--evil); opacity: 1; font-weight: 600; }
 .snap-stage {

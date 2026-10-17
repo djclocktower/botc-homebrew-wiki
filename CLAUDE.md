@@ -626,6 +626,18 @@ assets/
                        copied, with Share (the phone's share sheet, where the
                        browser can share files), Copy image and a Download
                        PNG button naming it {Charactername}_Almanac.png.
+                       A settings wheel in the window's head opens: a tick
+                       per section the character actually has (SECTIONS, plus
+                       one per custom box, keyed by its title), Shape (Fit
+                       the page, 1:1, 4:5, 9:16, 16:9 — a shape ADDS
+                       background round the centred poster, never shrinks
+                       or squashes it) and Size (Small 1600px longest side,
+                       Standard 2x within 9 MP, Large 3x within 16 MP, the
+                       phone canvas limit). A hidden section is emptied out
+                       of a COPY of the character before layout
+                       (applyHidden), so nothing else knows about the wheel.
+                       Choices are kept per browser (localStorage
+                       botc_snap_opts) and every change rebuilds the picture.
                        Loaded on the first press (BotcData.script, with
                        qr.js), never with the editor. The QR goes on a
                        PUBLISHED page only — a draft's address 404s for
