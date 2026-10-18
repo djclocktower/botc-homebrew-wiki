@@ -1046,9 +1046,18 @@
       var v = row ? row(c) : c;
       if (!v) return;
       items.push({ c: c, v: v });
+      var sk = normJinxId(c.slug);
+      if (sk && !byKey[sk]) byKey[sk] = v;
       var nk = normJinxId(c.name);
-      [normJinxId(c.slug), nk].forEach(function (k) { if (k && !byKey[k]) byKey[k] = v; });
       if (nk) (byName[nk] = byName[nk] || []).push(v);
+    });
+    // Names only after EVERY identity: the picker stores a jinx by identity,
+    // and a name key registered first stole it — "Mystic ∇" (townsfolk,
+    // mystic-the-academy) took `mystic`, the Outsider's identity, so a jinx
+    // picked as the Outsider drew the Townsfolk.
+    items.forEach(function (it) {
+      var nk = normJinxId(it.c.name);
+      if (nk && !byKey[nk]) byKey[nk] = it.v;
     });
     items.forEach(function (it) {
       jinxQualKeys(it.c).forEach(function (k) { if (!byKey[k]) byKey[k] = it.v; });

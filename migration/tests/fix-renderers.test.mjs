@@ -199,3 +199,17 @@ test('a stored classification is never trusted', async t => {
   const json = await (await f.request('/api/page-json?type=script&slug=logo-only')).json();
   assert.equal(json[0].logo, 'https://botchomebrew.wiki/assets/scripts/logo-only-logo.png');
 });
+
+test('a picked identity beats another page whose NAME folds to it', () => {
+  // Live case: Cambium jinxed with the Outsider Mystic (identity `mystic`)
+  // drew the Townsfolk "Mystic ∇", registered first under the name key.
+  const { byKey } = Render.jinxCharIndex([
+    { slug: 'mystic-the-academy', name: 'Mystic ∇', team: 'townsfolk' },
+    { slug: 'mystic', name: 'Mystic', team: 'outsider' }
+  ]);
+  Render.setWikiChars(byKey);
+  const t = Render.resolveJinxTarget({ slug: 'mystic', name: 'Mystic', text: 'x' }, '', null);
+  assert.equal(t.slug, 'mystic');
+  assert.equal(t.team, 'outsider');
+  Render.setWikiChars(null);
+});
