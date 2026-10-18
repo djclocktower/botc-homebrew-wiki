@@ -18,6 +18,7 @@
     'Drunkenness': 'Causes drunkenness, or interacts with drunk players.',
     'Even If Dead': 'Its ability keeps working (fully or partly) after the player dies.',
     'Execution': 'Causes, prevents, or reacts to executions.',
+    'Execution Failure': 'Causes executions to fail completely.',
     'Execution Survival': 'Can survive execution, or lets another player survive one.',
     'Extra Evil': 'Adds, or can create, an extra evil player.',
     'False Info': 'Causes or interacts with False Info.',
