@@ -55,6 +55,29 @@ function fsWrite(path, u8) {
   pyodide.FS.writeFile(path, u8);
 }
 
+/* loadPackage only LOGS a failed download, it never rejects, so a phone that
+   dropped the numpy wheel (or holds a broken copy under the year-long immutable
+   cache) went on to "No module named 'numpy'". Check what actually loaded; on a
+   miss, re-fetch those wheels past the HTTP cache (which also replaces a bad
+   cached copy) and try once more. */
+function loadPackages(index, names, retry) {
+  var errs = [];
+  return pyodide.loadPackage(names, { errorCallback: function (m) { errs.push(m); } }).then(function () {
+    var have = Object.keys(pyodide.loadedPackages).join(' ').toLowerCase().split(' ');   // keyed 'Pillow'
+    var missing = names.filter(function (n) { return have.indexOf(n) < 0; });
+    if (!missing.length) return;
+    if (!retry) throw new Error('Could not load ' + missing.join(', ') + (errs.length ? ': ' + errs.join(' ') : ''));
+    return fetch(index + 'pyodide-lock.json', { cache: 'reload' }).then(function (r) { return r.json(); })
+      .then(function (lock) {
+        return Promise.all(missing.map(function (n) {
+          return fetch(index + lock.packages[n].file_name, { cache: 'reload' }).catch(function () {});
+        }));
+      })
+      .catch(function () {})
+      .then(function () { return loadPackages(index, missing, false); });
+  });
+}
+
 /* ---- boot: toolkit downloads run in parallel with Pyodide init ---- */
 function boot(cfg) {
   post({ type: 'status', state: 'loading', message: 'Loading…' });
@@ -74,7 +97,7 @@ function boot(cfg) {
   try {
     importScripts(cfg.index + 'pyodide.js');
     pyP = loadPyodide({ indexURL: cfg.index })
-      .then(function (py) { pyodide = py; return py.loadPackage(['numpy', 'pillow']); });
+      .then(function (py) { pyodide = py; return loadPackages(cfg.index, ['numpy', 'pillow'], true); });
   } catch (e) { pyP = Promise.reject(e); }
 
   Promise.all([pyP, filesP]).then(function (both) {
