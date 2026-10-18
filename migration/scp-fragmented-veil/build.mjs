@@ -264,6 +264,14 @@ for (const r of planned.rows) {
     : credits(c.attribution);
   const p = BI.characterPayload(Object.assign({}, c, { howToRun: parts_.lines }),
     Object.assign({}, opts, { creator: cr.creator || 'legitch', credit: false }), slug, 'art/' + slug + '.png', []);
+  // Two flavour lines carry pasted HTML (Living Room's <b style>, Duende's
+  // <pre><code>); the quote is escaped text here, so the tags would print.
+  if (p.quote) p.quote = p.quote.replace(/<b\b[^>]*>([\s\S]*?)<\/b>/g, '**$1**')
+    .replace(/<img\b[^>]*>/g, tag => {
+      const at = k => ((new RegExp('\\b' + k + '="([^"]*)"')).exec(tag) || [])[1] || '';
+      return at('src') ? '[' + (at('alt') || 'image') + '](' + at('src') + ')' : '';
+    })
+    .replace(/<[^>]+>/g, '').trim();
   delete p.image; // relative art only: artVersions builds the export URL from it
   delete p.status;
   p.iconBy = cr.iconBy;

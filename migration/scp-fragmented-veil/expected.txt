@@ -14,12 +14,12 @@ caruncula:6925:4724734
 cespholopod:12763:7963264
 clockwork-virus:4928:3407484
 contestant:3561:2716822
-desire-reader:3953:2526545
+desire-reader:3782:2517859
 disruptor:4562:3017112
 dissociative:3245:4453755
 dr-bright:2113:1379628
 dr-maynard:1818:1139183
-duende:8215:5518232
+duende:8167:5605302
 encyclopediac:2022:1342939
 enfekthyte:6971:4534918
 eyeceue:13248:8506402
@@ -40,7 +40,7 @@ laughster:3215:2016814
 lettucbaken:4821:3049489
 living-drawing:4125:3398385
 living-gun:2954:2074135
-living-room:3622:2657477
+living-room:3579:2647036
 loyal-servant:6182:4383526
 lumenancer:3324:2193589
 man-egg:3130:3094469
@@ -75,7 +75,7 @@ scp-1875:4811:19776670
 scp-1936:5073:4940866
 shadoo:6635:4191484
 shoe-in:3906:2625622
-shy-guy:5043:3190408
+shy-guy:4997:3226119
 skin-peeler:4220:2763043
 skreeblebar:4122:2662996
 skynet-agent:2001:1255208
