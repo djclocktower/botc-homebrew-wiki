@@ -1,0 +1,6 @@
+architect
+peacemonger
+hangman
+revenant
+navigator
+prosecutor
