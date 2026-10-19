@@ -3625,11 +3625,14 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .theme-panel .news-article {
   background-image: none; background-color: var(--pg-panel);
 }
+.theme-text .custom-box-body,
+.theme-text .custom-box-body :is(p, li),
 .theme-text .wiki-body,
 .theme-text .wiki-body p,
 .theme-text .wiki-body li,
 .theme-text .news-body,
 .theme-text .news-body p { color: var(--pg-text); }
+.theme-link .custom-box-body a,
 .theme-link .wiki-body a,
 .theme-link .news-body a { color: var(--pg-link); }
 

@@ -1227,7 +1227,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var hero = main.querySelector('.home-hero');
         host = document.createElement('div');
         host.id = 'edit-status';
-        main.insertBefore(host, hero ? hero.nextSibling : main.firstChild);
+        if (hero) hero.after(host); else main.insertBefore(host, main.firstChild);
       }
       return host;
     }
