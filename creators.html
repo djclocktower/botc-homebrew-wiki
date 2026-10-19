@@ -72,7 +72,6 @@
       <div class="creators-sort" role="group" aria-label="Show">
         <button type="button" class="filter-chip active" data-show="all">All marks</button>
         <button type="button" class="filter-chip" data-show="accounts">Has an account</button>
-        <button type="button" class="filter-chip" data-show="reserved">Unclaimed marks</button>
       </div>
     </div>
     <div class="creators-page-box">
@@ -161,8 +160,7 @@
 
       function markState(it) {
         var m = it.mark;
-        if (m.legacy) return it.username
-          ? '<span class="cr-state">Original mark &middot; not claimed yet</span>'
+        if (m.legacy) return it.username ? ''
           : '<span class="cr-state cr-state-reserved">Reserved &middot; no account linked</span>';
         if (m.hide) return '<span class="cr-state">Mark hidden from pages</span>';
         return '<span class="cr-state cr-state-own">Claimed</span>';
@@ -202,7 +200,6 @@
         var list = ALL.filter(function (it) {
           if (!matches(it, q)) return false;
           if (STATE.show === 'accounts' && !it.username) return false;
-          if (STATE.show === 'reserved' && !it.mark.legacy) return false;
           return true;
         });
         var byName = function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); };
@@ -245,8 +242,7 @@
         ADMIN = !!(res[2] && res[2].isAdmin);
         ALL = build((res[0] && res[0].creators) || []);
         if (!ALL.length) { grid.innerHTML = '<p style="opacity:.7">No marks yet.</p>'; return; }
-        var claimed = ALL.filter(function (it) { return !it.mark.legacy; }).length;
-        summary.textContent = plural(ALL.length, 'mark') + ' · ' + claimed + ' claimed';
+        summary.textContent = plural(ALL.length, 'mark');
         apply();
       }).catch(function () {
         grid.innerHTML = '<p style="opacity:.7">Could not load the creator list.</p>';

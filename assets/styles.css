@@ -1571,7 +1571,8 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .creators-filter input {
   flex: 0 1 280px; padding: 8px 12px; font-size: .92rem;
-  color: #241a12; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  color: #241a12; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 0;
+  -webkit-appearance: none; appearance: none;
 }
 .creators-sort { display: flex; flex-wrap: wrap; gap: 6px; }
 .creators-empty { text-align: center; opacity: .7; margin: 14px 0 0; }
