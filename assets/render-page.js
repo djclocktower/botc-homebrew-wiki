@@ -1209,9 +1209,19 @@
     var lists = nightItems(entries, order);
     var first = lists.first, other = lists.other;
     if (!first.length && !other.length) return '';
+    first = withNightMarks(first, 'first');
+    other = withNightMarks(other, 'other');
     function list(items) {
       if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
+        if (it.mark) {
+          var m = NIGHT_MARK_TEXT[it.mark] || { name: it.mark, r: '' };
+          return '<li class="sv-night-item sv-night-step">' +
+            '<span class="sv-night-thumb" aria-hidden="true"></span>' +
+            '<div class="sv-night-text"><span class="sv-night-name">' + esc(m.name) + '</span>' +
+            (m.r ? '<span class="sv-night-reminder">' + esc(m.r) + '</span>' : '') +
+            '</div></li>';
+        }
         return '<li class="sv-night-item">' +
           '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(thumbSrc(it.c, root)) + '" alt=""' + fbAttrs(thumbFallback(it.c), 'this.style.display=\'none\'') + '>' +
           '<div class="sv-night-text"><a class="sv-night-name" href="' + esc(charHref(it.c, root)) + '"' + offsite(it.c) + '>' + esc(it.c.name) + offMark(it.c) + '</a>' +
@@ -1403,27 +1413,43 @@
     if (!nightOrder || (!(nightOrder.first || []).length && !(nightOrder.other || []).length)) return null;
     if (!NIGHT_META || !NIGHT_META.length) return null;
     var lists = nightItems(entries, nightOrder);
-    // `which` names the list ('first' / 'other'); the markers carry their
-    // positions under the character field names ('firstNight' / 'otherNight').
     function seq(which) {
-      var field = which === 'first' ? 'firstNight' : 'otherNight';
-      var marks = NIGHT_META.map(function (m) {
-        return { id: m.id, n: Number(m[field]) };
-      }).filter(function (m) { return isFinite(m.n); });
-      var out = [];
-      var items = lists[which].map(function (it) { return { id: exportId(it.c), n: it.n }; });
-      // Each marker goes in front of the first character that acts after it.
-      marks.sort(function (a, b) { return a.n - b.n; });
-      var mi = 0;
-      items.forEach(function (it) {
-        while (mi < marks.length && marks[mi].n <= it.n) out.push(marks[mi++].id);
-        out.push(it.id);
+      return withNightMarks(lists[which], which).map(function (it) {
+        return it.mark || exportId(it.c);
       });
-      while (mi < marks.length) out.push(marks[mi++].id);
-      return out;
     }
     return { first: seq('first'), other: seq('other') };
   }
+
+  /* The night items with dusk, minion info, demon info and dawn slotted in:
+     each step goes in front of the first character that acts after it. One
+     placement for the page's Night Order box and the export's sequences, so
+     the two cannot disagree. Steps come out as {mark: id}. Without
+     NIGHT_META the items come back as they were. `which` names the list
+     ('first' / 'other'); the steps carry their positions under the
+     character field names ('firstNight' / 'otherNight'). */
+  function withNightMarks(items, which) {
+    if (!NIGHT_META || !NIGHT_META.length) return items;
+    var field = which === 'first' ? 'firstNight' : 'otherNight';
+    var marks = NIGHT_META.map(function (m) {
+      return { mark: m.id, n: m[field] == null ? NaN : Number(m[field]) };
+    }).filter(function (m) { return isFinite(m.n); })
+      .sort(function (a, b) { return a.n - b.n; });
+    var out = [], mi = 0;
+    items.forEach(function (it) {
+      while (mi < marks.length && marks[mi].n <= it.n) out.push(marks[mi++]);
+      out.push(it);
+    });
+    while (mi < marks.length) out.push(marks[mi++]);
+    return out;
+  }
+  // The official sheet's wording for those steps.
+  var NIGHT_MARK_TEXT = {
+    dusk: { name: 'Dusk', r: 'Check that all eyes are closed. Some Travellers act.' },
+    minioninfo: { name: 'Minion Info', r: 'If there are 7 or more players, wake all Minions: show the THIS IS THE DEMON token and point to the Demon. Show the THESE ARE YOUR MINIONS token and point to the other Minions.' },
+    demoninfo: { name: 'Demon Info', r: 'If there are 7 or more players, wake the Demon: show the THESE ARE YOUR MINIONS token and point to all Minions. Show the THESE CHARACTERS ARE NOT IN PLAY token and 3 not-in-play good character tokens.' },
+    dawn: { name: 'Dawn', r: 'Wait a few seconds. Call for eyes open.' }
+  };
 
   /* Official-schema export: [_meta, ...characters]. Official roles export as
      their bare id; homebrew characters as full objects (same as the builder).
