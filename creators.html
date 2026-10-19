@@ -161,7 +161,7 @@
       function markState(it) {
         var m = it.mark;
         if (m.legacy) return it.username ? ''
-          : '<span class="cr-state cr-state-reserved">Reserved &middot; no account linked</span>';
+          : '<span class="cr-state cr-state-reserved">Reserved</span>';
         if (m.hide) return '<span class="cr-state">Mark hidden from pages</span>';
         return '<span class="cr-state cr-state-own">Claimed</span>';
       }
