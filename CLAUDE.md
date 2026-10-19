@@ -1265,7 +1265,11 @@ will keep issuing its CREATEs.
 
 Scripts and collections carry rich page fields in their `data` JSON (all
 optional, no migration): `tagline, version, difficulty, synopsis, gameplay,
-strategyGood, strategyEvil, logo, theme{}`. Collections also have hybrid
+strategyGood, strategyEvil, logo, theme{}`. `customJson` is an imported file kept
+as the page's JSON (the editors' "Custom JSON" box, or the Script Builder's
+Import): `PageRender.customExport()` serves it in place of `buildPageExport()`
+on the page's JSON box and `/api/page-json`, and it is dropped from the public
+feeds (it can be 100 KB). Collections also have hybrid
 membership — `match[]` (auto, normalized `appearsIn`) plus manual `include[]` /
 `exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js), and
 an optional `order[]` of slugs — the author's hand-arranged roster order, kept

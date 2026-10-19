@@ -5797,6 +5797,9 @@ const PAGE_FIELD_CAPS = {
   name: 120, displayName: 120, author: 80, description: 2000, tagline: 140,
   version: 32, synopsis: 4000, gameplay: 4000, strategyGood: 2000, strategyEvil: 2000
 };
+// A script or collection's kept JSON (customJson): the imported file, shown
+// and downloaded instead of the JSON built from the roster.
+const PAGE_JSON_MAX = 100000;
 const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
 
 // A script's hand-arranged night order: {first: [slug], other: [slug]}, each
@@ -5856,6 +5859,10 @@ function sanitizePageFields(o, themeBase) {
   if (o.imageW != null) {
     const w = pageImageWidths(o);
     if (Object.keys(w).length) o.imageW = w; else delete o.imageW;
+  }
+  if (o.customJson != null) {
+    const j = String(o.customJson).trim().slice(0, PAGE_JSON_MAX);
+    if (j) o.customJson = j; else delete o.customJson;
   }
   // Custom side boxes, same widget as the character editor's.
   if (o.customBoxes != null) {
@@ -6192,6 +6199,9 @@ async function buildPublicJSON(env, table, opts = {}) {
     // reader's info box and onto its editing page — but the feed is a public
     // API, so dropping a field from it is a separate decision.
     delete d.editors;
+    // A script's or collection's kept JSON can be 100 KB, and only its own
+    // page (read from the row) and /api/page-json show it.
+    if (!chars) delete d.customJson;
     if (chars && r.slug) {
       d.slug = String(r.slug);
       // The address, derived on every read. The stored `page` is whatever some
@@ -8331,19 +8341,22 @@ async function pageJsonResponse(env, ctx, request, url) {
       return jsonResponse({ error: 'Not found' }, { status: 404 });
     }
   }
-  let chars = isScript
-    ? await charsBySlug(env, d.characters || [])
-    : await cachedCardChars(env, ctx);
-  if (isScript && ((d.characters || []).some(x => String(x).indexOf('off-') === 0) || d.nightOrder)) {
-    const official = await loadOfficialRoles(env, url.origin);
-    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
+  let text = PageRender.customExport(d.customJson);
+  if (!text) {
+    let chars = isScript
+      ? await charsBySlug(env, d.characters || [])
+      : await cachedCardChars(env, ctx);
+    if (isScript && ((d.characters || []).some(x => String(x).indexOf('off-') === 0) || d.nightOrder)) {
+      const official = await loadOfficialRoles(env, url.origin);
+      chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
+    }
+    const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+    const entries = isScript
+      ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
+      : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
+    if (isScript && d.creatorMarks) setMarkRegistry(await cachedMarkRegistry(env, ctx).catch(() => null));
+    text = PageRender.buildPageExport(name, d.author, d.logo || d.header, entries, isScript ? d : undefined);
   }
-  const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
-  const entries = isScript
-    ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
-    : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
-  if (isScript && d.creatorMarks) setMarkRegistry(await cachedMarkRegistry(env, ctx).catch(() => null));
-  const text = PageRender.buildPageExport(name, d.author, d.logo || d.header, entries, isScript ? d : undefined);
   const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
   return new Response(text, {
     headers: {

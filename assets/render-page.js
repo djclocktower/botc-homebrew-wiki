@@ -1475,6 +1475,15 @@
     return 'https://botchomebrew.wiki/assets/' + p.replace(/^\/?assets\//, '');
   }
 
+  /* A page's kept JSON (`customJson`): the file its owner imported, shown
+     and downloaded in place of the JSON built from the roster. Pretty-printed
+     when it parses; '' when there is none. */
+  function customExport(raw) {
+    raw = String(raw || '').trim();
+    if (!raw) return '';
+    try { return JSON.stringify(JSON.parse(raw), null, 2); } catch (e) { return raw; }
+  }
+
   /* `logoPath` is what the app draws as the script's logo. Callers pass the
      page's `logo` first and fall back to its header banner — `_meta.logo` is
      the app's logo, and a Bloodstar import, which has a logo and no banner,
@@ -1672,7 +1681,7 @@
     (allChars || []).forEach(function (c) { bySlug[c.slug] = c; });
     var entries = (sc.characters || []).map(function (s) { return bySlug[s]; }).filter(Boolean);
     var missing = (sc.characters || []).filter(function (s) { return !bySlug[s]; });
-    var jsonText = buildPageExport(sc.name, sc.author, sc.logo || sc.header, entries, sc);
+    var jsonText = customExport(sc.customJson) || buildPageExport(sc.name, sc.author, sc.logo || sc.header, entries, sc);
 
     var share = b64url(JSON.stringify({ n: sc.name || '', a: sc.author || '', c: (sc.characters || []) }));
     var actions = [
@@ -1704,7 +1713,7 @@
     var root = opts.linkRoot || '';
     var members = sortCollectionMembers(coll, resolveCollectionMembers(coll, allChars || []));
     var name = coll.displayName || coll.slug || 'Collection';
-    var jsonText = buildPageExport(name, coll.author, coll.logo || coll.header, members);
+    var jsonText = customExport(coll.customJson) || buildPageExport(name, coll.author, coll.logo || coll.header, members);
     // orderMap: each slug's index in the full character list, for "recently
     // added" sorting in the on-page filter (higher index = more recent).
     var orderMap = Object.create(null);
@@ -1764,6 +1773,7 @@
     LOGO_SIZE_MIN: LOGO_SIZE_MIN,
     LOGO_SIZE_MAX: LOGO_SIZE_MAX,
     buildPageExport: buildPageExport,
+    customExport: customExport,
     FONT_PRESETS: FONT_PRESETS,
     artSrc: artSrc,
     thumbSrc: thumbSrc, displaySrc: displaySrc, officialSmall: officialSmall,

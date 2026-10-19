@@ -235,3 +235,32 @@ test('the Night Order box carries dusk, minion info, demon info and dawn', () =>
     assert.deepEqual(meta.firstNight, ['late', 'dusk', 'early', 'minioninfo', 'demoninfo', 'dawn']);
   } finally { PageRender.setNightMeta(null); }
 });
+
+test('a kept JSON (customJson) replaces the built one on script and collection pages, and stays off the feeds', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  const kept = '[{"id":"_meta","name":"As Imported"},{"id":"kept_one","name":"Kept","team":"townsfolk","ability":"x"}]';
+  f.insert('scripts', 'kept', { slug: 'kept', name: 'Kept', characters: [], customJson: kept });
+  f.insert('collections', 'kept-c', { slug: 'kept-c', id: 'kept-c', displayName: 'Kept C', customJson: kept });
+  for (const q of ['type=script&slug=kept', 'type=collection&slug=kept-c']) {
+    assert.deepEqual(await (await f.request('/api/page-json?' + q)).json(), JSON.parse(kept), q);
+  }
+  assert.ok((await (await f.request('/s/kept')).text()).includes('kept_one'));
+  assert.ok((await (await f.request('/collection/kept-c')).text()).includes('kept_one'));
+  for (const u of ['/scripts.json', '/collections.json']) {
+    assert.ok(!(await (await f.request(u)).text()).includes('kept_one'), u);
+  }
+  // Saved through the editor's route, it is kept; saved empty, it is gone.
+  f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(1,'user-1','')").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1' });
+  const save = body => f.request('/api/script', { method: 'POST',
+    headers: { Cookie: 'botc_session=user-1', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let r = await save({ slug: 'saved', name: 'Saved', author: 'A', characters: [], status: 'published', customJson: kept });
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.deepEqual(await (await f.request('/api/page-json?type=script&slug=saved')).json(), JSON.parse(kept));
+  r = await save({ slug: 'saved', name: 'Saved', author: 'A', characters: [], status: 'published', customJson: '' });
+  assert.equal(r.status, 200);
+  assert.equal((await (await f.request('/api/page-json?type=script&slug=saved')).json())[0].name, 'Saved');
+  // No kept JSON: the wiki builds it as before.
+  assert.equal(PageRender.customExport(''), '');
+});
