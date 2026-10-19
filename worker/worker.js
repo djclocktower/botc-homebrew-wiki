@@ -6338,19 +6338,20 @@ async function markNamesAfterSave(env, type, slug) {
 /* Every mark on the wiki, as the list assets/creators.js setMarks() takes.
    Account marks first; then the legacy table, minus any glyph an account has
    claimed and any name an account with a mark of its own is drawn beside
-   (choosing a mark releases the old glyph). A legacy name the list gives a
-   Discord handle (Creators.LEGACY_HANDLES) is linked to the account with
-   that Discord, or that handle, so it is drawn on their comments too and is
-   theirs to claim. Two queries, in parallel. */
+   (choosing a mark releases the old glyph). A legacy name with an account
+   in Creators.LEGACY_ACCOUNTS is linked to the account with that username
+   (or, failing that, that Discord handle), so it is drawn on their comments
+   too and is theirs to claim. Two queries, in parallel. */
 async function buildMarkRegistry(env, flags = {}) {
-  const handles = [...new Set(Object.values(Creators.LEGACY_HANDLES).map(h => h.toLowerCase()))];
+  const handles = [...new Set(Object.values(Creators.LEGACY_ACCOUNTS).map(h => h.toLowerCase()))];
   const marks = env.DB.prepare(
     `SELECT m.glyph, m.glyph_key, m.show, m.names,
             u.username, u.display_name
        FROM creator_marks m JOIN users u ON u.id = m.user_id
       WHERE COALESCE(u.banned, 0) = 0`
   ).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; /* none claimed yet */ });
-  // Handles are ASCII, so SQL's lower() is enough here.
+  // The list is lower case; SQL's lower() folds only A–Z, which is all the
+  // stored side needs (a non-ASCII handle is stored lower case already).
   const ph = handles.map(() => '?').join(',');
   const linked = env.DB.prepare(
     `SELECT username, display_name, lower(discord_username) AS dh, lower(username) AS uh FROM users
@@ -6358,9 +6359,9 @@ async function buildMarkRegistry(env, flags = {}) {
   ).bind(...handles, ...handles).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; });
   const [rows, users] = await Promise.all([marks, linked]);
   const byHandle = new Map();
-  for (const u of users) for (const h of [u.dh, u.uh]) if (h && !byHandle.has(h)) byHandle.set(h, u);
-  // Discord beats a bare handle someone else registered under that name.
   for (const u of users) if (u.dh) byHandle.set(u.dh, u);
+  // A wiki username beats somebody else's Discord handle of the same spelling.
+  for (const u of users) byHandle.set(u.uh, u);
   const out = [];
   const taken = new Set();
   const covered = new Set();
@@ -6382,7 +6383,7 @@ async function buildMarkRegistry(env, flags = {}) {
     const g = Creators.CREATOR_SYMBOLS[name];
     const k = Creators.markKey(g);
     if (taken.has(k) || covered.has(normCreator(name))) continue;
-    const h = Creators.LEGACY_HANDLES[name];
+    const h = Creators.LEGACY_ACCOUNTS[name];
     const u = h && byHandle.get(h.toLowerCase());
     // An account that chose a mark of its own released this one.
     if (u && marked.has(usernameKey(u.username))) continue;

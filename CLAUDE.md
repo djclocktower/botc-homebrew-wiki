@@ -3262,11 +3262,13 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   it (2026-10); otherwise never add to it. A legacy glyph stays reserved for
   its name; the account that name resolves to may claim it (and nobody else),
   and an account choosing any mark of its own releases it.
-  `LEGACY_HANDLES` gives the Discord handle behind a one-person name: the
-  registry links that mark to the account whose `discord_username` (or
-  username) is that handle, setting `u` on the legacy entry, so it is drawn
-  on their comments and is theirs to claim — live, so it links the day they
-  sign up. Shared marks (The Bazaar) stay the name's.
+  `LEGACY_ACCOUNTS` names the account behind a one-person name — its wiki
+  username, matched by hand against the live accounts, or the Discord handle
+  from the owner's list for someone with no account yet. The registry links
+  that mark to the account with that username (else that `discord_username`),
+  setting `u` on the legacy entry, so it is drawn on their comments and is
+  theirs to claim — live, so a handle links the day they sign up. Shared
+  marks (The Bazaar, Harry & Co. & Bendan) stay the name's.
 - **The registry is two parallel queries** (`buildMarkRegistry()`), because the SSR read
   path must not grow: each row stores `names`, the credit names it is drawn
   beside (`markNamesFor()`: what the /creators list gives that account, plus

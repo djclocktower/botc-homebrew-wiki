@@ -93,28 +93,56 @@
     "Varii": "♡",
     "VaultDemonPsycho": "¡"
   };
-  // The Discord handle behind a legacy name, where the list gives one (one
-  // person only; a shared mark like The Bazaar's stays the name's). The
-  // Worker links the mark to the account with that Discord, or that handle.
-  var LEGACY_HANDLES = {
+  // The account behind a legacy name: its wiki username, or the Discord
+  // handle from the owner's list for someone with no account yet (it links
+  // the day they sign up with that Discord). One person only; a shared mark
+  // like The Bazaar's stays the name's. Lower case.
+  var LEGACY_ACCOUNTS = {
     "Alex": "ur_l0cal_id1o4",
+    "BakedIce": "bakedice",
     "Bio": "bionicnecromancer",
-    "Dark": "thedarkestartist",
+    "Coda": "canichatandobser",
+    "concavz": "concavz",
+    "Dark": "darkartist",
+    "Delta": "deltaclocktower",
+    "Drossel": "quoththeraven.",
     "Elden Thorn": "eldenthorn.",
     "Eliderad": "eliderad",
+    "Elluna": "elluna",
+    "FakeTier": "faketier",
+    "Geebs": "geebs",
+    "Gobinator": "the_gobinator",
+    "Haunted": "haunted",
+    "Hyperswag": "hyperswag506",
+    "Hystrex": "hystrex",
+    "Lady Mist": "lady-mist",
+    "Lawrence": "lawrenceluke",
+    "Luis": "luis",
+    "Ma'ayan": "ma-ayan",
     "Maja": "luhkmeih",
-    "Mr Froggit": "_mrfroggit",
+    "Mr Froggit": "mr-froggit",
+    "Mythbusters": "mythbusters",
+    "Nerdguy": "nerdguy708",
+    "Nyla": "nyla_smokeyface",
     "ODE": "0rig0nal",
+    "Panfex": "panfex",
+    "Pixlate": "pixlate",
     "Procyon": "procyon8",
+    "Pynstripe": "pynstripe",
     "Rams": "ramsplooge",
-    "Robo": "robo.tea",
+    "Robo": "robotea",
+    "Safterix": "safterix",
+    "Scape": "scape",
     "Schemer": "secret_schemer",
     "Super": "supergdpwyl",
     "Spear_": "spearkiller",
     "Sy": "sy.py",
     "Taco": "alonelytaco1337",
     "Temporary": "temporary0533",
-    "Varii": "_varii"
+    "That_Amnesiac": "that_amnesiac",
+    "Tir": "tir-far-thóinn",
+    "Varii": "_varii",
+    "VaultDemonPsycho": "vaultdemonpsycho"
   };
 
   // Case-insensitive name -> legacy glyph, for before setMarks() has run.
@@ -278,7 +306,7 @@
   }
 
   var api = {
-    CREATOR_SYMBOLS: CREATOR_SYMBOLS, LEGACY_HANDLES: LEGACY_HANDLES,
+    CREATOR_SYMBOLS: CREATOR_SYMBOLS, LEGACY_ACCOUNTS: LEGACY_ACCOUNTS,
     creatorSymbol: creatorSymbol,
     creatorMark: creatorMark, userMark: userMark, allMarks: allMarks,
     setMarks: setMarks, indexMarks: indexMarks, load: load,
