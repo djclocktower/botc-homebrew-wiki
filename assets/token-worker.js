@@ -40,7 +40,7 @@ function engineKey(url) {
 }
 if (self.caches) {
   self.fetch = function (input, init) {
-    var key = engineKey(typeof input === 'string' ? input : input.url);
+    var key = engineKey(input instanceof Request ? input.url : String(input));   // Pyodide passes a URL object
     if (!key) return netFetch(input, init);
     return caches.open(ENGINE_CACHE).then(function (c) {
       return c.match(key).then(function (hit) {
