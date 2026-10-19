@@ -29,17 +29,8 @@
   function autoGrow(ta) {
     if (!ta) return;
     ta.style.overflowY = 'hidden';
-    /* Measuring means collapsing the box for a moment. That shortens the
-       page, and Firefox and Safari pull the scroll position back to fit it,
-       so every keystroke in a long body jumped the page. Hold the box's
-       parent at its height while measuring, then put the scroll back. */
     function fit() {
-      var x = window.scrollX, y = window.scrollY, p = ta.parentNode;
-      if (p) p.style.minHeight = p.offsetHeight + 'px';
-      ta.style.height = 'auto';
-      ta.style.height = Math.max(ta.scrollHeight + 2, 54) + 'px';
-      if (p) p.style.minHeight = '';
-      if (window.scrollY !== y) window.scrollTo(x, y);
+      BotcData.fitHeight(ta, function () { return Math.max(ta.scrollHeight + 2, 54); });
     }
     ta.addEventListener('input', fit);
     fit();

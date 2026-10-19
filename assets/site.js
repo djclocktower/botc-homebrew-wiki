@@ -1244,8 +1244,7 @@ window.placeEditButton();
   function fit(ta) {
     if (!ta || ta.tagName !== 'TEXTAREA' || ta.classList.contains('no-autosize')) return;
     ta.style.overflowY = 'hidden';
-    ta.style.height = 'auto';
-    ta.style.height = (ta.scrollHeight + 2) + 'px';
+    BotcData.fitHeight(ta, function () { return ta.scrollHeight + 2; });
   }
   function fitAll() {
     Array.prototype.forEach.call(document.querySelectorAll('textarea'), fit);
