@@ -300,6 +300,9 @@ import Render from '../assets/render.js';
 // Shared script/collection page renderer (also used by the publish pages in
 // the browser). It receives render.js's exports through init().
 import PageRender from '../assets/render-page.js';
+// A page's custom stylesheet, cleaned and scoped before it is printed (the
+// editors run the same file for their live check).
+import CustomCSS from '../assets/custom-css.js';
 PageRender.init(Render);
 // The quick-action slot (Favorites + Add to Script) under every card's icon.
 // The server only prints the empty slot; card-actions.js fills it in the
@@ -675,7 +678,7 @@ async function imageReferences(env) {
 function imageOrphaned(key, refs, userIds) {
   // avatars/u{id}.{ext} is orphaned when that account no longer exists
   if (key.startsWith('avatars/')) {
-    const m = key.match(/^avatars\/u(\d+)\./);
+    const m = key.match(/^avatars\/u(\d+)(?:-bg|-st\d{1,2})?\./);
     return !!m && !userIds.has(m[1]);
   }
   // A copy stands or falls with its original: purging orphaned art used to
@@ -1549,7 +1552,9 @@ async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('scripts/') || key.startsWith('collections/')) {
     const type = key.startsWith('scripts/') ? 'script' : 'collection';
     const named = key.slice(type === 'script' ? 8 : 12).replace(/\.[a-z0-9]+$/i, '');
-    const stripped = /-(logo|bg)$/.test(named) ? named.replace(/-(logo|bg)$/, '') : '';
+    // -st{n}: the page's stickers (theme.stickers), which belong to the page
+    // exactly as its logo and background do.
+    const stripped = /-(logo|bg|st\d{1,2})$/.test(named) ? named.replace(/-(logo|bg|st\d{1,2})$/, '') : '';
     const find = k => type === 'script' ? getEntityRow(env, 'script', k) : findCollectionRow(env, k);
     const exact = await find(named);
     const base = stripped ? await find(stripped) : null;
@@ -3344,9 +3349,21 @@ function parseProfileExtra(row) {
   try { x = row && row.profile_json ? JSON.parse(row.profile_json) : null; } catch { x = null; }
   return {
     links: (x && x.links && typeof x.links === 'object') ? x.links : {},
-    pinned: Array.isArray(x && x.pinned) ? x.pinned : []
+    pinned: Array.isArray(x && x.pinned) ? x.pinned : [],
+    // The creator page's look (theme kit + custom CSS), set from the account
+    // page through /api/account/theme. Sanitized on save and again on read.
+    theme: (x && x.theme && typeof x.theme === 'object') ? x.theme : null
   };
 }
+// The one way profile_json is written, so a save of one part (links, pins,
+// the theme) can never drop the others.
+function packProfileExtra(extra) {
+  const out = { links: extra.links || {}, pinned: extra.pinned || [] };
+  if (extra.theme) out.theme = extra.theme;
+  return JSON.stringify(out);
+}
+// The R2 base a creator page's background lives under (avatars/u{id}-bg.*).
+function profileThemeBase(userId) { return 'avatars/u' + userId; }
 
 // Fresh admin/ban flags from D1 — session cookies cache isAdmin for 30 days,
 // but bans and demotions must apply immediately, not when the cookie expires.
@@ -4761,7 +4778,9 @@ function sanitizeScriptFields(s) {
    opts.origin             for the official roster
    opts.requirePublishable a published page must still meet the publish bar
                            (an approval; a rollback restores what WAS live) */
-const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote'];
+// customUrl too: the address lives in the custom_url column as well, and an
+// old version must not put the data and the column out of step.
+const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
 async function prepareRestore(env, type, row, d, opts) {
   opts = opts || {};
   const now = parseData(row);
@@ -4936,6 +4955,141 @@ async function lookupRedirect(env, type, slug) {
     ).bind(type, slug).first();
     return r ? r.to_slug : null;
   } catch { return null; }
+}
+
+// ---- custom URLs (scripts, collections, wiki pages and articles) ----
+// A page's owner may give it an address of their own: /s/{custom},
+// /collection/{custom}, /p/{custom}. The PK slug stays the page's identity —
+// comments, views, favorites, pins and R2 images are all keyed on it, so
+// choosing an address moves NOTHING but the URL, the same split characters
+// have (identity vs address).
+//
+// Two places hold it, for two jobs: `customUrl` in the page's data blob is
+// what the page says about itself (canonical link, the editors), and the
+// lazily ALTERed, UNIQUE-indexed `custom_url` column is what a request is
+// looked up by — and what makes two pages claiming one address impossible.
+// Reading an address: slug first, then custom_url, then the redirects table
+// (an address the page used to have), so an old link keeps landing.
+// Arriving by the slug (or an old address) when a custom one is set is a 301
+// to it, made after the draft/deleted gates, like the /c/ canonical 301.
+const CUSTOM_URL_TABLES = { script: 'scripts', collection: 'collections', wikipage: 'pages' };
+const CUSTOM_URL_MIN = 3, CUSTOM_URL_MAX = 60;
+const _customUrlReady = {};
+async function ensureCustomUrlColumn(env, type) {
+  const table = CUSTOM_URL_TABLES[type];
+  if (!table || _customUrlReady[type]) return;
+  const idx = 'idx_' + table + '_custom_url';
+  if (await schemaHas(env, { tables: { [table]: ['custom_url'] }, indexes: [idx] })) { _customUrlReady[type] = true; return; }
+  try { await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN custom_url TEXT`).run(); }
+  catch { /* already there */ }
+  try { await env.DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS ${idx} ON ${table}(custom_url)`).run(); }
+  catch { /* exists; NULLs are distinct, so pages without one never clash */ }
+  _customUrlReady[type] = true;
+}
+// What somebody typed -> the address it becomes ('' for none). Same alphabet
+// as every slug on the site: a-z, 0-9 and single hyphens.
+function normCustomUrl(v) {
+  return String(v == null ? '' : v).trim().toLowerCase().normalize('NFD')
+    .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+// The row a custom address belongs to, or null. Read path: never creates the
+// column (no column = nobody has one yet = null).
+async function rowByCustomUrl(env, type, key) {
+  const table = CUSTOM_URL_TABLES[type];
+  if (!table || !key) return null;
+  const cols = type === 'collection'
+    ? 'slug, display_name AS name, owner_id, status, data, created_at, updated_at'
+    : type === 'wikipage' ? '*' : 'slug, data, status, owner_id, updated_at';
+  return env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE custom_url=?`).bind(key).first().catch(() => null);
+}
+// Is `key` an address of a page OTHER than `pk` (its slug, a collection id,
+// its custom address, or an address it used to have)? `pk` null: any page.
+async function addressTaken(env, type, key, pk) {
+  const table = CUSTOM_URL_TABLES[type];
+  if (!table || !key) return false;
+  const other = r => !!r && r.slug !== pk;
+  if (type === 'collection') {
+    if (other(await findCollectionRow(env, key, { strict: true }))) return true;
+  } else {
+    const r = await env.DB.prepare(`SELECT slug FROM ${table} WHERE slug=?`).bind(key).first();
+    if (other(r)) return true;
+  }
+  if (other(await rowByCustomUrl(env, type, key))) return true;
+  const to = await lookupRedirect(env, type, key);
+  if (to && to !== pk) {
+    // Parked by a page that still exists: building here would hijack its
+    // old links. One pointing at a page that is gone parks nothing.
+    const live = await env.DB.prepare(`SELECT slug FROM ${table} WHERE slug=? AND status<>'deleted'`)
+      .bind(to).first().catch(() => null);
+    if (live) return true;
+  }
+  return false;
+}
+/* A save's customUrl, settled before the row is written. Owner's field: for
+   anybody else the stored one is carried forward. Returns {error, status}
+   to refuse the save, or {from, to} for commitCustomUrl() once it is
+   written. `own` is the page's own slug-like keys (its PK, a collection's
+   id), which need no custom address. */
+async function settleCustomUrl(env, type, obj, stored, perm, pk, own) {
+  const was = normCustomUrl(stored && stored.customUrl);
+  // Not sent at all (an older editor tab, the Bloodstar importer) keeps the
+  // address; only an explicit '' takes it off.
+  if (perm !== 'owner' || obj.customUrl === undefined || obj.customUrl === null) {
+    if (was) obj.customUrl = was; else delete obj.customUrl;
+    return { from: was, to: was };
+  }
+  let want = normCustomUrl(obj.customUrl);
+  if (want && (own || []).includes(want)) want = '';
+  if (!want) { delete obj.customUrl; return { from: was, to: '' }; }
+  if (want.length < CUSTOM_URL_MIN || want.length > CUSTOM_URL_MAX) {
+    return { error: 'A custom URL needs ' + CUSTOM_URL_MIN + ' to ' + CUSTOM_URL_MAX + ' letters, numbers or hyphens.', status: 400 };
+  }
+  if (want !== was) {
+    let taken;
+    try { taken = await addressTaken(env, type, want, pk); }
+    catch { return { error: ROW_READ_FAILED, status: 503 }; }
+    if (taken) return { error: 'The URL "' + want + '" is already taken. Try another.', status: 409 };
+  }
+  obj.customUrl = want;
+  return { from: was, to: want };
+}
+// After the row is written: point the column at the new address, leave the
+// old one behind as a redirect, and clear any redirect the new one replaces.
+// A unique-index clash here means two saves raced for one address; the one
+// that lost has the address taken off its data again and is told so.
+async function commitCustomUrl(env, type, pk, change) {
+  // Nothing set before or after: nothing to do. An unchanged address is still
+  // written, so a column that lost it (a restore, a manual edit) heals itself.
+  if (!change || change.error || (!change.from && !change.to)) return { ok: true };
+  const table = CUSTOM_URL_TABLES[type];
+  await ensureCustomUrlColumn(env, type);
+  try {
+    await env.DB.prepare(`UPDATE ${table} SET custom_url=? WHERE slug=?`).bind(change.to || null, pk).run();
+  } catch {
+    await env.DB.prepare(`UPDATE ${table} SET data=json_remove(data,'$.customUrl'), custom_url=NULL WHERE slug=? AND json_valid(data)`)
+      .bind(pk).run().catch(() => {});
+    return { ok: false, error: 'Saved, but the URL "' + change.to + '" was taken a moment ago. Pick another.' };
+  }
+  if (change.from && change.from !== change.to) {
+    try {
+      await ensureRedirectsTable(env);
+      await env.DB.prepare(
+        `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES (?,?,?)
+         ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+      ).bind(type, change.from, pk).run();
+    } catch { /* an old address that stops working is not worth failing a save */ }
+  }
+  if (change.to) {
+    await env.DB.prepare('DELETE FROM redirects WHERE entity_type=? AND from_slug=?')
+      .bind(type, change.to).run().catch(() => {});
+  }
+  return { ok: true };
+}
+// The URL path a page is read at: its custom address if it has one.
+function pageAddressKey(d, fallback) {
+  const c = normCustomUrl(d && d.customUrl);
+  return c || fallback;
 }
 
 // Move one R2 object. Returns false when there was nothing there (art that
@@ -5473,7 +5627,7 @@ async function rewriteProfilePins(env, from, to) {
       }
       if (!changed) continue;
       await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
-        .bind(JSON.stringify(extra), u.id).run();
+        .bind(packProfileExtra(extra), u.id).run();
     }
   } catch { /* pins are cosmetic; never fail a rename over them */ }
 }
@@ -7346,7 +7500,7 @@ const EARLY_ANNOUNCEMENT = String.raw`<script>(function(){try{var c=JSON.parse(l
 function pageShell(o) {
   // o: {title, ogTitle, desc, canonicalUrl, ogImage, ogCard, themeColor, body,
   //     bodyClass, bodyStyle, mainClass, mainStyle, bootstrap, scripts[],
-  //     draftBanner, noindex, root}
+  //     draftBanner, noindex, root, fonts[], customCss, stickers}
   // `ogTitle` is the headline a LINK UNFURL shows and defaults to `title`.
   // They are split because the two are read in different places: <title> is
   // the browser tab and the Google result, where anything past the page's own
@@ -7371,6 +7525,21 @@ function pageShell(o) {
     (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
   const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
     (o.mainStyle ? ' style="' + attr(o.mainStyle) + '"' : '');
+  // A themed page's own look: Google Fonts it asked for (the hrefs are built
+  // by PageRender.themeFontLinks from validated names only) and its custom
+  // stylesheet, already through CustomCSS.clean. The stylesheet comes after
+  // the site's, so an author's rule wins a tie; the frame around the body is
+  // what keeps every one of those rules inside the page (see .ucss-frame).
+  const fontLinks = (o.fonts || []).filter(h => /^https:\/\/fonts\.googleapis\.com\/css2\?family=[A-Za-z0-9+]+&display=swap$/.test(h));
+  const themeHead = (fontLinks.length
+    ? '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+      fontLinks.map(h => '<link rel="stylesheet" href="' + attr(h) + '">').join('\n') + '\n'
+    : '') +
+    (o.customCss ? '<style id="page-custom-css">' + String(o.customCss).replace(/</g, '\\3c ') + '</style>\n' : '') +
+    (o.movesCss ? '<style id="page-moves">' + String(o.movesCss).replace(/</g, '') + '</style>\n' : '');
+  const mainBody = o.customCss
+    ? '<div class="ucss-frame"><div class="ucss">' + o.body + '</div></div>'
+    : o.body;
   return `<!DOCTYPE html>
 <html lang="en" class="redesign-on">
 <head>
@@ -7394,7 +7563,7 @@ ${o.themeColor ? '<meta name="theme-color" content="' + attr(o.themeColor) + '">
 <link rel="apple-touch-icon" href="${R}assets/favicon.png">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['styles.css'] || 'styles.css'}">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['header-redesign.css'] || 'header-redesign.css'}">
-</head>
+${themeHead}</head>
 <body${bodyAttrs}>
 ${EARLY_ANNOUNCEMENT}
 ${o.draftBanner || ''}
@@ -7432,7 +7601,7 @@ ${o.draftBanner || ''}
   <a href="${R}script">Script Builder</a>
 </nav>
 
-  <main${mainAttrs} id="content">${o.body}</main>
+  <main${mainAttrs} id="content">${o.stickers || ''}${mainBody}</main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
@@ -7440,6 +7609,18 @@ ${o.draftBanner || ''}
 ${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + (ASSET_MANIFEST[s] || s) + '" defer></script>').join('\n')}
 </body>
 </html>`;
+}
+
+// What a sanitized theme adds to pageShell(): the body's classes and custom
+// properties, its Google Fonts and its custom stylesheet, cleaned and scoped.
+function themeShellOpts(theme) {
+  const ta = PageRender.themeAttrs(theme, '../');
+  return {
+    bodyClass: ta.cls, bodyStyle: ta.style, fonts: ta.fonts,
+    customCss: theme && theme.css ? CustomCSS.clean(theme.css).css : '',
+    movesCss: ta.movesCss || '',
+    stickers: PageRender.stickersHTML(theme && theme.stickers)
+  };
 }
 
 // The "this page is Partial" nudge. Only ever rendered for someone who can
@@ -8187,7 +8368,15 @@ function contentPageRow(env, type, slug) {
 // ssrRoute() beside its version read.
 async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   const isScript = type === 'script';
-  const row = await (loadRow ? loadRow() : contentPageRow(env, type, slug));
+  // The slug (or a collection's id), then a custom address, then an address
+  // the page used to have (see "custom URLs").
+  let row = await (loadRow ? loadRow() : contentPageRow(env, type, slug));
+  let viaRedirect = false;
+  if (!row) row = await rowByCustomUrl(env, type, slug);
+  if (!row) {
+    const to = await lookupRedirect(env, type, slug);
+    if (to) { row = await contentPageRow(env, type, to).catch(() => null); viaRedirect = !!row; }
+  }
   if (!row || !row.data) return assetsOrNotFound(env, request);
 
   // Soft-deleted pages are hidden from everyone; recovery is on the dashboard.
@@ -8206,8 +8395,17 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   const mayEditPage = mayEditParent || await canEditPage(env, pageSess, type, row);
   const isDraft = row.status === 'draft';
   if (isDraft && !mayEditPage) return assetsOrNotFound(env, request); // 404 for everyone else
-  if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
   const d = foldLegacyCurata(JSON.parse(row.data));
+  // Read at the page's own address: its custom one when it has one. After
+  // the draft and deleted gates, so a 301 never reveals an unpublished page.
+  const address = pageAddressKey(d, isScript ? row.slug : (d.id || row.slug));
+  if ((d.customUrl || viaRedirect) && address !== slug) {
+    return new Response(null, {
+      status: 301,
+      headers: { Location: url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(address) + url.search, 'Cache-Control': 'no-store' }
+    });
+  }
+  if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
   if (!d.slug) d.slug = row.slug || slug;
   const rv = rowVersion(row.updated_at);
   if (rv) d.v = rv; else delete d.v;
@@ -8249,7 +8447,7 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
 
   const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
   const theme = PageRender.sanitizeTheme(d.theme, themeBase);
-  const ta = PageRender.themeAttrs(theme, '../');
+  const ta = themeShellOpts(theme);
 
   const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
 
@@ -8282,7 +8480,7 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   const desc = (d.tagline || '').trim() || (d.description || '').trim() ||
     (nChars + '-character homebrew ' + (isScript ? 'script' : 'collection') +
      ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
-  const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
+  const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(address);
   // A banner or logo can be an absolute URL (Bloodstar imports, remote art),
   // which must not be glued onto this origin's /assets/ path.
   const imgPath = String(d.header || d.logo || 'logo_skull.png');
@@ -8296,7 +8494,7 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
     title: (isDraft ? 'Draft: ' : '') + name, desc, canonicalUrl: canonical,
     ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
     body, draftBanner,
-    bodyClass: ta.cls, bodyStyle: ta.style,
+    ...ta,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${jsStr(type)}; window.PAGE_SLUG = ${jsStr(isScript ? d.slug : (d.id || d.slug))};` +
       // pageview.js draws no Favorite button on a draft (published only).
       (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
@@ -9172,12 +9370,12 @@ const app = {
         WikiRender.setCharLinks(newsLinks || {});
         WikiRender.setOfficialNames(newsOfficial);
         const newsTheme = PageRender.sanitizeTheme(a.theme, 'news/' + a.slug);
-        const newsThemeAttrs = PageRender.themeAttrs(newsTheme, '../');
+        const newsThemeAttrs = themeShellOpts(newsTheme);
         const html = pageShell({
           title: (isDraft ? 'Draft: ' : '') + (a.title || 'News'),
           desc, canonicalUrl: url.origin + '/news/' + encodeURIComponent(a.slug),
           ogImage: img, ogCard: a.image ? 'summary_large_image' : 'summary',
-          bodyClass: newsThemeAttrs.cls, bodyStyle: newsThemeAttrs.style,
+          ...newsThemeAttrs,
           body: '<p class="news-back"><a href="../news">← All news</a></p>' +
             NewsRender.renderArticle(a, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
@@ -9342,7 +9540,17 @@ const app = {
           });
         }
         if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
-        const row = await loadPage();
+        // The slug, then a custom address, then one the page used to have.
+        let row = await loadPage();
+        let viaRedirect = false;
+        if (!row) row = await rowByCustomUrl(env, 'wikipage', slug);
+        if (!row) {
+          const to = await lookupRedirect(env, 'wikipage', slug);
+          if (to) {
+            row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(to).first().catch(() => null);
+            viaRedirect = !!row;
+          }
+        }
         if (!row) return assetsOrNotFound(env, request);
         const isDraft = row.status !== 'published';
         if (isDraft) {
@@ -9353,9 +9561,9 @@ const app = {
             return assetsOrNotFound(env, request);
           }
         }
-        if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
-  
         const d = parseData(row);
+        const pageAddress = pageAddressKey(d, row.slug);
+
         // The parent, the [[Name]] link map (only when the page has a [[link]])
         // and the official names, side by side.
         const [parent, pageLinks, pageOfficial] = await Promise.all([
@@ -9372,6 +9580,15 @@ const app = {
           const sess = await getSession(env, request);
           if (!(await mayReachHiddenWikiPage(env, sess, row, parent))) return assetsOrNotFound(env, request);
         }
+        // Read at its own address. After every gate (the draft one and the
+        // parent's), so a 301 never tells a stranger a hidden page exists.
+        if ((d.customUrl || viaRedirect) && pageAddress !== slug) {
+          return new Response(null, {
+            status: 301,
+            headers: { Location: url.origin + '/p/' + encodeURIComponent(pageAddress) + url.search, 'Cache-Control': 'no-store' }
+          });
+        }
+        if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
         // Both registries set with no suspension before the render. A registry
         // that failed to load keeps the page out of the shared cache.
         const registriesOk = !!pageLinks && Object.keys(pageOfficial).length > 0;
@@ -9386,21 +9603,21 @@ const app = {
           updatedAt: row.updated_at
         };
         const theme = PageRender.sanitizeTheme(d.theme, 'pages/' + row.slug);
-        const ta = PageRender.themeAttrs(theme, '../');
+        const ta = themeShellOpts(theme);
         const desc = (d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 180) ||
           'A page from the BOTC Homebrew Wiki.');
         const bannerImg = d.header ? WikiRender.safeImg(d.header, url.origin + '/') : '';
   
         const html = pageShell({
           title: (isDraft ? 'Draft: ' : '') + (row.title || 'Page'),
-          desc, canonicalUrl: url.origin + '/p/' + encodeURIComponent(row.slug),
+          desc, canonicalUrl: url.origin + '/p/' + encodeURIComponent(pageAddress),
           ogImage: bannerImg || (url.origin + '/assets/logo_skull.png'),
           ogCard: bannerImg ? 'summary_large_image' : 'summary',
           // A set's pages are intentionally unlisted: no search engines and no
           // sitemap entry. A standalone article is listed (/articles), so it
           // may be indexed like any other public page.
           noindex: row.parent_type !== ARTICLE_PARENT,
-          bodyClass: ta.cls, bodyStyle: ta.style,
+          ...ta,
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
             ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
@@ -10060,7 +10277,8 @@ const app = {
           joined: u.created_at,
           creatorNames: names,
           links: extra.links,
-          pinned: livePins
+          pinned: livePins,
+          theme: PageRender.sanitizeTheme(extra.theme, profileThemeBase(u.id))
         } : {
           claimed: false,
           username: null,
@@ -10275,8 +10493,21 @@ const app = {
           ).bind(ARTICLE_PARENT).all()).results || [];
         } catch { degraded = true; return []; }
       }
-      const [chars, scripts, colls, news, articles] = await Promise.all([
-        pub('characters'), pub('scripts'), pubCollections(), pubNews(), pubArticles()
+      // Pages with a custom address are listed at it, not at the slug that
+      // 301s there. No column yet means nobody has one: an empty map.
+      async function customUrls(type) {
+        const out = Object.create(null);
+        try {
+          const { results } = await env.DB.prepare(
+            `SELECT slug, custom_url FROM ${CUSTOM_URL_TABLES[type]} WHERE custom_url IS NOT NULL`
+          ).all();
+          for (const r of results || []) out[r.slug] = r.custom_url;
+        } catch { /* no custom URLs yet */ }
+        return out;
+      }
+      const [chars, scripts, colls, news, articles, scriptUrls, pageUrls] = await Promise.all([
+        pub('characters'), pub('scripts'), pubCollections(), pubNews(), pubArticles(),
+        customUrls('script'), customUrls('wikipage')
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
@@ -10287,18 +10518,18 @@ const app = {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + charAddress(r)) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of scripts) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(scriptUrls[r.slug] || r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of colls) {
         let id = '';
-        try { id = JSON.parse(r.data).id || ''; } catch { /* fall back to slug */ }
+        try { const cd = JSON.parse(r.data); id = normCustomUrl(cd.customUrl) || cd.id || ''; } catch { /* fall back to slug */ }
         urls.push('<url><loc>' + xmlEsc(url.origin + '/collection/' + encodeURIComponent(id || r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of news) {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/news/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of articles) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/p/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/p/' + encodeURIComponent(pageUrls[r.slug] || r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -10590,6 +10821,28 @@ const app = {
     // is why the suffix ladder is still here and still looks like a URL.
     // Scripts and collections are unchanged: for them the slug IS the URL.
     // Login required: whether a slug is taken can betray someone's draft.
+    // Is this custom URL free for this page? The editors ask as it is typed;
+    // the save checks again (settleCustomUrl), so this is a courtesy only.
+    if (method === 'GET' && path === '/api/custom-url-check') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      const type = url.searchParams.get('type') || '';
+      if (!CUSTOM_URL_TABLES[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      const want = normCustomUrl(url.searchParams.get('url'));
+      let pk = url.searchParams.get('slug') || null;
+      if (!want) return jsonResponse({ url: '', free: true });
+      if (want.length < CUSTOM_URL_MIN || want.length > CUSTOM_URL_MAX) {
+        return jsonResponse({ url: want, free: false, error: CUSTOM_URL_MIN + ' to ' + CUSTOM_URL_MAX + ' letters, numbers or hyphens.' });
+      }
+      try {
+        if (pk && type === 'collection') {
+          const own = await findCollectionRow(env, pk, { strict: true });
+          pk = own ? own.slug : pk;
+        }
+        return jsonResponse({ url: want, free: !(await addressTaken(env, type, want, pk)) });
+      } catch { return jsonResponse({ error: ROW_READ_FAILED }, { status: 503 }); }
+    }
+
     if (method === 'GET' && path === '/api/slug-check') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
@@ -10621,10 +10874,12 @@ const app = {
       // live page's flat old address counts.
       // A character identity that would share an art slot with another page
       // (artSlotClash) is as taken as a parked one: the save refuses it.
+      // Somebody's custom address (scripts and collections) is taken as well:
+      // a page created on it would answer first and swallow its links.
       const parked = !row && (offPrefix || (type === 'character'
         ? (await identityParked(env, base).catch(() => false)) ||
           (await artSlotClash(env, base).catch(() => false))
-        : !!(await lookupRedirect(env, type, base))));
+        : !!(await lookupRedirect(env, type, base)) || !!(await rowByCustomUrl(env, type, base))));
       if (!row && !parked) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
       // `mine` says a save on this URL would update that page rather than
       // collide with it — which is what the create page wants, and what a
@@ -10644,6 +10899,7 @@ const app = {
           try {
             const d = foldLegacyCurata(JSON.parse(r.data));
             if (d && d.id) used.add(String(d.id));
+            if (d && d.customUrl) used.add(String(d.customUrl));
           } catch { /* skip bad rows */ }
         }
       } else {
@@ -10653,6 +10909,14 @@ const app = {
           ).bind(stem, stem + '-%').all();
           used = new Set((results || []).map(r => String(r.slug)));
         } catch { used = new Set(); }
+        if (CUSTOM_URL_TABLES[type]) {
+          try {
+            const { results } = await env.DB.prepare(
+              `SELECT custom_url FROM ${t.table} WHERE custom_url=? OR custom_url LIKE ?`
+            ).bind(stem, stem + '-%').all();
+            for (const r of results || []) used.add(String(r.custom_url));
+          } catch { /* nobody has a custom URL yet */ }
+        }
       }
       if (type === 'character') {
         // A live page's flat old address is as taken as an identity
@@ -11314,7 +11578,9 @@ const app = {
           createdAt: u.created_at,
           lastLogin: u.last_login,
           links: parseProfileExtra(u).links,
-          pinned: parseProfileExtra(u).pinned
+          pinned: parseProfileExtra(u).pinned,
+          theme: PageRender.sanitizeTheme(parseProfileExtra(u).theme, profileThemeBase(sess.userId)),
+          themeBase: profileThemeBase(sess.userId)
         },
         characters: batch[1].results,
         collections: batch[2].results,
@@ -12823,11 +13089,34 @@ const app = {
             if (row) verified.push(p);
           }
           extra.pinned = verified;
+          // The theme is saved on its own route; keep whatever is stored.
+          const cur = await env.DB.prepare('SELECT profile_json FROM users WHERE id=?')
+            .bind(sess.userId).first().catch(() => null);
+          extra.theme = parseProfileExtra(cur).theme;
           await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
-            .bind(JSON.stringify(extra), sess.userId).run();
+            .bind(packProfileExtra(extra), sess.userId).run();
           return jsonResponse({ ok: true, links: extra.links, pinned: extra.pinned });
         }
         return jsonResponse({ ok: true });
+      }
+
+      // ---- the creator page's look: {theme} (null clears it) ----
+      // Same theme kit as scripts and collections (PageRender.sanitizeTheme),
+      // stored in profile_json beside the links and pins. Its background
+      // image is uploaded through /api/account/avatar with kind:'bg'.
+      if (path === '/api/account/theme') {
+        if (await rateLimited(env, request, 'profiletheme', 120, 3600, { sess })) {
+          return tooManyResponse('Too many appearance saves. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        await ensureProfileColumn(env);
+        const cur = await env.DB.prepare('SELECT profile_json FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        const extra = parseProfileExtra(cur);
+        extra.theme = PageRender.sanitizeTheme(b.theme, profileThemeBase(sess.userId));
+        await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
+          .bind(packProfileExtra(extra), sess.userId).run();
+        return jsonResponse({ ok: true, theme: extra.theme || null });
       }
 
       // ---- profile picture (uploaded to R2 under avatars/u{id}.{ext}) ----
@@ -12840,30 +13129,45 @@ const app = {
           return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
-        const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
+        const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+        // kind:'bg' is the creator page's background (avatars/u{id}-bg.*),
+        // the same slot shape a script's background has, so sanitizeTheme
+        // takes its path. It never touches avatar_url.
+        const isBg = b.kind === 'bg';
+        // kind:'st' + n (1-24): one of the creator page's stickers
+        // (theme.stickers), avatars/u{id}-st{n}.*, and the one slot here that
+        // takes a GIF — a sticker is often an animated one.
+        const stN = b.kind === 'st' ? Math.round(Number(b.n)) : 0;
+        if (b.kind === 'st' && !(stN >= 1 && stN <= PageRender.STICKERS_MAX)) {
+          return jsonResponse({ error: 'That sticker slot is not valid.' }, { status: 400 });
+        }
+        const isSt = stN > 0;
+        const slotBase = profileThemeBase(sess.userId) + (isBg ? '-bg' : isSt ? '-st' + stN : '');
         async function deleteOwnAvatars(keep) {
           for (const e of AVATAR_EXTS) {
-            const k = 'avatars/u' + sess.userId + '.' + e;
+            const k = slotBase + '.' + e;
             if (k === keep) continue;
             try { await env.ART.delete(k); } catch { /* best-effort */ }
           }
         }
         if (b.remove) {
           await deleteOwnAvatars();
+          if (isBg || isSt) return jsonResponse({ ok: true, background: null });
           await env.DB.prepare('UPDATE users SET avatar_url=NULL WHERE id=?').bind(sess.userId).run();
           return jsonResponse({ ok: true, avatarUrl: null });
         }
         let data = String(b.data || '');
         if (!data.startsWith('data:')) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
         const contentType = data.slice(5, data.indexOf(';'));
-        const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[contentType];
-        if (!ext) return jsonResponse({ error: 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
+        const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': isSt ? 'gif' : '' }[contentType];
+        if (!ext) return jsonResponse({ error: isSt ? 'Stickers must be PNG, JPEG, GIF or WebP.' : 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
         data = data.slice(data.indexOf(',') + 1);
         let bytes;
         try { bytes = base64ToBytes(data); } catch { return jsonResponse({ error: 'Could not read that image.' }, { status: 400 }); }
         if (!bytes.length) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
-        if (bytes.length > 2 * 1024 * 1024) return jsonResponse({ error: 'Picture is too large (2 MB max).' }, { status: 413 });
-        const key = 'avatars/u' + sess.userId + '.' + ext;
+        const maxMB = isBg || isSt ? 5 : 2;
+        if (bytes.length > maxMB * 1024 * 1024) return jsonResponse({ error: 'Picture is too large (' + maxMB + ' MB max).' }, { status: 413 });
+        const key = slotBase + '.' + ext;
         await env.ART.put(key, bytes, {
           httpMetadata: { contentType },
           customMetadata: { owner: String(sess.userId) }
@@ -12872,6 +13176,8 @@ const app = {
         // extension) cleared: deleting first meant a failed put left
         // avatar_url pointing at nothing.
         await deleteOwnAvatars(key);
+        if (isBg) return jsonResponse({ ok: true, background: key });
+        if (isSt) return jsonResponse({ ok: true, path: key });
         // ?v= busts any cached copy the browser holds of the previous picture
         const avatarUrl = '/assets/' + key + '?v=' + Date.now();
         await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, sess.userId).run();
@@ -14222,6 +14528,11 @@ const app = {
         c.curata = existing ? !!parseData(existing).curata : false;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
+        if (!existing && await rowByCustomUrl(env, 'collection', c.id)) {
+          return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
+        }
+        const urlChange = await settleCustomUrl(env, 'collection', c, storedColl, perm, pkSlug, [pkSlug, c.id]);
+        if (urlChange.error) return jsonResponse({ error: urlChange.error }, { status: urlChange.status });
         if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId, storedColl);
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
@@ -14243,6 +14554,7 @@ const app = {
         if (!existing && !(written && written.meta && written.meta.changes)) {
           return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
         }
+        const urlDone = await commitCustomUrl(env, 'collection', pkSlug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
@@ -14257,6 +14569,7 @@ const app = {
           }));
         }
         return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status,
+                              customUrl: urlDone.ok ? (c.customUrl || '') : '', customUrlError: urlDone.error,
                               editors: perm === 'owner' ? (c.editors || []) : undefined, editorsUnknown });
       }
 
@@ -14335,6 +14648,13 @@ const app = {
         s.curata = existing ? !!parseData(existing).curata : false;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(s, storedScript, perm);
+        // A new script never lands on somebody's custom address: the slug
+        // would answer first and swallow every link to the other page.
+        if (!existing && await rowByCustomUrl(env, 'script', s.slug)) {
+          return jsonResponse({ error: 'A script with that name already exists.' }, { status: 409 });
+        }
+        const urlChange = await settleCustomUrl(env, 'script', s, storedScript, perm, s.slug, [s.slug]);
+        if (urlChange.error) return jsonResponse({ error: urlChange.error }, { status: urlChange.status });
         if (perm === 'owner') await keepUploaderEditing(env, s, existing ? existing.owner_id : sess.userId, storedScript);
         /* An admin's "why this went to drafts" note survives an ordinary
            save and is cleared only by going live. The creator opens the
@@ -14353,6 +14673,7 @@ const app = {
         if (!existing && !(written && written.meta && written.meta.changes)) {
           return jsonResponse({ error: 'A script with that name already exists.' }, { status: 409 });
         }
+        const urlDone = await commitCustomUrl(env, 'script', s.slug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
@@ -14367,6 +14688,7 @@ const app = {
           }));
         }
         return jsonResponse({ ok: true, slug: s.slug, status,
+                              customUrl: urlDone.ok ? (s.customUrl || '') : '', customUrlError: urlDone.error,
                               editors: perm === 'owner' ? (s.editors || []) : undefined, editorsUnknown });
       }
 
@@ -14400,6 +14722,10 @@ const app = {
             }
           }
           await env.DB.prepare('DELETE FROM pages WHERE slug=?').bind(row.slug).run();
+          // Its old addresses go with it, or the next page given this slug
+          // would collect them.
+          await env.DB.prepare("DELETE FROM redirects WHERE entity_type='wikipage' AND to_slug=?")
+            .bind(row.slug).run().catch(() => {});
           // Deleting one is permanent, and its slug can be taken by the next
           // page of that title — which must not inherit this one's history
           // (or let its owner roll back to this text), comments or reports.
@@ -14449,8 +14775,10 @@ const app = {
         let slug = existing ? existing.slug : kebab(title);
         if (!slug) return jsonResponse({ error: 'Could not build a URL from that title.' }, { status: 400 });
         if (!existing) {
+          // Somebody's custom address is as taken as a slug: the slug would
+          // answer first and swallow every link to that page.
           const taken = async s => !!(await env.DB.prepare('SELECT 1 FROM pages WHERE slug=?')
-            .bind(s).first().catch(() => null));
+            .bind(s).first().catch(() => null)) || !!(await rowByCustomUrl(env, 'wikipage', s));
           let candidate = slug;
           for (let i = 2; i < 60 && await taken(candidate); i++) candidate = slug + '-' + i;
           // The upsert below would overwrite an existing page, so never save
@@ -14466,7 +14794,7 @@ const app = {
           subtitle: b.subtitle, blurb: b.blurb, author: b.author,
           body: b.body, header: b.header, images: b.images,
           boxes: b.boxes, infobox: b.infobox, theme: b.theme,
-          toc: b.toc, comments: b.comments
+          toc: b.toc, comments: b.comments, customUrl: b.customUrl
         };
         sanitizeWikiFields(page, 'pages/' + slug + '-', 'pages/' + slug);
         page.parentType = parent.type;
@@ -14480,6 +14808,11 @@ const app = {
         if (access !== 'owner' && publicEditTooBig(page)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
+        // The address is the page owner's to choose (an approved editor of the
+        // parent writes pages, but the owner decides where they live).
+        const urlChange = await settleCustomUrl(env, 'wikipage', page,
+          existing ? parseData(existing) : null, access === 'owner' ? 'owner' : access, slug, [slug]);
+        if (urlChange.error) return jsonResponse({ error: urlChange.error }, { status: urlChange.status });
         if (existing) await saveRevision(env, sess, 'wikipage', existing);
         await env.DB.prepare(
           `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
@@ -14490,6 +14823,7 @@ const app = {
         ).bind(slug, title, parent.type, parent.slug, page.author || null,
                existing ? existing.owner_id : (access === 'owner' ? sess.userId : parent.ownerId),
                JSON.stringify(page), status).run();
+        const urlDone = await commitCustomUrl(env, 'wikipage', slug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
         if (access !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
@@ -14501,6 +14835,7 @@ const app = {
         }
         return jsonResponse({
           ok: true, slug, status,
+          customUrl: urlDone.ok ? (page.customUrl || '') : '', customUrlError: urlDone.error,
           parentType: parent.type, parentKey: parent.key, parentName: parent.name
         });
       }

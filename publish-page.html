@@ -229,8 +229,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
       </details>
 
+      <!-- The page's own address (assets/custom-url.js) -->
+      <details class="sb-details" id="p-url-sec">
+        <summary>Custom URL <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Pick this page's address, like botchomebrew.wiki/p/my-guide.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld">
+            <label for="p-custom-url">Custom URL</label>
+            <div class="cu-row"><span class="cu-prefix">botchomebrew.wiki/p/</span><input type="text" id="p-custom-url" maxlength="60" placeholder="my-guide" autocomplete="off" spellcheck="false"></div>
+            <div class="cu-state" id="p-custom-url-state"></div>
+            <p class="sub" style="margin:6px 0 0">Letters, numbers and hyphens. The automatic address and any old one keep working and forward here. Leave it empty to use the automatic address.</p>
+          </div>
+        </div>
+      </details>
+
       <details class="sb-details" id="p-appearance">
-        <summary>Page appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Background image, heading font and colors.</span></summary>
+        <summary>Page appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Quick styles, fonts (any Google Font), colours, gradients, see-through boxes, layout, and your own custom CSS.</span></summary>
         <div class="sb-details-body">
           <div class="sb-fld">
             <label for="p-bg">Page background <span class="opt">(large image, shown behind the page)</span></label>
@@ -250,13 +263,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
             <div class="th-row"><label for="th-link">Links</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
           </div>
+          <div id="th-more" data-kind="page"></div>
         </div>
       </details>
-
-      <div class="we-preview">
-        <h2>Preview</h2>
-        <div id="p-preview"></div>
-      </div>
 
       <div class="pub-actions">
         <button type="button" class="sb-btn sb-btn-publish" id="p-publish"><span class="ico ico-star" aria-hidden="true"></span> Publish Page</button>
@@ -286,8 +295,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/render-wiki.js"></script>
+  <script src="assets/custom-css.js"></script>
+  <script src="assets/custom-url.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script>
   (function(){
     function $(id){ return document.getElementById(id); }
@@ -333,6 +345,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     }
     function upload(key, dataUrl){ return api('/api/upload', { key: key, data: dataUrl }); }
 
+    var cuField = window.CustomUrl.mount({
+      input: $('p-custom-url'), state: $('p-custom-url-state'), type: 'wikipage',
+      slug: function(){ return slug || ''; },
+      onChange: function(){ showUrl(); }
+    });
+    function pageAddress(){ return (cuField && cuField.get()) || slug; }
+
     // ── what gets sent, and what the preview shows ──
     function collect(){
       var t = {};
@@ -354,23 +373,30 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         infobox: infoUI ? infoUI.gather($('p-info-title').value, $('p-info-image').value) : null,
         theme: window.PageRender.sanitizeTheme(t, 'pages/' + (slug || 'new')),
         toc: $('p-toc').checked,
-        comments: $('p-comments').checked
+        comments: $('p-comments').checked,
+        // Only once known (loaded or typed), so a stale form never clears it.
+        customUrl: cuField.known() ? cuField.get() : undefined
       };
     }
 
-    function preview(){
+    // The live page beside the form (page-preview.js), drawn by the same
+    // renderWikiPage() the Worker uses for /p/.
+    var live = null;
+    function preview(){ if (live) live.refresh(); }
+    function previewRender(){
       var p = collect();
       p.parentName = parentName;
       p.parentKey = parentKey;
       p.updatedAt = new Date().toISOString();
-      // A banner chosen but not yet uploaded previews from the data URL.
-      var shown = {};
-      Object.keys(p).forEach(function(k){ shown[k] = p[k]; });
-      $('p-preview').innerHTML = window.WikiRender.renderWikiPage(shown, { linkRoot: '' });
-      if (headerData) {
-        var img = $('p-preview').querySelector('.wiki-banner');
-        if (img) img.src = headerData;
-      }
+      return {
+        html: window.WikiRender.renderWikiPage(p, { linkRoot: '' }),
+        theme: theme, base: 'pages/' + (slug || 'new'),
+        // A banner chosen but not yet uploaded previews from the data URL.
+        after: function(doc){
+          var img = headerData && doc.querySelector('.wiki-banner');
+          if (img) img.src = headerData;
+        }
+      };
     }
 
     // An approved editor of the parent script/collection (not the page's
@@ -379,6 +405,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var editorMode = false;
     function applyEditorMode(){
       if (!editorMode) return;
+      $('p-url-sec').style.display = 'none';   // the address is the owner's
       $('p-delete').style.display = 'none';
       $('p-draft').style.display = 'none';
       $('p-publish').innerHTML = '<span class="ico ico-star" aria-hidden="true"></span> Save Changes';
@@ -427,7 +454,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function showUrl(){
       if (!slug) return;
       $('p-url').style.display = '';
-      $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> (<a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>)';
+      var addr = pageAddress();
+      $('p-url').innerHTML = 'Page URL: <code>' + esc(SITE_ROOT + 'p/' + addr) + '</code> (<a href="p/' + encodeURIComponent(addr) + '" target="_blank" rel="noopener">open it</a>)';
       $('p-delete').style.display = editorMode ? 'none' : '';
       $('page-title').textContent = isArticle() ? 'Edit Article' : 'Edit Page';
       imgSay('', 'Uploaded images can be inserted into the text.');
@@ -589,9 +617,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           return api('/api/wiki-page', again);
         });
       }).then(function(res){
+        if (cuField.known()) cuField.set(res.customUrl || '');
         setPill(res.status);
         showParent(); showUrl(); preview(); loadSiblings();
-        var url = 'p/' + encodeURIComponent(slug);
+        var url = 'p/' + encodeURIComponent(res.customUrl || slug);
+        if (res.customUrlError) say('err', esc(res.customUrlError));
         if (editorMode) {
           say('ok', res.status === 'published'
             ? '<span class="ico ico-check" aria-hidden="true"></span> Saved. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a>'
@@ -662,13 +692,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       infoUI = window.WikiEditor.infobox($('p-info-rows'), $('p-info-add'), { onChange: preview });
       window.ThemeEditor.wire({
         get: function(){ return theme; },
-        set: function(t){ theme = t; }
+        set: function(t){ theme = t; },
+        onChange: preview,
+        stickerBase: function(){ return slug ? 'pages/' + slug : ''; }
       });
       ['p-title','p-subtitle','p-blurb','p-author','p-body','p-info-title','p-info-image'].forEach(function(id){
         $(id).addEventListener('input', preview);
       });
       ['p-toc','p-comments'].forEach(function(id){ $(id).addEventListener('change', preview); });
-      window.WikiEditor.splitPreview($('editor'), document.querySelector('#editor .we-preview'));
+      live = window.PagePreview.attach({ editor: $('editor'), kind: 'page', render: previewRender });
       window.WikiEditor.loadCharLinks().then(preview);
     }
 
@@ -689,6 +721,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           images = (p.images || []).slice();
           headerPath = p.header || '';
           theme = p.theme || {};
+          cuField.set(p.customUrl || '');
+          if (p.customUrl) $('p-url-sec').open = true;
           if (headerPath) {
             var hv = $('p-header-prev'); hv.src = 'assets/' + headerPath; hv.style.display = 'block';
             $('p-header-note').textContent = 'Current banner. Choose a file to replace it.';

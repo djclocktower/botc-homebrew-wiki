@@ -327,9 +327,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- The page's own address (assets/custom-url.js) -->
+    <details class="sb-details" id="sb-url-sec">
+      <summary>Custom URL <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Pick your page's address, like botchomebrew.wiki/collection/my-set.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="pc-custom-url">Custom URL</label>
+          <div class="cu-row"><span class="cu-prefix">botchomebrew.wiki/collection/</span><input type="text" id="pc-custom-url" maxlength="60" placeholder="my-set" autocomplete="off" spellcheck="false"></div>
+          <div class="cu-state" id="pc-custom-url-state"></div>
+          <p class="sub" style="margin:6px 0 0">Letters, numbers and hyphens. The automatic address and any old one keep working and forward here. Leave it empty to use the automatic address.</p>
+        </div>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
-      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Logo, background image, fonts and colors for the collection's wiki page.</span></summary>
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Quick styles, fonts (any Google Font), colours, gradients, see-through boxes, layout, and your own custom CSS.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
@@ -369,7 +382,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
           <p class="sub" style="margin:6px 0 0">For an image drawn on a light background that gets lost on the wiki's purple.</p>
         </div>
-      </div>
+        <div id="th-more" data-kind="collection"></div>
+        </div>
     </details>
 
     <div class="pub-actions">
@@ -392,8 +406,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render-wiki.js"></script>
   <!-- Steven Approved Order, for the "Sort (SAO)" button on the roster. -->
   <script src="assets/sao.js"></script>
+  <script src="assets/custom-css.js"></script>
+  <script src="assets/custom-url.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script src="assets/approved-editors.js"></script>
   <script>
   (function () {
@@ -526,6 +543,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // setting and the stored editor list forward whatever a guest posts, so
       // leaving them editable would be a promise the save breaks.
       $('sb-open-sec').style.display = 'none';
+      $('sb-url-sec').style.display = 'none';   // the address is the creator's
       // And the credit tick with it: whose work the page is said to be is the
       // creator's answer, and the Worker pins it from the stored row whatever
       // a guest posts.
@@ -588,6 +606,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var shownMembers = [];   // what the list currently shows, in display order
 
     function renderMembers(){
+      if (live) live.refresh();
       var def = currentDef();
       var members = window.PageRender.sortCollectionMembers(
         def, window.PageRender.resolveCollectionMembers(def, allChars));
@@ -735,11 +754,39 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // ── theme controls (shared widget) ──
     window.ThemeEditor.wire({
       get: function(){ return theme; },
-      set: function(t){ theme = t; }
+      set: function(t){ theme = t; },
+      // Stickers upload into collections/{id}-st{n}.*, so only once it exists.
+      stickerBase: function(){ return EDIT_KEY ? 'collections/' + EDIT_KEY : ''; }
     });
 
     // ── custom boxes (shared widget — wiki-editor.js) ──
     var boxesUI = window.WikiEditor.boxes($('pc-boxes'), $('pc-box-add'));
+
+    // ── The live page, beside the form (page-preview.js): the same
+    // renderCollectionPage() the Worker draws /collection/ with. ──
+    var live = window.PagePreview.attach({
+      editor: $('editor'), kind: 'collection',
+      render: function(){
+        var name = $('pc-name').value.trim();
+        var id = EDIT_KEY || slugify(name) || 'preview';
+        var coll = {
+          id: id, slug: id, displayName: name || 'Untitled Collection', author: $('pc-author').value.trim(),
+          description: $('pc-desc').value.trim(), tagline: $('pc-tagline').value.trim(),
+          version: $('pc-version').value.trim(), difficulty: $('pc-difficulty').value,
+          synopsis: $('pc-synopsis').value.trim(), gameplay: $('pc-gameplay').value.trim(),
+          strategyGood: $('pc-strat-good').value.trim(), strategyEvil: $('pc-strat-evil').value.trim(),
+          match: $('pc-match').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean),
+          include: include.slice(), exclude: exclude.slice(), order: order.slice(),
+          header: headerDataURL || (removeHeader ? '' : (existingHeader || '')),
+          logo: logoDataURL || (removeLogo ? '' : (existingLogo || ''))
+        };
+        var boxes = window.WikiRender && window.WikiRender.renderBoxes ? window.WikiRender.renderBoxes(boxesUI.gather(), { linkRoot: '' }) : '';
+        var t = Object.assign({}, theme);
+        if (removeBg) delete t.background;
+        return { html: window.PageRender.renderCollectionPage(coll, allChars, { linkRoot: '', boxesHTML: boxes }),
+                 theme: t, base: 'collections/' + id, bgUrl: bgDataURL };
+      }
+    });
 
     // ── text-first pages attached to this collection ──
     function loadPages(key){
@@ -804,9 +851,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     wireRemove('pc-logo-remove', 'pc-logo-prev', 'pc-logo-note', 'pc-logo', function(){ logoDataURL = null; existingLogo = null; removeLogo = true; });
     wireRemove('pc-bg-remove', 'pc-bg-prev', 'pc-bg-note', 'pc-bg', function(){ bgDataURL = null; existingBg = null; removeBg = true; delete theme.background; });
 
+    var cuField = window.CustomUrl.mount({
+      input: $('pc-custom-url'), state: $('pc-custom-url-state'), type: 'collection',
+      slug: function(){ return EDIT_PK || EDIT_KEY || ''; },
+      onChange: function(){ updateUrlPreview(); }
+    });
+
     // ── name → id preview ──
     function updateUrlPreview(){
-      var id = EDIT_KEY || slugify($('pc-name').value);
+      var id = (cuField && cuField.get()) || EDIT_KEY || slugify($('pc-name').value);
       var u = $('pub-url');
       if (!id){ u.style.display = 'none'; return; }
       u.style.display = '';
@@ -915,6 +968,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           order: order.slice(),
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : [],
+          // Only once known (loaded or typed): a form that never saw the
+          // stored address must not clear it.
+          customUrl: cuField.known() ? cuField.get() : undefined,
           header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
           status: saveStatus
         };
@@ -941,7 +997,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $('pub-page-title').textContent = 'Edit Collection';
         updateUrlPreview(); updateButtons(); loadPages(id);
         renderEditStatus();   // the page exists now, so it has a status to state
-        var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent(id);
+        if (res && cuField.known()) cuField.set(res.customUrl || '');
+        var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent((res && res.customUrl) || id);
         // The name was already spoken for, so this page took the next free
         // address. Say so: silently landing somewhere else would read as the
         // save having failed, and "did it overwrite the other one?" is the
@@ -950,6 +1007,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? ' <em><code>/collection/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
             'To change an existing collection, open it from <a href="account">your account</a>.</em>'
           : '';
+        if (res && res.customUrlError) note += ' <em>' + esc(res.customUrlError) + '</em>';
         if (currentStatus === 'draft'){
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> ' +
             (isDraft ? 'Draft saved (not public).' : 'Saved. It is still a draft: only its creator can publish it.') +
@@ -1017,6 +1075,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-name').value = c.displayName || '';
           $('pc-author').value = c.author || '';
           $('pc-credit-unlinked').checked = !!c.creditUnlinked;
+          cuField.set(c.customUrl || '');
+          if (c.customUrl) $('sb-url-sec').open = true;
           $('pc-tagline').value = c.tagline || '';
           $('pc-version').value = c.version || '';
           $('pc-difficulty').value = c.difficulty || '';

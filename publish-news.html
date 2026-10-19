@@ -218,7 +218,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </details>
 
       <details class="sb-details" id="n-appearance">
-        <summary>Article appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — background image, heading font and colors, same kit as the script and collection pages.</span></summary>
+        <summary>Article appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Quick styles, fonts (any Google Font), colours, gradients, see-through boxes, layout, and your own custom CSS.</span></summary>
         <div class="sb-details-body">
           <div class="sb-fld">
             <label for="n-bg">Page background <span class="opt">(large image, shown behind the article)</span></label>
@@ -238,13 +238,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
             <div class="th-row"><label for="th-link">Links</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
           </div>
+          <div id="th-more" data-kind="news"></div>
         </div>
       </details>
-
-      <div class="news-preview">
-        <h2>Preview</h2>
-        <div id="n-preview"></div>
-      </div>
 
       <div class="pub-actions">
         <button type="button" class="sb-btn sb-btn-publish" id="n-publish">Publish</button>
@@ -270,8 +266,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render-page.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render-news.js"></script>
+  <script src="assets/custom-css.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script>
   (function(){
     function $(id){ return document.getElementById(id); }
@@ -326,14 +324,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       };
     }
 
-    function preview(){
+    // The live article beside the form (page-preview.js), drawn by the same
+    // renderArticle() the Worker uses for /news/.
+    var live = null;
+    function preview(){ if (live) live.refresh(); }
+    function previewRender(){
       var a = collect();
       a.publishedAt = new Date().toISOString();
-      $('n-preview').innerHTML = window.NewsRender.renderArticle(a, { linkRoot: '' });
-      if (heroData) {
-        var img = $('n-preview').querySelector('.news-hero');
-        if (img) img.src = heroData;
-      }
+      return {
+        html: window.NewsRender.renderArticle(a, { linkRoot: '' }),
+        theme: theme, base: 'news/' + (editingSlug || 'new'),
+        after: function(doc){
+          var img = heroData && doc.querySelector('.news-hero');
+          if (img) img.src = heroData;
+        }
+      };
     }
 
     // ── images (uploaded under news/{slug}-*, so an article owns its files) ──
@@ -564,7 +569,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       infoUI = window.WikiEditor.infobox($('n-info-rows'), $('n-info-add'), { onChange: preview });
       window.ThemeEditor.wire({
         get: function(){ return theme; },
-        set: function(t){ theme = t; }
+        set: function(t){ theme = t; },
+        onChange: preview,
+        stickerBase: function(){ return editingSlug ? 'news/' + editingSlug : ''; }
       });
       ['n-title','n-author','n-summary','n-image','n-body','n-info-title','n-info-image'].forEach(function(id){
         $(id).addEventListener('input', preview);
@@ -579,7 +586,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('n-delete').addEventListener('click', del);
       setPill('draft');
       // [[Character Name]] resolves in the preview the same way it does live.
-      window.WikiEditor.splitPreview($('editor'), document.querySelector('#editor .news-preview'));
+      live = window.PagePreview.attach({ editor: $('editor'), kind: 'news', render: previewRender });
       window.WikiEditor.loadCharLinks().then(preview);
       loadArticle();
       loadList();

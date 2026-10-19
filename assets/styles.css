@@ -2991,9 +2991,10 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* Custom page background: the theme classes + --pg-* props are emitted on
    <body>, so this simply swaps the image on the existing fixed background
    layer — same mobile-safe composited technique, no extra stacking layers. */
-body.theme-bg::before {
-  background: var(--pg-bg) center top / cover no-repeat var(--purple-deep);
-}
+body.theme-bg::before { background: var(--pg-bgl); }
+/* A blurred background is scaled up a touch so the soft edge the blur
+   leaves stays off screen. */
+body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); }
 
 /* ── Site-wide announcement banner (admin dashboard → Announcement) ──
    Injected by site.js at the very top of <body> on every page. */
@@ -3631,6 +3632,250 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .theme-text .news-body p { color: var(--pg-text); }
 .theme-link .wiki-body a,
 .theme-link .news-body a { color: var(--pg-link); }
+
+/* ── Theme kit: the deeper knobs (render-page.js themeAttrs) ──
+   Every rule here is keyed on a theme-* class on <body>, so a page that
+   never touched the setting draws exactly as before. The selector lists are
+   the same three page families each time: script/collection pages, wiki and
+   news pages, and the creator page (profile.html). */
+.page-themed .home-hero h1,
+.page-themed .prof-section .type-header { font-family: var(--pg-font, 'Dumbledor2', serif); }
+.theme-accent .home-hero h1,
+.theme-accent .prof-section .type-header { color: var(--pg-accent); }
+/* Heading colour: a separate knob from the accent, for pages that want the
+   titles one colour and the links and rules another. */
+.theme-heading :is(.script-title-fallback, .gen-sech, .gen-sech a, .script-team-head, .sv-subhead,
+  .info-h, .sv-night-head, .wiki-title, .wiki-h, .wiki-h a.sec-anchor, .wiki-toc-head,
+  .news-article h1, .home-hero h1, .prof-section .type-header, .coll-title) { color: var(--pg-heading); }
+/* Heading letter case and glow */
+.theme-hcase-upper :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: uppercase; }
+.theme-hcase-lower :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: lowercase; }
+.theme-hcase-none :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: none; }
+.theme-hcase-caps :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: none; font-variant: small-caps; }
+.theme-glow :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-shadow: var(--pg-glow); }
+/* Body font: set on the reading text itself, because most of it names a
+   font of its own and would not inherit one from the page. */
+.theme-bfont #content :is(p, li, dd, dt, td, th, blockquote, .script-char-ability, .char-card-ability, .script-desc,
+  .sv-tagline, .wiki-body, .news-body, .sv-night-reminder),
+.theme-bfont :is(.home-hero, .home-panel) :is(p, li, dd, dt, .profile-bio, .char-card-ability) { font-family: var(--pg-bfont); }
+.theme-align-center #content :is(.sv-section p, .wiki-body p, .news-body p),
+.theme-align-center .home-panel p { text-align: center; }
+.theme-align-justify #content :is(.sv-section p, .wiki-body p, .news-body p),
+.theme-align-justify .home-panel p { text-align: justify; hyphens: auto; }
+/* Text on the creator page, which is light-on-dark rather than parchment */
+.theme-text :is(.profile-bio, .profile-uname, .profile-joined, .profile-aka, .home-panel p) { color: var(--pg-text); }
+.theme-link :is(.profile-links a, .home-panel a:not(.card):not(.coll-card)) { color: var(--pg-link); }
+/* Panels: opacity, corners, border, shadow. color-mix keeps the text solid
+   while the box goes see-through; a browser without it keeps the solid
+   colour from the rule above. */
+.theme-alpha :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--pg-panel, #f0e8d5) var(--pg-alpha), transparent);
+}
+.theme-panel .prof-section { background-image: none; background-color: var(--pg-panel); }
+.theme-radius :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section,
+  .wiki-infobox, .wiki-callout, .script-header-img, .sv-logo) { border-radius: var(--pg-radius); }
+.theme-border :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  border: var(--pg-bw) solid var(--pg-border, rgba(120,90,50,.6));
+}
+.theme-shadow :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) { box-shadow: var(--pg-shadow); }
+/* The creator page's sections are bare until a panel setting asks for a
+   box, and a box needs room inside it. */
+:is(.theme-panel, .theme-alpha, .theme-border, .theme-shadow) .prof-section { padding: 12px clamp(12px, 2.5vw, 22px) 16px; margin-bottom: 18px; }
+/* Size of everything in the page (not the site's own bar). zoom scales the
+   rem-sized text the site uses, which a font-size on a wrapper cannot. */
+.theme-scale :is(main#content, .home-hero, .home-panel) { zoom: var(--pg-scale); }
+/* Page width */
+.theme-width-narrow :is(main.wrap, .home-panel) { max-width: 860px; }
+.theme-width-wide :is(main.wrap, .home-panel) { max-width: 1800px; }
+.theme-width-full :is(main.wrap, .home-panel) { max-width: none; }
+
+/* ── Theme kit: character boxes, team headings, dividers ──
+   tc-* = the character boxes (a collection or creator page's cards, a
+   script page's roster rows), tt-* = the team headings above them, tr-* =
+   the dividers (the line under a team heading, the lines either side of a
+   section heading, a wiki page's rule). One class per setting, each written
+   by render-page.js themeAttrs only when that setting is chosen. Kept after
+   the blocks above so a setting here wins over the page-wide one. */
+.tc-bg :is(.char-card, .script-char-row) {
+  background: color-mix(in srgb, var(--pg-card-bg, var(--card)) var(--pg-card-alpha, 100%), transparent);
+}
+.tc-text :is(.char-card-ability, .script-char-ability) { color: var(--pg-card-text); }
+.tc-name :is(.char-card-name, .script-char-name) { color: var(--pg-card-name); }
+.tc-accent :is(.char-card-type, .char-card-type.good, .char-card-link) { color: var(--pg-card-accent); }
+.tc-font :is(.char-card-name, .script-char-name) { font-family: var(--pg-card-font); }
+.tc-border :is(.char-card, .script-char-row, .script-char-row + .script-char-row) {
+  border: var(--pg-card-bw) solid var(--pg-card-border, var(--parch-frame));
+}
+.tc-radius :is(.char-card, .script-char-row) { border-radius: var(--pg-card-radius); }
+.tc-shadow :is(.char-card, .script-char-row) { box-shadow: var(--pg-card-shadow); }
+/* A script's roster is a list until it is given a box look; then each row
+   is a box of its own and needs room around it. */
+.tc-box .script-char-row { padding: 8px 10px; margin-bottom: 6px; }
+.tc-hover-none .char-card:hover { transform: none; }
+.tc-hover-lift .script-char-row:hover { transform: translateY(-2px); }
+.tc-hover-grow :is(.char-card, .script-char-row):hover { transform: scale(1.03); }
+.tc-hover-glow :is(.char-card, .script-char-row):hover { transform: none; box-shadow: 0 0 20px var(--pg-card-glow); }
+:is(.tc-hover-lift, .tc-hover-grow, .tc-hover-glow) .script-char-row { transition: background .14s, transform .18s, box-shadow .18s; }
+.tc-icon .char-card-thumb { width: calc(64px * var(--pg-card-icon)); height: calc(64px * var(--pg-card-icon)); }
+.tc-icon .script-char-thumb { width: calc(42px * var(--pg-card-icon)); height: calc(42px * var(--pg-card-icon)); }
+
+.tt-font :is(.type-header, .script-team-head) { font-family: var(--pg-team-font); }
+.tt-color :is(.type-header, .type-header.good, .script-team-head, .script-team-head.good, .coll-chars-count) { color: var(--pg-team-color); }
+.tt-bg :is(.type-header, .script-team-head) { background: var(--pg-team-bg); padding: 6px 12px; border-radius: var(--pg-card-radius, 0); }
+.tt-glow :is(.type-header, .script-team-head) { text-shadow: var(--pg-team-glow); }
+.tt-size .type-header { font-size: calc(clamp(1.1rem, 2.5vw, 1.5rem) * var(--pg-team-size)); }
+.tt-size .script-team-head { font-size: calc(1.15rem * var(--pg-team-size)); }
+.tt-align-left :is(.type-header, .script-team-head) { text-align: left; }
+.tt-align-center :is(.type-header, .script-team-head) { text-align: center; }
+.tt-align-right :is(.type-header, .script-team-head) { text-align: right; }
+.tt-case-upper :is(.type-header, .script-team-head) { text-transform: uppercase; font-variant: normal; }
+.tt-case-lower :is(.type-header, .script-team-head) { text-transform: lowercase; font-variant: normal; }
+.tt-case-none :is(.type-header, .script-team-head) { text-transform: none; font-variant: normal; }
+.tt-case-caps :is(.type-header, .script-team-head) { text-transform: none; font-variant: small-caps; }
+
+/* Dividers. --pg-rule falls back to the wiki's own rule colour, so a page
+   that picks only a style or a thickness keeps the colour it had. */
+:is(.tr-fade, .tr-solid, .tr-glow) .type-rule { height: var(--pg-rule-w, 2px); }
+.tr-fade .type-rule { background: linear-gradient(90deg, var(--pg-rule, var(--rule)), transparent); }
+:is(.tr-solid, .tr-glow) .type-rule { background: var(--pg-rule, var(--rule)); }
+.tr-glow .type-rule { box-shadow: 0 0 10px var(--pg-rule, var(--rule)); }
+.tr-dashed .type-rule { height: 0; background: none; border-top: var(--pg-rule-w, 2px) dashed var(--pg-rule, var(--rule)); }
+.tr-dotted .type-rule { height: 0; background: none; border-top: var(--pg-rule-w, 2px) dotted var(--pg-rule, var(--rule)); }
+.tr-double .type-rule { height: 0; background: none; border-top: max(3px, var(--pg-rule-w, 4px)) double var(--pg-rule, var(--rule)); }
+.tr-none .type-rule { display: none; }
+:is(.tr-fade, .tr-solid, .tr-glow) .script-team-head { border-bottom: var(--pg-rule-w, 1px) solid var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-dashed .script-team-head { border-bottom: var(--pg-rule-w, 1px) dashed var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-dotted .script-team-head { border-bottom: var(--pg-rule-w, 2px) dotted var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-double .script-team-head { border-bottom: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-none .script-team-head { border-bottom: none; }
+.tr-fade .gen-sech-wrap::before, .tr-fade .gen-sech-wrap::after { height: var(--pg-rule-w, 1px); background: linear-gradient(90deg, transparent, var(--pg-rule, var(--rule)), transparent); }
+.tr-solid .gen-sech-wrap::before, .tr-solid .gen-sech-wrap::after,
+.tr-glow .gen-sech-wrap::before, .tr-glow .gen-sech-wrap::after { height: var(--pg-rule-w, 1px); background: var(--pg-rule, var(--rule)); }
+.tr-glow .gen-sech-wrap::before, .tr-glow .gen-sech-wrap::after { box-shadow: 0 0 8px var(--pg-rule, var(--rule)); }
+.tr-dashed .gen-sech-wrap::before, .tr-dashed .gen-sech-wrap::after { height: 0; background: none; border-top: var(--pg-rule-w, 1px) dashed var(--pg-rule, var(--rule)); }
+.tr-dotted .gen-sech-wrap::before, .tr-dotted .gen-sech-wrap::after { height: 0; background: none; border-top: var(--pg-rule-w, 2px) dotted var(--pg-rule, var(--rule)); }
+.tr-double .gen-sech-wrap::before, .tr-double .gen-sech-wrap::after { height: 0; background: none; border-top: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, var(--rule)); }
+.tr-none .gen-sech-wrap::before, .tr-none .gen-sech-wrap::after { display: none; }
+:is(.tr-fade, .tr-solid) .wiki-rule { border-top: var(--pg-rule-w, 1px) solid var(--pg-rule, var(--parch-frame)); }
+.tr-glow .wiki-rule { border-top: var(--pg-rule-w, 1px) solid var(--pg-rule, var(--parch-frame)); box-shadow: 0 0 8px var(--pg-rule, var(--parch-frame)); }
+.tr-dashed .wiki-rule { border-top: var(--pg-rule-w, 1px) dashed var(--pg-rule, var(--parch-frame)); }
+.tr-dotted .wiki-rule { border-top: var(--pg-rule-w, 2px) dotted var(--pg-rule, var(--parch-frame)); }
+.tr-double .wiki-rule { border-top: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, var(--parch-frame)); }
+.tr-none .wiki-rule { border-top: none; }
+
+/* ── Theme kit: layout (sizes and positions) ──
+   tl-* classes from render-page.js themeAttrs, one per setting, each written
+   only when the owner chose it. Column rules stay out of the phone range:
+   on a small screen every page keeps its one-column layout whatever the
+   desktop arrangement says, and a box never asks for more than the screen. */
+/* Character boxes: width, boxes per row, spacing */
+.tl-cardw .char-grid { grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w), 100%), 1fr)); }
+.tl-cols .char-grid { grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+:is(.tl-cardw, .tl-cols) .script-char-list {
+  display: grid; column-gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w, 260px), 100%), 1fr));
+}
+.tl-cols .script-char-list { grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+:not(.tc-border):is(.tl-cardw, .tl-cols) .script-char-row + .script-char-row { border-top: 0; }
+@media (max-width: 640px) {
+  .tl-cols :is(.char-grid, .script-char-list) { grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w, 240px), 100%), 1fr)); }
+}
+.tl-gap :is(.char-grid, .script-char-list) { gap: var(--pg-card-gap); }
+.tl-pad :is(.char-card, .script-char-row) { padding: var(--pg-card-pad); }
+/* Where the icon sits in a box, how its text lines up, how much ability shows */
+.tl-card-top :is(.char-card, .script-char-row) { flex-direction: column; align-items: center; text-align: center; }
+.tl-card-top .card-side { flex-direction: row; }
+.tl-card-top .card-side .cq { min-height: 0; }
+.tl-card-top :is(.char-card-info, .script-char-text) { width: 100%; }
+.tl-card-right :is(.char-card, .script-char-row) { flex-direction: row-reverse; }
+.tl-card-right :is(.char-card-info, .script-char-text) { text-align: right; }
+.tl-calign-left :is(.char-card-info, .script-char-text) { text-align: left; }
+.tl-calign-center :is(.char-card-info, .script-char-text) { text-align: center; }
+.tl-calign-right :is(.char-card-info, .script-char-text) { text-align: right; }
+.tl-ab-short :is(.char-card-ability, .script-char-ability) {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+}
+.tl-ab-hide :is(.char-card-ability, .script-char-ability) { display: none; }
+/* The page: its width, the room inside its boxes */
+.tl-pagew :is(main.wrap, .home-panel, .wiki-page) { max-width: var(--pg-page-w); }
+.tl-ppad :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  padding: min(var(--pg-panel-pad), 6vw);
+}
+/* The title and the banner above it */
+.tl-title :is(.script-title-fallback, .coll-title, .wiki-title, .news-article h1) { zoom: var(--pg-title); }
+.tl-top-left :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: left; margin-left: 0; margin-right: auto; }
+.tl-top-center :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: center; margin-left: auto; margin-right: auto; }
+.tl-top-right :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: right; margin-left: auto; margin-right: 0; }
+/* The information box (a script's side column, a wiki page's fact box) */
+@media (min-width: 901px) {
+  .tl-infow .script-view-layout { grid-template-columns: minmax(0, 1fr) min(var(--pg-info-w), 45%); }
+  .tl-info-left .script-view-layout { grid-template-columns: minmax(300px, 1fr) minmax(0, 1.7fr); }
+  .tl-info-left.tl-infow .script-view-layout { grid-template-columns: min(var(--pg-info-w), 45%) minmax(0, 1fr); }
+  .tl-infow .wiki-layout:not(.wiki-layout-full) { grid-template-columns: minmax(0, 1fr) min(var(--pg-info-w), 45%); }
+  .tl-info-left .wiki-layout:not(.wiki-layout-full) { grid-template-columns: 300px minmax(0, 1fr); }
+  .tl-info-left.tl-infow .wiki-layout:not(.wiki-layout-full) { grid-template-columns: min(var(--pg-info-w), 45%) minmax(0, 1fr); }
+  /* On a phone "left" stays below the page, where a side box usually goes:
+     above it, the box and its JSON would push the characters a screen down. */
+  .tl-info-left :is(.script-json-panel, .wiki-side) { order: -1; }
+}
+.tl-info-top :is(.script-json-panel, .wiki-side) { order: -1; }
+:is(.tl-info-top, .tl-info-bottom) :is(.script-view-layout, .wiki-layout) { grid-template-columns: minmax(0, 1fr); }
+:is(.tl-info-top, .tl-info-bottom) .script-json-panel {
+  position: static; display: grid; gap: 14px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+:is(.tl-info-top, .tl-info-bottom) .wiki-side {
+  display: grid; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+/* Sections: their order and the space between them. Flex only when one of
+   the two is set, so an untouched page lays out exactly as before. */
+.tl-flow :is(.sv-main, .coll-flow, .prof-panel) { display: flex; flex-direction: column; }
+.tl-flow #page-wiki-links:empty { display: none; }
+.tl-gapy :is(.sv-main, .coll-flow, .prof-panel) { gap: var(--pg-sec-gap); }
+.tl-gapy :is(.sv-main, .coll-flow, .prof-panel) > * { margin-top: 0; margin-bottom: 0; }
+.tl-order .sv-main > .sv-s-synopsis { order: var(--pg-o-synopsis, 51); }
+.tl-order .sv-main > .sv-s-gameplay { order: var(--pg-o-gameplay, 52); }
+.tl-order .sv-main > #page-wiki-links { order: var(--pg-o-pages, 53); }
+.tl-order .sv-main > .sv-s-characters { order: var(--pg-o-characters, 54); }
+.tl-order .sv-main > #sec-bootlegger { order: var(--pg-o-bootlegger, 55); }
+.tl-order .sv-main > #sec-nightorder { order: var(--pg-o-night, 56); }
+.tl-order .sv-main > .script-missing { order: 99; }
+.tl-order .coll-flow > .coll-meta-row { order: var(--pg-o-info, 51); }
+.tl-order .coll-flow > .coll-prose { order: var(--pg-o-about, 52); }
+.tl-order .coll-flow > :is(.coll-filters, .coll-chars) { order: var(--pg-o-characters, 53); }
+.tl-order .coll-flow > .coll-jinx { order: var(--pg-o-jinx, 54); }
+.tl-order .prof-panel > * { order: 99; }
+.tl-order .prof-panel > [data-sec="pinned"] { order: var(--pg-o-pinned, 51); }
+.tl-order .prof-panel > [data-sec="characters"] { order: var(--pg-o-characters, 52); }
+.tl-order .prof-panel > [data-sec="scripts"] { order: var(--pg-o-scripts, 53); }
+.tl-order .prof-panel > [data-sec="collections"] { order: var(--pg-o-collections, 54); }
+.tl-order .prof-panel > [data-sec="pages"] { order: var(--pg-o-pages, 55); }
+
+/* Moved parts (theme.moves, render-page.js movesCSS) are drawn with
+   `translate`, which still counts towards the page's scrollable width: a part
+   dragged past the edge must not give a desktop page a sideways scrollbar. */
+@media (min-width: 901px) { body.tl-moved { overflow-x: clip; } }
+
+/* ── Custom CSS frame (assets/custom-css.js) ──
+   A page with a custom stylesheet has its content wrapped in
+   .ucss-frame > .ucss, and every rule the author wrote is rewritten to sit
+   under .ucss. The frame is what keeps it there visually: paint containment
+   clips anything drawn outside the page area (a negative margin, a transform,
+   a huge shadow) and makes the frame the containing block for position:fixed,
+   so a page can never cover the site's own bar or draw over the next page.
+   flow-root stops a child's negative margin collapsing out through it.
+   Nothing the author writes can select the frame itself. */
+.ucss-frame { display: flow-root; contain: paint; isolation: isolate; position: relative; min-width: 0; }
+.ucss { min-width: 0; }
 
 /* Page links on the dark list pages (author + /u/ profile). Same markup as
    the parchment version, inverted for the dark panel behind it. */
@@ -4272,3 +4517,36 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .ico-grip { --ico: var(--ico-grip); }
 .ico-copy { --ico: var(--ico-copy); }
 .ico-quote { --ico: var(--ico-quote); }
+
+/* ── Stickers: free-standing images on a page (render-page.js stickersHTML)
+   The layer sits inside the page's main area (or <body> on a creator page)
+   and covers it exactly; each sticker is placed by its CENTRE at x%/y% of
+   that area, or of the screen when pinned (.pgs-fixed). They never take a
+   click, so an image can never be a link or sit between a reader and a
+   button. The layer clips what hangs over its edges, or a sticker at the
+   right edge would widen the page sideways on a phone; a pinned one is
+   measured against the screen and is not clipped by it. Behind (.pgs-back)
+   is under the page's boxes and over its background; in front stays under
+   the site's own top bar (z-index 30). */
+.pg-stickers { position: absolute; inset: 0; pointer-events: none; overflow: clip; }
+.pg-sticker {
+  position: absolute; height: auto; max-width: 90vw;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  translate: -50% -50%; rotate: var(--pgs-r, 0deg); scale: var(--pgs-fx, 1) 1;
+  opacity: var(--pgs-o, 1);
+}
+.pg-sticker.pgs-fixed { position: fixed; }
+.pg-sticker.pgs-back { z-index: -1; }
+.pg-sticker.pgs-front { z-index: 6; }
+@media (max-width: 640px) { .pg-sticker.pgs-hide-small { display: none; } }
+@keyframes pgs-spin { to { transform: rotate(360deg); } }
+@keyframes pgs-bob { 50% { transform: translateY(-14px); } }
+@keyframes pgs-wiggle { 25% { transform: rotate(-9deg); } 75% { transform: rotate(9deg); } }
+@keyframes pgs-pulse { 50% { transform: scale(1.14); } }
+@keyframes pgs-blink { 50% { opacity: .15; } }
+.pgs-anim-spin { animation: pgs-spin 6s linear infinite; }
+.pgs-anim-bob { animation: pgs-bob 2.4s ease-in-out infinite; }
+.pgs-anim-wiggle { animation: pgs-wiggle 1.2s ease-in-out infinite; }
+.pgs-anim-pulse { animation: pgs-pulse 1.8s ease-in-out infinite; }
+.pgs-anim-blink { animation: pgs-blink 1.6s steps(2, jump-none) infinite; }
+@media (prefers-reduced-motion: reduce) { .pg-sticker { animation: none !important; } }
