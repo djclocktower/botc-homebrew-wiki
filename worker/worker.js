@@ -2091,7 +2091,7 @@ const FIELD_LABELS = {
   edition: 'edition', publicEdit: 'who may edit',
   flavor: 'flavour text', attribution: 'credit', artScale: 'icon display size',
   token: 'printable token', tokenImage: 'printable token', tokenArt: 'token in the icon gallery',
-  jinxDisplay: 'jinx display', jsonId: 'script JSON id', released: 'release',
+  jinxDisplay: 'jinx display', hideSnapshot: 'Snapshot button', hideCopyLink: 'Copy link button', jsonId: 'script JSON id', released: 'release',
   editors: 'editors', creditUnlinked: 'credit link', curata: 'Curata', starlight: 'Curata',
   curataOptOut: 'Curata mark', status: 'published or draft', _draftNote: 'admin note',
   _deleted: 'deleted',
@@ -5908,7 +5908,7 @@ async function bumpContentVersion(env, entityType) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy', 'creditUnlinked', 'artScale'
+  'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink'
 ]);
 
 // ---- the GRID feed: only what a card needs ----

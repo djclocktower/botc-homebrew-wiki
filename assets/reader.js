@@ -331,16 +331,22 @@
       var cl = e.target.closest && e.target.closest('.copy-link-btn');
       if (cl) {
         var url = location.href.split('#')[0];
+        // Put back whatever the button held: the labelled tab, or the icon
+        // alone when the Snapshot square sits beside it (and has no room for
+        // words, so it answers with a tick or a cross).
+        var orig = cl.getAttribute('data-orig') || cl.innerHTML;
+        cl.setAttribute('data-orig', orig);
+        var short = cl.classList.contains('copy-link-short');
         var linkLabel = function (text) {
           cl.innerHTML = text;
-          setTimeout(function () { cl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link'; }, 1500);
+          setTimeout(function () { cl.innerHTML = orig; }, 1500);
         };
         // A refused clipboard (permissions, an insecure frame) says so
         // rather than leaving the tap looking ignored, as Copy JSON does.
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(url).then(function () { linkLabel('\u2713 Copied!'); },
-            function () { linkLabel('Copy failed'); });
-        } else linkLabel('Copy failed');
+          navigator.clipboard.writeText(url).then(function () { linkLabel(short ? '\u2713' : '\u2713 Copied!'); },
+            function () { linkLabel(short ? '\u2715' : 'Copy failed'); });
+        } else linkLabel(short ? '\u2715' : 'Copy failed');
         return;
       }
       var tg = e.target.closest && e.target.closest('.json-bar-toggle');

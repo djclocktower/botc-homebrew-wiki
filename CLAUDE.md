@@ -620,6 +620,82 @@ assets/
                        preview's scroll position. The in-frame script keeps the
                        JSON box, the jinx dropdown and the title fit working;
                        __cpFit() is re-run after each repaint. Browser only.
+  char-snapshot.js     The "Snapshot" button on both character editors AND on
+                       every /c/ page (a square camera button in the info
+                       card's corner, beside Copy link, which then shrinks to
+                       its icon; charpage.js answers it by loading
+                       render-wiki/render/creators/qr/this file and roles.json
+                       on the first press and reading the page through
+                       /api/page, which serves a published page to anyone).
+                       The page's owner can switch either corner button off
+                       in Advanced Options → Page buttons (`hideSnapshot`,
+                       `hideCopyLink` on the row's data, stored only when
+                       ticked, in CARD_DROP_FIELDS); with Snapshot off, Copy
+                       link is the labelled tab it always was. The poster:
+                       whole almanac entry drawn onto a CANVAS as one poster —
+                       title, the parchment panel (Summary / How to Run / the
+                       callout / Examples / Tips / Bluffing / Fighting), then
+                       the sidebar (art, information box, a QR square, the
+                       jinxes and every custom sidebar box), with the Related
+                       ribbons closing the Summary column as on the page and
+                       "botchomebrew.wiki" in the bottom corner. Shown as an
+                       <img> so it can be right-clicked or long-pressed and
+                       copied, with Share (the phone's share sheet, where the
+                       browser can share files), Copy image and a Download
+                       PNG button naming it {Charactername}_Almanac.png.
+                       A settings wheel in the window's head opens: a tick
+                       per section the character actually has (SECTIONS —
+                       Creator credit and Collection (Appears in) included —
+                       plus one per custom box, keyed by its title), Shape (Fit
+                       the page, 1:1, 4:5, 9:16, 16:9 — a shape ADDS
+                       background round the centred poster, never shrinks
+                       or squashes it) and Size (Small 1600px longest side,
+                       Standard 2x within 9 MP, Large 3x within 16 MP, the
+                       phone canvas limit). A hidden section is emptied out
+                       of a COPY of the character before layout
+                       (applyHidden), so nothing else knows about the wheel.
+                       Choices are kept per browser (localStorage
+                       botc_snap_opts) and every change rebuilds the picture.
+                       Loaded on the first press (BotcData.script, with
+                       qr.js), never with the editor. The QR goes on a
+                       PUBLISHED page only — a draft's address 404s for
+                       whoever scans it — and its address is printed under
+                       it. Fonts, colours and marks follow styles.css by
+                       hand (FAM / C / MARK_COLOR / RIBBON): a new colour
+                       mark or a font change on the page needs a line here
+                       too, or the poster draws it plain.
+                       Three things about it are load-bearing. The marks go
+                       through render-wiki.js — the same inlineFormat() call
+                       the page makes, in the same links-only mode — and the
+                       HTML it returns is walked into styled runs, so there is
+                       no second mark parser to drift and *asterisks* stay
+                       safe. A picture on another host is fetched with
+                       crossOrigin and DROPPED when that fails, because one
+                       unreadable image taints the canvas and the whole poster
+                       stops being exportable (official icons therefore come
+                       from our own icons-sm/ — the modern art — before the
+                       CDN, and the OLD-style assets/icons/ copy only last).
+                       And the poster is not the page: the jinx dropdown mode,
+                       the JSON box and the Curata wreath are interface, so a
+                       still image gets the jinx card, the QR and the almanac.
+                       Layout is in units of a 1360-wide poster, scaled once at
+                       the end to fit MAX_PIXELS (a phone's canvas is capped).
+                       The parchment is a list of SECTIONS (the Summary / How
+                       to Run columns, Examples, each list); compose() tries
+                       every cut between them and keeps the shortest poster:
+                       what is above the cut sits beside the sidebar as on the
+                       page, what is below runs the full width under it with
+                       its items in two balanced columns (twoCols). A cut must
+                       save 40 units to be taken, so a short page keeps the
+                       page's own layout.
+                       Browser only (canvas + DOM); styles are .snap-* in
+                       styles.css.
+  qr.js                A QR code as a grid of true/false, for that square.
+                       Byte mode, error correction M, versions 1-10 — no
+                       bundler and no CDN here, so the encoder is the whole
+                       dependency. Browser + node;
+                       `node migration/qr-selftest.js` decodes its output back
+                       out (see "Verifying changes").
   art-normalize.js     The icon standard: trims the transparent margin to
                        find the figure and scales it to ART_FILL (60%) of the
                        591×591 frame — see "Icon size in the official script
@@ -802,7 +878,10 @@ creators.html          The creator-mark list: one card per mark, beside the pers
                        From /api/creators + /api/creator-marks. Admins get a
                        "Remove mark" button. authors.html is a redirect stub.
                        See "Creator marks".
-create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
+create.html, edit.html Character editor (POSTs to /api/character; R2 uploads).
+                       Both carry a Snapshot button in the sticky action bar
+                       (char-snapshot.js) — the two are the same form, so a
+                       change to one is a change to both.
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
@@ -4568,6 +4647,11 @@ keeps `content-visibility: auto`.
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
 - D1 is SQLite, so local `sqlite3` is an accurate way to sanity-check SQL.
+- `node migration/qr-selftest.js` checks `assets/qr.js` end to end: it
+  decodes the encoder's own output with a decoder written from the standard
+  (format bits, mask, zig-zag, Reed-Solomon syndromes), so a bad table or a
+  misplaced module fails loudly. Run it after touching that file — there is
+  no scanner in the sandbox to notice otherwise.
 
 ## Gotchas (hard-won — do not repeat)
 
