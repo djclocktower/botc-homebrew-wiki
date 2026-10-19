@@ -1325,8 +1325,17 @@
       '</dl>';
 
     // Copy-link button lives in the top-right corner *inside* the info card so
-    // it never crowds the title (see .card-actions in styles.css).
-    var copyBtn = '<button type="button" class="copy-link-btn" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link</button>';
+    // it never crowds the title (see .card-actions in styles.css). Beside it,
+    // a square Snapshot button (charpage.js answers it); while that is there
+    // the link button is its icon alone. The owner can turn either off in the
+    // editor's Advanced Options, and with Snapshot off the link button is the
+    // labelled tab it always was.
+    var snapBtn = d.hideSnapshot ? '' :
+      '<button type="button" class="snap-page-btn" title="Snapshot: this whole page as one picture" aria-label="Snapshot"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>';
+    var copyBtn = d.hideCopyLink ? '' :
+      '<button type="button" class="copy-link-btn' + (snapBtn ? ' copy-link-short' : '') +
+      '" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' +
+      (snapBtn ? '' : ' Copy link') + '</button>';
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
     /* The icon, and the other versions of it. A traveller has a good and an
@@ -1406,7 +1415,7 @@
         }).join('') + '</div>';
     }
     var infoCard = '<div class="card char-infocard">' +
-      '<div class="card-actions">' + copyBtn + '</div>' +
+      (snapBtn || copyBtn ? '<div class="card-actions">' + snapBtn + copyBtn + '</div>' : '') +
       emblem +
       (quoteClean.trim() ? '<p class="quote">"' + inlineLinks(quoteClean) + '"</p>' : '') +
       pronounceBlock(d) +
@@ -1521,6 +1530,7 @@
     window.ART_ABS = ART_ABS;
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
+    window.resolveRelatedTarget = resolveRelatedTarget;
     window.normJinxId = normJinxId;
     window.jinxExportId = jinxExportId;
     window.jinxQualKeys = jinxQualKeys;
