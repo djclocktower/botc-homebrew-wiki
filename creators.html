@@ -52,119 +52,201 @@
 
   <div class="home-hero">
     <h1>Creators</h1>
-    <p>Everyone who has made something for the wiki</p>
+    <p>Everyone who has made something for the wiki, and their credit icon.</p>
   </div>
 
   <main class="home-panel">
+    <div class="cr-intro">
+      <div class="cr-intro-text">
+        <h2>Creator marks</h2>
+        <p>A creator mark is a symbol that's used to tell who made a character. You can claim your own in the account page, but they aren't necessary. Hover over a mark to see whose it is.</p>
+      </div>
+      <a class="cr-claim" href="account#mark">Claim your mark &rarr;</a>
+    </div>
     <div class="creators-filter">
-      <input type="search" id="cr-search" placeholder="Find a creator…" autocomplete="off" aria-label="Find a creator">
-      <div class="creators-sort">
+      <input type="search" id="cr-search" placeholder="Find a creator or a mark…" autocomplete="off" aria-label="Find a creator or a mark">
+      <div class="creators-sort" role="group" aria-label="Sort">
         <button type="button" class="filter-chip active" data-sort="pages">Most pages</button>
         <button type="button" class="filter-chip" data-sort="name">A–Z</button>
-        <button type="button" class="filter-chip" data-sort="accounts">Has an account</button>
+      </div>
+      <div class="creators-sort" role="group" aria-label="Show">
+        <button type="button" class="filter-chip active" data-show="all">All marks</button>
+        <button type="button" class="filter-chip" data-show="accounts">Has an account</button>
       </div>
     </div>
     <div class="creators-page-box">
-      <div class="creators-page-grid" id="creators-grid">
-        <p style="opacity:.7">Loading creators…</p>
+      <p class="cr-summary" id="cr-summary"></p>
+      <div class="cr-grid" id="creators-grid">
+        <p style="opacity:.7">Loading marks…</p>
       </div>
-      <p id="creators-empty" class="creators-empty" hidden>No creator matches that.</p>
+      <p id="creators-empty" class="creators-empty" hidden>No mark matches that.</p>
     </div>
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-
   <script src="assets/creators.js"></script>
   <script>
-    /* The single creator index: every name that has published something,
-       whether or not there is an account behind it. Counts come live from
-       /api/creators; the symbol comes from assets/creators.js, still the one
-       place a creator's mark is defined. Replaces the old symbol-only grid
-       and the separate authors list, which both linked here anyway. */
+    /* The creator mark list: one card per mark, beside the one person it
+       belongs to. A creator with no mark is not listed; they appear here the
+       moment they claim one. A name that belongs to an account is folded into
+       that account's card (its other credit names listed under it).
+       Counts come from /api/creators; marks from the live registry
+       (CreatorSymbols.load(), /api/creator-marks). */
     (function () {
-      var SYMBOLS = (window.CreatorSymbols && window.CreatorSymbols.CREATOR_SYMBOLS) || window.CREATOR_SYMBOLS || {};
+      var CS = window.CreatorSymbols;
       var grid = document.getElementById('creators-grid');
       var emptyMsg = document.getElementById('creators-empty');
+      var summary = document.getElementById('cr-summary');
       var search = document.getElementById('cr-search');
-      if (!grid) return;
+      if (!grid || !CS) return;
+      var ADMIN = false;
 
       function esc(s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
           .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
-      // Symbols are keyed by the creator's display spelling; match loosely so
-      // "the bazaar" still finds "The Bazaar".
-      var SYM_BY_KEY = {};
-      for (var k in SYMBOLS) {
-        if (Object.prototype.hasOwnProperty.call(SYMBOLS, k)) SYM_BY_KEY[k.trim().toLowerCase()] = SYMBOLS[k];
-      }
-      function symbolFor(name) { return SYM_BY_KEY[String(name).trim().toLowerCase()] || ''; }
-
-      var ALL = [], STATE = { q: '', sort: 'pages' };
-
+      function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
       function countLabel(c) {
         var bits = [];
-        if (c.characters) bits.push(c.characters + ' char' + (c.characters === 1 ? '' : 's'));
-        if (c.scripts) bits.push(c.scripts + ' script' + (c.scripts === 1 ? '' : 's'));
-        if (c.collections) bits.push(c.collections + ' coll' + (c.collections === 1 ? '' : 's'));
+        if (c.characters) bits.push(plural(c.characters, 'character'));
+        if (c.scripts) bits.push(plural(c.scripts, 'script'));
+        if (c.collections) bits.push(plural(c.collections, 'collection'));
         return bits.join(' · ');
       }
-      function tile(c) {
-        // Claimed creators go to their profile; the rest to the creator page
-        // keyed on the name (the Worker serves both from one file).
-        var href = c.username
-          ? '/u/' + encodeURIComponent(c.username)
-          : 'author?a=' + encodeURIComponent(c.name);
-        var sym = symbolFor(c.name);
-        var badge = c.avatarUrl
-          ? '<img class="creator-av" loading="lazy" decoding="async" src="' + esc(c.avatarUrl) + '" alt="">'
-          : '<span class="creator-sym">' + esc(sym || '·') + '</span>';
-        return '<a class="creator-pill creator-pill-wide" href="' + esc(href) + '">' +
-          badge +
-          '<span class="creator-name">' + esc(c.name) +
-            (c.username ? '<span class="creator-at">@' + esc(c.username) + '</span>' : '') +
-            '<span class="creator-count">' + esc(countLabel(c)) + '</span>' +
-          '</span></a>';
+
+      var ALL = [], STATE = { q: '', sort: 'pages', show: 'all' };
+
+      // One card per account, one per unlinked name, one per mark nobody
+      // has published under yet. A credit name whose mark is linked to an
+      // account (an original mark, by its Discord) goes on that account's card.
+      function build(creators) {
+        var byUser = {}, out = [];
+        creators.forEach(function (c) {
+          var nm = c.username ? null : CS.creatorMark(c.name);
+          var user = c.username || (nm && nm.u);
+          if (user) {
+            var k = user.toLowerCase();
+            var it = byUser[k];
+            if (!it) {
+              it = byUser[k] = { name: c.displayName || (nm && nm.d) || user, username: user, avatarUrl: c.avatarUrl,
+                names: [], characters: 0, scripts: 0, collections: 0, total: 0 };
+              out.push(it);
+            }
+            if (it.names.indexOf(c.name) === -1) it.names.push(c.name);
+            it.characters += c.characters; it.scripts += c.scripts; it.collections += c.collections; it.total += c.total;
+          } else {
+            out.push({ name: c.name, names: [c.name], characters: c.characters, scripts: c.scripts,
+              collections: c.collections, total: c.total, mark: CS.creatorMark(c.name) });
+          }
+        });
+        out.forEach(function (it) {
+          if (!it.username) return;
+          it.mark = CS.userMark(it.username, true);
+          for (var i = 0; !it.mark && i < it.names.length; i++) it.mark = CS.creatorMark(it.names[i]);
+        });
+        (CS.allMarks() || []).forEach(function (m) {
+          if (m.u) {
+            if (byUser[m.u.toLowerCase()]) return;
+            var it = byUser[m.u.toLowerCase()] = { name: m.d || m.u, username: m.u, names: [], characters: 0,
+              scripts: 0, collections: 0, total: 0, mark: m };
+            out.push(it);
+          } else if (!out.some(function (it) { return it.mark === m; })) {
+            out.push({ name: m.d, names: [m.d], characters: 0, scripts: 0, collections: 0, total: 0, mark: m });
+          }
+        });
+        return out.filter(function (it) { return it.mark; });
       }
 
+      function markState(it) {
+        var m = it.mark;
+        if (m.legacy) return it.username ? ''
+          : '<span class="cr-state cr-state-reserved">Reserved</span>';
+        if (m.hide) return '<span class="cr-state">Mark hidden from pages</span>';
+        return '<span class="cr-state cr-state-own">Claimed</span>';
+      }
+      function card(it) {
+        var href = it.username
+          ? '/u/' + encodeURIComponent(it.username)
+          : 'author?a=' + encodeURIComponent(it.name);
+        var disc = CS.markHTML(it.mark, { cls: 'cr-mark', noFocus: true });
+        var aka = it.names.filter(function (n) { return n.toLowerCase() !== String(it.name).toLowerCase(); });
+        var admin = ADMIN && it.mark && it.mark.u && !it.mark.legacy
+          ? '<button type="button" class="cr-admin" data-user="' + esc(it.mark.u) + '" title="Take this mark off the account">Remove mark</button>'
+          : '';
+        return '<div class="cr-card">' +
+          '<a class="cr-link" href="' + esc(href) + '">' +
+            '<span class="cr-disc">' + disc + '</span>' +
+            '<span class="cr-body">' +
+              '<span class="cr-name">' +
+                (it.avatarUrl ? '<img class="cr-av" loading="lazy" decoding="async" src="' + esc(it.avatarUrl) + '" alt="">' : '') +
+                esc(it.name) + '</span>' +
+              (it.username ? '<span class="cr-at">@' + esc(it.username) + '</span>' : '') +
+              (aka.length ? '<span class="cr-aka">Credited as ' + esc(aka.join(', ')) + '</span>' : '') +
+              (it.total ? '<span class="cr-count">' + esc(countLabel(it)) + '</span>' : '') +
+              markState(it) +
+            '</span>' +
+          '</a>' + admin + '</div>';
+      }
+
+      function matches(it, q) {
+        if (!q) return true;
+        if ((it.mark.g === q || CS.markKey(it.mark.g) === CS.markKey(q))) return true;
+        q = q.toLowerCase();
+        return [it.name, it.username || ''].concat(it.names).some(function (s) { return String(s).toLowerCase().indexOf(q) !== -1; });
+      }
       function apply() {
-        var q = STATE.q.trim().toLowerCase();
-        var list = ALL.filter(function (c) {
-          if (q && String(c.name).toLowerCase().indexOf(q) === -1 &&
-              String(c.username || '').toLowerCase().indexOf(q) === -1) return false;
-          if (STATE.sort === 'accounts' && !c.username) return false;
+        var q = STATE.q.trim();
+        var list = ALL.filter(function (it) {
+          if (!matches(it, q)) return false;
+          if (STATE.show === 'accounts' && !it.username) return false;
           return true;
         });
-        if (STATE.sort === 'name') {
-          list.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
-        } else {
-          list.sort(function (a, b) { return b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
-        }
-        grid.innerHTML = list.map(tile).join('');
+        var byName = function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); };
+        list.sort(STATE.sort === 'name' ? byName : function (a, b) { return b.total - a.total || byName(a, b); });
+        grid.innerHTML = list.map(card).join('');
         emptyMsg.hidden = !!list.length;
       }
-
-      search.addEventListener('input', function () { STATE.q = search.value; apply(); });
-      document.querySelectorAll('.creators-sort .filter-chip').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          document.querySelectorAll('.creators-sort .filter-chip').forEach(function (b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-          STATE.sort = btn.getAttribute('data-sort');
-          apply();
+      function chips(attr, key) {
+        var all = document.querySelectorAll('.creators-sort .filter-chip[' + attr + ']');
+        all.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            all.forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            STATE[key] = btn.getAttribute(attr);
+            apply();
+          });
         });
+      }
+      chips('data-sort', 'sort');
+      chips('data-show', 'show');
+      search.addEventListener('input', function () { STATE.q = search.value; apply(); });
+
+      grid.addEventListener('click', function (e) {
+        var b = e.target.closest('.cr-admin');
+        if (!b) return;
+        var u = b.getAttribute('data-user');
+        if (!confirm('Take @' + u + '’s mark away? They can claim another.')) return;
+        b.disabled = true;
+        fetch('/api/admin/creator-mark', { method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u }) })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { if (d && d.ok) location.reload(); else { b.disabled = false; alert((d && d.error) || 'Could not remove it.'); } });
       });
 
-      fetch('/api/creators', { credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          ALL = (d && d.creators) || [];
-          if (!ALL.length) { grid.innerHTML = '<p style="opacity:.7">No creators found yet.</p>'; return; }
-          apply();
-        })
-        .catch(function () {
-          grid.innerHTML = '<p style="opacity:.7">Could not load the creator list.</p>';
-        });
+      Promise.all([
+        fetch('/api/creators', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+        CS.load(),
+        (window.BotcData && BotcData.me ? BotcData.me() : Promise.resolve(null)).catch(function () { return null; })
+      ]).then(function (res) {
+        ADMIN = !!(res[2] && res[2].isAdmin);
+        ALL = build((res[0] && res[0].creators) || []);
+        if (!ALL.length) { grid.innerHTML = '<p style="opacity:.7">No marks yet.</p>'; return; }
+        summary.textContent = plural(ALL.length, 'mark');
+        apply();
+      }).catch(function () {
+        grid.innerHTML = '<p style="opacity:.7">Could not load the creator list.</p>';
+      });
     })();
   </script>
   <script src="assets/site.js"></script>
