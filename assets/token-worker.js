@@ -95,13 +95,19 @@ function boot(cfg) {
 
   var pyP;
   try {
+    post({ type: 'status', state: 'loading', message: 'Downloading Python…' });
     importScripts(cfg.index + 'pyodide.js');
     pyP = loadPyodide({ indexURL: cfg.index })
-      .then(function (py) { pyodide = py; return loadPackages(cfg.index, ['numpy', 'pillow'], true); });
+      .then(function (py) {
+        pyodide = py;
+        post({ type: 'status', state: 'loading', message: 'Loading numpy and Pillow…' });
+        return loadPackages(cfg.index, ['numpy', 'pillow'], true);
+      });
   } catch (e) { pyP = Promise.reject(e); }
 
   Promise.all([pyP, filesP]).then(function (both) {
     var files = both[1];
+    post({ type: 'status', state: 'loading', message: 'Starting the token maker…' });
     try { pyodide.FS.mkdir(FSDIR); } catch (e) {}
     files.forEach(function (f) { fsWrite(FSDIR + '/' + f.rel, f.u8); });
     try { pyodide.FS.mkdir(FSDIR + '/art'); } catch (e) {}
@@ -210,6 +216,16 @@ function handle(m) {
     });
   }
 }
+
+/* An error Pyodide throws from inside one of its own callbacks rejects a
+   promise nobody awaits, and boot() then waits for good: the page sat on
+   "Loading…" with no message. Before the engine is ready, any such error is
+   the boot failing, so say so. */
+self.addEventListener('unhandledrejection', function (e) {
+  if (ready || bootErr) return;
+  bootErr = e.reason || new Error('unknown error');
+  post({ type: 'status', state: 'error', message: String(bootErr && bootErr.message || bootErr) });
+});
 
 self.onmessage = function (e) {
   var m = e.data || {};
