@@ -1472,7 +1472,12 @@ Two questions, answered in two places, and keeping them apart is the design:
   they carry 0 ("does not wake") and drop out of every script's Night Order box.
 - **What order** belongs to the script's owner, as
   `nightOrder: {first: [slug], other: [slug]}` in the script's `data`.
-  `sanitizeNightOrder()` caps each list at 200 and drops the key when empty.
+  `sanitizeNightOrder()` caps each list at 210 and drops the key when empty.
+  Dusk, minion info, demon info and dawn (`night-order.json`'s `meta`) are
+  rows in both lists, stored as `@dusk` etc. (no identity has an `@`), so an
+  owner can put a character either side of one; unarranged they sit at their
+  official positions. The page box, the arranging panel and the export's
+  `firstNight`/`otherNight` all read them off `nightItems()`.
   The roster itself takes up to `SCRIPT_CHARACTERS_MAX` (200) and a longer one
   is **refused** with a 400, never trimmed (it used to be cut to 100 in
   silence).

@@ -1165,7 +1165,13 @@
 
      A character the arrangement has not heard of, added since it was last
      saved, is not dumped at the end: it slots in after the last arranged
-     character that acts before it does, by night number. */
+     character that acts before it does, by night number.
+
+     Dusk, minion info, demon info and dawn ride the same lists when
+     NIGHT_META is set, as items with `mark` set and a pseudo-character whose
+     slug is '@' + id (no identity has an '@', so the arrangement can store
+     them beside the characters and an owner can put a character either side
+     of one). Without NIGHT_META they are simply absent. */
   function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
     if (!buildSchema) return { first: [], other: [] };
@@ -1175,6 +1181,13 @@
       try { s = buildSchema(c); } catch (e) { return; }
       if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: s.firstNightReminder || '' });
       if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: s.otherNightReminder || '' });
+    });
+    (NIGHT_META || []).forEach(function (m) {
+      var t = NIGHT_MARK_TEXT[m.id] || { name: m.id, r: '' };
+      [[first, 'firstNight'], [other, 'otherNight']].forEach(function (p) {
+        var n = m[p[1]] == null ? NaN : Number(m[p[1]]);
+        if (isFinite(n)) p[0].push({ c: { slug: '@' + m.id, name: t.name }, n: n, r: t.r, mark: m.id });
+      });
     });
     order = order || {};
     return {
@@ -1201,6 +1214,7 @@
     });
     return keyed.sort(function (a, b) {
       return a.key - b.key || a.it.n - b.it.n ||
+        (b.it.mark ? 1 : 0) - (a.it.mark ? 1 : 0) ||
         (a.it.c.name || '').localeCompare(b.it.c.name || '');
     }).map(function (x) { return x.it; });
   }
@@ -1208,18 +1222,16 @@
   function renderNightOrder(entries, root, order) {
     var lists = nightItems(entries, order);
     var first = lists.first, other = lists.other;
-    if (!first.length && !other.length) return '';
-    first = withNightMarks(first, 'first');
-    other = withNightMarks(other, 'other');
+    function chars(items) { return items.some(function (it) { return !it.mark; }); }
+    if (!chars(first) && !chars(other)) return '';
     function list(items) {
-      if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
+      if (!chars(items)) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
         if (it.mark) {
-          var m = NIGHT_MARK_TEXT[it.mark] || { name: it.mark, r: '' };
           return '<li class="sv-night-item sv-night-step">' +
             '<span class="sv-night-thumb" aria-hidden="true"></span>' +
-            '<div class="sv-night-text"><span class="sv-night-name">' + esc(m.name) + '</span>' +
-            (m.r ? '<span class="sv-night-reminder">' + esc(m.r) + '</span>' : '') +
+            '<div class="sv-night-text"><span class="sv-night-name">' + esc(it.c.name) + '</span>' +
+            (it.r ? '<span class="sv-night-reminder">' + esc(it.r) + '</span>' : '') +
             '</div></li>';
         }
         return '<li class="sv-night-item">' +
@@ -1414,35 +1426,11 @@
     if (!NIGHT_META || !NIGHT_META.length) return null;
     var lists = nightItems(entries, nightOrder);
     function seq(which) {
-      return withNightMarks(lists[which], which).map(function (it) {
-        return it.mark || exportId(it.c);
-      });
+      return lists[which].map(function (it) { return it.mark || exportId(it.c); });
     }
     return { first: seq('first'), other: seq('other') };
   }
 
-  /* The night items with dusk, minion info, demon info and dawn slotted in:
-     each step goes in front of the first character that acts after it. One
-     placement for the page's Night Order box and the export's sequences, so
-     the two cannot disagree. Steps come out as {mark: id}. Without
-     NIGHT_META the items come back as they were. `which` names the list
-     ('first' / 'other'); the steps carry their positions under the
-     character field names ('firstNight' / 'otherNight'). */
-  function withNightMarks(items, which) {
-    if (!NIGHT_META || !NIGHT_META.length) return items;
-    var field = which === 'first' ? 'firstNight' : 'otherNight';
-    var marks = NIGHT_META.map(function (m) {
-      return { mark: m.id, n: m[field] == null ? NaN : Number(m[field]) };
-    }).filter(function (m) { return isFinite(m.n); })
-      .sort(function (a, b) { return a.n - b.n; });
-    var out = [], mi = 0;
-    items.forEach(function (it) {
-      while (mi < marks.length && marks[mi].n <= it.n) out.push(marks[mi++]);
-      out.push(it);
-    });
-    while (mi < marks.length) out.push(marks[mi++]);
-    return out;
-  }
   // The official sheet's wording for those steps.
   var NIGHT_MARK_TEXT = {
     dusk: { name: 'Dusk', r: 'Check that all eyes are closed. Some Travellers act.' },

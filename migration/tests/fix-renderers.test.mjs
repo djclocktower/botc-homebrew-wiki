@@ -226,5 +226,12 @@ test('the Night Order box carries dusk, minion info, demon info and dawn', () =>
     const names = s => [...s.matchAll(/class="sv-night-name"[^>]*>([^<]+)</g)].map(m => m[1]);
     assert.deepEqual(names(firstCol), ['Dusk', 'Early', 'Minion Info', 'Demon Info', 'Late', 'Dawn']);
     assert.deepEqual(names(box.slice(box.indexOf('Other Nights'))), ['Dusk', 'Early', 'Late', 'Dawn']);
+    // The steps are arrangeable: a character put before dusk stays there, in
+    // the editor's list, on the page and in the export.
+    const order = { first: ['late', '@dusk', 'early'] };
+    assert.deepEqual(PageRender.nightItems([early, late], order).first.map(it => it.c.slug),
+      ['late', '@dusk', 'early', '@minioninfo', '@demoninfo', '@dawn']);
+    const meta = JSON.parse(PageRender.buildPageExport('S', '', '', [early, late], { nightOrder: order }))[0];
+    assert.deepEqual(meta.firstNight, ['late', 'dusk', 'early', 'minioninfo', 'demoninfo', 'dawn']);
   } finally { PageRender.setNightMeta(null); }
 });

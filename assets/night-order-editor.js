@@ -63,9 +63,14 @@
         .map(function (row) { return row.getAttribute('data-slug'); });
     }
 
+    // Dusk, minion info, demon info and dawn are rows too (it.mark), so a
+    // character can be put either side of one; a list of nothing but those
+    // still has nobody acting.
+    function chars(items) { return items.some(function (it) { return !it.mark; }); }
+
     function render() {
       var L = lists();
-      if (!L.first.length && !L.other.length) {
+      if (!chars(L.first) && !chars(L.other)) {
         container.innerHTML = '<p class="no-empty">No character on this script wakes at night.</p>';
         if (opts.onEmpty) opts.onEmpty(true);
         return;
@@ -73,9 +78,9 @@
       if (opts.onEmpty) opts.onEmpty(false);
       container.innerHTML = COLS.map(function (c) {
         var which = c[0], items = L[which];
-        var rows = items.length
+        var rows = chars(items)
           ? items.map(function (it, i) {
-            return '<div class="no-row" data-slug="' + esc(it.c.slug) + '" data-i="' + i + '">' +
+            return '<div class="no-row' + (it.mark ? ' no-step' : '') + '" data-slug="' + esc(it.c.slug) + '" data-i="' + i + '">' +
               '<span class="no-grip" aria-hidden="true" title="Drag to move"><span class="ico ico-grip" aria-hidden="true"></span></span>' +
               '<span class="no-pos">' + (i + 1) + '</span>' +
               '<span class="no-text">' +
