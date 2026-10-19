@@ -2048,6 +2048,7 @@
       Promise.all([BotcData.script('qr.js'), BotcData.script('char-snapshot.js')]).then(function(){
         window.CharSnapshot.open(d, {
           artSrc: src,
+          slug: id,
           siteRoot: SITE_ROOT,
           pageUrl: id && currentStatus === 'published' ? CANONICAL_ORIGIN + 'c/' + id : ''
         });

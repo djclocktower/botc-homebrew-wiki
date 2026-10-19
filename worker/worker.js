@@ -11591,6 +11591,68 @@ const app = {
     }
 
     // ---------- FETCH A PAGE FOR EDITING (drafts included for owner) ----------
+    /* GET /api/char-art?slug={identity}&key=main|alt|alt2|token — a
+       character's OWN picture, when it is hosted on another site, served from
+       ours. The Snapshot poster is drawn on a canvas, and a picture from a
+       host that sends no CORS headers taints it (the poster could no longer
+       be saved), so char-snapshot.js drops such a picture rather than break —
+       which left every Menagerie character's poster with no icon. This is the
+       way round it, and it can only ever fetch an address stored on a page:
+       the slug picks the row, the key picks the slot, nothing in the request
+       names a URL. Published pages for anyone, drafts for whoever may edit
+       them; only an image in the upload whitelist comes back, by its bytes. */
+    if (method === 'GET' && path === '/api/char-art') {
+      const notFound = () => new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+      const found = await resolveCharacterPath(env, url.searchParams.get('slug') || '');
+      const row = found && found.row;
+      if (!row || row.status === 'deleted') return notFound();
+      const isPublic = row.status === 'published';
+      if (!isPublic && !(await canEditPage(env, await getSession(env, request), 'character', row))) return notFound();
+      const ver = Render.artVersion(parseData(row), url.searchParams.get('key') || 'main');
+      let src;
+      try { src = ver && !ver.rel && ver.url ? new URL(ver.url) : null; } catch { src = null; }
+      if (!src || !/^https?:$/.test(src.protocol)) return notFound();
+      const cacheKey = new Request('https://ssr.internal/char-art?' + new URLSearchParams({
+        s: row.slug, k: ver.key, u: src.toString() }), { method: 'GET' });
+      if (isPublic) {
+        const hit = await caches.default.match(cacheKey).catch(() => null);
+        if (hit) return hit;
+      }
+      if (await rateLimited(env, request, 'charart', 300, 3600)) {
+        return new Response('Too many requests', { status: 429, headers: { 'Cache-Control': 'no-store' } });
+      }
+      // Redirects by hand, a few hops, each back onto http(s) with no
+      // credentials — the same shape as fetchBloodstar, minus the host pin
+      // (the address is the page's own, whoever hosts it).
+      let res = null;
+      try {
+        let u = src;
+        for (let hop = 0; hop <= 3; hop++) {
+          if (!/^https?:$/.test(u.protocol)) { res = null; break; }
+          u.username = ''; u.password = '';
+          res = await fetch(u.toString(), { redirect: 'manual', headers: { Accept: 'image/*' } });
+          const next = res.status >= 300 && res.status < 400 && res.headers.get('Location');
+          if (!next) break;
+          try { if (res.body) await res.body.cancel(); } catch { /* nothing to free */ }
+          res = null;
+          u = new URL(next, u);
+        }
+      } catch { res = null; }
+      if (!res || !res.ok) return notFound();
+      const Bloodstar = await loadBloodstar();
+      let bytes;
+      try { bytes = await Bloodstar.readCapped(res, 8 * 1024 * 1024); } catch { bytes = null; }
+      const type = bytes && sniffImageType(bytes);
+      if (!type) return notFound();
+      const out = new Response(bytes, { headers: {
+        'Content-Type': type,
+        'Cache-Control': isPublic ? 'public, max-age=86400' : 'private, no-store',
+        'Content-Security-Policy': "default-src 'none'"
+      } });
+      if (isPublic) ctx.waitUntil(caches.default.put(cacheKey, out.clone()).catch(() => {}));
+      return out;
+    }
+
     if (method === 'GET' && path === '/api/page') {
       const type = url.searchParams.get('type') || 'character';
       const slug = url.searchParams.get('slug') || '';

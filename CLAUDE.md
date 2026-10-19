@@ -675,6 +675,17 @@ assets/
                        stops being exportable (official icons therefore come
                        from our own icons-sm/ — the modern art — before the
                        CDN, and the OLD-style assets/icons/ copy only last).
+                       A WIKI character's art hosted elsewhere (the whole
+                       Menagerie is on menagerie.towerrangers.net, which
+                       sends no CORS headers) is retried through
+                       GET /api/char-art?slug=&key=main|alt|alt2|token,
+                       which fetches that page's OWN stored picture and
+                       serves it from our origin. Nothing in the request
+                       names a URL, so it is no open proxy: published pages
+                       for anyone, drafts for whoever may edit them, http(s)
+                       only, redirects by hand, 8 MB cap, and the bytes must
+                       sniff as PNG/JPEG/WebP/GIF. Edge-cached a day keyed on
+                       the slot's URL; misses rate-limited per IP.
                        And the poster is not the page: the jinx dropdown mode,
                        the JSON box and the Curata wreath are interface, so a
                        still image gets the jinx card, the QR and the almanac.

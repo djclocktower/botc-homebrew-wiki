@@ -209,7 +209,7 @@
       var page = res[0], d = page.data || {};
       var art = (window.artVersions(d, root)[0] || {}).src || '';
       window.CharSnapshot.open(d, {
-        artSrc: art, siteRoot: root,
+        artSrc: art, siteRoot: root, slug: SLUG,
         // A draft's address is a 404 to whoever scans it.
         pageUrl: page.status === 'published' ? 'https://botchomebrew.wiki/c/' + page.slug : ''
       });

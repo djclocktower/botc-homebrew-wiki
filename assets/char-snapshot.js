@@ -884,7 +884,7 @@
       ensureFonts(),
       loadImage(root + 'assets/bg.webp'),
       loadImage(root + 'assets/parchment.webp'),
-      loadImage(opts.artSrc || ''),
+      loadFirst([opts.artSrc, foreign(opts.artSrc || '') && viaWiki(opts.slug, root)]),
       loadImage(ORN_EX),
       loadImage(ORN_CALL),
       Promise.all(iconJobs),
@@ -907,7 +907,15 @@
     // resolveJinxTarget's own last resort is that old copy, so it can be
     // t.iconSrc: whatever its source, it goes to the back.
     var old = function (s) { return /\/assets\/icons\//.test(s); };
-    return all.filter(function (s) { return !old(s); }).concat(all.filter(old));
+    var via = t && !t.external && foreign(t.iconSrc || '') ? [viaWiki(t.slug, root)] : [];
+    return all.filter(function (s) { return !old(s); }).concat(via, all.filter(old));
+  }
+  /* A wiki character whose art is hosted elsewhere, read through our own
+     /api/char-art, which fetches the page's stored picture: the other host
+     usually sends no CORS headers, and a picture we cannot read back is
+     dropped (see loadImage) — which left the Menagerie's posters iconless. */
+  function viaWiki(slug, root) {
+    return slug ? root + 'api/char-art?slug=' + encodeURIComponent(slug) : '';
   }
   /* Our own files before anybody else's: another host need not send CORS
      headers, and a picture we cannot read back is worse than one we never

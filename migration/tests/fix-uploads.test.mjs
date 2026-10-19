@@ -251,3 +251,32 @@ test('Bloodstar bundle: absolute images, a third icon, no false warnings, and an
   assert.equal(trav.hasAlmanac, false);
   assert.deepEqual(bundle.warnings, []);
 });
+
+test('char-art: a character\'s own off-site picture comes back from our origin, and nothing else does', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  const real = globalThis.fetch;
+  t.after(() => { globalThis.fetch = real; });
+  const pngBytes = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40)]);
+  const asked = [];
+  globalThis.fetch = async (url, init) => {
+    asked.push(url); assert.equal(init.redirect, 'manual');
+    if (url.includes('/hop')) return new Response(null, { status: 302, headers: { Location: '/img/x.png' } });
+    if (url.includes('/page')) return new Response('<html>', { headers: { 'Content-Type': 'image/png' } });
+    return new Response(pngBytes);
+  };
+  f.insert('characters', 'remote', { name: 'Remote', team: 'outsider', ability: 'x', image: 'https://other.test/hop.png' });
+  f.insert('characters', 'notimg', { name: 'NotImg', ability: 'x', image: 'https://other.test/page' });
+  f.insert('characters', 'hidden', { name: 'Hidden', ability: 'x', image: 'https://other.test/a.png' }, 'draft');
+  f.insert('characters', 'local', { name: 'Local', ability: 'x', art: 'art/local.png' });
+  const res = await f.request('/api/char-art?slug=remote');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Content-Type'), 'image/png');
+  assert.deepEqual(asked, ['https://other.test/hop.png', 'https://other.test/img/x.png']);
+  for (const slug of ['notimg', 'hidden', 'local', 'nobody']) {
+    assert.equal((await f.request('/api/char-art?slug=' + slug)).status, 404, slug);
+  }
+  // The URL is never taken from the request.
+  assert.equal((await f.request('/api/char-art?slug=remote&key=alt&url=https://evil.test/')).status, 404);
+  assert.ok(!asked.some(u => u.includes('evil')));
+});
