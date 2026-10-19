@@ -794,9 +794,11 @@ team/tag/tags.html     Browse pages. team.html and tag.html draw one grid
                        a screen at a time (mountCardBatches over
                        CharFilters.singleGrid(); a team is up to 1,000+
                        cards and used to be drawn as 16,000 nodes at once).
-creators.html          The one creator index AND the creator-mark list: one card
-                       per person (an account's credit names folded into its
-                       card), the mark on a disc, who it belongs to, counts.
+creators.html          The creator-mark list: one card per mark, beside the person
+                       it belongs to (an account's credit names folded into its
+                       card), the mark in an outline circle, counts. A creator
+                       with no mark is NOT listed (the owner's call) until
+                       they claim one.
                        From /api/creators + /api/creator-marks. Admins get a
                        "Remove mark" button. authors.html is a redirect stub.
                        See "Creator marks".
@@ -3252,13 +3254,20 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   An uploaded-picture version was built and taken out again for that reason;
   do not bring images back. Uniqueness is `glyph_key`'s UNIQUE constraint,
   the key being `Creators.markKey()` (NFKC, variation selectors dropped,
-  lower-cased); `markProblem()` is the glyph rule, asked by the account page
+  case NOT folded: Spear_'s Δ and Delta's 𝝳 — NFKC δ — are two marks);
+  `markProblem()` is the glyph rule, asked by the account page
   and the Worker. `show = 0` keeps the mark the owner's but draws it nowhere.
 - **The legacy table** (`CREATOR_SYMBOLS` in creators.js) is the symbols
-  handed out by hand, keyed by creator NAME. Never add to it. A legacy glyph
-  stays reserved for its name; the account that name resolves to may claim it
-  (and nobody else), and an account choosing any mark of its own releases it.
-- **The registry is one query** (`buildMarkRegistry()`), because the SSR read
+  handed out by hand, keyed by creator NAME — the owner's list, updated from
+  it (2026-10); otherwise never add to it. A legacy glyph stays reserved for
+  its name; the account that name resolves to may claim it (and nobody else),
+  and an account choosing any mark of its own releases it.
+  `LEGACY_HANDLES` gives the Discord handle behind a one-person name: the
+  registry links that mark to the account whose `discord_username` (or
+  username) is that handle, setting `u` on the legacy entry, so it is drawn
+  on their comments and is theirs to claim — live, so it links the day they
+  sign up. Shared marks (The Bazaar) stay the name's.
+- **The registry is two parallel queries** (`buildMarkRegistry()`), because the SSR read
   path must not grow: each row stores `names`, the credit names it is drawn
   beside (`markNamesFor()`: what the /creators list gives that account, plus
   its handle and display name unless another person's credit uses them),

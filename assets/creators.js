@@ -34,10 +34,12 @@
     "Chal": "◮",
     "chloeispink": "±",
     "Coda": "⊕",
+    "concavz": "凹",
     "ctlq": "¢",
     "Comrade": "☭",
     "Dark": "ξ",
     "Darrivis": "D",
+    "Delta": "𝝳",
     "Drossel": "𖤓",
     "Elden Thorn": "⁂",
     "Eliderad": "灯",
@@ -48,6 +50,7 @@
     "Gobinator": "ꙮ",
     "Harry & Co. & Bendan": "♊",
     "Haunted": "⍨",
+    "Hyperswag": "◐",
     "Hystrex": "∇",
     "Imze": "Ϟ",
     "J.C.": "⦿",
@@ -57,6 +60,8 @@
     "Ma'ayan": "Ω",
     "Maja": "⸸",
     "Margs": "𐚁",
+    "Mr Froggit": "◈",
+    "Mythbusters": "∄",
     "Nerdguy": "∑",
     "Nycto": "ф",
     "Nyla": "☾",
@@ -71,19 +76,45 @@
     "Robo": "⏻",
     "Safterix": "⛧",
     "Sally": "𝄡",
+    "Scape": "⛯",
     "SCP: Fragmented Veil": "█",
     "Schemer": "»",
     "Skadoosher": "Ꝥ",
     "Soothslayer": "♪",
     "Super": "¬",
+    "Spear_": "Δ",
     "Squ4ll": "₳",
     "Sy": "꩜",
     "Taco": "¿",
     "Temporary": "╦",
     "Tir": "♄",
+    "That_Amnesiac": "𝄞",
     "thelast19digitsofpi": "ℵ",
     "Varii": "♡",
-    "Wrendle": "♠"
+    "VaultDemonPsycho": "¡"
+  };
+  // The Discord handle behind a legacy name, where the list gives one (one
+  // person only; a shared mark like The Bazaar's stays the name's). The
+  // Worker links the mark to the account with that Discord, or that handle.
+  var LEGACY_HANDLES = {
+    "Alex": "ur_l0cal_id1o4",
+    "Bio": "bionicnecromancer",
+    "Dark": "thedarkestartist",
+    "Elden Thorn": "eldenthorn.",
+    "Eliderad": "eliderad",
+    "Maja": "luhkmeih",
+    "Mr Froggit": "_mrfroggit",
+    "ODE": "0rig0nal",
+    "Procyon": "procyon8",
+    "Rams": "ramsplooge",
+    "Robo": "robo.tea",
+    "Schemer": "secret_schemer",
+    "Super": "supergdpwyl",
+    "Spear_": "spearkiller",
+    "Sy": "sy.py",
+    "Taco": "alonelytaco1337",
+    "Temporary": "temporary0533",
+    "Varii": "_varii"
   };
 
   // Case-insensitive name -> legacy glyph, for before setMarks() has run.
@@ -144,11 +175,12 @@
 
   /* What makes two glyphs "the same mark": compatibility-normalised (so the
      ohm sign is omega and a fullwidth symbol its plain twin), variation
-     selectors and joiners dropped (♣︎ and ♣ are one mark), case folded. */
+     selectors and joiners dropped (♣︎ and ♣ are one mark). Case is NOT
+     folded: Δ and δ (𝝳) are two creators' marks. */
   function markKey(g) {
     var s = String(g == null ? '' : g);
     if (s.normalize) s = s.normalize('NFKC');
-    return s.replace(/[\uFE00-\uFE0F\u200B-\u200D\u2060]/g, '').trim().toLowerCase();
+    return s.replace(/[\uFE00-\uFE0F\u200B-\u200D\u2060]/g, '').trim();
   }
   /* Why a glyph cannot be a mark, or '' when it can. Asked by the account
      page as you type and by the Worker on save, so both say the same thing.
@@ -159,7 +191,7 @@
     if (!k) return 'Pick a symbol for your mark.';
     if (/\s/.test(s)) return 'A mark cannot contain spaces.';
     if (Array.from(k).length > 3) return 'A mark is one symbol (three characters at most).';
-    if (/^[a-z0-9]+$/.test(k)) return 'Plain letters and numbers read as part of the name. Pick a symbol.';
+    if (/^[a-z0-9]+$/i.test(k)) return 'Plain letters and numbers read as part of the name. Pick a symbol.';
     if (/[\u0000-\u001f\u007f<>"'`&,;:\[\]{}()|\\\/*_~#]/.test(s)) return 'That character cannot be used in a mark (it means something in names or formatting).';
     return '';
   }
@@ -246,7 +278,7 @@
   }
 
   var api = {
-    CREATOR_SYMBOLS: CREATOR_SYMBOLS,
+    CREATOR_SYMBOLS: CREATOR_SYMBOLS, LEGACY_HANDLES: LEGACY_HANDLES,
     creatorSymbol: creatorSymbol,
     creatorMark: creatorMark, userMark: userMark, allMarks: allMarks,
     setMarks: setMarks, indexMarks: indexMarks, load: load,

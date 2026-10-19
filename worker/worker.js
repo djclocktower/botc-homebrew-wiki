@@ -6338,21 +6338,35 @@ async function markNamesAfterSave(env, type, slug) {
 /* Every mark on the wiki, as the list assets/creators.js setMarks() takes.
    Account marks first; then the legacy table, minus any glyph an account has
    claimed and any name an account with a mark of its own is drawn beside
-   (choosing a mark releases the old glyph). One query. */
+   (choosing a mark releases the old glyph). A legacy name the list gives a
+   Discord handle (Creators.LEGACY_HANDLES) is linked to the account with
+   that Discord, or that handle, so it is drawn on their comments too and is
+   theirs to claim. Two queries, in parallel. */
 async function buildMarkRegistry(env, flags = {}) {
-  let rows = [];
-  try {
-    rows = (await env.DB.prepare(
-      `SELECT m.glyph, m.glyph_key, m.show, m.names,
-              u.username, u.display_name
-         FROM creator_marks m JOIN users u ON u.id = m.user_id
-        WHERE COALESCE(u.banned, 0) = 0`
-    ).all()).results || [];
-  } catch (e) { if (!isMissingSchema(e)) flags.degraded = true; /* none claimed yet */ }
+  const handles = [...new Set(Object.values(Creators.LEGACY_HANDLES).map(h => h.toLowerCase()))];
+  const marks = env.DB.prepare(
+    `SELECT m.glyph, m.glyph_key, m.show, m.names,
+            u.username, u.display_name
+       FROM creator_marks m JOIN users u ON u.id = m.user_id
+      WHERE COALESCE(u.banned, 0) = 0`
+  ).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; /* none claimed yet */ });
+  // Handles are ASCII, so SQL's lower() is enough here.
+  const ph = handles.map(() => '?').join(',');
+  const linked = env.DB.prepare(
+    `SELECT username, display_name, lower(discord_username) AS dh, lower(username) AS uh FROM users
+      WHERE COALESCE(banned, 0) = 0 AND (lower(discord_username) IN (${ph}) OR lower(username) IN (${ph}))`
+  ).bind(...handles, ...handles).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; });
+  const [rows, users] = await Promise.all([marks, linked]);
+  const byHandle = new Map();
+  for (const u of users) for (const h of [u.dh, u.uh]) if (h && !byHandle.has(h)) byHandle.set(h, u);
+  // Discord beats a bare handle someone else registered under that name.
+  for (const u of users) if (u.dh) byHandle.set(u.dh, u);
   const out = [];
   const taken = new Set();
   const covered = new Set();
+  const marked = new Set();
   for (const r of rows) {
+    marked.add(usernameKey(r.username));
     let names = [];
     try { names = JSON.parse(r.names || '[]'); } catch { names = []; }
     if (!Array.isArray(names)) names = [];
@@ -6368,8 +6382,14 @@ async function buildMarkRegistry(env, flags = {}) {
     const g = Creators.CREATOR_SYMBOLS[name];
     const k = Creators.markKey(g);
     if (taken.has(k) || covered.has(normCreator(name))) continue;
+    const h = Creators.LEGACY_HANDLES[name];
+    const u = h && byHandle.get(h.toLowerCase());
+    // An account that chose a mark of its own released this one.
+    if (u && marked.has(usernameKey(u.username))) continue;
     taken.add(k);
-    out.push({ g, k, d: name, n: [name], legacy: 1 });
+    const m = { g, k, d: name, n: [name], legacy: 1 };
+    if (u) m.u = u.username;
+    out.push(m);
   }
   return out;
 }
@@ -10177,10 +10197,10 @@ const app = {
       ]);
       if (!me) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
       const names = creators ? markNamesFor(creators, me.username, me.display_name) : [];
-      const mark = reg.list.find(m => m.u && usernameKey(m.u) === usernameKey(me.username)) || null;
-      const legacy = Object.keys(Creators.CREATOR_SYMBOLS)
-        .filter(n => names.includes(normCreator(n)))
-        .map(n => ({ g: Creators.CREATOR_SYMBOLS[n], k: Creators.markKey(Creators.CREATOR_SYMBOLS[n]), name: n }));
+      const mark = reg.list.find(m => !m.legacy && m.u && usernameKey(m.u) === usernameKey(me.username)) || null;
+      const legacy = reg.list
+        .filter(m => m.legacy && (m.u ? usernameKey(m.u) === usernameKey(me.username) : m.n.some(n => names.includes(normCreator(n)))))
+        .map(m => ({ g: m.g, k: m.k, name: m.d }));
       return jsonResponse({ mark, legacy, names });
     }
 

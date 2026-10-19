@@ -72,6 +72,22 @@ test('creator marks: claim, uniqueness, the legacy list, pages, hiding, export',
   reg = (await (await f.request('/api/creator-marks')).json()).marks;
   assert.ok(reg.find(m => m.u === 'user-1').n.includes('moth queen'));
 
+  // An original mark the list gives a Discord handle is that account's: drawn
+  // on its comments, offered on its account page, and released by its own mark.
+  f.db.prepare("INSERT INTO users(id,username,password_hash,discord_username) VALUES(3,'lamp','','Eliderad')").run();
+  f.state.sessions.set('sess:user-3', { userId: 3, username: 'lamp' });
+  await f.hooks.bumpContentVersion(f.env, 'all');
+  reg = (await (await f.request('/api/creator-marks')).json()).marks;
+  assert.equal(reg.find(m => m.g === '灯').u, 'lamp');
+  assert.deepEqual((await (await f.request('/api/account/mark', member(3))).json()).legacy.map(l => l.g), ['灯']);
+  assert.equal((await f.request('/api/account/mark', post(2, { glyph: '灯' }))).status, 409);
+  assert.equal((await f.request('/api/account/mark', post(3, { glyph: '✦︎' }))).status, 409, 'Luis keeps ✦');
+  assert.equal((await f.request('/api/account/mark', post(3, { glyph: '⚘' }))).status, 200);
+  reg = (await (await f.request('/api/creator-marks')).json()).marks;
+  assert.ok(!reg.some(m => m.g === '灯'), 'choosing a mark releases the original one');
+  // Δ and 𝝳 are two creators' marks.
+  assert.ok(reg.some(m => m.g === 'Δ') && reg.some(m => m.g === '𝝳'));
+
   // Giving it up frees the glyph.
   assert.equal((await f.request('/api/account/mark', post(2, { remove: true }))).status, 200);
   assert.equal((await f.request('/api/account/mark', post(1, { glyph: '✶' }))).status, 200);

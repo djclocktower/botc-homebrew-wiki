@@ -70,8 +70,7 @@
         <button type="button" class="filter-chip" data-sort="name">A–Z</button>
       </div>
       <div class="creators-sort" role="group" aria-label="Show">
-        <button type="button" class="filter-chip active" data-show="all">Everyone</button>
-        <button type="button" class="filter-chip" data-show="marked">With a mark</button>
+        <button type="button" class="filter-chip active" data-show="all">All marks</button>
         <button type="button" class="filter-chip" data-show="accounts">Has an account</button>
         <button type="button" class="filter-chip" data-show="reserved">Unclaimed marks</button>
       </div>
@@ -79,9 +78,9 @@
     <div class="creators-page-box">
       <p class="cr-summary" id="cr-summary"></p>
       <div class="cr-grid" id="creators-grid">
-        <p style="opacity:.7">Loading creators…</p>
+        <p style="opacity:.7">Loading marks…</p>
       </div>
-      <p id="creators-empty" class="creators-empty" hidden>No creator matches that.</p>
+      <p id="creators-empty" class="creators-empty" hidden>No mark matches that.</p>
     </div>
   </main>
 
@@ -89,10 +88,10 @@
 
   <script src="assets/creators.js"></script>
   <script>
-    /* The creator index: every name that has published something, and every
-       creator mark, one card per person. A name that belongs to an account is
-       folded into that account's card (its other credit names listed under
-       it), so a mark appears once, beside the one person it belongs to.
+    /* The creator mark list: one card per mark, beside the one person it
+       belongs to. A creator with no mark is not listed; they appear here the
+       moment they claim one. A name that belongs to an account is folded into
+       that account's card (its other credit names listed under it).
        Counts come from /api/creators; marks from the live registry
        (CreatorSymbols.load(), /api/creator-marks). */
     (function () {
@@ -120,15 +119,18 @@
       var ALL = [], STATE = { q: '', sort: 'pages', show: 'all' };
 
       // One card per account, one per unlinked name, one per mark nobody
-      // has published under yet.
+      // has published under yet. A credit name whose mark is linked to an
+      // account (an original mark, by its Discord) goes on that account's card.
       function build(creators) {
         var byUser = {}, out = [];
         creators.forEach(function (c) {
-          if (c.username) {
-            var k = c.username.toLowerCase();
+          var nm = c.username ? null : CS.creatorMark(c.name);
+          var user = c.username || (nm && nm.u);
+          if (user) {
+            var k = user.toLowerCase();
             var it = byUser[k];
             if (!it) {
-              it = byUser[k] = { name: c.displayName || c.username, username: c.username, avatarUrl: c.avatarUrl,
+              it = byUser[k] = { name: c.displayName || (nm && nm.d) || user, username: user, avatarUrl: c.avatarUrl,
                 names: [], characters: 0, scripts: 0, collections: 0, total: 0 };
               out.push(it);
             }
@@ -154,12 +156,11 @@
             out.push({ name: m.d, names: [m.d], characters: 0, scripts: 0, collections: 0, total: 0, mark: m });
           }
         });
-        return out;
+        return out.filter(function (it) { return it.mark; });
       }
 
       function markState(it) {
         var m = it.mark;
-        if (!m) return '<span class="cr-state cr-state-none">No mark yet</span>';
         if (m.legacy) return it.username
           ? '<span class="cr-state">Original mark &middot; not claimed yet</span>'
           : '<span class="cr-state cr-state-reserved">Reserved &middot; no account linked</span>';
@@ -170,14 +171,12 @@
         var href = it.username
           ? '/u/' + encodeURIComponent(it.username)
           : 'author?a=' + encodeURIComponent(it.name);
-        var disc = it.mark
-          ? CS.markHTML(it.mark, { cls: 'cr-mark', noFocus: true })
-          : '<span class="cr-mark-empty" aria-hidden="true"></span>';
+        var disc = CS.markHTML(it.mark, { cls: 'cr-mark', noFocus: true });
         var aka = it.names.filter(function (n) { return n.toLowerCase() !== String(it.name).toLowerCase(); });
         var admin = ADMIN && it.mark && it.mark.u && !it.mark.legacy
           ? '<button type="button" class="cr-admin" data-user="' + esc(it.mark.u) + '" title="Take this mark off the account">Remove mark</button>'
           : '';
-        return '<div class="cr-card' + (it.mark ? '' : ' cr-card-nomark') + '">' +
+        return '<div class="cr-card">' +
           '<a class="cr-link" href="' + esc(href) + '">' +
             '<span class="cr-disc">' + disc + '</span>' +
             '<span class="cr-body">' +
@@ -194,7 +193,7 @@
 
       function matches(it, q) {
         if (!q) return true;
-        if (it.mark && (it.mark.g === q || CS.markKey(it.mark.g) === CS.markKey(q))) return true;
+        if ((it.mark.g === q || CS.markKey(it.mark.g) === CS.markKey(q))) return true;
         q = q.toLowerCase();
         return [it.name, it.username || ''].concat(it.names).some(function (s) { return String(s).toLowerCase().indexOf(q) !== -1; });
       }
@@ -202,9 +201,8 @@
         var q = STATE.q.trim();
         var list = ALL.filter(function (it) {
           if (!matches(it, q)) return false;
-          if (STATE.show === 'marked' && !it.mark) return false;
           if (STATE.show === 'accounts' && !it.username) return false;
-          if (STATE.show === 'reserved' && !(it.mark && it.mark.legacy)) return false;
+          if (STATE.show === 'reserved' && !it.mark.legacy) return false;
           return true;
         });
         var byName = function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); };
@@ -246,9 +244,9 @@
       ]).then(function (res) {
         ADMIN = !!(res[2] && res[2].isAdmin);
         ALL = build((res[0] && res[0].creators) || []);
-        if (!ALL.length) { grid.innerHTML = '<p style="opacity:.7">No creators found yet.</p>'; return; }
-        var marked = ALL.filter(function (it) { return it.mark; }).length;
-        summary.textContent = plural(ALL.length, 'creator') + ' · ' + plural(marked, 'mark');
+        if (!ALL.length) { grid.innerHTML = '<p style="opacity:.7">No marks yet.</p>'; return; }
+        var claimed = ALL.filter(function (it) { return !it.mark.legacy; }).length;
+        summary.textContent = plural(ALL.length, 'mark') + ' · ' + claimed + ' claimed';
         apply();
       }).catch(function () {
         grid.innerHTML = '<p style="opacity:.7">Could not load the creator list.</p>';
