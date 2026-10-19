@@ -1308,9 +1308,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .info-credit a:hover { text-decoration: underline; }
 
 /* A creator's mark beside their name (credit lines, comments, the creator
-   page, rosters). Drawn by markHTML() in assets/creators.js: a glyph, or an
-   uploaded picture painted as a mask over the text colour, so a picture mark
-   takes the colour of whatever it sits in exactly as a glyph does. */
+   page, rosters). Drawn by markHTML() in assets/creators.js: a glyph. */
 .creator-mark {
   position: relative;
   display: inline-block;
@@ -1323,16 +1321,6 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   cursor: help;
 }
 .theme-text .creator-mark { color: var(--pg-text); }
-.creator-mark-img {
-  width: 1.05em; height: 1.05em;
-  vertical-align: -.16em;
-}
-.creator-mark-img::before {
-  content: ''; position: absolute; inset: 0;
-  background: currentColor;
-  -webkit-mask: var(--mark) center / contain no-repeat;
-          mask: var(--mark) center / contain no-repeat;
-}
 /* Who the mark belongs to: shown at once on hover, and on a tap (the mark is
    focusable), rather than after the browser's own title delay. */
 .creator-mark[data-tip]:hover::after,

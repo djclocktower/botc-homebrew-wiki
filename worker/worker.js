@@ -575,9 +575,8 @@ const THUMB_MIN_BYTES = 512;
 // the generic /api/upload — profile pictures only go through
 // /api/account/avatar, which pins the key to the logged-in user's own slot,
 // and conversation images only through /api/attachment, which NAMES the key
-// itself (see ATTACH_PREFIX below). marks/ likewise only through
-// /api/account/mark, which writes the account's own marks/u{id}.png.
-const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'marks/']);
+// itself (see ATTACH_PREFIX below).
+const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/']);
 
 /* ---- conversation images (comments + modmail) ----
    Every other R2 prefix names the PAGE an image belongs to, so who may write
@@ -6238,7 +6237,7 @@ async function cachedCreatorsBody(env, ctx, flags = {}) {
 // A member's own symbol, drawn beside their name (assets/creators.js says how
 // the two sources fit together). One row per account; the glyph's comparison
 // key is UNIQUE, so two accounts can never hold one mark however a race goes.
-// `image` is the optional picture, always marks/u{id}.png, minted here.
+// A mark is text and only text, so it travels everywhere a name does.
 // `names` is the credit names the mark is drawn beside (lower-cased JSON
 // array): worked out from the /creators list when the mark is saved and again
 // every night (refreshMarkNames), so reading the registry is one query and a
@@ -6246,13 +6245,12 @@ async function cachedCreatorsBody(env, ctx, flags = {}) {
 let _marksReady = false;
 async function ensureMarksTable(env) {
   if (_marksReady) return;
-  if (await schemaHas(env, { tables: { creator_marks: ['glyph_key', 'image', 'show', 'names', 'updated_at'] } })) { _marksReady = true; return; }
+  if (await schemaHas(env, { tables: { creator_marks: ['glyph_key', 'show', 'names', 'updated_at'] } })) { _marksReady = true; return; }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS creator_marks (
        user_id INTEGER PRIMARY KEY,
        glyph TEXT NOT NULL,
        glyph_key TEXT NOT NULL UNIQUE,
-       image TEXT,
        show INTEGER NOT NULL DEFAULT 1,
        names TEXT,
        updated_at INTEGER NOT NULL DEFAULT 0
@@ -6260,10 +6258,7 @@ async function ensureMarksTable(env) {
   ).run();
   _marksReady = true;
 }
-const MARK_IMAGE_MAX_BYTES = 200 * 1024;
-const MARK_IMAGE_MAX_PX = 512;
 const MARK_NAMES_MAX = 50;
-function markImageKey(userId) { return 'marks/u' + Number(userId) + '.png'; }
 
 /* The credit names an account's mark is drawn beside: every name the
    /creators list gives to it (so exactly the names /author?a= would send to
@@ -6348,7 +6343,7 @@ async function buildMarkRegistry(env, flags = {}) {
   let rows = [];
   try {
     rows = (await env.DB.prepare(
-      `SELECT m.glyph, m.glyph_key, m.image, m.show, m.names, m.updated_at,
+      `SELECT m.glyph, m.glyph_key, m.show, m.names,
               u.username, u.display_name
          FROM creator_marks m JOIN users u ON u.id = m.user_id
         WHERE COALESCE(u.banned, 0) = 0`
@@ -6366,7 +6361,6 @@ async function buildMarkRegistry(env, flags = {}) {
     names.forEach(n => covered.add(n));
     taken.add(r.glyph_key);
     const m = { g: r.glyph, k: r.glyph_key, u: r.username, d: r.display_name || r.username, n: names };
-    if (r.image) { m.img = r.image; m.v = Number(r.updated_at || 0).toString(36); }
     if (!Number(r.show)) m.hide = 1;
     out.push(m);
   }
@@ -12869,11 +12863,10 @@ const app = {
         await ensureMarksTable(env);
         await ensureBanColumn(env);   // the registry reads it
         const me = await env.DB.prepare('SELECT username, display_name FROM users WHERE id=?').bind(sess.userId).first();
-        const cur = await env.DB.prepare('SELECT glyph, image, show FROM creator_marks WHERE user_id=?')
+        const cur = await env.DB.prepare('SELECT glyph, show FROM creator_marks WHERE user_id=?')
           .bind(sess.userId).first();
         if (b.remove) {
           await env.DB.prepare('DELETE FROM creator_marks WHERE user_id=?').bind(sess.userId).run();
-          if (env.ART) { try { await env.ART.delete(markImageKey(sess.userId)); } catch { /* best-effort */ } }
           await bumpContentVersion(env, 'mark');
           await logActivity(env, sess, 'creator-mark-remove', 'user', me && me.username, cur && cur.glyph);
           return jsonResponse({ ok: true, mark: null });
@@ -12897,37 +12890,14 @@ const app = {
         if (holder && !mine) {
           return jsonResponse({ error: 'That mark already belongs to ' + Creators.markOwner(holder) + '. Pick another.' }, { status: 409 });
         }
-        let image = cur ? cur.image : null;
-        if (b.image === null || b.removeImage) {
-          image = null;
-          if (env.ART) { try { await env.ART.delete(markImageKey(sess.userId)); } catch { /* best-effort */ } }
-        } else if (b.image) {
-          if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
-          const data = String(b.image);
-          if (!data.startsWith('data:image/png;base64,')) return jsonResponse({ error: 'A mark picture must be a PNG.' }, { status: 400 });
-          let bytes;
-          try { bytes = base64ToBytes(data.slice(data.indexOf(',') + 1)); } catch { bytes = null; }
-          const dims = bytes && imageDims(bytes);
-          if (!bytes || !bytes.length || !dims || bytes[0] !== 0x89 || bytes[1] !== 0x50) {
-            return jsonResponse({ error: 'Could not read that picture.' }, { status: 400 });
-          }
-          if (bytes.length > MARK_IMAGE_MAX_BYTES || dims.w > MARK_IMAGE_MAX_PX || dims.h > MARK_IMAGE_MAX_PX) {
-            return jsonResponse({ error: 'That picture is too big for a mark.' }, { status: 413 });
-          }
-          image = markImageKey(sess.userId);
-          await env.ART.put(image, bytes, {
-            httpMetadata: { contentType: 'image/png' },
-            customMetadata: { owner: String(sess.userId) }
-          });
-        }
         const show = b.show !== undefined ? (b.show ? 1 : 0) : (cur ? Number(cur.show) : 1);
         const now = Math.floor(Date.now() / 1000);
         try {
           await env.DB.prepare(
-            `INSERT INTO creator_marks (user_id, glyph, glyph_key, image, show, names, updated_at) VALUES (?,?,?,?,?,?,?)
+            `INSERT INTO creator_marks (user_id, glyph, glyph_key, show, names, updated_at) VALUES (?,?,?,?,?,?)
              ON CONFLICT(user_id) DO UPDATE SET glyph=excluded.glyph, glyph_key=excluded.glyph_key,
-               image=excluded.image, show=excluded.show, names=excluded.names, updated_at=excluded.updated_at`
-          ).bind(sess.userId, glyph, key, image, show, JSON.stringify(names), now).run();
+               show=excluded.show, names=excluded.names, updated_at=excluded.updated_at`
+          ).bind(sess.userId, glyph, key, show, JSON.stringify(names), now).run();
         } catch (e) {
           if (/UNIQUE/i.test(String(e && e.message))) {
             return jsonResponse({ error: 'That mark was just taken. Pick another.' }, { status: 409 });
@@ -12938,7 +12908,6 @@ const app = {
         await bumpContentVersion(env, 'mark');
         await logActivity(env, sess, 'creator-mark', 'user', me && me.username, glyph);
         const mark = { g: glyph, k: key, u: me.username, d: me.display_name || me.username, n: names };
-        if (image) { mark.img = image; mark.v = now.toString(36); }
         if (!show) mark.hide = 1;
         return jsonResponse({ ok: true, mark });
       }
@@ -14706,7 +14675,6 @@ const app = {
         const cur = await env.DB.prepare('SELECT glyph FROM creator_marks WHERE user_id=?').bind(u.id).first();
         if (!cur) return jsonResponse({ ok: true, removed: false });
         await env.DB.prepare('DELETE FROM creator_marks WHERE user_id=?').bind(u.id).run();
-        if (env.ART) { try { await env.ART.delete(markImageKey(u.id)); } catch { /* best-effort */ } }
         await bumpContentVersion(env, 'mark');
         await logActivity(env, sess, 'admin-creator-mark-remove', 'user', u.username, cur.glyph);
         return jsonResponse({ ok: true, removed: true });

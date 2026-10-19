@@ -3,10 +3,10 @@
    Two sources, merged into one registry by the Worker (buildMarkRegistry):
    - ACCOUNT marks, claimed by a member on their account page and stored in
      D1 (creator_marks: one per account, the glyph unique by constraint). A
-     mark has a text glyph — what goes where a picture cannot: the exported
-     script JSON, the official script tool, Discord — and may carry an
-     uploaded picture (marks/u{id}.png), painted as a mask over the text
-     colour so it behaves like a glyph on every surface.
+     mark is plain Unicode text and nothing else, so it works everywhere a
+     name does: the wiki, the exported script JSON, the official script
+     tool, Discord. (Uploaded pictures were tried and dropped for that
+     reason: an image cannot leave the wiki.)
    - The LEGACY table below: symbols handed out before accounts could claim
      one, keyed by creator NAME. A name that resolves to an account counts as
      that account's mark until the account picks one of its own (which
@@ -100,8 +100,8 @@
     return _byLower[key] || null;
   }
 
-  /* The registry: [{g, k, img?, v?, u?, d, n:[names], legacy?, hide?}].
-     g the glyph, k its comparison key, img/v the picture and its version,
+  /* The registry: [{g, k, u?, d, n:[names], legacy?, hide?}].
+     g the glyph, k its comparison key,
      u the owning account's username, d who it belongs to as a reader would
      say it, n the credit names it is drawn beside, hide = the owner switched
      showing it off (still theirs, still on the list, drawn nowhere). */
@@ -176,11 +176,7 @@
   }
   /* A mark as markup. The tooltip is CSS (data-tip, .creator-mark in
      styles.css) so it shows at once on hover and on a tap (tabindex makes a
-     tap focus it); aria-label says the same to a screen reader. A picture
-     mark is an empty span painted with the picture as a mask over
-     currentColor — the path is checked against the shape the Worker mints,
-     so nothing a client stored can reach the style attribute. */
-  var MARK_IMG_RE = /^marks\/u\d+\.png$/;
+     tap focus it); aria-label says the same to a screen reader. */
   function markHTML(m, opts) {
     if (!m || !m.g) return '';
     opts = opts || {};
@@ -188,10 +184,6 @@
     var cls = 'creator-mark' + (opts.cls ? ' ' + opts.cls : '');
     var a = ' data-tip="' + esc(tip) + '" role="img" aria-label="' + esc(tip) + '"' +
       (opts.noFocus ? '' : ' tabindex="0"');
-    if (m.img && MARK_IMG_RE.test(m.img) && !opts.textOnly) {
-      var url = '/assets/' + m.img + (m.v && /^[a-z0-9]+$/i.test(m.v) ? '?v=' + m.v : '');
-      return '<span class="' + cls + ' creator-mark-img"' + a + ' style="--mark:url(' + url + ')"></span>';
-    }
     return '<span class="' + cls + '"' + a + '>' + esc(m.g) + '</span>';
   }
   function markHTMLFor(name, opts) { return markHTML(creatorMark(name), opts); }

@@ -3246,15 +3246,14 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
 `data-tip`, says whose it is on hover or tap).
 
 - **Account marks** live in `creator_marks` (one row per account, created
-  lazily). A mark has a text **glyph** (required; it is what goes where a
-  picture cannot — exported JSON, the official script tool, Discord) and may
-  carry a **picture**, `marks/u{id}.png` in R2, which the browser turns into a
-  128px alpha mask (`mark-editor.js toMask()`) and every page paints as a CSS
-  mask over `currentColor`, so a picture mark takes the text colour exactly
-  as a glyph does. Uniqueness is `glyph_key`'s UNIQUE constraint, the key
-  being `Creators.markKey()` (NFKC, variation selectors dropped, lower-cased);
-  `markProblem()` is the glyph rule, asked by the account page and the Worker.
-  `show = 0` keeps the mark the owner's but draws it nowhere.
+  lazily). A mark is a **Unicode glyph and nothing else** — the owner asked
+  for it that way (2026-10) because a mark has to work on every platform a
+  name goes to: the wiki, exported JSON, the official script tool, Discord.
+  An uploaded-picture version was built and taken out again for that reason;
+  do not bring images back. Uniqueness is `glyph_key`'s UNIQUE constraint,
+  the key being `Creators.markKey()` (NFKC, variation selectors dropped,
+  lower-cased); `markProblem()` is the glyph rule, asked by the account page
+  and the Worker. `show = 0` keeps the mark the owner's but draws it nowhere.
 - **The legacy table** (`CREATOR_SYMBOLS` in creators.js) is the symbols
   handed out by hand, keyed by creator NAME. Never add to it. A legacy glyph
   stays reserved for its name; the account that name resolves to may claim it
@@ -3274,7 +3273,7 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   (`/api/creator-marks`); comments and the search index carry `markHTML`
   drawn by the Worker.
 - **Routes**: `GET /api/creator-marks` (public), `GET/POST /api/account/mark`
-  (own mark; POST `{glyph, show, image|null}` or `{remove:true}`),
+  (own mark; POST `{glyph, show}` or `{remove:true}`),
   `POST /api/admin/creator-mark {username}` (take one away).
 - **Creator marks on names**: a script's `creatorMarks: true` (the Script
   Builder's tick and publish-script's "In the Official App" panel, both on

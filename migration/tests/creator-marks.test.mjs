@@ -8,13 +8,10 @@ const post = (id, body) => ({
   headers: { Cookie: 'botc_session=user-' + id, 'Content-Type': 'application/json' },
   body: JSON.stringify(body)
 });
-const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 test('creator marks: claim, uniqueness, the legacy list, pages, hiding, export', async t => {
   const f = await fixture();
   t.after(() => f.finish());
-  const r2 = new Map();
-  f.env.ART = { async put(k, v) { r2.set(k, v); }, async delete(k) { r2.delete(k); } };
   for (const id of [1, 2]) {
     f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(?,?,'')").run(id, 'user-' + id);
     f.state.sessions.set('sess:user-' + id, { userId: id, username: 'user-' + id });
@@ -62,13 +59,10 @@ test('creator marks: claim, uniqueness, the legacy list, pages, hiding, export',
   assert.doesNotMatch(html, /creator-mark/);
   assert.equal((await f.request('/api/account/mark', post(2, { glyph: '∇' }))).status, 409);
 
-  // A picture mark: stored in the account's own slot, drawn as a mask.
-  r = await f.request('/api/account/mark', post(2, { image: PNG }));
-  assert.equal(r.status, 200);
-  assert.ok(r2.has('marks/u2.png'));
+  // Marks are text only: nothing a client sends can attach a picture.
+  assert.equal((await f.request('/api/account/mark', post(2, { image: 'data:image/png;base64,AAAA' }))).status, 200);
   reg = (await (await f.request('/api/creator-marks')).json()).marks;
-  assert.equal(reg.find(m => m.u === 'user-2').img, 'marks/u2.png');
-  assert.equal((await f.request('/api/account/mark', post(2, { image: 'data:image/svg+xml;base64,PHN2Zz4=' }))).status, 400);
+  assert.deepEqual(Object.keys(reg.find(m => m.u === 'user-2')).sort(), ['d', 'g', 'k', 'n', 'u']);
 
   // Publishing under a credit the mark has not seen yet takes effect on that
   // save, not at the nightly refresh.
@@ -78,8 +72,7 @@ test('creator marks: claim, uniqueness, the legacy list, pages, hiding, export',
   reg = (await (await f.request('/api/creator-marks')).json()).marks;
   assert.ok(reg.find(m => m.u === 'user-1').n.includes('moth queen'));
 
-  // Giving it up frees the glyph and the picture.
+  // Giving it up frees the glyph.
   assert.equal((await f.request('/api/account/mark', post(2, { remove: true }))).status, 200);
-  assert.ok(!r2.has('marks/u2.png'));
   assert.equal((await f.request('/api/account/mark', post(1, { glyph: '✶' }))).status, 200);
 });
