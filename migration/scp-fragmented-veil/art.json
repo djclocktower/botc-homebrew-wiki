@@ -1,0 +1,411 @@
+[
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/abdominal_scp_fragmented_veil.png",
+  "dest": "assets/art/abdominal.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/ballodeath_scp_fragmented_veil.png",
+  "dest": "assets/art/ball-o-death.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/contestant_scp_fragmented_veil.png",
+  "dest": "assets/art/contestant.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/livingdrawing_scp_fragmented_veil.png",
+  "dest": "assets/art/living-drawing.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/redseastone_scp_fragmented_veil.png",
+  "dest": "assets/art/red-sea-stone.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/prognosticator_scp_fragmented_veil.png",
+  "dest": "assets/art/prognosticator.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/multitool_scp_fragmented_veil.png",
+  "dest": "assets/art/multitool.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/livinggun_scp_fragmented_veil.png",
+  "dest": "assets/art/living-gun.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/eyepod_scp_fragmented_veil.png",
+  "dest": "assets/art/eyepod.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/3dspecs_scp_fragmented_veil.png",
+  "dest": "assets/art/3-d-specs.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/sauelsuesor_scp_fragmented_veil.png",
+  "dest": "assets/art/sauelsuesor.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/architect_scp_fragmented_veil.png",
+  "dest": "assets/art/architect-scp-fragmented-veil.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/tunisian_scp_fragmented_veil.png",
+  "dest": "assets/art/tunisian.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/neglected_scp_fragmented_veil.png",
+  "dest": "assets/art/neglected.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/panacea_scp_fragmented_veil.png",
+  "dest": "assets/art/panacea.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/basementcat_scp_fragmented_veil.png",
+  "dest": "assets/art/basement-cat.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/peacemonger_scp_fragmented_veil.png",
+  "dest": "assets/art/peacemonger-scp-fragmented-veil.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/desirereader_scp_fragmented_veil.png",
+  "dest": "assets/art/desire-reader.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/manegg_scp_fragmented_veil.png",
+  "dest": "assets/art/man-egg.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/hangman_scp_fragmented_veil.png",
+  "dest": "assets/art/hangman-scp-fragmented-veil.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/revenant_scp_fragmented_veil.png",
+  "dest": "assets/art/revenant-scp-fragmented-veil.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/navigator_scp_fragmented_veil.png",
+  "dest": "assets/art/navigator-scp-fragmented-veil.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/triln_scp_fragmented_veil.png",
+  "dest": "assets/art/trilene.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/provenance_scp_fragmented_veil.png",
+  "dest": "assets/art/provenance.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/skynetagent_scp_fragmented_veil.png",
+  "dest": "assets/art/skynet-agent.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/hammerdown_scp_fragmented_veil.png",
+  "dest": "assets/art/hammer-down.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/gocphysics_scp_fragmented_veil.png",
+  "dest": "assets/art/goc-physics.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/pinky_scp_fragmented_veil.png",
+  "dest": "assets/art/pinky.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/premonious_scp_fragmented_veil.png",
+  "dest": "assets/art/premonious.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/worldhopper_scp_fragmented_veil.png",
+  "dest": "assets/art/world-hopper.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/fishhead_scp_fragmented_veil.png",
+  "dest": "assets/art/fishhead.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/loyalservant_scp_fragmented_veil.png",
+  "dest": "assets/art/loyal-servant.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/shoein_scp_fragmented_veil.png",
+  "dest": "assets/art/shoe-in.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/laughster_scp_fragmented_veil.png",
+  "dest": "assets/art/laughster.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/immaterial_scp_fragmented_veil.png",
+  "dest": "assets/art/immaterial.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/wholesale_scp_fragmented_veil.png",
+  "dest": "assets/art/wholesale.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/cinsurgency_scp_fragmented_veil.png",
+  "dest": "assets/art/c-insurgency.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/duende_scp_fragmented_veil.png",
+  "dest": "assets/art/duende.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/livingroom_scp_fragmented_veil.png",
+  "dest": "assets/art/living-room.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/orchestrator_scp_fragmented_veil.png",
+  "dest": "assets/art/orchestrator.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/pipemaze_scp_fragmented_veil.png",
+  "dest": "assets/art/pipe-maze.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/missingno_scp_fragmented_veil.png",
+  "dest": "assets/art/missing-no.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/unknown_scp_fragmented_veil.png",
+  "dest": "assets/art/unknown.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/infernal_scp_fragmented_veil.png",
+  "dest": "assets/art/infernal.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/misanthrope_scp_fragmented_veil.png",
+  "dest": "assets/art/misanthrope.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/shyguy_scp_fragmented_veil.png",
+  "dest": "assets/art/shy-guy.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/peanut_scp_fragmented_veil.png",
+  "dest": "assets/art/peanut.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/lumenancer_scp_fragmented_veil.png",
+  "dest": "assets/art/lumenancer.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/clockworkvirus_scp_fragmented_veil.png",
+  "dest": "assets/art/clockwork-virus.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/god_scp_fragmented_veil.png",
+  "dest": "assets/art/god.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/caruncula_scp_fragmented_veil.png",
+  "dest": "assets/art/caruncula.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/umbilical_scp_fragmented_veil.png",
+  "dest": "assets/art/umbilical.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/toothfairy_scp_fragmented_veil.png",
+  "dest": "assets/art/tooth-fairy.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/antipath_scp_fragmented_veil.png",
+  "dest": "assets/art/antipath.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/disruptor_scp_fragmented_veil.png",
+  "dest": "assets/art/disruptor.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/ataip_scp_fragmented_veil.png",
+  "dest": "assets/art/atanip.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/recursion_scp_fragmented_veil.png",
+  "dest": "assets/art/recursion.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/wallbehind_scp_fragmented_veil.png",
+  "dest": "assets/art/wallbehind.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/prosecutor_scp_fragmented_veil.png",
+  "dest": "assets/art/prosecutor-scp-fragmented-veil.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/skinpeeler_scp_fragmented_veil.png",
+  "dest": "assets/art/skin-peeler.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/horseman_scp_fragmented_veil.png",
+  "dest": "assets/art/horseman.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/shadoo_scp_fragmented_veil.png",
+  "dest": "assets/art/shadoo.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/watislujv_scp_fragmented_veil.png",
+  "dest": "assets/art/watislujv.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/possessre_scp_fragmented_veil.png",
+  "dest": "assets/art/possessre.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/pestalgue_scp_fragmented_veil.png",
+  "dest": "assets/art/pestalgue.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/harpodaarkniz_scp_fragmented_veil.png",
+  "dest": "assets/art/harpodaarkniz.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/abysewhell_scp_fragmented_veil.png",
+  "dest": "assets/art/abysewhell.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/oldephaz_scp_fragmented_veil.png",
+  "dest": "assets/art/oldephaz.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/cespholopod_scp_fragmented_veil.png",
+  "dest": "assets/art/cespholopod.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/bludbaythe_scp_fragmented_veil.png",
+  "dest": "assets/art/bludbaythe.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/pyrrite_scp_fragmented_veil.png",
+  "dest": "assets/art/pyrrite.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/peredatore_scp_fragmented_veil.png",
+  "dest": "assets/art/peredatore.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/enfekthyte_scp_fragmented_veil.png",
+  "dest": "assets/art/enfekthyte.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/haedlaite_scp_fragmented_veil.png",
+  "dest": "assets/art/haedlaite.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/bigreddog_scp_fragmented_veil.png",
+  "dest": "assets/art/big-red-dog.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/untisaleep_scp_fragmented_veil.png",
+  "dest": "assets/art/untisaleep.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/lettucbaken_scp_fragmented_veil.png",
+  "dest": "assets/art/lettucbaken.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/skreeblebar_scp_fragmented_veil.png",
+  "dest": "assets/art/skreeblebar.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/pecks_scp_fragmented_veil.png",
+  "dest": "assets/art/pecks.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/_scp_fragmented_veil.png",
+  "dest": "assets/art/scp-1875.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/1_scp_fragmented_veil.png",
+  "dest": "assets/art/scp-1936.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/eyeceue_scp_fragmented_veil.png",
+  "dest": "assets/art/eyeceue.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/xx_2662_xx_scp_fragmented_veil.png",
+  "dest": "assets/art/xx-2662-xx.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/bzzipexe_scp_fragmented_veil.png",
+  "dest": "assets/art/bzzip-exe.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/ohorseman_scp_fragmented_veil.png",
+  "dest": "assets/art/o-horseman.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/whatknife_scp_fragmented_veil.png",
+  "dest": "assets/art/what-knife.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/salvation_scp_fragmented_veil.png",
+  "dest": "assets/art/salvation.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/voidwalker_scp_fragmented_veil.png",
+  "dest": "assets/art/voidwalker.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/twospirit_scp_fragmented_veil.png",
+  "dest": "assets/art/two-spirit.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/sugarrush_scp_fragmented_veil.png",
+  "dest": "assets/art/sugar-rush.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/hangedking_scp_fragmented_veil.png",
+  "dest": "assets/art/hanged-king.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/encyclopediac_scp_fragmented_veil.png",
+  "dest": "assets/art/encyclopediac.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/dissociative_scp_fragmented_veil.png",
+  "dest": "assets/art/dissociative.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/drbright_scp_fragmented_veil.png",
+  "dest": "assets/art/dr-bright.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/telepathagion_scp_fragmented_veil.png",
+  "dest": "assets/art/telepathagion.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/galaxysim_scp_fragmented_veil.png",
+  "dest": "assets/art/galaxy-sim.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/tyranny_scp_fragmented_veil.png",
+  "dest": "assets/art/tyranny.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/thegift_scp_fragmented_veil.png",
+  "dest": "assets/art/the-gift.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/drmaynard_scp_fragmented_veil.png",
+  "dest": "assets/art/dr-maynard.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/wslibrary_scp_fragmented_veil.png",
+  "dest": "assets/art/w-s-library.png"
+ },
+ {
+  "url": "https://www.bloodstar.xyz/p/legitch/SCP_Fragmented_Veil/_meta.png",
+  "dest": "assets/collections/scp-fragmented-veil-logo.png"
+ },
+ {
+  "url": "https://avatars.mds.yandex.net/i?id=9f1eff767bd54d01e7f23ced3a399db9ec4bf170-5031281-images-thumbs&n=13",
+  "dest": "assets/collections/scp-fragmented-veil-bg.jpg",
+  "any": true
+ }
+]
