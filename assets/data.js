@@ -200,8 +200,24 @@
   }
   earlyAnnouncement();
 
+  /* A textarea that grows with its text is measured by collapsing it for a
+     moment. That shortens the page, and Firefox and Safari pull the scroll
+     position up to fit, so every keystroke in a long box jumped the page.
+     The parent holds its height while the box is measured and the scroll is
+     put back. size() returns the new height in px from ta.scrollHeight.
+     Every grow-with-text box on the site goes through this. */
+  function fitHeight(ta, size) {
+    var x = window.scrollX, y = window.scrollY, p = ta.parentNode;
+    if (p) p.style.minHeight = p.offsetHeight + 'px';
+    ta.style.height = 'auto';
+    ta.style.height = size() + 'px';
+    if (p) p.style.minHeight = '';
+    if (window.scrollY !== y) window.scrollTo(x, y);
+  }
+
   window.BotcData = {
     json: json, asset: asset, script: script, style: style, root: root,
-    boot: boot, me: me, forgetMe: forgetMe, loginHint: loginHint
+    boot: boot, me: me, forgetMe: forgetMe, loginHint: loginHint,
+    fitHeight: fitHeight
   };
 })();

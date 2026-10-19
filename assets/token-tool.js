@@ -23,6 +23,19 @@
   });
 
   var pyReady = false, engineErr = null;
+  /* The engine is ~17 MB on first use. A step that makes no progress for two
+     minutes is said out loud, naming the step, instead of "Loading…" forever.
+     Loading carries on behind the message and clears it if it finishes. */
+  var loadStage = 'Loading…', stallTimer = 0, stalled = false;
+  function watchStall() {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(function () {
+      if (pyReady || engineErr) return;
+      stalled = true;
+      showMsg('err', 'The token maker is stuck on "' + esc(loadStage) + '". A slow connection can take a few minutes; if nothing changes, <a href="" onclick="location.reload();return false">reload the page</a>. If it keeps happening, tell DJ which step it stops on.');
+    }, 120000);
+  }
+  watchStall();
   var pending = {}, reqSeq = 0;
   function callWorker(type, msg) {
     return new Promise(function (res, rej) {
@@ -35,8 +48,10 @@
   worker.onmessage = function (e) {
     var m = e.data || {};
     if (m.type === 'status') {
-      if (m.state === 'ready') { pyReady = true; hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
+      clearTimeout(stallTimer);
+      if (m.state === 'ready') { pyReady = true; if (stalled) clearMsg(); hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
       else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
+      else { loadStage = m.message || loadStage; $('tt-load-text').textContent = loadStage; watchStall(); }
       return;
     }
     var p = pending[m.id]; if (!p) return; delete pending[m.id];

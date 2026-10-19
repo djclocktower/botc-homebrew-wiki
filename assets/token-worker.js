@@ -56,25 +56,42 @@ function fsWrite(path, u8) {
 }
 
 /* loadPackage only LOGS a failed download, it never rejects, so a phone that
-   dropped the numpy wheel (or holds a broken copy under the year-long immutable
-   cache) went on to "No module named 'numpy'". Check what actually loaded; on a
-   miss, re-fetch those wheels past the HTTP cache (which also replaces a bad
-   cached copy) and try once more. */
-function loadPackages(index, names, retry) {
+   dropped the numpy wheel went on to "No module named 'numpy'". Check what
+   actually loaded. On a miss, fetch the wheel from a NEW address each try:
+   the query string skips any copy the browser or Cloudflare kept, and Pyodide
+   reads the package name off the #/file.whl fragment, which is never sent.
+   A phone on Chrome kept failing numpy with "Failed to fetch" through two
+   plain retries of the normal address. */
+function loadPackages(index, names) {
   var errs = [];
-  return pyodide.loadPackage(names, { errorCallback: function (m) { errs.push(m); } }).then(function () {
+  function missingOf(list) {
     var have = Object.keys(pyodide.loadedPackages).join(' ').toLowerCase().split(' ');   // keyed 'Pillow'
-    var missing = names.filter(function (n) { return have.indexOf(n) < 0; });
+    return list.filter(function (n) { return have.indexOf(n) < 0; });
+  }
+  function load(what) {
+    return pyodide.loadPackage(what, { errorCallback: function (m) { errs.push(m); } });
+  }
+  return load(names).then(function () {
+    var missing = missingOf(names);
     if (!missing.length) return;
-    if (!retry) throw new Error('Could not load ' + missing.join(', ') + (errs.length ? ': ' + errs.join(' ') : ''));
-    return fetch(index + 'pyodide-lock.json', { cache: 'reload' }).then(function (r) { return r.json(); })
+    return fetch(index + 'pyodide-lock.json', { cache: 'no-store' }).then(function (r) { return r.json(); })
       .then(function (lock) {
-        return Promise.all(missing.map(function (n) {
-          return fetch(index + lock.packages[n].file_name, { cache: 'reload' }).catch(function () {});
-        }));
-      })
-      .catch(function () {})
-      .then(function () { return loadPackages(index, missing, false); });
+        var tries = 0;
+        function again() {
+          tries++;
+          errs = [];
+          return load(missing.map(function (n) {
+            var f = lock.packages[n].file_name;
+            return index + f + '?r=' + Date.now() + '#/' + f;
+          })).then(function () {
+            missing = missingOf(missing);
+            if (!missing.length) return;
+            if (tries >= 3) throw new Error('Could not load ' + missing.join(', ') + (errs.length ? ': ' + errs.join(' ') : ''));
+            return new Promise(function (res) { setTimeout(res, tries * 2000); }).then(again);
+          });
+        }
+        return again();
+      });
   });
 }
 
@@ -95,13 +112,19 @@ function boot(cfg) {
 
   var pyP;
   try {
+    post({ type: 'status', state: 'loading', message: 'Downloading Python…' });
     importScripts(cfg.index + 'pyodide.js');
     pyP = loadPyodide({ indexURL: cfg.index })
-      .then(function (py) { pyodide = py; return loadPackages(cfg.index, ['numpy', 'pillow'], true); });
+      .then(function (py) {
+        pyodide = py;
+        post({ type: 'status', state: 'loading', message: 'Loading numpy and Pillow…' });
+        return loadPackages(cfg.index, ['numpy', 'pillow']);
+      });
   } catch (e) { pyP = Promise.reject(e); }
 
   Promise.all([pyP, filesP]).then(function (both) {
     var files = both[1];
+    post({ type: 'status', state: 'loading', message: 'Starting the token maker…' });
     try { pyodide.FS.mkdir(FSDIR); } catch (e) {}
     files.forEach(function (f) { fsWrite(FSDIR + '/' + f.rel, f.u8); });
     try { pyodide.FS.mkdir(FSDIR + '/art'); } catch (e) {}
@@ -210,6 +233,16 @@ function handle(m) {
     });
   }
 }
+
+/* An error Pyodide throws from inside one of its own callbacks rejects a
+   promise nobody awaits, and boot() then waits for good: the page sat on
+   "Loading…" with no message. Before the engine is ready, any such error is
+   the boot failing, so say so. */
+self.addEventListener('unhandledrejection', function (e) {
+  if (ready || bootErr) return;
+  bootErr = e.reason || new Error('unknown error');
+  post({ type: 'status', state: 'error', message: String(bootErr && bootErr.message || bootErr) });
+});
 
 self.onmessage = function (e) {
   var m = e.data || {};
