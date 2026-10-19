@@ -23,6 +23,19 @@
   });
 
   var pyReady = false, engineErr = null;
+  /* The engine is ~17 MB on first use. A step that makes no progress for two
+     minutes is said out loud, naming the step, instead of "Loading…" forever.
+     Loading carries on behind the message and clears it if it finishes. */
+  var loadStage = 'Loading…', stallTimer = 0, stalled = false;
+  function watchStall() {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(function () {
+      if (pyReady || engineErr) return;
+      stalled = true;
+      showMsg('err', 'The token maker is stuck on "' + esc(loadStage) + '". A slow connection can take a few minutes; if nothing changes, <a href="" onclick="location.reload();return false">reload the page</a>. If it keeps happening, tell DJ which step it stops on.');
+    }, 120000);
+  }
+  watchStall();
   var pending = {}, reqSeq = 0;
   function callWorker(type, msg) {
     return new Promise(function (res, rej) {
@@ -35,8 +48,10 @@
   worker.onmessage = function (e) {
     var m = e.data || {};
     if (m.type === 'status') {
-      if (m.state === 'ready') { pyReady = true; hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
+      clearTimeout(stallTimer);
+      if (m.state === 'ready') { pyReady = true; if (stalled) clearMsg(); hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
       else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
+      else { loadStage = m.message || loadStage; $('tt-load-text').textContent = loadStage; watchStall(); }
       return;
     }
     var p = pending[m.id]; if (!p) return; delete pending[m.id];
@@ -136,7 +151,18 @@
   function saveSet() { try { localStorage.setItem(SET_KEY, JSON.stringify(setSlugs)); } catch (e) {} }
   function artRel(c) { return 'assets/' + (c.art || ('art/' + c.slug + '.png')); }
   function artAbs(c) { return ROOT + artRel(c); }
-  function thumbSrc(c) { return c.ext ? (c.image || 'assets/favicon.png') : artRel(c); }
+  /* Lists draw the 192px WebP card thumbnail (~8 KB against the art's
+     ~150 KB), the same rule as PageRender.thumbSrc(); the Worker serves the
+     original at that address until a thumbnail exists. The Add list holds
+     every character on the wiki, and drawing it with full art (and no lazy
+     loading) had a phone downloading hundreds of MB alongside the engine. */
+  function thumbSrc(c) {
+    if (c.ext) return c.image || 'assets/favicon.png';
+    if (c.art && /^art\/[^/]+$/.test(c.art)) {
+      return 'assets/thumb/' + c.art.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
+    }
+    return artRel(c);
+  }
   /* The character's SAVED token — art/{identity}-token.png, written by this
      page's "Save to page" (or uploaded in the character editors). When one
      exists the sheets and the main preview print IT instead of generating a
@@ -387,7 +413,7 @@
         var ability = c.ability || '';
         html += '<div class="sb-add-row">' +
           '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-            '<img class="sb-add-thumb" src="' + esc(artRel(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
             '<span class="sb-add-name">' + esc(c.name) + '</span>' +
           '</button>' +
           (ability
@@ -465,7 +491,7 @@
       group.forEach(function (c) {
         var edited = adjState.per[c.slug] && Object.keys(adjState.per[c.slug].adj || {}).length > 0;
         html += '<div class="sb-script-item">' +
-          '<img class="sb-script-thumb" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
           '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
           '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
           versionChipsHTML(c) + '</div>' +

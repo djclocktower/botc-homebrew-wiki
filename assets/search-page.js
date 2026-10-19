@@ -147,14 +147,16 @@
     return bits.join(' · ');
   }
   function personTile(item) {
-    var d = item.data, sym = '';
-    if (item.type === 'creator' && window.CreatorSymbols) sym = window.CreatorSymbols.creatorSymbol(d.name) || '';
+    var d = item.data;
+    // markHTML is drawn by the Worker (the search index), never typed.
+    var mk = item.type === 'creator' ? (d.markHTML || '') : '';
     var badge = d.avatarUrl
       ? '<img class="creator-av" loading="lazy" decoding="async" src="' + esc(d.avatarUrl) + '" alt="">'
-      : '<span class="creator-sym">' + esc(sym || '·') + '</span>';
+      : '<span class="creator-sym">' + (mk || '·') + '</span>';
     var sub = item.type === 'creator' ? countLabel(d) : '';
     return '<a class="creator-pill creator-pill-wide" href="' + esc(item.href) + '">' + badge +
       '<span class="creator-name">' + markFn(item.type === 'creator' ? d.name : (d.displayName || d.username)) +
+        (mk && d.avatarUrl ? ' ' + mk : '') +
         (d.username ? '<span class="creator-at">@' + markFn(d.username) + '</span>' : '') +
         (sub ? '<span class="creator-count">' + esc(sub) + '</span>' : '') +
       '</span></a>';

@@ -30,8 +30,7 @@
     if (!ta) return;
     ta.style.overflowY = 'hidden';
     function fit() {
-      ta.style.height = 'auto';
-      ta.style.height = Math.max(ta.scrollHeight + 2, 54) + 'px';
+      BotcData.fitHeight(ta, function () { return Math.max(ta.scrollHeight + 2, 54); });
     }
     ta.addEventListener('input', fit);
     fit();

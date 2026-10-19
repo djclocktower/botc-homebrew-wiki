@@ -673,8 +673,7 @@
             var ta = item.querySelector('textarea');
             var ov = overrides[key(entry)];
             ta.value = ov ? ov.replacement : entry.text;
-            ta.style.height = 'auto';
-            ta.style.height = Math.min(ta.scrollHeight + 4, 420) + 'px';
+            BotcData.fitHeight(ta, function () { return Math.min(ta.scrollHeight + 4, 420); });
             ta.focus();
           }
           return;

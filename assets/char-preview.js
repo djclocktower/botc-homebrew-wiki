@@ -71,6 +71,9 @@
 
   function mount(frame, opts) {
     opts = opts || {};
+    // The credit line's mark comes from the live registry once it is in
+    // (picture marks included); the next repaint draws it.
+    if (window.CreatorSymbols && window.CreatorSymbols.load) window.CreatorSymbols.load();
     var siteRoot = opts.siteRoot || '';
     var ready = false;
     var pending = null;

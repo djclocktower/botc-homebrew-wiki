@@ -474,6 +474,20 @@
     var n = OFFICIAL_NAMES[slugId(id)];
     return (typeof n === 'string' && n) ? n : '';
   }
+  /* Does this jinx name an OFFICIAL character? The one test behind "official
+     beats this wiki" (gotcha 8) for everything that matches a jinx without
+     drawing it: the Worker's jinx index (mirroring, /jinxes), a script's
+     pairs and the importers' warning. Without it a homebrew page whose
+     identity is an official id ("atheist") collected every jinx written with
+     the real one. Answers the official id it matched, or ''. `names` is an
+     official-name map; the registry by default. */
+  function jinxOfficialId(j, names) {
+    names = names || OFFICIAL_NAMES;
+    if (!names || !j) return '';
+    var id = slugId(String(j.id || '').replace(/_festival_of_lanterns$/, ''));
+    var nm = slugId(jinxDisplayName(j));
+    return (id && names[id]) ? id : (nm && names[nm]) ? nm : '';
+  }
 
   /* This wiki's own characters, keyed by normJinxId() of slug and of name, so a
      jinx naming another homebrew page can find it. Same injection pattern as
@@ -672,6 +686,15 @@
   function creatorSymbol(name) {
     var c = creatorsApi();
     return (c && c.creatorSymbol) ? c.creatorSymbol(name) : '';
+  }
+  // A creator's mark as markup ('' when they have none or chose to hide it).
+  function creatorMarkHTML(name, opts) {
+    var c = creatorsApi();
+    return (c && c.markHTMLFor) ? c.markHTMLFor(name, opts) : '';
+  }
+  function nameWithMarks(name, creator) {
+    var c = creatorsApi();
+    return (c && c.nameWithMarks) ? c.nameWithMarks(name, creator) : String(name == null ? '' : name);
   }
   function stripCreatorMark(name, creator) {
     var c = creatorsApi();
@@ -1032,9 +1055,18 @@
       var v = row ? row(c) : c;
       if (!v) return;
       items.push({ c: c, v: v });
+      var sk = normJinxId(c.slug);
+      if (sk && !byKey[sk]) byKey[sk] = v;
       var nk = normJinxId(c.name);
-      [normJinxId(c.slug), nk].forEach(function (k) { if (k && !byKey[k]) byKey[k] = v; });
       if (nk) (byName[nk] = byName[nk] || []).push(v);
+    });
+    // Names only after EVERY identity: the picker stores a jinx by identity,
+    // and a name key registered first stole it — "Mystic ∇" (townsfolk,
+    // mystic-the-academy) took `mystic`, the Outsider's identity, so a jinx
+    // picked as the Outsider drew the Townsfolk.
+    items.forEach(function (it) {
+      var nk = normJinxId(it.c.name);
+      if (nk && !byKey[nk]) byKey[nk] = it.v;
     });
     items.forEach(function (it) {
       jinxQualKeys(it.c).forEach(function (k) { if (!byKey[k]) byKey[k] = it.v; });
@@ -1068,7 +1100,7 @@
     // needs setOfficialNames() to have been called — without it every jinx
     // with an official character looks homebrew, which is a warning on almost
     // every import.
-    out.official = !!(officialName(j.id || '') || officialName(out.name));
+    out.official = !!jinxOfficialId(j);
     if (out.official) return out;
     var keys = jinxLookupKeys(j, host), hit = '';
     for (var i = 0; i < keys.length && !out.picked; i++) {
@@ -1098,6 +1130,9 @@
         // An entry written by the jinx picker names its target outright; the
         // older ones have to be matched by id or by name.
         var target = j.slug && byId[normJinxId(j.slug)];
+        // One naming an official character is never a wiki pair
+        // (officialJinxesOnScript in render-page.js draws those).
+        if (!target && jinxOfficialId(j)) return;
         if (!target) {
           var ks = jinxLookupKeys(j, c);
           for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
@@ -1271,8 +1306,9 @@
       (splitCreators(d.creator).length
         ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +
           splitCreators(d.creator).map(function (n) {
+            var mk = creatorMarkHTML(n);
             return '<a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(n) + '">' + esc(n) + '</a>' +
-              (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
+              (mk ? ' ' + mk : '');
           }).join('<span class="tag-sep">, </span>') +
           '</dd>' : '') +
       appearsInRow(d, root, opts && opts.appearsInHref) +
@@ -1497,6 +1533,9 @@
     window.setCreators = setCreators;
     window.setCurataMark = setCurataMark;
     window.creatorSymbol = creatorSymbol;
+    window.creatorMarkHTML = creatorMarkHTML;
+    window.nameWithMarks = nameWithMarks;
+    window.stripCreatorMark = stripCreatorMark;
     window.splitCreators = splitCreators;
     window.editStatusHTML = editStatusHTML;
     window.draftedNoticeHTML = draftedNoticeHTML;
@@ -1519,13 +1558,14 @@
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       jinxExportId: jinxExportId,
-      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,
+      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
       jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
       charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
+      creatorMarkHTML: creatorMarkHTML, nameWithMarks: nameWithMarks,
       splitCreators: splitCreators,
       editStatusHTML: editStatusHTML, EDIT_STATUS: EDIT_STATUS,
       draftedNoticeHTML: draftedNoticeHTML

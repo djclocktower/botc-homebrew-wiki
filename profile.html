@@ -167,6 +167,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="/assets/creators.js"></script>
   <script src="/assets/render-page.js"></script>
   <script src="/assets/custom-css.js"></script>
   <!-- sao.js first: card-filters.js only offers Steven Approved Order when
@@ -509,7 +510,7 @@
       hero.innerHTML =
         '<div class="profile-avatar">' + avatarInner + '</div>' +
         '<div class="profile-hero-text">' +
-          '<h1>' + esc(title) + '</h1>' +
+          '<h1>' + esc(title) + '<span id="hero-mark"></span></h1>' +
           '<p class="profile-uname">' +
             (claimed ? '@' + esc(p.username) : 'Creator') +
             (bits.length ? ' &middot; ' + bits.join(' &middot; ') : '') + '</p>' +
@@ -522,8 +523,24 @@
           (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
         '</div>';
       fitHeroName();
+      heroMark(p);
 
       if (me && me.isAdmin) renderAdminLinkBox(p);
+    }
+
+    // The creator's mark after their name: the account's own (if they show
+    // it), else the mark of the credit name this page is about.
+    function heroMark(p) {
+      var CS = window.CreatorSymbols;
+      if (!CS) return;
+      CS.load().then(function () {
+        var m = (p.claimed && CS.userMark(p.username)) ||
+          CS.creatorMark((p.creatorNames && p.creatorNames[0]) || authorName || p.displayName || '');
+        var slot = document.getElementById('hero-mark');
+        if (!m || !slot) return;
+        slot.innerHTML = ' ' + CS.markHTML(m, { cls: 'creator-mark-hero' });
+        fitHeroName();
+      });
     }
 
     // Admins can attach a creator name to an account (or detach it) from the
