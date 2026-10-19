@@ -213,3 +213,25 @@ test('a picked identity beats another page whose NAME folds to it', () => {
   assert.equal(t.team, 'outsider');
   Render.setWikiChars(null);
 });
+
+test('the Night Order box carries dusk, minion info, demon info and dawn', () => {
+  const meta = JSON.parse(require('node:fs').readFileSync(new URL('../../assets/night-order.json', import.meta.url))).meta;
+  const early = { slug: 'early', name: 'Early', team: 'townsfolk', ability: 'x', firstNight: 10, otherNight: 10 };
+  const late = { slug: 'late', name: 'Late', team: 'townsfolk', ability: 'x', firstNight: 30, otherNight: 30 };
+  PageRender.setNightMeta(meta);
+  try {
+    const html = PageRender.renderScriptPage({ slug: 's', name: 'S', characters: ['early', 'late'] }, [early, late], { linkRoot: '' });
+    const box = html.slice(html.indexOf('id="sec-nightorder"'));
+    const firstCol = box.slice(0, box.indexOf('Other Nights'));
+    const names = s => [...s.matchAll(/class="sv-night-name"[^>]*>([^<]+)</g)].map(m => m[1]);
+    assert.deepEqual(names(firstCol), ['Dusk', 'Early', 'Minion Info', 'Demon Info', 'Late', 'Dawn']);
+    assert.deepEqual(names(box.slice(box.indexOf('Other Nights'))), ['Dusk', 'Early', 'Late', 'Dawn']);
+    // The steps are arrangeable: a character put before dusk stays there, in
+    // the editor's list, on the page and in the export.
+    const order = { first: ['late', '@dusk', 'early'] };
+    assert.deepEqual(PageRender.nightItems([early, late], order).first.map(it => it.c.slug),
+      ['late', '@dusk', 'early', '@minioninfo', '@demoninfo', '@dawn']);
+    const meta = JSON.parse(PageRender.buildPageExport('S', '', '', [early, late], { nightOrder: order }))[0];
+    assert.deepEqual(meta.firstNight, ['late', 'dusk', 'early', 'minioninfo', 'demoninfo', 'dawn']);
+  } finally { PageRender.setNightMeta(null); }
+});

@@ -1165,7 +1165,13 @@
 
      A character the arrangement has not heard of, added since it was last
      saved, is not dumped at the end: it slots in after the last arranged
-     character that acts before it does, by night number. */
+     character that acts before it does, by night number.
+
+     Dusk, minion info, demon info and dawn ride the same lists when
+     NIGHT_META is set, as items with `mark` set and a pseudo-character whose
+     slug is '@' + id (no identity has an '@', so the arrangement can store
+     them beside the characters and an owner can put a character either side
+     of one). Without NIGHT_META they are simply absent. */
   function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
     if (!buildSchema) return { first: [], other: [] };
@@ -1175,6 +1181,13 @@
       try { s = buildSchema(c); } catch (e) { return; }
       if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: s.firstNightReminder || '' });
       if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: s.otherNightReminder || '' });
+    });
+    (NIGHT_META || []).forEach(function (m) {
+      var t = NIGHT_MARK_TEXT[m.id] || { name: m.id, r: '' };
+      [[first, 'firstNight'], [other, 'otherNight']].forEach(function (p) {
+        var n = m[p[1]] == null ? NaN : Number(m[p[1]]);
+        if (isFinite(n)) p[0].push({ c: { slug: '@' + m.id, name: t.name }, n: n, r: t.r, mark: m.id });
+      });
     });
     order = order || {};
     return {
@@ -1201,6 +1214,7 @@
     });
     return keyed.sort(function (a, b) {
       return a.key - b.key || a.it.n - b.it.n ||
+        (b.it.mark ? 1 : 0) - (a.it.mark ? 1 : 0) ||
         (a.it.c.name || '').localeCompare(b.it.c.name || '');
     }).map(function (x) { return x.it; });
   }
@@ -1208,10 +1222,18 @@
   function renderNightOrder(entries, root, order) {
     var lists = nightItems(entries, order);
     var first = lists.first, other = lists.other;
-    if (!first.length && !other.length) return '';
+    function chars(items) { return items.some(function (it) { return !it.mark; }); }
+    if (!chars(first) && !chars(other)) return '';
     function list(items) {
-      if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
+      if (!chars(items)) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
+        if (it.mark) {
+          return '<li class="sv-night-item sv-night-step">' +
+            '<span class="sv-night-thumb" aria-hidden="true"></span>' +
+            '<div class="sv-night-text"><span class="sv-night-name">' + esc(it.c.name) + '</span>' +
+            (it.r ? '<span class="sv-night-reminder">' + esc(it.r) + '</span>' : '') +
+            '</div></li>';
+        }
         return '<li class="sv-night-item">' +
           '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(thumbSrc(it.c, root)) + '" alt=""' + fbAttrs(thumbFallback(it.c), 'this.style.display=\'none\'') + '>' +
           '<div class="sv-night-text"><a class="sv-night-name" href="' + esc(charHref(it.c, root)) + '"' + offsite(it.c) + '>' + esc(it.c.name) + offMark(it.c) + '</a>' +
@@ -1403,27 +1425,19 @@
     if (!nightOrder || (!(nightOrder.first || []).length && !(nightOrder.other || []).length)) return null;
     if (!NIGHT_META || !NIGHT_META.length) return null;
     var lists = nightItems(entries, nightOrder);
-    // `which` names the list ('first' / 'other'); the markers carry their
-    // positions under the character field names ('firstNight' / 'otherNight').
     function seq(which) {
-      var field = which === 'first' ? 'firstNight' : 'otherNight';
-      var marks = NIGHT_META.map(function (m) {
-        return { id: m.id, n: Number(m[field]) };
-      }).filter(function (m) { return isFinite(m.n); });
-      var out = [];
-      var items = lists[which].map(function (it) { return { id: exportId(it.c), n: it.n }; });
-      // Each marker goes in front of the first character that acts after it.
-      marks.sort(function (a, b) { return a.n - b.n; });
-      var mi = 0;
-      items.forEach(function (it) {
-        while (mi < marks.length && marks[mi].n <= it.n) out.push(marks[mi++].id);
-        out.push(it.id);
-      });
-      while (mi < marks.length) out.push(marks[mi++].id);
-      return out;
+      return lists[which].map(function (it) { return it.mark || exportId(it.c); });
     }
     return { first: seq('first'), other: seq('other') };
   }
+
+  // The official sheet's wording for those steps.
+  var NIGHT_MARK_TEXT = {
+    dusk: { name: 'Dusk', r: 'Check that all eyes are closed. Some Travellers act.' },
+    minioninfo: { name: 'Minion Info', r: 'If there are 7 or more players, wake all Minions: show the THIS IS THE DEMON token and point to the Demon. Show the THESE ARE YOUR MINIONS token and point to the other Minions.' },
+    demoninfo: { name: 'Demon Info', r: 'If there are 7 or more players, wake the Demon: show the THESE ARE YOUR MINIONS token and point to all Minions. Show the THESE CHARACTERS ARE NOT IN PLAY token and 3 not-in-play good character tokens.' },
+    dawn: { name: 'Dawn', r: 'Wait a few seconds. Call for eyes open.' }
+  };
 
   /* Official-schema export: [_meta, ...characters]. Official roles export as
      their bare id; homebrew characters as full objects (same as the builder).

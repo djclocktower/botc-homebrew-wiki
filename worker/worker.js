@@ -5810,7 +5810,7 @@ const SCRIPT_CHARACTERS_MAX = 200;
 function sanitizeNightOrder(o) {
   if (!o || typeof o !== 'object') return null;
   const list = v => Array.isArray(v)
-    ? [...new Set(v.slice(0, 200).map(x => String(x).slice(0, 80)).filter(Boolean))]
+    ? [...new Set(v.slice(0, 210).map(x => String(x).slice(0, 80)).filter(Boolean))]
     : [];
   const out = { first: list(o.first), other: list(o.other) };
   if (!out.first.length) delete out.first;

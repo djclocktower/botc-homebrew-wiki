@@ -2944,6 +2944,12 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sv-night-name:hover { text-decoration: underline; }
 .sv-night-reminder { font-size: .8rem; color: var(--ink); opacity: .8; line-height: 1.3; }
+/* Dusk, Minion Info, Demon Info, Dawn: steps of the night, not characters,
+   so they take no number and their name is not a link. */
+.sv-night-step { counter-increment: none; }
+.sv-night-step::before { content: ''; }
+.sv-night-step .sv-night-name { opacity: .75; }
+.sv-night-step .sv-night-name:hover { text-decoration: none; }
 .sv-night-empty { font-size: .85rem; color: var(--ink); opacity: .6; margin: 4px 0; }
 .sv-json-wrap { margin-top: 0; }
 
@@ -3625,11 +3631,14 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .theme-panel .news-article {
   background-image: none; background-color: var(--pg-panel);
 }
+.theme-text .custom-box-body,
+.theme-text .custom-box-body :is(p, li),
 .theme-text .wiki-body,
 .theme-text .wiki-body p,
 .theme-text .wiki-body li,
 .theme-text .news-body,
 .theme-text .news-body p { color: var(--pg-text); }
+.theme-link .custom-box-body a,
 .theme-link .wiki-body a,
 .theme-link .news-body a { color: var(--pg-link); }
 

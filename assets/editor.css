@@ -372,6 +372,10 @@ html.textedit-on .te-live-hit {
 .no-name { display: block; font-size: .92rem; color: var(--maroon); font-weight: 600; }
 .no-official { font-weight: 400; color: #6b5d49; font-size: .78rem; }
 .no-reminder { display: block; font-size: .8rem; color: #6b5d49; line-height: 1.35; }
+/* Dusk, minion info, demon info, dawn: steps of the night, movable like a
+   character but set apart from them. */
+.no-step { background: rgba(120,90,50,.07); }
+.no-step .no-name { font-style: italic; font-weight: 500; opacity: .8; }
 .no-moves { display: flex; flex-shrink: 0; gap: 2px; }
 .no-move {
   font-size: .8rem; line-height: 1; font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
