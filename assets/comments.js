@@ -148,6 +148,9 @@
         '<div class="cmt-head">' +
           '<a class="cmt-who" href="' + ROOT + 'u/' + encodeURIComponent(c.username) + '">' +
             esc(c.displayName) + '</a>' +
+          // The writer's creator mark, drawn by the Worker (creators.js
+          // markHTML) when they chose to show it beside their name.
+          (c.markHTML ? ' ' + c.markHTML : '') +
           // "Creator" marks the account that owns this page, so a reader can
           // tell the person who made the thing from everyone else talking
           // about it. Shown alongside Admin rather than instead of it: on a

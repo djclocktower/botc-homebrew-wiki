@@ -323,6 +323,13 @@
         <div class="inline-msg" id="verify-msg"></div>
       </div>
 
+      <!-- creator mark (assets/mark-editor.js) -->
+      <div class="panel" id="mark">
+        <h3>Your Creator Mark</h3>
+        <p class="acct-body" style="font-size:.88rem;opacity:.85;margin:0 0 12px">A symbol that is yours alone, shown beside your name on your pages, comments and creator page, and listed on <a href="creators" style="color:var(--maroon);font-weight:700">Creators</a>. Script makers can put it after your characters' names too.</p>
+        <div id="mark-editor"></div>
+      </div>
+
       <!-- drafts -->
       <div class="panel">
         <h3>Your Drafts <span class="count-pill" id="n-drafts">0</span></h3>
@@ -510,6 +517,8 @@
   <script src="assets/attachment-view.js"></script>
   <script src="assets/attach.js"></script>
   <script src="assets/favorites.js"></script>
+  <script src="assets/creators.js"></script>
+  <script src="assets/mark-editor.js"></script>
   <script>
     // Login state may have just changed (OAuth redirect lands here) — drop the nav cache.
     try { sessionStorage.removeItem('botc_me'); } catch(e){}
@@ -1255,6 +1264,7 @@
         });
     });
 
+    var markMounted = false;
     function load() {
       fetch('/api/account', { credentials: 'same-origin' })
         .then(function(r){
@@ -1267,6 +1277,13 @@
           $('acct').style.display = 'block';
           renderProfile(data.profile);
           renderLists(data);
+          // Once: load() runs again after every save on this page.
+          if (!markMounted && window.MarkEditor) {
+            markMounted = true;
+            window.MarkEditor.mount($('mark-editor'), {
+              username: data.profile.username, displayName: data.profile.displayName || data.profile.username
+            });
+          }
           // The DM that says "the admins replied" links to
           // /account?msg={id}#contact — open that conversation rather than
           // making somebody hunt for it in a list of thirty. Read ONCE: load()

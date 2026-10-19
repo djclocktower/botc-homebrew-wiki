@@ -312,7 +312,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Everything else the official app reads out of the JSON -->
     <details class="sb-details" id="sb-app-sec">
-      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. Bootlegger rules, an almanac link and the title setting for the official app.</span></summary>
+      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. Bootlegger rules, an almanac link, creator marks and the title setting for the official app.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label>Bootlegger rules</label>
@@ -327,6 +327,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
         <label class="sb-check" style="display:block;margin-top:4px">
           <input type="checkbox" id="sb-hidetitle"> Hide the script name in the app <span class="sub" style="display:block;margin-left:24px">For a logo that already has the name in it.</span>
+        </label>
+        <label class="sb-check" style="display:block;margin-top:4px">
+          <input type="checkbox" id="sb-creatormarks"> Creator marks on character names <span class="sub" style="display:block;margin-left:24px">Each homebrew character's name carries its creator's mark, on your script page and in the exported JSON (so the official script tool prints it).</span>
         </label>
       </div>
     </details>
@@ -602,6 +605,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('sb-almanac').value = SITE_ROOT + 's/' + encodeURIComponent(slug);
       $('sb-almanac').dispatchEvent(new Event('input'));
     });
+    $('sb-creatormarks').addEventListener('change', function(){
+      var m = getMeta();
+      if ($('sb-creatormarks').checked) m.creatorMarks = true; else delete m.creatorMarks;
+      setMeta(m);
+    });
     $('sb-hidetitle').addEventListener('change', function(){
       var m = getMeta();
       if ($('sb-hidetitle').checked) m.hideTitle = true; else delete m.hideTitle;
@@ -827,11 +835,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       (m.bootlegger || []).forEach(addBootRow);
       $('sb-almanac').value = m.almanac || '';
       $('sb-hidetitle').checked = !!m.hideTitle;
+      $('sb-creatormarks').checked = !!m.creatorMarks;
       $('sb-public-edit').value = PUBLIC_EDIT_MODES[m.publicEdit] ? m.publicEdit : '';
       if (editorsUI) editorsUI.set(m.editors || []);
       syncEditorsBox();
       if (m.publicEdit) $('sb-open-sec').open = true;
-      if ((m.bootlegger || []).length || m.almanac || m.hideTitle) $('sb-app-sec').open = true;
+      if ((m.bootlegger || []).length || m.almanac || m.hideTitle || m.creatorMarks) $('sb-app-sec').open = true;
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = PageRender.imgSrc('', m.header); pv.style.display = 'block';
@@ -1036,6 +1045,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           bootlegger: gatherBoot(),
           almanac: $('sb-almanac').value.trim(),
           hideTitle: !!$('sb-hidetitle').checked,
+          creatorMarks: !!$('sb-creatormarks').checked,
           creditUnlinked: !!$('sb-credit-unlinked').checked,
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : []
@@ -1282,6 +1292,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             bootlegger: entry.bootlegger || [],
             almanac: entry.almanac || '',
             hideTitle: !!entry.hideTitle,
+            creatorMarks: !!entry.creatorMarks,
             creditUnlinked: !!entry.creditUnlinked,
             publicEdit: PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '',
             editors: entry.editors || [],

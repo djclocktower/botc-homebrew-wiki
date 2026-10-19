@@ -361,8 +361,23 @@
     }).join('');
   }
 
+  /* A roster row's name, with its creators' marks after it when the script
+     asked for them (`creatorMarks`, the Script Builder's "creator marks on
+     names" option). The marks sit inside the row's link, so they take no
+     focus of their own; the tooltip still shows on hover. A name that has the
+     mark typed into it loses that copy first, or it would show twice. */
+  function rosterName(c, marks) {
+    var mf = marks && !c.official && dep('creatorMarkHTML');
+    if (!mf) return esc(c.name);
+    var credits = (dep('splitCreators') || function () { return []; })(c.creator);
+    var strip = dep('stripCreatorMark');
+    var html = credits.map(function (n) { return mf(n, { noFocus: true }); }).filter(Boolean).join('');
+    var nm = strip ? strip(c.name, credits[0] || '') : c.name;
+    return esc(nm || c.name) + (html ? ' ' + html : '');
+  }
+
   /* ── page sections ── */
-  function renderRoster(entries, root) {
+  function renderRoster(entries, root, marks) {
     if (!entries.length) {
       return '<p style="color:var(--ink);opacity:.7;padding:8px 0">No characters on this page yet.</p>';
     }
@@ -378,7 +393,7 @@
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
           quickSlot(c) + '</span>' +
-          '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
+          '<div class="script-char-text"><span class="script-char-name">' + rosterName(c, marks) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
       html += '</div></div>';
@@ -394,7 +409,7 @@
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), '') + '>' +
           quickSlot(c) + '</span>' +
-          '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
+          '<div class="script-char-text"><span class="script-char-name">' + rosterName(c, marks) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
       html += '</div></div>';
@@ -725,7 +740,9 @@
       '<h2 class="info-h">Character Credits</h2>' +
       '<p class="sv-credits-sub">Creators with characters on this page</p>' +
       '<ul class="sv-credits-list">' + names.map(function (n) {
+        var mf = dep('creatorMarkHTML'), mk = mf ? mf(n) : '';
         return '<li><a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(n) + '">' + esc(n) + '</a>' +
+          (mk ? ' ' + mk : '') +
           ' <span class="sv-credits-count">(' + counts[n] + ')</span></li>';
       }).join('') + '</ul></div>';
   }
@@ -745,9 +762,9 @@
     //        credit line at the top of the box instead of a plain table row.
     var root = opts.root;
     // Creator/credit symbol next to the name, same as character info boxes.
-    var symFn = dep('creatorSymbol');
-    var sym = (typeof symFn === 'function' && opts.author) ? (symFn(opts.author) || '') : '';
-    var symHTML = sym ? ' <span class="creator-mark" title="' + esc(opts.author) + '’s symbol" aria-hidden="true">' + esc(sym) + '</span>' : '';
+    var markFn = dep('creatorMarkHTML');
+    var mk = (typeof markFn === 'function' && opts.author) ? (markFn(opts.author) || '') : '';
+    var symHTML = mk ? ' ' + mk : '';
     var authorLink = opts.author
       ? '<a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a>'
       : '';
@@ -964,7 +981,12 @@
       if (!buildSchema) return;
       var src = c;
       if (own) { src = {}; for (var k in c) src[k] = c[k]; src.jinxes = own.list; }
-      arr.push(buildSchema(src));
+      var o = buildSchema(src);
+      // The script asked for its creators' marks on the names: the official
+      // app prints names as text, so this is the mark's glyph.
+      var nwm = sc.creatorMarks && dep('nameWithMarks');
+      if (nwm && o && o.name) o.name = nwm(o.name, c.creator);
+      arr.push(o);
     });
     var seq = nightSequences(entries, sc.nightOrder);
     if (seq) { meta.firstNight = seq.first; meta.otherNight = seq.other; }
@@ -1039,7 +1061,7 @@
 
     main += '<div class="sv-section">' +
       (main ? sech('sec-characters', 'Characters') : '') +
-      renderRoster(cfg.entries, root) +
+      renderRoster(cfg.entries, root, cfg.creatorMarks) +
       renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits) + '</div>';
     main += renderBootlegger(cfg.bootlegger);
     main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
@@ -1148,7 +1170,7 @@
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
       jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
-      jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger,
+      jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger, creatorMarks: !!sc.creatorMarks,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: curataRow(sc)
     });

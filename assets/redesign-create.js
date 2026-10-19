@@ -225,8 +225,7 @@
   function grow(ta) {
     if (!ta || ta.tagName !== 'TEXTAREA') return;
     ta.style.overflowY = 'hidden';
-    ta.style.height = 'auto';
-    ta.style.height = Math.max(ta.scrollHeight, 44) + 'px';
+    BotcData.fitHeight(ta, function () { return Math.max(ta.scrollHeight, 44); });
   }
   function growAll(scope) {
     Array.prototype.forEach.call((scope || document).querySelectorAll('textarea'), grow);

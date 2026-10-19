@@ -32,6 +32,10 @@
  *   GET  /api/account         -> profile + your pages + drafts + recent edits
  *   POST /api/account/profile -> update display name / bio
  *   POST /api/account/avatar  -> upload/remove your profile picture (R2)
+ *   GET  /api/account/mark    -> your creator mark + legacy glyphs that are yours
+ *   POST /api/account/mark    -> claim/change/give up your creator mark
+ *   GET  /api/creator-marks   -> every creator mark (public registry)
+ *   POST /api/admin/creator-mark -> take a mark off an account ({username})
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
  *   POST /api/account/unlink-discord
@@ -2018,6 +2022,11 @@ async function logActivity(env, sess, action, entityType, slug, name) {
   if (FEED_CHANGING_ACTIONS.has(action) || String(action || '').startsWith('bulk-')) {
     await bumpContentVersion(env, entityType);
   }
+  // Creator marks follow new credit names straight away (see refreshMarkNames).
+  if (entityType === 'creator') await refreshMarkNames(env).catch(() => {});
+  else if (['create', 'update', 'publish', 'restore', 'rollback', 'suggestion-approve'].includes(action)) {
+    await markNamesAfterSave(env, entityType, slug);
+  }
   let username = null;
   try {
     const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
@@ -2094,7 +2103,7 @@ const FIELD_LABELS = {
   header: 'header image', theme: 'appearance', match: 'membership rules',
   include: 'members added', exclude: 'members removed', order: 'roster order',
   nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'bootlegger rules',
-  almanac: 'almanac link', hideTitle: 'app title setting',
+  almanac: 'almanac link', hideTitle: 'app title setting', creatorMarks: 'creator marks setting',
   // wiki pages
   title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
   images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box',
@@ -4734,6 +4743,8 @@ function sanitizeScriptFields(s) {
     ? s.almanac.trim().slice(0, 300) : '';
   if (!s.almanac) delete s.almanac;
   if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
+  // Creator marks after the homebrew names, on the page and in its JSON.
+  if (s.creatorMarks) s.creatorMarks = true; else delete s.creatorMarks;
   return '';
 }
 
@@ -6222,6 +6233,200 @@ async function cachedCreatorsBody(env, ctx, flags = {}) {
   return body;
 }
 
+// ---- creator marks ----
+// A member's own symbol, drawn beside their name (assets/creators.js says how
+// the two sources fit together). One row per account; the glyph's comparison
+// key is UNIQUE, so two accounts can never hold one mark however a race goes.
+// A mark is text and only text, so it travels everywhere a name does.
+// `names` is the credit names the mark is drawn beside (lower-cased JSON
+// array): worked out from the /creators list when the mark is saved and again
+// every night (refreshMarkNames), so reading the registry is one query and a
+// server-rendered page pays nothing for it beyond that.
+let _marksReady = false;
+async function ensureMarksTable(env) {
+  if (_marksReady) return;
+  if (await schemaHas(env, { tables: { creator_marks: ['glyph_key', 'show', 'names', 'updated_at'] } })) { _marksReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS creator_marks (
+       user_id INTEGER PRIMARY KEY,
+       glyph TEXT NOT NULL,
+       glyph_key TEXT NOT NULL UNIQUE,
+       show INTEGER NOT NULL DEFAULT 1,
+       names TEXT,
+       updated_at INTEGER NOT NULL DEFAULT 0
+     )`
+  ).run();
+  _marksReady = true;
+}
+const MARK_NAMES_MAX = 50;
+
+/* The credit names an account's mark is drawn beside: every name the
+   /creators list gives to it (so exactly the names /author?a= would send to
+   it), plus its handle and display name unless the list gives that name to
+   somebody else or to nobody (an unlinked credit that happens to match is
+   another person's work). `creators` is that list, parsed. */
+function markNamesFor(creators, username, displayName) {
+  const me = usernameKey(username);
+  const owner = new Map();
+  for (const c of creators) owner.set(normCreator(c.name), c.username ? usernameKey(c.username) : '');
+  const out = new Set();
+  for (const [n, o] of owner) if (o === me) out.add(n);
+  for (const n of [username, displayName]) {
+    const k = normCreator(n);
+    if (!k) continue;
+    const o = owner.get(k);
+    if (o === undefined || o === me) out.add(k);
+  }
+  return [...out].slice(0, MARK_NAMES_MAX);
+}
+async function creatorsListParsed(env, ctx) {
+  const flags = {};
+  const list = JSON.parse(await cachedCreatorsBody(env, ctx, flags)).creators || [];
+  return flags.degraded ? null : list;
+}
+// Re-work marks' names (one account's, or all of them): a member may have
+// published under a new credit, or an admin linked one, since they saved it.
+// Run nightly for everyone, and at once by markNamesAfterSave() and when an
+// admin links or unlinks a creator name.
+async function refreshMarkNames(env, userId) {
+  let rows;
+  try {
+    rows = (await env.DB.prepare(
+      `SELECT m.user_id, m.names, u.username, u.display_name
+         FROM creator_marks m JOIN users u ON u.id = m.user_id
+        WHERE ?1 IS NULL OR m.user_id = ?1`
+    ).bind(userId == null ? null : Number(userId)).all()).results || [];
+  } catch (e) { if (isMissingSchema(e)) return { changed: 0 }; throw e; }
+  if (!rows.length) return { changed: 0 };
+  const creators = await creatorsListParsed(env, null);
+  if (!creators) return { changed: 0, skipped: 'creators list unreadable' };
+  let changed = 0;
+  for (const r of rows) {
+    const names = JSON.stringify(markNamesFor(creators, r.username, r.display_name));
+    if (names === (r.names || '')) continue;
+    await env.DB.prepare('UPDATE creator_marks SET names=? WHERE user_id=?').bind(names, r.user_id).run();
+    changed++;
+  }
+  if (changed) await bumpContentVersion(env, 'mark');
+  return { changed };
+}
+
+/* After a page is saved: if it is published and credits its owner under a
+   name their mark does not list yet, refresh that mark now rather than at
+   the nightly pass. Costs one primary-key read for an owner with no mark
+   (almost everyone) and a second for one with; the creators list is only
+   rebuilt when a credit is genuinely new to the mark. */
+async function markNamesAfterSave(env, type, slug) {
+  const table = type === 'character' ? 'characters' : type === 'script' ? 'scripts' : '';
+  if (!table || !slug) return;
+  try {
+    const row = await env.DB.prepare(
+      `SELECT owner_id, ${type === 'character' ? 'creator' : 'author'} AS c, status FROM ${table} WHERE slug=?`
+    ).bind(slug).first();
+    if (!row || !row.owner_id || row.status !== 'published') return;
+    const m = await env.DB.prepare('SELECT names FROM creator_marks WHERE user_id=?').bind(row.owner_id).first();
+    if (!m) return;
+    const have = new Set(JSON.parse(m.names || '[]'));
+    // ponytail: a credit the owner cannot claim (disowned, or another account
+    // owns more pages under it) re-checks on every save of that page; it costs
+    // a creators-list build and writes nothing. Cache the misses if that shows up.
+    if (creditNames(row.c).every(n => have.has(n))) return;
+    await refreshMarkNames(env, row.owner_id);
+  } catch { /* no marks table yet, or a read failed: the nightly pass catches up */ }
+}
+
+/* Every mark on the wiki, as the list assets/creators.js setMarks() takes.
+   Account marks first; then the legacy table, minus any glyph an account has
+   claimed and any name an account with a mark of its own is drawn beside
+   (choosing a mark releases the old glyph). A legacy name with an account
+   in Creators.LEGACY_ACCOUNTS is linked to the account with that username
+   (or, failing that, that Discord handle), so it is drawn on their comments
+   too and is theirs to claim. Two queries, in parallel. */
+async function buildMarkRegistry(env, flags = {}) {
+  const handles = [...new Set(Object.values(Creators.LEGACY_ACCOUNTS).map(h => h.toLowerCase()))];
+  const marks = env.DB.prepare(
+    `SELECT m.glyph, m.glyph_key, m.show, m.names,
+            u.username, u.display_name
+       FROM creator_marks m JOIN users u ON u.id = m.user_id
+      WHERE COALESCE(u.banned, 0) = 0`
+  ).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; /* none claimed yet */ });
+  // The list is lower case; SQL's lower() folds only A–Z, which is all the
+  // stored side needs (a non-ASCII handle is stored lower case already).
+  const ph = handles.map(() => '?').join(',');
+  const linked = env.DB.prepare(
+    `SELECT username, display_name, lower(discord_username) AS dh, lower(username) AS uh FROM users
+      WHERE COALESCE(banned, 0) = 0 AND (lower(discord_username) IN (${ph}) OR lower(username) IN (${ph}))`
+  ).bind(...handles, ...handles).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; });
+  const [rows, users] = await Promise.all([marks, linked]);
+  const byHandle = new Map();
+  for (const u of users) if (u.dh) byHandle.set(u.dh, u);
+  // A wiki username beats somebody else's Discord handle of the same spelling.
+  for (const u of users) byHandle.set(u.uh, u);
+  const out = [];
+  const taken = new Set();
+  const covered = new Set();
+  const marked = new Set();
+  for (const r of rows) {
+    marked.add(usernameKey(r.username));
+    let names = [];
+    try { names = JSON.parse(r.names || '[]'); } catch { names = []; }
+    if (!Array.isArray(names)) names = [];
+    names = names.map(normCreator).filter(Boolean);
+    if (!names.length) names = [normCreator(r.username)];
+    names.forEach(n => covered.add(n));
+    taken.add(r.glyph_key);
+    const m = { g: r.glyph, k: r.glyph_key, u: r.username, d: r.display_name || r.username, n: names };
+    if (!Number(r.show)) m.hide = 1;
+    out.push(m);
+  }
+  for (const name of Object.keys(Creators.CREATOR_SYMBOLS)) {
+    const g = Creators.CREATOR_SYMBOLS[name];
+    const k = Creators.markKey(g);
+    if (taken.has(k) || covered.has(normCreator(name))) continue;
+    const h = Creators.LEGACY_ACCOUNTS[name];
+    const u = h && byHandle.get(h.toLowerCase());
+    // An account that chose a mark of its own released this one.
+    if (u && marked.has(usernameKey(u.username))) continue;
+    taken.add(k);
+    const m = { g, k, d: name, n: [name], legacy: 1 };
+    if (u) m.u = u.username;
+    out.push(m);
+  }
+  return out;
+}
+// The registry, behind an isolate memo and the edge cache, keyed on the
+// content version: claiming or changing a mark bumps it, so the registry —
+// and every server-rendered page with a mark on it — shows the change at
+// once. A list built from a failed read is served but never kept.
+let _marksMemo = null;
+async function cachedMarkRegistry(env, ctx) {
+  const v = await contentVersion(env);
+  const key = 'https://feed.internal/creator-marks.json?v=' + v + '&b=' + BUILD_ID;
+  if (_marksMemo && _marksMemo.key === key) return _marksMemo;
+  const hit = await edgeCacheGet(key);
+  if (hit !== null) {
+    try {
+      _marksMemo = { key, body: hit, list: JSON.parse(hit).marks || [] };
+      return _marksMemo;
+    } catch { /* rebuild below */ }
+  }
+  const flags = {};
+  const list = await buildMarkRegistry(env, flags);
+  const body = JSON.stringify({ marks: list });
+  const res = { key, body, list, degraded: !!flags.degraded };
+  // PEOPLE ttl: rows carry display names, which bump no version when edited.
+  if (!flags.degraded) { edgeCachePut(ctx, key, body, PEOPLE_CACHE_CONTROL); _marksMemo = res; }
+  return res;
+}
+// The registry handed to the shared renderers before an SSR render, with no
+// suspension in between (like the official-name registries). False when it
+// could not be read: the renderers fall back to the legacy table, and the
+// caller marks that page degraded so it stays out of the shared cache.
+function setMarkRegistry(reg) {
+  Creators.setMarks(reg && !reg.degraded ? { marks: reg.list } : null);
+  return !!(reg && !reg.degraded);
+}
+
 // ---- the site search's second half ----
 // assets/search-core.js searches the three public feeds the browse pages
 // already download (characters grid, scripts and collections browse), plus
@@ -6240,7 +6445,7 @@ async function cachedCreatorsBody(env, ctx, flags = {}) {
 // Versioned on every content type it draws from, like the feeds, and also on
 // a half-hour bucket: a new account or a changed avatar bumps no version, and
 // half an hour is the same ceiling PEOPLE_CACHE_CONTROL puts on a bio.
-const SEARCH_INDEX_V = 2;
+const SEARCH_INDEX_V = 3;
 const SEARCH_DEPS = ['character', 'script', 'collection', 'wikipage', 'news'];
 const SEARCH_PEOPLE_MS = 30 * 60 * 1000;
 const _searchIndexPending = new Map();
@@ -6340,17 +6545,24 @@ async function buildSearchIndex(env, ctx, flags = {}) {
   // the whole index.
   const soft = fallback => () => { flags.degraded = true; return fallback; };
   const sets = searchIndexSets(env).catch(soft(null));
-  const [creatorsBody, users, pages, news, setRows] = await Promise.all([
+  const [creatorsBody, users, pages, news, setRows, marks] = await Promise.all([
     cachedCreatorsBody(env, ctx, flags),
     searchIndexUsers(env).catch(soft([])),
     sets.then(s => s ? searchIndexPages(env, s) : []).catch(soft([])),
     newsList(env, 100, false).then(r => r.articles).catch(soft([])),
-    sets
+    sets,
+    cachedMarkRegistry(env, ctx).catch(soft(null))
   ]);
+  if (marks && marks.degraded) flags.degraded = true;
+  // A creator's mark rides on their row, already drawn (inside a result's
+  // link, so it takes no focus): the top-bar search has no registry of its own.
+  const markIdx = marks ? Creators.indexMarks(marks.list) : null;
   return {
     dates: setRows ? searchIndexDates(setRows) : { script: {}, collection: {} },
     creators: JSON.parse(creatorsBody).creators.map(c => {
       const out = { name: c.name, characters: c.characters, scripts: c.scripts, collections: c.collections };
+      const m = markIdx && markIdx.byName[String(c.name).trim().toLowerCase()];
+      if (m) out.markHTML = Creators.markHTML(m, { noFocus: true });
       if (c.username) {
         out.username = c.username;
         if (c.displayName && c.displayName !== c.username) out.displayName = c.displayName;
@@ -7949,6 +8161,7 @@ async function pageJsonResponse(env, ctx, request, url) {
   const entries = isScript
     ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
     : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
+  if (isScript && d.creatorMarks) setMarkRegistry(await cachedMarkRegistry(env, ctx).catch(() => null));
   const text = PageRender.buildPageExport(name, d.author, d.logo || d.header, entries, isScript ? d : undefined);
   const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
   return new Response(text, {
@@ -8018,19 +8231,21 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   // EVERY character's name, not just the ones on this page, so it cannot come
   // from `chars` on a script page — it is its own small edge entry, and only
   // fetched when the page's text actually contains a [[link]].
-  const [roster, official, wikiPages, links, officialNames] = await Promise.all([
+  const [roster, official, wikiPages, links, officialNames, marks] = await Promise.all([
     isScript ? charsBySlug(env, d.characters || []) : cachedCardChars(env, ctx),
     needOfficial ? loadOfficialRoles(env, url.origin) : null,
     listWikiPages(env, type, row.slug || slug, { includeDrafts: mayEditParent }),
     wantsCharLinks(row.data) ? cachedCharLinkMap(env, ctx) : {},
-    officialNameMap(env, url.origin).catch(() => ({}))
+    officialNameMap(env, url.origin).catch(() => ({})),
+    cachedMarkRegistry(env, ctx).catch(() => null)
   ]);
   let chars = roster;
   if (official) chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
   // Anything that could only be half-loaded marks the page degraded: still
   // served, never put in the shared SSR cache (see DEGRADED_HEADER).
   const degraded = !!roster.incomplete || !links || !Object.keys(officialNames).length ||
-    !!(needOfficial && (!official || !official.length || official.incomplete));
+    !!(needOfficial && (!official || !official.length || official.incomplete)) ||
+    !setMarkRegistry(marks);
 
   const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
   const theme = PageRender.sanitizeTheme(d.theme, themeBase);
@@ -9248,6 +9463,15 @@ const app = {
           };
         }
       }
+      // Each writer's creator mark, drawn beside their name if they chose to
+      // show it. Rendered here (creators.js markHTML) so the comment widget
+      // needs no registry of its own.
+      const markReg = await cachedMarkRegistry(env, ctx).catch(() => null);
+      const markIdx = markReg ? Creators.indexMarks(markReg.list) : null;
+      const markFor = un => {
+        const m = markIdx && un ? markIdx.byUser[String(un).toLowerCase()] : null;
+        return m && !m.hide ? Creators.markHTML(m) : '';
+      };
       return jsonResponse({
         type, slug: target.slug,
         termsVersion: COMMENT_TERMS_VERSION,
@@ -9260,6 +9484,7 @@ const app = {
           username: r.username || '[deleted user]',
           displayName: r.display_name || r.username || '[deleted user]',
           avatarUrl: r.avatar_url || null,
+          markHTML: markFor(r.username),
           isAdmin: !!r.is_admin,
           // "Creator": this comment was written by the account that owns the
           // page it sits on, so a reader can tell the person who made the
@@ -9341,13 +9566,14 @@ const app = {
             // memoised, so those passes need no read of their own). A failure
             // in the "Appears in" lookup keeps the client fallback.
             const ownLinks = wantsCharLinks(row.data);
-            const [setHref, icons, names, jx, ownLinkMap] = await Promise.all([
+            const [setHref, icons, names, jx, ownLinkMap, , , marks] = await Promise.all([
               appearsInHref(env, ctx, d.appearsIn).catch(() => undefined),
               officialIconMap(env, url.origin), officialNameMap(env, url.origin),
               jinxIndex(env, ctx, url.origin).catch(() => null),
               ownLinks ? cachedCharLinkMap(env, ctx) : null,
               curataCollections(env).catch(() => null),
-              includeCollections(env).catch(() => null)
+              includeCollections(env).catch(() => null),
+              cachedMarkRegistry(env, ctx).catch(() => null)
             ]);
             // Same Curata inheritance the JSON feeds get, so the star on the
             // page agrees with the star in the grid it was clicked from.
@@ -9375,8 +9601,9 @@ const app = {
             // A registry that failed to load still renders (plain names, no
             // mirrored jinxes), but that page must not enter the shared cache.
             // `links` is null only when a map was needed and could not be read.
-            const degraded = !links || !jx || !Object.keys(names).length || !Object.keys(icons).length;
+            let degraded = !links || !jx || !Object.keys(names).length || !Object.keys(icons).length;
             // No suspension between shared registry assignment and rendering.
+            if (!setMarkRegistry(marks)) degraded = true;
             Render.setOfficialIconUrls(icons);
             Render.setOfficialNames(names);
             WikiRender.setCharLinks(links || {});
@@ -9956,6 +10183,39 @@ const app = {
       const headers = { ...JSON_HEADERS, ETag: idx.etag, 'Cache-Control': FEED_CACHE_CONTROL };
       if ((request.headers.get('If-None-Match') || '') === idx.etag) return new Response(null, { status: 304, headers });
       return new Response(idx.body, { headers });
+    }
+
+    // The account page's half: your own mark (hidden or not) and any glyph
+    // from the original list that is yours through the names you publish
+    // under, which you may claim and nobody else may.
+    if (method === 'GET' && path === '/api/account/mark') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      const [me, reg, creators] = await Promise.all([
+        env.DB.prepare('SELECT username, display_name FROM users WHERE id=?').bind(sess.userId).first(),
+        cachedMarkRegistry(env, ctx),
+        creatorsListParsed(env, ctx).catch(() => null)
+      ]);
+      if (!me) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      const names = creators ? markNamesFor(creators, me.username, me.display_name) : [];
+      const mark = reg.list.find(m => !m.legacy && m.u && usernameKey(m.u) === usernameKey(me.username)) || null;
+      const legacy = reg.list
+        .filter(m => m.legacy && (m.u ? usernameKey(m.u) === usernameKey(me.username) : m.n.some(n => names.includes(normCreator(n)))))
+        .map(m => ({ g: m.g, k: m.k, name: m.d }));
+      return jsonResponse({ mark, legacy, names });
+    }
+
+    // Every creator mark: what the browser-side renderers draw beside a name
+    // (assets/creators.js load()). Revalidated on each use like the feeds.
+    if (method === 'GET' && path === '/api/creator-marks') {
+      const reg = await cachedMarkRegistry(env, ctx);
+      if (reg.degraded) return new Response(reg.body, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
+      // The body's own hash: a display name edited inside one version still
+      // changes the answer.
+      const etag = '"m-' + (await sha256Hex(reg.body)).slice(0, 20) + '"';
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if ((request.headers.get('If-None-Match') || '') === etag) return new Response(null, { status: 304, headers });
+      return new Response(reg.body, { headers });
     }
 
     if (method === 'GET' && path === '/api/creators') {
@@ -12618,6 +12878,69 @@ const app = {
         return jsonResponse({ ok: true, avatarUrl });
       }
 
+      // ---- creator mark ----
+      // Body: {glyph, show, image: PNG dataURL | null to drop it} to claim or
+      // change your mark; {remove: true} to give it up (the glyph is free for
+      // anyone again). The key is derived from the session, so an account can
+      // only ever touch its own mark, and the glyph is checked against every
+      // other mark on the wiki — the UNIQUE key settles a race between two.
+      if (path === '/api/account/mark') {
+        if (await rateLimited(env, request, 'mark', 30, 3600, { sess })) {
+          return tooManyResponse('Too many changes to your mark. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        await ensureMarksTable(env);
+        await ensureBanColumn(env);   // the registry reads it
+        const me = await env.DB.prepare('SELECT username, display_name FROM users WHERE id=?').bind(sess.userId).first();
+        const cur = await env.DB.prepare('SELECT glyph, show FROM creator_marks WHERE user_id=?')
+          .bind(sess.userId).first();
+        if (b.remove) {
+          await env.DB.prepare('DELETE FROM creator_marks WHERE user_id=?').bind(sess.userId).run();
+          await bumpContentVersion(env, 'mark');
+          await logActivity(env, sess, 'creator-mark-remove', 'user', me && me.username, cur && cur.glyph);
+          return jsonResponse({ ok: true, mark: null });
+        }
+        const glyph = String(b.glyph != null ? b.glyph : (cur ? cur.glyph : '')).normalize('NFC').trim();
+        const bad = Creators.markProblem(glyph);
+        if (bad) return jsonResponse({ error: bad }, { status: 400 });
+        const key = Creators.markKey(glyph);
+        // Free unless some OTHER owner holds it: an account mark, or a legacy
+        // glyph whose name is not this account's. A registry that could not
+        // be read is no answer, so this fails closed.
+        const [reg, creators] = await Promise.all([
+          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null)
+        ]);
+        if (reg.degraded || !creators) return jsonResponse({ error: 'Could not check whether that mark is free. Please try again.' }, { status: 503 });
+        const names = markNamesFor(creators, me.username, me.display_name);
+        const holder = reg.list.find(m => m.k === key);
+        const mine = holder && (holder.u
+          ? usernameKey(holder.u) === usernameKey(me.username)
+          : holder.n.some(n => names.includes(normCreator(n))));   // a legacy glyph of a name that is yours
+        if (holder && !mine) {
+          return jsonResponse({ error: 'That mark already belongs to ' + Creators.markOwner(holder) + '. Pick another.' }, { status: 409 });
+        }
+        const show = b.show !== undefined ? (b.show ? 1 : 0) : (cur ? Number(cur.show) : 1);
+        const now = Math.floor(Date.now() / 1000);
+        try {
+          await env.DB.prepare(
+            `INSERT INTO creator_marks (user_id, glyph, glyph_key, show, names, updated_at) VALUES (?,?,?,?,?,?)
+             ON CONFLICT(user_id) DO UPDATE SET glyph=excluded.glyph, glyph_key=excluded.glyph_key,
+               show=excluded.show, names=excluded.names, updated_at=excluded.updated_at`
+          ).bind(sess.userId, glyph, key, show, JSON.stringify(names), now).run();
+        } catch (e) {
+          if (/UNIQUE/i.test(String(e && e.message))) {
+            return jsonResponse({ error: 'That mark was just taken. Pick another.' }, { status: 409 });
+          }
+          throw e;
+        }
+        // Every page with this name on it draws the mark, so everything rolls.
+        await bumpContentVersion(env, 'mark');
+        await logActivity(env, sess, 'creator-mark', 'user', me && me.username, glyph);
+        const mark = { g: glyph, k: key, u: me.username, d: me.display_name || me.username, n: names };
+        if (!show) mark.hide = 1;
+        return jsonResponse({ ok: true, mark });
+      }
+
       if (path === '/api/account/password') {
         // Bounds guessing the CURRENT password from a stolen session.
         if (await rateLimited(env, request, 'pwchange', 10, 3600, { sess })) {
@@ -14370,6 +14693,22 @@ const app = {
         return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
       }
 
+      // An admin taking a mark off an account (an offensive symbol, or one
+      // squatted on another creator's well-known glyph). The glyph is free
+      // again; the member can claim another.
+      if (path === '/api/admin/creator-mark') {
+        const b = await request.json().catch(() => ({}));
+        const u = await selectUserByName(env, 'id, username', String(b.username || ''));
+        if (!u) return jsonResponse({ error: 'No such user.' }, { status: 404 });
+        await ensureMarksTable(env);
+        const cur = await env.DB.prepare('SELECT glyph FROM creator_marks WHERE user_id=?').bind(u.id).first();
+        if (!cur) return jsonResponse({ ok: true, removed: false });
+        await env.DB.prepare('DELETE FROM creator_marks WHERE user_id=?').bind(u.id).run();
+        await bumpContentVersion(env, 'mark');
+        await logActivity(env, sess, 'admin-creator-mark-remove', 'user', u.username, cur.glyph);
+        return jsonResponse({ ok: true, removed: true });
+      }
+
       // ---- admin: link a creator name to an account (or unlink it) ----
       // Body: {name, username} to link, {name, username: null} to pin the name
       // as deliberately unlinked, {name, clear: true} to go back to deciding by
@@ -14387,6 +14726,7 @@ const app = {
           // link/unlink branches bump it through logActivity('update'), and
           // without this one an unlink could take the PEOPLE ttl to show.
           await bumpContentVersion(env);
+          await refreshMarkNames(env).catch(() => {});
           const acct = await resolveCreatorAccount(env, name);
           return jsonResponse({ ok: true, username: acct ? acct.username : null, cleared: true });
         }
@@ -16286,6 +16626,14 @@ const app = {
         if (w.wrapped || w.left) console.log('[cron] legacy password hashes wrapped:', w.wrapped, 'left in batch:', w.left);
       } catch (e) {
         console.error('[cron] password wrapping threw:', (e && e.message) || e);
+      }
+
+      // Creator marks follow the names their owners publish under.
+      try {
+        const r = await refreshMarkNames(env);
+        if (r.changed) console.log('[cron] creator mark names refreshed:', r.changed);
+      } catch (e) {
+        console.error('[cron] creator mark refresh threw:', (e && e.message) || e);
       }
 
       // Retention. page_views(day) is indexed now, so this is a range delete

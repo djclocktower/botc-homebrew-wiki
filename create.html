@@ -1516,8 +1516,7 @@
 
     // ── auto-expanding textareas ──
     function autoExpand(el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
+      BotcData.fitHeight(el, function () { return el.scrollHeight; });
     }
     document.querySelectorAll('textarea').forEach(function(ta) {
       ta.style.overflowY = 'hidden';
