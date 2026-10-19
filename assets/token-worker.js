@@ -20,6 +20,52 @@ function post(msg) { self.postMessage(msg); }
 
 var PROXY_FETCH = 'https://botc-wiki-proxy.djclocktower.workers.dev/fetch?url=';
 
+/* The engine is ~13 MB (Python, numpy, Pillow, the toolkit). Phone Chrome's
+   HTTP cache is small and drops files that size quickly, so a phone was
+   downloading all of it on every visit: five minutes on a slow connection.
+   Cache Storage keeps it until the site's storage is cleared. Every fetch
+   in this worker (Pyodide's own included, which is why this replaces
+   self.fetch before Pyodide loads) checks it first for the engine's files.
+   A pyodide file is keyed without its query (the numpy fallback asks with
+   ?r=), a toolkit file by its ?v= version; the manifest and art are never
+   kept. Without Cache Storage everything simply goes to the network. */
+var ENGINE_CACHE = 'token-engine-v1';
+var netFetch = self.fetch.bind(self);
+function engineKey(url) {
+  var u = new URL(url, self.location.href);
+  if (u.origin !== self.location.origin) return null;
+  if (u.pathname.indexOf('/assets/pyodide/') === 0) return u.origin + u.pathname;
+  if (u.pathname.indexOf('/assets/tokens/') === 0 && /^\?v=/.test(u.search)) return u.origin + u.pathname + u.search;
+  return null;
+}
+if (self.caches) {
+  self.fetch = function (input, init) {
+    var key = engineKey(input instanceof Request ? input.url : String(input));   // Pyodide passes a URL object
+    if (!key) return netFetch(input, init);
+    return caches.open(ENGINE_CACHE).then(function (c) {
+      return c.match(key).then(function (hit) {
+        if (hit) return hit;
+        return netFetch(input, init).then(function (r) {
+          if (r.ok) c.put(key, r.clone()).catch(function () {});
+          return r;
+        });
+      });
+    }, function () { return netFetch(input, init); });
+  };
+}
+/* A new toolkit version leaves the old one's files behind; drop them. */
+function dropOldToolkit(v) {
+  if (!self.caches) return;
+  caches.open(ENGINE_CACHE).then(function (c) {
+    return c.keys().then(function (keys) {
+      keys.forEach(function (req) {
+        var u = new URL(req.url);
+        if (u.pathname.indexOf('/assets/tokens/') === 0 && u.search !== v) c.delete(req);
+      });
+    });
+  }).catch(function () {});
+}
+
 function b64ToU8(b64) {
   var bin = atob(b64), u8 = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -105,6 +151,7 @@ function boot(cfg) {
     .then(function (r) { if (!r.ok) throw new Error('manifest -> ' + r.status); return r.json(); })
     .then(function (man) {
       var v = man.v ? ('?v=' + encodeURIComponent(man.v)) : '';
+      if (v) dropOldToolkit(v);
       return Promise.all(man.files.map(function (rel) {
         return fetchBytes(cfg.tokBase + rel + v).then(function (u8) { return { rel: rel, u8: u8 }; });
       }));
