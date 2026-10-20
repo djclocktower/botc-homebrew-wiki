@@ -259,6 +259,7 @@
   color: var(--maroon); padding: 6px 14px; cursor: pointer; transition: background .12s;
 }
 .tt-btn-sm:hover { background: rgba(91,31,33,.08); }
+.tt-btn-sm:disabled, .tt-btn-sm:disabled:hover { opacity: .45; cursor: default; background: #fffdf8; }
 .tt-adj-caret { font-size: 1rem; color: var(--maroon); padding-left: 10px; }
 
 /* editor modal */
@@ -489,6 +490,16 @@
           </div>
         </section>
 
+        <section class="tt-card">
+          <h2>Custom Style</h2>
+          <p class="tt-assets-hint" id="tt-style-msg"></p>
+          <p class="tt-assets-hint">Save your All Tokens adjustments and custom art as your style, or open a token and use <b>Save as Custom Style</b> there. Saving again makes a new one.</p>
+          <div class="tt-adj-actions" style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="button" class="tt-btn-sm" id="tt-style-save">Save as Custom Style</button>
+            <button type="button" class="tt-btn-sm" id="tt-style-reset">Reset Style</button>
+          </div>
+        </section>
+
         <div class="tt-actions">
           <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
           <div class="tt-load done" id="tt-load-gen"><span class="tt-load-bar"></span><span>Drawing…</span></div>
@@ -541,6 +552,9 @@
           <label class="tt-check"><input type="checkbox" id="tte-save-show"> Show it in the page&rsquo;s icon gallery</label>
         </div>
       </div>
+      <h3 class="tt-adj-sect">Custom Style</h3>
+      <p class="tt-assets-hint" id="tte-style-msg"></p>
+      <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tte-style-save">Save as Custom Style</button></div>
       <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tte-reset">Reset This Token</button></div>
     </div>
   </div>

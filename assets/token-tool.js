@@ -125,6 +125,18 @@
   function loadAdj() {
     try { var s = JSON.parse(localStorage.getItem(ADJ_KEY)); if (s && typeof s === 'object') adjState = { global: s.global || {}, per: s.per || {} }; } catch (e) {}
   }
+  /* The custom style: the reader's own starting point, saved from a token
+     they made (or from All Tokens) and kept until they reset it. Layers are
+     defaults -> style -> All Tokens -> this token, so every reset steps back
+     to the style rather than to the stock look. It holds custom art too:
+     a slot's own upload wins, else the style's, else the stock art. */
+  var STYLE_KEY = 'botc_token_style_v1';
+  var style = { adj: {}, assets: {} };
+  function loadStyle() {
+    try { var s = JSON.parse(localStorage.getItem(STYLE_KEY)); if (s && typeof s === 'object') style = { adj: s.adj || {}, assets: s.assets || {} }; } catch (e) {}
+  }
+  function baseVal(k) { return style.adj[k] != null ? style.adj[k] : ADJ_DEF[k]; }
+  function globalVal(k) { return adjState.global[k] != null ? adjState.global[k] : baseVal(k); }
   function saveAdj() { try { localStorage.setItem(ADJ_KEY, JSON.stringify(adjState)); } catch (e) {} }
   function perOf(sl) {
     if (!adjState.per[sl]) adjState.per[sl] = { adj: {}, count: 1, rems: {} };
@@ -136,7 +148,7 @@
     var out = {};
     var per = (adjState.per[sl] && adjState.per[sl].adj) || {};
     Object.keys(ADJ_DEF).forEach(function (k) {
-      out[k] = (per[k] != null) ? per[k] : (adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]);
+      out[k] = (per[k] != null) ? per[k] : globalVal(k);
     });
     return out;
   }
@@ -284,6 +296,7 @@
     try {
       var small = {}, total = 0;
       Object.keys(customAssets).forEach(function (k) {
+        if (customAssets[k] === style.assets[k]) return;
         var n = customAssets[k].length;
         if (n < 550000 && total + n < 2200000) { small[k] = customAssets[k]; total += n; }
       });
@@ -641,14 +654,14 @@
       $('tt-adj-caret').innerHTML = open ? '&#9662;' : '&#9652;';
     });
     buildAdjPanel($('tt-adj-panel'), 'ga-',
-      function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; },
+      function (k) { return globalVal(k); },
       function (k, v) {
-        if (v === ADJ_DEF[k]) delete adjState.global[k]; else adjState.global[k] = v;
+        if (v === baseVal(k)) delete adjState.global[k]; else adjState.global[k] = v;
         saveAdj(); schedulePreview(); if (mainGizmo) mainGizmo.sync();
       });
     $('tt-adj-reset').onclick = function () {
       adjState.global = {}; saveAdj();
-      syncAdjPanel('ga-', function (k) { return ADJ_DEF[k]; });
+      syncAdjPanel('ga-', baseVal);
       schedulePreview(); if (mainGizmo) mainGizmo.sync();
     };
   }
@@ -664,13 +677,14 @@
       function (k) { return mergedAdj(sl)[k]; },
       function (k, v) {
         var p = perOf(sl);
-        var base = adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k];
+        var base = globalVal(k);
         if (v === base) delete p.adj[k]; else p.adj[k] = v;
         saveAdj(); scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
         if (setSlugs[0] === sl) schedulePreview();
       });
     renderEditorRems(sl);
     renderEditorSave(sl);
+    $('tte-style-msg').textContent = 'Makes this token’s adjustments, plus your custom art, the starting point for every token.';
     $('tt-editor').classList.add('open');
     document.body.style.overflow = 'hidden';
     $('tte-preview').innerHTML = '<span class="ph">Drawing…</span>';
@@ -1011,9 +1025,9 @@
 
   function globalCtx() {
     return {
-      get: function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; },
-      set: function (k, v) { if (v === ADJ_DEF[k]) delete adjState.global[k]; else adjState.global[k] = v; saveAdj(); },
-      syncPanel: function () { syncAdjPanel('ga-', function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; }); },
+      get: function (k) { return globalVal(k); },
+      set: function (k, v) { if (v === baseVal(k)) delete adjState.global[k]; else adjState.global[k] = v; saveAdj(); },
+      syncPanel: function () { syncAdjPanel('ga-', globalVal); },
       rerender: liveMain
     };
   }
@@ -1022,7 +1036,7 @@
       get: function (k) { return editorSlug ? mergedAdj(editorSlug)[k] : ADJ_DEF[k]; },
       set: function (k, v) {
         if (!editorSlug) return;
-        var p = perOf(editorSlug), base = adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k];
+        var p = perOf(editorSlug), base = globalVal(k);
         if (v === base) delete p.adj[k]; else p.adj[k] = v; saveAdj();
       },
       syncPanel: function () { if (editorSlug) syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; }); },
@@ -1080,9 +1094,11 @@
       r.readAsDataURL(file);
     });
   }
+  function effAsset(kind) { return customAssets[kind] || style.assets[kind] || null; }
   function assetStatusHTML(kind) {
     return customAssets[kind]
       ? '<span class="tt-asset-on">Custom <span class="ico ico-check" aria-hidden="true"></span></span>'
+      : style.assets[kind] ? '<span class="tt-asset-on">Your style</span>'
       : '<span class="tt-asset-off">Default</span>';
   }
   function renderAssets() {
@@ -1120,7 +1136,8 @@
       if (rm) {
         var kind = rm.dataset.kind;
         delete customAssets[kind]; saveAssets();
-        callWorker('assetClear', { kind: kind }).then(function () {
+        (style.assets[kind] ? callWorker('asset', { kind: kind, b64: style.assets[kind] })
+                            : callWorker('assetClear', { kind: kind })).then(function () {
           $('as-' + kind).innerHTML = assetStatusHTML(kind);
           schedulePreview(); scheduleEditorPreview();
         }).catch(function () {});
@@ -1137,9 +1154,70 @@
       });
     });
     // re-apply persisted custom assets (queued until the engine is ready)
-    Object.keys(customAssets).forEach(function (kind) {
-      callWorker('asset', { kind: kind, b64: customAssets[kind] }).catch(function () {});
+    ASSET_SLOTS.forEach(function (s) {
+      var b64 = effAsset(s[0]);
+      if (b64) callWorker('asset', { kind: s[0], b64: b64 }).catch(function () {});
     });
+  }
+
+  /* ---- custom style ---- */
+  function hasStyle() { return Object.keys(style.adj).length + Object.keys(style.assets).length > 0; }
+  function styleSummary() {
+    var n = Object.keys(style.adj).length, a = Object.keys(style.assets).length;
+    if (!n && !a) return 'No custom style yet. Tokens start from the standard look.';
+    return 'Your custom style is on: ' + n + ' adjustment' + (n === 1 ? '' : 's') +
+      ' and ' + a + ' piece' + (a === 1 ? '' : 's') + ' of custom art, used on every token you make.';
+  }
+  function refreshStyleUI(msg) {
+    $('tt-style-msg').textContent = msg || styleSummary();
+    $('tt-style-reset').disabled = !hasStyle();
+    ASSET_SLOTS.forEach(function (s) { var el = $('as-' + s[0]); if (el) el.innerHTML = assetStatusHTML(s[0]); });
+    syncAdjPanel('ga-', globalVal);
+    if (editorSlug) syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; });
+    schedulePreview(); scheduleEditorPreview();
+    if (mainGizmo) mainGizmo.sync(); if (editorGizmo) editorGizmo.sync();
+  }
+  /* getVal is where the look comes from: one token (the editor) or All
+     Tokens. What it saved is folded in so nothing counts twice: All Tokens
+     and that token's own adjustments are cleared, and the art moves into the
+     style. The worker already draws that art, so it needs telling nothing. */
+  function saveStyle(getVal, fromSlug) {
+    var next = { adj: {}, assets: {} };
+    Object.keys(ADJ_DEF).forEach(function (k) { var v = getVal(k); if (v !== ADJ_DEF[k]) next.adj[k] = v; });
+    ASSET_SLOTS.forEach(function (s) { var b = effAsset(s[0]); if (b) next.assets[s[0]] = b; });
+    try { localStorage.setItem(STYLE_KEY, JSON.stringify(next)); }
+    catch (e) { return 'That style is too big to keep in this browser. Try smaller custom art.'; }
+    style = next; customAssets = {}; adjState.global = {};
+    if (fromSlug && adjState.per[fromSlug]) adjState.per[fromSlug].adj = {};
+    saveAdj(); saveAssets();
+    refreshStyleUI('Saved. Every token you make now starts from this style.');
+    return '';
+  }
+  function confirmReplace() {
+    return !hasStyle() || confirm('Replace your current custom style with this one?');
+  }
+  function wireStyle() {
+    $('tt-style-save').onclick = function () {
+      if (!confirmReplace()) return;
+      var err = saveStyle(globalVal, null); if (err) $('tt-style-msg').textContent = err;
+    };
+    $('tte-style-save').onclick = function () {
+      if (!editorSlug || !confirmReplace()) return;
+      var sl = editorSlug;
+      var err = saveStyle(function (k) { return mergedAdj(sl)[k]; }, sl);
+      $('tte-style-msg').textContent = err || 'Saved. Every token you make now starts from this one.';
+    };
+    $('tt-style-reset').onclick = function () {
+      if (!confirm('Remove your custom style? Tokens go back to the standard look.')) return;
+      var old = style.assets;
+      style = { adj: {}, assets: {} };
+      try { localStorage.removeItem(STYLE_KEY); } catch (e) {}
+      Object.keys(old).forEach(function (kind) {
+        if (!customAssets[kind]) callWorker('assetClear', { kind: kind }).catch(function () {});
+      });
+      refreshStyleUI('Custom style removed.');
+    };
+    refreshStyleUI();
   }
 
   /* ---- import script JSON ---- */
@@ -1563,14 +1641,14 @@
 
   /* ---- init (character data loads in parallel with the engine boot) ---- */
   showLoad('Loading…');
-  loadAdj(); loadAssets();
+  loadStyle(); loadAdj(); loadAssets();
   loadData().then(function () {
     loadExt();
     setSlugs = loadSet().filter(function (sl) { return charBySlug[sl]; });
     return ingestUrl();
   }).then(function () {
     saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
-    wireGlobalAdj(); wireEditor(); wireAssets(); wireImport(); wireTransform();
+    wireGlobalAdj(); wireEditor(); wireAssets(); wireStyle(); wireImport(); wireTransform();
     refreshGenerate(); schedulePreview();
     if (pendingEdit) openEditor(pendingEdit);
     var extInSet = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(function (c) { return c && c.ext; });

@@ -1058,6 +1058,13 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
+                       Adjustments layer defaults -> Custom Style -> All
+                       Tokens -> one token; custom art is a slot's own upload,
+                       else the style's. "Save as Custom Style" (on the page
+                       or in a token's editor) folds the current look and art
+                       into localStorage botc_token_style_v1 and clears the
+                       layers it absorbed, so nothing counts twice; every
+                       reset steps back to the style, Reset Style to stock.
 mass-upload.html       Bulk import from official-schema JSON. Warns before it
                        writes when a jinx in the file names a character more
                        than one page here shares a name with, says which page
