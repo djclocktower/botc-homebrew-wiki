@@ -1058,6 +1058,13 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
+                       Adjustments layer defaults -> Custom Style -> All
+                       Tokens -> one token; custom art is a slot's own upload,
+                       else the style's. "Save as Custom Style" (on the page
+                       or in a token's editor) folds the current look and art
+                       into localStorage botc_token_style_v1 and clears the
+                       layers it absorbed, so nothing counts twice; every
+                       reset steps back to the style, Reset Style to stock.
 mass-upload.html       Bulk import from official-schema JSON. Warns before it
                        writes when a jinx in the file names a character more
                        than one page here shares a name with, says which page
@@ -5036,6 +5043,12 @@ keeps `content-visibility: auto`.
    `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
    file has a flat patch on its left edge that printed as a nub on every
    token.
+   The stock **first-night sprig** is redrawn on load too (`_stand_out()`):
+   stronger colour and a 0.5px dark ink line, because its olive and orange
+   vanished into the brown rim, and grown by `FN_GROW` (1.2) from the rim,
+   with `FN_CENTER` moved to match, so it reaches as far in as the
+   other-nights leaf. A custom first-night upload is fitted into that box but
+   never recoloured or outlined.
    **"Everything" → Size** (`all_scale`, 50–150%, the first slider in both
    adjustment panels) resizes every piece ON a token at once, each where it
    stands; the background never changes. The icon, ability text (re-wrapped

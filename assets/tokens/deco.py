@@ -4,6 +4,29 @@ from PIL import Image
 BARE = Image.open('frame_bare.png').convert('RGBA')
 import glob as _g
 L_FIRST = Image.open(_g.glob('botc_app/botc.app/assets/firstnight-*.png')[0]).convert('RGBA').transpose(Image.FLIP_LEFT_RIGHT)  # left -> first night (flipped)
+FN_GROW = 1.2   # stock sprig, grown from the rim to reach as far in as the other-nights leaf
+
+def _stand_out(im, w=0.5, pad=2, ss=4):
+    """The stock first-night sprig is olive and orange on a brown rim and
+    vanished into it: stronger colour plus a fine dark ink line (w px, drawn
+    at ss x and scaled down so it stays smooth). Custom uploads are left as
+    drawn -- this runs on the stock art only, once, at load. It is also
+    grown by FN_GROW first, so the line stays w px thick."""
+    from PIL import ImageEnhance, ImageFilter
+    im = im.resize((round(im.width*FN_GROW), round(im.height*FN_GROW)), Image.LANCZOS)
+    rgb = im.convert('RGB')
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.5)
+    rgb = ImageEnhance.Color(rgb).enhance(1.6)
+    rgb = ImageEnhance.Brightness(rgb).enhance(0.85)
+    leaf = rgb.convert('RGBA'); leaf.putalpha(im.getchannel('A'))
+    c = Image.new('RGBA', (im.width + 2*pad, im.height + 2*pad), (0, 0, 0, 0))
+    c.alpha_composite(leaf, (pad, pad))
+    big = c.getchannel('A').resize((c.width*ss, c.height*ss), Image.LANCZOS).point(lambda v: 255 if v > 60 else 0)
+    edge = big.filter(ImageFilter.MaxFilter(2*max(1, round(w*ss)) + 1)).resize(c.size, Image.LANCZOS)
+    out = Image.new('RGBA', c.size, (40, 26, 12, 255)); out.putalpha(edge)
+    out.alpha_composite(c)
+    return out
+L_FIRST = _stand_out(L_FIRST)
 L_OTHER = Image.open(_g.glob('botc_app/botc.app/assets/othernight-*.png')[0]).convert('RGBA')  # right -> other nights
 FLOWER  = Image.open('raw_Layer_2.png').convert('RGBA')   # setup
 CUSTOM_TOP = None   # user-uploaded reminder-leaf art (replaces every count variant when set)
@@ -198,7 +221,9 @@ def _place_flower(canvas, name_mask=None, dx=0, dy=0, scale=1.0, rot=0, rim=1.0)
     canvas.alpha_composite(_flower_layer(left, top, scale, rot))
 
 S_NIGHT = 0.95
-FN_CENTER = (78, 470)      # first-night sprig (left)
+# first-night sprig (left): (78, 470) moved with FN_GROW so the sprig grows
+# from where it meets the edge (_from_rim), not off the token
+FN_CENTER = tuple(int(round(v)) for v in _from_rim(78, 470, FN_GROW))
 ON_CENTER = (845, 430)     # other-night leaves (right)
 def _place_night(canvas, asset, center, scale_mul=1.0, dx=0, dy=0, rot=0, rim=1.0):
     import numpy as _np
