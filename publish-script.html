@@ -293,6 +293,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- The imported file, kept as this page's JSON (customJson) -->
+    <details class="sb-details" id="sb-json-sec">
+      <summary>Custom JSON <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. Keep an imported JSON file instead of the one the wiki builds.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-customjson">JSON</label>
+          <input type="file" id="sb-customjson-file" accept=".json,application/json" style="margin-bottom:8px">
+          <textarea id="sb-customjson" rows="8" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea>
+          <p class="sub" style="margin-top:6px">Choose a file or paste it here. The script page&rsquo;s JSON box and Download JSON give exactly this, instead of the JSON the wiki builds from its characters. It does not change when you change the characters, so clear it to go back to the wiki&rsquo;s JSON.</p>
+        </div>
+      </div>
+    </details>
+
     <!-- Text-first pages attached to this script (edit mode only) -->
     <details class="sb-details" id="sb-pages-sec" style="display:none">
       <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Text pages such as rules or lore, linked only from your script page.</span></summary>
@@ -608,6 +621,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('sb-boot-list').appendChild(row);
     }
     $('sb-boot-add').addEventListener('click', function(){ addBootRow(''); });
+    // ── Custom JSON: an imported file kept as the page's JSON ──
+    $('sb-customjson-file').addEventListener('change', function(){
+      var f = this.files && this.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function(){ $('sb-customjson').value = String(r.result); $('sb-customjson').dispatchEvent(new Event('input')); };
+      r.readAsText(f);
+      this.value = '';
+    });
+    $('sb-customjson').addEventListener('input', function(){
+      var m = getMeta();
+      var v = $('sb-customjson').value.trim();
+      if (v) m.customJson = v; else delete m.customJson;
+      setMeta(m);
+    });
     $('sb-almanac').addEventListener('input', function(){
       var m = getMeta();
       var v = $('sb-almanac').value.trim();
@@ -848,7 +875,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           difficulty: $('sb-difficulty').value,
           synopsis: $('sb-synopsis').value.trim(), gameplay: $('sb-gameplay').value.trim(),
           strategyGood: $('sb-strat-good').value.trim(), strategyEvil: $('sb-strat-evil').value.trim(),
-          nightOrder: gatherNightOrder(), jinxEdits: getJinxEdits(), bootlegger: gatherBoot()
+          nightOrder: gatherNightOrder(), jinxEdits: getJinxEdits(), bootlegger: gatherBoot(),
+          customJson: $('sb-customjson').value.trim()
         };
         var all = Object.keys(bySlug).map(function(k){ return bySlug[k]; });
         var boxes = window.WikiRender && window.WikiRender.renderBoxes ? window.WikiRender.renderBoxes(boxesUI.gather(), { linkRoot: '' }) : '';
@@ -892,6 +920,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('sb-boot-list').innerHTML = '';
       (m.bootlegger || []).forEach(addBootRow);
       $('sb-almanac').value = m.almanac || '';
+      $('sb-customjson').value = m.customJson || '';
+      if (m.customJson) $('sb-json-sec').open = true;
       $('sb-hidetitle').checked = !!m.hideTitle;
       $('sb-creatormarks').checked = !!m.creatorMarks;
       $('sb-public-edit').value = PUBLIC_EDIT_MODES[m.publicEdit] ? m.publicEdit : '';
@@ -1102,6 +1132,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           jinxEdits: getJinxEdits(),
           bootlegger: gatherBoot(),
           almanac: $('sb-almanac').value.trim(),
+          customJson: $('sb-customjson').value.trim(),
           hideTitle: !!$('sb-hidetitle').checked,
           creatorMarks: !!$('sb-creatormarks').checked,
           creditUnlinked: !!$('sb-credit-unlinked').checked,
@@ -1359,6 +1390,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             jinxEdits: entry.jinxEdits || null,
             bootlegger: entry.bootlegger || [],
             almanac: entry.almanac || '',
+            customJson: entry.customJson || '',
             hideTitle: !!entry.hideTitle,
             creatorMarks: !!entry.creatorMarks,
             creditUnlinked: !!entry.creditUnlinked,

@@ -126,6 +126,10 @@
           <label class="mu-check" for="replaceart"><input type="checkbox" id="replaceart"> Replace the art on pages that already exist</label>
           <p class="hint" style="margin:6px 0 0">If a character matches a page you already made, that page is <strong>updated</strong>: the file replaces its name, team, ability, night order, reminders and jinxes, and everything else is kept. Tick this to replace its icon too.</p>
         </div>
+        <div class="fld">
+          <label class="mu-check" for="keepjson"><input type="checkbox" id="keepjson"> Keep the JSON from this file</label>
+          <p class="hint" style="margin:6px 0 0">Each page&rsquo;s JSON box shows the character exactly as it is written in this file, instead of the JSON the wiki builds from the page. You can change or clear it later under Advanced Options &rarr; Custom JSON.</p>
+        </div>
         <div id="mu-jinx-warn"></div>
         <table class="mu-table" id="mu-table">
           <thead><tr><th>Character</th><th>Team</th><th>Page</th><th>Art</th><th>Status</th></tr></thead>
@@ -548,6 +552,9 @@
         special: window.sanitizeSpecial ? window.sanitizeSpecial(c.special) : [],
         jinxes: Array.isArray(c.jinxes) ? c.jinxes : []
       };
+      // "Keep the JSON from this file": the entry as written becomes the
+      // page's custom JSON, which replaces the generated JSON box (render.js).
+      if (opts.keepJson) fromFile.customJson = JSON.stringify([meta || { id: '_meta', name: '' }, c], null, 2);
 
       rowState(i, 'work', mine ? 'reading your page&hellip;' : 'loading art&hellip;');
       var pageJob = !window.ImportMerge
@@ -640,7 +647,8 @@
         creator: $('creator').value.trim(),
         appearsIn: $('appears').value.trim(),
         status: $('pubstate').value === 'draft' ? 'draft' : 'published',
-        replaceArt: $('replaceart').checked
+        replaceArt: $('replaceart').checked,
+        keepJson: $('keepjson').checked
       };
       $('go').disabled = true; $('parse').disabled = true;
       // Fresh each run: re-running the same file (after a couple of failures,

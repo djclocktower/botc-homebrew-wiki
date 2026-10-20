@@ -294,6 +294,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- The imported file, kept as this page's JSON (customJson) -->
+    <details class="sb-details" id="sb-json-sec">
+      <summary>Custom JSON <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. Keep an imported JSON file instead of the one the wiki builds.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-customjson">JSON</label>
+          <input type="file" id="sb-customjson-file" accept=".json,application/json" style="margin-bottom:8px">
+          <textarea id="sb-customjson" rows="8" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea>
+          <p class="sub" style="margin-top:6px">Choose a file or paste it here. The collection page&rsquo;s JSON box and Download JSON give exactly this, instead of the JSON the wiki builds from its characters. It does not change when you change the characters, so clear it to go back to the wiki&rsquo;s JSON.</p>
+        </div>
+      </div>
+    </details>
+
     <!-- Text-first pages attached to this collection (edit mode only) -->
     <details class="sb-details" id="sb-pages-sec" style="display:none">
       <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Text pages such as rules or lore, linked only from your collection page.</span></summary>
@@ -759,6 +772,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       stickerBase: function(){ return EDIT_KEY ? 'collections/' + EDIT_KEY : ''; }
     });
 
+    // ── Custom JSON: an imported file kept as the page's JSON ──
+    $('sb-customjson-file').addEventListener('change', function(){
+      var f = this.files && this.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function(){ $('sb-customjson').value = String(r.result); $('sb-customjson').dispatchEvent(new Event('input')); };
+      r.readAsText(f);
+      this.value = '';
+    });
+
     // ── custom boxes (shared widget — wiki-editor.js) ──
     var boxesUI = window.WikiEditor.boxes($('pc-boxes'), $('pc-box-add'));
 
@@ -775,6 +797,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           version: $('pc-version').value.trim(), difficulty: $('pc-difficulty').value,
           synopsis: $('pc-synopsis').value.trim(), gameplay: $('pc-gameplay').value.trim(),
           strategyGood: $('pc-strat-good').value.trim(), strategyEvil: $('pc-strat-evil').value.trim(),
+          customJson: $('sb-customjson').value.trim(),
           match: $('pc-match').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean),
           include: include.slice(), exclude: exclude.slice(), order: order.slice(),
           header: headerDataURL || (removeHeader ? '' : (existingHeader || '')),
@@ -962,6 +985,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           strategyGood: $('pc-strat-good').value.trim(),
           strategyEvil: $('pc-strat-evil').value.trim(),
           customBoxes: boxesUI.gather(),
+          customJson: $('sb-customjson').value.trim(),
           match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
           include: include.slice(),
           exclude: exclude.slice(),
@@ -1088,6 +1112,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-strat-evil').value = c.strategyEvil || '';
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
           if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
+          $('sb-customjson').value = c.customJson || '';
+          if (c.customJson) $('sb-json-sec').open = true;
           // Who else may edit this page (enforced by the Worker, not by the form).
           $('sb-public-edit').value = PUBLIC_EDIT_MODES[c.publicEdit] ? c.publicEdit : '';
           if (editorsUI) editorsUI.set(c.editors || []);

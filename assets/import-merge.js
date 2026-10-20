@@ -36,7 +36,9 @@
   var MECHANICS = ['name', 'team', 'ability', 'firstNight', 'firstNightReminder',
     'otherNight', 'otherNightReminder', 'reminders', 'remindersGlobal', 'setup',
     'special', 'jinxes'];
-  var IF_PRESENT = ['quote', 'edition'];
+  // customJson: mass-upload's "Keep the file's JSON" tick — the file's own
+  // entry as the page's JSON box, replacing a previous one only when sent.
+  var IF_PRESENT = ['quote', 'edition', 'customJson'];
   var FILL_EMPTY = ['lede', 'summaryBullets', 'howToRun', 'callout', 'examples',
     'tips', 'iconBy', 'customBoxes'];
 

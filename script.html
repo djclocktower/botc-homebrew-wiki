@@ -882,6 +882,15 @@
       var finalList = addTo ? getScript().slice() : [];
       slugs.forEach(function (s) { if (finalList.indexOf(s) === -1) finalList.push(s); });
       setScript(finalList);
+      // A new script (not an add-on) may keep the file itself as its JSON:
+      // publish-script.html's Custom JSON box, which the published page's JSON
+      // box and download then give instead of the wiki-built one.
+      if (!addTo) {
+        var m = getMeta();
+        if (confirm('Keep this file as the script\'s JSON?\n\nOK = when you publish, the script page\'s JSON is exactly this file. Cancel = the wiki builds it from the characters.')) m.customJson = text;
+        else delete m.customJson;
+        setMeta(m);
+      }
       renderAll();
       if (window.updateScriptBadge) window.updateScriptBadge();
       var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
