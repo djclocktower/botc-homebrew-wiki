@@ -86,7 +86,12 @@ def _clip_to_disk(img, disk):
 _ASSET_ORIG = {}
 
 def _fit_into(img, ref):
-    """Scale img to fit inside ref's box, preserving aspect ratio."""
+    """Scale img to fit inside ref's box, preserving aspect ratio.
+    The transparent margin is trimmed first: a leaf drawn small on a big
+    canvas would otherwise shrink with the canvas to a few pixels."""
+    box = img.getchannel('A').getbbox()
+    if box:
+        img = img.crop(box)
     s = min(ref.width / float(img.width), ref.height / float(img.height))
     return img.resize((max(1, int(img.width*s)), max(1, int(img.height*s))), Image.LANCZOS)
 
