@@ -150,6 +150,10 @@
     Object.keys(ADJ_DEF).forEach(function (k) {
       out[k] = (per[k] != null) ? per[k] : globalVal(k);
     });
+    // Per-letter kerning (the gear by Kerning) belongs to one name, so it
+    // lives on the token beside adj, never in a style or in All Tokens.
+    var g = adjState.per[sl] && adjState.per[sl].gaps;
+    out.name_gaps = (g && Object.keys(g).length) ? g : null;
     return out;
   }
   function charCount(sl) { var p = adjState.per[sl]; return Math.max(0, Math.min(50, (p && p.count != null) ? p.count : 1)); }
@@ -613,9 +617,12 @@
         });
         html += '</div></div>';
       } else {
-        html += '<div class="tt-row"><label>' + f.label + '</label><div class="tt-range">' +
+        var gear = (f.k === 'name_kern' && prefix === 'ta-')
+          ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">&#9881;&#xFE0E;</button>' : '';
+        html += '<div class="tt-row"><label>' + f.label + gear + '</label><div class="tt-range">' +
           '<input type="range" id="' + prefix + f.k + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">' +
           '<output id="' + prefix + f.k + '-out"></output></div></div>';
+        if (gear) html += '<div class="tt-kern-gaps" id="ta-kern-gaps" hidden></div>';
       }
     });
     container.innerHTML = html;
@@ -645,6 +652,45 @@
         r.value = v; $(prefix + f.k + '-out').innerHTML = f.fmt(Number(v));
       }
     });
+  }
+
+  /* Per-letter kerning: one slider per gap in this token's name, behind the
+     gear in the editor's Kerning row. Stored on the token as gaps {index: em}
+     (0 is never stored), drawn by gen.render_name on top of Kerning. */
+  function renderKernGaps(sl) {
+    var box = $('ta-kern-gaps'), gear = $('ta-kern-gear');
+    if (!box || !gear) return;
+    gear.onclick = function () {
+      box.hidden = !box.hidden;
+      gear.setAttribute('aria-expanded', String(!box.hidden));
+    };
+    var nm = stripCreditMarks(charBySlug[sl].name).toUpperCase();
+    var gaps = (adjState.per[sl] && adjState.per[sl].gaps) || {};
+    var html = '';
+    for (var i = 0; i < nm.length - 1; i++) {
+      var pair = (nm[i] === ' ' ? '\u2423' : nm[i]) + (nm[i + 1] === ' ' ? '\u2423' : nm[i + 1]);
+      var v = gaps[i] || 0;
+      html += '<div class="tt-row"><label>' + esc(pair) + '</label><div class="tt-range">' +
+        '<input type="range" data-gap="' + i + '" min="-0.3" max="0.5" step="0.01" value="' + v + '">' +
+        '<output>' + emFmt(v) + '</output></div></div>';
+    }
+    box.innerHTML = html ? html + '<button type="button" class="tt-btn-sm" id="ta-kern-gaps-reset">Even out letters</button>'
+                         : '<p class="tt-kern-none">This name has no gaps to space.</p>';
+    box.querySelectorAll('input[data-gap]').forEach(function (r) {
+      r.oninput = function () {
+        var p = perOf(sl), v = Number(r.value);
+        if (!p.gaps) p.gaps = {};
+        if (v === 0) delete p.gaps[r.dataset.gap]; else p.gaps[r.dataset.gap] = v;
+        r.nextElementSibling.innerHTML = emFmt(v);
+        saveAdj(); scheduleEditorPreview();
+        if (setSlugs[0] === sl) schedulePreview();
+      };
+    });
+    var reset = $('ta-kern-gaps-reset');
+    if (reset) reset.onclick = function () {
+      delete perOf(sl).gaps; saveAdj(); renderKernGaps(sl);
+      scheduleEditorPreview(); if (setSlugs[0] === sl) schedulePreview();
+    };
   }
 
   /* global "Adjust All Tokens" card */
@@ -684,6 +730,7 @@
         saveAdj(); scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
         if (setSlugs[0] === sl) schedulePreview();
       });
+    renderKernGaps(sl);
     renderEditorRems(sl);
     renderEditorSave(sl);
     $('tte-style-msg').textContent = 'Makes this token’s adjustments, plus your custom art, the starting point for every token.';
@@ -839,6 +886,7 @@
       saveAdj();
       $('tte-count-val').textContent = 1;
       syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; });
+      renderKernGaps(editorSlug);
       renderEditorRems(editorSlug);
       scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
     };

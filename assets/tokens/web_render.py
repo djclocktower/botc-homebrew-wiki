@@ -36,7 +36,7 @@ ADJ_DEFAULTS = dict(
     icon_dx=0, icon_dy=0, icon_scale=1.0, icon_rot=0,
     leaves='auto', leaf_scale=1.0, leaf_dy=0, leaf_dx=0, leaf_rot=0,
     flower='auto', flower_dx=0, flower_dy=0, flower_scale=1.0, flower_rot=0,
-    name_size=1.0, name_dy=0, name_dx=0, name_arc=1.0, name_kern=0.0,
+    name_size=1.0, name_dy=0, name_dx=0, name_arc=1.0, name_kern=0.0, name_gaps=None,
     abil_size=1.0, abil_dy=0,
     fn_scale=1.0, fn_dx=0, fn_dy=0, fn_rot=0,
     on_scale=1.0, on_dx=0, on_dy=0, on_rot=0,
@@ -139,7 +139,7 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     on = float(entry.get('otherNight', 0) or 0) > 0
     nl = gen.render_name(entry['name'], float(a['name_size']), int(a['name_dy']),
                          int(a['name_dx']), float(a['name_arc']),
-                         float(a['name_kern']))
+                         float(a['name_kern']), a['name_gaps'])
     nm = np.array(nl)[:, :, 3] > 40
     frame = deco.frame_for(first_night=fn, other_night=on,
                            setup=bool(entry.get('setup')),
