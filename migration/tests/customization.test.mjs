@@ -19,9 +19,12 @@ function users(f) {
     f.state.sessions.set('sess:user-' + id, { userId: id, username: 'user-' + id });
   }
 }
-const css = text => CustomCSS.clean(text).css;
+// The scope is printed id-weighted (see ROOT in custom-css.js); the cases
+// below read it as plain .ucss.
+const css = text => CustomCSS.clean(text).css.split(CustomCSS.ROOT).join('.ucss');
 
 test('custom CSS: every rule is scoped under .ucss, body/html/:root mean the page area', () => {
+  assert.equal(CustomCSS.clean('h1{color:red}').css, ':is(.ucss,#ucss) h1{color:red}');
   assert.equal(css('body{color:red}'), '.ucss{color:red}');
   assert.equal(css('html body .card{color:red}'), '.ucss .card{color:red}');
   assert.equal(css(':root{--x:1}'), '.ucss{--x:1}');
@@ -106,7 +109,7 @@ test('a script page carries its theme, fonts and scoped custom CSS', async t => 
   assert.match(html, /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=Creepster&amp;display=swap">/);
   const style = html.match(/<style id="page-custom-css">([\s\S]*?)<\/style>/);
   assert.ok(style, 'custom stylesheet printed');
-  assert.match(style[1], /^\.ucss\{background:#000\}\.ucss h1\{color:gold\}/);
+  assert.ok(style[1].startsWith(':is(.ucss,#ucss){background:#000}:is(.ucss,#ucss) h1{color:gold}'), style[1]);
   assert.doesNotMatch(style[1], /</);
   assert.match(html, /<main class="wrap" id="content"><div class="ucss-frame"><div class="ucss">/);
   assert.match(html, /<body class="[^"]*theme-accent/);
@@ -397,4 +400,27 @@ test('moves: dragged parts are validated, printed as desktop-only translate rule
   assert.match(st[1], /\.tl-moved \.script-title-fallback\{translate:40px 10px/);
   assert.match(html, /<body class="[^"]*tl-moved/);
   assert.match(html, /class="script-char-row" href="[^"]*" data-slug=|No characters on this page yet/);
+});
+
+test('bootlegger rules: under the characters, at the top, or in the sidebar', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  const page = async at => {
+    const r = await f.request('/api/script', post(1, { slug: 'boot', name: 'Boot', author: 'user-1', characters: [],
+      status: 'published', synopsis: 'Words.', bootlegger: ['No talking.'], bootleggerAt: at }));
+    assert.equal(r.status, 200, await r.clone().text());
+    const html = await (await f.request('/s/boot')).text();
+    const main = html.slice(html.indexOf('sv-main'), html.indexOf('<aside'));
+    return { main, aside: html.slice(html.indexOf('<aside')), count: html.split('<li>No talking.</li>').length - 1 };
+  };
+  let p = await page('bogus');
+  assert.equal(p.count, 1);
+  assert.ok(p.main.indexOf('No talking.') > p.main.indexOf('Words.'), 'default: after the synopsis');
+  assert.equal(JSON.parse(f.db.prepare("SELECT data FROM scripts WHERE slug='boot'").get().data).bootleggerAt, undefined);
+  p = await page('top');
+  assert.ok(p.main.indexOf('No talking.') < p.main.indexOf('Words.'), 'top: before the synopsis');
+  p = await page('side');
+  assert.equal(p.count, 1);
+  assert.match(p.aside, /sv-boot-side[\s\S]*No talking\./);
 });

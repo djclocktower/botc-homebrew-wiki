@@ -355,7 +355,7 @@
       '<div class="thx-sample-frame"><div class="thx-sample ucss" id="thx-sample"><div class="thx-sample-in">' + sampleHTML(kind) + '</div></div></div></div>';
 
     h += '<details class="thx-sec thx-sec-st" open><summary>Stickers &amp; images<span>GIFs and pictures placed anywhere on your page</span></summary><div class="thx-sec-body">' +
-      '<p class="thx-sub" style="margin-top:0">Add a GIF, PNG, JPEG or WebP and put it anywhere: drag it around in the live sample above, or use the sliders. ' +
+      '<p class="thx-sub" style="margin-top:0">Add a GIF, PNG, JPEG or WebP and put it anywhere: drag it around in the live sample above or in the live preview, or use the sliders. ' +
       'Stickers can sit in front of your page or behind its boxes, stay on screen while the page scrolls, spin, bob and more.</p>' +
       '<div class="thx-st-add">' +
         '<input type="file" id="thx-st-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>' +
@@ -673,7 +673,7 @@
             .then(function (j) { if (!j || j.error) throw new Error((j && j.error) || 'Upload failed.'); return key; });
       send.then(function (path) {
         // The same slot re-used for a new file: ask for it fresh.
-        if (addSticker(path)) stMsg('ok', 'Added. Drag it into place in the sample, then save the page.');
+        if (addSticker(path)) stMsg('ok', 'Added. Drag it into place in the sample or the live preview, then save the page.');
       }, function (e) { stMsg('bad', (e && e.message) || 'Upload failed.'); });
     };
     fr.onerror = function () { stMsg('bad', 'That file could not be read.'); };
@@ -739,7 +739,7 @@
         var u = $('thx-st-url'), src = u.value.trim();
         var ok = PR().sanitizeStickers ? PR().sanitizeStickers([{ src: src }], stBase()).length : 0;
         if (!ok) { stMsg('bad', 'That needs to be an https:// link to an image.'); return; }
-        if (addSticker(src)) { u.value = ''; stMsg('ok', 'Added. Drag it into place in the sample, then save the page.'); }
+        if (addSticker(src)) { u.value = ''; stMsg('ok', 'Added. Drag it into place in the sample or the live preview, then save the page.'); }
         return;
       }
       if (b.hasAttribute('data-ord')) {
@@ -864,7 +864,7 @@
      (a drag stores theme.moves through here, so the editor saves it), and
      hear about every change the controls make. */
   function current() { return wired ? (wired.get() || {}) : {}; }
-  function store(t) { if (wired) wired.set(t); }
+  function store(t) { if (wired) wired.set(t); if (more) renderStickers(t); }
   function listen(f) { listeners.push(f); }
 
   window.ThemeEditor = { wire: wire, prime: prime, paintPreviews: paintPreviews,

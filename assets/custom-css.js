@@ -44,7 +44,12 @@
 (function () {
   'use strict';
 
-  var ROOT = '.ucss';
+  // Scoped under .ucss, but weighted like an id: :is() takes the specificity
+  // of its strongest argument, and #ucss (which nothing carries) makes that
+  // (1,0,0). A bare `.ucss h1` lost to the site's own theme rules
+  // (`.theme-heading :is(... .script-title-fallback ...)`) and to things like
+  // `.sv-section p`, so most of what an author typed simply did nothing.
+  var ROOT = ':is(.ucss,#ucss)';
   var NAME_PREFIX = 'u-';
   var MAX_DEPTH = 6;
   var GROUP_AT = { media: 1, supports: 1, container: 1, 'starting-style': 1 };

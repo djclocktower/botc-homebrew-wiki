@@ -2108,7 +2108,7 @@ const FIELD_LABELS = {
   strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
   header: 'header image', theme: 'appearance', match: 'membership rules',
   include: 'members added', exclude: 'members removed', order: 'roster order',
-  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'bootlegger rules',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'bootlegger rules', bootleggerAt: 'bootlegger rules placement',
   almanac: 'almanac link', hideTitle: 'app title setting', creatorMarks: 'creator marks setting',
   // wiki pages
   title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
@@ -4757,6 +4757,8 @@ function sanitizeScriptFields(s) {
     ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
     : [];
   if (!s.bootlegger.length) delete s.bootlegger;
+  // Where the page shows them: under the characters unless the owner chose.
+  if (s.bootleggerAt !== 'top' && s.bootleggerAt !== 'side') delete s.bootleggerAt;
   s.almanac = typeof s.almanac === 'string' && /^https?:\/\//i.test(s.almanac.trim())
     ? s.almanac.trim().slice(0, 300) : '';
   if (!s.almanac) delete s.almanac;
