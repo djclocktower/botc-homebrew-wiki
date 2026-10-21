@@ -502,6 +502,25 @@
         <div id="u-list"></div>
         <div class="toast" id="u-toast"></div>
       </section>
+      <section class="panel" id="marks-panel">
+        <h3>Creator marks <span class="count-pill" id="cm-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Give an account a mark, change it, or take it away. A mark already held by somebody else is only moved when you say so. The member is not messaged; tell them yourself if it matters.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="cm-user" placeholder="username">
+          <input type="text" id="cm-glyph" placeholder="mark, e.g. ✶" style="max-width:9em">
+          <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:4px">
+            <input type="checkbox" id="cm-show" checked> Shown
+          </label>
+        </div>
+        <div class="act-filters" style="margin-top:8px">
+          <button type="button" class="small-btn" id="cm-assign">Assign</button>
+          <button type="button" class="small-btn alt" id="cm-clear">Clear mark</button>
+        </div>
+        <div class="toast" id="cm-toast"></div>
+        <div id="cm-list" style="margin-top:10px"></div>
+      </section>
       <section class="panel">
         <h3>Recent sign-ups <span class="count-pill" id="signup-count"></span></h3>
         <ul class="feed" id="feed-signups"></ul>
@@ -2423,6 +2442,66 @@
        back up. Deliberately one page at a time — one reason typed once and
        applied to fifty pages is not a reason, which is why this is a card of
        its own rather than another entry in the bulk-action list. */
+    /* Creator marks: assign / move / clear (POST /api/admin/creator-mark).
+       The list under the form is the public registry, so it shows exactly
+       what readers see; Edit fills the form from a row. */
+    function loadMarks(){
+      getJSON('/api/creator-marks').then(function(d){
+        var list = (d && d.marks) || [];
+        $('cm-count').textContent = list.length;
+        $('cm-list').innerHTML = list.length ? '<ul class="feed" style="max-height:24em;overflow-y:auto">' + list.map(function(m){
+          return '<li style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em;min-width:1.5em;text-align:center">' +
+            esc(m.g) + '</span><span style="flex:1;overflow-wrap:anywhere">' +
+            esc(m.d) + (m.u ? ' <span style="opacity:.7">@' + esc(m.u) + '</span>' : '') +
+            (m.legacy ? ' <span style="opacity:.7">(original list)</span>' : '') +
+            (m.hide ? ' <span style="opacity:.7">(hidden)</span>' : '') + '</span>' +
+            (m.u ? '<button type="button" class="small-btn" data-cm-edit="' + esc(m.u) + '" data-cm-g="' + esc(m.g) +
+              '" data-cm-hide="' + (m.hide ? 1 : 0) + '">Edit</button>' : '') + '</li>';
+        }).join('') + '</ul>' : '<p class="note">No marks yet.</p>';
+      });
+    }
+    $('cm-list').addEventListener('click', function(e){
+      var b = e.target.closest('[data-cm-edit]');
+      if (!b) return;
+      $('cm-user').value = b.getAttribute('data-cm-edit');
+      $('cm-glyph').value = b.getAttribute('data-cm-g');
+      $('cm-show').checked = b.getAttribute('data-cm-hide') !== '1';
+      $('cm-user').scrollIntoView({ block: 'center' });
+    });
+    function sendMark(body, btn){
+      btn.disabled = true;
+      return postJSON('/api/admin/creator-mark', body).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (res.status === 409 && d.holder && !body.move) {
+          if (confirm('That mark belongs to ' + d.holder + '. Take it from them and give it to @' + body.username + '?')) {
+            body.move = true;
+            return sendMark(body, btn);
+          }
+          setToast('cm-toast', false, 'Not changed.');
+          return;
+        }
+        if (!d.ok) { setToast('cm-toast', false, d.error || 'Failed.'); return; }
+        setToast('cm-toast', true, body.glyph == null
+          ? (d.removed ? 'Mark cleared from @' + body.username + '.' : '@' + body.username + ' had no mark.')
+          : '@' + body.username + ' now has ' + d.glyph + (d.from ? ' (taken from ' + d.from + ')' : '') +
+            (d.replaced ? ', replacing ' + d.replaced : '') + '.');
+        loadMarks();
+      });
+    }
+    $('cm-assign').addEventListener('click', function(){
+      var user = $('cm-user').value.trim(), glyph = $('cm-glyph').value.trim();
+      if (!user || !glyph) { setToast('cm-toast', false, 'Enter a username and a mark.'); return; }
+      sendMark({ username: user, glyph: glyph, show: $('cm-show').checked }, this);
+    });
+    $('cm-clear').addEventListener('click', function(){
+      var user = $('cm-user').value.trim();
+      if (!user) { setToast('cm-toast', false, 'Which account?'); return; }
+      if (!confirm('Take the mark off @' + user + '?')) return;
+      sendMark({ username: user }, this);
+    });
+    loadMarks();
+
     $('dp-go').addEventListener('click', function(){
       var slug = $('dp-slug').value.trim();
       var reason = $('dp-reason').value.trim();
@@ -3408,6 +3487,7 @@
 
       mount('rb-slug', pageOf('rb-type'), 'No page by that name.');
       mount('dp-slug', pageOf('dp-type'), 'No page by that name.');
+      mount('cm-user', users, 'No account by that name.');
       mount('prot-slug', pageOf('prot-type'), 'No page by that name.');
       mount('curata-slug', pageOf('curata-type'), 'No page by that name.');
       mount('bk-slug', pageOf('bk-type'), 'No page by that name.');

@@ -35,7 +35,8 @@
  *   GET  /api/account/mark    -> your creator mark + legacy glyphs that are yours
  *   POST /api/account/mark    -> claim/change/give up your creator mark
  *   GET  /api/creator-marks   -> every creator mark (public registry)
- *   POST /api/admin/creator-mark -> take a mark off an account ({username})
+ *   POST /api/admin/creator-mark -> assign/move/clear an account's mark
+ *                                   ({username, glyph?, show?, move?})
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
  *   POST /api/account/unlink-discord
@@ -6557,6 +6558,15 @@ async function buildMarkRegistry(env, flags = {}) {
     out.push(m);
   }
   return out;
+}
+// One account's mark, written or replaced. Throws on the UNIQUE glyph_key
+// when another account holds it; callers turn that into a 409.
+function upsertMark(env, userId, glyph, key, show, names) {
+  return env.DB.prepare(
+    `INSERT INTO creator_marks (user_id, glyph, glyph_key, show, names, updated_at) VALUES (?,?,?,?,?,?)
+     ON CONFLICT(user_id) DO UPDATE SET glyph=excluded.glyph, glyph_key=excluded.glyph_key,
+       show=excluded.show, names=excluded.names, updated_at=excluded.updated_at`
+  ).bind(userId, glyph, key, show, JSON.stringify(names), Math.floor(Date.now() / 1000)).run();
 }
 // The registry, behind an isolate memo and the edge cache, keyed on the
 // content version: claiming or changing a mark bumps it, so the registry —
@@ -13239,13 +13249,8 @@ const app = {
           return jsonResponse({ error: 'That mark already belongs to ' + Creators.markOwner(holder) + '. Pick another.' }, { status: 409 });
         }
         const show = b.show !== undefined ? (b.show ? 1 : 0) : (cur ? Number(cur.show) : 1);
-        const now = Math.floor(Date.now() / 1000);
         try {
-          await env.DB.prepare(
-            `INSERT INTO creator_marks (user_id, glyph, glyph_key, show, names, updated_at) VALUES (?,?,?,?,?,?)
-             ON CONFLICT(user_id) DO UPDATE SET glyph=excluded.glyph, glyph_key=excluded.glyph_key,
-               show=excluded.show, names=excluded.names, updated_at=excluded.updated_at`
-          ).bind(sess.userId, glyph, key, show, JSON.stringify(names), now).run();
+          await upsertMark(env, sess.userId, glyph, key, show, names);
         } catch (e) {
           if (/UNIQUE/i.test(String(e && e.message))) {
             return jsonResponse({ error: 'That mark was just taken. Pick another.' }, { status: 409 });
@@ -15041,20 +15046,63 @@ const app = {
         return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
       }
 
-      // An admin taking a mark off an account (an offensive symbol, or one
-      // squatted on another creator's well-known glyph). The glyph is free
-      // again; the member can claim another.
+      // An admin assigning, moving or clearing an account's mark.
+      //   {username}                  clear it (an offensive symbol, a squat)
+      //   {username, glyph[, show]}   give that account this mark, replacing
+      //                               any it has. A glyph held by somebody
+      //                               else (an account, or a name on the
+      //                               original list) is a 409 naming them,
+      //                               unless the body says {move: true}: then
+      //                               it is taken off them and given here.
+      // Same glyph rules as the account page (markProblem / markKey); the
+      // admin only overrides who may hold it.
       if (path === '/api/admin/creator-mark') {
         const b = await request.json().catch(() => ({}));
-        const u = await selectUserByName(env, 'id, username', String(b.username || ''));
+        const u = await selectUserByName(env, 'id, username, display_name', String(b.username || ''));
         if (!u) return jsonResponse({ error: 'No such user.' }, { status: 404 });
         await ensureMarksTable(env);
-        const cur = await env.DB.prepare('SELECT glyph FROM creator_marks WHERE user_id=?').bind(u.id).first();
-        if (!cur) return jsonResponse({ ok: true, removed: false });
-        await env.DB.prepare('DELETE FROM creator_marks WHERE user_id=?').bind(u.id).run();
+        await ensureBanColumn(env);   // the registry reads it
+        const cur = await env.DB.prepare('SELECT glyph, show FROM creator_marks WHERE user_id=?').bind(u.id).first();
+        if (b.remove || b.glyph == null || b.glyph === '') {
+          if (!cur) return jsonResponse({ ok: true, removed: false });
+          await env.DB.prepare('DELETE FROM creator_marks WHERE user_id=?').bind(u.id).run();
+          await bumpContentVersion(env, 'mark');
+          await logActivity(env, sess, 'admin-creator-mark-remove', 'user', u.username, cur.glyph);
+          return jsonResponse({ ok: true, removed: true });
+        }
+        const glyph = String(b.glyph).normalize('NFC').trim();
+        const bad = Creators.markProblem(glyph);
+        if (bad) return jsonResponse({ error: bad }, { status: 400 });
+        const key = Creators.markKey(glyph);
+        const [reg, creators] = await Promise.all([
+          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null)
+        ]);
+        if (reg.degraded || !creators) return jsonResponse({ error: 'Could not check who holds that mark. Please try again.' }, { status: 503 });
+        const holder = reg.list.find(m => m.k === key);
+        const other = holder && !(holder.u && usernameKey(holder.u) === usernameKey(u.username));
+        if (other && !b.move) {
+          return jsonResponse({ error: 'That mark belongs to ' + Creators.markOwner(holder) + '.', holder: Creators.markOwner(holder), legacy: !!holder.legacy }, { status: 409 });
+        }
+        // A suspended account is not in the registry but still holds its row,
+        // so the move deletes by key rather than by the holder found above.
+        // A legacy holder has no row: being claimed here is what retires it.
+        const moved = b.move
+          ? await env.DB.prepare('DELETE FROM creator_marks WHERE glyph_key=? AND user_id<>?').bind(key, u.id).run()
+          : null;
+        const show = b.show !== undefined ? (b.show ? 1 : 0) : (cur ? Number(cur.show) : 1);
+        const names = markNamesFor(creators, u.username, u.display_name);
+        try {
+          await upsertMark(env, u.id, glyph, key, show, names);
+        } catch (e) {
+          if (/UNIQUE/i.test(String(e && e.message))) {
+            return jsonResponse({ error: 'Another account (possibly a suspended one) holds that mark. Tick "take it from them" to move it.' }, { status: 409 });
+          }
+          throw e;
+        }
         await bumpContentVersion(env, 'mark');
-        await logActivity(env, sess, 'admin-creator-mark-remove', 'user', u.username, cur.glyph);
-        return jsonResponse({ ok: true, removed: true });
+        const from = other ? Creators.markOwner(holder) : (moved && moved.meta && moved.meta.changes ? 'a suspended account' : '');
+        await logActivity(env, sess, 'admin-creator-mark', 'user', u.username, glyph + (from ? ' (from ' + from + ')' : ''));
+        return jsonResponse({ ok: true, glyph, from: from || null, replaced: cur && cur.glyph !== glyph ? cur.glyph : null });
       }
 
       // ---- admin: link a creator name to an account (or unlink it) ----
