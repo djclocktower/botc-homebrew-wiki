@@ -3527,7 +3527,10 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   drawn by the Worker.
 - **Routes**: `GET /api/creator-marks` (public), `GET/POST /api/account/mark`
   (own mark; POST `{glyph, show}` or `{remove:true}`),
-  `POST /api/admin/creator-mark {username}` (take one away).
+  `POST /api/admin/creator-mark` — `{username}` clears an account's mark,
+  `{username, glyph, show?}` assigns or changes it; a glyph somebody else
+  holds (an account or a name on the legacy list) is a 409 naming them
+  unless `move: true`. Dashboard → Users → "Creator marks".
 - **Creator marks on names**: a script's `creatorMarks: true` (the Script
   Builder's tick and publish-script's "In the Official App" panel, both on
   `botc_script_meta`) puts each homebrew character's creators' marks after its

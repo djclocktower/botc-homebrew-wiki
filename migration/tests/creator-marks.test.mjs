@@ -92,3 +92,49 @@ test('creator marks: claim, uniqueness, the legacy list, pages, hiding, export',
   assert.equal((await f.request('/api/account/mark', post(2, { remove: true }))).status, 200);
   assert.equal((await f.request('/api/account/mark', post(1, { glyph: '✶' }))).status, 200);
 });
+
+test('admin creator marks: assign, refuse a held glyph, move it, clear', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(9,'boss','',1)").run();
+  f.state.sessions.set('sess:user-9', { userId: 9, username: 'boss', isAdmin: true });
+  for (const id of [1, 2]) {
+    f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(?,?,'')").run(id, 'user-' + id);
+    f.state.sessions.set('sess:user-' + id, { userId: id, username: 'user-' + id });
+  }
+  const adm = body => f.request('/api/admin/creator-mark', post(9, body));
+  const marks = async () => (await (await f.request('/api/creator-marks')).json()).marks;
+
+  // Members cannot use it.
+  assert.equal((await f.request('/api/admin/creator-mark', post(1, { username: 'user-1', glyph: '✶' }))).status, 403);
+  assert.equal((await adm({ username: 'nobody', glyph: '✶' })).status, 404);
+  assert.equal((await adm({ username: 'user-1', glyph: 'ab' })).status, 400);
+
+  let r = await adm({ username: 'user-1', glyph: '✶' });
+  assert.equal(r.status, 200);
+  assert.equal((await marks()).find(m => m.u === 'user-1').g, '✶');
+
+  // Held by user-1: refused for user-2 without move, and nothing changes.
+  r = await adm({ username: 'user-2', glyph: '✶︎' });
+  assert.equal(r.status, 409);
+  assert.match((await r.json()).holder, /user-1/);
+  r = await adm({ username: 'user-2', glyph: '✶', move: true, show: false });
+  assert.equal(r.status, 200);
+  assert.match((await r.json()).from, /user-1/);
+  let reg = await marks();
+  assert.ok(!reg.some(m => m.u === 'user-1'), 'the old holder lost it');
+  assert.equal(reg.find(m => m.u === 'user-2').hide, 1);
+
+  // A glyph on the original list is the name's until moved.
+  assert.equal((await adm({ username: 'user-1', glyph: '∇' })).status, 409);
+  assert.equal((await adm({ username: 'user-1', glyph: '∇', move: true })).status, 200);
+  reg = await marks();
+  assert.ok(!reg.some(m => m.legacy && m.g === '∇'));
+
+  // Reassign to a new glyph, then clear.
+  r = await adm({ username: 'user-1', glyph: '⚘' });
+  assert.equal((await r.json()).replaced, '∇');
+  assert.equal((await adm({ username: 'user-1' })).status, 200);
+  assert.ok(!(await marks()).some(m => m.u === 'user-1'));
+  assert.equal((await (await adm({ username: 'user-1' })).json()).removed, false);
+});
