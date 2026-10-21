@@ -122,16 +122,18 @@ def _name_radius(total_adv):
     t = (total_adv - NAME_ADV_LO) / float(NAME_ADV_HI - NAME_ADV_LO)
     return NAME_R_MAX + t*(NAME_R_MIN - NAME_R_MAX)
 
-def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0):
+def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0, kern=0.0):
     name = name.upper()
     arc = max(0.2, float(arc))
+    # kern: extra letter spacing in em, on top of NAME_TRACK (the Kerning slider)
+    kern = min(0.4, max(-0.15, float(kern or 0)))
     arc_cx = NAME_ARC_CX + int(dx)
     start = max(24, int(round(NAME_SIZE_MAX * size_mul)))
     stop = min(start - 1, max(20, int(round(58 * size_mul))))
     bottom_y = NAME_BOTTOM_Y + int(dy)
     for size in range(start, stop, -1):
         f = ImageFont.truetype(DUM, size)
-        track = NAME_TRACK * size
+        track = (NAME_TRACK + kern) * size
         advs = [f.getlength(c) + track for c in name]
         total_adv = sum(advs)
         R = _name_radius(total_adv) / arc     # arc>1 curves more, arc<1 flattens

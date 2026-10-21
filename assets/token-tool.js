@@ -112,7 +112,7 @@
   var ADJ_DEF = {
     bg_scale: 1, bg_dx: 0, bg_dy: 0, bg_rot: 0,
     icon_scale: 1, icon_dx: 0, icon_dy: 0, icon_rot: 0,
-    name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1,
+    name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1, name_kern: 0,
     abil_size: 1, abil_dy: 0,
     leaves: 'auto', leaf_scale: 1, leaf_dy: 0, leaf_dx: 0, leaf_rot: 0,
     flower: 'auto', flower_scale: 1, flower_dx: 0, flower_dy: 0, flower_rot: 0,
@@ -567,6 +567,7 @@
     { k: 'name_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
     { k: 'name_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -80, max: 80, step: 2, fmt: pxFmt },
     { k: 'name_arc', label: 'Arc', min: 0.4, max: 2.2, step: 0.02, fmt: pctFmt },
+    { k: 'name_kern', label: 'Kerning', min: -0.1, max: 0.3, step: 0.01, fmt: emFmt },
     { section: 'Ability Text' },
     { k: 'abil_size', label: 'Size', min: 0.7, max: 1.3, step: 0.02, fmt: pctFmt },
     { k: 'abil_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -60, max: 60, step: 2, fmt: pxFmt },
@@ -597,6 +598,7 @@
     { k: 'rem_text_size', label: 'Text size', min: 0.6, max: 1.2, step: 0.02, fmt: pctFmt }
   ];
   function pctFmt(v) { return Math.round(v * 100) + '%'; }
+  function emFmt(v) { return (v > 0 ? '+' : '') + (+v).toFixed(2) + 'em'; }
   function pxFmt(v) { return (v > 0 ? '+' : '') + v + 'px'; }
   function degFmt(v) { return (v > 0 ? '+' : '') + v + '&deg;'; }
 
