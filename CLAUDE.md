@@ -6,6 +6,12 @@ He can't code and mostly reviews on mobile via the live site — keep changes
 mobile-friendly, explain things plainly, and consult him before big
 architecture changes or removing features.
 
+**Never push to `main` without the owner's approval.** A push to main
+deploys straight to the live site. Every change goes on its own branch and
+up as a **pull request**; the owner reviews it and merges it himself. This
+holds for small changes too, and for follow-up fixes to an open PR (push
+those to the PR's branch, not to main).
+
 ## Architecture in one paragraph
 
 A **Cloudflare Worker** (`worker/worker.js`, config in `wrangler.toml`) serves
