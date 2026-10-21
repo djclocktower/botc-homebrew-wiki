@@ -255,6 +255,17 @@ test('a new identity is never off- and never one a live page still answers on', 
   assert.equal((await post(f, 1, '/api/character', char('old-flat'))).status, 200);
 });
 
+test('a deleted page of your own is not offered as yours to save over', async t => {
+  const f = await setup(t);
+  f.insert('characters', 'gone', char('gone'), 'deleted');
+  own(f, 'characters', 'gone', 1);
+  const j = await (await f.request('/api/slug-check?type=character&name=gone', as(1))).json();
+  assert.equal(j.taken, true);
+  assert.equal(j.mine, false);
+  assert.notEqual(j.suggestion, 'gone');
+  assert.equal((await post(f, 1, '/api/character', char(j.suggestion, { name: 'gone' }))).status, 200);
+});
+
 test('the wiki lock covers rollbacks and suggestions; protection fails closed', async t => {
   const f = await setup(t);
   f.insert('characters', 'locked', char('locked'));

@@ -10907,7 +10907,10 @@ const app = {
       // `mine` says a save on this URL would update that page rather than
       // collide with it — which is what the create page wants, and what a
       // rename must still avoid (it would move a page onto a live one).
-      const mine = !!row && canEditRow(sess, row);
+      // A deleted page is never "mine": the save refuses to write over one
+      // (only an admin's restore brings it back), so an importer told it was
+      // aimed every re-import of that name at a page it could not save.
+      const mine = !!row && row.status !== 'deleted' && canEditRow(sess, row);
       // Find the first free variant either way.
       let used;
       if (type === 'collection') {
