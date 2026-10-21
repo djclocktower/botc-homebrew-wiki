@@ -17136,8 +17136,16 @@ function withSecurityHeaders(res) {
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
     if (!h.has(k)) h.set(k, v);
   }
-  if (!h.has('Content-Security-Policy') && /text\/html/i.test(h.get('Content-Type') || '')) {
-    h.set('Content-Security-Policy', HTML_CSP);
+  if (/text\/html/i.test(h.get('Content-Type') || '')) {
+    if (!h.has('Content-Security-Policy')) h.set('Content-Security-Policy', HTML_CSP);
+    // no-transform: Cloudflare stops writing its Web Analytics <script> into
+    // the page. That tag is a High-priority module on another origin, so a
+    // phone opened a second connection for it before the first paint (it cost
+    // the homepage ~7 PageSpeed points). site.js loads the same beacon once
+    // the page has settled instead. It also stops Cloudflare's JavaScript
+    // Detections script, which nothing on this site reads.
+    const cc = h.get('Cache-Control') || '';
+    if (!/no-transform/i.test(cc)) h.set('Cache-Control', cc ? cc + ', no-transform' : 'no-transform');
   }
   return out;
 }

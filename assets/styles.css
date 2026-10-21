@@ -2015,6 +2015,18 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* ─── Section wrapper ─────────────────────────────────────── */
 .landing-section { margin-bottom: 44px; }
 .landing-section:last-child { margin-bottom: 0; }
+/* On a phone the homepage is one long column, and everything below the first
+   screen used to be laid out at once: the sidebar's links, the script
+   banners and the collection taglines each pull in a font of their own
+   (Libre Franklin, LHF Unlovable), and they were downloaded alongside the
+   fonts the first screen actually needs. content-visibility skips a section
+   until it is near the screen, so its fonts and pictures wait until then.
+   Phones only: it clips what a section draws outside itself, which is the
+   desktop tiles' hover shadow (a phone has no hover). */
+@media (max-width: 760px) {
+  .home-layout .landing-section,
+  .home-layout .home-sidebar { content-visibility: auto; contain-intrinsic-size: auto 800px; }
+}
 
 /* ─── Collections grid ────────────────────────────────────── */
 .collections-grid {
