@@ -1320,3 +1320,22 @@ window.placeEditButton();
     navigator.sendBeacon('/api/view', JSON.stringify({ type: type, slug: slug }));
   } catch (e) { /* analytics never break a page */ }
 })();
+
+/* ── Cloudflare Web Analytics, after the page has settled ──
+   The Worker's HTML carries Cache-Control: no-transform, so Cloudflare no
+   longer writes its beacon into the page (it held up the first paint on a
+   phone; see withSecurityHeaders in worker.js). This loads the same beacon,
+   with the site's own token, three seconds after the page has loaded. The
+   static pages still get Cloudflare's copy, so one already on the page wins. */
+(function () {
+  function go() {
+    if (document.querySelector('script[data-cf-beacon]')) return;
+    var s = document.createElement('script');
+    s.defer = true;
+    s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    s.setAttribute('data-cf-beacon', '{"token":"5e5206323b614a1d82b887c9a284bcb8"}');
+    document.head.appendChild(s);
+  }
+  function later() { setTimeout(go, 3000); }
+  if (document.readyState === 'complete') later(); else window.addEventListener('load', later);
+})();

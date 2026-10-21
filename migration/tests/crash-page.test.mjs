@@ -13,11 +13,13 @@ test('an uncaught error is a retry page or a JSON error, never Cloudflare\'s bar
     const page = await f.safeRequest('/c/some-set/someone');
     assert.equal(page.status, 500);
     assert.match(page.headers.get('Content-Type'), /text\/html/);
-    assert.equal(page.headers.get('Cache-Control'), 'no-store');
+    // no-transform keeps Cloudflare from writing its analytics tag into HTML.
+    assert.equal(page.headers.get('Cache-Control'), 'no-store, no-transform');
     assert.match(await page.text(), /Try again/);
     const api = await f.safeRequest('/api/news?limit=3');
     assert.equal(api.status, 500);
     assert.ok((await api.json()).error);
+    assert.doesNotMatch(api.headers.get('Cache-Control') || '', /no-transform/);
     assert.ok(logged.some(l => l.includes('/c/some-set/someone')));
   } finally {
     console.error = origError;
