@@ -64,7 +64,7 @@
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
     ['minion', 'Minion'], ['demon', 'Demon'],
     ['traveller', 'Traveller'], ['fabled', 'Fabled'],
-    ['loric', 'Loric']
+    ['loric', 'Loric'], ['other', 'Other']
   ];
   var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
   var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
@@ -124,7 +124,7 @@
   // text is only escaped.
   function card(c, mark) {
     var m = mark || esc;
-    var typeClass = GOOD[c.team] ? ' good' : '';
+    var typeClass = GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '';
     return '<a class="char-card" href="' + esc(c.page) + '">' +
       // The icon, and under it the Favorites / Add to Script quick actions
       // (assets/card-actions.js fills the slot).
@@ -698,19 +698,15 @@
       return { html: bucketSections(list, setOf, groups, 'Not in a script or collection'), groups: groups };
     }
     html = TEAMS.map(function (t) {
-      var chars = list.filter(function (c) { return c.team === t[0]; });
+      // A row with a blank or unknown team is counted like any other, so it
+      // is drawn with Other, as card-filters.js and renderRosterCards() do.
+      var chars = list.filter(function (c) {
+        return (Object.prototype.hasOwnProperty.call(TEAM_LABEL, c.team) ? c.team : 'other') === t[0];
+      });
       if (!chars.length) return '';
       groups.push({ selector: '.char-grid[data-group="' + t[0] + '"]', items: chars });
       return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-group="' + t[0] + '"></div></section>';
     }).join('');
-    // A row with a blank or unknown team is counted like any other, so it
-    // must be drawn somewhere: an "Other" section last, as card-filters.js
-    // and renderRosterCards() do.
-    var other = list.filter(function (c) { return !Object.prototype.hasOwnProperty.call(TEAM_LABEL, c.team); });
-    if (other.length) {
-      groups.push({ selector: '.char-grid[data-group="other"]', items: other });
-      html += '<section class="type-section" id="other"><h2 class="type-header">Other</h2><div class="type-rule"></div><div class="char-grid" data-group="other"></div></section>';
-    }
     return { html: html, groups: groups };
   }
 

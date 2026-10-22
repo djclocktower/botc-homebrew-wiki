@@ -107,7 +107,7 @@
       ids: ['publicEdit', 'hist-fld'] }
   ];
   var ADVANCED_FIELD_IDS = ['pronunciation', 'ipa', 'respelling',
-    'translatedBy', 'iconBy'];
+    'translatedBy', 'iconBy', 'typeName-fld'];
   var NIGHTORDER_ID = 'edition'; // first id inside the Night Order fieldset
   /* Special properties is a section in its own right, above Tags and above
      Night Order. It was swept into Advanced Options with the jinxes and the

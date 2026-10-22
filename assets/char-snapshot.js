@@ -75,7 +75,7 @@
     exBg: '#ded3cd', exFrame: '#bcae93',
     maroon: '#5B1F21', ink: '#000',
     good: '#2C7BD0', goodName: '#2f6fb8', evil: '#9A0D12',
-    outsider: '#1a6a80', minion: '#b5441a', fabled: '#8f6d1a', loric: '#2f6b3f',
+    outsider: '#1a6a80', minion: '#b5441a', fabled: '#8f6d1a', loric: '#2f6b3f', other: '#4a2548',
     rule: '#b79c6f', purple: '#1a0820',
     hair: 'rgba(180,160,120,.45)',
     quiet: '#8a7a62', pronounce: '#6b5d49'
@@ -97,10 +97,10 @@
   var MARK_COLOR = {
     'wiki-red': C.evil, 'wiki-blue': C.good, 'wiki-townsfolk': C.good,
     'wiki-demon': C.evil, 'wiki-outsider': C.outsider, 'wiki-minion': C.minion,
-    'wiki-fabled': C.fabled, 'wiki-loric': C.loric, 'wiki-traveller': 'traveller'
+    'wiki-fabled': C.fabled, 'wiki-loric': C.loric, 'wiki-other': C.other, 'wiki-traveller': 'traveller'
   };
   // The Related ribbons' left edge, as .rel-* in styles.css.
-  var RIBBON = { good: C.good, evil: C.evil, fabled: '#b8952a', loric: '#3a7a4a',
+  var RIBBON = { good: C.good, evil: C.evil, fabled: '#b8952a', loric: '#3a7a4a', other: '#4a2548',
                  page: '#cdb488', ext: '#ffffff', traveller: 'traveller' };
 
   /* The two flourishes the page draws inside an example box and a callout,
@@ -648,7 +648,8 @@
   function infoRows(d, opts) {
     var rows = [];
     var team = d.team || 'townsfolk';
-    rows.push(['Type:', textRuns(TEAM_LABEL[team] || team)]);
+    var typeName = team === 'other' && String(d.typeName || '').trim();
+    rows.push(['Type:', textRuns(typeName || TEAM_LABEL[team] || team)]);
     var creators = global.splitCreators ? global.splitCreators(d.creator)
       : String(d.creator || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     if (creators.length) {

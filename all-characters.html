@@ -100,12 +100,13 @@
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
       ['minion', 'Minion'], ['demon', 'Demon'],
       ['traveller', 'Traveller'], ['fabled', 'Fabled'],
-      ['loric', 'Loric']
+      ['loric', 'Loric'], ['other', 'Other']
     ];
     var GOOD = { townsfolk: 1, outsider: 1 };
     window.TEAM_LABEL = window.TEAM_LABEL || {
       townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric',
+      other: 'Other'
     };
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g, '&amp;')

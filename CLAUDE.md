@@ -4184,8 +4184,13 @@ seeded with whole collections whose characters all arrived unowned.
 - Shared topbar markup is copied per page (no template system). If you change
   it, change it on **all** pages — use `scripts.html` as the canonical
   example. Behavior belongs in `site.js`, not inline.
-- Teams: `townsfolk, outsider, minion, demon, traveller, fabled, loric` — always
-  in that order. There is **no** single source of truth: the list is re-declared
+- Teams: `townsfolk, outsider, minion, demon, traveller, fabled, loric, other` —
+  always in that order. **`other` is the wiki's own type** for characters of a
+  homebrew type: drawn in the wiki purple (`--other`, `.other` on the team
+  labels, `{{other|…}}`), it may carry `typeName` (Advanced Options; shown on
+  its own `/c/` info box only, in `CARD_DROP_FIELDS`, dropped on save for any
+  other team), and `buildSchema()` exports it as `loric` because the official
+  app knows only seven. A team no list knows is drawn with Other. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
   `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
   `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/index/author/profile/

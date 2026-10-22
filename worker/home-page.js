@@ -27,7 +27,7 @@ import CardActions from '../assets/card-actions.js';
 export const HOME_TILES = 7;
 const TEAM_LABEL = {
   townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-  demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+  demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other'
 };
 const GOOD = { townsfolk: 1, outsider: 1 };
 
@@ -100,7 +100,7 @@ export function recentCardHTML(c) {
   return '<a class="recent-card" href="' + esc(c.page) + '">' +
     '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
     '<div class="recent-name">' + esc(c.name) + '</div>' +
-    '<div class="recent-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
+    '<div class="recent-type' + (GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '') + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
     // The Favorites / Add to Script quick actions, side by side under the
     // team name: an EMPTY slot that card-actions.js fills in the browser,
     // because saved/unsaved is one reader's state and this HTML is shared.
@@ -115,7 +115,7 @@ export function featuredCardHTML(c) {
   return '<a class="featured-card" href="' + esc(c.page) + '">' +
     '<img loading="lazy" decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.displaySrc(c, '')) + '" alt="' + esc(c.name) + '">' +
     '<div class="featured-body">' +
-      '<div class="featured-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
+      '<div class="featured-type' + (GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '') + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
       '<h3 class="featured-name">' + esc(c.name) +
         (Classify.isCurata(c) ? Classify.classBadgeHTML('curata', { from: c.curataFrom }) : '') + '</h3>' +
       (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +

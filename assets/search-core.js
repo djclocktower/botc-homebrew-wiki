@@ -155,7 +155,8 @@
   };
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
-    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'], ['loric', 'Loric']
+    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'], ['loric', 'Loric'],
+    ['other', 'Other']
   ];
   var TEAM_LABEL = {};
   TEAMS.forEach(function (t) { TEAM_LABEL[t[0]] = t[1]; });

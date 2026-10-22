@@ -221,6 +221,8 @@
      than the Related-ribbon fills on purpose: these paint bold TEXT on
      parchment, and the ribbon's gold (#b8952a) sits at ~2.6:1 there. */
   --outsider:#1a6a80; --minion:#b5441a; --fabled:#8f6d1a; --loric:#2f6b3f;
+  /* The wiki's own "Other" type (a homebrew character type) is the wiki's purple. */
+  --other:var(--purple-mid);
   --rule:#b79c6f;
 }
 
@@ -378,6 +380,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .wiki-demon { color: var(--evil); font-weight: 700; }
 .wiki-fabled { color: var(--fabled); font-weight: 700; }
 .wiki-loric { color: var(--loric); font-weight: 700; }
+.wiki-other { color: var(--other); font-weight: 700; }
 /* {{traveller|…}} — half good-blue, half evil-red, the same top/bottom split
    the Related ribbon draws for the team, as a gradient clipped to the glyphs.
    The solid colour first is the fallback for a browser without text clipping:
@@ -445,7 +448,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 
 .wiki-red a, .wiki-blue a, .wiki-townsfolk a, .wiki-outsider a,
 .wiki-minion a, .wiki-demon a, .wiki-traveller a, .wiki-fabled a,
-.wiki-loric a { color: inherit !important; }
+.wiki-loric a, .wiki-other a { color: inherit !important; }
 /* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
    rule, so without this an example's link is browser-default blue and
    underlined, sitting on parchment. Section headings carry their own
@@ -921,6 +924,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .rel-traveller::before { background: linear-gradient(to bottom, var(--good) 50%, var(--evil) 50%); }
 .rel-fabled::before    { background: #b8952a; }
 .rel-loric::before     { background: #3a7a4a; }
+.rel-other::before     { background: var(--other); }
 .rel-page::before      { background: #cdb488; }
 /* White on a cream card needs its own edge to read as a stripe at all. */
 .rel-ext::before       { background: #fff; border-right: 1px solid var(--card-edge); }
@@ -1028,6 +1032,11 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   text-decoration: none;
 }
 .type-link:hover { text-decoration: underline; }
+/* "Other" is drawn in the wiki's purple wherever a team colours its label,
+   and its info-box row carries a one-line note that it is not official. */
+:is(.char-card-type, .search-result-type, .recent-type, .featured-type,
+  .script-team-head, .sv-subhead).other { color: var(--other); }
+.type-note { display: block; font-size: .75rem; font-style: italic; opacity: .75; line-height: 1.3; }
 
 /* Team header links on homepage */
 .team-header-link {
@@ -1160,6 +1169,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .search-team-traveller::after { background: linear-gradient(90deg, var(--good) 50%, var(--evil) 50%); }
 .search-team-fabled::after { background: var(--fabled); }
 .search-team-loric::after { background: var(--loric); }
+.search-team-other::after { background: var(--other); }
 img.search-result-thumb.round { border-radius: 50%; object-fit: cover; }
 .search-drop .search-all, .nav-search-results .search-all {
   display: block; padding: 11px 14px;
@@ -1256,6 +1266,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sp-team-fabled { border-left-color: var(--fabled); }
 .sp-team-loric { border-left-color: var(--loric); }
+.sp-team-other { border-left-color: var(--other); }
 @media (max-width: 640px) {
   .sp-tabs { justify-content: flex-start; }
 }

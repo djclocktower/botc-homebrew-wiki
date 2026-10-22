@@ -34,7 +34,7 @@
   var TEAM_COLORS = {
     townsfolk: '#2c5b9a', outsider: '#2c8a8a', minion: '#b8852a',
     demon: '#9a2c2c', traveller: '#6a4a8a', traveler: '#6a4a8a',
-    fabled: '#b89a2a', loric: '#3a7a4a'
+    fabled: '#b89a2a', loric: '#3a7a4a', other: '#4a2548'
   };
   var OFFICIAL_COLOR = '#8a7a5c';
   var EDGE_GOOD = '#2f6fb8';
