@@ -296,7 +296,7 @@ body::after { display: none; }
 /* ─── Shared Layout ──────────────────────────────────────────── */
 .wrap {
   position: relative; z-index: 5;
-  max-width: 1440px; margin: 0 auto;
+  max-width: 1800px; margin: 0 auto;
   padding: clamp(16px,3.5vw,40px) clamp(12px,3vw,40px) 64px;
 }
 .foot {
@@ -693,7 +693,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .home-panel {
   position: relative; z-index: 5;
-  max-width: 1440px; margin: 0 auto;
+  max-width: 1800px; margin: 0 auto;
   padding: 0 clamp(12px,3vw,40px) 64px;
 }
 .home-layout > .home-panel {
@@ -1456,7 +1456,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   background-size: cover;
   border: 4px solid var(--parch-frame);
   padding: 28px 32px;
-  max-width: 1440px;
+  max-width: 1800px;
   margin: 0 auto 48px;
 }
 .creators-page-grid {
@@ -1475,7 +1475,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 /* ── Creators page: one card per person, the mark on a disc ──────── */
 .cr-intro {
-  max-width: 1440px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; align-items: center;
+  max-width: 1800px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; align-items: center;
   gap: 12px 24px; padding: 16px 20px;
   background: var(--parch); border: 2px solid var(--parch-frame);
 }
@@ -1566,7 +1566,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* Creator index tiles: symbol (or profile picture) + name + what they made.
    The name column stacks, so the wide pill needs to stop forcing one line. */
 .creators-filter {
-  max-width: 1440px; margin: 0 auto 14px; display: flex; flex-wrap: wrap;
+  max-width: 1800px; margin: 0 auto 14px; display: flex; flex-wrap: wrap;
   gap: 10px; align-items: center; justify-content: center;
 }
 .creators-filter input {
@@ -3701,7 +3701,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .theme-scale :is(main#content, .home-hero, .home-panel) { zoom: var(--pg-scale); }
 /* Page width */
 .theme-width-narrow :is(main.wrap, .home-panel) { max-width: 860px; }
-.theme-width-wide :is(main.wrap, .home-panel) { max-width: 1800px; }
+.theme-width-wide :is(main.wrap, .home-panel) { max-width: 2200px; }
 .theme-width-full :is(main.wrap, .home-panel) { max-width: none; }
 
 /* ── Theme kit: character boxes, team headings, dividers ──
