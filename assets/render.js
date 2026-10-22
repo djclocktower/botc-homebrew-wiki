@@ -736,10 +736,9 @@
       var name = String(s.name || '').trim().slice(0, 60);
       if (!name || SPECIAL_TYPES.indexOf(type) === -1) return;
       var o = { type: type, name: name };
-      if (s.value !== undefined && s.value !== null && s.value !== '') {
-        var v = Number(s.value);
-        if (!isNaN(v)) o.value = v;
-      }
+      // A number, or (the schema allows either) a short text value.
+      if (typeof s.value === 'number') { if (isFinite(s.value)) o.value = s.value; }
+      else if (typeof s.value === 'string' && s.value.trim()) o.value = s.value.trim().slice(0, 50);
       if (s.time && SPECIAL_TIMES.indexOf(String(s.time)) !== -1) o.time = String(s.time);
       if (s.global) {
         var g = String(s.global).trim().slice(0, 20);

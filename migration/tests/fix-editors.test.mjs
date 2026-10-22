@@ -170,4 +170,10 @@ test('special editor: every name and type the official schema lists is offered a
   assert.deepEqual(TYPES.filter(t => !SE.TYPES.some(x => x[0] === t)), []);
   const R = (await import('node:module')).createRequire(import.meta.url)('../../assets/render.js');
   assert.deepEqual(plain(R.sanitizeSpecial(TYPES.map(type => ({ type, name: 'good-duplicate' })))).map(s => s.type), TYPES);
+  // A value is a number or a short text, as the schema allows; an object never.
+  assert.deepEqual(plain(R.sanitizeSpecial([
+    { type: 'ability', name: 'card', value: 'You are the Demon' },
+    { type: 'ability', name: 'multiplier', value: 3 },
+    { type: 'ability', name: 'card', value: { x: 1 } }
+  ])).map(s => s.value), ['You are the Demon', 3, undefined]);
 });
