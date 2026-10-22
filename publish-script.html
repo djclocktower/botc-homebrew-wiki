@@ -323,16 +323,30 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
-    <!-- Everything else the official app reads out of the JSON -->
-    <details class="sb-details" id="sb-app-sec">
-      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. Bootlegger rules, an almanac link, creator marks and the title setting for the official app.</span></summary>
+    <!-- Bootlegger rules (_meta.bootlegger): on the page and in the app -->
+    <details class="sb-details" id="sb-boot-sec">
+      <summary>Bootlegger Rules <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. House rules for this script, shown on your script page and in the official app.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label>Bootlegger rules</label>
           <div id="sb-boot-list"></div>
           <button type="button" class="th-clear" id="sb-boot-add" style="margin-top:8px">+ Add a rule</button>
-          <p class="sub" style="margin-top:8px">One rule per line. Shown on your script page and in the app.</p>
+          <p class="sub" style="margin-top:8px">One rule per line.</p>
         </div>
+        <div class="sb-fld">
+          <label for="sb-boot-at">Where they show on your page</label>
+          <select id="sb-boot-at">
+            <option value="">Under the characters</option>
+            <option value="top">At the top, above the synopsis</option>
+            <option value="side">In the sidebar, under the information box</option>
+          </select>
+        </div>
+      </div>
+    </details>
+
+    <!-- Everything else the official app reads out of the JSON -->
+    <details class="sb-details" id="sb-app-sec">
+      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. An almanac link, creator marks and the title setting for the official app.</span></summary>
+      <div class="sb-details-body">
         <div class="sb-fld">
           <label for="sb-almanac">Almanac link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
           <input type="text" id="sb-almanac" placeholder="https://…">
@@ -621,6 +635,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('sb-boot-list').appendChild(row);
     }
     $('sb-boot-add').addEventListener('click', function(){ addBootRow(''); });
+    $('sb-boot-at').addEventListener('change', function(){
+      var m = getMeta();
+      if ($('sb-boot-at').value) m.bootleggerAt = $('sb-boot-at').value; else delete m.bootleggerAt;
+      setMeta(m);
+    });
     // ── Custom JSON: an imported file kept as the page's JSON ──
     $('sb-customjson-file').addEventListener('change', function(){
       var f = this.files && this.files[0]; if (!f) return;
@@ -876,6 +895,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           synopsis: $('sb-synopsis').value.trim(), gameplay: $('sb-gameplay').value.trim(),
           strategyGood: $('sb-strat-good').value.trim(), strategyEvil: $('sb-strat-evil').value.trim(),
           nightOrder: gatherNightOrder(), jinxEdits: getJinxEdits(), bootlegger: gatherBoot(),
+          bootleggerAt: $('sb-boot-at').value,
           customJson: $('sb-customjson').value.trim()
         };
         var all = Object.keys(bySlug).map(function(k){ return bySlug[k]; });
@@ -919,6 +939,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       }
       $('sb-boot-list').innerHTML = '';
       (m.bootlegger || []).forEach(addBootRow);
+      $('sb-boot-at').value = m.bootleggerAt === 'top' || m.bootleggerAt === 'side' ? m.bootleggerAt : '';
+      if ((m.bootlegger || []).length) $('sb-boot-sec').open = true;
       $('sb-almanac').value = m.almanac || '';
       $('sb-customjson').value = m.customJson || '';
       if (m.customJson) $('sb-json-sec').open = true;
@@ -928,7 +950,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (editorsUI) editorsUI.set(m.editors || []);
       syncEditorsBox();
       if (m.publicEdit) $('sb-open-sec').open = true;
-      if ((m.bootlegger || []).length || m.almanac || m.hideTitle || m.creatorMarks) $('sb-app-sec').open = true;
+      if (m.almanac || m.hideTitle || m.creatorMarks) $('sb-app-sec').open = true;
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = PageRender.imgSrc('', m.header); pv.style.display = 'block';
@@ -1131,6 +1153,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           nightOrder: gatherNightOrder(),
           jinxEdits: getJinxEdits(),
           bootlegger: gatherBoot(),
+          bootleggerAt: $('sb-boot-at').value,
           almanac: $('sb-almanac').value.trim(),
           customJson: $('sb-customjson').value.trim(),
           hideTitle: !!$('sb-hidetitle').checked,
@@ -1389,6 +1412,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             nightOrder: entry.nightOrder || null,
             jinxEdits: entry.jinxEdits || null,
             bootlegger: entry.bootlegger || [],
+            bootleggerAt: entry.bootleggerAt || '',
             almanac: entry.almanac || '',
             customJson: entry.customJson || '',
             hideTitle: !!entry.hideTitle,

@@ -3855,7 +3855,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .tl-order .sv-main > .sv-s-gameplay { order: var(--pg-o-gameplay, 52); }
 .tl-order .sv-main > #page-wiki-links { order: var(--pg-o-pages, 53); }
 .tl-order .sv-main > .sv-s-characters { order: var(--pg-o-characters, 54); }
-.tl-order .sv-main > #sec-bootlegger { order: var(--pg-o-bootlegger, 55); }
+.tl-order .sv-main > .sv-bootlegger { order: var(--pg-o-bootlegger, 55); }
 .tl-order .sv-main > #sec-nightorder { order: var(--pg-o-night, 56); }
 .tl-order .sv-main > .script-missing { order: 99; }
 .tl-order .coll-flow > .coll-meta-row { order: var(--pg-o-info, 51); }
@@ -4116,6 +4116,8 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 /* House rules (_meta.bootlegger) on a script page */
 .sv-boot-list { margin: 0; padding-left: 20px; }
 .sv-boot-list li { color: var(--ink); line-height: 1.5; margin-bottom: .4em; }
+.sv-boot-side { margin-bottom: 16px; }
+.sv-boot-side .sv-boot-list { font-size: .92rem; }
 .script-char-off { font-size: .78em; opacity: .6; }
 
 /* ─── Page history (/history) ──────────────────────────────────

@@ -40,7 +40,8 @@
     ['signal',    'Signal: Storyteller sees'],
     ['reveal',    'Reveal: player sees'],
     ['vote',      'Vote: how it votes'],
-    ['player',    'Player: the player']
+    ['player',    'Player: the player'],
+    ['reminder',  'Reminder: its tokens']
   ];
 
   // The names in common use, grouped by the type they belong with, purely so
@@ -48,6 +49,8 @@
   var NAMES = [
     ['bag-disabled',     'Cannot be put in the bag (Drunk, Marionette)'],
     ['bag-duplicate',    'Can appear in the bag more than once (Legion)'],
+    ['good-duplicate',   'Duplicate good characters can be in play'],
+    ['evil-duplicate',   'Duplicate evil characters can be in play'],
     ['distribute-roles', 'Hands roles out at setup (Boffin, Legion)'],
     ['grimoire',         'Shows the Storyteller the grimoire'],
     ['pointing',         'Shows who a player is pointing at'],
@@ -57,6 +60,7 @@
     ['open-eyes',        'Player keeps their eyes open at night'],
     ['card',             'Shows a card to the player'],
     ['player',           'Names a player'],
+    ['public',           'Shown to everyone'],
     ['multiplier',       'Multiplies a count']
   ];
 
@@ -114,8 +118,8 @@
         '<input class="sp-name" type="text" list="' + DL_ID + '" maxlength="60" placeholder="bag-disabled" ' +
           'aria-label="Property name" value="' + esc(s.name || '') + '">' +
         '<select class="sp-time" aria-label="When it applies">' + options(TIMES, s.time || '') + '</select>' +
-        '<input class="sp-value" type="number" step="1" placeholder="number" ' +
-          'aria-label="Number, if the property takes one" value="' +
+        '<input class="sp-value" type="text" maxlength="50" placeholder="value" ' +
+          'aria-label="Value (a number or text), if the property takes one" value="' +
           esc(s.value === 0 || s.value ? s.value : '') + '">' +
         '<button type="button" class="btn btn-ghost btn-sm sp-del" aria-label="Remove this property"><span class="ico ico-x" aria-hidden="true"></span></button>';
       row.querySelector('.sp-del').addEventListener('click', function () {
@@ -152,7 +156,7 @@
           var time = r.querySelector('.sp-time').value;
           if (time) o.time = time;
           var raw = r.querySelector('.sp-value').value.trim();
-          if (raw !== '' && !isNaN(Number(raw))) o.value = Number(raw);
+          if (raw !== '') o.value = /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
           var global = r.getAttribute('data-global');
           if (global) o.global = global;
           out.push(o);

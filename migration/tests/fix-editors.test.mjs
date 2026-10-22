@@ -158,3 +158,22 @@ test('special editor: a property\'s `global` survives the editor', async () => {
     { type: 'selection', name: 'bag-disabled' }
   ]);
 });
+
+test('special editor: every name and type the official schema lists is offered and kept', async () => {
+  // botc-release script-schema.json, items -> special -> name / type enums.
+  const NAMES = ['grimoire', 'pointing', 'ghost-votes', 'distribute-roles', 'bag-disabled', 'bag-duplicate',
+    'evil-duplicate', 'good-duplicate', 'multiplier', 'hidden', 'replace-character', 'player', 'card',
+    'open-eyes', 'public'];
+  const TYPES = ['selection', 'ability', 'signal', 'vote', 'reveal', 'player', 'reminder'];
+  const SE = (await load('assets/special-editor.js')).window.SpecialEditor;
+  assert.deepEqual(NAMES.filter(n => !SE.NAMES.some(x => x[0] === n)), []);
+  assert.deepEqual(TYPES.filter(t => !SE.TYPES.some(x => x[0] === t)), []);
+  const R = (await import('node:module')).createRequire(import.meta.url)('../../assets/render.js');
+  assert.deepEqual(plain(R.sanitizeSpecial(TYPES.map(type => ({ type, name: 'good-duplicate' })))).map(s => s.type), TYPES);
+  // A value is a number or a short text, as the schema allows; an object never.
+  assert.deepEqual(plain(R.sanitizeSpecial([
+    { type: 'ability', name: 'card', value: 'You are the Demon' },
+    { type: 'ability', name: 'multiplier', value: 3 },
+    { type: 'ability', name: 'card', value: { x: 1 } }
+  ])).map(s => s.value), ['You are the Demon', 3, undefined]);
+});

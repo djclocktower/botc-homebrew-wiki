@@ -1394,7 +1394,10 @@ in this order by `assets/theme-editor.js`:
    printed as `<style id="page-custom-css">` after the site's stylesheets.
    `pageShell({customCss})` wraps the body in `.ucss-frame > .ucss`; every
    author rule is rewritten under `.ucss` (`body`/`html`/`:root` mean the
-   page area), nesting and `&` are refused, only `url()` may fetch (https,
+   page area), printed as `:is(.ucss,#ucss)` so the scope weighs like an id:
+   a bare `.ucss h1` lost to the site's own theme rules
+   (`.theme-heading :is(…)`) and to `.sv-section p`, so most custom CSS did
+   nothing, nesting and `&` are refused, only `url()` may fetch (https,
    /assets/, data:image, #fragment; never `/api/`), image-set()/src()/…
    and backslash escapes outside strings are refused, global at-rules are
    dropped, @keyframes/@font-face names are prefixed `u-`, and `<` never
@@ -1454,6 +1457,9 @@ cannot trap a pinned one. They never take a click (`pointer-events: none`),
 the layer clips overhang (no sideways page scroll on a phone), and front ones
 stay under the top bar (z 30). The editor (theme-editor.js) uploads on pick —
 so only once the page exists — and lets them be dragged in the live sample.
+The live preview (page-preview.js) lets them be dragged too, in either view
+and with or without "Move things": a drop writes the sticker's own `x`/`y`,
+and `ThemeEditor.store()` redraws the sticker cards so the sliders follow.
 
 **Creator pages** keep their theme in `users.profile_json.theme`, saved by
 `POST /api/account/theme` (never by `/api/account/profile`, which keeps it —
@@ -1542,8 +1548,11 @@ exported none):
 - **`background`**: the page background (`theme.background`) as an absolute
   URL. One upload serves both the wiki page and the app.
 - **`hideTitle`**, **`almanac`**, **`bootlegger[]`**: set on publish-script's
-  "In the Official App" panel. Bootlegger rules also show on the script page under
-  *Bootlegger Rules*, or a reader would only find them inside the JSON.
+  "In the Official App" panel (bootlegger rules have their own "Bootlegger
+  Rules" section). Bootlegger rules also show on the script page under
+  *Bootlegger Rules*, or a reader would only find them inside the JSON;
+  `bootleggerAt` says where — under the characters (unset), `'top'` (above
+  the synopsis) or `'side'` (a sidebar card under the information box).
 - **`firstNight` / `otherNight`**: the arranged night order as ids. Only written
   when the owner arranged one. Left out, the app orders by each character's own
   number and reaches the same answer, so writing it anyway would freeze today's

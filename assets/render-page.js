@@ -206,7 +206,7 @@
     count:      ['Character count', '.coll-chars-count'],
     jinx:       ['Jinxes', '.coll-jinx'],
     night:      ['Night order', '#sec-nightorder'],
-    bootlegger: ['Bootlegger rules', '#sec-bootlegger'],
+    bootlegger: ['Bootlegger rules', '.sv-bootlegger'],
     hero:       ['Top of the page', '.home-hero'],
     avatar:     ['Picture', '.profile-avatar'],
     name:       ['Name', '.profile-hero-text h1'],
@@ -1055,15 +1055,18 @@
 
   /* Bootlegger rules: the official schema's `_meta.bootlegger`, the rules
      the app prints with the script. On the page too, or a reader would only
-     find them by opening the JSON. */
-  function renderBootlegger(rules) {
+     find them by opening the JSON. Where they sit is the owner's choice
+     (`bootleggerAt`): under the characters (nothing stored), above the
+     synopsis ('top'), or as a box in the sidebar under the information box
+     ('side'). */
+  function renderBootlegger(rules, side) {
     var list = (rules || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
     if (!list.length) return '';
-    return '<div class="sv-section sv-bootlegger" id="sec-bootlegger">' +
-      sech('sec-bootlegger', 'Bootlegger Rules') +
-      '<ul class="sv-boot-list">' + list.map(function (r) {
-        return '<li>' + tok(r) + '</li>';
-      }).join('') + '</ul></div>';
+    var items = '<ul class="sv-boot-list">' + list.map(function (r) {
+      return '<li>' + tok(r) + '</li>';
+    }).join('') + '</ul>';
+    if (side) return '<div class="card sv-bootlegger sv-boot-side" id="sec-bootlegger"><h2 class="info-h">Bootlegger Rules</h2>' + items + '</div>';
+    return '<div class="sv-section sv-bootlegger">' + sech('sec-bootlegger', 'Bootlegger Rules') + items + '</div>';
   }
 
   /* ── jinxes on one script, and the single source of truth for them ──
@@ -1580,6 +1583,8 @@
     top += ownerBar(cfg.editHref, 'Edit this script');
 
     var main = '';
+    var boot = renderBootlegger(cfg.bootlegger, cfg.bootleggerAt === 'side');
+    if (cfg.bootleggerAt === 'top') main += boot;
     if (cfg.synopsis) main += '<div class="sv-section sv-s-synopsis">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
     var gameplay = '';
     if (cfg.gameplay) gameplay += prose(cfg.gameplay);
@@ -1592,7 +1597,7 @@
       (main ? sech('sec-characters', 'Characters') : '') +
       renderRoster(cfg.entries, root, cfg.creatorMarks) +
       renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits) + '</div>';
-    main += renderBootlegger(cfg.bootlegger);
+    if (!cfg.bootleggerAt) main += boot;
     main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
     if (cfg.missing && cfg.missing.length) {
       main += '<p class="script-missing"><span class="ico ico-warning" aria-hidden="true"></span> ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
@@ -1603,6 +1608,7 @@
       root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, imageW: cfg.imageW, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
+    if (cfg.bootleggerAt === 'side') aside += boot;
     aside += renderCredits(cfg.creditsEntries || cfg.entries, root);
     aside += cfg.boxesHTML || '';
     aside += '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
@@ -1702,7 +1708,7 @@
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
       jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
-      jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger, creatorMarks: !!sc.creatorMarks,
+      jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger, bootleggerAt: sc.bootleggerAt, creatorMarks: !!sc.creatorMarks,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: curataRow(sc)
     });

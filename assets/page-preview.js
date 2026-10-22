@@ -24,6 +24,12 @@
    page prints, so the preview cannot disagree with the page. Moves apply
    on wide screens only; the phone view shows the page as a phone gets it.
 
+   Stickers can be dragged at any time, in either view: they are placed in
+   % of the page (not by a desktop-only offset), so a drop stores the
+   sticker's own x/y in theme.stickers, exactly as the theme editor's
+   sample does. On the page they take no pointer (pointer-events: none);
+   the frame turns that back on for the ones it tags.
+
    Browser only. */
 (function (global) {
   'use strict';
@@ -49,7 +55,10 @@
     'html.pp-arrange [data-pp-mv].pp-picked{outline:3px solid #ffd54a;outline-offset:-3px}' +
     'html.pp-arrange [data-pp-mv].pp-dragging{cursor:grabbing;opacity:.92}' +
     'html.pp-arrange a{cursor:grab}' +
-    'html.pp-arrange img{-webkit-user-drag:none}';
+    'html.pp-arrange img{-webkit-user-drag:none}' +
+    '.pg-sticker[data-pp-st]{pointer-events:auto;cursor:grab;touch-action:none}' +
+    '.pg-sticker[data-pp-st]:hover{outline:1px dashed #f5c542;outline-offset:2px}' +
+    '.pg-sticker.pp-st-drag{cursor:grabbing;outline:2px dashed #ffd54a;outline-offset:2px}';
 
   function frameDoc(f) { try { return f.contentDocument; } catch (e) { return null; } }
 
@@ -229,11 +238,16 @@
       if (!doc || !doc.documentElement) return;
       wireFrameDoc(doc);
       doc.documentElement.classList.toggle('pp-arrange', arranging && device === 'desktop');
+      // In the sanitized list's order, which is the order the editor keeps.
+      Array.prototype.forEach.call(doc.querySelectorAll('.pg-stickers > .pg-sticker'), function (el, n) {
+        el.setAttribute('data-pp-st', n);
+        el.removeAttribute('loading');
+      });
+      bindDrag(doc);
       Array.prototype.forEach.call(doc.querySelectorAll('[data-pp-mv]'), function (el) { el.removeAttribute('data-pp-mv'); });
       if (!arranging) return;
       keysFor(doc).forEach(function (x) { x[0].setAttribute('data-pp-mv', x[1]); });
       if (picked) markPicked(picked);
-      bindDrag(doc);
     }
     function labelFor(key) {
       var P = PR();
@@ -270,12 +284,35 @@
       paintNow();
       pick(key);
     }
+    function storeSticker(i, x, y) {
+      var t = theme(), list = Array.isArray(t.stickers) ? t.stickers.slice() : [];
+      if (!list[i]) return;
+      list[i] = Object.assign({}, list[i], { x: x, y: y });
+      if (opts.setTheme) opts.setTheme(Object.assign({}, t, { stickers: list }));
+      paintNow();
+    }
     function bindDrag(doc) {
       if (doc.__ppDrag) return;
       doc.__ppDrag = true;
-      var drag = null;
+      var drag = null, sdrag = null;
       doc.addEventListener('pointerdown', function (e) {
-        if (!arranging || device !== 'desktop' || e.button > 0) return;
+        if (e.button > 0) return;
+        var stk = e.target.closest && e.target.closest('[data-pp-st]');
+        if (stk) {
+          e.preventDefault();
+          e.stopPropagation();
+          var win = doc.defaultView;
+          // A pinned sticker is placed against the screen, the rest
+          // against their layer, which covers the page.
+          var r = stk.classList.contains('pgs-fixed')
+            ? { left: 0, top: 0, width: win.innerWidth, height: win.innerHeight }
+            : stk.parentNode.getBoundingClientRect();
+          sdrag = { el: stk, i: +stk.getAttribute('data-pp-st'), r: r, id: e.pointerId };
+          try { stk.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+          stk.classList.add('pp-st-drag');
+          return;
+        }
+        if (!arranging || device !== 'desktop') return;
         var el = e.target.closest && e.target.closest('[data-pp-mv]');
         if (!el) return;
         e.preventDefault();
@@ -286,6 +323,15 @@
         try { el.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
       }, true);
       doc.addEventListener('pointermove', function (e) {
+        if (sdrag && e.pointerId === sdrag.id) {
+          var r = sdrag.r;
+          if (!r.width || !r.height) return;
+          sdrag.x = Math.max(-20, Math.min(120, Math.round((e.clientX - r.left) / r.width * 100)));
+          sdrag.y = Math.max(-20, Math.min(120, Math.round((e.clientY - r.top) / r.height * 100)));
+          sdrag.el.style.left = sdrag.x + '%';
+          sdrag.el.style.top = sdrag.y + '%';
+          return;
+        }
         if (!drag || e.pointerId !== drag.id) return;
         var dx = Math.round(e.clientX - drag.sx), dy = Math.round(e.clientY - drag.sy);
         if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
@@ -297,6 +343,12 @@
         });
       });
       function end(e) {
+        if (sdrag && e.pointerId === sdrag.id) {
+          var s = sdrag; sdrag = null;
+          s.el.classList.remove('pp-st-drag');
+          if (s.x != null) storeSticker(s.i, s.x, s.y);
+          return;
+        }
         if (!drag || e.pointerId !== drag.id) return;
         var d = drag; drag = null;
         Array.prototype.forEach.call(d.els, function (el) { el.classList.remove('pp-dragging'); el.style.translate = ''; });
