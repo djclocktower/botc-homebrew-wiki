@@ -50,6 +50,18 @@
     for (var i = 0; i < TEAMS.length; i++) if (TEAMS[i][0] === c.team) return c.team;
     return 'other';
   }
+  /* An Other character may name its own type ("Spirit"). Its card says so,
+     and so does its team's heading and count, when every Other character on
+     the page shares the one name; a mix keeps the plain "Other". */
+  function typeNameOf(c) {
+    return (c && c.team === 'other' && String(c.typeName || '').trim()) || '';
+  }
+  function groupLabel(key, label, grp) {
+    if (key !== 'other' || !grp.length) return label;
+    var n = typeNameOf(grp[0]);
+    for (var i = 1; n && i < grp.length; i++) if (typeNameOf(grp[i]) !== n) n = '';
+    return n || label;
+  }
   var GOOD = { townsfolk: 1, outsider: 1 };
   // Blue for good, the wiki's purple for Other, the stylesheet's red else.
   function teamCls(t) { return GOOD[t] ? ' good' : t === 'other' ? ' other' : ''; }
@@ -900,7 +912,7 @@
       var grp = entries.filter(function (c) { return teamOf(c) === t[0]; });
       if (!grp.length) return;
       html += '<div class="script-team-group" data-team="' + t[0] + '"><h3 class="script-team-head' + teamCls(t[0]) + '">' +
-        t[1] + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
+        esc(groupLabel(t[0], t[1], grp)) + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
@@ -943,8 +955,8 @@
     }
     orderMap = orderMap || {};
     function cardHTML(c) {
-      var label = '';
-      for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
+      var label = typeNameOf(c);
+      if (!label) for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
       if (!label) label = c.team || '';
       // data-partial / data-curata let card-filters.js offer the Show
       // Partial and Curata-only chips. `classification` is stamped by the
@@ -1008,7 +1020,7 @@
     var html = '';
     TEAMS.forEach(function (t) {
       var grp = entries.filter(function (c) { return teamOf(c) === t[0]; });
-      if (grp.length) html += section(t[0], t[1], grp);
+      if (grp.length) html += section(t[0], groupLabel(t[0], t[1], grp), grp);
     });
     return html;
   }
@@ -1269,8 +1281,8 @@
   function teamCounts(entries) {
     var out = [];
     TEAMS.forEach(function (t) {
-      var n = entries.filter(function (c) { return c.team === t[0]; }).length;
-      if (n) out.push([t[1], n]);
+      var grp = entries.filter(function (c) { return c.team === t[0]; });
+      if (grp.length) out.push([esc(groupLabel(t[0], t[1], grp)), grp.length]);
     });
     return out;
   }

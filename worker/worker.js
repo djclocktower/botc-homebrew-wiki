@@ -6072,8 +6072,7 @@ async function bumpContentVersion(env, entityType) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink',
-  'typeName'
+  'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink'
 ]);
 
 // ---- the GRID feed: only what a card needs ----

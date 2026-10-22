@@ -34,4 +34,15 @@ test('an Other character keeps its type name, shows it, and exports as Loric', a
   assert.match(html, /type-note/);
   assert.equal(Render.buildSchema(d).team, 'loric');
   assert.equal(Render.buildSchema({ name: 'Imp', team: 'demon', ability: 'x' }).team, 'demon');
+
+  // Collection and script pages name the type too, when the Others agree.
+  const PageRender = require('../../assets/render-page.js');
+  PageRender.init(Render);
+  const spirits = [{ slug: 'a', name: 'A', team: 'other', typeName: 'Spirit' },
+                   { slug: 'b', name: 'B', team: 'other', typeName: 'Spirit' }];
+  const cards = PageRender.renderRosterCards(spirits, '');
+  assert.match(cards, /char-card-type other">Spirit</);
+  assert.match(cards, />Spirit<\/a> <span class="coll-team-count">\(2\)/);
+  const mixed = PageRender.renderRosterCards(spirits.concat({ slug: 'c', name: 'C', team: 'other' }), '');
+  assert.match(mixed, />Other<\/a> <span class="coll-team-count">\(3\)/);
 });
