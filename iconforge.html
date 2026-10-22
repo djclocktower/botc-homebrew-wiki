@@ -47,6 +47,12 @@
   align-items: start;
 }
 .if-stage-col { position: sticky; top: 14px; }
+/* The icon is a square as wide as the stage, so a stage wider than the
+   screen is tall pushes its bottom off screen. 938px is the widest it was
+   when pages stopped at 1440px; past that it only grows while it fits. */
+@media (min-width: 1001px) {
+  .if-stage-col { width: 100%; max-width: max(938px, calc(100vh - 80px)); justify-self: center; }
+}
 @media (max-width: 1000px) {
   .if-layout { grid-template-columns: minmax(0, 1fr); }
   /* On a phone the icon comes first — it is the thing being judged. */
