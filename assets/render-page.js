@@ -1012,7 +1012,9 @@
     function section(key, label, grp) {
       return '<section class="type-section coll-team" data-team="' + esc(key) + '">' +
         '<h2 class="type-header' + teamCls(key) + '">' +
-        '<a class="team-header-link" href="' + esc(root) + 'team?t=' + encodeURIComponent(key) + '">' + esc(label) + '</a>' +
+        // A renamed Other heading ("Spirit") is not the Other team page.
+        (key === 'other' && label !== 'Other' ? esc(label)
+          : '<a class="team-header-link" href="' + esc(root) + 'team?t=' + encodeURIComponent(key) + '">' + esc(label) + '</a>') +
         ' <span class="coll-team-count">(' + grp.length + ')</span></h2>' +
         '<div class="type-rule"></div>' +
         '<div class="char-grid">' + grp.map(cardHTML).join('') + '</div></section>';

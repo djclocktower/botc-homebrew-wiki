@@ -1312,7 +1312,9 @@
         mark + '</dd>'
       : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a>' +
+    var info = '<dl class="info"><dt>Type:</dt><dd>' +
+      // A renamed Other type is its own thing, not the Other team page.
+      (typeNameOf(d) ? esc(label) : '<a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a>') +
       (team === 'other' ? '<span class="type-note">' + OTHER_NOTE + '</span>' : '') + '</dd>' +
       (splitCreators(d.creator).length
         ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +

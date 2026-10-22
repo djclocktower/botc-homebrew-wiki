@@ -30,7 +30,7 @@ test('an Other character keeps its type name, shows it, and exports as Loric', a
 
   const d = { name: 'Wolf', team: 'other', typeName: 'Lycan', ability: 'Howl.' };
   const html = Render.renderCharacter(d, '', '');
-  assert.match(html, />Lycan</);
+  assert.match(html, /<dd>Lycan<span class="type-note">/);
   assert.match(html, /type-note/);
   assert.equal(Render.buildSchema(d).team, 'loric');
   assert.equal(Render.buildSchema({ name: 'Imp', team: 'demon', ability: 'x' }).team, 'demon');
@@ -42,7 +42,7 @@ test('an Other character keeps its type name, shows it, and exports as Loric', a
                    { slug: 'b', name: 'B', team: 'other', typeName: 'Spirit' }];
   const cards = PageRender.renderRosterCards(spirits, '');
   assert.match(cards, /char-card-type other">Spirit</);
-  assert.match(cards, />Spirit<\/a> <span class="coll-team-count">\(2\)/);
+  assert.match(cards, /"type-header other">Spirit <span class="coll-team-count">\(2\)/);
   const mixed = PageRender.renderRosterCards(spirits.concat({ slug: 'c', name: 'C', team: 'other' }), '');
   assert.match(mixed, />Other<\/a> <span class="coll-team-count">\(3\)/);
 });
