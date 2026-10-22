@@ -1855,6 +1855,7 @@
     }
 
     function writeCharacter(d, slug, saveStatus){
+      var posted = null;   // the row as sent, adopted as the new baseline once saved
 
       function uploadArt(){
         var p = Promise.resolve();
@@ -1959,6 +1960,7 @@
           delete entry.token;
           delete entry.tokenImage;
         }
+        posted = entry;
         // Write to D1 via the Worker (instant; requires login + ownership)
         return fetch('/api/character', {
           method: 'POST',
@@ -2003,6 +2005,15 @@
         // The art slot is named after the identity, which did not move, so
         // there are no paths to retarget here any more.
         if (originalEntry) originalEntry.name = d.name;
+        // What was just uploaded is on the page now. Without this every later
+        // save from the same tab uploaded every picture again (four images,
+        // plus a thumbnail and display copy of each), unchanged. The row as
+        // posted becomes the baseline, so the next save still carries the
+        // art paths this one wrote.
+        if (posted) { delete posted.baseUpdatedAt; originalEntry = posted; }
+        artChanged = false;
+        artAltDataURL = artAlt2DataURL = tokenDataURL = null;
+        artAltRemoved = artAlt2Removed = tokenRemoved = false;
         if (window.showSaveNotice) window.showSaveNotice(saved, originalSlug);
         // The Worker resolves the editor list again and drops names no account
         // answers to. Say which, or the owner walks away believing they shared
