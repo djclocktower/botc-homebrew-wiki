@@ -505,7 +505,8 @@
   var GOOD = { townsfolk: 1, outsider: 1 };
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric',
+    other: 'Other'
   };
 
   /* ── Site-wide announcement banner (set on the admin dashboard) ── */
@@ -953,7 +954,7 @@
       var d = item.data, pic = '', name = mark(item.name), sub = '', subClass = '';
       switch (item.type) {
         case 'character':
-          subClass = GOOD[d.team] ? ' good' : '';
+          subClass = GOOD[d.team] ? ' good' : d.team === 'other' ? ' other' : '';
           return '<a class="search-result" href="' + esc(item.href) + '" role="option">' +
             '<span class="card-side">' + thumbHTML(charThumb(d)) +
             (window.CardActions ? window.CardActions.slotHTML(d) : '') + '</span>' +

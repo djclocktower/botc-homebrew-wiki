@@ -3069,8 +3069,8 @@ function publicError(e, fallback) {
   return fallback;
 }
 
-// The seven teams, in the wiki's order (see "Frontend conventions").
-const CHARACTER_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+// The eight teams, in the wiki's order (see "Frontend conventions").
+const CHARACTER_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric', 'other'];
 
 // Keys inside a page's `data` that only its owner (and admins) may read.
 const PRIVATE_DATA_KEYS = new Set(['editors', '_draftNote']);
@@ -3123,7 +3123,7 @@ function sanitizeJinxes(jinxes) {
 const RELATED_MAX = 12;
 const RELATED_TYPES = new Set(['char', 'official', 'page', 'script', 'collection', 'url']);
 const RELATED_TEAMS = new Set(['townsfolk', 'outsider', 'minion', 'demon',
-  'traveller', 'traveler', 'fabled', 'loric']);
+  'traveller', 'traveler', 'fabled', 'loric', 'other']);
 function sanitizeRelated(list) {
   if (!Array.isArray(list)) return [];
   return list.slice(0, RELATED_MAX).map(r => {
@@ -14221,6 +14221,10 @@ const app = {
            so an untouched page grows no key. */
         c.artScale = Render.artScaleValue(c.artScale);
         if (!c.artScale) delete c.artScale;
+        // The Other type's page-only display name ("Lycan"). Only an Other
+        // character has one; nothing outside its own /c/ page reads it.
+        c.typeName = c.team === 'other' ? String(c.typeName || '').trim().slice(0, 40) : '';
+        if (!c.typeName) delete c.typeName;
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.

@@ -69,7 +69,7 @@
       return (SAO_PREFIXES[y].length - SAO_PREFIXES[x].length) || (x - y);
     });
 
-  var TEAM_ORDER = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+  var TEAM_ORDER = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric', 'other'];
 
   function saoRank(ability) {
     var a = (ability || '').trim();

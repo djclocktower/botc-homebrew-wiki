@@ -91,7 +91,7 @@
   var officialById = {};   // norm(id)/norm(name) -> official role object (from assets/roles.json)
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsiders'], ['minion', 'Minions'],
-    ['demon', 'Demons'], ['traveller', 'Travellers'], ['fabled', 'Fabled'], ['loric', 'Loric']
+    ['demon', 'Demons'], ['traveller', 'Travellers'], ['fabled', 'Fabled'], ['loric', 'Loric'], ['other', 'Other']
   ];
   var opts = {
     paper: 'A4', format: 'png', layout: 'grid',
@@ -499,10 +499,10 @@
     if (!chars.length) { box.innerHTML = '<p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>'; return; }
     var html = '';
     var known = TEAMS.map(function (t) { return t[0]; });
-    var groups = TEAMS.concat([[null, 'Other']]);
-    groups.forEach(function (t) {
+    TEAMS.forEach(function (t) {
       var key = t[0], label = t[1];
-      var group = chars.filter(function (c) { return key ? c.team === key : known.indexOf(c.team) < 0; });
+      // Other also holds any team this list does not know.
+      var group = chars.filter(function (c) { return c.team === key || (key === 'other' && known.indexOf(c.team) < 0); });
       if (!group.length) return;
       html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
       group.forEach(function (c) {

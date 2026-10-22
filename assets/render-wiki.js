@@ -45,7 +45,7 @@
      {{red|Imp}}                   the name in the evil team's red
                                    ({{good|…}} and {{evil|…}} are the same two)
      {{townsfolk|…}} {{outsider|…}} {{minion|…}} {{demon|…}}
-     {{traveller|…}} {{fabled|…}} {{loric|…}}
+     {{traveller|…}} {{fabled|…}} {{loric|…}} {{other|…}}
                                    the name in that team's own colour — one
                                    mark per team. Traveller is the half-blue,
                                    half-red split the Related ribbon uses
@@ -282,9 +282,9 @@
     townsfolk: 'wiki-townsfolk', outsider: 'wiki-outsider',
     minion: 'wiki-minion', demon: 'wiki-demon',
     traveller: 'wiki-traveller', traveler: 'wiki-traveller',
-    fabled: 'wiki-fabled', loric: 'wiki-loric'
+    fabled: 'wiki-fabled', loric: 'wiki-loric', other: 'wiki-other'
   };
-  var COLOR_RE = /\{\{(red|blue|good|evil|townsfolk|outsider|minion|demon|traveller|traveler|fabled|loric)\|([^{}\n]{1,300})\}\}/gi;
+  var COLOR_RE = /\{\{(red|blue|good|evil|townsfolk|outsider|minion|demon|traveller|traveler|fabled|loric|other)\|([^{}\n]{1,300})\}\}/gi;
 
   /* ── {{i|text}} — italics ──
      A brace mark rather than *asterisks*, because links mode exists exactly

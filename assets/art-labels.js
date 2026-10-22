@@ -42,6 +42,12 @@
   function paint() {
     var teamEl = document.getElementById('team');
     var trav = isTraveller(teamEl && teamEl.value);
+    /* Anything marked data-team-only="other" (the Other type's note and its
+       type-name field) shows only while that team is picked — hidden, never
+       cleared, for the same reason as slot three below. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-team-only]'), function (el) {
+      el.style.display = (teamEl && teamEl.value) === el.getAttribute('data-team-only') ? '' : 'none';
+    });
     Object.keys(TRAVELLER).forEach(function (key) {
       var fld = document.querySelector('.fld[data-art-slot="' + key + '"]');
       if (!fld) return;

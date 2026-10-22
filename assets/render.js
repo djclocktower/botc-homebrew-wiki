@@ -26,8 +26,18 @@
   }
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric',
+    other: 'Other'
   };
+  /* "Other" is the wiki's own eighth type, for characters of a homebrew type
+     the official game does not have. It is drawn in the wiki's purple, takes
+     a page-only display name (`typeName`, "Lycan"), and leaves the wiki as
+     Loric, because the official app's script JSON knows only its seven. */
+  var OTHER_EXPORT_TEAM = 'loric';
+  function typeNameOf(d) {
+    return (d && d.team === 'other' && String(d.typeName || '').trim()) || '';
+  }
+  var OTHER_NOTE = 'Not an official character type. Exported as Loric in script JSON.';
   /* The same seven teams as one solid colour each, mirroring the :root vars
      in styles.css that the {{townsfolk|…}} family of marks paints with
      (--good, --outsider, --minion, --evil, --fabled, --loric). It exists for
@@ -39,7 +49,8 @@
      the answer this file already gives when the split cannot be drawn. */
   var TEAM_COLOR = {
     townsfolk: '#2C7BD0', outsider: '#1a6a80', minion: '#b5441a',
-    demon: '#9A0D12', traveller: '#2C7BD0', fabled: '#8f6d1a', loric: '#2f6b3f'
+    demon: '#9A0D12', traveller: '#2C7BD0', fabled: '#8f6d1a', loric: '#2f6b3f',
+    other: '#4a2548'
   };
 
   /* ── a character's icons ────────────────────────────────────────────
@@ -608,7 +619,7 @@
      never changes. */
   var REL_RIBBONS = { townsfolk: 'good', outsider: 'good', minion: 'evil',
                       demon: 'evil', traveller: 'traveller', traveler: 'traveller',
-                      fabled: 'fabled', loric: 'loric' };
+                      fabled: 'fabled', loric: 'loric', other: 'other' };
   function resolveRelatedTarget(r, root) {
     root = root || '';
     var nm = String(r.name || '').trim();
@@ -760,7 +771,7 @@
     var o = {
       id: d.jsonId || slugId(d.name),
       name: d.name || '',
-      team: d.team || 'townsfolk',
+      team: d.team === 'other' ? OTHER_EXPORT_TEAM : (d.team || 'townsfolk'),
       ability: d.ability || ''
     };
     /* image as an array (required by the official script tool), in the
@@ -1228,7 +1239,7 @@
 
   function characterBody(d, artSrc, root, opts) {
     var team = d.team || 'townsfolk';
-    var label = TEAM_LABEL[team] || team;
+    var label = typeNameOf(d) || TEAM_LABEL[team] || team;
     var bullets  = (d.summaryBullets || []).filter(function (x) { return x && x.trim(); });
     var paras    = (d.howToRun || []).filter(function (x) { return x && x.trim(); });
     var examples = (d.examples || []).filter(function (x) { return x && x.trim(); });
@@ -1301,7 +1312,10 @@
         mark + '</dd>'
       : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
+    var info = '<dl class="info"><dt>Type:</dt><dd>' +
+      // A renamed Other type is its own thing, not the Other team page.
+      (typeNameOf(d) ? esc(label) : '<a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a>') +
+      (team === 'other' ? '<span class="type-note">' + OTHER_NOTE + '</span>' : '') + '</dd>' +
       (splitCreators(d.creator).length
         ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +
           splitCreators(d.creator).map(function (n) {
@@ -1521,6 +1535,7 @@
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
     window.TEAM_COLOR = TEAM_COLOR;
+    window.OTHER_NOTE = OTHER_NOTE;
     window.artVersions = artVersions;
     window.artVersion = artVersion;
     window.mountEmblemGallery = mountEmblemGallery;
@@ -1560,6 +1575,7 @@
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
+      OTHER_NOTE: OTHER_NOTE, typeNameOf: typeNameOf,
       artVersions: artVersions, artVersion: artVersion, artDisplayPath: artDisplayPath,
       officialIconSmall: officialIconSmall,
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,

@@ -42,9 +42,29 @@
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
     ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'],
-    ['loric', 'Loric']
+    ['loric', 'Loric'], ['other', 'Other']
   ];
+  // A team this list does not know (a typo in an old import) is drawn with
+  // Other rather than vanishing from the roster.
+  function teamOf(c) {
+    for (var i = 0; i < TEAMS.length; i++) if (TEAMS[i][0] === c.team) return c.team;
+    return 'other';
+  }
+  /* An Other character may name its own type ("Spirit"). Its card says so,
+     and so does its team's heading and count, when every Other character on
+     the page shares the one name; a mix keeps the plain "Other". */
+  function typeNameOf(c) {
+    return (c && c.team === 'other' && String(c.typeName || '').trim()) || '';
+  }
+  function groupLabel(key, label, grp) {
+    if (key !== 'other' || !grp.length) return label;
+    var n = typeNameOf(grp[0]);
+    for (var i = 1; n && i < grp.length; i++) if (typeNameOf(grp[i]) !== n) n = '';
+    return n || label;
+  }
   var GOOD = { townsfolk: 1, outsider: 1 };
+  // Blue for good, the wiki's purple for Other, the stylesheet's red else.
+  function teamCls(t) { return GOOD[t] ? ' good' : t === 'other' ? ' other' : ''; }
   var DIFFICULTY_LABEL = {
     beginner: 'Beginner', intermediate: 'Intermediate', veteran: 'Veteran'
   };
@@ -889,10 +909,10 @@
     }
     var html = '';
     TEAMS.forEach(function (t) {
-      var grp = entries.filter(function (c) { return c.team === t[0]; });
+      var grp = entries.filter(function (c) { return teamOf(c) === t[0]; });
       if (!grp.length) return;
-      html += '<div class="script-team-group" data-team="' + t[0] + '"><h3 class="script-team-head' + (GOOD[t[0]] ? ' good' : '') + '">' +
-        t[1] + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
+      html += '<div class="script-team-group" data-team="' + t[0] + '"><h3 class="script-team-head' + teamCls(t[0]) + '">' +
+        esc(groupLabel(t[0], t[1], grp)) + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
@@ -904,22 +924,6 @@
       });
       html += '</div></div>';
     });
-    // Characters with unrecognized teams still get listed rather than vanishing
-    var other = entries.filter(function (c) {
-      return !TEAMS.some(function (t) { return t[0] === c.team; });
-    });
-    if (other.length) {
-      html += '<div class="script-team-group" data-team="other"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
-      other.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
-          '<span class="card-side">' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), '') + '>' +
-          quickSlot(c) + '</span>' +
-          '<div class="script-char-text"><span class="script-char-name">' + rosterName(c, marks) + offMark(c) + '</span>' +
-          '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
-      });
-      html += '</div></div>';
-    }
     return html;
   }
 
@@ -951,8 +955,8 @@
     }
     orderMap = orderMap || {};
     function cardHTML(c) {
-      var label = '';
-      for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
+      var label = typeNameOf(c);
+      if (!label) for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
       if (!label) label = c.team || '';
       // data-partial / data-curata let card-filters.js offer the Show
       // Partial and Curata-only chips. `classification` is stamped by the
@@ -1000,28 +1004,26 @@
         quickSlot(c) + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
-        '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
+        '<div class="char-card-type' + teamCls(teamOf(c)) + '">' + esc(label) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character &rarr;</span>' +
         '</div></a>';
     }
     function section(key, label, grp) {
       return '<section class="type-section coll-team" data-team="' + esc(key) + '">' +
-        '<h2 class="type-header' + (GOOD[key] ? ' good' : '') + '">' +
-        '<a class="team-header-link" href="' + esc(root) + 'team?t=' + encodeURIComponent(key) + '">' + esc(label) + '</a>' +
+        '<h2 class="type-header' + teamCls(key) + '">' +
+        // A renamed Other heading ("Spirit") is not the Other team page.
+        (key === 'other' && label !== 'Other' ? esc(label)
+          : '<a class="team-header-link" href="' + esc(root) + 'team?t=' + encodeURIComponent(key) + '">' + esc(label) + '</a>') +
         ' <span class="coll-team-count">(' + grp.length + ')</span></h2>' +
         '<div class="type-rule"></div>' +
         '<div class="char-grid">' + grp.map(cardHTML).join('') + '</div></section>';
     }
     var html = '';
     TEAMS.forEach(function (t) {
-      var grp = entries.filter(function (c) { return c.team === t[0]; });
-      if (grp.length) html += section(t[0], t[1], grp);
+      var grp = entries.filter(function (c) { return teamOf(c) === t[0]; });
+      if (grp.length) html += section(t[0], groupLabel(t[0], t[1], grp), grp);
     });
-    var other = entries.filter(function (c) {
-      return !TEAMS.some(function (t) { return t[0] === c.team; });
-    });
-    if (other.length) html += section('other', 'Other', other);
     return html;
   }
 
@@ -1281,8 +1283,8 @@
   function teamCounts(entries) {
     var out = [];
     TEAMS.forEach(function (t) {
-      var n = entries.filter(function (c) { return c.team === t[0]; }).length;
-      if (n) out.push([t[1], n]);
+      var grp = entries.filter(function (c) { return c.team === t[0]; });
+      if (grp.length) out.push([esc(groupLabel(t[0], t[1], grp)), grp.length]);
     });
     return out;
   }
