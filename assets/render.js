@@ -725,7 +725,7 @@
      What is enforced is the shape — a known type, a plain string name, and
      numbers/strings in the optional slots — so nothing can smuggle an object
      into somebody's exported JSON. */
-  var SPECIAL_TYPES = ['selection', 'ability', 'signal', 'vote', 'reveal', 'player'];
+  var SPECIAL_TYPES = ['selection', 'ability', 'signal', 'vote', 'reveal', 'player', 'reminder'];
   var SPECIAL_TIMES = ['pregame', 'day', 'night', 'firstNight', 'firstDay', 'otherNight', 'otherDay'];
   function sanitizeSpecial(list) {
     if (!Array.isArray(list)) return [];
