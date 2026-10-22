@@ -687,8 +687,8 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   grid-template-columns: minmax(0, 1fr) 320px;
   column-gap: clamp(16px, 2vw, 28px);
   width: 100%;
-  max-width: 100%;
-  margin: 0;
+  max-width: 1800px;
+  margin: 0 auto;
   padding: 0 clamp(16px,3vw,48px) 64px;
 }
 .home-panel {
@@ -699,8 +699,8 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .home-layout > .home-panel {
   grid-column: 1;
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 0;
   min-width: 0;
 }
@@ -2074,6 +2074,10 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
 }
+/* Eight cards: rows of 4 or 8, never a 6+2 or 7+1 with one left hanging. */
+.browse-section { container-type: inline-size; }
+@container (min-width: 682px) { .browse-paths { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 1250px) { .browse-paths { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .browse-card {
   display: flex; flex-direction: column; align-items: center; text-align: center;
   background: var(--parch);
