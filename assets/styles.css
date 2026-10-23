@@ -4071,7 +4071,8 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 /* The settings wheel and what it opens: which sections the picture shows,
    its shape and its size. */
-.snap-gear { font-size: 1.25rem; opacity: .7; }
+.snap-x svg { display: block; }
+.snap-gear { opacity: .7; }
 .snap-gear:hover, .snap-gear.on { opacity: 1; }
 .snap-settings {
   margin: 8px 0 4px; padding: 10px 12px;

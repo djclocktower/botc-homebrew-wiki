@@ -12,6 +12,13 @@ up as a **pull request**; the owner reviews it and merges it himself. This
 holds for small changes too, and for follow-up fixes to an open PR (push
 those to the PR's branch, not to main).
 
+**Never use emojis, ever.** Not in the site's UI, page text, buttons, alerts,
+code, comments, commit messages or PR descriptions. A button that needs a
+symbol gets a drawn inline SVG in `currentColor` (see the Snapshot camera in
+render.js, or the gear and close buttons in char-snapshot.js); a phone paints
+an emoji, or a dingbat like ⚙, as a coloured picture that clashes with the
+wiki's look.
+
 ## Architecture in one paragraph
 
 A **Cloudflare Worker** (`worker/worker.js`, config in `wrangler.toml`) serves

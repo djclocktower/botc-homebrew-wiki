@@ -520,7 +520,7 @@
   function relatedBlock(ctx, d, assets, width) {
     var rows = assets.related;
     if (!rows.length) return null;
-    var edge = 6, ico = 44, pad = 10, padL = 17;
+    var edge = 6, ico = 52, pad = 10, padL = 17;
     var parts = [heading(ctx, 'Related', width, { after: 12 })];
     rows.forEach(function (r, i) {
       if (i) parts.push(spacer(9));
@@ -528,7 +528,7 @@
       var textX = padL + (img ? ico + pad : 0);
       var textW = width - textX - 12;
       var color = r.t.ribbon === 'good' ? C.goodName : r.t.ribbon === 'evil' ? C.evil : C.maroon;
-      var name = layout(ctx, textRuns(r.t.name + (r.t.external ? ' ↗' : '')), textW,
+      var name = layout(ctx, textRuns(r.t.name), textW,
         { size: 17, family: FAM.name, weight: 600, lh: 1.2, color: color });
       var note = r.note ? layout(ctx, marked(r.note, 'full'), textW,
         { size: 16, family: '"EB Garamond",Georgia,serif', italic: true, lh: 1.28, color: C.ink }) : null;
@@ -675,7 +675,9 @@
     var parts = [];
 
     if (assets.art) {
-      var aw = Math.min(inner * 0.86, 286);
+      // The page's emblem box (styles.css .emblem-stack), so the icon is not
+      // smaller in the picture than on the page.
+      var aw = Math.min(inner, 334);
       var ah = aw;
       parts.push(blk(ah + 10, function (c, x, y) {
         c.save();
@@ -791,7 +793,7 @@
   function jinxCard(ctx, jinxes, width, assets) {
     if (!jinxes.length) return null;
     var inner = cardInnerWidth(width);
-    var ico = 48, gap = 12, rowPad = 9;
+    var ico = 56, gap = 12, rowPad = 9;
     var parts = [heading(ctx, 'Jinxes', inner, { after: 12 })];
     jinxes.forEach(function (j, i) {
       if (i) parts.push(hairline(inner, { above: rowPad, below: rowPad, color: C.hair }));
@@ -1158,12 +1160,14 @@
     var panel = el('div', 'snap-panel');
     var head = el('div', 'snap-head');
     head.appendChild(el('h2', 'snap-title', 'Almanac snapshot'));
-    // U+FE0E asks for the plain glyph, or a phone draws a coloured emoji.
-    var gear = button('snap-x snap-gear', '⚙︎');
+    // Drawn icons, never emoji: a phone paints those as coloured pictures.
+    var gear = button('snap-x snap-gear');
+    gear.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
     gear.setAttribute('aria-label', 'Picture settings');
     gear.setAttribute('aria-expanded', 'false');
     gear.title = 'Picture settings';
-    var closeX = button('snap-x', '✕');
+    var closeX = button('snap-x');
+    closeX.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
     closeX.setAttribute('aria-label', 'Close');
     head.appendChild(gear);
     head.appendChild(closeX);
