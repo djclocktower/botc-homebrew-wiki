@@ -2785,6 +2785,11 @@ caps and whitelists the fields on save.
   base game's own rules would drown what this wiki made. Served in
   `/api/jinxes` as `baseEdges`, drawn hidden so switching them on does not
   move the layout.
+  **On a script page they are always on**: `buildOfficialRoles(roles, night,
+  officialJinxes)` hangs each pair on its `a` side's roster entry as a jinx
+  naming `off-{b}`, so a script holding both ends lists it through
+  `findScriptJinxes` (and its jinx editor can switch it off). The Worker,
+  script.html and publish-script.html all pass the file in.
 ### Warning about a jinx before it is written
 
 The set rule (gotcha 8) settles a name clash whenever there is anything to
@@ -4192,7 +4197,9 @@ seeded with whole collections whose characters all arrived unowned.
   collection page, and as its team's heading and count on `/s/` and
   `/collection/` when every Other character there shares it (a mix reads
   "Other"; `groupLabel()` in render-page.js). It rides the card feed for that, and `buildSchema()` exports it as `loric` because the official
-  app knows only seven. A team no list knows is drawn with Other. There is **no** single source of truth: the list is re-declared
+  app knows only seven — or as the official team its owner picked in Advanced
+  Options (`exportTeam`, kept only on an Other character and only when not Loric;
+  `Render.exportTeamOf()`). A team no list knows is drawn with Other. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
   `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
   `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/index/author/profile/

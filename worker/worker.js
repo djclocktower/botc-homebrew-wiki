@@ -7848,9 +7848,10 @@ let _officialRolesCache = null;
 async function loadOfficialRoles(env, origin) {
   if (_officialRolesCache) return _officialRolesCache;
   try {
-    const [rolesRes, nightRes] = await Promise.all([
+    const [rolesRes, nightRes, jinxRes] = await Promise.all([
       env.ASSETS.fetch(new Request(origin + '/assets/roles.json')),
-      env.ASSETS.fetch(new Request(origin + '/assets/night-order.json')).catch(() => null)
+      env.ASSETS.fetch(new Request(origin + '/assets/night-order.json')).catch(() => null),
+      env.ASSETS.fetch(new Request(origin + '/assets/official-jinxes.json')).catch(() => null)
     ]);
     if (!rolesRes.ok) return [];
     const roles = await rolesRes.json();
@@ -7861,9 +7862,13 @@ async function loadOfficialRoles(env, origin) {
     // official app can follow. Without them the export leaves the sequence
     // out rather than publish one those steps are missing from.
     if (night && night.meta) PageRender.setNightMeta(night.meta);
-    const built = OfficialRoles.buildOfficialRoles(roles, night);
+    // Official-official jinxes ride on the roster entries, so a script
+    // holding both ends shows the pair.
+    let jinx = null;
+    try { jinx = jinxRes && jinxRes.ok ? await jinxRes.json() : null; } catch { jinx = null; }
+    const built = OfficialRoles.buildOfficialRoles(roles, night, jinx);
     if (!built.length) return [];
-    if (!night) { built.incomplete = true; return built; }
+    if (!night || !jinx) { built.incomplete = true; return built; }
     _officialRolesCache = built;
   } catch {
     return [];
@@ -14225,6 +14230,8 @@ const app = {
         // character has one; nothing outside its own /c/ page reads it.
         c.typeName = c.team === 'other' ? String(c.typeName || '').trim().slice(0, 40) : '';
         if (!c.typeName) delete c.typeName;
+        // Which official team an Other character exports as (Loric if unset).
+        if (c.team !== 'other' || Render.exportTeamOf(c) === 'loric') delete c.exportTeam;
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.
