@@ -38,6 +38,12 @@
     return (d && d.team === 'other' && String(d.typeName || '').trim()) || '';
   }
   var OTHER_NOTE = 'Not an official character type. Exported as Loric in script JSON.';
+  /* The owner may pick which official team an Other character leaves as
+     (`exportTeam`, Advanced Options); Loric when they picked none. */
+  var EXPORT_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+  function exportTeamOf(d) {
+    return d && EXPORT_TEAMS.indexOf(d.exportTeam) >= 0 ? d.exportTeam : OTHER_EXPORT_TEAM;
+  }
   /* The same seven teams as one solid colour each, mirroring the :root vars
      in styles.css that the {{townsfolk|…}} family of marks paints with
      (--good, --outsider, --minion, --evil, --fabled, --loric). It exists for
@@ -771,7 +777,7 @@
     var o = {
       id: d.jsonId || slugId(d.name),
       name: d.name || '',
-      team: d.team === 'other' ? OTHER_EXPORT_TEAM : (d.team || 'townsfolk'),
+      team: d.team === 'other' ? exportTeamOf(d) : (d.team || 'townsfolk'),
       ability: d.ability || ''
     };
     /* image as an array (required by the official script tool), in the
@@ -1140,9 +1146,12 @@
         // An entry written by the jinx picker names its target outright; the
         // older ones have to be matched by id or by name.
         var target = j.slug && byId[normJinxId(j.slug)];
-        // One naming an official character is never a wiki pair
-        // (officialJinxesOnScript in render-page.js draws those).
-        if (!target && jinxOfficialId(j)) return;
+        // One naming an official character pairs only with that official
+        // character's roster entry ('off-{id}'), never a homebrew namesake.
+        // Not on the roster as an entry: officialJinxesOnScript in
+        // render-page.js draws it from the bare name instead.
+        var offId = !target && jinxOfficialId(j);
+        if (offId && !(target = byId['off' + offId])) return;
         if (!target) {
           var ks = jinxLookupKeys(j, c);
           for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
@@ -1315,7 +1324,7 @@
     var info = '<dl class="info"><dt>Type:</dt><dd>' +
       // A renamed Other type is its own thing, not the Other team page.
       (typeNameOf(d) ? esc(label) : '<a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a>') +
-      (team === 'other' ? '<span class="type-note">' + OTHER_NOTE + '</span>' : '') + '</dd>' +
+      (team === 'other' ? '<span class="type-note">' + OTHER_NOTE.replace('Loric', TEAM_LABEL[exportTeamOf(d)]) + '</span>' : '') + '</dd>' +
       (splitCreators(d.creator).length
         ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +
           splitCreators(d.creator).map(function (n) {
@@ -1575,7 +1584,7 @@
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
-      OTHER_NOTE: OTHER_NOTE, typeNameOf: typeNameOf,
+      OTHER_NOTE: OTHER_NOTE, typeNameOf: typeNameOf, exportTeamOf: exportTeamOf,
       artVersions: artVersions, artVersion: artVersion, artDisplayPath: artDisplayPath,
       officialIconSmall: officialIconSmall,
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,

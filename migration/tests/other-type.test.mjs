@@ -46,3 +46,46 @@ test('an Other character keeps its type name, shows it, and exports as Loric', a
   const mixed = PageRender.renderRosterCards(spirits.concat({ slug: 'c', name: 'C', team: 'other' }), '');
   assert.match(mixed, />Other<\/a> <span class="coll-team-count">\(3\)/);
 });
+
+test('an Other character can choose the team it exports as', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(1,'user-1','')").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1' });
+  const save = body => f.request('/api/character', {
+    method: 'POST',
+    headers: { Cookie: 'botc_session=user-1', 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ status: 'draft' }, body))
+  });
+  const data = slug => JSON.parse(f.db.prepare('SELECT data FROM characters WHERE slug=?').get(slug).data);
+  await save({ slug: 'nomad', name: 'Nomad', team: 'other', exportTeam: 'townsfolk' });
+  assert.equal(data('nomad').exportTeam, 'townsfolk');
+  await save({ slug: 'nomad', name: 'Nomad', team: 'other', exportTeam: 'bogus' });
+  assert.equal(data('nomad').exportTeam, undefined);
+  await save({ slug: 'nomad', name: 'Nomad', team: 'minion', exportTeam: 'townsfolk' });
+  assert.equal(data('nomad').exportTeam, undefined);
+
+  const d = { name: 'Nomad', team: 'other', exportTeam: 'minion', ability: 'x' };
+  assert.equal(Render.buildSchema(d).team, 'minion');
+  assert.match(Render.renderCharacter(d, '', ''), /Exported as Minion/);
+});
+
+test('a script holding two jinxed official characters shows their jinx', () => {
+  const fs = require('node:fs');
+  const read = f => JSON.parse(fs.readFileSync(new URL('../../assets/' + f, import.meta.url)));
+  const PageRender = require('../../assets/render-page.js');
+  const OfficialRoles = require('../../assets/official-roles.js');
+  PageRender.init(Render);
+  const roles = read('roles.json');
+  const names = {};
+  roles.forEach(r => { names[Render.slugId(r.id)] = r.name; names[Render.slugId(r.name)] = r.name; });
+  Render.setOfficialNames(names);
+  const off = OfficialRoles.buildOfficialRoles(roles, read('night-order.json'), read('official-jinxes.json'));
+  const by = s => off.find(c => c.slug === s);
+  const homebrew = { slug: 'foo', name: 'Foo', team: 'townsfolk', ability: 'x', jinxes: [{ id: 'spy', text: 'Foo and Spy.' }] };
+  const entries = [by('off-chambermaid'), by('off-mathematician'), homebrew, by('off-spy')];
+  const pairs = PageRender.scriptJinxes(entries, {}).map(j => [j.a.name, j.b.name].sort());
+  assert.deepEqual(pairs, [['Chambermaid', 'Mathematician'], ['Foo', 'Spy']]);
+  assert.equal(PageRender.scriptJinxes(entries, { off: ['off-chambermaid|off-mathematician'] }).length, 1);
+  Render.setOfficialNames(null);
+});

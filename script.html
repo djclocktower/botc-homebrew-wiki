@@ -937,10 +937,11 @@
       // objects the Worker builds for a script page, night positions included.
       return Promise.all([
         fetch('assets/roles.json').then(function (r) { return r.json(); }),
-        fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; })
+        fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; }),
+        fetch('assets/official-jinxes.json').then(function (r) { return r.json(); }).catch(function () { return null; })
       ])
         .then(function (both) {
-          window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function (c) {
+          window.OfficialRoles.buildOfficialRoles(both[0], both[1], both[2]).forEach(function (c) {
             officialChars.push(c);
             bySlug[c.slug] = c;
           });
