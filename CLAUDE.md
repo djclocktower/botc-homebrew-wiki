@@ -2780,8 +2780,9 @@ caps and whitelists the fields on save.
   writer-supplied string, so `**bold**` and `[[Character Name]]` work in it.
   The `/c/` route therefore has to call `WikiRender.setCharLinks()`.
 - **`assets/official-jinxes.json`** holds jinxes between two OFFICIAL
-  characters (71 pairs; the `source` field says where from, and it is
-  partial). They are an **opt-in layer** on `/jinxes`, off by default: the
+  characters: the official list from `botc-release` (131 pairs, refreshed
+  2026-10-23; the `source` and `note` fields say where from and how to
+  refresh it). They are an **opt-in layer** on `/jinxes`, off by default: the
   base game's own rules would drown what this wiki made. Served in
   `/api/jinxes` as `baseEdges`, drawn hidden so switching them on does not
   move the layout.

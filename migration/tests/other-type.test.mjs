@@ -84,7 +84,7 @@ test('a script holding two jinxed official characters shows their jinx', () => {
   const by = s => off.find(c => c.slug === s);
   const homebrew = { slug: 'foo', name: 'Foo', team: 'townsfolk', ability: 'x', jinxes: [{ id: 'spy', text: 'Foo and Spy.' }] };
   const entries = [by('off-chambermaid'), by('off-mathematician'), homebrew, by('off-spy')];
-  const pairs = PageRender.scriptJinxes(entries, {}).map(j => [j.a.name, j.b.name]);
+  const pairs = PageRender.scriptJinxes(entries, {}).map(j => [j.a.name, j.b.name].sort());
   assert.deepEqual(pairs, [['Chambermaid', 'Mathematician'], ['Foo', 'Spy']]);
   assert.equal(PageRender.scriptJinxes(entries, { off: ['off-chambermaid|off-mathematician'] }).length, 1);
   Render.setOfficialNames(null);
