@@ -767,7 +767,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: !!gaT.src || gaT.hidden })) sheet.append(n);
   // stickers marked "behind" sit under the sheet's own content: painting
   // order is DOM order among positioned elements, so they go in here
-  for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
 
   // a garland picked from the pack, in the painted one's place: its oval
   // centred where the footnote sits, as wide as the painted one
@@ -813,6 +813,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       widthPct: SHEET.sidebarX + SHEET.sidebarW,
     }, { requestRender, forExport: ctx.forExport });
   }
+  // middle-layer stickers: over the ribbon and the paper's art, under the words
+  for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
 
   /* ── header band ── */
   if (page.header) {
@@ -1191,7 +1193,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   }
 
   // the rest of the stickers last, over everything
-  for (const n of renderStickers(ctx.stickers, selected, false)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
 
   return sheet;
 }

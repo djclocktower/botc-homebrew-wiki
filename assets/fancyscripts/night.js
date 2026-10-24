@@ -894,6 +894,8 @@ function ribbonNodes(spec, options, layout, pageIndex, ctx, mark, e) {
     nodes.push(...holder.childNodes);
     nodes.push(paperEdge(e));
   }
+  // middle-layer stickers: over the ribbon, under its title and the list
+  nodes.push(...renderStickers(ctx.stickers, ctx.selected || '', 'mid'));
 
   const tT = elGet(options, spec.elPrefix + 'Title');
   if (!tT.hidden) {
@@ -1101,13 +1103,14 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
   sheet.dataset.fsDensity = d.toFixed(3);
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(cfg.bg, 'list', { scriptBg })) sheet.append(n);
-  for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
 
   if (geo.ribbon) {
     for (const n of ribbonNodes(spec, options, layout, pageIndex, ctx, mark, e)) sheet.append(n);
     const logoEl = footLogo(script, spec, options, layout, ctx, mark, e);
     if (logoEl) sheet.append(logoEl);
   } else {
+    for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
     for (const n of classicHead(script, spec, options, layout, pageIndex, ctx, mark, e)) sheet.append(n);
   }
 
@@ -1163,7 +1166,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
   });
   sheet.append(listWrap);
 
-  for (const n of renderStickers(ctx.stickers, selected, false)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
 }
 

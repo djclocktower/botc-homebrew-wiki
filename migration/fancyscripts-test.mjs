@@ -152,5 +152,11 @@ check('night: the step icon files exist', ['dusk', 'dawn', 'minion', 'demon'].ev
 check('night: dusk and dawn in the printed sheets\' wording', [S.NIGHT_STEPS.dusk.text, S.NIGHT_STEPS.dawn.text],
   ['Check that all eyes are closed. Some Travellers & Fabled act.', 'Wait a few seconds. Call for eyes open.']);
 
+// stickers: a layer each, the old "behind" switch folded into it
+const layered = S.normalizeOptions({ custom: [{ id: 'a', type: 'image', behind: true }, { id: 'b', type: 'image' }, { id: 'c', type: 'image', layer: 'mid' }, { id: 'd', type: 'image', layer: 'nonsense' }] });
+check('stickers: old "behind" becomes the paper layer', layered.custom.map((st) => [st.layer, 'behind' in st]), [['back', false], ['front', false], ['mid', false], ['front', false]]);
+check('stickers: a new one starts in front', S.stickerLayer(S.newImageElement()), 'front');
+check('stickers: three layers, bottom to top', S.STICKER_LAYERS.map((l) => l[0]), ['back', 'mid', 'front']);
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

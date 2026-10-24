@@ -29,7 +29,7 @@ import {
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
   withBootlegger, hasBootlegger,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
-  pageStyle, ART_CHOICES, DECOR_STICKERS, NO_ART,
+  pageStyle, ART_CHOICES, DECOR_STICKERS, NO_ART, STICKER_LAYERS, stickerLayer,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle, ribbonReady } from './sheet.js';
 import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage, nightRibbonColor } from './night.js';
@@ -1631,7 +1631,7 @@ function buildElementPanel() {
   const addRow = makeRow(box);
   addRow.style.marginTop = '8px';
   makeButton(addRow, '+ Text', () => addSticker('text'));
-  makeUpload(addRow, '+ Image', 'image/*', (url, file) => addSticker('image', url, file.name));
+  makeUpload(addRow, '+ Upload a sticker', 'image/*', (url, file) => addSticker('image', url, file.name));
   makeButton(addRow, '+ Decoration', () => { gallery.hidden = !gallery.hidden; });
   const gallery = document.createElement('div');
   gallery.hidden = true;
@@ -1727,6 +1727,7 @@ function buildElementPanel() {
     const get = () => findSticker(it.id);
     const pageChoices = [[pageKey(p), 'This page only'], [p.kind, 'Every ' + (p.kind === 'front' ? 'script sheet' : p.kind === 'night' ? 'night sheet' : p.kind + ' page')], ['all', 'All pages']];
     track(makeSelect(box, 'Shown on', pageChoices, { get: () => get().page || pageKey(p), set: (v) => { get().page = v; } }));
+    track(makeSelect(box, 'Layer', STICKER_LAYERS, { get: () => stickerLayer(get()), set: (v) => { get().layer = v; delete get().behind; } }));
     if (st.type === 'image') {
       track(makeSlider(box, 'Horizontal', -10, 110, 0.1, (v) => v.toFixed(1) + '%', { get: () => get().x, set: (v) => { get().x = v; } }, { reset: 50 }));
       track(makeSlider(box, 'Vertical', -10, 110, 0.1, (v) => v.toFixed(1) + '%', { get: () => get().y, set: (v) => { get().y = v; } }, { reset: 50 }));
@@ -1737,7 +1738,6 @@ function buildElementPanel() {
       track(makeSlider(box, 'Rounded corners', 0, 50, 1, (v) => v + '%', { get: () => get().round, set: (v) => { get().round = v; } }, { reset: 0 }));
       track(makeToggle(box, 'Lock in place (no dragging)', { get: () => get().locked, set: (v) => { get().locked = v; } }));
       track(makeToggle(box, 'Flip horizontally', { get: () => get().flip, set: (v) => { get().flip = v; } }));
-      track(makeToggle(box, 'Behind the sheet’s own content', { get: () => get().behind, set: (v) => { get().behind = v; } }));
       track(makeSelect(box, 'Blend', [['normal', 'Normal'], ['multiply', 'Multiply (ink on paper)']], { get: () => get().blend || 'normal', set: (v) => { get().blend = v; } }));
       const up = makeRow(box);
       makeUpload(up, 'Replace image', 'image/*', (url) => { get().src = addAsset(url); commit(); });
@@ -1760,9 +1760,12 @@ function buildElementPanel() {
     makeButton(al, 'Centre ↔', () => { get().x = 50; commit(); syncControls(); });
     makeButton(al, 'Centre ↕', () => { get().y = 50; commit(); syncControls(); });
     const swap = (dir) => {
-      const i = options.custom.indexOf(get());
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= options.custom.length) return;
+      // step past the stickers in other layers: swapping with one of those changes nothing on screen
+      const list = options.custom;
+      const i = list.indexOf(get());
+      let j = i + dir;
+      while (j >= 0 && j < list.length && stickerLayer(list[j]) !== stickerLayer(list[i])) j += dir;
+      if (i < 0 || j < 0 || j >= list.length) return;
       [options.custom[i], options.custom[j]] = [options.custom[j], options.custom[i]];
       commit();
     };

@@ -4175,7 +4175,13 @@ built-in art (skull, flourishes, ribbon, dividers, the step icons) — or,
 for the title, an image drawn instead of the text. Stickers
 (`options.custom[]`, `newTextElement()` / `newImageElement()`) carry their
 own x/y in % and a `page` scope (`'all'`, a page kind, or an exact
-`pageKey`). Per-character overrides live in `options.chars[id]` (hide,
+`pageKey`), and a `layer` (`STICKER_LAYERS`: `'back'` on the paper under
+everything, `'mid'` over the ribbon and art but under the words, `'front'`
+over it all; `stickerLayer()` reads it and folds the old `behind` switch).
+Each renderer appends each layer at its own point (`renderStickers(...,
+layer)`); back and mid paint in DOM order at z-index 0, front is lifted.
+Bring forward / Send back step within the sticker's own layer.
+Per-character overrides live in `options.chars[id]` (hide,
 rename, ability, team, colour, icon, icon scale/nudge, night positions and
 reminders, hand-arranged `order`) and `deriveScript()` applies them to a
 parse without touching it — clearing an override is a re-derive, never a

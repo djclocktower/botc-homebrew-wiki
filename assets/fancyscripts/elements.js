@@ -19,7 +19,7 @@
  * the drag layer (drag.js) reads nothing else. Browser-only.
  */
 
-import { fontFamily, EL_DEFAULT } from './script.js';
+import { fontFamily, EL_DEFAULT, stickerLayer } from './script.js';
 import { el, img, px, clamp } from './util.js';
 
 export const ART = '/assets/fancyscripts/art/';
@@ -156,7 +156,7 @@ export function renderTextElement(t, drag, selected) {
     touchAction: 'none',
     opacity: t.opacity == null ? '1' : String(clamp(Number(t.opacity), 0, 1)),
     mixBlendMode: t.blend === 'multiply' ? 'multiply' : 'normal',
-    zIndex: '3',
+    zIndex: layerZ(t, '3'),
   });
   const shadow = t.shadowBlur || t.shadowX || t.shadowY
     ? `${Number(t.shadowX) || 0}px ${Number(t.shadowY) || 0}px ${Number(t.shadowBlur) || 0}px ${t.shadowColor || '#000000'}`
@@ -217,7 +217,7 @@ export function renderImageElement(t, drag, selected) {
     cursor: drag ? 'grab' : 'default',
     touchAction: 'none',
     lineHeight: '0',
-    zIndex: t.behind ? '0' : '2',
+    zIndex: layerZ(t, '2'),
   });
   if (src) {
     const im = img(src, {
@@ -256,13 +256,20 @@ export function markSelected(node) {
   node.dataset.fsSelected = '1';
 }
 
+/* a sticker in the back or middle layer paints in DOM order with the page's
+   own pieces (z-index 0 is the same stacking level as theirs), so where the
+   renderer appends it is where it sits; a front one is lifted over them */
+function layerZ(t, front) {
+  return stickerLayer(t) === 'front' ? front : '0';
+}
+
 /* every sticker that belongs on this page, rendered in order. `stickers`
-   is the already-filtered list for the page; `behind` picks the ones
-   marked to sit under the page's own content (true), the rest (false),
-   or all of them (undefined). */
-export function renderStickers(stickers, selectedId, behind) {
+   is the already-filtered list for the page; `layer` picks one of
+   STICKER_LAYERS (each renderer appends each layer at its own point), or
+   all of them (undefined). */
+export function renderStickers(stickers, selectedId, layer) {
   return (stickers || [])
-    .filter((st) => behind === undefined || !!st.behind === behind)
+    .filter((st) => layer === undefined || stickerLayer(st) === layer)
     .map((st) => (st.type === 'image'
       ? renderImageElement(st, st.locked ? '' : 'custom:' + st.id, selectedId === 'custom:' + st.id)
       : renderTextElement(st, st.locked ? '' : 'custom:' + st.id, selectedId === 'custom:' + st.id)));

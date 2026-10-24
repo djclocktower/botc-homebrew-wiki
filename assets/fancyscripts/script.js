@@ -705,8 +705,23 @@ export function newTextElement(patch) {
 export function newImageElement(patch) {
   return Object.assign({
     type: 'image', src: '', x: 50, y: 50, w: 24, rotate: 0, opacity: 1,
-    shadow: 0, flip: false, behind: false, blend: 'normal', round: 0,
+    shadow: 0, flip: false, layer: 'front', blend: 'normal', round: 0,
   }, patch || {});
+}
+
+/* the three layers a sticker can sit in, bottom to top. 'back' is on the
+   paper, under the ribbon and everything else; 'mid' is over the ribbon
+   and the page's art but under its words and icons; 'front' is over it
+   all. Inside a layer, the order of options.custom decides. */
+export const STICKER_LAYERS = [
+  ['back', 'On the paper, behind everything'],
+  ['mid', 'Over the ribbon, under the text'],
+  ['front', 'In front of everything'],
+];
+export function stickerLayer(st) {
+  const l = st && st.layer;
+  if (l === 'back' || l === 'mid' || l === 'front') return l;
+  return st && st.behind ? 'back' : 'front'; // the old on/off "behind" switch
 }
 
 const BACK_SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to', 'at', '&', 'or']);
@@ -1630,6 +1645,9 @@ export function normalizeOptions(o) {
   out.back = deepMerge(deepMerge({}, DEFAULT_BACK), isObj(src.back) ? src.back : {});
   if (!Array.isArray(out.back.texts)) out.back.texts = [];
   if (!Array.isArray(out.custom)) out.custom = [];
+  for (const st of out.custom) {
+    if (st && typeof st === 'object') { st.layer = stickerLayer(st); delete st.behind; }
+  }
   if (!isObj(out.el)) out.el = {};
   if (!isObj(out.chars)) out.chars = {};
   // the first version's header sliders → element offsets

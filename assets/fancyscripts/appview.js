@@ -485,8 +485,9 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
 
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(a.bg, 'appfront', { scriptBg, noGarland: !!elGet(options, 'appGarland').src })) sheet.append(n);
-  for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
   drawRibbon(sheet, options, A.sidebarW, ctx);
+  for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
 
   // the garland across the foot: only when one has been picked or uploaded,
   // which also takes the aged parchment's own off the paper
@@ -645,7 +646,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
     }, (pageIndex + 1) + ' / ' + layout.pages.length), 'el:pageno'));
   }
 
-  for (const n of renderStickers(ctx.stickers, selected, false)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
 }
 
@@ -953,8 +954,9 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
   sheet.dataset.fsDensity = d.toFixed(3);
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(a.bg, 'applist', { scriptBg })) sheet.append(n);
-  for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
   drawRibbon(sheet, options, A.sidebarW, ctx);
+  for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
 
   // the corner art at the top right, one per night
   const decorKey = spec.which === 'other' ? 'nightDecorOther' : 'nightDecorFirst';
@@ -1085,6 +1087,6 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
     }
   }
 
-  for (const n of renderStickers(ctx.stickers, selected, false)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
 }
