@@ -9,10 +9,18 @@ copy is what the tool loads.
 ```
 
 skulls/cut-from-logos/   The edition skulls with the title lettering cut out
-                         of the official logos. The Tomb has a gap at the jaw
-                         where the word "The" was painted over it.
+                         of the official logos. The .png files are the cut-outs
+                         as collected: The Tomb has a gap at the jaw where the
+                         word "The" was painted over it, and the others have
+                         clipped leaves and stray scraps of lettering.
                          Trouble Brewing, Bad Moon Rising and Travellers &
                          Fabled come from small logos (under 600px).
+                         The .webp files (1600px, what the tool loads) are
+                         REPAIRED copies: the gaps painted in and the scraps
+                         removed with OpenArt (Nano Banana Pro, image to
+                         image, on a flat magenta ground that was then keyed
+                         back out to transparency). The three small ones were
+                         redrawn at full size in the same pass.
 skulls/botc-app/         The 200px edition pictures botc.app shows beside a
                          script (tb, bmr, snv skulls; custom lamp; homebrew crate).
 

@@ -879,10 +879,10 @@ const DECOR = '/assets/fancyscripts/decor/';
 export const NO_ART = 'none';
 const EDITIONS = [['trouble-brewing', 'Trouble Brewing', 'tb'], ['bad-moon-rising', 'Bad Moon Rising', 'bmr'],
   ['sects-and-violets', 'Sects & Violets', 'snv'], ['custom-script', 'Custom script', 'custom']];
-const LOGO_SKULLS = [['trouble-brewing', 'Trouble Brewing', 'png', 0.64], ['bad-moon-rising', 'Bad Moon Rising', 'png', 0.61],
-  ['sects-and-violets', 'Sects & Violets', 'webp', 0.65], ['travellers-and-fabled', 'Travellers & Fabled', 'png', 0.69],
-  ['the-tomb', 'The Tomb', 'webp', 0.68], ['garden-of-sin', 'Garden of Sin', 'webp', 0.66],
-  ['greatest-show-on-earth', 'Greatest Show on Earth', 'webp', 1.09], ['midnight-house-of-the-damned', 'Midnight House of the Damned', 'webp', 1.26]];
+const LOGO_SKULLS = [['trouble-brewing', 'Trouble Brewing', 'webp', 0.66], ['bad-moon-rising', 'Bad Moon Rising', 'webp', 0.61],
+  ['sects-and-violets', 'Sects & Violets', 'webp', 0.65], ['travellers-and-fabled', 'Travellers & Fabled', 'webp', 0.69],
+  ['the-tomb', 'The Tomb', 'webp', 0.67], ['garden-of-sin', 'Garden of Sin', 'webp', 0.65],
+  ['greatest-show-on-earth', 'Greatest Show on Earth', 'webp', 1.09], ['midnight-house-of-the-damned', 'Midnight House of the Damned', 'webp', 1.25]];
 export const ART_CHOICES = {
   skull: [
     { label: 'Built in', src: '' },

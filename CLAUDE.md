@@ -4475,6 +4475,10 @@ resized as it is picked to the built-in one's height (`ratio`); a divider
 carries its own shape (`fit`, `h`), and only the built-in one gets the cap.
 `DECOR_STICKERS` is the rest of the pack behind "+ Decoration" in the
 Elements card, added as image stickers by path rather than stored as assets.
+The edition skulls (`decor/skulls/cut-from-logos/*.webp`) are REPAIRED copies
+of the cut-out `.png` files beside them (see that folder's README): a skull's
+`ratio` in `LOGO_SKULLS` is its webp's height over width, so a re-made file
+needs its ratio re-measured or it is picked at the wrong size.
 
 - **The classic sheet's garland is painted into `parchment.jpg`.** Picking
   another (or "None", `NO_ART`) switches the paper to
