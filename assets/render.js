@@ -1246,7 +1246,7 @@
     W.setReminderTokens(list);
   }
 
-  /* The second almanac version (`almanacAlt`), the way the official wiki
+  /* The Alternate Almanac (`almanacAlt`), the way the official wiki
      gives God of Ug a "Big Word Mode" and an "Ug Mode": the same character,
      its almanac written twice, and a switch at the top of the page. Only the
      prose and the shown ability differ; the name, team, icon, jinxes and the
@@ -1343,7 +1343,7 @@
     var label = typeNameOf(d) || TEAM_LABEL[team] || team;
     var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
     var main = almanacParts(d, root, '');
-    /* With a second version, both are on the page and two radio buttons
+    /* With an Alternate Almanac, both are on the page and two radio buttons
        choose which shows — CSS only (:has, in styles.css under .alm-switch),
        so the page, the editors' preview and a reader with scripts off all
        switch the same way. The radios carry the page's slug in their name so
@@ -1355,7 +1355,7 @@
       var grp = 'alm-' + String(d.slug || 'page').replace(/[^a-z0-9-]/gi, '');
       almSwitch = '<div class="alm-switch" role="radiogroup" aria-label="Almanac version" data-user-content>' +
         '<input type="radio" class="alm-r0" name="' + grp + '" id="' + grp + '-0" checked><label for="' + grp + '-0">' + esc(alt.label || 'Standard') + '</label>' +
-        '<input type="radio" class="alm-r1" name="' + grp + '" id="' + grp + '-1"><label for="' + grp + '-1">' + esc(alt.altLabel || 'Alternate') + '</label></div>';
+        '<input type="radio" class="alm-r1" name="' + grp + '" id="' + grp + '-1"><label for="' + grp + '-1">' + esc(alt.altLabel || 'Alternate Almanac') + '</label></div>';
       parchBody = '<div class="alm-ver alm-v0">' + main.body + '</div><div class="alm-ver alm-v1">' + two.body + '</div>';
       quoteHTML = '<div class="alm-ver alm-v0">' + main.quote + '</div><div class="alm-ver alm-v1">' + two.quote + '</div>';
     }

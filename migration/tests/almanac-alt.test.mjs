@@ -8,7 +8,7 @@ const post = (id, body) => ({
   body: JSON.stringify(body)
 });
 
-test('a character keeps every jinx and a second almanac version; a guest cannot rewrite its ability', async t => {
+test('a character keeps every jinx and an Alternate Almanac; a guest cannot rewrite its ability', async t => {
   const f = await fixture();
   t.after(() => f.finish());
   for (const id of [1, 2]) {
@@ -28,7 +28,7 @@ test('a character keeps every jinx and a second almanac version; a guest cannot 
   assert.equal(d.jinxes.length, 90);
   assert.deepEqual(d.almanacAlt, { label: 'Big Word Mode', altLabel: 'Ug Mode', ability: 'Me go Ug.', summaryBullets: ['Ug.'] });
 
-  // An 'all-but-ability' guest keeps the second version's ability as stored.
+  // An 'all-but-ability' guest keeps the Alternate Almanac's ability as stored.
   const g = await f.request('/api/character', post(2, { ...page, almanacAlt: { ...page.almanacAlt, ability: 'Hacked.' } }));
   assert.equal(g.status, 200, await g.text());
   assert.equal(stored().almanacAlt.ability, 'Me go Ug.');

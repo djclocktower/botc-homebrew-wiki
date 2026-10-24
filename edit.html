@@ -477,7 +477,7 @@
       </div>
 
       <fieldset>
-        <legend>Second almanac version</legend>
+        <legend>Alternate Almanac</legend>
         <div id="almalt-box"></div>
       </fieldset>
 
@@ -755,7 +755,7 @@
     var relatedUI = window.RelatedEditor ?
       window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
 
-    // The second almanac version (assets/almanac-alt.js), under Advanced
+    // The Alternate Almanac (assets/almanac-alt.js), under Advanced
     // Options. Shared with the other character editor.
     var almAltUI = window.AlmanacAlt ?
       window.AlmanacAlt.mount($('almalt-box'), { onChange: schedule }) : null;
@@ -1951,7 +1951,7 @@
           // Explicit like special[]: clearing every Related row has to reach
           // the save, and Object.assign would keep the loaded list forever.
           related: d.related,
-          // Explicit: null is how switching the second version off reaches the save.
+          // Explicit: null is how switching the Alternate Almanac off reaches the save.
           almanacAlt: d.almanacAlt,
           customJson: d.customJson,
           // Explicit for the same reason special[] is: Object.assign would

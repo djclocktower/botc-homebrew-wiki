@@ -1,4 +1,4 @@
-/* Second almanac version editor — create.html and edit.html.
+/* Alternate Almanac editor — create.html and edit.html.
 
    A character can carry its almanac written twice, the way the official wiki
    gives God of Ug a "Big Word Mode" and an "Ug Mode", and readers switch
@@ -16,7 +16,7 @@
 
   var TEXT = [
     ['label', 'Name of the main version', 'Standard', 'input'],
-    ['altLabel', 'Name of the second version', 'Alternate', 'input'],
+    ['altLabel', 'Name of the Alternate Almanac', 'Alternate Almanac', 'input'],
     ['ability', 'Ability line', '', 'textarea'],
     ['quote', 'Flavour quote', '', 'input'],
     ['lede', 'Lede', '', 'input']
@@ -36,7 +36,7 @@
     var onChange = (opts && opts.onChange) || function () {};
     var html =
       '<div class="fld ck"><input type="checkbox" id="almAltOn">' +
-      '<label for="almAltOn" style="margin:0">This character has a second version of its almanac</label></div>' +
+      '<label for="almAltOn" style="margin:0">This character has an Alternate Almanac</label></div>' +
       '<div id="almAltFields" hidden>' +
       '<p class="sub" style="margin:0 0 10px">Readers switch between the two versions at the top of the page. ' +
       'Leave a box empty to use the main version&rsquo;s text. The JSON export, tokens and cards always use the main version.</p>';

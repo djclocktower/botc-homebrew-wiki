@@ -2091,7 +2091,7 @@ const FIELD_LABELS = {
   otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
   otherNightReminder: 'other-nights reminder', setup: 'setup flag',
   special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
-  related: 'related pages', almanacAlt: 'second almanac version',
+  related: 'related pages', almanacAlt: 'Alternate Almanac',
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
   respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
   edition: 'edition', publicEdit: 'who may edit',
@@ -14150,7 +14150,7 @@ const app = {
           // JSON goes with it: it replaces the page's JSON box outright, so
           // leaving it open would be a second way to rewrite the ability.
           c.ability = stored.ability;
-          // The second almanac version's ability is the same rule, shown.
+          // The Alternate Almanac's ability is the same rule, shown.
           const altAbility = stored.almanacAlt && stored.almanacAlt.ability;
           if (c.almanacAlt && typeof c.almanacAlt === 'object') {
             if (altAbility) c.almanacAlt.ability = altAbility; else delete c.almanacAlt.ability;
@@ -14224,7 +14224,7 @@ const app = {
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
         if (!c.related.length) delete c.related;
-        // The second almanac version (render.js owns the shape).
+        // The Alternate Almanac (render.js owns the shape).
         c.almanacAlt = Render.sanitizeAlmanacAlt(c.almanacAlt);
         if (!c.almanacAlt) delete c.almanacAlt;
         /* The wiki-only display size of the /c/ emblem (render.js draws it,

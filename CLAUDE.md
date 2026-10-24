@@ -773,9 +773,9 @@ assets/
                        character an official one", asked by /api/character's
                        guard, the Bloodstar importer and the admin sweep. See
                        "No official characters" below.
-  almanac-alt.js       "Second almanac version" in Advanced Options on
-                       create.html + edit.html. See "A second almanac
-                       version" below.
+  almanac-alt.js       "Alternate Almanac" in Advanced Options on
+                       create.html + edit.html. See "The Alternate
+                       Almanac" below.
   special-editor.js    The `special[]` repeater on create.html + edit.html — the
                        official schema's per-character behaviour flags ("cannot
                        go in the bag", "show the Storyteller the grimoire"), of
@@ -2067,11 +2067,11 @@ and they feed `WikiRender.setCharLinks()` off the `characters.json`
 fetch they already make, so `[[Name]]` links in the live preview exactly as it
 will on the published page.
 
-## A second almanac version (`almanacAlt`)
+## The Alternate Almanac (`almanacAlt`)
 
 A character can carry its almanac written twice, the way the official wiki
 gives God of Ug a "Big Word Mode" and an "Ug Mode". The owner ticks "This
-character has a second version of its almanac" in Advanced Options
+character has an Alternate Almanac" in Advanced Options
 (`assets/almanac-alt.js`, mounted by both editors) and names the two versions.
 
 - **Stored as `almanacAlt`** on the character: `label`, `altLabel`,
@@ -2088,8 +2088,8 @@ character has a second version of its almanac" in Advanced Options
   (`.alm-v0` / `.alm-v1`, the quote included), and `:has(.alm-r1:checked)`
   swaps them. So the SSR page, the editors' preview frame and a reader with
   scripts off all switch the same way; a browser without `:has` shows the
-  main version. The second version's section anchors carry `-alt`.
-- **The second version's ability is the rule too**: an `'all-but-ability'`
+  main version. The Alternate Almanac's section anchors carry `-alt`.
+- **The Alternate Almanac's ability is the rule too**: an `'all-but-ability'`
   guest has it re-pinned from the stored row, and edit.html locks its box.
 
 ## The character link unfurl (what Discord shows)
