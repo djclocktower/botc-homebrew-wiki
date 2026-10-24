@@ -213,9 +213,13 @@ export function buildJinxSpec(script, options) {
   }
   // nothing to print: the page is left out altogether (pageList)
   const empty = !rows.length && blocks.length === 1;
+  // a blank title names the page after what is on it
+  const hasRules = blocks.some((b) => b.rows.some((r) => r.kind === 'rule'));
+  const auto = rows.length ? (hasRules ? 'Jinxes & Rules' : 'Jinxes')
+    : hasRules ? (cfg.houseTitle || 'Bootlegger Rules') : notes ? (cfg.notesTitle || 'Notes') : 'Jinxes';
   return {
     kind: 'jinx', which: 'jinx', elPrefix: 'jinx', empty,
-    title: cfg.title || 'Jinxes',
+    title: cfg.title || auto,
     columns: [{ heading: '', blocks }],
     cfg, style: styleOf(cfg), bars: false, meta: script.meta, numbered: false, paginate: true,
   };

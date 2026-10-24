@@ -523,7 +523,7 @@ export const DEFAULT_JINX = {
   ribbonColor: '',
   iconShiftX: 0,
   iconShiftY: 0,
-  title: 'Jinxes',
+  title: '', // blank: named after what is on it (jinxPageTitle in night.js)
   showHouseRules: true,
   houseTitle: 'Bootlegger Rules',
   notes: '', // free text printed under the list
@@ -1649,6 +1649,8 @@ export function normalizeOptions(o) {
   }
   for (const k of RETIRED_LIST_KEYS) { delete out.night[k]; delete out.jinxPage[k]; }
   for (const k of RETIRED_ELEMENTS) delete out.el[k];
+  // 'Jinxes' was the stored default before the title named itself
+  if (out.jinxPage.title === 'Jinxes') out.jinxPage.title = '';
   delete out.iconFrame; // the circle behind every icon, taken out at the owner's request
   if (src.includeBackCover != null) out.exportOpts.pages.back = !!src.includeBackCover;
   out.includeBackCover = out.exportOpts.pages.back;
@@ -1724,7 +1726,7 @@ export function pageList(options, counts) {
   if (options.jinxPage && options.jinxPage.enabled && c.jinx !== 0) {
     const n = Math.max(1, c.jinx || 1);
     for (let i = 0; i < n; i++) {
-      pages.push({ kind: 'jinx', index: i, of: n, label: (options.jinxPage.title || 'Jinxes') + (n > 1 ? ' ' + (i + 1) : '') });
+      pages.push({ kind: 'jinx', index: i, of: n, label: (options.jinxPage.title || c.jinxTitle || 'Jinxes') + (n > 1 ? ' ' + (i + 1) : '') });
     }
   }
   if (options.exportOpts && options.exportOpts.pages && options.exportOpts.pages.back) {

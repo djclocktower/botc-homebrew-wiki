@@ -274,6 +274,7 @@ function computeLayouts() {
     layouts.jinxSpec = buildJinxSpec(derived, options);
     layouts.jinx = layoutList(layouts.jinxSpec, options, requestRender);
     counts.jinx = layouts.jinxSpec.empty ? 0 : layouts.jinx.pages.length;
+    counts.jinxTitle = layouts.jinxSpec.title;
   }
   const ni = options.night;
   if (ni.combined && (ni.first || ni.other)) {
@@ -1522,7 +1523,7 @@ function buildJinxCard() {
   const box = $('fs-jinx-box');
   beginCard();
   makeSelect(box, 'Page style', [['ribbon', 'Ribbon (like the night sheets)'], ['classic', 'Classic (title at the top)']], bindPath('jinxPage.style'));
-  makeText(box, 'Page title', bindPath('jinxPage.title'));
+  makeText(box, 'Page title (blank = automatic)', bindPath('jinxPage.title'));
   makeToggle(box, 'Ribbon down the right edge (ribbon style)', bindPath('jinxPage.ribbon'));
   makeToggle(box, 'Bootlegger rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
   makeText(box, 'Bootlegger rules heading', bindPath('jinxPage.houseTitle'));

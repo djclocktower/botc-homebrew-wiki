@@ -4740,7 +4740,7 @@ Elements card, added as image stickers by path rather than stored as assets.
   - `reminderParts()` matches `:reminder:` in any case (homebrew writes
     `:Reminder:`); render-page.js's `nightItems()` strips it from the
     wiki's own night lists the same way.
-  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note. Bootlegger rules on it carry the official Bootlegger icon.
+  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note. Bootlegger rules on it carry the official Bootlegger icon. Its title (`jinxPage.title`) is blank by default and names the page after what is on it: Jinxes, Bootlegger Rules, Jinxes & Rules or Notes. An old design's stored "Jinxes" is folded to blank.
   - Ribbon labels glow in the label colour's opposite (`isDark`), and get
     a halo of it when the ribbon is off: Ink Saver's dark labels were
     smeared into blots by the shadows made for the stock white ones.
