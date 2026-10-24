@@ -482,7 +482,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .alm-switch {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 0;
   margin: 0 auto 16px; width: fit-content; max-width: 100%;
-  border: 1px solid var(--parch-frame); border-radius: 999px; overflow: hidden;
+  border: 1px solid var(--parch-frame); border-radius: 0; overflow: hidden;
 }
 .alm-switch input { position: absolute; opacity: 0; pointer-events: none; }
 .alm-switch label {
