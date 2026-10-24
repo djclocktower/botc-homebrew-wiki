@@ -10,6 +10,24 @@ import { previewIcon } from './script.js';
 export const px = (v) => v + 'px';
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
+/* The density at which a measured layout fills its room. `ratioAt(d)` is
+   room ÷ the height the content needs when drawn at density d. Rows re-wrap
+   as the type shrinks, so that height is a step function of d and a few
+   rounds of d = ratio can stop on the wrong side of a step — on a long
+   two-column night sheet they stopped at a density that needed 94 em of an
+   86 em page, and the list ran off the bottom. So the rounds are followed by
+   a check: while it does not fit (ratio < d), step down. */
+export function solveFit(ratioAt, lo, hi) {
+  let fit = 1;
+  for (let i = 0; i < 4; i++) {
+    const f = clamp(ratioAt(fit), lo, hi);
+    if (Math.abs(f - fit) < 0.002) { fit = f; break; }
+    fit = f;
+  }
+  for (let i = 0; i < 60 && fit > lo && ratioAt(fit) < fit - 1e-6; i++) fit = Math.max(lo, fit * 0.98);
+  return fit;
+}
+
 /* Which copy of a wiki icon the renderers draw: the 192px twin for the
    preview, the original for an export (app.js flips this around
    renderPageNode when ctx.forExport). See previewIcon in script.js. */

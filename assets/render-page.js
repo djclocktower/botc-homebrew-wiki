@@ -1177,6 +1177,12 @@
      slug is '@' + id (no identity has an '@', so the arrangement can store
      them beside the characters and an owner can put a character either side
      of one). Without NIGHT_META they are simply absent. */
+  /* ':reminder:' marks where the official app places a reminder token. A
+     list has no token to place, so it is dropped — in any case, because
+     homebrew text writes ':Reminder:' and it was printed as words. */
+  function listReminder(t) {
+    return String(t || '').replace(/:reminder:/gi, '').replace(/\s{2,}/g, ' ').trim();
+  }
   function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
     if (!buildSchema) return { first: [], other: [] };
@@ -1184,8 +1190,8 @@
     (entries || []).forEach(function (c) {
       var s;
       try { s = buildSchema(c); } catch (e) { return; }
-      if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: s.firstNightReminder || '' });
-      if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: s.otherNightReminder || '' });
+      if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: listReminder(s.firstNightReminder) });
+      if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: listReminder(s.otherNightReminder) });
     });
     (NIGHT_META || []).forEach(function (m) {
       var t = NIGHT_MARK_TEXT[m.id] || { name: m.id, r: '' };

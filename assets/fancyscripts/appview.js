@@ -37,7 +37,7 @@ import {
   breakRuns, fitNameLines,
 } from './script.js';
 import {
-  el, img, px, clamp, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
+  el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
 } from './util.js';
 import { ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected } from './elements.js';
 import { appendRibbon } from './sheet.js';
@@ -236,12 +236,7 @@ export function layoutAppSheet(script, options, requestRender) {
   let pages;
   const minFit = clamp(Number(options.minFit) || 0.62, 0.3, 1);
   if (options.fitToContent) {
-    let fit = 1;
-    for (let iter = 0; iter < 4; iter++) {
-      const f = clamp(availFor(0) / Math.max(0.01, totalNeedAt(fit)), 0.42, FIT.growMax);
-      if (Math.abs(f - fit) < 0.002) { fit = f; break; }
-      fit = f;
-    }
+    const fit = solveFit((dd) => availFor(0) / Math.max(0.01, totalNeedAt(dd)), 0.42, FIT.growMax);
     if (fit >= minFit || !options.paginate || !groups.length) {
       d = fit;
       pages = pack(d, true);
@@ -397,10 +392,13 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
     (((c.iconDX || 0) + (Number(options.iconShiftX) || 0)) / 100) * SHEET_W;
   const iconTop = ed(h / 2) - iconPx / 2 + e((c.iconDY || 0) + (Number(options.iconShiftY) || 0));
   if (options.iconFrame && options.iconFrame !== 'none') {
-    const pad = iconPx * 0.1;
+    // no wider than the row is tall: the app's rows are packed closer than
+    // its icons, and a frame drawn round the whole icon ran into the frames
+    // above and below it
+    const dia = Math.min(iconPx * 1.2, ed(h) * 0.96);
     row.append(el('div', {
-      position: 'absolute', left: px(iconLeft - pad), top: px(iconTop - pad),
-      width: px(iconPx + pad * 2), height: px(iconPx + pad * 2), borderRadius: '50%', boxSizing: 'border-box',
+      position: 'absolute', left: px(iconLeft + (iconPx - dia) / 2), top: px(iconTop + (iconPx - dia) / 2),
+      width: px(dia), height: px(dia), borderRadius: '50%', boxSizing: 'border-box',
       background: options.iconFrame === 'disc' ? 'rgba(248, 242, 226, 0.92)' : 'transparent',
       border: `${Math.max(1, ed(0.09))}px solid rgba(90, 70, 40, 0.55)`,
     }));
@@ -758,13 +756,7 @@ export function layoutAppList(spec, options, requestRender) {
   const minFit = clamp(Number(cfg.minFit) || 0.68, 0.3, 1);
   let pagesN = 1;
   if (cfg.fit !== false) {
-    let fit = 1;
-    for (let iter = 0; iter < 4; iter++) {
-      const need = Math.max(...colUnits.map((_, ci) => needAt(ci, fit)));
-      const f = clamp(availEm / Math.max(need, 0.01), 0.42, FIT.growMax);
-      if (Math.abs(f - fit) < 0.002) { fit = f; break; }
-      fit = f;
-    }
+    const fit = solveFit((dd) => availEm / Math.max(0.01, ...colUnits.map((_, ci) => needAt(ci, dd))), 0.42, FIT.growMax);
     if (fit >= minFit || !spec.paginate || two) d = fit;
     else {
       const need1 = needAt(0, 1);

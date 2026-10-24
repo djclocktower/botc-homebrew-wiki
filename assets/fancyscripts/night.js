@@ -39,7 +39,7 @@ import {
   nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
 } from './script.js';
 import {
-  el, img, px, clamp, wrappedRunLineCount, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter,
+  el, img, px, clamp, solveFit, wrappedRunLineCount, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter,
   ICON_IDENTITY, drawIcon,
 } from './util.js';
 import { pageFrame, renderBackground, renderStickers, resolveSrc, markSelected } from './elements.js';
@@ -211,12 +211,15 @@ export function buildJinxSpec(script, options) {
       })),
     });
   }
-  if (!rows.length && blocks.length === 1) {
+  // Nothing to print: the preview says so, and the exports leave the page out
+  // (`empty`) rather than print a sheet that only says it is blank.
+  const empty = !rows.length && blocks.length === 1;
+  if (empty) {
     blocks[0].rows = [{ icons: [STEP_ICONS.jinx], kind: 'note', id: 'none', name: 'No jinxes', color: cfg.textColor,
-      text: 'None of the characters on this script are jinxed with each other.' }];
+      text: 'None of the characters on this script are jinxed with each other. This page is left out of the exports.' }];
   }
   return {
-    kind: 'jinx', which: 'jinx', elPrefix: 'jinx',
+    kind: 'jinx', which: 'jinx', elPrefix: 'jinx', empty,
     title: cfg.title || 'Jinxes',
     columns: [{ heading: '', blocks }],
     cfg, style: styleOf(cfg), bars: false, meta: script.meta, numbered: false, paginate: true,
@@ -502,12 +505,7 @@ export function layoutList(spec, options, requestRender) {
     let d = cfg.fit === false ? clamp(Number(cfg.density) || 1, 0.3, 2) : 1;
     let pagesN = 1;
     if (cfg.fit !== false) {
-      let fit = 1;
-      for (let iter = 0; iter < 3; iter++) {
-        const f = clamp(Math.min(...colUnits.map((_, ci) => availCol[ci] / Math.max(needAt(ci, fit), 0.01))), 0.42, growMax);
-        if (Math.abs(f - fit) < 0.002) { fit = f; break; }
-        fit = f;
-      }
+      const fit = solveFit((dd) => Math.min(...colUnits.map((_, ci) => availCol[ci] / Math.max(needAt(ci, dd), 0.01))), 0.42, growMax);
       // two-column specs never paginate, so they shrink as far as they must
       if (fit >= minFit || !spec.paginate || two) d = fit;
       else {

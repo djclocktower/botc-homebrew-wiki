@@ -1339,11 +1339,12 @@ export function nightLists(script, night) {
 export function reminderParts(text) {
   const src = String(text || '');
   const out = [];
-  const re = /:reminder:|\*([^*\n]{1,80}?)\*/g;
+  // ':Reminder:' too: homebrew authors capitalise it, and it printed as text
+  const re = /:reminder:|\*([^*\n]{1,80}?)\*/gi;
   let last = 0, m;
   while ((m = re.exec(src))) {
     if (m.index > last) out.push({ t: 'text', s: src.slice(last, m.index) });
-    if (m[0] === ':reminder:') out.push({ t: 'dot' });
+    if (m[0].toLowerCase() === ':reminder:') out.push({ t: 'dot' });
     else out.push({ t: 'token', s: m[1] });
     last = m.index + m[0].length;
   }

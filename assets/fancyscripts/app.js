@@ -2235,6 +2235,11 @@ function printScale() {
   return k;
 }
 
+/* Every capture passes includeQueryParams. html-to-image caches each image
+   it embeds under its URL WITH THE QUERY STRIPPED, and every off-site image
+   here is the same proxy address with a different ?url= — so without it the
+   first off-site picture fetched was reused for every other one, and a
+   script's logo printed as one of its characters' icons. */
 async function captureNode(node, kind) {
   await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
   await document.fonts.ready;
@@ -2242,12 +2247,12 @@ async function captureNode(node, kind) {
   const x = options.exportOpts;
   const q = clamp(Number(x.jpegQuality) || 0.92, 0.5, 1);
   if (kind === 'jpeg') {
-    return window.htmlToImage.toJpeg(node, { pixelRatio: printScale(), cacheBust: false, quality: q });
+    return window.htmlToImage.toJpeg(node, { pixelRatio: printScale(), cacheBust: false, includeQueryParams: true, quality: q });
   }
   if (kind === 'share') {
-    return window.htmlToImage.toJpeg(node, { pixelRatio: x.shareScale || 1.5, cacheBust: false, quality: Math.min(q, 0.9) });
+    return window.htmlToImage.toJpeg(node, { pixelRatio: x.shareScale || 1.5, cacheBust: false, includeQueryParams: true, quality: Math.min(q, 0.9) });
   }
-  return window.htmlToImage.toPng(node, { pixelRatio: printScale(), cacheBust: false });
+  return window.htmlToImage.toPng(node, { pixelRatio: printScale(), cacheBust: false, includeQueryParams: true });
 }
 
 /* Exports render every page OFFSCREEN in a laid-out but invisible holder —
@@ -2365,7 +2370,7 @@ function copyImage() {
   // while the browser waits on it
   const bytes = (async () => {
     await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
-    const url = await withPageNode(p, (n) => window.htmlToImage.toPng(n, { pixelRatio: options.exportOpts.shareScale || 1.5, cacheBust: false }));
+    const url = await withPageNode(p, (n) => window.htmlToImage.toPng(n, { pixelRatio: options.exportOpts.shareScale || 1.5, cacheBust: false, includeQueryParams: true }));
     return dataUrlToBlob(url);
   })();
   let item;
@@ -2381,8 +2386,10 @@ function copyImage() {
 
 function exportPages() {
   const x = options.exportOpts.pages;
+  // a jinx page with nothing on it is shown in the preview, never exported
+  const jinxEmpty = !!(layouts.jinxSpec && layouts.jinxSpec.empty);
   const list = pages.filter((p) => (p.kind === 'front' ? x.front !== false : p.kind === 'night' ? x.night !== false
-    : p.kind === 'jinx' ? x.jinx !== false : true));
+    : p.kind === 'jinx' ? x.jinx !== false && !jinxEmpty : true));
   if (options.exportOpts.duplex) {
     // double-sided printing: the back cover on the reverse of the last
     // script sheet, then the night sheets and the jinx page

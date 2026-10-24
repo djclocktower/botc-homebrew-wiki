@@ -40,7 +40,7 @@ import {
   groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet,
 } from './script.js';
 import {
-  el, img, px, clamp, hexHsl, shade, wrappedLineCount,
+  el, img, px, clamp, solveFit, hexHsl, shade, wrappedLineCount,
   normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
 } from './util.js';
 import {
@@ -64,6 +64,46 @@ function iconImg(src, style, alt) {
 /* title art that failed to load (a dead _meta.logo URL): the sheet falls
    back to the swash text title instead of an empty band */
 const failedArt = new Set();
+
+/* each title image's width / height, learnt when it first loads. A logo is
+   fitted into a box 9.4 em tall, but a wide one comes out shorter than
+   that, and the author line and the first section sit under the logo's
+   REAL bottom: placed under the box instead, "by …" landed on top of every
+   square logo (the box is centred at 6.66 em, the author line was at 10.8). */
+const artAspect = new Map();
+function titleArtOf(script, options) {
+  const t = elGet(options, 'title');
+  const art = resolveSrc(t.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+  return art && !failedArt.has(art) ? art : '';
+}
+/* The tallest the title image may be drawn, in em. In the 'shared' column
+   layout the left column's first row starts at contentTop, level with the
+   header, so an image there has to end above it or it covers that row. */
+function artMaxHEm(options, t) {
+  const h = 9.4 * t.scale;
+  return options.columnLayout === 'shared' ? Math.min(h, 2 * (SHEET.contentTop - 0.25 - SHEET.titleCY - t.dy)) : h;
+}
+// half the drawn height of the title image, in em
+function artHalfEm(art, t, options) {
+  const maxH = artMaxHEm(options, t), maxW = (0.4911 * SHEET_W * t.scale) / U;
+  const a = artAspect.get(art);
+  return (a ? Math.min(maxH, maxW / a) : maxH) / 2;
+}
+/* The swash title's ink is calibrated on a name with nothing below the
+   line; a g, j, p, q or y hangs about an em lower, onto the author line
+   ("by Patters" through the y of "Inch by Inch"). */
+function titleDropEm(script, options) {
+  const name = (options.titleOverride || '').trim() || script.meta.name || '';
+  return /[gjpqy]/.test(name) ? 0.9 * elGet(options, 'title').scale : 0;
+}
+// the author line's vertical centre, in em
+function authorCYEm(script, options) {
+  const t = elGet(options, 'title');
+  const a = elGet(options, 'author');
+  const art = titleArtOf(script, options);
+  return (art ? SHEET.titleCY + t.dy + artHalfEm(art, t, options) + 0.95 * a.scale
+    : 10.8 + t.dy + titleDropEm(script, options)) + a.dy;
+}
 
 /* ability text with typographic punctuation and the ornamental asterisk of
    the official sheets */
@@ -410,15 +450,16 @@ function headerExtraEm(script, options) {
   const a = elGet(options, 'author');
   const bottoms = [];
   if (!t.hidden) {
-    if (script.meta.logo && options.useLogo) {
-      bottoms.push(SHEET.titleCY + t.dy + (9.4 * t.scale) / 2);
+    const art = titleArtOf(script, options);
+    if (art) {
+      bottoms.push(SHEET.titleCY + t.dy + artHalfEm(art, t, options));
     } else {
       // the swash title's ink reaches ~3.05 em below its centre at size 1
-      bottoms.push(SHEET.titleCY + t.dy + 3.05 * t.scale);
+      bottoms.push(SHEET.titleCY + t.dy + 3.05 * t.scale + titleDropEm(script, options));
     }
   }
   const author0 = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
-  if (options.showAuthor && author0 && !a.hidden) bottoms.push(10.8 + t.dy + a.dy + 0.75 * a.scale);
+  if (options.showAuthor && author0 && !a.hidden) bottoms.push(authorCYEm(script, options) + 0.75 * a.scale);
   if (!bottoms.length) return 0;
   return Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.35);
 }
@@ -590,13 +631,7 @@ export function layoutSheet(script, options, requestRender) {
   const minFit = clamp(Number(options.minFit) || 0.62, 0.3, 1);
   if (options.fitToContent) {
     // single-page fit first, as the original tool did
-    let fit = 1;
-    for (let iter = 0; iter < 3; iter++) {
-      const neededEm = totalNeedAt(fit);
-      const f = clamp(availFor(0) / neededEm, 0.42, FIT.growMax);
-      if (Math.abs(f - fit) < 0.002) { fit = f; break; }
-      fit = f;
-    }
+    const fit = solveFit((dd) => availFor(0) / totalNeedAt(dd), 0.42, FIT.growMax);
     if (fit >= minFit || !options.paginate || groups.length === 0) {
       d = fit;
       pages = pack(d, true);
@@ -798,9 +833,16 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     const flRTop = SHEET.flRY + (SHEET.flRH * (1 - flRT.scale)) / 2 + flRT.dy;
 
     if (options.showSkull && !skT.hidden) {
+      /* The stock skull is cut from the reference sheet WITH its patch of
+         parchment, a full rectangle. On any background but the calibrated
+         one (a vignette, the grimy top edge, another paper) that patch read
+         as a pale box behind the skull, so its edges are faded into the
+         page. An uploaded replacement is drawn as it is. */
+      const feather = resolveSrc(skT.src) ? '' : 'radial-gradient(ellipse 50% 50% at 50% 54%, #000 62%, transparent 100%)';
       const skullEl = img(resolveSrc(skT.src) || ART + 'skull.png', {
         position: 'absolute', left: skullLeft + '%', top: px(e(skullTop)), width: skullW + '%',
         opacity: String(skT.opacity), transform: skT.rot ? `rotate(${skT.rot}deg)` : '',
+        maskImage: feather, webkitMaskImage: feather,
       });
       skullEl.dataset.fsDecor = 'skull';
       if (resolveSrc(skT.src)) skullEl.crossOrigin = 'anonymous';
@@ -828,8 +870,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     // title: an uploaded title image, else the script's logo when provided,
     // else the swash text title
     if (!tT.hidden) {
-      let titleArt = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
-      if (titleArt && failedArt.has(titleArt)) titleArt = '';
+      const titleArt = titleArtOf(script, options);
       if (titleArt) {
         const logoEl = img(titleArt, {
           position: 'absolute',
@@ -837,7 +878,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
           top: px(e(SHEET.titleCY + tT.dy)),
           transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
           maxWidth: px(0.4911 * SHEET_W * tT.scale),
-          maxHeight: px(e(9.4) * tT.scale),
+          maxHeight: px(e(artMaxHEm(options, tT))),
           objectFit: 'contain',
           opacity: String(tT.opacity),
           filter: `drop-shadow(${e(0.09)}px ${e(0.13)}px ${e(0.11)}px rgba(40, 26, 10, 0.45))`,
@@ -845,7 +886,14 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         logoEl.dataset.fsTbox = '1';
         logoEl.crossOrigin = 'anonymous';
         // the logo's width is only known once it loads — re-hug the decor then
-        logoEl.addEventListener('load', () => fitTitle(sheet, options));
+        logoEl.addEventListener('load', () => {
+          // first sight of this image: lay the header out again on its shape
+          if (!artAspect.has(titleArt) && logoEl.naturalHeight) {
+            artAspect.set(titleArt, logoEl.naturalWidth / logoEl.naturalHeight);
+            if (requestRender) { requestRender(); return; }
+          }
+          fitTitle(sheet, options);
+        });
         logoEl.addEventListener('error', () => {
           failedArt.add(titleArt);
           if (requestRender) requestRender();
@@ -876,7 +924,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       const authorEl = el('div', {
         position: 'absolute',
         left: (SHEET.titleCX + tT.dx + aT.dx) + '%',
-        top: px(e(10.8 + tT.dy + aT.dy)),
+        top: px(e(authorCYEm(script, options))),
         transform: `translate(-50%, -50%)${aT.rot ? ` rotate(${aT.rot}deg)` : ''}`,
         fontFamily: fonts.author,
         fontStyle: 'italic',
@@ -887,6 +935,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         mixBlendMode: 'multiply',
         whiteSpace: 'nowrap',
       }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(author));
+      authorEl.dataset.fsAuthor = '1';
       sheet.append(mark(authorEl, 'el:author'));
     }
   }
@@ -991,7 +1040,9 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         ? clamp(87.5 * U - topPx, ownH, ownH * 2) : ownH;
       // upright vertical letters advance ≈ font-size (Chromium ignores
       // line-height in vertical-rl/upright) — shrink-to-fit uses 0.85/letter
-      const fitFs = (spanH - e(0.2)) / (label.length * 0.85);
+      // with room at both ends, or two labels meeting at a divider read as
+      // one word ("OUTSIDERSMINIONS")
+      const fitFs = (spanH - e(0.9)) / (label.length * 0.85);
       const labelEl = el('div', {
         position: 'absolute',
         left: (SHEET.sidebarX + SHEET.sidebarW / 2 + 0.3 + lT.dx) + '%',
@@ -1000,13 +1051,21 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         writingMode: 'vertical-rl',
         textOrientation: 'upright',
         fontFamily: fonts.label,
-        fontSize: px(clamp(fitFs, e(SHEET.labelSizeMin), baseFs)),
+        // the floor gives way before the word runs into the next team's
+        // label: on a tightly packed sheet a two-row OUTSIDERS section is
+        // shorter than the word at the usual minimum
+        fontSize: px(clamp(fitFs, Math.min(e(SHEET.labelSizeMin), Math.max(e(0.45), fitFs)), baseFs)),
         lineHeight: '1',
         letterSpacing: (options.labelSpacing == null ? -0.15 : options.labelSpacing) + 'em',
         color: options.labelColor || '#eeeeee',
         opacity: String(lT.opacity),
         filter:
           'drop-shadow(0.6px 0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px 0.6px 1.8px rgba(34,34,34,0.53)) drop-shadow(0.6px -0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px -0.6px 1.8px rgba(34,34,34,0.66))',
+        // With the ribbon off the labels sit on the parchment's burnt edge,
+        // which is pale in places: a dark halo keeps light letters readable
+        // there (the drop shadows above are sized for the ribbon).
+        textShadow: options.sidebarMode === 'none'
+          ? `0 0 ${e(0.25)}px rgba(20,14,8,0.9), 0 0 ${e(0.5)}px rgba(20,14,8,0.7)` : '',
         whiteSpace: 'nowrap',
       }, label);
       wrap.append(labelEl);
@@ -1153,6 +1212,19 @@ export function fitTitle(sheet, options) {
     const trueW = titleEl.scrollWidth;
     if (trueW > bandW) titleEl.style.fontSize = px(naturalFs * (bandW / trueW));
   }
+  /* In the 'shared' layout the left column's first row sits level with the
+     author line, so a long "by …" centred under the title ran into that
+     row's ability. Its left edge is kept clear of the column. */
+  const authorEl = sheet.querySelector('[data-fs-author]');
+  if (authorEl && options && options.columnLayout === 'shared') {
+    const sr = sheet.getBoundingClientRect(), ar = authorEl.getBoundingClientRect();
+    const colRight = SHEET.col1IconX + SHEET.textOffsetX + SHEET.textWidth * (Number(options.columnWidth) || 1) + 0.6;
+    const over = colRight - ((ar.left - sr.left) / sr.width) * 100;
+    if (sr.width && ar.width && over > 0) {
+      const room = 97 - ((ar.right - sr.left) / sr.width) * 100;
+      authorEl.style.left = (parseFloat(authorEl.style.left) + Math.min(over, Math.max(0, room))) + '%';
+    }
+  }
   if (!options || options.hugDecor === false) return;
 
   const tbox = sheet.querySelector('[data-fs-tbox]');
@@ -1176,10 +1248,15 @@ export function fitTitle(sheet, options) {
   const skullW = SHEET.skullW * skT.scale;
   const flLW = SHEET.flLW * flLT.scale;
   const flRW = SHEET.flRW * flRT.scale;
+  // The insets tuck the decor into the swash title's side bearings. A logo
+  // or an uploaded title image has no bearings, so the same tuck put the
+  // skull on top of the picture; an image is given a small gap instead.
+  const isImg = tbox.tagName === 'IMG';
+  const skullIn = isImg ? -0.6 : 1.49, flRIn = isImg ? -0.6 : 0.58;
   // never ride onto the ribbon, however long the name gets
-  const skullLeft = Math.max(9.2, leftPct + 1.49 - skullW + skT.dx);
+  const skullLeft = Math.max(9.2, leftPct + skullIn - skullW + skT.dx);
   const flLLeft = skullLeft - skT.dx + 1.24 - flLW + flLT.dx;
-  const flRLeft = Math.min(97.65 - flRW, rightPct - 0.58 + flRT.dx);
+  const flRLeft = Math.min(97.65 - flRW, rightPct - flRIn + flRT.dx);
   if (skullEl) skullEl.style.left = skullLeft + '%';
   if (flLEl) flLEl.style.left = flLLeft + '%';
   if (flREl) flREl.style.left = flRLeft + '%';
