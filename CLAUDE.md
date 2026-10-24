@@ -4492,10 +4492,15 @@ needs its ratio re-measured or it is picked at the wrong size.
   the rows below 86% mirrored from above, the top edge's dark band flipped
   down as the grime. `renderBackground(..., {noGarland})` is the switch, and
   the app view uses it too when `appGarland` is set.
-- **Every garland in the pack has its oval at 54% across**, not the middle,
-  so a pack garland is translated by -54% to put the oval under the
-  footnote. Trouble Brewing's and the custom script's ovals sit lower than
-  the painted one, so those choices carry `foot`, the em the footnote drops.
+- **The footnote is centred in a pack garland's oval by measurement.**
+  `GARLAND_OVALS` in script.js holds each file's oval (centre across, top
+  down, height over width), measured off the art; the ovals sit about 54%
+  across, not the middle, and at different heights. `garlandShift()`
+  translates the garland so its oval sits under the footnote, and
+  `garlandOval()` + `footInOval()` put the footnote in the middle of what
+  shows of the oval, following the garland's own size and nudge. Both
+  styles use them (the app view passes its height cap). An upload's oval
+  is unknown, so it keeps the fixed spot. A new garland needs a row there.
 - The pack's garlands are 800px wide, so they print softer than the painted
   one at the 3x print scale. Custom script and Homebrew are the same files,
   so only one is offered.

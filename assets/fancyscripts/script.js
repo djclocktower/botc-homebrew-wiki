@@ -897,6 +897,33 @@ const LOGO_SKULLS = [['trouble-brewing', 'Trouble Brewing', 'webp', 0.66], ['bad
   ['sects-and-violets', 'Sects & Violets', 'webp', 0.65], ['travellers-and-fabled', 'Travellers & Fabled', 'webp', 0.69],
   ['the-tomb', 'The Tomb', 'webp', 0.67], ['garden-of-sin', 'Garden of Sin', 'webp', 0.65],
   ['greatest-show-on-earth', 'Greatest Show on Earth', 'webp', 1.09], ['midnight-house-of-the-damned', 'Midnight House of the Damned', 'webp', 1.25]];
+const GARLAND_OVALS = {
+  'trouble-brewing': [0.542, 0.359, 117 / 800], 'bad-moon-rising': [0.544, 0.333, 129 / 800],
+  'sects-and-violets': [0.542, 0.465, 129 / 800], 'custom-script': [0.54, 0.376, 117 / 800],
+};
+/* Where a picked garland's oval is on the sheet, so the footnote sits in
+   the middle of whatever is showing of it: the garland's width (% of the
+   sheet), its size and nudge, and a height cap (the app view's). Answers
+   x (% of width, before the garland's own nudge) and the oval's visible
+   top and bottom in em, or null for an upload, whose oval is unknown. */
+export function garlandOval(src, widthPct, scale, dyEm, maxHEm) {
+  const c = artChoice(src);
+  if (!c || !c.oval) return null;
+  const [, top, ratio] = c.oval;
+  let h = widthPct * scale / SHEET.ratio * ratio;
+  if (maxHEm) h = Math.min(h, maxHEm * scale);
+  const bottom = 100 + dyEm;
+  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, 100) };
+}
+/* the footnote's top (em) for its lines to sit in the middle of the oval */
+export function footInOval(oval, text, lineEm) {
+  const n = text ? text.split('\n').length : 2;
+  return (oval.top + oval.bottom) / 2 - n * lineEm / 2;
+}
+export function garlandShift(src) {
+  const c = artChoice(src);
+  return c ? (c.oval ? c.oval[0] * 100 : 54) : 50;
+}
 export const ART_CHOICES = {
   skull: [
     { label: 'Built in', src: '' },
@@ -912,8 +939,9 @@ export const ART_CHOICES = {
   ],
   garland: [
     { label: 'Built in', src: '' },
-    // foot: how far (em) the footnote drops to sit inside that garland's oval
-    ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/sheet-bottom.webp', foot: { 'trouble-brewing': 1.4, 'custom-script': 0.5 }[d] || 0 })),
+    // oval: [centre across, top of the oval down, image height over width],
+    // measured off each file, so the footnote can be centred in it
+    ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/sheet-bottom.webp', oval: GARLAND_OVALS[d] })),
     { label: 'None', src: NO_ART },
   ],
   nightDecorFirst: [{ label: 'None', src: '' },

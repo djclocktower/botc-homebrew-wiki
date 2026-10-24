@@ -158,6 +158,14 @@ check('columns: half and half by default', [S.DEFAULT_OPTIONS.columnSplit, S.nor
 // the ribbon: its width and the gold edge beside it
 check('ribbon: full width and a gold edge by default', [S.DEFAULT_OPTIONS.sidebarWidth, S.DEFAULT_OPTIONS.ribbonEdge], [1, true]);
 check('ribbon: damask pattern at full strength by default', S.DEFAULT_OPTIONS.sidebarContrast, 1);
+// the footnote: centred in a pack garland's oval, moving with the garland
+{
+  const bmr = '/assets/fancyscripts/decor/botc-app/bad-moon-rising/sheet-bottom.webp';
+  const o = S.garlandOval(bmr, 88, 1, 0), up = S.garlandOval(bmr, 88, 1, -2);
+  check('footnote: inside the oval', o.top > 88 && o.bottom === 100 && S.footInOval(o, '', 1) > o.top, true);
+  check('footnote: follows a raised garland', Math.round((S.footInOval(o, '', 1) - S.footInOval(up, '', 1)) * 10) / 10, 2);
+  check('footnote: an upload has no known oval', [S.garlandOval('asset:x', 88, 1, 0), S.garlandShift('asset:x')], [null, 50]);
+}
 check('ribbon: the gold edge art exists', fs.existsSync(path.join(root, 'assets/fancyscripts/art/ribbon-edge.png')), true);
 
 // stickers: a layer each, the old "behind" switch folded into it

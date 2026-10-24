@@ -33,7 +33,7 @@
 
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON,
-  groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, artChoice,
+  groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
   breakRuns, fitNameLines,
 } from './script.js';
 import {
@@ -502,8 +502,8 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
       maxHeight: px(e(A.garlandH) * gT.scale),
       objectFit: 'contain',
       objectPosition: '50% 100%',
-      // the oval sits at 54% across every garland in the pack; an upload is centred
-      transform: `translateX(-${artChoice(gT.src) ? 54 : 50}%)${gT.rot ? ` rotate(${gT.rot}deg)` : ''}`,
+      // the pack's ovals sit about 54% across; an upload is centred
+      transform: `translateX(-${garlandShift(gT.src)}%)${gT.rot ? ` rotate(${gT.rot}deg)` : ''}`,
       opacity: String(gT.opacity),
     });
     gEl.crossOrigin = 'anonymous';
@@ -613,10 +613,13 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) && !fT.hidden &&
       (isLastPage || options.footnoteEveryPage)) {
     const custom = (options.footnoteText || '').trim();
+    // a garland from the pack: centred in its oval, wherever it is moved
+    const gT = elGet(options, 'appGarland');
+    const oval = isLastPage && !gT.hidden && garlandOval(gT.src, A.garlandW, gT.scale, gT.dy, A.garlandH);
     const foot = el('div', {
       position: 'absolute',
-      left: (A.footnoteCX + fT.dx) + '%',
-      top: px(e(A.footnoteTop + fT.dy + ((artChoice(elGet(options, 'appGarland').src) || {}).foot || 0))),
+      left: (A.footnoteCX + (oval ? gT.dx : 0) + fT.dx) + '%',
+      top: px(e(fT.dy + (oval ? footInOval(oval, custom, A.footnoteLine) : A.footnoteTop))),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',

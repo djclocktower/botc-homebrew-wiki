@@ -37,7 +37,7 @@
 import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
-  groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice,
+  groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
@@ -798,8 +798,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       left: (SHEET.footnoteCX + gaT.dx) + '%',
       bottom: px(-e(gaT.dy)),
       width: (88 * gaT.scale) + '%',
-      // the oval sits at 54% across every garland in the pack; an upload is centred
-      transform: `translateX(-${artChoice(gaT.src) ? 54 : 50}%)${gaT.rot ? ` rotate(${gaT.rot}deg)` : ''}`,
+      // the pack's ovals sit about 54% across; an upload is centred
+      transform: `translateX(-${garlandShift(gaT.src)}%)${gaT.rot ? ` rotate(${gaT.rot}deg)` : ''}`,
       opacity: String(gaT.opacity),
     });
     gEl.crossOrigin = 'anonymous';
@@ -1167,9 +1167,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
 
   // "*Not the first night" footnote inside the garland circle
   const fT = elGet(options, 'footnote');
-  // a garland from the pack sets its oval a little lower than the painted one
-  const gPick = !gaT.hidden && artChoice(gaT.src);
-  const footDrop = gPick && gPick.foot || 0;
+  // a garland from the pack: centred in its oval, wherever it is moved
+  const oval = !gaT.hidden && garlandOval(gaT.src, 88, gaT.scale, gaT.dy);
   if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) &&
       !fT.hidden && (isLastPage || options.footnoteEveryPage)) {
     const custom = (options.footnoteText || '').trim();
@@ -1190,8 +1189,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     }, '*'));
     const foot = el('div', {
       position: 'absolute',
-      left: (SHEET.footnoteCX + fT.dx) + '%',
-      top: px(e(SHEET.footnoteTop + fT.dy + footDrop)),
+      left: (SHEET.footnoteCX + (oval ? gaT.dx : 0) + fT.dx) + '%',
+      top: px(e(fT.dy + (oval ? footInOval(oval, custom, SHEET.footnoteLine) : SHEET.footnoteTop))),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',
