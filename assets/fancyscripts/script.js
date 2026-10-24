@@ -721,10 +721,14 @@ export function seedBackTexts(title) {
   const rows = words.map((w) => ({ text: w, small: BACK_SMALL_WORDS.has(w.toLowerCase()) }));
   // base sizes from the template: big ≈ 31–37% of width, small ≈ 22%
   let big = rows.length <= 3 ? 400 : rows.length <= 5 ? 330 : 260;
+  // LHF Unlovable advances ≈ 0.43 em a letter, flourishes included — but a
+  // capital is about twice that, so each capital after the first (which the
+  // 0.43 was measured with) adds 0.4 em: GAME OF REVENGE in capitals ran
+  // off both edges of the back cover
+  const emOf = (w) => 0.43 * Math.max(2, w.length) + 0.4 * (w.slice(1).match(/[A-Z]/g) || []).length;
   const sizeOf = (r) => Math.min(
     r.small ? big * 0.58 : big,
-    // LHF Unlovable advances ≈ 0.43 em — keep every word inside the page
-    (1242 * 0.88) / (0.43 * Math.max(2, r.text.length)),
+    (1242 * 0.88) / emOf(r.text),
   );
   // overlapping stack like the template (pitch ≈ 0.62 of the glyph size)
   let total = rows.reduce((n, r) => n + sizeOf(r) * 0.62, 0);

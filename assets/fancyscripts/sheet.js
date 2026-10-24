@@ -40,7 +40,7 @@ import {
   groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet,
 } from './script.js';
 import {
-  el, img, px, clamp, solveFit, hexHsl, shade, wrappedLineCount,
+  el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
   normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
 } from './util.js';
 import {
@@ -1043,6 +1043,10 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       // with room at both ends, or two labels meeting at a divider read as
       // one word ("OUTSIDERSMINIONS")
       const fitFs = (spanH - e(0.9)) / (label.length * 0.85);
+      const labelInk = options.labelColor || '#eeeeee';
+      const darkInk = isDark(labelInk);
+      const glow = darkInk ? 'rgba(250,246,236,0.75)' : 'rgba(34,34,34,0.66)';
+      const halo = darkInk ? 'rgba(250,246,236,0.9)' : 'rgba(20,14,8,0.9)';
       const labelEl = el('div', {
         position: 'absolute',
         left: (SHEET.sidebarX + SHEET.sidebarW / 2 + 0.3 + lT.dx) + '%',
@@ -1057,15 +1061,17 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         fontSize: px(clamp(fitFs, Math.min(e(SHEET.labelSizeMin), Math.max(e(0.45), fitFs)), baseFs)),
         lineHeight: '1',
         letterSpacing: (options.labelSpacing == null ? -0.15 : options.labelSpacing) + 'em',
-        color: options.labelColor || '#eeeeee',
+        color: labelInk,
         opacity: String(lT.opacity),
-        filter:
-          'drop-shadow(0.6px 0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px 0.6px 1.8px rgba(34,34,34,0.53)) drop-shadow(0.6px -0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px -0.6px 1.8px rgba(34,34,34,0.66))',
+        // the glow behind the letters is the label colour's opposite: the
+        // dark shadows made for the stock white labels smeared a dark label
+        // (Ink Saver's) into a blot
+        filter: `drop-shadow(0.6px 0.6px 1.8px ${glow}) drop-shadow(-0.6px 0.6px 1.8px ${glow}) drop-shadow(0.6px -0.6px 1.8px ${glow}) drop-shadow(-0.6px -0.6px 1.8px ${glow})`,
         // With the ribbon off the labels sit on the parchment's burnt edge,
-        // which is pale in places: a dark halo keeps light letters readable
-        // there (the drop shadows above are sized for the ribbon).
+        // which is pale in places and dark in others: a halo in the same
+        // opposite colour keeps them readable on both
         textShadow: options.sidebarMode === 'none'
-          ? `0 0 ${e(0.25)}px rgba(20,14,8,0.9), 0 0 ${e(0.5)}px rgba(20,14,8,0.7)` : '',
+          ? `0 0 ${e(0.25)}px ${halo}, 0 0 ${e(0.5)}px ${halo}` : '',
         whiteSpace: 'nowrap',
       }, label);
       wrap.append(labelEl);

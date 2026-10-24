@@ -4683,6 +4683,39 @@ carries it too, or a round trip would come back with the box unticked.
   current options: they change colours, backgrounds and title style and
   leave layout, uploads and character edits alone. "Ink Saver" is the
   plain-paper look. "Shuffle" rolls one hue for the ribbon, title and back.
+- **Things a soak test of 30 random wiki scripts found (2026-10)**, each
+  easy to reintroduce:
+  - **Every html-to-image capture passes `includeQueryParams: true`.** The
+    library caches embedded images by URL with the query stripped, and every
+    off-site image is `images.weserv.nl/?url=…`, so without it the first
+    off-site picture fetched was reused for all of them (a script's logo
+    printed as a character's icon).
+  - **Fitting goes through `solveFit()` (util.js)**, all four layouts.
+    Rows re-wrap as the type shrinks, so "density = room ÷ need" can stop
+    on the wrong side of a step; it ends by stepping down until it fits.
+  - **The header is laid out on the title image's real shape**
+    (`artAspect`, learnt on the logo's first load, which re-renders once):
+    the author line sits under the logo's actual bottom, and an image title
+    gets a gap from the skull rather than the tuck a text title gets. A
+    text title with a descender (g j p q y) gets an extra 0.9 em
+    (`titleDropEm`). In the `'shared'` column layout a logo is capped to end
+    above the first row (`artMaxHEm`) and `fitTitle()` nudges the author
+    line clear of the left column.
+  - The stock skull is drawn with an edge-fading mask: its PNG carries a
+    rectangle of baked parchment.
+  - `reminderParts()` matches `:reminder:` in any case (homebrew writes
+    `:Reminder:`); render-page.js's `nightItems()` strips it from the
+    wiki's own night lists the same way.
+  - A jinx page with nothing on it is `spec.empty` and left out of exports.
+  - Ribbon labels glow in the label colour's opposite (`isDark`), and get
+    a halo of it when the ribbon is off: Ink Saver's dark labels were
+    smeared into blots by the shadows made for the stock white ones.
+  - `seedBackTexts()` counts each capital after a word's first letter as
+    wider: an all-caps title ran off both edges of the back cover.
+  - The harness is a scratch script, not in the repo: Playwright routing
+    `/api`, the feeds and uploaded art to the live site and everything else
+    to the checkout, then `FancyScripts.patch()` with random settings and a
+    click on "All pages".
 
 ## Creator marks (a creator's own symbol)
 
