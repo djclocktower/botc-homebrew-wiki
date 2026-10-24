@@ -560,6 +560,11 @@ export const DEFAULT_OPTIONS = {
   sortMode: 'script', // 'script' (as in the JSON) | 'official' | 'sao' | 'alpha'
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
   //                       | 'shared' (classic: col 2 staggered under the title)
+  // where a team breaks between the columns: 'count' (the larger half on
+  // the left) | 'balance' (the break that evens out the two columns' text,
+  // which is how the printed edition sheets do it: Bad Moon Rising's six
+  // long Townsfolk abilities sit beside seven short ones)
+  columnSplit: 'count',
   showJinxes: true,
   jinxIconSize: 1, // the partner icons beside a name
   showFootnote: true,

@@ -4518,6 +4518,15 @@ needs its ratio re-measured or it is picked at the wrong size.
   printed sheets; the first section clears the title/author ink instead of
   giving the title a column slot) and **'shared'** (the classic reference
   layout — one shared row grid, col 2 staggered one row under the title).
+  Where a team breaks between the two columns is `columnSplit`: `'count'`
+  (the default, the larger half on the left) or `'balance'` (the break
+  that evens out the two columns' measured height, `splitTeam()` in
+  sheet.js). The printed edition sheets do not agree on one rule: Trouble
+  Brewing's Townsfolk are 7/6 by count, Bad Moon Rising's 6/7 by text, so
+  it is a choice per design. A line break typed into a character's ability
+  (the Characters card's Ability box) is kept on the classic sheet
+  (`white-space: pre-line`, and `wrappedLineCount()` counts each line), so
+  an ability can be broken where the official sheets break it.
   The sidebar ribbon can be recoloured (`sidebarColor`) — **per pixel in
   real HSL, never with a CSS hue-rotate filter**: hue-rotate is a linear
   approximation that maps the art's near-black navy (the shadowed edges at

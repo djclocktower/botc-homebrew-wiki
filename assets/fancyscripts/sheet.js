@@ -410,6 +410,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     color: options.inkColor || '#222222',
     mixBlendMode: 'multiply',
     textAlign: options.abilityAlign === 'justify' ? 'justify' : 'left',
+    whiteSpace: 'pre-line', // a line break typed in the ability is kept, as the printed sheets break them
   }, ...abilityNodes(char.ability, options.bracketStyle)));
 
   return row;
@@ -518,8 +519,20 @@ export function layoutSheet(script, options, requestRender) {
      instead of a hole at the bottom. The title no longer takes a column
      slot, so the first section starts below the title/author ink instead
      (headerExtra — fixed, because the title does not scale with density). */
+  const splitTeam = (chars, density) => {
+    if (options.columnSplit !== 'balance' || chars.length < 3) return splitColumns(chars);
+    const h = chars.map((ch) => rowHeightEm(ch, density));
+    const total = sum(h);
+    let at = Math.ceil(chars.length / 2), best = Infinity, acc = 0;
+    for (let k = 1; k < chars.length; k++) {
+      acc += h[k - 1];
+      const tall = Math.max(acc, total - acc);
+      if (tall < best - 1e-6) { best = tall; at = k; }
+    }
+    return [chars.slice(0, at), chars.slice(at)];
+  };
   const measureSection = (chars, density, shift) => {
-    const [left, right] = single ? [chars, []] : splitColumns(chars);
+    const [left, right] = single ? [chars, []] : splitTeam(chars, density);
     if (layoutEven) {
       const leftNeeds = left.map((ch) => rowHeightEm(ch, density));
       const rightNeeds = right.map((ch) => rowHeightEm(ch, density));

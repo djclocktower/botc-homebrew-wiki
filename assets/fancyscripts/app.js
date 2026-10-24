@@ -1311,6 +1311,8 @@ function buildLayoutCard() {
     ['sao', 'Steven Approved Order'], ['alpha', 'Alphabetical']], bindPath('sortMode'));
   makeSelect(styleGroup(box, 'front', 'classic'), 'Columns', [['even', 'Two, even (official)'], ['shared', 'Two, classic (col 2 under the title)'], ['single', 'One wide column']],
     bindPath('columnLayout'));
+  makeSelect(styleGroup(box, 'front', 'classic'), 'Split each team', [['count', 'Half and half'], ['balance', 'Balance by text length']],
+    bindPath('columnSplit'));
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
   makeToggle(box, 'Continue onto a second sheet when the script is too long', bindPath('paginate'));
   makeToggle(box, 'Title band on every sheet', bindPath('repeatHeader'));

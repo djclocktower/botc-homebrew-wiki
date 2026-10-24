@@ -162,6 +162,8 @@ export function textWidth(text, font) {
 /* how many lines `text` takes at `maxW` px in `font` (a CSS font shorthand) */
 export function wrappedLineCount(text, font, maxW) {
   if (!text || !text.trim()) return 1;
+  // a line break typed into the text is kept (the sheet draws it pre-line)
+  if (text.includes('\n')) return text.split('\n').reduce((n, part) => n + wrappedLineCount(part, font, maxW), 0);
   const key = font + '' + Math.round(maxW) + '' + text;
   const hit = wrapCache.get(key);
   if (hit != null) return hit;
