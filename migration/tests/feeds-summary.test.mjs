@@ -102,6 +102,44 @@ test('/api/collection-tiles matches the collections page’s own counting and ic
   assert.equal((await f.request('/api/collection-tiles', { headers: { 'If-None-Match': etag } })).status, 304);
 });
 
+test('/api/jinx-sets lists every published roster for the /jinxes focus map', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  seed(f);
+  f.insert('scripts', 'demo', { slug: 'demo', name: 'Demo', author: 'Moll', characters: ['sculptor', 'off-imp'] });
+  f.insert('scripts', 'hidden', { slug: 'hidden', name: 'Hidden', characters: ['sculptor'] }, 'draft');
+  const [grid, colls] = await Promise.all([
+    f.request('/characters.json?fields=grid').then(r => r.json()),
+    f.request('/collections.json?fields=browse').then(r => r.json())
+  ]);
+  const res = await f.request('/api/jinx-sets');
+  const { sets } = await res.json();
+  const demo = sets.find(s => s.type === 'script');
+  assert.deepEqual(demo, { type: 'script', key: 'demo', name: 'Demo', author: 'Moll', total: 2, members: ['sculptor', 'off-imp'] });
+  assert.equal(sets.filter(s => s.type === 'script').length, 1);   // never the draft
+  // A collection's roster is the one membership rule, not a copy of it.
+  const odyssey = sets.find(s => s.type === 'collection' && s.key === 'odyssey');
+  assert.deepEqual(odyssey.members, PageRender.resolveCollectionMembers(colls.find(c => c.id === 'odyssey'), grid).map(c => c.slug));
+  const etag = res.headers.get('ETag');
+  assert.equal((await f.request('/api/jinx-sets', { headers: { 'If-None-Match': etag } })).status, 304);
+});
+
+test('/api/jinxes gives official characters their team and edition', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  f.insert('characters', 'hero', { slug: 'hero', name: 'Hero', team: 'townsfolk', ability: 'x', jinxes: [{ id: 'imp', reason: 'Rule.' }] });
+  const body = await (await f.request('/api/jinxes')).json();
+  const imp = body.nodes.find(n => n.id === 'o:imp');
+  assert.equal(imp.team, 'demon');
+  assert.equal(imp.edition, 'tb');
+});
+
+test('the jinx page draws one focus at a time and links back from a character page', async () => {
+  const html = await read('jinxes.html');
+  assert.match(html, /\/api\/jinx-sets/);
+  assert.doesNotMatch(html, /jinx-graph/);
+  // The "See this on the jinx map" link on a /c/ page sends ?c={identity}.
+  assert.match(html, /p\.get\('c'\)/);
+});
+
 test('the browse pages ask for the small answers, not the character feed', async () => {
   const tags = await read('tags.html'), colls = await read('all-collections.html');
   for (const html of [tags, colls]) assert.doesNotMatch(html, /characters\.json/);
