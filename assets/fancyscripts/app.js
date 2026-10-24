@@ -1259,7 +1259,6 @@ function buildLayoutCard() {
   makeSlider(box, 'Icon shadow', 0, 2, 0.05, fmtNum(2), bindPath('iconShadow'), { reset: 1 });
   makeSelect(box, 'Icon effect', [['none', 'None'], ['vivid', 'Vivid'], ['sepia', 'Sepia'], ['grayscale', 'Grayscale'],
     ['engraved', 'Engraved (ink)']], bindPath('iconEffect'));
-  makeSelect(box, 'Icon backing', [['none', 'None'], ['disc', 'Parchment token'], ['ring', 'Ring']], bindPath('iconFrame'));
   makeSelect(box, 'Name style', [['normal', 'As written'], ['smallcaps', 'Small caps'], ['upper', 'CAPITALS']], bindPath('nameCase'));
   const sc3 = styleGroup(box, 'front', 'classic');
   makeSelect(sc3, 'Ability alignment', [['left', 'Left'], ['justify', 'Justified']], bindPath('abilityAlign'));

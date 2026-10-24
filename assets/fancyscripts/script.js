@@ -618,7 +618,6 @@ export const DEFAULT_OPTIONS = {
   iconShiftX: 0, // every icon on the sheet, % of the width
   iconShiftY: 0, // every icon on the sheet, em
   iconEffect: 'none', // none | grayscale | sepia | engraved
-  iconFrame: 'none', // none | disc | ring — a token-style backing behind every icon
   normalizeIcons: true,
   hideTeams: { townsfolk: false, outsider: false, minion: false, demon: false, traveller: false, fabled: false, loric: false },
   // long scripts: when auto-fit would have to shrink below minFit, the
@@ -1590,6 +1589,7 @@ export function normalizeOptions(o) {
   }
   for (const k of RETIRED_LIST_KEYS) { delete out.night[k]; delete out.jinxPage[k]; }
   for (const k of RETIRED_ELEMENTS) delete out.el[k];
+  delete out.iconFrame; // the circle behind every icon, taken out at the owner's request
   if (src.includeBackCover != null) out.exportOpts.pages.back = !!src.includeBackCover;
   out.includeBackCover = out.exportOpts.pages.back;
   return out;

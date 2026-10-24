@@ -391,18 +391,6 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
   const iconLeft = (A.iconCX / 100) * SHEET_W - iconPx / 2 +
     (((c.iconDX || 0) + (Number(options.iconShiftX) || 0)) / 100) * SHEET_W;
   const iconTop = ed(h / 2) - iconPx / 2 + e((c.iconDY || 0) + (Number(options.iconShiftY) || 0));
-  if (options.iconFrame && options.iconFrame !== 'none') {
-    // no wider than the row is tall: the app's rows are packed closer than
-    // its icons, and a frame drawn round the whole icon ran into the frames
-    // above and below it
-    const dia = Math.min(iconPx * 1.2, ed(h) * 0.96);
-    row.append(el('div', {
-      position: 'absolute', left: px(iconLeft + (iconPx - dia) / 2), top: px(iconTop + (iconPx - dia) / 2),
-      width: px(dia), height: px(dia), borderRadius: '50%', boxSizing: 'border-box',
-      background: options.iconFrame === 'disc' ? 'rgba(248, 242, 226, 0.92)' : 'transparent',
-      border: `${Math.max(1, ed(0.09))}px solid rgba(90, 70, 40, 0.55)`,
-    }));
-  }
   const fit = options.normalizeIcons ? iconFit(c.icon) : ICON_IDENTITY;
   const icon = iconImg(drawIcon(c.icon), {
     position: 'absolute', left: px(iconLeft), top: px(iconTop), width: px(iconPx), height: px(iconPx),

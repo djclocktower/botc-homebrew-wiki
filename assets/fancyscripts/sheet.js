@@ -345,20 +345,6 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
   const blockEm = Math.min(naturalEm == null ? heightEm : naturalEm, heightEm);
   const iconTop = ed((blockEm - iconEm) / 2 + 0.5) - (iconPx - ed(iconEm)) / 2 +
     e((char.iconDY || 0) + (Number(options.iconShiftY) || 0));
-  if (options.iconFrame && options.iconFrame !== 'none') {
-    // a token-style backing: a parchment disc, or just its ring
-    const pad = iconPx * 0.1;
-    row.append(el('div', {
-      position: 'absolute',
-      left: px(iconLeft - pad), top: px(iconTop - pad),
-      width: px(iconPx + pad * 2), height: px(iconPx + pad * 2),
-      borderRadius: '50%',
-      background: options.iconFrame === 'disc' ? 'rgba(248, 242, 226, 0.92)' : 'transparent',
-      border: `${Math.max(1, ed(0.09))}px solid rgba(90, 70, 40, 0.55)`,
-      boxSizing: 'border-box',
-      boxShadow: options.iconFrame === 'disc' ? `0 ${ed(0.1)}px ${ed(0.25)}px rgba(32,20,8,0.35)` : 'none',
-    }));
-  }
   const icon = iconImg(drawIcon(char.icon), {
     position: 'absolute',
     left: px(iconLeft),
