@@ -698,7 +698,12 @@ assets/
                        icons/ (the REAL official painted icons — see the
                        section below) are the sealed payload, vendor/ the
                        export libraries. See "Fancy Scripts" below before
-                       touching ANY number in script.js.
+                       touching ANY number in script.js. decor/ is official
+                       decoration art (edition skulls with the logo lettering
+                       cut out, botc.app's token leaves and garlands, the
+                       shop site's cutouts) collected for stickers; nothing
+                       loads it yet. Its README.md says where each file came
+                       from.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
                        stripped; app.js is the wiki's own UI controller (the
