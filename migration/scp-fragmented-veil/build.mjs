@@ -313,12 +313,6 @@ for (const r of planned.rows) {
     const content = s.lines.concat(s.json.map(versionText)).filter(Boolean).join('\n\n');
     if (content) boxes.push({ title: s.title.replace(/^Alternative /, 'Alternative ').trim(), content });
   }
-  // The Worker keeps 60 jinxes per character (JINX_MAX); the rest are
-  // written out in a box so none is lost.
-  if (p.jinxes.length > 60) {
-    const extra = p.jinxes.splice(60);
-    boxes.push({ title: 'More jinxes', content: extra.map(j => '**' + j.name + ':** ' + j.text).join('\n\n') });
-  }
   p.customBoxes = boxes;
   if (!p.jinxes.length) delete p.jinxes;
   for (const k of ['callout', 'edition']) if (!p[k]) delete p[k];
