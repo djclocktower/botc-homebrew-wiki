@@ -888,6 +888,7 @@ function ribbonNodes(spec, options, layout, pageIndex, ctx, mark, e) {
       mode: options.sidebarMode === 'flat' ? 'flat' : 'damask',
       color: nightRibbonColor(cfg, options),
       src: resolveSrc(sbT.src),
+      contrast: options.sidebarContrast,
       widthPct: G.ribbonW + G.edgeW * 0.6,
       side: 'right',
     }, { requestRender: ctx.requestRender, forExport: ctx.forExport });

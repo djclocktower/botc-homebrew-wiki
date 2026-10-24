@@ -1398,6 +1398,7 @@ function buildColorsCard() {
   const sb = makeRow(rb, 'fs-colors');
   makeColor(sb, 'Ribbon colour', bindPath('sidebarColor'));
   makeSlider(rb, 'Ribbon shading', 0, 1, 0.01, pct, bindPath('sidebarShade'), { reset: 0 });
+  makeSlider(rb, 'Pattern strength', 0, 1, 0.01, pct, bindPath('sidebarContrast'), { reset: 1 });
   makeSlider(rb, 'Ribbon width', 0.6, 1.4, 0.01, pct, bindPath('sidebarWidth'), { reset: 1 });
   makeToggle(rb, 'Gold edge beside the ribbon', bindPath('ribbonEdge'));
   const up = makeRow(rb);

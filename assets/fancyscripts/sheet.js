@@ -277,6 +277,9 @@ export function appendRibbon(sheet, r, ctx) {
   } else {
     sheet.append(img(ART + 'sidebar-flat.png', { ...style, opacity }));
   }
+  // softer pattern: a wash of the ribbon's own colour over the damask
+  const soften = 1 - clamp(r.contrast == null ? 1 : Number(r.contrast), 0, 1);
+  if (soften > 0) sheet.append(el('div', { ...style, background: r.color || SIDEBAR_BASE.hex, opacity: String(soften * Number(opacity)) }));
   // only fetched when it is actually asked for — it is a 1.6 MB overlay
   const shadeAmt = clamp(Number(r.shade) || 0, 0, 1);
   if (shadeAmt > 0) sheet.append(img(ART + 'sidebar-shade.png', { ...style, opacity: String(shadeAmt) }));
@@ -827,6 +830,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       src: resolveSrc(sbT.src),
       opacity: sbT.opacity,
       shade: options.sidebarShade,
+      contrast: options.sidebarContrast,
       widthPct: RIB,
     }, { requestRender, forExport: ctx.forExport });
     // the gold edge, top to bottom. ribbon-edge.png is the parchment's own

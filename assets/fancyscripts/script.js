@@ -593,6 +593,9 @@ export const DEFAULT_OPTIONS = {
   // 0 = a solid, even strip (the default); 1 = the old baked-in blend,
   // which puts a strong left-to-right lightness ramp through it.
   sidebarShade: 0,
+  // how strong the damask pattern reads: 1 is the art as drawn, lower lays
+  // the ribbon's own colour over it (the printed sheets' pattern is soft)
+  sidebarContrast: 1,
   // the ribbon's width, as a share of the reference's (the printed edition
   // sheets measure about 0.79). The paper's edge comes in with it.
   sidebarWidth: 1,

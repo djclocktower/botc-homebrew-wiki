@@ -157,6 +157,7 @@ check('columns: half and half by default', [S.DEFAULT_OPTIONS.columnSplit, S.nor
 
 // the ribbon: its width and the gold edge beside it
 check('ribbon: full width and a gold edge by default', [S.DEFAULT_OPTIONS.sidebarWidth, S.DEFAULT_OPTIONS.ribbonEdge], [1, true]);
+check('ribbon: damask pattern at full strength by default', S.DEFAULT_OPTIONS.sidebarContrast, 1);
 check('ribbon: the gold edge art exists', fs.existsSync(path.join(root, 'assets/fancyscripts/art/ribbon-edge.png')), true);
 
 // stickers: a layer each, the old "behind" switch folded into it

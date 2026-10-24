@@ -4537,6 +4537,10 @@ needs its ratio re-measured or it is picked at the wrong size.
   `ribbonEdge` (on by default) lays `art/ribbon-edge.png` along that edge
   top to bottom: the parchment's own gold band, cut where it is brightest,
   mirrored out to the full height and darkened with the paper's vignette.
+  `sidebarContrast` ("Pattern strength", 1 by default) softens the damask
+  by laying a wash of the ribbon's own colour over it (`appendRibbon`, the
+  classic sheet and the ribbon-style night sheets). The printed sheets'
+  pattern is soft: Trouble Brewing matches at about 0.6, Bad Moon Rising 0.35.
   **The ribbon labels and the dividers are drawn in `ribbonLayer`, outside
   the character grid**: they follow the grid's Vertical offset and Size
   down the page (`cy()`, `cs`) but not across it, because inside the
