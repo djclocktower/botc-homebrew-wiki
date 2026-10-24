@@ -934,8 +934,9 @@ assets/
                        touching ANY number in script.js. decor/ is official
                        decoration art (edition skulls with the logo lettering
                        cut out, botc.app's token leaves and garlands, the
-                       shop site's cutouts) collected for stickers; nothing
-                       loads it yet. Its README.md says where each file came
+                       shop site's cutouts), offered as art choices and as
+                       "+ Decoration" stickers (see "Art from the decoration
+                       pack" below). Its README.md says where each file came
                        from.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
@@ -4454,6 +4455,34 @@ already carries one is filed the same way, so the tick cannot move the
 character from one band to another by being unticked and ticked again — an
 entry that names its own team is left alone. The Script Builder hand-back
 carries it too, or a round trip would come back with the box unticked.
+
+### Art from the decoration pack (`decor/`)
+
+`ART_CHOICES` in script.js lists ready-made art per element: the skull, the
+section dividers, the classic sheet's foot garland (`garland`, new with
+this), the app view's foot flowers (`appGarland`) and its night corner art.
+`makeArtPicker()` in app.js draws each list as a grid of pictures, in the
+header card, the App view card and the Elements panel. A pick just writes the
+path into `el[key].src`, the same field an upload writes an asset id to, so
+the renderers, the design file and the export need nothing new. A skull is
+resized as it is picked to the built-in one's height (`ratio`); a divider
+carries its own shape (`fit`, `h`), and only the built-in one gets the cap.
+`DECOR_STICKERS` is the rest of the pack behind "+ Decoration" in the
+Elements card, added as image stickers by path rather than stored as assets.
+
+- **The classic sheet's garland is painted into `parchment.jpg`.** Picking
+  another (or "None", `NO_ART`) switches the paper to
+  `art/parchment-nogarland.jpg`, the same file with the garland painted out:
+  the rows below 86% mirrored from above, the top edge's dark band flipped
+  down as the grime. `renderBackground(..., {noGarland})` is the switch, and
+  the app view uses it too when `appGarland` is set.
+- **Every garland in the pack has its oval at 54% across**, not the middle,
+  so a pack garland is translated by -54% to put the oval under the
+  footnote. Trouble Brewing's and the custom script's ovals sit lower than
+  the painted one, so those choices carry `foot`, the em the footnote drops.
+- The pack's garlands are 800px wide, so they print softer than the painted
+  one at the 3x print scale. Custom script and Homebrew are the same files,
+  so only one is offered.
 
 ### Everything else worth knowing
 

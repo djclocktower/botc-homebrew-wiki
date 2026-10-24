@@ -33,7 +33,7 @@
 
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON,
-  groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts,
+  groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, artChoice,
   breakRuns, fitNameLines,
 } from './script.js';
 import {
@@ -484,12 +484,12 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   };
 
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
-  for (const n of renderBackground(a.bg, 'appfront', { scriptBg })) sheet.append(n);
+  for (const n of renderBackground(a.bg, 'appfront', { scriptBg, noGarland: !!elGet(options, 'appGarland').src })) sheet.append(n);
   for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
   drawRibbon(sheet, options, A.sidebarW, ctx);
 
-  // the garland across the foot: only when one has been uploaded (the aged
-  // parchment carries its own)
+  // the garland across the foot: only when one has been picked or uploaded,
+  // which also takes the aged parchment's own off the paper
   const gT = elGet(options, 'appGarland');
   const garland = resolveSrc(gT.src);
   if (garland && !gT.hidden && isLastPage) {
@@ -501,7 +501,8 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
       maxHeight: px(e(A.garlandH) * gT.scale),
       objectFit: 'contain',
       objectPosition: '50% 100%',
-      transform: `translateX(-50%)${gT.rot ? ` rotate(${gT.rot}deg)` : ''}`,
+      // the oval sits at 54% across every garland in the pack; an upload is centred
+      transform: `translateX(-${artChoice(gT.src) ? 54 : 50}%)${gT.rot ? ` rotate(${gT.rot}deg)` : ''}`,
       opacity: String(gT.opacity),
     });
     gEl.crossOrigin = 'anonymous';
@@ -614,7 +615,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
     const foot = el('div', {
       position: 'absolute',
       left: (A.footnoteCX + fT.dx) + '%',
-      top: px(e(A.footnoteTop + fT.dy)),
+      top: px(e(A.footnoteTop + fT.dy + ((artChoice(elGet(options, 'appGarland').src) || {}).foot || 0))),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',

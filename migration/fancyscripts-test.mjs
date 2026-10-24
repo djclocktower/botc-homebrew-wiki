@@ -67,6 +67,8 @@ check('page list', S.pageList(n, { front: 2 }).map(S.pageKey), ['front:0', 'fron
 check('page list with everything', S.pageList(S.normalizeOptions({ night: { first: true, other: true }, jinxPage: { enabled: true } }), { front: 1, first: 2, other: 1, jinx: 1 }).map(S.pageKey),
   ['front:0', 'night:first', 'night:first:1', 'night:other', 'jinx', 'back']);
 check('page list: an empty jinx page is no page', S.pageList(S.normalizeOptions({ jinxPage: { enabled: true } }), { front: 1, jinx: 0 }).map(S.pageKey).includes('jinx'), false);
+const decorPaths = [...Object.values(S.ART_CHOICES).flat(), ...S.DECOR_STICKERS.flatMap((g) => g.items)].map((c) => c.src).filter((s) => s && s !== S.NO_ART);
+check('decor: every picked or sticker art file exists', decorPaths.filter((s) => !fs.existsSync(path.join(root, s))), []);
 
 // per-character overrides and team hiding
 const ov = S.deriveScript(S.parseScript(blending, true), S.normalizeOptions({ chars: { poisoner: { hidden: true }, imp: { name: 'The Imp!', color: '#ff0000', team: 'minion' } }, hideTeams: { outsider: true } }));

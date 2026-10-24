@@ -403,6 +403,7 @@ export const ELEMENTS = [
   { key: 'dividers', label: 'Section dividers', page: 'front', kind: 'image', fixed: true, only: 'classic' },
   { key: 'appDividers', label: 'Lines between teams', page: 'front', kind: 'block', fixed: true, only: 'app' },
   { key: 'footnote', label: 'Footnote', page: 'front', kind: 'text' },
+  { key: 'garland', label: 'Garland at the foot', page: 'front', kind: 'image', only: 'classic' },
   { key: 'appGarland', label: 'Flowers at the foot', page: 'front', kind: 'image', only: 'app' },
   { key: 'pageno', label: 'Page number', page: 'front', kind: 'text' },
   { key: 'nightTitle', label: 'Night title', page: 'night', kind: 'text' },
@@ -852,6 +853,79 @@ export const PLACEHOLDER_ICON =
 /* the night sheet's own step icons: the official painted discs (the moon,
    the sun, the M and the D), bundled in art/. Bootlegger rules on the jinx
    page carry the official Bootlegger's own icon. */
+/* The official decoration art in decor/ (see its README), offered as
+   ready-made choices: an element's `src` is set to the path, exactly as an
+   upload sets it to an asset id, so nothing downstream needs to know which
+   it was. `ratio` is height over width, which lets a pick keep the size the
+   built-in art was drawn at. NO_ART is a choice of nothing at all: the
+   classic sheet's garland is painted into the parchment, and "None" is the
+   only way to have a foot without one. */
+const DECOR = '/assets/fancyscripts/decor/';
+export const NO_ART = 'none';
+const EDITIONS = [['trouble-brewing', 'Trouble Brewing', 'tb'], ['bad-moon-rising', 'Bad Moon Rising', 'bmr'],
+  ['sects-and-violets', 'Sects & Violets', 'snv'], ['custom-script', 'Custom script', 'custom']];
+const LOGO_SKULLS = [['trouble-brewing', 'Trouble Brewing', 'png', 0.64], ['bad-moon-rising', 'Bad Moon Rising', 'png', 0.61],
+  ['sects-and-violets', 'Sects & Violets', 'webp', 0.65], ['travellers-and-fabled', 'Travellers & Fabled', 'png', 0.69],
+  ['the-tomb', 'The Tomb', 'webp', 0.68], ['garden-of-sin', 'Garden of Sin', 'webp', 0.66],
+  ['greatest-show-on-earth', 'Greatest Show on Earth', 'webp', 1.09], ['midnight-house-of-the-damned', 'Midnight House of the Damned', 'webp', 1.26]];
+export const ART_CHOICES = {
+  skull: [
+    { label: 'Built in', src: '' },
+    ...LOGO_SKULLS.map(([f, label, ext, ratio]) => ({ label, src: DECOR + 'skulls/cut-from-logos/skull-' + f + '.' + ext, ratio })),
+    { label: 'Lamp', src: DECOR + 'skulls/botc-app/skull-custom.webp', ratio: 0.76 },
+    { label: 'Crate', src: DECOR + 'skulls/botc-app/skull-homebrew.webp', ratio: 0.93 },
+  ],
+  dividers: [
+    { label: 'Built in', src: '' },
+    { label: 'Thin line', src: DECOR + 'botc-app/ornaments/line.webp', fit: 'fill', h: 0.25 },
+    { label: 'Gold separator', src: DECOR + 'botc-app/ornaments/separator.webp', fit: 'contain', h: 0.75 },
+    { label: 'Line break', src: DECOR + 'script-tool/line-break.webp', fit: 'contain', h: 0.75 },
+  ],
+  garland: [
+    { label: 'Built in', src: '' },
+    // foot: how far (em) the footnote drops to sit inside that garland's oval
+    ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/sheet-bottom.webp', foot: { 'trouble-brewing': 1.4, 'custom-script': 0.5 }[d] || 0 })),
+    { label: 'None', src: NO_ART },
+  ],
+  nightDecorFirst: [{ label: 'None', src: '' },
+    ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/firstnight.webp' }))],
+  nightDecorOther: [{ label: 'None', src: '' },
+    ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/othernight.webp' }))],
+};
+ART_CHOICES.appGarland = ART_CHOICES.garland.filter((c) => c.src !== NO_ART).map((c) => (c.src ? c : { label: 'None', src: '' }));
+const CHOICE_BY_SRC = new Map(Object.values(ART_CHOICES).flat().filter((c) => c.src).map((c) => [c.src, c]));
+export function artChoice(src) { return CHOICE_BY_SRC.get(src) || null; }
+
+/* the rest of the pack, for "+ Decoration": added as image stickers */
+const WEB = DECOR + 'website/';
+export const DECOR_STICKERS = [
+  { group: 'Skulls', items: ART_CHOICES.skull.filter((c) => c.src) },
+  { group: 'Leaves and branches', items: [
+    ['Leaf sprig', WEB + 'leaf-sprig-left.webp'], ['Small leaf sprig', WEB + 'leaf-sprig-right.webp'],
+    ['Branch', WEB + 'tb-branch-c.png'], ['Leaf', WEB + 'tb-branch-d.png'], ['Tall branch', WEB + 'tb-branch-e-large.png'],
+    ['Thin branch', WEB + 'tb-branch-f.png'], ['Grey branch', WEB + 'bmr-branch-grey-c.png'], ['Green branch', WEB + 'gos-branch-d.png'],
+    ['Hanging branch', WEB + 'hanging-branch-with-drop.png'], ['Monstera leaf', WEB + 'bmr-monstera-leaf.webp'],
+    ['Feather', WEB + 'tb-feather-d.png'], ['Faint leaves', WEB + 'faint-leaves-1.png'], ['Faint leaves 2', WEB + 'faint-leaves-2.png'],
+    ['Laurels', WEB + 'laurels.png'], ['Sprig', DECOR + 'script-tool/leaves-01.webp'], ['Leafy branch', DECOR + 'script-tool/leaves-02.webp'],
+  ].map(([label, src]) => ({ label, src })) },
+  { group: 'Night leaves', items: EDITIONS.flatMap(([d, label]) => [
+    { label: label + ', first night', src: DECOR + 'botc-app/' + d + '/firstnight.webp' },
+    { label: label + ', other nights', src: DECOR + 'botc-app/' + d + '/othernight.webp' }]) },
+  { group: 'Objects', items: [
+    ['Raven on a skull', WEB + 'snv-raven-on-skull.png'], ['Books and candle', WEB + 'snv-books-and-candle.png'],
+    ['Books and scrolls', WEB + 'books-and-scrolls.png'], ['Barrel', WEB + 'bmr-barrel.png'], ['Crystal', WEB + 'tgsoe-rock.png'],
+    ['Clocktower', WEB + 'clocktower.png'], ['Beginner badge', WEB + 'badge-beginner-bottle.png'],
+    ['Intermediate badge', WEB + 'badge-intermediate-bottle.png'],
+  ].map(([label, src]) => ({ label, src })) },
+  { group: 'Ornaments', items: [
+    ['Butterfly', DECOR + 'botc-app/ornaments/butterfly.webp'], ['Clouds', DECOR + 'botc-app/ornaments/clouds.webp'],
+    ['Banner', DECOR + 'botc-app/ornaments/shroud.webp'], ['Gold separator', DECOR + 'botc-app/ornaments/separator.webp'],
+    ['Line break', DECOR + 'script-tool/line-break.webp'],
+    ...EDITIONS.map(([d, label]) => [label + ' garland', DECOR + 'botc-app/' + d + '/sheet-bottom.webp']),
+    ...EDITIONS.map(([d, label]) => [label + ' token', DECOR + 'botc-app/' + d + '/token.webp']),
+  ].map(([label, src]) => ({ label, src })) },
+];
+
 const STEP_ART = '/assets/fancyscripts/art/';
 export const STEP_ICONS = {
   dusk: STEP_ART + 'night-dusk.webp',

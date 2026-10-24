@@ -37,7 +37,7 @@
 import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
-  groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet,
+  groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
@@ -763,10 +763,28 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
 
   // background: the baked parchment (texture + garland), or what was chosen
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
-  for (const n of renderBackground(options.bg, 'front', { scriptBg })) sheet.append(n);
+  const gaT = elGet(options, 'garland');
+  for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: !!gaT.src || gaT.hidden })) sheet.append(n);
   // stickers marked "behind" sit under the sheet's own content: painting
   // order is DOM order among positioned elements, so they go in here
   for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
+
+  // a garland picked from the pack, in the painted one's place: its oval
+  // centred where the footnote sits, as wide as the painted one
+  const garland = gaT.src === NO_ART ? '' : resolveSrc(gaT.src);
+  if (garland && !gaT.hidden) {
+    const gEl = img(garland, {
+      position: 'absolute',
+      left: (SHEET.footnoteCX + gaT.dx) + '%',
+      bottom: px(-e(gaT.dy)),
+      width: (88 * gaT.scale) + '%',
+      // the oval sits at 54% across every garland in the pack; an upload is centred
+      transform: `translateX(-${artChoice(gaT.src) ? 54 : 50}%)${gaT.rot ? ` rotate(${gaT.rot}deg)` : ''}`,
+      opacity: String(gaT.opacity),
+    });
+    gEl.crossOrigin = 'anonymous';
+    sheet.append(mark(gEl, 'el:garland'));
+  }
 
   /* ── the ribbon ──
      The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
@@ -966,12 +984,16 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       const divTop = topPx - ed(gapAbove) +
         ed(0.7962 * (gapAbove / SHEET.sectionGap) - divH / 2) + e(dvT.dy);
       const op = String(clamp((options.dividerOpacity == null ? 1 : options.dividerOpacity) * dvT.opacity, 0, 1));
+      // a divider from the pack keeps its own shape: a thin line stretches
+      // like the built-in one, an ornament is drawn at its own proportions
+      const pick = artChoice(dvT.src);
+      const pickH = pick && pick.h ? pick.h * dvT.scale : divH;
       wrap.append(img(resolveSrc(dvT.src) || ART + 'divider-taper.png', {
-        position: 'absolute', left: (8.3 + dvT.dx) + '%', top: px(divTop),
-        width: '89.35%', height: px(ed(divH)),
-        objectFit: 'fill', mixBlendMode: 'multiply', opacity: op,
+        position: 'absolute', left: (8.3 + dvT.dx) + '%', top: px(divTop + ed(divH - pickH) / 2),
+        width: '89.35%', height: px(ed(pickH)),
+        objectFit: pick && pick.fit === 'contain' ? 'contain' : 'fill', mixBlendMode: 'multiply', opacity: op,
       }));
-      wrap.append(img(ART + 'divider-cap.png', {
+      if (!dvT.src) wrap.append(img(ART + 'divider-cap.png', {
         position: 'absolute', left: (2.337 + dvT.dx) + '%', top: px(divTop),
         width: '6.26%', height: px(ed(divH * 0.56)),
         objectFit: 'fill', opacity: op,
@@ -1102,6 +1124,9 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
 
   // "*Not the first night" footnote inside the garland circle
   const fT = elGet(options, 'footnote');
+  // a garland from the pack sets its oval a little lower than the painted one
+  const gPick = !gaT.hidden && artChoice(gaT.src);
+  const footDrop = gPick && gPick.foot || 0;
   if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) &&
       !fT.hidden && (isLastPage || options.footnoteEveryPage)) {
     const custom = (options.footnoteText || '').trim();
@@ -1123,7 +1148,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     const foot = el('div', {
       position: 'absolute',
       left: (SHEET.footnoteCX + fT.dx) + '%',
-      top: px(e(SHEET.footnoteTop + fT.dy)),
+      top: px(e(SHEET.footnoteTop + fT.dy + footDrop)),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',

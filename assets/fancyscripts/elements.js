@@ -93,7 +93,7 @@ export function renderBackground(bg, page, extra) {
     // title and the first step sit: the art starts a little above the page.
     // A night sheet has no garland either, so its art also runs past the
     // foot of the page, which carries the garland (from 89.25% down) off it
-    nodes.push(img(ART + 'parchment.jpg', {
+    nodes.push(img(ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg'), {
       position: 'absolute', left: '0', top: '-4%', width: '100%', height: page === 'applist' ? '118%' : '104%',
       objectFit: 'fill', filter: f || undefined,
     }));
@@ -106,7 +106,9 @@ export function renderBackground(bg, page, extra) {
       objectFit: 'fill', filter: f || undefined,
     }));
   } else {
-    nodes.push(img(ART + 'parchment.jpg', { ...full, filter: f || undefined }));
+    // a garland picked in its place (or none at all) wants the same paper
+    // with the painted one taken out
+    nodes.push(img(ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg'), { ...full, filter: f || undefined }));
   }
   const v = clamp(Number(b.vignette) || 0, 0, 1);
   if (v > 0) {

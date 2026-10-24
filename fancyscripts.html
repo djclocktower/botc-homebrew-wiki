@@ -113,6 +113,18 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
 .fs-btn:hover { background: rgba(255,252,240,.95); }
 .fs-btn:disabled { opacity: .55; cursor: default; }
 .fs-btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+/* art pickers and the decoration gallery: a picture over its name */
+.fs-art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.fs-art {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
+  border: 1px solid var(--parch-frame); border-radius: 4px; background: rgba(255,252,240,.6);
+  padding: 4px; cursor: pointer; font: inherit; font-size: .7rem; line-height: 1.2; color: var(--maroon);
+}
+.fs-art img { width: 100%; height: 44px; object-fit: contain; }
+.fs-art img.fs-art-crop { object-fit: cover; object-position: 52% 100%; }
+.fs-art span { overflow-wrap: anywhere; text-align: center; }
+.fs-art:hover { background: rgba(255,252,240,.95); }
+.fs-art.on { border-color: var(--maroon); box-shadow: 0 0 0 1px var(--maroon); background: rgba(255,252,240,.95); }
 .fs-mini {
   border: 1px solid var(--parch-frame); border-radius: 4px; background: rgba(255,252,240,.75);
   color: var(--maroon); font: inherit; font-size: .8rem; line-height: 1; padding: 4px 7px; cursor: pointer;

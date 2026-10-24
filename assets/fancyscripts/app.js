@@ -29,13 +29,13 @@ import {
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
   withBootlegger, hasBootlegger,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
-  pageStyle,
+  pageStyle, ART_CHOICES, DECOR_STICKERS, NO_ART,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle, ribbonReady } from './sheet.js';
 import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage, nightRibbonColor } from './night.js';
 import { layoutAppSheet, renderAppSheetPage, layoutAppList, renderAppListPage } from './appview.js';
 import { renderBack, backCanvas, backReady } from './back.js';
-import { setAssetResolver } from './elements.js';
+import { setAssetResolver, ART } from './elements.js';
 import { mountDrag, snapTo } from './drag.js';
 import { fontsChanged, hexToRgb, rgbToHex, hslToHex, clamp, setHiresIcons } from './util.js';
 import { pixelWorkerActive } from './jobs.js';
@@ -732,6 +732,56 @@ function makeToggle(parent, label, b, extra) {
   return binding;
 }
 
+/* a row of pictures to pick an element's art from (ART_CHOICES): the
+   built-in art, the official decorations in decor/, and for the garland
+   none at all. A skull is resized as it is picked so it comes in at the
+   height of the built-in one, whatever its shape. */
+const STOCK_SKULL_RATIO = 336 / 501;
+const STOCK_THUMB = {
+  skull: ART + 'skull.png', dividers: ART + 'divider-taper.png', garland: ART + 'garland-thumb.webp',
+};
+function makeArtPicker(parent, label, key) {
+  const choices = ART_CHOICES[key];
+  if (cardPaths) { cardPaths.add('el.' + key + '.src'); if (key === 'skull') cardPaths.add('el.skull.scale'); }
+  makeLabel(parent, label);
+  const grid = document.createElement('div');
+  grid.className = 'fs-art-grid';
+  const btns = choices.map((c) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fs-art';
+    btn.title = c.label;
+    const thumb = c.src === NO_ART ? '' : c.src || (key.startsWith('night') || key === 'appGarland' ? '' : STOCK_THUMB[key]);
+    if (thumb) {
+      const im = document.createElement('img');
+      im.src = thumb; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
+      if (key === 'garland' || key === 'appGarland') im.className = 'fs-art-crop';
+      btn.append(im);
+    }
+    const cap = document.createElement('span');
+    cap.textContent = c.label;
+    btn.append(cap);
+    btn.addEventListener('click', () => {
+      const patch = { src: c.src };
+      if (key === 'skull') patch.scale = c.ratio ? Math.round(Math.min(1.2, Math.max(0.45, STOCK_SKULL_RATIO / c.ratio)) * 100) / 100 : 1;
+      elSet(options, key, patch);
+      commit();
+      syncControls();
+    });
+    grid.append(btn);
+    return btn;
+  });
+  parent.append(grid);
+  const refresh = () => {
+    const cur = elGet(options, key).src;
+    choices.forEach((c, i) => btns[i].classList.toggle('on', c.src === cur));
+  };
+  const binding = { refresh, el: grid };
+  bindings.add(binding);
+  refresh();
+  return binding;
+}
+
 function makeSelect(parent, label, choices, b, extra) {
   const row = document.createElement('div');
   row.className = 'fs-row-between';
@@ -1197,6 +1247,9 @@ function buildTitleCard() {
   makeToggle(box, 'Flourishes', bindPath('showFlourishes'));
   const tc = styleGroup(box, 'front', 'classic');
   makeToggle(tc, 'Slide the skull and flourishes in to meet a short title', bindPath('hugDecor'));
+  makeArtPicker(tc, 'Skull art', 'skull');
+  makeArtPicker(tc, 'Section dividers', 'dividers');
+  makeArtPicker(tc, 'Garland at the foot', 'garland');
   makeSelect(tc, 'Title style', [['classic', 'Classic (indigo emboss)'], ['emboss', 'Emboss from the title colour'],
     ['gradient', 'Two-colour gradient'], ['flat', 'Flat colour']], bindPath('titleStyle'));
   const colors = makeRow(tc, 'fs-colors');
@@ -1447,6 +1500,9 @@ function buildAppCard() {
   makeSlider(box, 'Bar width', 0.5, 3, 0.05, pct, bindPath('app.barWidth'), { reset: 1 });
   makeToggle(box, 'Lines between the teams', bindPath('app.showDividers'));
   makeSlider(box, 'Line strength', 0, 1.5, 0.01, pct, bindPath('app.dividerStrength'), { reset: 1 });
+  makeArtPicker(box, 'Flowers at the foot', 'appGarland');
+  makeArtPicker(box, 'Corner art, first night', 'nightDecorFirst');
+  makeArtPicker(box, 'Corner art, other nights', 'nightDecorOther');
   makeLabel(box, 'Your own art');
   const art = makeRow(box);
   for (const [key, label] of [['appGarland', 'Flowers at the foot'], ['nightDecorFirst', 'Corner, first night'], ['nightDecorOther', 'Corner, other nights']]) {
@@ -1575,6 +1631,29 @@ function buildElementPanel() {
   addRow.style.marginTop = '8px';
   makeButton(addRow, '+ Text', () => addSticker('text'));
   makeUpload(addRow, '+ Image', 'image/*', (url, file) => addSticker('image', url, file.name));
+  makeButton(addRow, '+ Decoration', () => { gallery.hidden = !gallery.hidden; });
+  const gallery = document.createElement('div');
+  gallery.hidden = true;
+  for (const g of DECOR_STICKERS) {
+    makeLabel(gallery, g.group);
+    const grid = document.createElement('div');
+    grid.className = 'fs-art-grid';
+    for (const c of g.items) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fs-art';
+      btn.title = c.label;
+      const im = document.createElement('img');
+      im.src = c.src; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
+      const cap = document.createElement('span');
+      cap.textContent = c.label;
+      btn.append(im, cap);
+      btn.addEventListener('click', () => addSticker('image', c.src, c.label, true));
+      grid.append(btn);
+    }
+    gallery.append(grid);
+  }
+  box.append(gallery);
   if (p.kind === 'back') {
     makeButton(addRow, '+ Title word', () => {
       options.back.texts.push(newTextElement({ text: 'Word', x: 50, y: 85, size: 160, font: 'unlovable', fill: '#bea881', strokeW: 1.5, shadowY: 2, shadowBlur: 5 }));
@@ -1620,6 +1699,7 @@ function buildElementPanel() {
     const isTitle = key === 'title' || key === 'appTitle';
     // the app view's decor slots have no art of their own until one is added
     const emptySlot = ['appGarland', 'nightDecorFirst', 'nightDecorOther'].includes(key);
+    if (ART_CHOICES[key]) track(makeArtPicker(box, 'Art', key));
     if (it.kind === 'image' || isTitle) {
       const up = makeRow(box);
       makeUpload(up, isTitle ? 'Use an image as the title' : emptySlot ? 'Add an image' : 'Replace with your own image', 'image/*',
@@ -1723,12 +1803,13 @@ function textStickerControls(box, get, track) {
 
 function newId() { return Math.random().toString(36).slice(2, 9); }
 
-function addSticker(type, url, name) {
+function addSticker(type, url, name, builtIn) {
   const p = currentPage();
   const dark = p.kind === 'back';
   let st;
   if (type === 'image') {
-    st = newImageElement({ id: newId(), page: pageKey(p), src: addAsset(url), name: (name || 'image').slice(0, 20), x: 50, y: 50, w: 24 });
+    // a decoration from the pack is referenced by its path, an upload is stored
+    st = newImageElement({ id: newId(), page: pageKey(p), src: builtIn ? url : addAsset(url), name: (name || 'image').slice(0, 20), x: 50, y: 50, w: 24 });
   } else {
     st = newTextElement({
       id: newId(), page: pageKey(p), text: 'Your text', x: 50, y: p.kind === 'back' ? 80 : 50, size: 64,

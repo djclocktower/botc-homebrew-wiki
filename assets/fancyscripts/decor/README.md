@@ -1,8 +1,10 @@
 # Blood on the Clocktower decorations
 
 Collected 2026-10-24 from botc.app, script.bloodontheclocktower.com and
-bloodontheclocktower.com. All artwork belongs to The Pandemonium Institute. Nothing on the site
-loads these yet; they are here for Fancy Scripts stickers and future use.
+bloodontheclocktower.com. All artwork belongs to The Pandemonium Institute. Fancy Scripts
+offers them as art choices and stickers: ART_CHOICES and DECOR_STICKERS in ../script.js
+are the list. The six images over 1 MB have a .webp copy at 1600px beside them, and the
+copy is what the tool loads.
 
 ```
 
