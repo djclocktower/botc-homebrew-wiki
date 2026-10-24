@@ -44,7 +44,9 @@
   function readURL() {
     var p = new URLSearchParams(location.search);
     var tab = p.get('type');
-    return { q: p.get('q') || '', tab: TAB_TYPE[tab] !== undefined ? tab : 'all' };
+    // Own keys only: ?type=constructor found Object's and blanked the page.
+    var known = tab != null && Object.prototype.hasOwnProperty.call(TAB_TYPE, tab);
+    return { q: p.get('q') || '', tab: known ? tab : 'all' };
   }
   var state = readURL();
   input.value = state.q;
@@ -59,7 +61,7 @@
     document.title = (state.q ? state.q + ' · ' : '') + 'Search — BOTC HomeBrew Wiki';
   }
 
-  var index = null, res = null, filters = null, cancelCards = null, feedPos = null, members = {};
+  var index = null, res = null, filters = null, cancelCards = null, feedPos = null, members = Object.create(null);
 
   function markFn(text) { return S.mark(text, res ? res.tokens : []); }
 
@@ -72,7 +74,7 @@
     var banner = sc.header || sc.logo;
     var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
     var headerHTML = banner
-      ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, sc.v)) + '"' + PR.responsiveAttrs('', banner, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
+      ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, sc.v)) + '"' + PR.responsiveAttrs('', banner, sc.v, PR.TILE_SIZES) + ' alt="' + esc(sc.name) + '"></div>'
       : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
     var blurb = sc.tagline || sc.description || '';
     return '<a class="collection-tile script-tile" href="s/' + esc(encodeURIComponent(sc.slug)) + '">' +
@@ -91,6 +93,20 @@
     if (!members[key]) members[key] = PR.resolveCollectionMembers(coll, index.data.characters);
     return members[key];
   }
+  // Each collection's roster is a pass over every character, and a keystroke
+  // that brought a new collection tile into the results used to pay for it
+  // there and then. Worked out ahead while the page is idle instead.
+  function warmMembers() {
+    var colls = (index.data.collections || []).slice(), i = 0;
+    var idle = window.requestIdleCallback || function (f) {
+      return setTimeout(function () { f({ timeRemaining: function () { return 8; } }); }, 50);
+    };
+    function step(deadline) {
+      while (i < colls.length && deadline.timeRemaining() > 2) membersOf(colls[i++]);
+      if (i < colls.length) idle(step);
+    }
+    idle(step);
+  }
   // A few member icons for a collection with no banner, one per team first.
   function pickIcons(list, n) {
     var withArt = list.filter(function (c) { return c.art; }), picked = [], seen = {}, i;
@@ -107,7 +123,7 @@
     var list = membersOf(coll), count = list.length;
     var banner = coll.header || coll.logo;
     var topHTML = banner
-      ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, coll.v)) + '"' + PR.responsiveAttrs('', banner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
+      ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, coll.v)) + '"' + PR.responsiveAttrs('', banner, coll.v, PR.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
       : '<div class="collection-icons">' + pickIcons(list, 8).map(function (c) {
           return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PR.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
         }).join('') + '</div>';
@@ -131,14 +147,16 @@
     return bits.join(' · ');
   }
   function personTile(item) {
-    var d = item.data, sym = '';
-    if (item.type === 'creator' && window.CreatorSymbols) sym = window.CreatorSymbols.creatorSymbol(d.name) || '';
+    var d = item.data;
+    // markHTML is drawn by the Worker (the search index), never typed.
+    var mk = item.type === 'creator' ? (d.markHTML || '') : '';
     var badge = d.avatarUrl
       ? '<img class="creator-av" loading="lazy" decoding="async" src="' + esc(d.avatarUrl) + '" alt="">'
-      : '<span class="creator-sym">' + esc(sym || '·') + '</span>';
+      : '<span class="creator-sym">' + (mk || '·') + '</span>';
     var sub = item.type === 'creator' ? countLabel(d) : '';
     return '<a class="creator-pill creator-pill-wide" href="' + esc(item.href) + '">' + badge +
       '<span class="creator-name">' + markFn(item.type === 'creator' ? d.name : (d.displayName || d.username)) +
+        (mk && d.avatarUrl ? ' ' + mk : '') +
         (d.username ? '<span class="creator-at">@' + markFn(d.username) + '</span>' : '') +
         (sub ? '<span class="creator-count">' + esc(sub) + '</span>' : '') +
       '</span></a>';
@@ -175,18 +193,54 @@
       (d.kind === 'team' ? '<span class="sp-pill-kind">Team</span>' : '') +
       '<span class="tag-count">' + (d.count || 0) + '</span></a>';
   }
+  // The container each kind is drawn in, and the tiles inside it — apart, so
+  // "Show more" can append tiles to a list already on screen.
+  function gridClass(type) {
+    if (type === 'character') return 'char-grid';
+    if (type === 'script' || type === 'collection') return 'collections-grid';
+    if (type === 'creator' || type === 'user') return 'creators-page-grid sp-people';
+    if (type === 'tag') return 'tags-index sp-tags';
+    return 'news-grid';
+  }
+  function tilesHTML(type, list) {
+    var tile = type === 'character' ? function (r) { return CF.card(r.item.data, markFn); }
+      : type === 'script' ? function (r) { return scriptTile(r.item.data); }
+      : type === 'collection' ? function (r) { return collectionTile(r.item.data); }
+      : (type === 'creator' || type === 'user') ? function (r) { return personTile(r.item); }
+      : type === 'tag' ? function (r) { return tagPill(r.item); }
+      : function (r) { return textCard(r.item); };
+    return list.map(tile).join('');
+  }
   function gridHTML(type, list) {
-    if (type === 'character') {
-      return '<div class="char-grid">' + list.map(function (r) { return CF.card(r.item.data, markFn); }).join('') + '</div>';
-    }
-    if (type === 'script') return '<div class="collections-grid">' + list.map(function (r) { return scriptTile(r.item.data); }).join('') + '</div>';
-    if (type === 'collection') return '<div class="collections-grid">' + list.map(function (r) { return collectionTile(r.item.data); }).join('') + '</div>';
-    if (type === 'creator' || type === 'user') {
-      return '<div class="creators-page-grid sp-people">' +
-        list.map(function (r) { return personTile(r.item); }).join('') + '</div>';
-    }
-    if (type === 'tag') return '<div class="tags-index sp-tags">' + list.map(function (r) { return tagPill(r.item); }).join('') + '</div>';
-    return '<div class="news-grid">' + list.map(function (r) { return textCard(r.item); }).join('') + '</div>';
+    return '<div class="' + gridClass(type) + '">' + tilesHTML(type, list) + '</div>';
+  }
+  /* A tab of one kind draws its first LIST_STEP results and a "Show more"
+     button for the rest, instead of every tile at once: the Users tab alone
+     is every account on the wiki, and drawing all of them on every keystroke
+     was most of what typing cost. The Characters tab has its own batching
+     (viewport.js), and the All tab shows a handful of each kind. */
+  var LIST_STEP = 60;
+  var moreList = null;   // {type, list, shown} for the Show more button
+  function moreHTML() {
+    var left = moreList.list.length - moreList.shown;
+    return left > 0
+      ? '<div class="sp-empty sp-more-wrap" style="padding:20px 16px 4px"><button type="button" class="filter-reset sp-show-more">Show ' +
+          Math.min(left, LIST_STEP) + ' more (' + left + ' left)</button></div>'
+      : '';
+  }
+  function drawList(type, list) {
+    moreList = { type: type, list: list, shown: Math.min(list.length, LIST_STEP) };
+    out.innerHTML = gridHTML(type, list.slice(0, moreList.shown)) + moreHTML();
+  }
+  function showMore() {
+    if (!moreList) return;
+    var grid = out.firstElementChild, wrap = out.querySelector('.sp-more-wrap');
+    if (!grid) return;
+    var next = moreList.list.slice(moreList.shown, moreList.shown + LIST_STEP);
+    moreList.shown += next.length;
+    grid.insertAdjacentHTML('beforeend', tilesHTML(moreList.type, next));
+    if (wrap) wrap.remove();
+    out.insertAdjacentHTML('beforeend', moreHTML());
   }
 
   /* ── tabs ── */
@@ -297,10 +351,13 @@
     return x < y ? -1 : x > y ? 1 : 0;
   }
   // "Best match" means nothing with nothing typed: the list is then A to Z.
+  // Minus words only take things away ("-poison"), so a query of nothing but
+  // those has nothing to rank by either.
+  function hasTerms() { return !!S.parseQuery(state.q).text.trim(); }
   function sortFor(type) {
     var st = stateFor(type), sorts = TAB_FILTERS[type].sorts;
     var sort = sorts.indexOf(st.sort) === -1 ? 'relevance' : st.sort;
-    return sort === 'relevance' && !state.q.trim() ? 'name-asc' : sort;
+    return sort === 'relevance' && !hasTerms() ? 'name-asc' : sort;
   }
   var UNKNOWN = 9e15;   // a page with no date sorts after every dated one
   var SORTS = {
@@ -342,7 +399,7 @@
     return '<div class="filter-group"><span class="filter-group-label">' + esc(label) + '</span>' + inner + '</div>';
   }
   function sortOptions(type) {
-    var q = state.q.trim(), current = sortFor(type);
+    var q = hasTerms(), current = sortFor(type);
     return TAB_FILTERS[type].sorts.filter(function (s) { return q || s !== 'relevance'; }).map(function (s) {
       return '<option value="' + s + '"' + (s === current ? ' selected' : '') + '>' + esc(SORT_LABEL[s]) + '</option>';
     }).join('');
@@ -486,12 +543,12 @@
     index.data.characters.forEach(function (c, i) { feedPos.set(c, i); });
     filters = CF.mount({
       bar: bar, toggle: toggle, list: index.data.characters,
-      sourceOf: CF.makeSourceOf(index.data.collections, index.data.scripts),
-      // A search is looking for something in particular, so an unfinished
-      // page still shows (the chip hides them on request), as on the creator
-      // pages.
-      partialOn: true,
-      sorts: [['relevance', 'Best match'], ['name-asc', 'Name (A–Z)'], ['name-desc', 'Name (Z–A)'], ['recent', 'Recently added']],
+      // Through `index`, so a partial index swapped for the full one is read.
+      sourceOf: function (c) {
+        if (!sourceOf) sourceOf = CF.makeSourceOf(index.data.collections, index.data.scripts);
+        return sourceOf(c);
+      },
+      sorts: [['relevance', 'Best match'], ['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']],
       defaultGroup: 'none',
       order: function (c) { return feedPos.get(c) || 0; },
       onChange: drawBody
@@ -503,6 +560,7 @@
 
   function drawBody() {
     if (cancelCards) { cancelCards(); cancelCards = null; }
+    moreList = null;
     var type = TAB_TYPE[state.tab], q = state.q.trim();
     var showFilters = type === 'character';
     if (showFilters) {
@@ -520,7 +578,7 @@
     countEl.hidden = false;
     countEl.textContent = noun(type, list.length) +
       (found.length !== list.length ? ' (of ' + found.length + ')' : '') + (q ? ' for “' + q + '”' : '');
-    if (list.length) { out.innerHTML = gridHTML(type, list); return; }
+    if (list.length) { drawList(type, list); return; }
     out.innerHTML = found.length
       ? emptyHTML('No ' + NOUN[type][1] + ' match these filters. <button type="button" class="filter-reset" id="sp-reset">Reset</button>')
       : emptyHTML(q ? 'No ' + NOUN[type][1] + ' match “' + esc(q) + '”.' : 'Nothing here yet.');
@@ -560,8 +618,11 @@
   out.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('.sp-more') : null;
     if (b) setTab(b.getAttribute('data-tab'));
+    if (e.target.closest && e.target.closest('.sp-show-more')) showMore();
   });
 
+  var setOf = null;   // "Group: By script or collection", built once
+  var sourceOf = null; // the Source chips' answer, built once per index
   function drawCharacters(q) {
     var all = res.byType.character.map(function (r) { return r.item.data; });
     var list = filters.apply(all);
@@ -577,31 +638,56 @@
       return;
     }
     var card = function (c) { return CF.card(c, markFn); };
-    var groups = [];
-    if (filters.state.group === 'none') {
-      groups.push({ selector: '.char-grid[data-team="all"]', items: list });
-      out.innerHTML = '<section class="type-section" id="all"><div class="char-grid" data-team="all"></div></section>';
-    } else {
-      out.innerHTML = CF.TEAMS.map(function (t) {
-        var chars = list.filter(function (c) { return c.team === t[0]; });
-        if (!chars.length) return '';
-        groups.push({ selector: '.char-grid[data-team="' + t[0] + '"]', items: chars });
-        return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-team="' + t[0] + '"></div></section>';
-      }).join('');
-    }
+    if (!setOf) setOf = CF.makeSetOf(index.data.collections, index.data.scripts);
+    var laid = CF.sections(list, filters.state.group, setOf);
+    out.innerHTML = laid.html;
+    var groups = laid.groups;
     cancelCards = window.mountCardBatches(out, groups, card);
   }
 
-  /* ── running a search ── */
+  /* ── running a search ──
+     Typing runs at most one search per animation frame: keystrokes that
+     arrive while the last one is still being drawn are folded into the next
+     frame's run, which searches for whatever the box holds by then, instead
+     of each queueing a full search and redraw of its own. A frame is ~16 ms,
+     so a single keystroke still answers at once. Everything that is not
+     typing (Enter, Back, the top-bar box) runs straight away. */
+  var frame = 0;
+  // A partial index (scripts, collections or the people/pages index failed
+  // to load) is searched as it is, and every search asks for the missing
+  // parts again until they arrive; S.load() shares one attempt at a time.
+  var refreshing = false;
+  function refresh() {
+    if (refreshing || !index || !index.partial) return;
+    refreshing = true;
+    S.load().then(function (idx) {
+      refreshing = false;
+      if (idx.partial) return;
+      index = idx;
+      members = Object.create(null);
+      setOf = null;
+      sourceOf = null;
+      run();
+    }, function () { refreshing = false; });
+  }
   function run() {
+    if (frame) { (window.cancelAnimationFrame || clearTimeout)(frame); frame = 0; }
+    refresh();
     res = index.search(state.q);
     drawTabs();
     drawBody();
   }
+  function runSoon() {
+    if (frame) return;
+    frame = (window.requestAnimationFrame || function (f) { return setTimeout(f, 16); })(function () {
+      frame = 0;
+      run();
+    });
+  }
   input.addEventListener('input', function () {
     state.q = input.value;
     writeURL(false);
-    if (index) run();
+    if (index) runSoon();
   });
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -632,6 +718,7 @@
     S.load().then(function (idx) {
       index = idx;
       run();
+      warmMembers();
     }).catch(function () {
       out.innerHTML = emptyHTML('The search could not load. <button type="button" class="filter-reset" id="sp-retry">Try again</button>');
       document.getElementById('sp-retry').addEventListener('click', function () {

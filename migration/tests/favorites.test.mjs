@@ -36,9 +36,11 @@ test('favorites: save by address or id, list, expand through rosters, unsave', a
   let r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'test-set/a', on: true }));
   assert.equal(r.status, 200);
   assert.equal((await r.json()).slug, 'a');
-  // A draft is not a page a reader was shown.
+  // A draft is not a page a reader was shown — and it answers exactly as a
+  // page that does not exist, so nobody can probe for one.
   r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'e', on: true }));
-  assert.equal(r.status, 400);
+  assert.equal(r.status, 404);
+  assert.equal((await r.json()).name, undefined);
   assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'nope', on: true }))).status, 404);
   assert.equal((await f.request('/api/favorite', post(1, { type: 'news', slug: 'a', on: true }))).status, 400);
   // A script by slug, a collection by its kebab id (stored under the PK).
@@ -111,20 +113,15 @@ test('favorites: a saved page that stops being public leaves the filter but stay
   assert.deepEqual(gone.characters, []);
 });
 
-test('favorites: the per-account cap', async t => {
+test('favorites: no per-account cap', async t => {
   const f = await fixture();
   t.after(() => f.finish());
   users(f); seed(f);
   assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'a', on: true }))).status, 200);
   const fill = f.db.prepare("INSERT OR IGNORE INTO favorites(user_id, entity_type, slug) VALUES(1, 'character', ?)");
-  for (let i = 0; i < 500; i++) fill.run('filler-' + i);
-  const r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'b', on: true }));
-  assert.equal(r.status, 400);
-  assert.match((await r.json()).error, /limit/);
-  // Re-saving one already there is not a new row and is not refused.
-  assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'a', on: true }))).status, 200);
-  // Removing still works past the cap.
-  assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'a', on: false }))).status, 200);
+  for (let i = 0; i < 600; i++) fill.run('filler-' + i);
+  assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'b', on: true }))).status, 200);
+  assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'b', on: false }))).status, 200);
 });
 
 test('favorites: the server-rendered pages load favorites.js before the scripts that mount the button', async t => {

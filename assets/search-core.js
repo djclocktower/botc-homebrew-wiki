@@ -32,7 +32,18 @@
    Whole-phrase bonuses then lift an exact or leading name match to the top.
 
    Typos are only looked for in short fields (names, sets, tags, creators):
-   in ability text they would match half the wiki. */
+   in ability text they would match half the wiki.
+
+   Leaving things out
+   ------------------
+   A word typed with a minus in front of it ("poison -drunk") removes every
+   result that has that word ANYWHERE: its name, set, tags, credit, ability
+   or description. It matches a whole word or the start of one, so -drunk also
+   drops "Drunkenness", but never the middle of a word ("-unk" leaves the
+   Drunk alone) and never a typo — leaving something out has to be exact or it
+   hides things nobody asked to hide. -"two words" leaves out a phrase. Only
+   a minus at the START of a word counts, so "tir-far" is still one search.
+   A query of nothing but minus words lists everything else. */
 (function () {
   'use strict';
 
@@ -144,7 +155,8 @@
   };
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
-    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'], ['loric', 'Loric']
+    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'], ['loric', 'Loric'],
+    ['other', 'Other']
   ];
   var TEAM_LABEL = {};
   TEAMS.forEach(function (t) { TEAM_LABEL[t[0]] = t[1]; });
@@ -176,7 +188,10 @@
     ['My Account', 'account', 'Your account', '', 'settings profile'],
     ['Messages', 'messages', 'Your account', '', 'inbox mail dm']
   ];
-  var STOP = { the: 1, of: 1, a: 1, an: 1, and: 1, to: 1, in: 1, on: 1, for: 1, by: 1, is: 1 };
+  // Looked up with a word somebody typed, so it must not inherit anything:
+  // on a plain object "constructor" read as a small word and was dropped.
+  var STOP = Object.assign(Object.create(null),
+    { the: 1, of: 1, a: 1, an: 1, and: 1, to: 1, in: 1, on: 1, for: 1, by: 1, is: 1 });
 
   function titleCase(s) {
     return String(s || '').trim().toLowerCase()
@@ -191,6 +206,61 @@
      news}}; any of them may be missing. root: the link prefix (BotcData.root). */
   var MAX_FIELDS = 16;
   function createIndex(data, root) {
+    var index = Object.create(Index.prototype);
+    index._init(collectItems(data, root));
+    index._addRange(0, index.n);
+    index._finish();
+    return index;
+  }
+  /* The same index, built in slices so a phone's main thread is never held
+     for the whole build (a quarter of a second or more on a mid-range phone,
+     one task, with the page unable to scroll or take a keystroke). The steps
+     and their order are exactly createIndex's, so the result is identical;
+     only the waiting in between differs. opts.yieldFn returns a promise to
+     wait on between slices (default: a macrotask, so input and paint get a
+     turn); opts.budget is the slice length in ms (default 8). */
+  function createIndexAsync(data, root, opts) {
+    opts = opts || {};
+    var budget = opts.budget > 0 ? opts.budget : 8;
+    var wait = opts.yieldFn || defaultYield;
+    var now = typeof performance !== 'undefined' && performance.now
+      ? function () { return performance.now(); } : function () { return Date.now(); };
+    var index = Object.create(Index.prototype), i = 0, first = true;
+    return new Promise(function (resolve, reject) {
+      // The first slice runs at once and also lists the items (a few ms),
+      // so a small index — and every test fixture — is ready without
+      // waiting a turn at all.
+      function slice() {
+        try {
+          var start = now();
+          if (first) { first = false; index._init(collectItems(data, root)); }
+          // A few items at a time between clock reads: reading the clock
+          // per item would cost more than some items do.
+          while (i < index.n) {
+            var to = Math.min(index.n, i + 32);
+            index._addRange(i, to);
+            i = to;
+            if (now() - start >= budget) break;
+          }
+          if (i >= index.n) index._finish();
+          if (opts.onSlice) opts.onSlice(now() - start);
+          if (i >= index.n) resolve(index);
+          else wait().then(slice, reject);
+        } catch (e) { reject(e); }
+      }
+      slice();
+    });
+  }
+  function defaultYield() {
+    // scheduler.yield() where there is one (it resumes ahead of other queued
+    // work, so the build still finishes quickly); otherwise a plain macrotask.
+    if (typeof scheduler !== 'undefined' && scheduler && typeof scheduler.yield === 'function') {
+      return scheduler.yield();
+    }
+    return new Promise(function (resolve) { setTimeout(resolve, 0); });
+  }
+
+  function collectItems(data, root) {
     data = data || {};
     root = root || '';
     var extra = data.extra || {};
@@ -322,7 +392,7 @@
 
     // Tags come from the characters themselves, so the list is exactly the
     // tags in use and each can say how many characters carry it.
-    var tagCount = {};
+    var tagCount = Object.create(null);
     (data.characters || []).forEach(function (c) {
       splitList(c && c.tags).forEach(function (t) {
         var k = titleCase(t);
@@ -335,7 +405,7 @@
         data: { kind: 'tag', count: tagCount[t] }
       }, [[t, 10, true, true]]);
     });
-    var teamCount = {};
+    var teamCount = Object.create(null);
     (data.characters || []).forEach(function (c) { if (c && c.team) teamCount[c.team] = (teamCount[c.team] || 0) + 1; });
     TEAMS.forEach(function (t) {
       add({
@@ -350,10 +420,17 @@
       }, [[p[0], 10, true, true], [p[4], 3, true], [p[3], 1, false]]);
     });
 
-    return new Index(items);
+    return items;
   }
 
+  // Kept as a constructor for anything that ever called `new Index(items)`;
+  // createIndex / createIndexAsync drive the same three steps.
   function Index(items) {
+    this._init(items);
+    this._addRange(0, this.n);
+    this._finish();
+  }
+  Index.prototype._init = function (items) {
     var n = items.length;
     this.items = items;
     this.n = n;
@@ -368,8 +445,14 @@
     // runTogether[wi] marks a word that only exists as a run-together name
     // ("grimpeeker"): it may be matched whole or from its start, never from
     // the middle, or "imp" would find Grim Peeker.
-    var vocab = new Map(), vwords = [], post = [], lastSlot = [], runTogether = [];
-    for (var i = 0; i < n; i++) {
+    this._b = { vocab: new Map(), vwords: [], post: [], lastSlot: [], runTogether: [] };
+  };
+  // Items [from, to) into the vocabulary, in order — the order is what makes
+  // a sliced build come out identical to a single pass.
+  Index.prototype._addRange = function (from, to) {
+    var b = this._b, items = this.items;
+    var vocab = b.vocab, vwords = b.vwords, post = b.post, lastSlot = b.lastSlot, runTogether = b.runTogether;
+    for (var i = from; i < to; i++) {
       var it = items[i], fields = it.fields;
       it.i = i;
       it.fold = words(it.name).join(' ');
@@ -417,10 +500,14 @@
       it.text = all.join(' | ');
       it.fields = null;
     }
-    this.words = vwords;
-    this.post = post;
-    this.runTogether = runTogether;
-  }
+  };
+  Index.prototype._finish = function () {
+    var b = this._b;
+    this.words = b.vwords;
+    this.post = b.post;
+    this.runTogether = b.runTogether;
+    this._b = null;
+  };
 
   // Scores for one query word, per item (the best field wins). Memoised, so
   // the words already typed cost nothing while the last one changes.
@@ -485,6 +572,27 @@
     return x < y ? -1 : x > y ? 1 : 0;
   }
 
+  /* Splits the minus words off a query: {text, neg}. `text` is what is left
+     to search for; `neg` holds each left-out word or phrase, folded the way
+     the items' own text is, so the two can be compared directly. */
+  var NEG_RE = /(^|\s)-(?:"([^"]*)"?|(\S+))/g;
+  function parseQuery(query) {
+    var neg = [];
+    var text = String(query == null ? '' : query).replace(NEG_RE, function (m, lead, quoted, bare) {
+      var w = words(quoted != null ? quoted : bare).join(' ');
+      if (w && neg.indexOf(w) === -1) neg.push(w);
+      return lead;
+    });
+    return { text: text, neg: neg };
+  }
+  // Whole word or the start of one, in any field; see "Leaving things out".
+  function leftOut(it, neg) {
+    if (!neg.length) return false;
+    var hay = ' ' + it.text + ' ';
+    for (var k = 0; k < neg.length; k++) if (hay.indexOf(' ' + neg[k]) !== -1) return true;
+    return false;
+  }
+
   /* search(query, {types}) -> {query, tokens, results, byType, counts, total}
      results: [{item, score}] best first, across every type. An empty query
      returns every item of the asked-for types, A–Z, with score 0. */
@@ -492,12 +600,14 @@
     opts = opts || {};
     var only = opts.types ? {} : null;
     if (opts.types) opts.types.forEach(function (t) { only[t] = 1; });
-    var tokens = [], seen = {};
-    words(query).forEach(function (w) { if (!seen[w]) { seen[w] = 1; tokens.push(w); } });
+    // seen is keyed by the typed words, so it has no prototype to collide with.
+    var tokens = [], seen = Object.create(null);
+    var parsed = parseQuery(query), neg = parsed.neg;
+    words(parsed.text).forEach(function (w) { if (!seen[w]) { seen[w] = 1; tokens.push(w); } });
     var items = this.items, out = [], i;
     if (!tokens.length) {
       for (i = 0; i < items.length; i++) {
-        if (!only || only[items[i].type]) out.push({ item: items[i], score: 0 });
+        if ((!only || only[items[i].type]) && !leftOut(items[i], neg)) out.push({ item: items[i], score: 0 });
       }
       out.sort(byName);
       return group(query, tokens, out);
@@ -514,6 +624,7 @@
       if (!first[i]) continue;
       var it = items[i];
       if (only && !only[it.type]) continue;
+      if (leftOut(it, neg)) continue;
       var total = 0, ok = true, r;
       for (r = 0; r < req.length; r++) {
         var s = req[r][i];
@@ -545,7 +656,7 @@
     TYPES.forEach(function (t) { byType[t] = []; counts[t] = 0; });
     // A creator with an account and that account are one person with one
     // page. Both stay in their own tab; the mixed list shows the person once.
-    var creatorHref = {};
+    var creatorHref = Object.create(null);
     for (i = 0; i < results.length; i++) {
       var r = results[i];
       byType[r.item.type].push(r);
@@ -601,7 +712,7 @@
   }
 
   var API = {
-    fold: fold, words: words, osa: osa, createIndex: createIndex, mark: mark, esc: esc,
+    fold: fold, words: words, osa: osa, createIndex: createIndex, createIndexAsync: createIndexAsync, mark: mark, esc: esc, parseQuery: parseQuery,
     TYPES: TYPES, TYPE_LABEL: TYPE_LABEL, TYPE_ONE: TYPE_ONE, TEAMS: TEAMS, TEAM_LABEL: TEAM_LABEL,
     SITE_PAGES: SITE_PAGES, titleCase: titleCase
   };
@@ -610,7 +721,11 @@
      load() fetches the four feeds (the three the browse pages already use,
      so they are often in the browser's cache, plus the people/pages/news
      index) and builds once. A failed load is forgotten so the next call
-     retries. */
+     retries. Only the character feed is required: the other three may fail
+     and the search still works without them, but that index is marked
+     `partial` and NOT kept, so the next call fetches the missing parts again
+     (the ones that loaded come back from BotcData's per-page share) instead
+     of the page searching without scripts or creators until it is reloaded. */
   if (typeof window !== 'undefined') {
     var loading = null, built = null;
     API.ready = function () { return built; };
@@ -625,17 +740,27 @@
           return rows;
         });
       }
+      var partial = false;
+      function optional(p, empty) {
+        return p.catch(function () { partial = true; return empty; });
+      }
       loading = Promise.all([
         list('characters.json?fields=grid'),
-        list('scripts.json?fields=browse').catch(function () { return []; }),
-        list('collections.json?fields=browse').catch(function () { return []; }),
-        B.json(r + 'api/search-index').catch(function () { return {}; })
+        optional(list('scripts.json?fields=browse'), []),
+        optional(list('collections.json?fields=browse'), []),
+        optional(B.json(r + 'api/search-index'), {})
       ]).then(function (res) {
-        built = createIndex({ characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} }, r);
-        built.data = { characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} };
-        loading = null;
-        return built;
-      }, function (err) { loading = null; throw err; });
+        var data = { characters: res[0], scripts: res[1], collections: res[2], extra: res[3] || {} };
+        // Built in slices (createIndexAsync), so focusing the box or opening
+        // /search never freezes the page for the whole build.
+        return createIndexAsync(data, r).then(function (index) {
+          index.data = data;
+          index.partial = partial;
+          if (!partial) built = index;
+          loading = null;
+          return index;
+        });
+      }).then(null, function (err) { loading = null; throw err; });
       return loading;
     };
     window.BotcSearch = API;

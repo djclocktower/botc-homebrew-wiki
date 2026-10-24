@@ -12,6 +12,7 @@
   var ROOT = new URL('.', location.href).href;
   var SET_KEY = 'botc_token_set';
   var ADJ_KEY = 'botc_token_adj_v1';
+  var PAPER_KEY = 'botc_token_paper';
 
   /* ---- engine (Web Worker) — start it IMMEDIATELY, before anything else ---- */
   var worker = new Worker('assets/token-worker.js');
@@ -22,6 +23,19 @@
   });
 
   var pyReady = false, engineErr = null;
+  /* The engine is ~17 MB on first use. A step that makes no progress for two
+     minutes is said out loud, naming the step, instead of "Loading…" forever.
+     Loading carries on behind the message and clears it if it finishes. */
+  var loadStage = 'Loading…', stallTimer = 0, stalled = false;
+  function watchStall() {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(function () {
+      if (pyReady || engineErr) return;
+      stalled = true;
+      showMsg('err', 'The token maker is stuck on "' + esc(loadStage) + '". A slow connection can take a few minutes; if nothing changes, <a href="" onclick="location.reload();return false">reload the page</a>. If it keeps happening, tell DJ which step it stops on.');
+    }, 120000);
+  }
+  watchStall();
   var pending = {}, reqSeq = 0;
   function callWorker(type, msg) {
     return new Promise(function (res, rej) {
@@ -34,16 +48,32 @@
   worker.onmessage = function (e) {
     var m = e.data || {};
     if (m.type === 'status') {
-      if (m.state === 'ready') { pyReady = true; hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
+      clearTimeout(stallTimer);
+      if (m.state === 'ready') { pyReady = true; if (stalled) clearMsg(); hideLoad(); refreshGenerate(); schedulePreview(); scheduleEditorPreview(); }
       else if (m.state === 'error') { engineErr = m.message; hideLoad(); showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ. (' + esc(m.message) + ')'); }
+      else { loadStage = m.message || loadStage; $('tt-load-text').textContent = loadStage; watchStall(); }
       return;
     }
     var p = pending[m.id]; if (!p) return; delete pending[m.id];
     if (m.type === 'result') p.res(m.res); else p.rej(new Error(m.message || 'Something went wrong.'));
   };
+  /* A crashed worker never answers again, so every call still waiting on it
+     is failed here — previews and sheets used to sit on "Rendering…" for
+     good. pyReady goes false so nothing new is sent into the dead worker. */
+  function failPending(message) {
+    var ids = Object.keys(pending);
+    ids.forEach(function (id) {
+      var p = pending[id]; delete pending[id];
+      p.rej(new Error(message));
+    });
+  }
   worker.onerror = function (e) {
-    engineErr = e.message; hideLoad();
+    engineErr = (e && e.message) || 'the token maker stopped';
+    pyReady = false;
+    hideLoad();
     showMsg('err', 'The token maker failed to load. Try a refresh, or tell DJ.');
+    failPending('The token maker stopped working. Refresh the page to try again.');
+    refreshGenerate();
   };
 
   /* ---- tiny DOM helpers ---- */
@@ -61,7 +91,7 @@
   var officialById = {};   // norm(id)/norm(name) -> official role object (from assets/roles.json)
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsiders'], ['minion', 'Minions'],
-    ['demon', 'Demons'], ['traveller', 'Travellers'], ['fabled', 'Fabled'], ['loric', 'Loric']
+    ['demon', 'Demons'], ['traveller', 'Travellers'], ['fabled', 'Fabled'], ['loric', 'Loric'], ['other', 'Other']
   ];
   var opts = {
     paper: 'A4', format: 'png', layout: 'grid',
@@ -82,18 +112,31 @@
   var ADJ_DEF = {
     bg_scale: 1, bg_dx: 0, bg_dy: 0, bg_rot: 0,
     icon_scale: 1, icon_dx: 0, icon_dy: 0, icon_rot: 0,
-    name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1,
+    name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1, name_kern: 0,
     abil_size: 1, abil_dy: 0,
     leaves: 'auto', leaf_scale: 1, leaf_dy: 0, leaf_dx: 0, leaf_rot: 0,
     flower: 'auto', flower_scale: 1, flower_dx: 0, flower_dy: 0, flower_rot: 0,
     fn_scale: 1, fn_dx: 0, fn_dy: 0, fn_rot: 0,
     on_scale: 1, on_dx: 0, on_dy: 0, on_rot: 0,
-    rem_icon_scale: 1, rem_text_size: 1
+    rem_icon_scale: 1, rem_text_size: 1,
+    all_scale: 1
   };
   var adjState = { global: {}, per: {} };   // per[slug] = {adj:{}, count:1, rems:{text:count}}
   function loadAdj() {
     try { var s = JSON.parse(localStorage.getItem(ADJ_KEY)); if (s && typeof s === 'object') adjState = { global: s.global || {}, per: s.per || {} }; } catch (e) {}
   }
+  /* The custom style: the reader's own starting point, saved from a token
+     they made (or from All Tokens) and kept until they reset it. Layers are
+     defaults -> style -> All Tokens -> this token, so every reset steps back
+     to the style rather than to the stock look. It holds custom art too:
+     a slot's own upload wins, else the style's, else the stock art. */
+  var STYLE_KEY = 'botc_token_style_v1';
+  var style = { adj: {}, assets: {} };
+  function loadStyle() {
+    try { var s = JSON.parse(localStorage.getItem(STYLE_KEY)); if (s && typeof s === 'object') style = { adj: s.adj || {}, assets: s.assets || {} }; } catch (e) {}
+  }
+  function baseVal(k) { return style.adj[k] != null ? style.adj[k] : ADJ_DEF[k]; }
+  function globalVal(k) { return adjState.global[k] != null ? adjState.global[k] : baseVal(k); }
   function saveAdj() { try { localStorage.setItem(ADJ_KEY, JSON.stringify(adjState)); } catch (e) {} }
   function perOf(sl) {
     if (!adjState.per[sl]) adjState.per[sl] = { adj: {}, count: 1, rems: {} };
@@ -105,8 +148,12 @@
     var out = {};
     var per = (adjState.per[sl] && adjState.per[sl].adj) || {};
     Object.keys(ADJ_DEF).forEach(function (k) {
-      out[k] = (per[k] != null) ? per[k] : (adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]);
+      out[k] = (per[k] != null) ? per[k] : globalVal(k);
     });
+    // Per-letter kerning (the gear by Kerning) belongs to one name, so it
+    // lives on the token beside adj, never in a style or in All Tokens.
+    var g = adjState.per[sl] && adjState.per[sl].gaps;
+    out.name_gaps = (g && Object.keys(g).length) ? g : null;
     return out;
   }
   function charCount(sl) { var p = adjState.per[sl]; return Math.max(0, Math.min(50, (p && p.count != null) ? p.count : 1)); }
@@ -120,10 +167,12 @@
   function saveSet() { try { localStorage.setItem(SET_KEY, JSON.stringify(setSlugs)); } catch (e) {} }
   function artRel(c) { return 'assets/' + (c.art || ('art/' + c.slug + '.png')); }
   function artAbs(c) { return ROOT + artRel(c); }
-  /* What the two lists draw: the 192px WebP thumbnail beside the art
-     (thumb/{file}.webp, made by assets/art-thumb.js; the Worker serves the
-     original where none exists). The tokens themselves render from artAbs(). */
-  function listThumb(c) {
+  /* Lists draw the 192px WebP card thumbnail (~8 KB against the art's
+     ~150 KB), the same rule as PageRender.thumbSrc(); the Worker serves the
+     original at that address until a thumbnail exists. The Add list holds
+     every character on the wiki, and drawing it with full art (and no lazy
+     loading) had a phone downloading hundreds of MB alongside the engine. */
+  function thumbSrc(c) {
     if (c.ext) return c.image || 'assets/favicon.png';
     var a = c.art || ('art/' + c.slug + '.png');
     if (/^art\/[^/]+$/.test(a)) return 'assets/thumb/' + a.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
@@ -250,6 +299,7 @@
     try {
       var small = {}, total = 0;
       Object.keys(customAssets).forEach(function (k) {
+        if (customAssets[k] === style.assets[k]) return;
         var n = customAssets[k].length;
         if (n < 550000 && total + n < 2200000) { small[k] = customAssets[k]; total += n; }
       });
@@ -379,7 +429,7 @@
         var ability = c.ability || '';
         html += '<div class="sb-add-row">' +
           '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(listThumb(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
             '<span class="sb-add-name">' + esc(c.name) + '</span>' +
           '</button>' +
           (ability
@@ -448,16 +498,16 @@
     if (!chars.length) { box.innerHTML = '<p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>'; return; }
     var html = '';
     var known = TEAMS.map(function (t) { return t[0]; });
-    var groups = TEAMS.concat([[null, 'Other']]);
-    groups.forEach(function (t) {
+    TEAMS.forEach(function (t) {
       var key = t[0], label = t[1];
-      var group = chars.filter(function (c) { return key ? c.team === key : known.indexOf(c.team) < 0; });
+      // Other also holds any team this list does not know.
+      var group = chars.filter(function (c) { return c.team === key || (key === 'other' && known.indexOf(c.team) < 0); });
       if (!group.length) return;
       html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
       group.forEach(function (c) {
         var edited = adjState.per[c.slug] && Object.keys(adjState.per[c.slug].adj || {}).length > 0;
         html += '<div class="sb-script-item">' +
-          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(listThumb(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
           '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
           '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
           versionChipsHTML(c) + '</div>' +
@@ -500,6 +550,11 @@
 
   /* ---- adjustment slider panels (shared builder: global card + per-token editor) ---- */
   var ADJ_FIELDS = [
+    // Everything on the token at once: each piece keeps its place and
+    // changes size there (the rim pieces stay cut off by the edge), on top of
+    // its own Size slider. The background stays put. See web_render.py.
+    { section: 'Everything' },
+    { k: 'all_scale', label: 'Size', min: 0.5, max: 1.5, step: 0.01, fmt: pctFmt },
     { section: 'Token Background' },
     { k: 'bg_scale', label: 'Size', min: 0.5, max: 1.8, step: 0.02, fmt: pctFmt },
     { k: 'bg_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -200, max: 200, step: 2, fmt: pxFmt },
@@ -515,6 +570,7 @@
     { k: 'name_dx', label: 'Position <span class="ico ico-swap" aria-hidden="true"></span>', min: -150, max: 150, step: 2, fmt: pxFmt },
     { k: 'name_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -80, max: 80, step: 2, fmt: pxFmt },
     { k: 'name_arc', label: 'Arc', min: 0.4, max: 2.2, step: 0.02, fmt: pctFmt },
+    { k: 'name_kern', label: 'Kerning', min: -0.1, max: 0.3, step: 0.01, fmt: emFmt },
     { section: 'Ability Text' },
     { k: 'abil_size', label: 'Size', min: 0.7, max: 1.3, step: 0.02, fmt: pctFmt },
     { k: 'abil_dy', label: 'Position <span class="ico ico-swap-v" aria-hidden="true"></span>', min: -60, max: 60, step: 2, fmt: pxFmt },
@@ -545,6 +601,7 @@
     { k: 'rem_text_size', label: 'Text size', min: 0.6, max: 1.2, step: 0.02, fmt: pctFmt }
   ];
   function pctFmt(v) { return Math.round(v * 100) + '%'; }
+  function emFmt(v) { return (v > 0 ? '+' : '') + (+v).toFixed(2) + 'em'; }
   function pxFmt(v) { return (v > 0 ? '+' : '') + v + 'px'; }
   function degFmt(v) { return (v > 0 ? '+' : '') + v + '&deg;'; }
 
@@ -559,9 +616,12 @@
         });
         html += '</div></div>';
       } else {
-        html += '<div class="tt-row"><label>' + f.label + '</label><div class="tt-range">' +
+        var gear = (f.k === 'name_kern' && prefix === 'ta-')
+          ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">&#9881;&#xFE0E;</button>' : '';
+        html += '<div class="tt-row"><label>' + f.label + gear + '</label><div class="tt-range">' +
           '<input type="range" id="' + prefix + f.k + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">' +
           '<output id="' + prefix + f.k + '-out"></output></div></div>';
+        if (gear) html += '<div class="tt-kern-gaps" id="ta-kern-gaps" hidden></div>';
       }
     });
     container.innerHTML = html;
@@ -593,6 +653,45 @@
     });
   }
 
+  /* Per-letter kerning: one slider per gap in this token's name, behind the
+     gear in the editor's Kerning row. Stored on the token as gaps {index: em}
+     (0 is never stored), drawn by gen.render_name on top of Kerning. */
+  function renderKernGaps(sl) {
+    var box = $('ta-kern-gaps'), gear = $('ta-kern-gear');
+    if (!box || !gear) return;
+    gear.onclick = function () {
+      box.hidden = !box.hidden;
+      gear.setAttribute('aria-expanded', String(!box.hidden));
+    };
+    var nm = stripCreditMarks(charBySlug[sl].name).toUpperCase();
+    var gaps = (adjState.per[sl] && adjState.per[sl].gaps) || {};
+    var html = '';
+    for (var i = 0; i < nm.length - 1; i++) {
+      var pair = (nm[i] === ' ' ? '\u2423' : nm[i]) + (nm[i + 1] === ' ' ? '\u2423' : nm[i + 1]);
+      var v = gaps[i] || 0;
+      html += '<div class="tt-row"><label>' + esc(pair) + '</label><div class="tt-range">' +
+        '<input type="range" data-gap="' + i + '" min="-0.3" max="0.5" step="0.01" value="' + v + '">' +
+        '<output>' + emFmt(v) + '</output></div></div>';
+    }
+    box.innerHTML = html ? html + '<button type="button" class="tt-btn-sm" id="ta-kern-gaps-reset">Even out letters</button>'
+                         : '<p class="tt-kern-none">This name has no gaps to space.</p>';
+    box.querySelectorAll('input[data-gap]').forEach(function (r) {
+      r.oninput = function () {
+        var p = perOf(sl), v = Number(r.value);
+        if (!p.gaps) p.gaps = {};
+        if (v === 0) delete p.gaps[r.dataset.gap]; else p.gaps[r.dataset.gap] = v;
+        r.nextElementSibling.innerHTML = emFmt(v);
+        saveAdj(); scheduleEditorPreview();
+        if (setSlugs[0] === sl) schedulePreview();
+      };
+    });
+    var reset = $('ta-kern-gaps-reset');
+    if (reset) reset.onclick = function () {
+      delete perOf(sl).gaps; saveAdj(); renderKernGaps(sl);
+      scheduleEditorPreview(); if (setSlugs[0] === sl) schedulePreview();
+    };
+  }
+
   /* global "Adjust All Tokens" card */
   function wireGlobalAdj() {
     $('tt-adj-toggle').addEventListener('click', function () {
@@ -602,14 +701,14 @@
       $('tt-adj-caret').innerHTML = open ? '&#9662;' : '&#9652;';
     });
     buildAdjPanel($('tt-adj-panel'), 'ga-',
-      function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; },
+      function (k) { return globalVal(k); },
       function (k, v) {
-        if (v === ADJ_DEF[k]) delete adjState.global[k]; else adjState.global[k] = v;
+        if (v === baseVal(k)) delete adjState.global[k]; else adjState.global[k] = v;
         saveAdj(); schedulePreview(); if (mainGizmo) mainGizmo.sync();
       });
     $('tt-adj-reset').onclick = function () {
       adjState.global = {}; saveAdj();
-      syncAdjPanel('ga-', function (k) { return ADJ_DEF[k]; });
+      syncAdjPanel('ga-', baseVal);
       schedulePreview(); if (mainGizmo) mainGizmo.sync();
     };
   }
@@ -625,13 +724,15 @@
       function (k) { return mergedAdj(sl)[k]; },
       function (k, v) {
         var p = perOf(sl);
-        var base = adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k];
+        var base = globalVal(k);
         if (v === base) delete p.adj[k]; else p.adj[k] = v;
         saveAdj(); scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
         if (setSlugs[0] === sl) schedulePreview();
       });
+    renderKernGaps(sl);
     renderEditorRems(sl);
     renderEditorSave(sl);
+    $('tte-style-msg').textContent = 'Makes this token’s adjustments, plus your custom art, the starting point for every token.';
     $('tt-editor').classList.add('open');
     document.body.style.overflow = 'hidden';
     $('tte-preview').innerHTML = '<span class="ph">Drawing…</span>';
@@ -655,16 +756,31 @@
       : 'Saves this token to the character’s page. The Token Tool prints it from then on.';
     $('tte-save-go').disabled = false;
     $('tte-save-go').textContent = 'Save to page';
+    /* The tick says what the page does NOW: a page whose owner turned the
+       token out of the gallery must not have it switched back on just by
+       saving a better token. A first token starts ticked, as before. The
+       stored answer is read again at save time (page.data) unless the reader
+       has touched the box, since the card feed can be a few minutes old. */
+    var show = $('tte-save-show');
+    show.checked = c.token ? !!c.tokenArt : true;
+    show.dataset.touched = '';
   }
   function saveEditorToken() {
     var sl = editorSlug; if (!sl) return;
-    var c = charBySlug[sl]; if (!c || c.ext || !pyReady) return;
+    var c = charBySlug[sl]; if (!c || c.ext) return;
+    // Pressing Save before the engine is up used to do nothing at all.
+    if (!pyReady) {
+      $('tte-save-msg').textContent = engineErr
+        ? 'The token maker failed to load, so nothing can be saved. Try a refresh.'
+        : 'The token maker is still loading. Try again in a moment.';
+      return;
+    }
     var btn = $('tte-save-go'), msg = $('tte-save-msg');
     btn.disabled = true; btn.textContent = 'Saving…';
     msg.textContent = 'Drawing the token at full size…';
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
     o.preview_scale = 1; o.ignore_premade = true;
-    var pngB64 = null, key = 'art/' + sl + '-token.png';
+    var pngB64 = null, key = 'art/' + sl + '-token.png', sentShow = false;
     callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
       .then(function (res) {
         if (res.error) throw new Error('This character has no art to make a token from.');
@@ -690,7 +806,11 @@
             tokenImage: 'https://botchomebrew.wiki/assets/' + key,
             status: page.status
           });
-          if ($('tte-save-show').checked) entry.tokenArt = true;
+          var show = $('tte-save-show');
+          var want = show.dataset.touched ? show.checked
+            : (page.data && page.data.token ? !!page.data.tokenArt : show.checked);
+          if (want) entry.tokenArt = true; else delete entry.tokenArt;
+          sentShow = want;
           return fetch(ROOT + 'api/character', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
             body: JSON.stringify(entry)
@@ -700,6 +820,7 @@
       .then(function (saved) {
         if (!saved || saved.error) throw new Error((saved && saved.error) || 'The character could not be saved.');
         charBySlug[sl].token = key;
+        charBySlug[sl].tokenArt = !!sentShow;
         // The saved bytes go straight into the worker FS, so this session's
         // previews and sheets print the new token without refetching it.
         callWorker('artBytes', { slug: sl + '-premade', b64: pngB64 }).catch(function () {});
@@ -764,10 +885,12 @@
       saveAdj();
       $('tte-count-val').textContent = 1;
       syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; });
+      renderKernGaps(editorSlug);
       renderEditorRems(editorSlug);
       scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
     };
     $('tte-save-go').onclick = saveEditorToken;
+    $('tte-save-show').onchange = function () { this.dataset.touched = '1'; };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && editorSlug) closeEditor(); });
   }
 
@@ -847,9 +970,27 @@
       var sc = gzNum(ctx.get(A.scale)), rot = gzNum(ctx.get(A.rot));
       var bx = g.cx + dx, by = g.cy + dy;
       if (g.space === 'content') { bx += GEO.contentRef[0] * (cm - 1); by += GEO.contentRef[1] * (cm - 1); }
+      var ox = ir.left - pr.left, oy = ir.top - pr.top;
+      // "Everything" resizes each piece where it stands (web_render.py), so
+      // the box follows: the icon about its centre, the top leaves from the
+      // rim down, and the night leaves and flower about the point where they
+      // meet the edge. The background never changes.
+      var all = asset === 'bg' ? 1 : (gzNum(ctx.get('all_scale')) || 1);
+      var w = g.w * sc, h = g.h * sc;
+      if (all !== 1) {
+        if (asset === 'leaves') {
+          by = (by - h / 2) + h * all / 2;
+        } else if (asset === 'fn' || asset === 'on' || asset === 'flower') {
+          var D = GEO.disk || [GEO.contentRef[0], GEO.contentRef[1], 437];
+          var vx = bx - D[0], vy = by - D[1], len = Math.hypot(vx, vy) || 1;
+          var px = D[0] + vx / len * D[2], py = D[1] + vy / len * D[2];
+          bx = px + (bx - px) * all; by = py + (by - py) * all;
+        }
+        w *= all; h *= all;
+      }
       return {
-        m: m, rot: rot, boxW: g.w * sc * m, boxH: g.h * sc * m,
-        left: (ir.left - pr.left) + bx * m, top: (ir.top - pr.top) + by * m
+        m: m, rot: rot, boxW: w * m, boxH: h * m,
+        left: ox + bx * m, top: oy + by * m
       };
     }
     function position() {
@@ -933,9 +1074,9 @@
 
   function globalCtx() {
     return {
-      get: function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; },
-      set: function (k, v) { if (v === ADJ_DEF[k]) delete adjState.global[k]; else adjState.global[k] = v; saveAdj(); },
-      syncPanel: function () { syncAdjPanel('ga-', function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; }); },
+      get: function (k) { return globalVal(k); },
+      set: function (k, v) { if (v === baseVal(k)) delete adjState.global[k]; else adjState.global[k] = v; saveAdj(); },
+      syncPanel: function () { syncAdjPanel('ga-', globalVal); },
       rerender: liveMain
     };
   }
@@ -944,7 +1085,7 @@
       get: function (k) { return editorSlug ? mergedAdj(editorSlug)[k] : ADJ_DEF[k]; },
       set: function (k, v) {
         if (!editorSlug) return;
-        var p = perOf(editorSlug), base = adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k];
+        var p = perOf(editorSlug), base = globalVal(k);
         if (v === base) delete p.adj[k]; else p.adj[k] = v; saveAdj();
       },
       syncPanel: function () { if (editorSlug) syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; }); },
@@ -1002,9 +1143,11 @@
       r.readAsDataURL(file);
     });
   }
+  function effAsset(kind) { return customAssets[kind] || style.assets[kind] || null; }
   function assetStatusHTML(kind) {
     return customAssets[kind]
       ? '<span class="tt-asset-on">Custom <span class="ico ico-check" aria-hidden="true"></span></span>'
+      : style.assets[kind] ? '<span class="tt-asset-on">Your style</span>'
       : '<span class="tt-asset-off">Default</span>';
   }
   function renderAssets() {
@@ -1042,7 +1185,8 @@
       if (rm) {
         var kind = rm.dataset.kind;
         delete customAssets[kind]; saveAssets();
-        callWorker('assetClear', { kind: kind }).then(function () {
+        (style.assets[kind] ? callWorker('asset', { kind: kind, b64: style.assets[kind] })
+                            : callWorker('assetClear', { kind: kind })).then(function () {
           $('as-' + kind).innerHTML = assetStatusHTML(kind);
           schedulePreview(); scheduleEditorPreview();
         }).catch(function () {});
@@ -1059,9 +1203,70 @@
       });
     });
     // re-apply persisted custom assets (queued until the engine is ready)
-    Object.keys(customAssets).forEach(function (kind) {
-      callWorker('asset', { kind: kind, b64: customAssets[kind] }).catch(function () {});
+    ASSET_SLOTS.forEach(function (s) {
+      var b64 = effAsset(s[0]);
+      if (b64) callWorker('asset', { kind: s[0], b64: b64 }).catch(function () {});
     });
+  }
+
+  /* ---- custom style ---- */
+  function hasStyle() { return Object.keys(style.adj).length + Object.keys(style.assets).length > 0; }
+  function styleSummary() {
+    var n = Object.keys(style.adj).length, a = Object.keys(style.assets).length;
+    if (!n && !a) return 'No custom style yet. Tokens start from the standard look.';
+    return 'Your custom style is on: ' + n + ' adjustment' + (n === 1 ? '' : 's') +
+      ' and ' + a + ' piece' + (a === 1 ? '' : 's') + ' of custom art, used on every token you make.';
+  }
+  function refreshStyleUI(msg) {
+    $('tt-style-msg').textContent = msg || styleSummary();
+    $('tt-style-reset').disabled = !hasStyle();
+    ASSET_SLOTS.forEach(function (s) { var el = $('as-' + s[0]); if (el) el.innerHTML = assetStatusHTML(s[0]); });
+    syncAdjPanel('ga-', globalVal);
+    if (editorSlug) syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; });
+    schedulePreview(); scheduleEditorPreview();
+    if (mainGizmo) mainGizmo.sync(); if (editorGizmo) editorGizmo.sync();
+  }
+  /* getVal is where the look comes from: one token (the editor) or All
+     Tokens. What it saved is folded in so nothing counts twice: All Tokens
+     and that token's own adjustments are cleared, and the art moves into the
+     style. The worker already draws that art, so it needs telling nothing. */
+  function saveStyle(getVal, fromSlug) {
+    var next = { adj: {}, assets: {} };
+    Object.keys(ADJ_DEF).forEach(function (k) { var v = getVal(k); if (v !== ADJ_DEF[k]) next.adj[k] = v; });
+    ASSET_SLOTS.forEach(function (s) { var b = effAsset(s[0]); if (b) next.assets[s[0]] = b; });
+    try { localStorage.setItem(STYLE_KEY, JSON.stringify(next)); }
+    catch (e) { return 'That style is too big to keep in this browser. Try smaller custom art.'; }
+    style = next; customAssets = {}; adjState.global = {};
+    if (fromSlug && adjState.per[fromSlug]) adjState.per[fromSlug].adj = {};
+    saveAdj(); saveAssets();
+    refreshStyleUI('Saved. Every token you make now starts from this style.');
+    return '';
+  }
+  function confirmReplace() {
+    return !hasStyle() || confirm('Replace your current custom style with this one?');
+  }
+  function wireStyle() {
+    $('tt-style-save').onclick = function () {
+      if (!confirmReplace()) return;
+      var err = saveStyle(globalVal, null); if (err) $('tt-style-msg').textContent = err;
+    };
+    $('tte-style-save').onclick = function () {
+      if (!editorSlug || !confirmReplace()) return;
+      var sl = editorSlug;
+      var err = saveStyle(function (k) { return mergedAdj(sl)[k]; }, sl);
+      $('tte-style-msg').textContent = err || 'Saved. Every token you make now starts from this one.';
+    };
+    $('tt-style-reset').onclick = function () {
+      if (!confirm('Remove your custom style? Tokens go back to the standard look.')) return;
+      var old = style.assets;
+      style = { adj: {}, assets: {} };
+      try { localStorage.removeItem(STYLE_KEY); } catch (e) {}
+      Object.keys(old).forEach(function (kind) {
+        if (!customAssets[kind]) callWorker('assetClear', { kind: kind }).catch(function () {});
+      });
+      refreshStyleUI('Custom style removed.');
+    };
+    refreshStyleUI();
   }
 
   /* ---- import script JSON ---- */
@@ -1109,10 +1314,16 @@
       // Skipped silently — listing it as unknown would be reporting the wiki's
       // own signature back to the reader as a missing character.
       if (isCreditsFabled(item)) return;
+      /* A bare id is how the official schema names one of the GAME's
+         characters, so the official roster is asked first: a homebrew page
+         that happens to share the name (there is more than one) must not
+         take its place — the same order as resolveJinxTarget() in render.js
+         (CLAUDE.md, gotcha 8). A wiki page is reached by its own identity,
+         which no official id shares. */
       if (typeof item === 'string') {
-        if (byNorm[norm(item)]) { wiki.push(byNorm[norm(item)]); return; }
         var offS = officialExt(item, extSlugs);
         if (offS) { official.push(offS); return; }
+        if (byNorm[norm(item)]) { wiki.push(byNorm[norm(item)]); return; }
         unknown.push(item);
         return;
       }
@@ -1124,10 +1335,16 @@
       // character shares its name, so imported characters aren't silently overwritten
       // by a same-named (but different) wiki one.
       if (!item.ability) {
-        var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
-        if (hit) { wiki.push(hit); return; }
-        var offR = officialExt(item.id, extSlugs) || officialExt(item.name, extSlugs);
+        // The id before the name, and at each step official first (above).
+        var offR = officialExt(item.id, extSlugs);
         if (offR) { official.push(offR); return; }
+        var hit = byNorm[norm(item.id)];
+        if (!hit) {
+          offR = officialExt(item.name, extSlugs);
+          if (offR) { official.push(offR); return; }
+          hit = byNorm[norm(item.name)];
+        }
+        if (hit) { wiki.push(hit); return; }
         unknown.push(item.id || item.name || '?'); return;
       }
       if (!item.name) { unknown.push(item.id || '?'); return; }
@@ -1273,9 +1490,60 @@
       });
     }
     seg('opt-paper', 'paper');
+    wireCustomPaper();
     seg('opt-format', 'format');
     seg('opt-layout', 'layout');
     seg('opt-dpi', 'dpi', Number);
+
+    /* Custom page size. Typed in mm, cm or inches and handed to Python in
+       mm; web_render.py clamps it again, so this is only the reader's side.
+       The last size is remembered, the choice of Custom with it. */
+    function wireCustomPaper() {
+      var row = $('opt-custom-paper'), w = $('opt-paper-w'), h = $('opt-paper-h'),
+          unit = $('opt-paper-unit'), note = $('opt-paper-note');
+      if (!row) return;
+      var PER = { mm: 1, cm: 10, 'in': 25.4 }, MIN = 60, MAX = 432;
+      var noteText = note.innerHTML;
+      var saved = {};
+      try { saved = JSON.parse(localStorage.getItem(PAPER_KEY)) || {}; } catch (e) {}
+      if (PER[saved.unit]) unit.value = saved.unit;
+      function show(mm) { return String(Math.round(mm / PER[unit.value] * 100) / 100); }
+      var wmm = Number(saved.w) > 0 ? Number(saved.w) : 210, hmm = Number(saved.h) > 0 ? Number(saved.h) : 297;
+      w.value = show(wmm); h.value = show(hmm);
+      function clamp(v) { return Math.min(MAX, Math.max(MIN, v)); }
+      // Parse only what was typed: switching the unit re-displays the size
+      // rounded, and reading that back would nudge it (297 mm -> 296.93).
+      function read(which) {
+        var f = PER[unit.value];
+        var v = parseFloat(which.value) * f;
+        if (v > 0) { if (which === w) wmm = v; else hmm = v; }
+        apply(parseFloat(w.value) > 0 && parseFloat(h.value) > 0);
+      }
+      function apply(ok) {
+        var off = ok === false || wmm < MIN || wmm > MAX || hmm < MIN || hmm > MAX;
+        note.classList.toggle('warn', off);
+        note.innerHTML = off
+          ? 'Sides must be 60&nbsp;mm to 432&nbsp;mm (about 2.4 to 17 inches); printing at ' +
+            Math.round(clamp(wmm)) + '&nbsp;&times;&nbsp;' + Math.round(clamp(hmm)) + '&nbsp;mm.'
+          : noteText;
+        opts.paper_w_mm = clamp(wmm);
+        opts.paper_h_mm = clamp(hmm);
+        try { localStorage.setItem(PAPER_KEY, JSON.stringify({ w: wmm, h: hmm, unit: unit.value, custom: opts.paper === 'Custom' })); } catch (e) {}
+      }
+      function sync() { row.hidden = opts.paper !== 'Custom'; }
+      var tm = null;
+      function changed() { read(this); clearTimeout(tm); tm = setTimeout(schedulePreview, 350); }
+      w.oninput = changed; h.oninput = changed;
+      unit.onchange = function () { w.value = show(wmm); h.value = show(hmm); apply(); };
+      $('opt-paper').querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () { sync(); apply(); });
+      });
+      if (saved.custom) {
+        var c = $('opt-paper').querySelector('button[data-v="Custom"]');
+        if (c) c.click();
+      }
+      apply(); sync();
+    }
 
     function rng(id, outId, key, fmt, toVal) {
       var r = $(id), o = $(outId);
@@ -1422,14 +1690,14 @@
 
   /* ---- init (character data loads in parallel with the engine boot) ---- */
   showLoad('Loading…');
-  loadAdj(); loadAssets();
+  loadStyle(); loadAdj(); loadAssets();
   loadData().then(function () {
     loadExt();
     setSlugs = loadSet().filter(function (sl) { return charBySlug[sl]; });
     return ingestUrl();
   }).then(function () {
     saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
-    wireGlobalAdj(); wireEditor(); wireAssets(); wireImport(); wireTransform();
+    wireGlobalAdj(); wireEditor(); wireAssets(); wireStyle(); wireImport(); wireTransform();
     refreshGenerate(); schedulePreview();
     if (pendingEdit) openEditor(pendingEdit);
     var extInSet = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(function (c) { return c && c.ext; });

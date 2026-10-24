@@ -76,6 +76,40 @@ const THEME_CSS = `
 #tools_container .active { box-shadow: 0 0 0 2px #d6c496 inset; }
 `;
 
+/* Two fixes to miniPaint's tool bar, made from outside the sealed bundle by
+   watching the bar it rebuilds on every tool change.
+
+   1. "Contiguous" on the Fill and Magic Eraser tools is wired backwards in the
+      bundle: switched OFF it floods only the patch you clicked, switched ON it
+      takes every matching pixel in the picture. Rather than patch minified
+      code, the button is renamed for what it actually does — pressed means
+      "Whole image" — so the label and the behaviour finally agree.
+   2. The Crop tool does nothing until you press the "Crop" button that appears
+      in the top bar after dragging a box, which nobody guesses. While that
+      tool is chosen, the hint under the title says so. */
+const CONTIG_LABEL = 'Whole image';
+const CONTIG_TITLE = 'On: every matching colour in the whole picture. Off: only the patch you click on.';
+const CROP_HINT = 'Crop: drag a box round the part to keep, then press the Crop button in the bar at the top.';
+
+function watchToolOptions(doc, hintEl, baseHint) {
+  if (!doc) return;
+  const fix = () => {
+    const bar = doc.getElementById('action_attributes');
+    if (!bar) return;
+    const contig = bar.querySelector('#contiguous');
+    if (contig && contig.textContent !== CONTIG_LABEL) {
+      contig.textContent = CONTIG_LABEL;
+      contig.title = CONTIG_TITLE;
+      contig.classList.remove('trn');   // stop the translator renaming it back
+    }
+    const cropping = !!bar.querySelector('#crop');
+    const want = cropping ? CROP_HINT : baseHint;
+    if (hintEl && hintEl.textContent !== want) hintEl.textContent = want;
+  };
+  fix();
+  new doc.defaultView.MutationObserver(fix).observe(doc.body, { childList: true, subtree: true });
+}
+
 function el(tag, cls, text) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -193,6 +227,8 @@ export function openEditor(o) {
     } catch {
       // Theming is cosmetic — never block the editor over it.
     }
+
+    try { watchToolOptions(frame.contentDocument, p, o.hint); } catch { /* cosmetic too */ }
 
     if (o.image) {
       try {

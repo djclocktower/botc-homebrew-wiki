@@ -59,12 +59,16 @@
     return window.LINK_ROOT || '';
   }
 
-  /* Who is reading. The same 60-second sessionStorage entry site.js writes
-     for /api/me, so a page that already asked does not ask twice. site.js
-     may load AFTER this file (the SSR pages put it last), so botcMePromise is
-     used when it exists and otherwise this asks for itself. Resolves to the
+  /* Who is reading: BotcData.me() (data.js), the one answer per page that
+     site.js and every other caller share — so a page never asks /api/me
+     twice, and a reader with no login hint is not asked at all. The
+     fallback below is for a page that somehow lacks data.js. Resolves to the
      /api/me object, or null when logged out or unreachable. */
   function me() {
+    var B = window.BotcData;
+    if (B && typeof B.me === 'function') {
+      return B.me().then(function (m) { return (m && m.loggedIn) ? m : null; }).catch(function () { return null; });
+    }
     if (window.botcMePromise) {
       return window.botcMePromise.then(function (m) { return (m && m.loggedIn) ? m : null; }).catch(function () { return null; });
     }
@@ -80,6 +84,19 @@
       })
       .catch(function () { return null; });
   }
+
+  /* A page restored from the back/forward cache keeps the lists it was drawn
+     with. Forget the in-page answer (the user-keyed sessionStorage copy stays
+     valid) and let every mounted heart look again. A tick later, so site.js
+     — which loads after this file — has re-asked who is reading first. */
+  var restorers = [];
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    setTimeout(function () {
+      memo = {};
+      restorers.forEach(function (fn) { try { fn(); } catch (err) { /* one must not stop the rest */ } });
+    }, 0);
+  });
 
   function readCache(kind, user) {
     try {
@@ -220,7 +237,9 @@
       btn.setAttribute('aria-label', label);
     }
     paint();
-    has(type, slug).then(function (on) { state = !!on; paint(); });
+    function look() { has(type, slug).then(function (on) { if (!busy) { state = !!on; paint(); } }); }
+    look();
+    restorers.push(look);
     btn.addEventListener('click', function () {
       if (busy) return;
       me().then(function (m) {

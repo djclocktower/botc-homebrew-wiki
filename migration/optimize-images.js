@@ -33,8 +33,12 @@ async function decor() {
     ['bg.jpg', 'bg.webp', { width: 1920 }, { quality: 70 }],
     ['bg.jpg', 'bg-m.webp', { width: 1080 }, { quality: 68 }],
     ['parchment.jpg', 'parchment.webp', { width: 1000 }, { quality: 74 }],
-    ['ccc-parchment.png', 'ccc-parchment.webp', null, { quality: 88, alphaQuality: 90 }],
-    ['logo_skull.png', 'logo_skull.webp', null, { quality: 88, alphaQuality: 90 }]
+    // The top-bar badge and skull at ~3x the height they are drawn at
+    // (32px and 54px at most); larger only cost bytes. Since 2026-10 these
+    // two are made by `node migration/make-small-icons.js decor` (canvas,
+    // q85), which needs no sharp; this line is kept in step with it.
+    ['ccc-parchment.png', 'ccc-parchment.webp', { height: 96 }, { quality: 85, alphaQuality: 90 }],
+    ['logo_skull.png', 'logo_skull.webp', { height: 162 }, { quality: 85, alphaQuality: 90 }]
   ];
   for (const [src, dst, resize, opts] of jobs) {
     let img = sharp(A + src);

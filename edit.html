@@ -31,7 +31,7 @@
   .formcard h2{font-family:'Dumbledor2',serif;color:var(--maroon);margin:0 0 4px;font-size:1.35rem}
   .formcard .sub{font-size:.86rem;color:#6b5d49;margin:0 0 18px}
   .fld{margin-bottom:15px}
-  .fld label{display:block;font-family:'Oswald',sans-serif;font-weight:600;font-size:.82rem;
+  .fld label{display:block;font-family:'Roboto',sans-serif;font-weight:600;font-size:.82rem;
     letter-spacing:.04em;text-transform:uppercase;color:#5b4632;margin-bottom:5px}
   .fld .hint{font-weight:400;text-transform:none;letter-spacing:0;color:#726348;font-size:.78rem}
   .fld input[type=text],.fld input[type=number],.fld textarea,.fld select{
@@ -41,7 +41,7 @@
   .fld input:focus,.fld textarea:focus,.fld select:focus{outline:2px solid #b98;border-color:#b98}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   fieldset{border:1px dashed #c9b78f;border-radius:8px;padding:12px 14px;margin:0 0 15px}
-  legend{font-family:'Oswald',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.04em;
+  legend{font-family:'Roboto',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.04em;
     text-transform:uppercase;color:#5b4632;padding:0 6px}
   .jinx-row{display:grid;grid-template-columns:1fr 86px auto;gap:8px;margin-bottom:8px;align-items:start}
   .jinx-row textarea{grid-column:1/-1;min-height:46px}
@@ -71,7 +71,7 @@
     background:#fffdf8;border:1px solid #cdbfa0;border-radius:6px;padding:8px 10px}
   .special-row input:focus,.special-row select:focus{outline:2px solid #b98;border-color:#b98}
   .special-row .sp-del{width:auto}
-  .btn{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;
+  .btn{font-family:'Roboto',sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;
     border:none;border-radius:7px;padding:9px 16px;font-size:.9rem}
   .btn-sm{padding:6px 12px;font-size:.82rem}
   .btn-ghost{background:#ece3d2;color:#5b4632}
@@ -179,7 +179,9 @@
             <option value="traveller">Traveller</option>
             <option value="fabled">Fabled</option>
             <option value="loric">Loric</option>
+            <option value="other">Other</option>
           </select>
+          <div class="sub" data-team-only="other" style="display:none;margin-top:4px">Not an official character type. Exported as Loric in script JSON. Rename the type under Advanced Options.</div>
         </div>
         <div class="fld">
           <label for="creator">Creator</label>
@@ -223,7 +225,7 @@
             <li><code>**bold**</code> prints <strong>bold</strong> and <code>{{i|text}}</code> prints <em>italics</em> (single <code>*asterisks*</code> don&rsquo;t work)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
-            <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
+            <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span>, <code>{{other|&hellip;}}</code> <span class="wiki-other">purple</span></li>
             <li><code>[[Snake Charmer]]</code> links to that character (the official wiki, or its page here); any other name prints a <span class="tok">reminder token</span></li>
             <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> when it is one of this character&rsquo;s own reminders, and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span></li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
@@ -283,6 +285,20 @@
       <div class="fld">
         <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
         <input type="text" id="iconBy" placeholder="A name, or [Their Name](https://…) to link it">
+      </div>
+      <div class="fld" id="typeName-fld" data-team-only="other" style="display:none">
+        <label for="typeName">Character type name <span class="hint">(optional: shown on this page in place of &ldquo;Other&rdquo;)</span></label>
+        <input type="text" id="typeName" maxlength="40" placeholder="Other">
+        <label for="exportTeam">Export as <span class="hint">(the official script JSON has no &ldquo;Other&rdquo;, so pick the team it leaves as)</span></label>
+        <select id="exportTeam">
+          <option value="">Loric (default)</option>
+          <option value="townsfolk">Townsfolk</option>
+          <option value="outsider">Outsider</option>
+          <option value="minion">Minion</option>
+          <option value="demon">Demon</option>
+          <option value="traveller">Traveller</option>
+          <option value="fabled">Fabled</option>
+        </select>
       </div>
       <div class="fld" data-art-slot="main">
         <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
@@ -461,6 +477,24 @@
       </div>
 
       <fieldset>
+        <legend>Alternate Almanac</legend>
+        <div id="almalt-box"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Page buttons</legend>
+        <p class="sub" style="margin:0 0 10px">The two small buttons in the corner of the information box on the character page.</p>
+        <div class="fld ck">
+          <input type="checkbox" id="hideSnapshot">
+          <label for="hideSnapshot" style="margin:0">Hide the Snapshot button (the Copy link button goes back to its full label)</label>
+        </div>
+        <div class="fld ck" style="margin-bottom:0">
+          <input type="checkbox" id="hideCopyLink">
+          <label for="hideCopyLink" style="margin:0">Hide the Copy link button</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Replaces the automatic JSON on the character page. Leave blank to keep it.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -468,6 +502,7 @@
 
       <button type="button" class="btn btn-save" id="save">Save Changes</button>
       <button type="button" class="btn btn-ghost" id="save-publish" style="display:none" title="Save your changes and make this page public">Save &amp; Publish</button>
+      <button type="button" class="btn btn-ghost" id="snapshot" title="One picture of the whole almanac entry, to share or print">Snapshot</button>
       <button type="button" class="btn btn-del" id="delete-char" style="display:none" title="Remove this character from the site (an admin can restore it)">Delete Character</button>
       <div id="status"></div>
     </div>
@@ -498,6 +533,7 @@
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/related-editor.js"></script>
+  <script src="assets/almanac-alt.js"></script>
   <script src="assets/approved-editors.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
@@ -505,6 +541,9 @@
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
+    // Where a shared picture has to point, whatever hostname this editor was
+    // opened on (Cloudflare answers on the apex, www and workers.dev alike).
+    var CANONICAL_ORIGIN = 'https://botchomebrew.wiki/';
     var $ = function(id){ return document.getElementById(id); };
     // Official character jinx icons come from roles.json (same source the Token
     // Tool uses); load it so the preview matches the published /c/ page.
@@ -538,7 +577,7 @@
         // (window.jinxCharIndex owns the order).
         window.setWikiChars(window.jinxCharIndex(list, function (c) {
           return { slug: c.slug, name: c.name, art: c.art, image: c.image,
-                   team: c.team, page: c.page };
+                   team: c.team, page: c.page, jsonId: c.jsonId };
         }).byKey);
         // [[Character Name]] in the almanac text becomes a real link on the
         // published page, so the preview needs the same name -> address map
@@ -547,10 +586,9 @@
         // character's ADDRESS with its own c/ prefix taken off, not its
         // identity.
         if (window.WikiRender) {
-          var links = {};
-          var normLink = function (x) {
-            return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-          };
+          var links = Object.create(null);
+          // The engine's own key (render-wiki.js), so both sides agree.
+          var normLink = window.WikiRender.linkKey;
           (list || []).forEach(function (c) {
             if (!c || !c.slug) return;
             var addr = c.page
@@ -642,6 +680,7 @@
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
+    var pageIdentity  = '';   // the row's PK, for the snapshot's QR square
     var loadedUpdatedAt = null;
     var artChanged    = false;
     var artDataURL    = null;
@@ -716,6 +755,11 @@
     var relatedUI = window.RelatedEditor ?
       window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
 
+    // The Alternate Almanac (assets/almanac-alt.js), under Advanced
+    // Options. Shared with the other character editor.
+    var almAltUI = window.AlmanacAlt ?
+      window.AlmanacAlt.mount($('almalt-box'), { onChange: schedule }) : null;
+
     function gatherBoxes(){
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function(r){
@@ -757,6 +801,8 @@
         bluffing: lines('bluffing'), fighting: lines('fighting'),
         quote: $('quote').value.trim(), appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(),
+        typeName: $('team').value === 'other' ? $('typeName').value.trim() : '',
+        exportTeam: $('team').value === 'other' ? $('exportTeam').value : '',
         pronunciation: $('pronunciation').value.trim(),
         ipa: $('ipa').value.trim(),
         respelling: $('respelling').value.trim(),
@@ -772,7 +818,11 @@
         special: specialUI ? specialUI.gather() : [],
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
+        // The corner buttons on the page. Only a tick is stored.
+        hideSnapshot: $('hideSnapshot').checked || undefined,
+        hideCopyLink: $('hideCopyLink').checked || undefined,
         related: relatedUI ? relatedUI.gather() : [],
+        almanacAlt: almAltUI ? almAltUI.gather() : null,
         customJson: $('customJson').value.trim(),
         publicEdit: $('publicEdit').value,
         curataOptOut: $('curataOptOut').checked,
@@ -803,7 +853,8 @@
       d.tokenArt = $('tokenArt').checked;
       if (tokenDataURL) d.tokenImage = tokenDataURL;
       else if (!tokenRemoved && originalEntry && originalEntry.token) d.token = originalEntry.token;
-      preview.paint(window.renderCharacter(d, src));
+      preview.paint(window.renderCharacter(d, src, undefined,
+        { altArtSrc: almAltUI && almAltUI.pendingIcon() }));
       // The default token follows the form: redrawn (debounced and keyed in
       // token-auto.js) whenever something printed on it changed.
       if (tokenAuto) tokenAuto.poke();
@@ -812,8 +863,8 @@
     var deb;
     function schedule(){ clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
-     'quote','appears','tags','pronunciation','ipa','respelling','edition','firstNight','otherNight','fnReminder','onReminder',
-     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson'].forEach(function(id){
+     'quote','appears','tags','typeName','exportTeam','pronunciation','ipa','respelling','edition','firstNight','otherNight','fnReminder','onReminder',
+     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson','hideSnapshot','hideCopyLink'].forEach(function(id){
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
@@ -881,16 +932,23 @@
         return normalizeArtDataURL(url).catch(function(){ return url; });
       });
     }
+    /* A file the browser cannot draw (HEIC, a broken download) — see
+       create.html, the same form: say so rather than doing nothing. */
+    function artUnreadable(input) {
+      input.value = '';
+      alert('That image could not be read. Save it as a PNG, JPEG or WebP and pick it again.');
+    }
     $('art').addEventListener('change', function(e){
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
-        artOriginal = ev.target.result;
-        standardizedCopy(ev.target.result).then(function(url){
+        var picked = ev.target.result;
+        standardizedCopy(picked).then(function(url){
+          artOriginal = picked;
           artDataURL = url; artChanged = true;
           var th=$('artthumb'); th.src=url; th.style.display='block';
           $('artStdWrap').style.display=''; update();
-        });
+        }).catch(function(){ artUnreadable($('art')); });
       };
       reader.readAsDataURL(file);
     });
@@ -920,13 +978,14 @@
         var file = e.target.files[0]; if(!file) return;
         var reader = new FileReader();
         reader.onload = function(ev){
-          slot.setOrig(ev.target.result);
-          standardizedCopy(ev.target.result).then(function(url){
+          var picked = ev.target.result;
+          standardizedCopy(picked).then(function(url){
+            slot.setOrig(picked);
             slot.set(url);
             var th=$(id+'Thumb'); th.src=url; th.style.display='block';
             $(id+'StdWrap').style.display=''; $(id+'Clear').style.display='';
             update();
-          });
+          }).catch(function(){ artUnreadable($(id)); });
         };
         reader.readAsDataURL(file);
       });
@@ -981,7 +1040,7 @@
           var th=$('tokenThumb'); th.src=url; th.style.display='block';
           $('tokenClear').style.display='';
           syncTokenHint(); update();
-        });
+        }).catch(function(){ artUnreadable($('tokenFile')); });
       };
       reader.readAsDataURL(file);
     });
@@ -1158,7 +1217,7 @@
         })
         .catch(function(err){
           $('save').disabled = false;
-          setStatus('err', err.message);
+          setStatus('err', esc(err.message));
         });
     }
     function suggestMode(entry) {
@@ -1172,7 +1231,7 @@
       // The art inputs would upload into the page's own R2 slot, which is
       // exactly what an unapproved suggestion must not touch, so they are
       // closed rather than left there to be filled in and ignored.
-      ['art', 'artAlt', 'artAlt2', 'tokenFile'].forEach(function (id) {
+      ['art', 'artAlt', 'artAlt2', 'tokenFile', 'almAltIconFile'].forEach(function (id) {
         var el = $(id);
         if (!el) return;
         el.disabled = true;
@@ -1405,6 +1464,11 @@
         ab.title = 'The ability stays with the page\u2019s creator.';
         ab.classList.add('is-locked');
       }
+      var aa = $('almAltAbility');
+      if (aa) {
+        aa.readOnly = true;
+        aa.title = 'The ability stays with the page\u2019s creator.';
+      }
       var cj = $('customJson');
       if (cj) {
         cj.readOnly = true;
@@ -1561,7 +1625,7 @@
       var cost = window.Classify && window.Classify.isIncomplete(entry)
         ? ' This page is still missing ' +
           window.Classify.listPhrase(window.Classify.missingBits(entry)) +
-          ', so without the mark it becomes Partial and is hidden from the browse pages.'
+          ', so without the mark it becomes Partial: never picked as the Featured or Random Character, and hidden from readers who choose to hide Partial pages.'
         : '';
       $('curata-note').innerHTML = where +
         ' It adds a laurel wreath and shows the page more often on the homepage. ' +
@@ -1638,6 +1702,8 @@
       $('respelling').value      = entry.respelling || '';
       $('translatedBy').value    = entry.translatedBy || '';
       $('iconBy').value          = entry.iconBy || '';
+      $('typeName').value        = entry.typeName || '';
+      $('exportTeam').value      = entry.exportTeam || '';
       var sc = window.artScaleValue ? window.artScaleValue(entry.artScale) : 0;
       $('artScaleOn').checked    = !!sc;
       $('artScale').value        = sc || 100;
@@ -1655,6 +1721,7 @@
       $('curataOptOut').checked  = !!entry.curataOptOut;
       $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
+      if (almAltUI) almAltUI.set(entry.almanacAlt);
       syncEditorsBox();
       ALT_SLOTS.forEach(function (slot) {
         if (!entry[slot.field]) return;
@@ -1683,6 +1750,8 @@
       document.querySelectorAll('textarea').forEach(function(ta) { ta.style.overflowY='hidden'; autoExpand(ta); });
 
       $('jinxDisplay').value = (entry.jinxDisplay === 'dropdown') ? 'dropdown' : 'sidebar';
+      $('hideSnapshot').checked = !!entry.hideSnapshot;
+      $('hideCopyLink').checked = !!entry.hideCopyLink;
 
       document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
       (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text,n.slug,n.id); });
@@ -1765,8 +1834,7 @@
 
     // ── auto-expanding textareas ──
     function autoExpand(el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
+      BotcData.fitHeight(el, function () { return el.scrollHeight; });
     }
     document.querySelectorAll('textarea').forEach(function(ta) {
       ta.style.overflowY = 'hidden';
@@ -1812,12 +1880,16 @@
     var currentStatus = 'published';
     function saveCharacter(newStatus){
       var d = gather();
-      if(!d.name)    return setStatus('err','A character name is required.');
-      if(!d.ability) return setStatus('err','An ability line is required.');
+      var saveStatus = newStatus || currentStatus;
+      // A draft may stay unfinished — no name, no ability — until it is
+      // published. A live page, and a suggestion for one, needs both.
+      if (saveStatus !== 'draft' || EDIT_MODE === 'suggest') {
+        if(!d.name)    return setStatus('err','A character name is required.');
+        if(!d.ability) return setStatus('err','An ability line is required.');
+      }
       // A page that takes suggestions is not saved from here at all: the same
       // form is posted as a proposal for its creator to answer.
       if (EDIT_MODE === 'suggest') return sendSuggestion(d);
-      var saveStatus = newStatus || currentStatus;
 
       $('save').disabled = true;
       $('save-publish').disabled = true;
@@ -1827,6 +1899,7 @@
     }
 
     function writeCharacter(d, slug, saveStatus){
+      var posted = null;   // the row as sent, adopted as the new baseline once saved
 
       function uploadArt(){
         var p = Promise.resolve();
@@ -1854,6 +1927,12 @@
             return apiUpload('art/'+slug+'-token.png', tokenDataURL);
           });
         }
+        if(almAltUI && almAltUI.pendingIcon()){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading the Alternate Almanac icon');
+            return apiUpload('art/'+slug+'-alm.png', almAltUI.pendingIcon());
+          });
+        }
         return p;
       }
 
@@ -1868,7 +1947,7 @@
           howToRun: d.howToRun, callout: d.callout, examples: d.examples,
           tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote, appearsIn: d.appearsIn, tags: d.tags,
           pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
-          translatedBy: d.translatedBy, iconBy: d.iconBy,
+          translatedBy: d.translatedBy, iconBy: d.iconBy, typeName: d.typeName, exportTeam: d.exportTeam,
           artScale: d.artScale,
           edition: d.edition, firstNight: d.firstNight,
           firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
@@ -1878,9 +1957,14 @@
           // Object.assign would otherwise keep the old special[] forever.
           special: d.special, jinxes: d.jinxes,
           jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
+          // Explicit, or unticking would never reach the save (Object.assign
+          // keeps the loaded value); undefined drops the key.
+          hideSnapshot: d.hideSnapshot, hideCopyLink: d.hideCopyLink,
           // Explicit like special[]: clearing every Related row has to reach
           // the save, and Object.assign would keep the loaded list forever.
           related: d.related,
+          // Explicit: null is how switching the Alternate Almanac off reaches the save.
+          almanacAlt: d.almanacAlt,
           customJson: d.customJson,
           // Explicit for the same reason special[] is: Object.assign would
           // otherwise keep whatever the LOADED row said, so changing "Who can
@@ -1915,6 +1999,10 @@
           entry.art   = 'art/'+slug+'.png';
           entry.image = ART_BASE+slug+'.png';
         }
+        if(entry.almanacAlt && almAltUI && almAltUI.pendingIcon()){
+          entry.almanacAlt.art   = 'art/'+slug+'-alm.png';
+          entry.almanacAlt.image = ART_BASE+slug+'-alm.png';
+        }
         // Explicit for the same reason curataOptOut is: unticking the gallery
         // box has to reach the save, and Object.assign would keep the loaded
         // value forever.
@@ -1928,6 +2016,7 @@
           delete entry.token;
           delete entry.tokenImage;
         }
+        posted = entry;
         // Write to D1 via the Worker (instant; requires login + ownership)
         return fetch('/api/character', {
           method: 'POST',
@@ -1972,6 +2061,17 @@
         // The art slot is named after the identity, which did not move, so
         // there are no paths to retarget here any more.
         if (originalEntry) originalEntry.name = d.name;
+        // What was just uploaded is on the page now. Without this every later
+        // save from the same tab uploaded every picture again (four images,
+        // plus a thumbnail and display copy of each), unchanged. The row as
+        // posted becomes the baseline, so the next save still carries the
+        // art paths this one wrote.
+        if (posted) { delete posted.baseUpdatedAt; originalEntry = posted; }
+        // The icon just uploaded is the stored one now, not a pending upload.
+        if (almAltUI && posted) almAltUI.set(posted.almanacAlt);
+        artChanged = false;
+        artAltDataURL = artAlt2DataURL = tokenDataURL = null;
+        artAltRemoved = artAlt2Removed = tokenRemoved = false;
         if (window.showSaveNotice) window.showSaveNotice(saved, originalSlug);
         // The Worker resolves the editor list again and drops names no account
         // answers to. Say which, or the owner walks away believing they shared
@@ -1993,7 +2093,7 @@
         $('save').disabled = false;
         $('save-publish').disabled = false;
       }).catch(function(err){
-        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+esc(err.message));
         $('save').disabled = false;
         $('save-publish').disabled = false;
       });
@@ -2004,6 +2104,24 @@
     }
     $('save').addEventListener('click', function(){ saveCharacter(); });
     $('save-publish').addEventListener('click', function(){ saveCharacter('published'); });
+
+    // ── snapshot: the whole almanac entry as one picture ──
+    // Same data the live preview is painted from, so the two cannot disagree.
+    // The QR square only goes on a published page: a draft's address is a
+    // 404 to whoever scans it. Loaded on the first press.
+    $('snapshot').addEventListener('click', function(){
+      var d = gather();
+      var main = originalEntry ? (window.artVersions(originalEntry, SITE_ROOT)[0] || {}) : {};
+      var src = artDataURL || main.src || '';
+      var id = pageIdentity || originalSlug;
+      Promise.all([BotcData.script('qr.js'), BotcData.script('char-snapshot.js')]).then(function(){
+        window.CharSnapshot.open(d, {
+          artSrc: src,
+          siteRoot: SITE_ROOT,
+          pageUrl: id && currentStatus === 'published' ? CANONICAL_ORIGIN + 'c/' + id : ''
+        });
+      }, function(){ setStatus('err', 'The snapshot tool could not load. Check your connection and try again.'); });
+    });
 
     // ── delete: soft-delete this character (recoverable by an admin) ──
     $('delete-char').addEventListener('click', function(){
@@ -2028,7 +2146,7 @@
         }
       })
       .catch(function(err){
-        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+err.message);
+        setStatus('err','<span class="ico ico-x" aria-hidden="true"></span> '+esc(err.message));
         del.disabled = false; del.textContent = 'Delete Character';
         $('save').disabled = false; $('save-publish').disabled = false;
       });
@@ -2057,6 +2175,9 @@
         })
         .then(function(res){
           var entry = res.data;
+          // The IDENTITY, not the address: /c/{identity} 301s to wherever the
+          // page lives now, so a QR built on it survives every rename.
+          pageIdentity = res.slug || originalSlug;
           currentStatus = res.status || 'published';
           // Stamp of the version this editor was opened on. Posted back with
           // the save so the Worker can refuse a write based on a stale copy

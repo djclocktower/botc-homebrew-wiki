@@ -21,7 +21,13 @@
    Mounted by both editors:
      var ui = window.SpecialEditor.mount(listEl, addButtonEl, {onChange: fn});
      ui.set(list);   // fill from a loaded character
-     ui.gather();    // -> [{type, name, value?, time?}]
+     ui.gather();    // -> [{type, name, value?, time?, global?}]
+
+   `global` (the team a property applies to across the grimoire, e.g. a
+   signal on every townsfolk) has no control of its own — the row is already
+   four boxes wide on a phone — but it is carried through untouched, on the
+   row, and gathered back. Dropping it here was dropping it from the page on
+   the first save after an import.
 */
 (function () {
   'use strict';
@@ -34,7 +40,8 @@
     ['signal',    'Signal: Storyteller sees'],
     ['reveal',    'Reveal: player sees'],
     ['vote',      'Vote: how it votes'],
-    ['player',    'Player: the player']
+    ['player',    'Player: the player'],
+    ['reminder',  'Reminder: its tokens']
   ];
 
   // The names in common use, grouped by the type they belong with, purely so
@@ -42,6 +49,8 @@
   var NAMES = [
     ['bag-disabled',     'Cannot be put in the bag (Drunk, Marionette)'],
     ['bag-duplicate',    'Can appear in the bag more than once (Legion)'],
+    ['good-duplicate',   'Duplicate good characters can be in play'],
+    ['evil-duplicate',   'Duplicate evil characters can be in play'],
     ['distribute-roles', 'Hands roles out at setup (Boffin, Legion)'],
     ['grimoire',         'Shows the Storyteller the grimoire'],
     ['pointing',         'Shows who a player is pointing at'],
@@ -51,6 +60,7 @@
     ['open-eyes',        'Player keeps their eyes open at night'],
     ['card',             'Shows a card to the player'],
     ['player',           'Names a player'],
+    ['public',           'Shown to everyone'],
     ['multiplier',       'Multiplies a count']
   ];
 
@@ -99,13 +109,17 @@
       s = s || {};
       var row = document.createElement('div');
       row.className = 'special-row';
+      if (s.global) {
+        row.setAttribute('data-global', String(s.global));
+        row.title = 'Applies to every ' + String(s.global) + ' (kept from the imported JSON)';
+      }
       row.innerHTML =
         '<select class="sp-type" aria-label="Kind of property">' + options(TYPES, s.type || 'ability') + '</select>' +
         '<input class="sp-name" type="text" list="' + DL_ID + '" maxlength="60" placeholder="bag-disabled" ' +
           'aria-label="Property name" value="' + esc(s.name || '') + '">' +
         '<select class="sp-time" aria-label="When it applies">' + options(TIMES, s.time || '') + '</select>' +
-        '<input class="sp-value" type="number" step="1" placeholder="number" ' +
-          'aria-label="Number, if the property takes one" value="' +
+        '<input class="sp-value" type="text" maxlength="50" placeholder="value" ' +
+          'aria-label="Value (a number or text), if the property takes one" value="' +
           esc(s.value === 0 || s.value ? s.value : '') + '">' +
         '<button type="button" class="btn btn-ghost btn-sm sp-del" aria-label="Remove this property"><span class="ico ico-x" aria-hidden="true"></span></button>';
       row.querySelector('.sp-del').addEventListener('click', function () {
@@ -142,7 +156,9 @@
           var time = r.querySelector('.sp-time').value;
           if (time) o.time = time;
           var raw = r.querySelector('.sp-value').value.trim();
-          if (raw !== '' && !isNaN(Number(raw))) o.value = Number(raw);
+          if (raw !== '') o.value = /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
+          var global = r.getAttribute('data-global');
+          if (global) o.global = global;
           out.push(o);
         });
         return out;

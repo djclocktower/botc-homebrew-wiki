@@ -28,7 +28,10 @@
     var infocard = document.querySelector('.char-infocard');
     if (!infocard) return;
     function getList() {
-      try { return JSON.parse(localStorage.getItem(storageKey)) || []; } catch (e) { return []; }
+      // Anything but an array (a corrupted or hand-edited value) reads as
+      // empty, or .indexOf below would throw and take the buttons with it.
+      try { var a = JSON.parse(localStorage.getItem(storageKey)); return Array.isArray(a) ? a : []; }
+      catch (e) { return []; }
     }
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -58,7 +61,7 @@
 
   var editBtn = document.getElementById('edit-btn');
   if (editBtn) {
-    editBtn.href = (window.LINK_ROOT || '') + 'edit?c=' + SLUG;
+    editBtn.href = (window.LINK_ROOT || '') + 'edit?c=' + encodeURIComponent(SLUG);
     editBtn.style.display = '';
   }
 
@@ -163,4 +166,55 @@
       })
       .catch(function () { /* leave as plain text on any error */ });
   })();
+
+  /* The Snapshot square beside Copy link: the same poster the editors make
+     (char-snapshot.js), drawn from this page's own data. A reading page
+     carries none of what that needs, so all of it loads on the first press:
+     the page from /api/page (which serves a published page to anyone), the
+     text engine and renderer, the creator symbols, the QR encoder, and the
+     official names and icons so [[Imp]] and the jinx icons come out as they
+     do on the page. */
+  var snapLoad = null;
+  function snapTools() {
+    var B = window.BotcData;
+    return snapLoad || (snapLoad = B.script('render-wiki.js')
+      .then(function () { return Promise.all([B.script('render.js'), B.script('creators.js'), B.script('qr.js')]); })
+      .then(function () { return B.script('char-snapshot.js'); })
+      .then(function () { return B.json(B.root() + 'assets/roles.json').catch(function () { return []; }); })
+      .then(function (roles) {
+        var icons = {}, names = {};
+        (Array.isArray(roles) ? roles : []).forEach(function (r) {
+          if (!r) return;
+          [r.id, r.name].forEach(function (k) {
+            if (!k) return;
+            if (r.image && /^https?:\/\//.test(r.image)) icons[window.slugId(k)] = r.image;
+            if (r.name) names[window.slugId(k)] = r.name;
+          });
+        });
+        if (window.setOfficialIconUrls) window.setOfficialIconUrls(icons);
+        if (window.setOfficialNames) window.setOfficialNames(names);
+      })
+      .catch(function (err) { snapLoad = null; throw err; }));
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.snap-page-btn');
+    if (!btn || !window.BotcData) return;
+    var root = window.BotcData.root();
+    btn.disabled = true;
+    Promise.all([
+      fetch(root + 'api/page?type=character&slug=' + encodeURIComponent(SLUG),
+        { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error(); return r.json(); }),
+      snapTools()
+    ]).then(function (res) {
+      var page = res[0], d = page.data || {};
+      var art = (window.artVersions(d, root)[0] || {}).src || '';
+      window.CharSnapshot.open(d, {
+        artSrc: art, siteRoot: root,
+        // A draft's address is a 404 to whoever scans it.
+        pageUrl: page.status === 'published' ? 'https://botchomebrew.wiki/c/' + page.slug : ''
+      });
+    }).catch(function () {
+      alert('The snapshot could not be made. Check your connection and try again.');
+    }).then(function () { btn.disabled = false; });
+  });
 })();

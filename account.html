@@ -35,9 +35,18 @@
     color: rgba(236,225,200,.8);
     margin: 0 0 22px; font-size: .95rem;
   }
+  /* Profile Appearance: the theme kit's colour rows, as the editors draw them */
+  .th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+  .th-row:last-child { border-bottom:none; }
+  .th-row label { flex:1; font-weight:600; font-size:.82rem; margin:0; }
+  .th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+  .th-clear { font-size:.75rem; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+  .th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
+  .pa-intro { margin:0 0 14px; font-size:.92rem; }
+  .pa-dirty { font-size:.82rem; color:#8a5a00; font-weight:600; }
   .panel {
     background-color: var(--parch);
-    background-image: url('assets/parchment.jpg');
+    background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 2px solid var(--parch-frame);
     padding: clamp(16px,3vw,24px);
@@ -183,7 +192,7 @@
     background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
     margin-bottom: 6px; font-size: .9rem;
   }
-  .pin-order .pin-num { font-family: 'Oswald', sans-serif; font-size: .75rem; opacity: .55; min-width: 15px; }
+  .pin-order .pin-num { font-family: 'Roboto',sans-serif; font-size: .75rem; opacity: .55; min-width: 15px; }
   .pin-order .pin-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .pin-order button {
     background: none; border: 1px solid #cdbfa0; border-radius: 4px; color: #6b5d49;
@@ -323,6 +332,13 @@
         <div class="inline-msg" id="verify-msg"></div>
       </div>
 
+      <!-- creator mark (assets/mark-editor.js) -->
+      <div class="panel" id="mark">
+        <h3>Your Creator Mark</h3>
+        <p class="acct-body" style="font-size:.88rem;opacity:.85;margin:0 0 12px">A symbol that is yours alone, shown beside your name on your pages, comments and creator page, and listed on <a href="creators" style="color:var(--maroon);font-weight:700">Creators</a>. Script makers can put it after your characters' names too.</p>
+        <div id="mark-editor"></div>
+      </div>
+
       <!-- drafts -->
       <div class="panel">
         <h3>Your Drafts <span class="count-pill" id="n-drafts">0</span></h3>
@@ -446,6 +462,10 @@
               <label for="s-email">Email address</label>
               <input type="email" id="s-email" autocomplete="email">
             </div>
+            <div class="set-field" id="email-pw-field">
+              <label for="s-email-pw">Current password <span style="font-weight:normal">(needed to change your email)</span></label>
+              <input type="password" id="s-email-pw" autocomplete="current-password">
+            </div>
             <button class="btn" id="save-email">Update Email</button>
             <div class="inline-msg" id="email-msg"></div>
           </section>
@@ -464,6 +484,42 @@
       </div>
 
       <!-- contact the admins -->
+      <!-- How the creator page (/u/{username}) looks: the same theme kit the
+           script and collection editors carry (assets/theme-editor.js), saved
+           on its own through /api/account/theme. -->
+      <div class="panel" id="appearance">
+        <h3>Profile Appearance</h3>
+        <p class="pa-intro">How your <a id="pa-link" href="#">creator page</a> looks to everyone who visits it. Pick a quick style, fine-tune anything you like, or go all the way with your own CSS.</p>
+        <div class="set-field">
+          <label>Page background image</label>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <img id="pa-bg-prev" alt="" style="display:none;width:120px;height:68px;object-fit:cover;border:1px solid #cdbfa0">
+            <input type="file" id="pa-bg-file" accept="image/png,image/jpeg,image/webp" style="display:none">
+            <button class="btn" id="pa-bg-upload" type="button" style="padding:8px 14px;font-size:.92rem">Upload background</button>
+            <button class="mini-btn del" id="pa-bg-remove" type="button" style="display:none">Remove</button>
+          </div>
+          <div class="inline-msg" id="pa-bg-msg"></div>
+        </div>
+        <div class="set-field">
+          <label for="th-font">Heading font</label>
+          <select id="th-font"></select>
+        </div>
+        <div class="set-field">
+          <label>Colors <span class="pin-hint">(leave unset to keep the wiki look)</span></label>
+          <div class="th-row"><label for="th-accent">Accent / your name</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#e8c66a"><button type="button" class="th-clear" data-k="accent">reset</button></div>
+          <div class="th-row"><label for="th-panel">Section boxes</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
+          <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#ece1c8"><button type="button" class="th-clear" data-k="text">reset</button></div>
+          <div class="th-row"><label for="th-link">Links</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#7fb2e6"><button type="button" class="th-clear" data-k="link">reset</button></div>
+        </div>
+        <div id="th-more" data-kind="profile"></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <button class="btn" id="pa-save" type="button">Save Appearance</button>
+          <a id="pa-view" class="mini-btn" href="#" target="_blank" rel="noopener">View your page ↗</a>
+          <span class="pa-dirty" id="pa-dirty" hidden>Unsaved changes</span>
+        </div>
+        <div class="inline-msg" id="pa-msg"></div>
+      </div>
+
       <div class="panel" id="contact">
         <h3>Contact the Admins</h3>
         <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
@@ -506,6 +562,13 @@
   <script src="assets/attachment-view.js"></script>
   <script src="assets/attach.js"></script>
   <script src="assets/favorites.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/custom-css.js"></script>
+  <script src="assets/theme-editor.js"></script>
+  <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
+  <script src="assets/creators.js"></script>
+  <script src="assets/mark-editor.js"></script>
   <script>
     // Login state may have just changed (OAuth redirect lands here) — drop the nav cache.
     try { sessionStorage.removeItem('botc_me'); } catch(e){}
@@ -563,8 +626,111 @@
 
     var PROFILE = null;
 
+    /* ── Profile Appearance ── one theme object, primed from the server once
+       (a later load() after an avatar change must not throw away edits that
+       have not been saved yet), written back on Save. */
+    var paTheme = {}, paPrimed = false, paDirty = false;
+    function paMark(on) { paDirty = on; $('pa-dirty').hidden = !on; }
+    window.ThemeEditor.wire({
+      get: function(){ return paTheme; },
+      set: function(t){ paTheme = t || {}; paMark(true); },
+      // A creator page's stickers go through the avatar route (kind 'st'),
+      // which keys them on the account: avatars/u{id}-st{n}.*.
+      stickerBase: function(){ return PROFILE && PROFILE.themeBase || ''; },
+      stickerMaxMB: 5,
+      stickerUpload: function(n, dataUrl){
+        return postJSON('/api/account/avatar', { kind: 'st', n: n, data: dataUrl }).then(function(res){
+          if (!res.ok || !res.body.ok) throw new Error((res.body && res.body.error) || 'Upload failed.');
+          return res.body.path;
+        });
+      }
+    });
+    function paShowBg() {
+      var bg = paTheme.background;
+      $('pa-bg-prev').style.display = bg ? '' : 'none';
+      if (bg) $('pa-bg-prev').src = '/assets/' + bg + '?v=' + Date.now();
+      $('pa-bg-remove').style.display = bg ? 'inline-block' : 'none';
+    }
+    function paSave(msgOk) {
+      var t = window.PageRender.sanitizeTheme(paTheme, PROFILE && PROFILE.themeBase) || null;
+      $('pa-save').disabled = true;
+      return postJSON('/api/account/theme', { theme: t }).then(function(res){
+        $('pa-save').disabled = false;
+        if (res.ok && res.body.ok) {
+          paTheme = res.body.theme || {};
+          paMark(false);
+          setInline('pa-msg', 'ok', msgOk || 'Appearance saved. Your creator page shows it now.');
+        } else {
+          setInline('pa-msg', 'err', (res.body && res.body.error) || 'Save failed.');
+        }
+      }, function(){ $('pa-save').disabled = false; setInline('pa-msg', 'err', 'Save failed. Check your connection.'); });
+    }
+    $('pa-save').addEventListener('click', function(){ paSave(); });
+    window.addEventListener('beforeunload', function(e){ if (paDirty) { e.preventDefault(); e.returnValue = ''; } });
+    $('pa-bg-upload').addEventListener('click', function(){ $('pa-bg-file').click(); });
+    $('pa-bg-file').addEventListener('change', function(){
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { setInline('pa-bg-msg', 'err', 'Please choose a PNG, JPEG, or WebP image.'); return; }
+      setInline('pa-bg-msg', '', 'Preparing image…');
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        URL.revokeObjectURL(url);
+        // A screen-sized background: never wider than 2400px, sent as JPEG.
+        var scale = Math.min(1, 2400 / Math.max(img.width, 1));
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setInline('pa-bg-msg', '', 'Uploading…');
+        postJSON('/api/account/avatar', { kind: 'bg', data: dataUrl }).then(function(res){
+          if (res.ok && res.body.ok) {
+            paTheme.background = res.body.background;
+            window.ThemeEditor.prime(paTheme);
+            paShowBg();
+            setInline('pa-bg-msg', 'ok', 'Background uploaded.');
+            paSave('Background saved to your creator page.');
+          } else {
+            setInline('pa-bg-msg', 'err', (res.body && res.body.error) || 'Upload failed.');
+          }
+        });
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); setInline('pa-bg-msg', 'err', 'Could not read that image.'); };
+      img.src = url;
+    });
+    $('pa-bg-remove').addEventListener('click', function(){
+      if (!confirm('Remove your page background?')) return;
+      postJSON('/api/account/avatar', { kind: 'bg', remove: true }).then(function(res){
+        if (res.ok && res.body.ok) {
+          delete paTheme.background;
+          window.ThemeEditor.prime(paTheme);
+          paShowBg();
+          setInline('pa-bg-msg', 'ok', 'Background removed.');
+          paSave('Background removed from your creator page.');
+        } else {
+          setInline('pa-bg-msg', 'err', (res.body && res.body.error) || 'Remove failed.');
+        }
+      });
+    });
+
     function renderProfile(p) {
       PROFILE = p;
+      var pageHref = '/u/' + encodeURIComponent(p.username);
+      $('pa-link').href = pageHref; $('pa-view').href = pageHref;
+      if (!paPrimed) {
+        paPrimed = true;
+        paTheme = p.theme || {};
+        window.ThemeEditor.prime(paTheme);
+        paShowBg();
+        paMark(false);
+        // Your real creator page beside the settings, re-themed as you
+        // change them, with everything on it draggable (page-preview.js).
+        window.PagePreview.attach({ editor: $('appearance'), kind: 'profile', wide: false,
+                                    src: pageHref + '?preview=1' });
+      }
       var initial = (p.displayName || p.username || '?').charAt(0).toUpperCase();
       [$('avatar'), $('s-avatar-preview')].forEach(function(av){
         if (!av) return;
@@ -621,6 +787,7 @@
       if (!p.hasPassword) {
         $('pw-title').textContent = 'Set a Password';
         $('cur-pw-field').style.display = 'none';
+        $('email-pw-field').style.display = 'none';
         $('discord-desc').textContent = 'You signed up with Discord. Set a password to also log in with your username.';
       }
       if (p.discordLinked) {
@@ -633,7 +800,9 @@
     }
 
     function rowHtml(type, r, isDraft) {
-      var name = esc(r.name || r.slug);
+      // A character draft may not have a name yet (drafts can be saved
+      // unfinished), and its identity then reads "untitled-k3j9x2".
+      var name = esc(r.name || (type === 'character' ? 'Untitled character' : r.slug));
       // Draft or not, the name goes to the page itself. A draft page renders
       // for its owner (and admins) with the DRAFT banner on it, so this is a
       // preview — which is what you want when you click a name. The editor is
@@ -899,9 +1068,14 @@
             var view = x.type === 'character' ? 'c/' + (r.page || encodeURIComponent(r.slug))
                      : x.type === 'script'    ? 's/' + encodeURIComponent(r.slug)
                      : 'collection/' + encodeURIComponent(r.key || r.slug);
-            var note = r.status !== 'published' ? ' <span class="row-date">(not public right now)</span>'
+            // A deleted page is listed only so its slot can be freed: no
+            // link (it would 404), and the server sends nothing but its key.
+            var gone = r.status === 'deleted';
+            var note = gone ? ' <span class="row-date">(deleted)</span>'
+                     : r.status !== 'published' ? ' <span class="row-date">(not public right now)</span>'
                      : (x.type !== 'character' && r.count != null ? ' <span class="row-date">· ' + r.count + ' character' + (r.count === 1 ? '' : 's') + '</span>' : '');
-            return '<tr><td><span class="row-name"><a href="' + view + '">' + esc(r.name || r.slug) + '</a></span>' + note + '</td>' +
+            var label = gone ? esc(r.name || r.slug) : '<a href="' + view + '">' + esc(r.name || r.slug) + '</a>';
+            return '<tr><td><span class="row-name">' + label + '</span>' + note + '</td>' +
               '<td class="row-type">' + esc(x.type) + '</td>' +
               '<td class="row-date">' + fmtDate(r.savedAt) + '</td>' +
               '<td class="row-actions"><button type="button" class="mini-btn del" data-fav-type="' + esc(x.type) + '" data-fav-slug="' + esc(r.slug) + '">Remove</button></td></tr>';
@@ -984,6 +1158,7 @@
       var btn = this;
       var newpw = $('s-newpw').value;
       if (newpw.length < 8) { setInline('password-msg', 'err', 'New password must be at least 8 characters.'); return; }
+      if (newpw.length > 200) { setInline('password-msg', 'err', 'New password must be at most 200 characters.'); return; }
       btn.disabled = true;
       postJSON('/api/account/password', { currentPassword: $('s-curpw').value, newPassword: newpw })
         .then(function(res){
@@ -998,11 +1173,11 @@
       var email = $('s-email').value.trim();
       if (!email) { setInline('email-msg', 'err', 'Enter an email address.'); return; }
       btn.disabled = true;
-      postJSON('/api/account/email', { email: email })
+      postJSON('/api/account/email', { email: email, currentPassword: $('s-email-pw').value })
         .then(function(res){
           btn.disabled = false;
           setInline('email-msg', res.ok ? 'ok' : 'err', res.ok ? (res.body.message || 'Email updated.') : (res.body.error || 'Update failed.'));
-          if (res.ok) load();
+          if (res.ok) { $('s-email-pw').value = ''; load(); }
         });
     });
 
@@ -1089,6 +1264,7 @@
     var cAttach = null;          // the picker on the new-message form
     var cReplyAttach = null;     // the picker inside the open thread
     var cOpenId = null;          // which thread is expanded, if any
+    var msgParamUsed = false;    // ?msg= has been acted on (once per visit)
 
     function shotsHtml(list){
       if (!list || !list.length) return '';
@@ -1211,12 +1387,14 @@
 
     $('c-send').addEventListener('click', function(){
       var body = $('c-body').value.trim();
-      if (body.length < 5) { setInline('c-msg', 'err', 'Write a message first.'); return; }
+      // A screenshot on its own is a message, as it is for a reply.
+      var images = cAttach ? cAttach.paths() : [];
       if (cAttach && cAttach.busy()) { setInline('c-msg', 'err', 'Wait for the image to finish uploading.'); return; }
+      if (body.length < 5 && !images.length) { setInline('c-msg', 'err', 'Write a message first, or attach an image.'); return; }
       var btn = this; btn.disabled = true;
       postJSON('/api/contact', {
         category: $('c-category').value, body: body,
-        images: cAttach ? cAttach.paths() : []
+        images: images
       }).then(function(res){
         btn.disabled = false;
         if (res.ok && res.body.ok) {
@@ -1239,6 +1417,7 @@
         });
     });
 
+    var markMounted = false;
     function load() {
       fetch('/api/account', { credentials: 'same-origin' })
         .then(function(r){
@@ -1251,11 +1430,32 @@
           $('acct').style.display = 'block';
           renderProfile(data.profile);
           renderLists(data);
+          // Once: load() runs again after every save on this page.
+          if (!markMounted && window.MarkEditor) {
+            markMounted = true;
+            window.MarkEditor.mount($('mark-editor'), {
+              username: data.profile.username, displayName: data.profile.displayName || data.profile.username
+            });
+          }
           // The DM that says "the admins replied" links to
           // /account?msg={id}#contact — open that conversation rather than
-          // making somebody hunt for it in a list of thirty.
-          var want = parseInt(new URLSearchParams(location.search).get('msg'), 10) || 0;
-          loadMyMessages(want || undefined);
+          // making somebody hunt for it in a list of thirty. Read ONCE: load()
+          // runs again after every save on this page, and re-reading it
+          // re-opened a thread its reader had already closed. It is dropped
+          // from the address too, so a reload does not do the same.
+          var want = 0;
+          if (!msgParamUsed) {
+            msgParamUsed = true;
+            var q = new URLSearchParams(location.search);
+            want = parseInt(q.get('msg'), 10) || 0;
+            if (q.has('msg') && window.history && history.replaceState) {
+              q.delete('msg');
+              var qs = q.toString();
+              try { history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + location.hash); } catch (e) {}
+            }
+          }
+          // Later reloads keep whichever thread the reader has open, if any.
+          loadMyMessages(want || cOpenId || undefined);
           loadSuggestions();
           loadShared();
           loadFavorites();

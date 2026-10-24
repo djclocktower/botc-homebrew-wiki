@@ -76,9 +76,24 @@ def render_ability(text, size_mul=1.0, dy=0):
             break
     # centre the block in the band so it sits lower (moved down) yet clears the art
     y = top + max(0, (bot - top - total)//2)
+    # Setup text — anything in [square brackets], as "[+1 Outsider]" — is bold
+    # on the official tokens. There is no Trade Gothic Bold in the toolkit, so
+    # it is a stroke of the text colour round the same glyphs: the advance is
+    # unchanged, so the wrapping above still measures it correctly.
+    sw = max(1, int(round(f.size * 0.03)))
+    bold = False                     # carries across lines: a bracket can wrap
     for ln in lines:
-        lw = d.textlength(ln, font=f)
-        d.text((DCX - lw/2, y), ln, font=f, fill=FILL)
+        x0 = DCX - d.textlength(ln, font=f)/2
+        runs = []                    # [start, end, bold]
+        for k, ch in enumerate(ln):
+            if ch == '[': bold = True
+            if runs and runs[-1][2] == bold: runs[-1][1] = k + 1
+            else: runs.append([k, k + 1, bold])
+            if ch == ']': bold = False
+        for st, en, b in runs:
+            x = x0 + d.textlength(ln[:st], font=f)
+            if b: d.text((x, y), ln[st:en], font=f, fill=FILL, stroke_width=sw, stroke_fill=FILL)
+            else: d.text((x, y), ln[st:en], font=f, fill=FILL)
         y += lh
     return img
 
@@ -107,17 +122,29 @@ def _name_radius(total_adv):
     t = (total_adv - NAME_ADV_LO) / float(NAME_ADV_HI - NAME_ADV_LO)
     return NAME_R_MAX + t*(NAME_R_MIN - NAME_R_MAX)
 
-def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0):
+def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0, kern=0.0, gaps=None):
     name = name.upper()
     arc = max(0.2, float(arc))
+    # kern: extra letter spacing in em, on top of NAME_TRACK (the Kerning slider)
+    kern = min(0.4, max(-0.15, float(kern or 0)))
+    # gaps: {index: em} -- extra space after letter i only (the per-letter
+    # kerning behind the gear); keys arrive as strings from JSON
+    gap = [0.0] * len(name)
+    for k, v in (gaps or {}).items():
+        try:
+            i, v = int(k), float(v)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= i < len(name) - 1:
+            gap[i] = min(0.5, max(-0.3, v))
     arc_cx = NAME_ARC_CX + int(dx)
     start = max(24, int(round(NAME_SIZE_MAX * size_mul)))
     stop = min(start - 1, max(20, int(round(58 * size_mul))))
     bottom_y = NAME_BOTTOM_Y + int(dy)
     for size in range(start, stop, -1):
         f = ImageFont.truetype(DUM, size)
-        track = NAME_TRACK * size
-        advs = [f.getlength(c) + track for c in name]
+        track = (NAME_TRACK + kern) * size
+        advs = [f.getlength(c) + track + g * size for c, g in zip(name, gap)]
         total_adv = sum(advs)
         R = _name_radius(total_adv) / arc     # arc>1 curves more, arc<1 flattens
         if total_adv / R <= NAME_SPAN_MAX * max(1.0, arc):
@@ -128,7 +155,8 @@ def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0):
     starts = [0.0]
     for i in range(len(name)-1):
         starts.append(starts[-1] + advs[i])
-    centers = [starts[i] + advs[i]/2.0 for i in range(len(name))]
+    # a per-letter gap is space AFTER the letter, so it stays out of the centre
+    centers = [starts[i] + (advs[i] - gap[i] * f.size)/2.0 for i in range(len(name))]
     total = starts[-1] + advs[-1]
     mid = total/2.0
     arc_cy = bottom_y - R                  # keep bottom-centre fixed at bottom_y

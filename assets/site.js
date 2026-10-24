@@ -16,7 +16,12 @@
        applies on that page; one from a shared assets/*.js file (or found on
        several pages, like the topbar and footer) applies site-wide.
      - opt-out. Anything inside [data-no-text-override] or a contenteditable
-       is left alone.
+       is left alone, and so is everything PEOPLE wrote (USER_CONTENT below):
+       "Each night" is a sort label in sao.js and also the opening of half the
+       abilities on the wiki, and an override of the first must never reach
+       the second.
+     - word edges. A match has to start and end on a word boundary, so an
+       override of "Go" cannot land inside "Good".
 
    The map is kept in localStorage so a repeat visit applies it immediately
    instead of flashing the original wording, but it is re-fetched on every
@@ -84,6 +89,23 @@
     return pass(pass(text, undoRules), rules);
   }
 
+  /* Every occurrence of `from` that sits on word edges. The same test the
+     live editor's guard makes (bounded() in text-live.js): an edge that is a
+     letter or digit must not be glued to another one. */
+  var WORDCH = /[A-Za-z0-9]/;
+  function replaceBounded(text, from, to) {
+    var out = '', at = 0, i;
+    var headWord = WORDCH.test(from.charAt(0));
+    var tailWord = WORDCH.test(from.charAt(from.length - 1));
+    while ((i = text.indexOf(from, at)) >= 0) {
+      var ok = !(headWord && i > 0 && WORDCH.test(text.charAt(i - 1))) &&
+        !(tailWord && WORDCH.test(text.charAt(i + from.length)));
+      if (ok) { out += text.slice(at, i) + to; at = i + from.length; }
+      else { out += text.slice(at, i + 1); at = i + 1; }
+    }
+    return out + text.slice(at);
+  }
+
   function pass(text, list) {
     var out = text;
     for (var i = 0; i < list.length; i++) {
@@ -94,72 +116,214 @@
         rule.re.lastIndex = 0;
         out = out.replace(rule.re, filler(rule));
       } else if (out.indexOf(rule.from) >= 0) {
-        out = out.split(rule.from).join(rule.to);
+        out = replaceBounded(out, rule.from, rule.to);
       }
     }
     return out;
   }
 
-  function patchAttrs(root, anyOptOut) {
+  /* What a rule needs to find before it can change anything: its original
+     text, or for a {placeholder} rule the longest literal run between the
+     slots. A subtree whose textContent holds none of them cannot contain a
+     text node any rule would touch (textContent IS its text nodes laid end
+     to end), so it is skipped without walking it. That check is what keeps
+     the observer near-free on pages that draw thousands of cards: before
+     it, every card appended by a filter re-sort was walked node by node. */
+  // Pure: compiled rules in, {list, any} out. `any` is a rule made of
+  // nothing but placeholders, which could match anything.
+  function needlesFor(list) {
+    var out = { list: [], any: false };
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i], best = '';
+      if (r.re) {
+        var parts = r.from.split(/\{[A-Za-z][\w-]*\}/);
+        for (var j = 0; j < parts.length; j++) if (parts[j].length > best.length) best = parts[j];
+      } else best = r.from;
+      if (!best) { out.any = true; continue; }
+      if (out.list.indexOf(best) < 0) out.list.push(best);
+    }
+    return out;
+  }
+  function textMayMatch(n, text) {
+    if (n.any) return true;
+    if (!text) return false;
+    for (var i = 0; i < n.list.length; i++) if (text.indexOf(n.list[i]) >= 0) return true;
+    return false;
+  }
+  var needles = needlesFor([]);
+  function rebuildNeedles() { needles = needlesFor(rules.concat(undoRules)); }
+  function mayMatch(text) { return textMayMatch(needles, text); }
+
+  /* What we last wrote into a node, per rule set. A node the observer hands
+     back unchanged (a card moved by a re-sort) is not rewritten twice — which
+     would otherwise apply an override whose new wording contains the old one
+     a second time. Reset whenever the rules change, so Undo and a re-edit
+     still repaint everything (applyAll never consults it). */
+  var written = null, writtenAttrs = null;
+  function resetWritten() {
+    written = typeof WeakMap === 'function' ? new WeakMap() : null;
+    writtenAttrs = typeof WeakMap === 'function' ? new WeakMap() : null;
+  }
+  resetWritten();
+
+  function patchAttrs(root, anyOptOut, skipSeen) {
     if (!root || !root.querySelectorAll) return;
     var list = Array.prototype.slice.call(root.querySelectorAll(ATTR_SEL));
     if (root.nodeType === 1 && root.matches && root.matches(ATTR_SEL)) list.push(root);
     for (var i = 0; i < list.length; i++) {
-      if (anyOptOut && optedOut(list[i])) continue;
+      var el = list[i];
+      if (insideSkipped(el, anyOptOut)) continue;
+      var seen = writtenAttrs && writtenAttrs.get(el);
       for (var a = 0; a < ATTRS.length; a++) {
-        var el = list[i], name = ATTRS[a];
+        var name = ATTRS[a];
         if (!el.hasAttribute(name)) continue;
-        var v = el.getAttribute(name), out = rewrite(v);
-        if (out !== v) el.setAttribute(name, out);
+        var v = el.getAttribute(name);
+        if (skipSeen && seen && seen[name] === v) continue;
+        if (!mayMatch(v)) continue;
+        var out = rewrite(v);
+        if (out !== v) {
+          el.setAttribute(name, out);
+          if (writtenAttrs) {
+            if (!seen) { seen = {}; writtenAttrs.set(el, seen); }
+            seen[name] = out;
+          }
+        }
       }
     }
   }
 
-  function patchText(node) {
+  function patchText(node, skipSeen) {
     var v = node.nodeValue;
     if (!v) return;
+    if (skipSeen && written && written.get(node) === v) return;
     var out = rewrite(v);
-    if (out !== v) node.nodeValue = out;
+    if (out !== v) {
+      node.nodeValue = out;
+      if (written) written.set(node, out);
+    }
   }
 
   var OPT_OUT = '[data-no-text-override],[contenteditable]';
+  /* Where the words on the page are somebody's writing rather than the
+     site's: a character's name, ability and almanac prose, a script's or
+     collection's synopsis, a wiki page or news body, comments, messages,
+     the cards and tiles that repeat any of those, a profile. Matched by the
+     classes the renderers already print (render.js, render-page.js,
+     render-wiki.js, render-news.js and the client-side lists) rather than by
+     marking the renderers, so nothing they print had to change. The section
+     headings around this prose ("Summary", "How to Run", "Synopsis") are the
+     site's own and stay editable, which is why the character parchment is
+     listed by its paragraphs and not as a whole. A new surface that prints
+     user text gets its class added here, or carries [data-user-content]. */
+  var USER_CONTENT = [
+    '[data-user-content]',
+    // a character page
+    '.gen-title', '.char-parchment p', '.char-parchment li', '.callout', '.ex',
+    '.quote', '.pronounce', '.info-credit', '.jname', '.jtext', '.rel-name', '.rel-note',
+    '.custom-box-h', '.custom-box-body', '.json-body', '.tag-link', '.author-link',
+    '.appears-in-link',
+    // script and collection pages
+    '.script-title-fallback', '.coll-title', '.sv-tagline', '.script-desc',
+    '.script-meta-line', '.sv-section > p', '.sv-boot-list', '.script-char-text',
+    '.sv-night-text', '.sv-credits-list', '.sv-info-author',
+    // wiki pages, articles, news
+    '.wiki-title', '.wiki-subtitle', '.wiki-meta', '.wiki-body', '.wiki-infobox',
+    '.wiki-pagelink-title', '.wiki-pagelink-blurb', '.news-body', '.news-meta',
+    '.news-article-head h1', '.news-card-title', '.news-card-summary',
+    // cards, tiles and rows that repeat a page's own words
+    '.char-card-name', '.char-card-ability', '.search-result-name',
+    '.search-result-ability', '.collection-name', '.collection-tile-tagline',
+    '.script-tile-desc', '.featured-name', '.featured-ability', '.featured-lede',
+    '.featured-body', '.recent-name', '.draft-tile-name', '.fav-tile-name',
+    '.creator-name', '.pin-name', '.pin-text',
+    // people talking: comments, messages, modmail, profiles, suggestions
+    '.cmt-body', '.cmt-who', '.bubble', '.convo-preview', '.convo-name',
+    '.msg-body', '.adm-body', '.profile-bio', '.profile-hero-text h1',
+    '.profile-uname', '.hist-body', '.sg-note', '.sg-note-msg', '.sg-reply-said',
+    '.sg-inbox-name', '.sg-inbox-note'
+  ].join(',');
+  var SKIP = OPT_OUT + ',' + USER_CONTENT;
   function optedOut(node) {
-    var el = node.nodeType === 1 ? node : node.parentNode;
-    return !!(el && el.closest && el.closest(OPT_OUT));
+    var el = node && (node.nodeType === 1 ? node : node.parentNode);
+    return !!(el && el.closest && el.closest(SKIP));
+  }
+  // Asked against the whole document, not a subtree: the observer hands us
+  // nodes from inside an opted-out container (the text editor's own list of
+  // strings, which must show them as they are), and a container's marker is
+  // above those nodes, not inside them. Asked ONCE per pass — it is a scan of
+  // the whole document, and asking it per added node is what made a page of
+  // 700 cards cost seconds.
+  function anyOptOutNow() { return !!document.querySelector(OPT_OUT); }
+  // Is this node inside somebody's writing (always asked — it is on nearly
+  // every page) or, when the page has any, an opted-out container?
+  function insideSkipped(node, anyOptOut) {
+    var el = node && (node.nodeType === 1 ? node : node.parentNode);
+    return !!(el && el.closest && el.closest(anyOptOut ? SKIP : USER_CONTENT));
   }
 
-  function walk(root) {
+  function walk(root, anyOptOut, skipSeen) {
     if (!root) return;
-    // Asked against the whole document, not `root`: the observer hands us
-    // nodes from inside an opted-out container (the text editor's own list of
-    // strings, which must show them as they are), and a container's marker is
-    // above those nodes, not inside them.
-    var anyOptOut = !!document.querySelector(OPT_OUT);
-    if (anyOptOut && optedOut(root)) return;
-    if (root.nodeType === 3) { patchText(root); return; }
+    // `root` is asked with closest(), so its ANCESTORS count: the observer
+    // hands us nodes from inside an opted-out container (a comment that just
+    // arrived, the text editor's own list of strings), and the container's
+    // marker is above those nodes, not inside them.
+    if (root.nodeType !== 9 && root.nodeType !== 11 && insideSkipped(root, anyOptOut)) return;
+    if (root.nodeType === 3) { patchText(root, skipSeen); return; }
     if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
     var doc = root.ownerDocument || document;
-    var walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode: function (n) {
-        var p = n.parentNode;
-        if (!p || SKIP_TAGS[p.nodeName]) return NodeFilter.FILTER_REJECT;
-        if (anyOptOut && optedOut(n)) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    });
-    var n, list = [];
-    while ((n = walker.nextNode())) list.push(n);
-    for (var i = 0; i < list.length; i++) patchText(list[i]);
-    patchAttrs(root, anyOptOut);
+    var all = root.nodeType === 9 ? root.documentElement : root;
+    if (all && mayMatch(all.textContent)) {
+      // Elements are visited too, so a skipped container (somebody's writing,
+      // or an opted-out box) is rejected ONCE with its whole subtree, instead
+      // of asking closest() per text node.
+      var skipSel = anyOptOut ? SKIP : USER_CONTENT;
+      var walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          if (n.nodeType === 1) {
+            return (SKIP_TAGS[n.nodeName] || n.matches(skipSel))
+              ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      var n, list = [];
+      while ((n = walker.nextNode())) list.push(n);
+      for (var i = 0; i < list.length; i++) patchText(list[i], skipSeen);
+    }
+    patchAttrs(root, anyOptOut, skipSeen);
   }
 
   function applyAll() {
     if (!rules.length && !undoRules.length) return;
     if (observer) observer.disconnect();
-    walk(document.body || document.documentElement);
+    walk(document.body || document.documentElement, anyOptOutNow(), false);
     var t = rewrite(document.title);
     if (t !== document.title) document.title = t;
     if (observer && document.body) { observer.takeRecords(); observer.observe(document.body, OBS); }
+  }
+
+  function connected(n) {
+    return n.isConnected !== undefined ? n.isConnected : document.documentElement.contains(n);
+  }
+
+  /* The nodes a batch of records actually needs walked: still in the page,
+     each once, and not inside another node of the same batch (that one's
+     walk covers it). A filter re-sort hands over every card it moved; a
+     parent rebuilt and then filled hands over the parent AND its children. */
+  function rootsOf(touched, isConnected) {
+    var set = typeof Set === 'function' ? new Set(touched) : null;
+    var out = [], done = set ? new Set() : null;
+    for (var i = 0; i < touched.length; i++) {
+      var n = touched[i];
+      if (!n || !(isConnected || connected)(n)) continue;
+      if (done) { if (done.has(n)) continue; done.add(n); }
+      var covered = false;
+      if (set) {
+        for (var p = n.parentNode; p; p = p.parentNode) { if (set.has(p)) { covered = true; break; } }
+      }
+      if (!covered) out.push(n);
+    }
+    return out;
   }
 
   function startObserver() {
@@ -171,10 +335,13 @@
         else for (j = 0; j < records[i].addedNodes.length; j++) touched.push(records[i].addedNodes[j]);
       }
       if (!touched.length) return;
+      var roots = rootsOf(touched);
+      if (!roots.length) return;
       // Our own edits must not wake the observer again: drop the records we
       // generate while patching, then start listening afresh.
       observer.disconnect();
-      for (i = 0; i < touched.length; i++) walk(touched[i]);
+      var anyOptOut = anyOptOutNow();
+      for (i = 0; i < roots.length; i++) walk(roots[i], anyOptOut, true);
       observer.takeRecords();
       observer.observe(document.body, OBS);
     });
@@ -192,7 +359,11 @@
     // Everything already painted onto this page, backwards. Rebuilt on every
     // change, because "undo" and "change it again" both need the source
     // wording back before the new wording can go on.
+    // An edit that only DELETES words (". Every page credits…" -> ".") cannot
+    // be undone by text: its new wording is inside the old, so the undo rule
+    // would match every "." on the page and paste the sentence after each.
     undoRules = appliedItems.filter(usable)
+      .filter(function (it) { return it.o.indexOf(it.r) < 0; })
       .map(function (it) { return { o: it.r, r: it.o, s: it.s }; })
       .sort(bylen).map(compile);
 
@@ -205,6 +376,8 @@
       // a rule with a {placeholder} can match something shorter than itself
       return r.re ? 1 : r.from.length;
     })) : 0;
+    rebuildNeedles();
+    resetWritten();
   }
 
   function run() {
@@ -215,6 +388,7 @@
     // content rendered from here on only needs the forward rules.
     appliedItems = allItems.slice();
     undoRules = [];
+    rebuildNeedles();
   }
 
   /* One request for everything site.js needs from the server on a page load:
@@ -223,14 +397,22 @@
      phone, two round trips per page. /api/boot answers both.
      cache:'no-store' matters as much as the header does — without it a
      refresh right after a save can be answered from the browser's own copy. */
-  var bootPromise = fetch('/api/boot', { credentials: 'same-origin', cache: 'no-store' })
-    .then(function (r) { return r.json(); })
-    .catch(function () { return null; });
+  var bootPromise = window.BotcData.boot();
   window.__botcBoot = bootPromise;
+  var bootUsed = false;
 
+  // The first call takes the page-load answer; a later one (the text editor
+  // after a save, live mode after an edit) has to ask again, or it would
+  // re-apply the map as it stood when the page loaded.
   function refresh() {
-    return bootPromise
+    var source = bootUsed
+      ? fetch('/api/boot', { credentials: 'same-origin', cache: 'no-cache' })
+        .then(function (r) { return r.json(); }).catch(function () { return null; })
+      : bootPromise;
+    bootUsed = true;
+    return source
       .then(function (d) {
+        if (!d) return null;   // unreachable: keep what is on the page
         var items = (d && d.items) || [];
         try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), items: items })); } catch (e) {}
         setItems(items);
@@ -258,7 +440,12 @@
     apply: applyAll,
     items: function () { return allItems.slice(); },
     inScope: inScope,
-    here: here
+    here: here,
+    // text-live.js asks this too, so live mode never offers somebody's
+    // writing even where a catalogued phrase happens to sit inside it.
+    skip: optedOut,
+    // The pure pieces, for migration/tests (not an API for pages).
+    internals: { compile: compile, needlesFor: needlesFor, textMayMatch: textMayMatch, rootsOf: rootsOf }
   };
 })();
 
@@ -275,15 +462,7 @@
   try { on = localStorage.getItem(FLAG) === '1'; } catch (e) {}
   if (!on || window.TextLive) return;
 
-  function me() {
-    try {
-      var raw = JSON.parse(sessionStorage.getItem('botc_me'));
-      if (raw && (Date.now() - raw.ts) < 60 * 1000) return Promise.resolve(raw.me);
-    } catch (e) {}
-    return fetch('/api/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-  }
-
-  me().then(function (u) {
+  window.BotcData.me().then(function (u) {
     if (!u || !u.loggedIn || !u.isAdmin) return;
     window.BotcData.style('editor.css');
     var s = document.createElement('script');
@@ -313,16 +492,21 @@
     var h = (a.getAttribute('href') || '').split(/[?#]/)[0];
     return new RegExp('(^|\\/)' + name + '(\\.html)?$').test(h);
   }
+  // Without a scope, only the site's own navigation (the top bar and the
+  // mobile menu) is searched: page content can hold a link that merely ends
+  // the same way — a script whose slug is "script" is at s/script — and that
+  // is not the Script Builder.
   function findLinks(name, scope) {
     return Array.prototype.filter.call(
-      (scope || document).querySelectorAll('a[href]'),
+      scope ? scope.querySelectorAll('a[href]') : document.querySelectorAll('.topbar a[href], .nav-dropdown a[href]'),
       function (a) { return linkMatches(a, name); }
     );
   }
   var GOOD = { townsfolk: 1, outsider: 1 };
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric',
+    other: 'Other'
   };
 
   /* ── Site-wide announcement banner (set on the admin dashboard) ── */
@@ -353,13 +537,26 @@
       });
     }
 
+    /* data.js (or, on a server-rendered page, a few inline lines right after
+       <body>) has usually painted the bar already, from the copy kept below,
+       so it is there in the first frame instead of pushing the page down
+       when /api/boot answers. This reconciles it with the fresh answer: the
+       same message keeps that bar (and only gains its close button and its
+       links), a different one replaces it, none removes it. */
+    function existingBar() { return document.querySelector('.site-announcement'); }
     function show(ann) {
-      if (!ann || !ann.text) return;
+      var old = existingBar();
       var dismissed = '';
       try { dismissed = localStorage.getItem(DISMISS_KEY) || ''; } catch (e) {}
-      if (dismissed === ann.text) return; // this exact message was dismissed
+      if (!ann || !ann.text || dismissed === ann.text) { // none, or this exact message was dismissed
+        if (old) old.remove();
+        return;
+      }
+      if (old && old.getAttribute('data-wired') === '1' && old.getAttribute('data-text') === ann.text) return;
       var bar = document.createElement('div');
       bar.className = 'site-announcement';
+      bar.setAttribute('data-wired', '1');
+      bar.setAttribute('data-text', ann.text);
       var span = document.createElement('span');
       span.textContent = ann.text; // plain text unless it turns out to have links
       if (/\[[^\]\n]+\]\([^)\s]+\)/.test(ann.text)) {
@@ -378,18 +575,28 @@
       });
       bar.appendChild(span);
       bar.appendChild(btn);
-      document.body.insertBefore(bar, document.body.firstChild);
+      // Swapped in place, so the same message costs no movement at all.
+      if (old) old.parentNode.replaceChild(bar, old);
+      else document.body.insertBefore(bar, document.body.firstChild);
     }
-    try {
-      var cached = JSON.parse(sessionStorage.getItem(CACHE_KEY));
-      if (cached && (Date.now() - cached.ts) < 60 * 1000) { show(cached.ann); return; }
-    } catch (e) {}
+    // The early bar is clickable before /api/boot answers: closing it does
+    // what the close button will do.
+    var early = existingBar();
+    if (early && early.getAttribute('data-early') === '1') {
+      var eb = early.querySelector('.site-announcement-close');
+      if (eb) eb.addEventListener('click', function () {
+        try { localStorage.setItem(DISMISS_KEY, early.getAttribute('data-text') || ''); } catch (e) {}
+        early.remove();
+      });
+    }
     // The announcement rides the /api/boot call the text-override block above
     // already made (window.__botcBoot); the standalone endpoint is the fallback.
+    // The answer is kept in localStorage for the next page's early paint.
     (window.__botcBoot || fetch('/api/announcement').then(function (r) { return r.json(); }))
       .then(function (d) {
-        var ann = (d && d.announcement) || null;
-        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), ann: ann })); } catch (e) {}
+        if (!d) return;   // unreachable: leave the early bar as it is
+        var ann = d.announcement || null;
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), ann: ann })); } catch (e) {}
         show(ann);
       })
       .catch(function () {});
@@ -438,12 +645,15 @@
   /* ── Script-count badge on Script Builder nav links ── */
   var SCRIPT_KEY = 'botc_script';
   function scriptCount() {
-    try { return (JSON.parse(localStorage.getItem(SCRIPT_KEY)) || []).length; }
+    try {
+      var list = JSON.parse(localStorage.getItem(SCRIPT_KEY));
+      return Array.isArray(list) ? list.length : 0;
+    }
     catch (e) { return 0; }
   }
   function updateScriptBadge() {
     var n = scriptCount();
-    // Find every link to the Script Builder (root or ../, clean or .html)
+    // Every nav link to the Script Builder (root or ../, clean or .html)
     var links = findLinks('script');
     links.forEach(function (a) {
       var badge = a.querySelector('.script-badge');
@@ -478,6 +688,22 @@
     });
   })();
 
+  /* ── Articles link (crumb nav), after Collections ──
+     Standalone articles (/articles) are the wiki-wide writing: guides,
+     essays, design notes. Injected here like Tools so no page's hand-copied
+     top bar has to change. */
+  (function () {
+    document.querySelectorAll('.crumb').forEach(function (crumb) {
+      if (findLinks('articles', crumb).length) return;
+      var co = findLinks('all-collections', crumb)[0];
+      if (!co) return;
+      var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u00b7';
+      var link = document.createElement('a'); link.href = ROOT + 'articles'; link.textContent = 'Articles';
+      crumb.insertBefore(sep, co.nextSibling);
+      crumb.insertBefore(link, sep.nextSibling);
+    });
+  })();
+
   /* ── "Create a Character" link in the crumb nav (desktop top bar) ──
      Injected after Script Builder, i.e. BEFORE Tools, so the Account
      link (added later, anchored on Tools) stays the last child —
@@ -496,23 +722,26 @@
 
   /* ── Account link (crumb bar + mobile nav), based on login state ── */
   (function () {
-    var ME_KEY = 'botc_me';
-    function cachedMe() {
-      try {
-        var raw = JSON.parse(sessionStorage.getItem(ME_KEY));
-        // short cache: keeps the unread-mail icon reasonably fresh
-        if (raw && (Date.now() - raw.ts) < 60 * 1000) return Promise.resolve(raw.me);
-      } catch (e) {}
-      return fetch('/api/me', { credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
-        .then(function (me) {
-          try { sessionStorage.setItem(ME_KEY, JSON.stringify({ ts: Date.now(), me: me })); } catch (e) {}
-          return me;
-        });
-    }
-    window.botcMePromise = cachedMe();
-    window.botcMePromise.then(function (me) {
+    // One answer per page, from data.js: no request at all for a reader with
+    // no login hint, and never a second /api/me for the same page.
+    window.botcMePromise = window.BotcData.me();
+    window.botcMePromise.then(paintAccount).catch(function () {});
+
+    // A page restored from the back/forward cache still shows whoever was
+    // logged in when it was first drawn. If the hint says that has changed
+    // (logged out in another tab, or logged in since), ask again and repaint.
+    var paintedIn = null;
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      if (paintedIn !== null && window.BotcData.loginHint() === paintedIn) return;
+      window.BotcData.forgetMe();
+      window.botcMePromise = window.BotcData.me();
+      window.botcMePromise.then(paintAccount).catch(function () {});
+    });
+
+    function paintAccount(me) {
       var loggedIn = !!(me && me.loggedIn);
+      paintedIn = loggedIn;
       var label = loggedIn ? 'My Account' : 'Log In';
       var href = ROOT + (loggedIn ? 'account' : 'login');
       var unread = (loggedIn && me.unreadMessages) || 0;
@@ -538,14 +767,14 @@
       function flagAccountLink(a) {
         if (unread > 0 && !a.querySelector('.mail-flag')) a.appendChild(mailFlag());
       }
+      // A repaint (back/forward restore) starts from the counts it is given.
+      document.querySelectorAll('.crumb .mail-flag, .nav-dropdown .mail-flag').forEach(function (f) { f.remove(); });
       // Hardcoded "Login" links (e.g. the homepage crumb + hamburger) flip
       // to "My Account" once logged in. Nav/crumb links only — never links
-      // inside page content.
-      if (loggedIn) {
-        document.querySelectorAll('.crumb a, .nav-dropdown a').forEach(function (a) {
-          if (linkMatches(a, 'login')) { a.href = href; a.textContent = label; }
-        });
-      }
+      // inside page content. A restored page logged out since flips back.
+      document.querySelectorAll('.crumb a, .nav-dropdown a').forEach(function (a) {
+        if (loggedIn ? linkMatches(a, 'login') : linkMatches(a, 'account')) { a.href = href; a.textContent = label; }
+      });
       // mobile nav dropdown
       var drop = document.getElementById('nav-dropdown');
       if (drop && !findLinks('account', drop).length && !findLinks('login', drop).length) {
@@ -573,7 +802,7 @@
           if (acct) flagAccountLink(acct);
         });
       }
-    }).catch(function () {});
+    }
   })();
 
   /* ── Search ──
@@ -603,7 +832,9 @@
     }
 
     function ensureData() {
-      if (index) return Promise.resolve(index);
+      // A partial index (a feed besides the characters failed) still answers
+      // searches, but the next warm-up asks for the missing parts again.
+      if (index && !index.partial) return Promise.resolve(index);
       if (loading) return loading;
       var B = window.BotcData;
       // When the engine is already on the page (/search loads it), the feeds
@@ -723,7 +954,7 @@
       var d = item.data, pic = '', name = mark(item.name), sub = '', subClass = '';
       switch (item.type) {
         case 'character':
-          subClass = GOOD[d.team] ? ' good' : '';
+          subClass = GOOD[d.team] ? ' good' : d.team === 'other' ? ' other' : '';
           return '<a class="search-result" href="' + esc(item.href) + '" role="option">' +
             '<span class="card-side">' + thumbHTML(charThumb(d)) +
             (window.CardActions ? window.CardActions.slotHTML(d) : '') + '</span>' +
@@ -738,8 +969,9 @@
           sub = mark(clip(d.tagline || d.description || d.author || '', 90));
           break;
         case 'creator':
+          // markHTML is drawn by the Worker (the search index), never typed.
           pic = d.avatarUrl ? thumbHTML(d.avatarUrl, true)
-            : iconHTML(esc((window.CreatorSymbols && window.CreatorSymbols.creatorSymbol(d.name)) || '\u00b7'), 'round');
+            : iconHTML(d.markHTML || '\u00b7', 'round');
           sub = esc(countLabel(d)) + (d.username ? ' · @' + mark(d.username) : '');
           break;
         case 'user':
@@ -780,7 +1012,9 @@
     var searchToken = 0;
     function updateSearch() {
       var q = input.value.trim();
-      if (!q) { close(); return; }
+      // A lone minus is the start of a word being left out ("-poison"), not
+      // a search for everything.
+      if (!q || /^-+$/.test(q)) { close(); return; }
       var token = ++searchToken;
       function show() {
         if (token !== searchToken || input.value.trim() !== q) return;
@@ -871,6 +1105,14 @@
       ttLink.textContent = 'Tools';
       var sb = findLinks('script', drop)[0];
       if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
+    }
+    // Articles after Collections, matching the desktop crumb order.
+    if (!findLinks('articles', drop).length) {
+      var arLink = document.createElement('a');
+      arLink.href = ROOT + 'articles';
+      arLink.textContent = 'Articles';
+      var co = findLinks('all-collections', drop)[0];
+      if (co) drop.insertBefore(arLink, co.nextSibling); else drop.appendChild(arLink);
     }
     // "Create a Character" sits between Script Builder and Tools, matching
     // the desktop crumb order.
@@ -1004,8 +1246,7 @@ window.placeEditButton();
   function fit(ta) {
     if (!ta || ta.tagName !== 'TEXTAREA' || ta.classList.contains('no-autosize')) return;
     ta.style.overflowY = 'hidden';
-    ta.style.height = 'auto';
-    ta.style.height = (ta.scrollHeight + 2) + 'px';
+    BotcData.fitHeight(ta, function () { return ta.scrollHeight + 2; });
   }
   function fitAll() {
     Array.prototype.forEach.call(document.querySelectorAll('textarea'), fit);
@@ -1017,4 +1258,66 @@ window.placeEditButton();
   } else {
     fitAll();
   }
+})();
+
+/* ── Prefetch the reading pages a reader is about to open ──
+   Cloudflare's Speed Brain only speculates on pages its CDN caches, and none
+   of the Worker's pages are (characters, scripts, collections, wiki pages,
+   news, creators). So the wiki states its own rules: when a pointer rests on
+   (or a finger lands on) a link to a READING page, Chrome fetches it, and the
+   tap that follows opens it with no wait.
+
+   - `prefetch`, never `prerender`: a prerender runs the page's scripts,
+     which would count the view and fire requests for a page nobody opened.
+   - An allowlist, not a blocklist: only these addresses, on this origin
+     (a pattern with no host is this host). Editors, /random, /api, the
+     account pages and log-out are simply never on it. Links that open a new
+     tab, are nofollow or carry data-no-prefetch are left alone.
+   - `moderate` waits for hover or touch, so scrolling past a grid of 700
+     cards fetches nothing.
+   The published HTML is the same for every reader (see "Caching" in
+   CLAUDE.md), so a prefetched copy is the copy they would have got. The
+   Worker does not count a prefetch as a view (bumpView); the page counts
+   itself below if it is actually shown. Browsers without speculation rules
+   ignore all of this. */
+(function () {
+  try {
+    if (!HTMLScriptElement.supports || !HTMLScriptElement.supports('speculationrules')) return;
+    var rules = {
+      prefetch: [{
+        source: 'document',
+        where: { and: [
+          { href_matches: [
+            '/c/*', '/s/*', '/collection/*', '/p/*', '/news/*', '/u/*', '/author',
+            '/', '/all-characters', '/scripts', '/all-collections', '/team', '/tag', '/tags',
+            '/creators', '/articles', '/news', '/jinxes'
+          ] },
+          { not: { selector_matches: '[rel~="nofollow"], [target="_blank"], [download], [data-no-prefetch]' } }
+        ] },
+        eagerness: 'moderate'
+      }]
+    };
+    var s = document.createElement('script');
+    s.type = 'speculationrules';
+    s.textContent = JSON.stringify(rules);
+    document.head.appendChild(s);
+  } catch (e) { /* no speculation, no harm */ }
+})();
+
+/* ── A page shown from a prefetch counts its own view ──
+   The Worker skips a prefetch when counting views (the reader may never open
+   it), and opening it then shows that copy without asking the Worker again.
+   So the page says it was shown: one beacon to /api/view, which applies the
+   same bot filter and daily counter, and only for a published page. A page
+   loaded normally was counted when it was served and sends nothing. */
+(function () {
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (!nav || nav.deliveryType !== 'navigational-prefetch' || !navigator.sendBeacon) return;
+    if (window.PAGE_DRAFT || window.WIKI_PAGE_DRAFT) return;
+    var type = window.PAGE_TYPE, slug = window.PAGE_SLUG;
+    if (window.WIKI_PAGE_SLUG) { type = 'wikipage'; slug = window.WIKI_PAGE_SLUG; }
+    if (!type || !slug) return;
+    navigator.sendBeacon('/api/view', JSON.stringify({ type: type, slug: slug }));
+  } catch (e) { /* analytics never break a page */ }
 })();

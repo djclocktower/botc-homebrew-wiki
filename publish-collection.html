@@ -38,7 +38,7 @@
   font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
   letter-spacing:0; font-weight:400; }
 .sb-fld { margin-bottom:12px; }
-.sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
 .sb-fld .req { color:var(--evil); }
 .sb-fld input[type=text], .sb-fld textarea, .sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
 .sb-fld textarea { resize:vertical; min-height:54px; }
@@ -48,7 +48,7 @@
 .sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
 .sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
 .pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
-.pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
+.pub-status-pill { display:none; font-family:'Roboto',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
 .pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
 .pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
 /* Sits on the dark page background, next to .pub-back (which is already
@@ -59,7 +59,7 @@
 #sb-publish-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
 #sb-publish-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
 #sb-publish-status a { color:inherit; font-weight:700; }
-.pub-back { display:inline-block; margin-top:4px; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+.pub-back { display:inline-block; margin-top:4px; font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
 .pub-back:hover { color:#fff; text-decoration:underline; }
 
 details.sb-details { padding:0; }
@@ -74,7 +74,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 @media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
 .th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
 .th-row:last-child { border-bottom:none; }
-.th-row label { flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
+.th-row label { flex:1; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
 .th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
 .th-row input[type=range] { flex:none; width:130px; }
 /* The two image previews follow the size sliders and the parchment-box tick,
@@ -87,20 +87,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 .sb-header-prev.th-prev-panel { background:#f0e8d5; border-radius:8px; padding:10px; }
 .th-check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.9rem; text-transform:none; letter-spacing:0; }
 .th-check input { width:auto; }
-.th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+.th-clear { font-size:.75rem; font-family:'Roboto',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
 .th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
 .pub-url { font-size:.8rem; color:#6b5d49; margin:6px 0 0; word-break:break-all; }
 .pub-url code { background:rgba(91,31,33,.07); padding:1px 5px; }
 
 /* Membership manager */
-.pc-member-count { font-family:'Oswald',sans-serif; font-size:.82rem; color:#5b4632; margin:0 0 8px; }
+.pc-member-count { font-family:'Roboto',sans-serif; font-size:.82rem; color:#5b4632; margin:0 0 8px; }
 .pc-member-list { max-height:340px; overflow-y:auto; border:1px solid #cdbfa0; background:#fffdf8; }
 .pc-member { display:flex; align-items:center; gap:8px; padding:6px 10px; border-bottom:1px solid rgba(180,160,120,.25); }
 .pc-member:last-child { border-bottom:none; }
 .pc-member-thumb { width:32px; height:32px; object-fit:contain; flex-shrink:0; }
 .pc-member-name { flex:1; font-size:.92rem; color:var(--maroon); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.pc-member-how { font-family:'Oswald',sans-serif; font-size:.68rem; letter-spacing:.04em; text-transform:uppercase; color:#6b5d49; background:rgba(91,31,33,.06); border:1px solid rgba(180,160,120,.4); padding:1px 7px; border-radius:999px; flex-shrink:0; }
-.pc-member-btn { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; flex-shrink:0; }
+.pc-member-how { font-family:'Roboto',sans-serif; font-size:.68rem; letter-spacing:.04em; text-transform:uppercase; color:#6b5d49; background:rgba(91,31,33,.06); border:1px solid rgba(180,160,120,.4); padding:1px 7px; border-radius:999px; flex-shrink:0; }
+.pc-member-btn { font-size:.75rem; font-family:'Roboto',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; flex-shrink:0; }
 .pc-member-btn:hover { color:var(--evil); border-color:var(--evil); }
 .pc-add-wrap { position:relative; margin-bottom:10px; }
 .pc-add-results { position:absolute; left:0; right:0; top:100%; z-index:20; background:#fffdf8; border:1px solid #cdbfa0; max-height:260px; overflow-y:auto; box-shadow:0 10px 24px rgba(20,6,16,.25); display:none; }
@@ -112,7 +112,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 .pc-order-note { flex:1; min-width:180px; font-size:.8rem; color:#6b5d49; line-height:1.35; }
 .pc-order-bar .sb-btn { font-size:.78rem; padding:5px 10px; }
 .pc-team-head {
-  font-family:'Oswald',sans-serif; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+  font-family:'Roboto',sans-serif; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
   color:#6b5d49; background:rgba(91,31,33,.05); padding:4px 10px;
   border-bottom:1px solid rgba(180,160,120,.25);
 }
@@ -294,6 +294,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- The imported file, kept as this page's JSON (customJson) -->
+    <details class="sb-details" id="sb-json-sec">
+      <summary>Custom JSON <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. Keep an imported JSON file instead of the one the wiki builds.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-customjson">JSON</label>
+          <input type="file" id="sb-customjson-file" accept=".json,application/json" style="margin-bottom:8px">
+          <textarea id="sb-customjson" rows="8" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea>
+          <p class="sub" style="margin-top:6px">Choose a file or paste it here. The collection page&rsquo;s JSON box and Download JSON give exactly this, instead of the JSON the wiki builds from its characters. It does not change when you change the characters, so clear it to go back to the wiki&rsquo;s JSON.</p>
+        </div>
+      </div>
+    </details>
+
     <!-- Text-first pages attached to this collection (edit mode only) -->
     <details class="sb-details" id="sb-pages-sec" style="display:none">
       <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Text pages such as rules or lore, linked only from your collection page.</span></summary>
@@ -336,9 +349,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- The page's own address (assets/custom-url.js) -->
+    <details class="sb-details" id="sb-url-sec">
+      <summary>Custom URL <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Pick your page's address, like botchomebrew.wiki/collection/my-set.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="pc-custom-url">Custom URL</label>
+          <div class="cu-row"><span class="cu-prefix">botchomebrew.wiki/collection/</span><input type="text" id="pc-custom-url" maxlength="60" placeholder="my-set" autocomplete="off" spellcheck="false"></div>
+          <div class="cu-state" id="pc-custom-url-state"></div>
+          <p class="sub" style="margin:6px 0 0">Letters, numbers and hyphens. The automatic address and any old one keep working and forward here. Leave it empty to use the automatic address.</p>
+        </div>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
-      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Logo, background image, fonts and colors for the collection's wiki page.</span></summary>
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Quick styles, fonts (any Google Font), colours, gradients, see-through boxes, layout, and your own custom CSS.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
@@ -378,7 +404,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
           <p class="sub" style="margin:6px 0 0">For an image drawn on a light background that gets lost on the wiki's purple.</p>
         </div>
-      </div>
+        <div id="th-more" data-kind="collection"></div>
+        </div>
     </details>
 
     <div class="pub-actions">
@@ -401,8 +428,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render-wiki.js"></script>
   <!-- Steven Approved Order, for the "Sort (SAO)" button on the roster. -->
   <script src="assets/sao.js"></script>
+  <script src="assets/custom-css.js"></script>
+  <script src="assets/custom-url.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/page-preview.js"></script>
   <script src="assets/approved-editors.js"></script>
   <script src="assets/export-ids-editor.js"></script>
   <script>
@@ -468,7 +498,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var hero = main.querySelector('.home-hero');
         host = document.createElement('div');
         host.id = 'edit-status';
-        main.insertBefore(host, hero ? hero.nextSibling : main.firstChild);
+        if (hero) hero.after(host); else main.insertBefore(host, main.firstChild);
       }
       return host;
     }
@@ -536,6 +566,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // setting and the stored editor list forward whatever a guest posts, so
       // leaving them editable would be a promise the save breaks.
       $('sb-open-sec').style.display = 'none';
+      $('sb-url-sec').style.display = 'none';   // the address is the creator's
       // And the credit tick with it: whose work the page is said to be is the
       // creator's answer, and the Worker pins it from the stored row whatever
       // a guest posts.
@@ -567,7 +598,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
-    function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+    function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error){var e=new Error((j&&j.error)||'Save failed. Are you logged in?');e.conflict=!!(j&&j.conflict);throw e;}return j;}); }
+    /* The row's stamp as of the copy this form was loaded from, posted back
+       as baseUpdatedAt so the Worker refuses a save built on a copy somebody
+       else has since saved over (editConflict in worker.js) instead of
+       silently replacing their work. The collection save does not answer with
+       the new stamp, so it is read back after each save. */
+    var baseUpdatedAt = null;
+    function readStamp(key){
+      return fetch('/api/page?type=collection&slug=' + encodeURIComponent(key), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(res){ return (res && res.updatedAt) || null; })
+        .catch(function(){ return null; });
+    }
 
     function matchTerms(){
       return $('pc-match').value.split(',').map(function(s){ return norm(s); }).filter(Boolean);
@@ -601,6 +644,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     }) : null;
 
     function renderMembers(){
+      if (live) live.refresh();
       var def = currentDef();
       var members = window.PageRender.sortCollectionMembers(
         def, window.PageRender.resolveCollectionMembers(def, allChars));
@@ -750,11 +794,49 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // ── theme controls (shared widget) ──
     window.ThemeEditor.wire({
       get: function(){ return theme; },
-      set: function(t){ theme = t; }
+      set: function(t){ theme = t; },
+      // Stickers upload into collections/{id}-st{n}.*, so only once it exists.
+      stickerBase: function(){ return EDIT_KEY ? 'collections/' + EDIT_KEY : ''; }
+    });
+
+    // ── Custom JSON: an imported file kept as the page's JSON ──
+    $('sb-customjson-file').addEventListener('change', function(){
+      var f = this.files && this.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function(){ $('sb-customjson').value = String(r.result); $('sb-customjson').dispatchEvent(new Event('input')); };
+      r.readAsText(f);
+      this.value = '';
     });
 
     // ── custom boxes (shared widget — wiki-editor.js) ──
     var boxesUI = window.WikiEditor.boxes($('pc-boxes'), $('pc-box-add'));
+
+    // ── The live page, beside the form (page-preview.js): the same
+    // renderCollectionPage() the Worker draws /collection/ with. ──
+    var live = window.PagePreview.attach({
+      editor: $('editor'), kind: 'collection',
+      render: function(){
+        var name = $('pc-name').value.trim();
+        var id = EDIT_KEY || slugify(name) || 'preview';
+        var coll = {
+          id: id, slug: id, displayName: name || 'Untitled Collection', author: $('pc-author').value.trim(),
+          description: $('pc-desc').value.trim(), tagline: $('pc-tagline').value.trim(),
+          version: $('pc-version').value.trim(), difficulty: $('pc-difficulty').value,
+          synopsis: $('pc-synopsis').value.trim(), gameplay: $('pc-gameplay').value.trim(),
+          strategyGood: $('pc-strat-good').value.trim(), strategyEvil: $('pc-strat-evil').value.trim(),
+          customJson: $('sb-customjson').value.trim(),
+          match: $('pc-match').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean),
+          include: include.slice(), exclude: exclude.slice(), order: order.slice(),
+          header: headerDataURL || (removeHeader ? '' : (existingHeader || '')),
+          logo: logoDataURL || (removeLogo ? '' : (existingLogo || ''))
+        };
+        var boxes = window.WikiRender && window.WikiRender.renderBoxes ? window.WikiRender.renderBoxes(boxesUI.gather(), { linkRoot: '' }) : '';
+        var t = Object.assign({}, theme);
+        if (removeBg) delete t.background;
+        return { html: window.PageRender.renderCollectionPage(coll, allChars, { linkRoot: '', boxesHTML: boxes }),
+                 theme: t, base: 'collections/' + id, bgUrl: bgDataURL };
+      }
+    });
 
     // ── text-first pages attached to this collection ──
     function loadPages(key){
@@ -819,9 +901,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     wireRemove('pc-logo-remove', 'pc-logo-prev', 'pc-logo-note', 'pc-logo', function(){ logoDataURL = null; existingLogo = null; removeLogo = true; });
     wireRemove('pc-bg-remove', 'pc-bg-prev', 'pc-bg-note', 'pc-bg', function(){ bgDataURL = null; existingBg = null; removeBg = true; delete theme.background; });
 
+    var cuField = window.CustomUrl.mount({
+      input: $('pc-custom-url'), state: $('pc-custom-url-state'), type: 'collection',
+      slug: function(){ return EDIT_PK || EDIT_KEY || ''; },
+      onChange: function(){ updateUrlPreview(); }
+    });
+
     // ── name → id preview ──
     function updateUrlPreview(){
-      var id = EDIT_KEY || slugify($('pc-name').value);
+      var id = (cuField && cuField.get()) || EDIT_KEY || slugify($('pc-name').value);
       var u = $('pub-url');
       if (!id){ u.style.display = 'none'; return; }
       u.style.display = '';
@@ -924,6 +1012,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           strategyGood: $('pc-strat-good').value.trim(),
           strategyEvil: $('pc-strat-evil').value.trim(),
           customBoxes: boxesUI.gather(),
+          customJson: $('sb-customjson').value.trim(),
           match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
           include: include.slice(),
           exclude: exclude.slice(),
@@ -931,25 +1020,37 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           exportIds: idsUI ? idsUI.get() : null,
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : [],
+          // Only once known (loaded or typed): a form that never saw the
+          // stored address must not clear it.
+          customUrl: cuField.known() ? cuField.get() : undefined,
           header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
           status: saveStatus
         };
         // Always send logo ('' clears it server-side); background rides on theme.
         entry.logo = logoDataURL ? ('collections/' + id + '-logo.png') : (removeLogo ? '' : (existingLogo || ''));
         if (t) entry.theme = t;
+        if (EDIT_KEY && baseUpdatedAt) entry.baseUpdatedAt = baseUpdatedAt;
         return apiSave(entry);
+      }).then(function(res){
+        return readStamp((res && res.slug) || id).then(function(stamp){
+          baseUpdatedAt = stamp;
+          return res;
+        });
       }).then(function(res){
         if (headerDataURL){ existingHeader = 'collections/' + id + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'collections/' + id + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){ existingBg = 'collections/' + id + '-bg.png'; bgDataURL = null; }
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
-        currentStatus = saveStatus;
+        // What the Worker stored, not what was asked for: an approved
+        // editor's save keeps a draft a draft, whatever button they pressed.
+        currentStatus = (res && res.status) || saveStatus;
         EDIT_KEY = id;
         EDIT_PK = (res && res.slug) || EDIT_PK || id;
         $('pub-page-title').textContent = 'Edit Collection';
         updateUrlPreview(); updateButtons(); loadPages(id);
         renderEditStatus();   // the page exists now, so it has a status to state
-        var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent(id);
+        if (res && cuField.known()) cuField.set(res.customUrl || '');
+        var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent((res && res.customUrl) || id);
         // The name was already spoken for, so this page took the next free
         // address. Say so: silently landing somewhere else would read as the
         // save having failed, and "did it overwrite the other one?" is the
@@ -958,15 +1059,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? ' <em><code>/collection/' + esc(wanted) + '</code> was taken, so this page has its own address. ' +
             'To change an existing collection, open it from <a href="account">your account</a>.</em>'
           : '';
-        if (isDraft){
-          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
+        if (res && res.customUrlError) note += ' <em>' + esc(res.customUrlError) + '</em>';
+        if (currentStatus === 'draft'){
+          pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> ' +
+            (isDraft ? 'Draft saved (not public).' : 'Saved. It is still a draft: only its creator can publish it.') +
+            ' <a href="' + pageUrl + '" target="_blank">Preview →</a> or find it in <a href="account">your account</a>.' + note);
         } else {
           pubStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
         }
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       }).catch(function(err){
-        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
+        var fresh = err && err.conflict && EDIT_KEY
+          ? ' <a href="publish-collection?c=' + encodeURIComponent(EDIT_KEY) + '">Open the saved version →</a>' : '';
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message) + fresh);
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
       });
@@ -999,7 +1105,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         }
       })
       .catch(function(err){
-        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + err.message);
+        pubStatus('err', '<span class="ico ico-x" aria-hidden="true"></span> ' + esc(err.message));
         del.disabled = false; del.textContent = 'Delete Collection';
         $('pc-publish').disabled = false; $('pc-draft').disabled = false;
       });
@@ -1012,6 +1118,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         .then(function(res){
           var c = res.data; if (!c) return;
           currentStatus = res.status || 'published';
+          baseUpdatedAt = res.updatedAt || null;
           draftedNotice(c);
           EDIT_KEY = c.id || slugify(c.displayName || c.slug) || key;
           EDIT_PK = c.slug || EDIT_KEY;
@@ -1020,6 +1127,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-name').value = c.displayName || '';
           $('pc-author').value = c.author || '';
           $('pc-credit-unlinked').checked = !!c.creditUnlinked;
+          cuField.set(c.customUrl || '');
+          if (c.customUrl) $('sb-url-sec').open = true;
           $('pc-tagline').value = c.tagline || '';
           $('pc-version').value = c.version || '';
           $('pc-difficulty').value = c.difficulty || '';
@@ -1031,6 +1140,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-strat-evil').value = c.strategyEvil || '';
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
           if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
+          $('sb-customjson').value = c.customJson || '';
+          if (c.customJson) $('sb-json-sec').open = true;
           // Who else may edit this page (enforced by the Worker, not by the form).
           $('sb-public-edit').value = PUBLIC_EDIT_MODES[c.publicEdit] ? c.publicEdit : '';
           if (editorsUI) editorsUI.set(c.editors || []);

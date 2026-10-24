@@ -36,19 +36,49 @@ ADJ_DEFAULTS = dict(
     icon_dx=0, icon_dy=0, icon_scale=1.0, icon_rot=0,
     leaves='auto', leaf_scale=1.0, leaf_dy=0, leaf_dx=0, leaf_rot=0,
     flower='auto', flower_dx=0, flower_dy=0, flower_scale=1.0, flower_rot=0,
-    name_size=1.0, name_dy=0, name_dx=0, name_arc=1.0,
+    name_size=1.0, name_dy=0, name_dx=0, name_arc=1.0, name_kern=0.0, name_gaps=None,
     abil_size=1.0, abil_dy=0,
     fn_scale=1.0, fn_dx=0, fn_dy=0, fn_rot=0,
     on_scale=1.0, on_dx=0, on_dy=0, on_rot=0,
     rem_icon_scale=1.0, rem_text_size=1.0,
+    all_scale=1.0,
 )
+
+# "Everything" in the adjustments: one slider that resizes everything ON the
+# token at once; the background is the token itself and never changes.
+#   - every piece stays where it is and changes size there: the icon about
+#     its own centre (still dodging the name), the ability text re-wrapped to
+#     the token's width, the name on its arc, a reminder token's icon and
+#     text; it multiplies each one's own size slider (CONTENT_SCALE_KEYS);
+#   - the rim pieces (top leaves, night leaves, setup flower) are sized about
+#     the point where they meet the edge, so they stay cut off by the rim
+#     (deco.frame_for reads all_scale for those).
+# The content is clipped to the token's circle, and at 100% none of this
+# changes a pixel.
+ALL_SCALE_MIN, ALL_SCALE_MAX = 0.5, 1.5
+CONTENT_SCALE_KEYS = ('icon_scale', 'abil_size', 'name_size', 'rem_icon_scale', 'rem_text_size')
 
 def _adj(a):
     d = dict(ADJ_DEFAULTS)
     for k, v in (a or {}).items():
         if k in d and v is not None:
             d[k] = v
+    try:
+        s = float(d.get('all_scale', 1.0))
+    except (TypeError, ValueError):
+        s = 1.0
+    s = min(ALL_SCALE_MAX, max(ALL_SCALE_MIN, s))
+    d['all_scale'] = s
+    if s != 1.0:
+        for k in CONTENT_SCALE_KEYS:
+            d[k] = float(d[k]) * s
     return d
+
+def _clip_to_disk(img, disk):
+    """Cut anything outside the token's circle (a boolean mask, same size)."""
+    a = np.array(img)
+    a[:, :, 3] = np.where(disk, a[:, :, 3], 0)
+    return Image.fromarray(a)
 
 # ----------------------------------------------------------------------------
 # CUSTOM ASSETS (user-uploaded backgrounds / flower / leaves)
@@ -56,7 +86,12 @@ def _adj(a):
 _ASSET_ORIG = {}
 
 def _fit_into(img, ref):
-    """Scale img to fit inside ref's box, preserving aspect ratio."""
+    """Scale img to fit inside ref's box, preserving aspect ratio.
+    The transparent margin is trimmed first: a leaf drawn small on a big
+    canvas would otherwise shrink with the canvas to a few pixels."""
+    box = img.getchannel('A').getbbox()
+    if box:
+        img = img.crop(box)
     s = min(ref.width / float(img.width), ref.height / float(img.height))
     return img.resize((max(1, int(img.width*s)), max(1, int(img.height*s))), Image.LANCZOS)
 
@@ -103,7 +138,8 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     fn = float(entry.get('firstNight', 0) or 0) > 0
     on = float(entry.get('otherNight', 0) or 0) > 0
     nl = gen.render_name(entry['name'], float(a['name_size']), int(a['name_dy']),
-                         int(a['name_dx']), float(a['name_arc']))
+                         int(a['name_dx']), float(a['name_arc']),
+                         float(a['name_kern']), a['name_gaps'])
     nm = np.array(nl)[:, :, 3] > 40
     frame = deco.frame_for(first_night=fn, other_night=on,
                            setup=bool(entry.get('setup')),
@@ -116,6 +152,8 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     content.alpha_composite(gen.render_ability(entry['ability'],
                                                float(a['abil_size']), int(a['abil_dy'])))
     content.alpha_composite(nl)
+    if float(a['all_scale']) != 1.0:
+        content = _clip_to_disk(content, deco._DISK)
     nw, nh = round(frame.width * char_margin), round(frame.height * char_margin)
     big = frame.resize((nw, nh), Image.LANCZOS)
     big.alpha_composite(content, (round(gen.DCX * (char_margin - 1)),
@@ -141,6 +179,8 @@ def render_reminder_token(art_path, text, rem_margin=1.10, adj=None):
     content = Image.new('RGBA', base.size, (0, 0, 0, 0))
     reminder.place_icon(content, art_path, 0, 0, float(a['rem_icon_scale']))
     reminder._draw_curved(content, text, reminder.REM_SIZE_MAX, float(a['rem_text_size']))
+    if float(a['all_scale']) != 1.0:
+        content = _clip_to_disk(content, np.array(base)[:, :, 3] > 0)
     nw, nh = round(base.width * rem_margin), round(base.height * rem_margin)
     big = base.resize((nw, nh), Image.LANCZOS)
     big.alpha_composite(content, (round(reminder.DCX * (rem_margin - 1)),
@@ -188,10 +228,27 @@ def _scaled(img, disk_now_px, disk_target_px):
     s = disk_target_px / disk_now_px
     return img.resize((max(1, round(img.width * s)), max(1, round(img.height * s))), Image.LANCZOS)
 
+# A custom page ('Custom', with paper_w_mm / paper_h_mm). The floor fits one
+# character token and the page margins; the ceiling is 17 in (432 mm), which
+# takes A3 and Tabloid, and keeps a 400 dpi page inside what the browser can
+# hold in memory (a side much past that and the sheet alone runs to hundreds
+# of megabytes before the PDF copy is made).
+PAPER_MIN_MM, PAPER_MAX_MM = 60.0, 432.0
+
+def paper_mm(o):
+    """(width_mm, height_mm) for the page the options ask for."""
+    if o.get('paper') == 'Custom':
+        def side(v):
+            try: v = float(v)
+            except (TypeError, ValueError): v = 0.0
+            return min(PAPER_MAX_MM, max(PAPER_MIN_MM, v))
+        return side(o.get('paper_w_mm')), side(o.get('paper_h_mm'))
+    return PAPER.get(o.get('paper'), PAPER['A4'])
+
 def pack_sheets(tokens, kind, opts=None):
     """tokens: list of RGBA Images (already margined). kind: 'char'|'reminder'."""
     o = dict(DEFAULTS); o.update(opts or {})
-    pw_mm, ph_mm = PAPER[o['paper']]
+    pw_mm, ph_mm = paper_mm(o)
     px = lambda mm: mm * o['dpi'] / MM_PER_IN
     PW, PH = round(px(pw_mm)), round(px(ph_mm))
     M = px(o['page_margin_mm']); PAD = px(o['pad_mm'])
@@ -367,7 +424,8 @@ def geometry():
         'fn':     dict(space='frame',   **fn),
         'on':     dict(space='frame',   **on),
     }
-    return json.dumps({'canvas': [W, H], 'contentRef': [float(gen.DCX), float(gen.DCY)], 'assets': assets})
+    return json.dumps({'canvas': [W, H], 'contentRef': [float(gen.DCX), float(gen.DCY)],
+                       'disk': [float(deco._DCX), float(deco._DCY), float(deco._R)], 'assets': assets})
 
 def web_preview(entry_json, opts_json):
     e = json.loads(entry_json); o = json.loads(opts_json)

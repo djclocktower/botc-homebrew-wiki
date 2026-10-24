@@ -114,7 +114,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/apprentice_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/apprentice.webp"
  },
  {
   "id": "artist",
@@ -228,7 +228,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/barista_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/barista.webp"
  },
  {
   "id": "baron",
@@ -256,7 +256,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/beggar_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/beggar.webp"
  },
  {
   "id": "bigwig",
@@ -287,7 +287,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/bishop_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/bishop.webp"
  },
  {
   "id": "boffin",
@@ -318,7 +318,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/bonecollector_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/bonecollector.webp"
  },
  {
   "id": "boomdandy",
@@ -395,7 +395,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/bureaucrat_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/bureaucrat.webp"
  },
  {
   "id": "butcher",
@@ -409,7 +409,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/butcher_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/butcher.webp"
  },
  {
   "id": "butler",
@@ -441,7 +441,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/cacklejack_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/cacklejack.webp"
  },
  {
   "id": "cannibal",
@@ -609,7 +609,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/deviant_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/deviant.webp"
  },
  {
   "id": "devilsadvocate",
@@ -949,7 +949,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/gangster_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/gangster.webp"
  },
  {
   "id": "gardener",
@@ -993,7 +993,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/gnome_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/gnome.webp"
  },
  {
   "id": "goblin",
@@ -1121,7 +1121,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/gunslinger_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/gunslinger.webp"
  },
  {
   "id": "harlot",
@@ -1138,7 +1138,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/harlot_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/harlot.webp"
  },
  {
   "id": "harpy",
@@ -1330,7 +1330,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/judge_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/judge.webp"
  },
  {
   "id": "juggler",
@@ -1643,7 +1643,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/matron_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/matron.webp"
  },
  {
   "id": "mayor",
@@ -2245,7 +2245,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/scapegoat_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/scapegoat.webp"
  },
  {
   "id": "scarletwoman",
@@ -2512,7 +2512,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/thief_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/thief.webp"
  },
  {
   "id": "tinker",
@@ -2705,7 +2705,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/voudon_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/voudon.webp"
  },
  {
   "id": "washerwoman",

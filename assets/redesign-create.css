@@ -4,7 +4,7 @@
    html.create-redesign, which assets/redesign-create.js adds only
    after it has actually restructured the form. Palette and fonts
    reuse the site variables: --parch, --maroon, --card-edge,
-   --parch-frame, Dumbledor2 / Oswald / TradeGothicLT.
+   --parch-frame, Dumbledor2 / Roboto / TradeGothicLT.
    ============================================================ */
 
 /* ---------- form card: let the sticky action bar work ----------
@@ -73,7 +73,7 @@ html.create-redesign #customJson {
 /* the ability character counter becomes a small pill under the field */
 html.create-redesign #ability-count {
   float: none; display: inline-block; margin: 4px 0 0 2px;
-  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em;
+  font-family: 'Roboto',sans-serif; font-size: .7rem; letter-spacing: .05em;
   color: #726348; background: #efe7d3; border: 1px solid #d9cba6;
   border-radius: 999px; padding: 1px 9px;
 }
@@ -124,7 +124,7 @@ html.create-redesign details.advanced > summary .adv-sub {
   font-family: 'EB Garamond', serif; font-style: italic; font-size: .84rem; color: #726348;
 }
 html.create-redesign details.advanced > summary .adv-caret {
-  margin-left: auto; font-family: 'Oswald', sans-serif; font-size: .8rem;
+  margin-left: auto; font-family: 'Roboto',sans-serif; font-size: .8rem;
   color: #726348; letter-spacing: .08em; white-space: nowrap;
 }
 html.create-redesign details.advanced > summary .adv-caret::before { content: 'show'; }
@@ -166,7 +166,7 @@ html.create-redesign .preview-label {
 }
 html.create-redesign .preview-label .pv-note {
   margin-left: auto; display: flex; align-items: center; gap: 7px;
-  font-family: 'Oswald', sans-serif; font-size: .68rem; font-weight: 600;
+  font-family: 'Roboto',sans-serif; font-size: .68rem; font-weight: 600;
   letter-spacing: .12em; text-transform: uppercase; color: #7a6a52;
 }
 html.create-redesign .pv-dot {
@@ -235,7 +235,7 @@ html.create-redesign #preview {
 .no-opt:last-child { border-bottom: none; }
 .no-opt:hover, .no-opt.on { background: #efe7d3; }
 .no-opt-name {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
 }
 .no-opt-meta { font-size: .76rem; color: #726348; white-space: nowrap; }
 .no-empty {

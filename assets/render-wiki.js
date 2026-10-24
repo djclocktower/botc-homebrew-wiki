@@ -14,7 +14,12 @@
      ---                           horizontal rule
      [toc]                         insert the table of contents here
      | a | b |                     table (an all-dashes row marks the header)
-     ![caption](image.png|right)   image — |left |right |wide are optional
+     ![caption](image.png|right)   image — |left |right |center |wide place it,
+                                   and a size makes it smaller or bigger:
+                                   |300 (pixels, or |300px), |50% (of the
+                                   text column), or |small |medium |large.
+                                   Both together: |right|250. A size never
+                                   lets an image overflow a phone screen.
      ::: note Title                callout box (note/tip/warning/example/lore)
      …text…
      :::
@@ -40,7 +45,7 @@
      {{red|Imp}}                   the name in the evil team's red
                                    ({{good|…}} and {{evil|…}} are the same two)
      {{townsfolk|…}} {{outsider|…}} {{minion|…}} {{demon|…}}
-     {{traveller|…}} {{fabled|…}} {{loric|…}}
+     {{traveller|…}} {{fabled|…}} {{loric|…}} {{other|…}}
                                    the name in that team's own colour — one
                                    mark per team. Traveller is the half-blue,
                                    half-red split the Related ribbon uses
@@ -78,7 +83,23 @@
      characters.json. Unknown names fall back to a reminder-token pill. */
   var charLinks = {};
   function setCharLinks(map) { charLinks = map || {}; }
-  function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+  /* The one key every [[Name]] registry is built and searched with — the
+     producers (the Worker's char-link map, the editors) key their maps with
+     WikiRender.linkKey so both sides cannot drift. Accents fold away and any
+     letter or digit survives, in any script: the ASCII-only key it replaced
+     turned "Médium" into "mdium" and a Han name, or [[É]], into '' — and an
+     entry under '' would have answered for every one of them. */
+  function normName(s) {
+    return String(s || '').toLowerCase().normalize('NFKD')
+      .replace(/[^\p{L}\p{N}]+/gu, '');
+  }
+  /* The registries are plain maps keyed by what writers type, and a page can
+     genuinely be called Constructor: a bare `map[key]` would answer with
+     Object.prototype's own members and link [[Constructor]] to
+     "function Object()…". Own keys only, and never the empty key. */
+  function own(map, key) {
+    return !!(map && key && Object.prototype.hasOwnProperty.call(map, key));
+  }
 
   /* The reminder tokens of the character whose page is being rendered, so
      [[Drunk]] in its How to Run is the DRUNK TOKEN it plainly means and not a
@@ -95,14 +116,14 @@
   function setReminderTokens(list) {
     reminderTokens = null;
     if (!list || !list.length) return;
-    reminderTokens = {};
+    reminderTokens = Object.create(null);
     for (var i = 0; i < list.length; i++) {
       var k = normName(list[i]);
       if (k) reminderTokens[k] = 1;
     }
   }
   function isReminderToken(key) {
-    return !!(reminderTokens && key && reminderTokens[key]);
+    return own(reminderTokens, key);
   }
 
   /* The official roster, keyed the same way, so [[Imp]] goes to the official
@@ -121,9 +142,9 @@
      Fed by Render.setOfficialNames() in the browser and by the Worker's
      officialNameMap() for SSR — one map, whichever way round. Unset, nothing
      resolves as official and [[Name]] behaves as it did. */
-  var officialNames = {};
+  var officialNames = Object.create(null);
   function setOfficialNames(map) {
-    officialNames = {};
+    officialNames = Object.create(null);
     if (!map) return;
     for (var k in map) {
       if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
@@ -131,8 +152,8 @@
       if (typeof n !== 'string' || !n) continue;
       // Both the key (an id like `plaguedoctor`) and the display name, so a
       // writer reaches it typing either.
-      officialNames[normName(k)] = n;
-      officialNames[normName(n)] = n;
+      if (normName(k)) officialNames[normName(k)] = n;
+      if (normName(n)) officialNames[normName(n)] = n;
     }
   }
   function officialWikiHref(name) {
@@ -140,10 +161,18 @@
       String(name).trim().replace(/\s+/g, '_');
   }
 
+  // NUL is dropped first: the engine uses it for its own placeholders (code
+  // spans, the contents box), and text typed through the API could carry one.
   function esc(s) {
-    return String(s == null ? '' : s)
+    return String(s == null ? '' : s).replace(/\u0000/g, '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // esc() undone, for the few places that must read what was typed.
+  function unesc(s) {
+    return String(s).replace(/&quot;/g, '"').replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   }
 
   function kebab(s) {
@@ -176,6 +205,10 @@
   function safeHref(raw) {
     var href = String(raw || '').trim();
     if (!href) return '';
+    // A browser reads a backslash in a link as a slash and silently drops
+    // tabs, newlines and control characters, so "/\\evil.example" goes
+    // off-site while looking like a page here. Nothing honest needs either.
+    if (/[\\\u0000-\u001f\u007f]/.test(href)) return '';
     if (/^https?:\/\//i.test(href)) return href;
     if (/^mailto:[^\s<>]+@[^\s<>]+$/i.test(href)) return href;
     // '//evil.example' is protocol-relative, i.e. off-site in disguise.
@@ -195,6 +228,30 @@
      folder the site uploads into but doesn't list here goes to R2 fine and
      then renders as nothing, which is how news images were invisible. */
   var IMG_PATH_RE = /^(pages|news|art|scripts|collections|icons|tokens)\/[a-z0-9._ /-]+\.(png|jpe?g|webp|gif|svg)$/i;
+  /* The |options after an image's source: where it sits and how big it is.
+     The size becomes an inline width, but only ever one this function wrote
+     from a number it parsed, so nothing a writer types reaches the style
+     attribute. max-width: 100% in styles.css still caps it, so |900 on a
+     phone fills the column instead of running off the side. */
+  var IMG_OPT_RE = '((?:\\|[A-Za-z0-9.%]{1,8}){0,3})';
+  var IMG_SIZES = { small: '200px', medium: '350px', large: '550px' };
+  function imgOptions(raw) {
+    var o = { align: '', width: '' };
+    String(raw || '').toLowerCase().split('|').forEach(function (t) {
+      t = t.trim();
+      if (!t) return;
+      if (t === 'left' || t === 'right' || t === 'wide' || t === 'center') { o.align = t; return; }
+      if (IMG_SIZES[t]) { o.width = IMG_SIZES[t]; return; }
+      var m = t.match(/^(\d{1,4})(px|%)?$/);
+      if (!m) return;
+      var n = parseInt(m[1], 10);
+      if (m[2] === '%') { if (n >= 5 && n <= 100) o.width = n + '%'; }
+      else if (n >= 16 && n <= 2000) o.width = n + 'px';
+    });
+    return o;
+  }
+  function imgStyle(o) { return o.width ? ' style="width:' + o.width + '"' : ''; }
+
   function safeImg(raw, root) {
     var src = String(raw || '').trim();
     if (!src) return '';
@@ -225,9 +282,9 @@
     townsfolk: 'wiki-townsfolk', outsider: 'wiki-outsider',
     minion: 'wiki-minion', demon: 'wiki-demon',
     traveller: 'wiki-traveller', traveler: 'wiki-traveller',
-    fabled: 'wiki-fabled', loric: 'wiki-loric'
+    fabled: 'wiki-fabled', loric: 'wiki-loric', other: 'wiki-other'
   };
-  var COLOR_RE = /\{\{(red|blue|good|evil|townsfolk|outsider|minion|demon|traveller|traveler|fabled|loric)\|([^{}\n]{1,300})\}\}/gi;
+  var COLOR_RE = /\{\{(red|blue|good|evil|townsfolk|outsider|minion|demon|traveller|traveler|fabled|loric|other)\|([^{}\n]{1,300})\}\}/gi;
 
   /* ── {{i|text}} — italics ──
      A brace mark rather than *asterisks*, because links mode exists exactly
@@ -282,16 +339,17 @@
 
       // ![caption](src) inline — only reached when an image is not on its own
       // line; block images are handled in renderBody.
-      out = out.replace(/!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(\|(?:left|right|wide))?\)/g,
-        function (m, alt, src) {
+      out = out.replace(new RegExp('!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)', 'g'),
+        function (m, alt, src, extra) {
           var url = safeImg(src.replace(/&amp;/g, '&'), root);
           if (!url) return alt;
-          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '" loading="lazy" decoding="async">';
+          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '"' +
+            imgStyle(imgOptions(extra)) + ' loading="lazy" decoding="async">';
         });
     }
 
     // [label](href)
-    out = out.replace(/\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, function (m, label, href) {
+    out = out.replace(/\[([^\]\n]{1,160})\]\(([^)\s{}\u0000]{1,500})\)/g, function (m, label, href) {
       // esc() already ran, so &amp; inside a URL has to be put back.
       var url = safeHref(href.replace(/&amp;/g, '&'));
       if (!url) return label;
@@ -314,8 +372,12 @@
     // setOfficialNames), then this wiki's page if it has one, and otherwise
     // the reminder-token pill that [[TOKEN]] has always rendered as.
     out = out.replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g, function (m, target, label) {
-      var key = normName(target);
       var shown = (label != null && label !== '') ? label : target;
+      // esc() has already run, so the name is matched on what the writer
+      // TYPED: keyed on the escaped text, [[Tea & Crumpets]] looked for
+      // "teaampcrumpets" and never linked.
+      target = unesc(target);
+      var key = normName(target);
       // An ALL-CAPS target is a reminder token wherever it appears — that is
       // how the official almanacs write reminder text, and the per-character
       // registry below can only vouch for the page being rendered, so
@@ -324,15 +386,18 @@
       // and no a-z, so caseless scripts (a wholly Han or kana name) keep
       // linking as before. [[Undead]] still means the character.
       var allCaps = /[A-Z]/.test(target) && !/[a-z]/.test(target);
-      if (isReminderToken(key) || allCaps) return '<span class="tok">' + shown + '</span>';
-      var official = officialNames[key];
+      // No letters at all ([[1]], [[2]]) is a number token, never a name: the
+      // Deliverer's identity is "-2", which keys as "2", so every [[2]] on the
+      // wiki linked to it.
+      if (isReminderToken(key) || allCaps || !/\p{L}/u.test(target)) return '<span class="tok">' + shown + '</span>';
+      var official = own(officialNames, key) ? officialNames[key] : '';
       if (official) {
         return '<a class="wiki-charlink wiki-charlink-off" href="' +
           esc(officialWikiHref(official)) + '" target="_blank" rel="noopener noreferrer">' +
           shown + '</a>';
       }
-      var slug = charLinks[key];
-      if (!slug) return '<span class="tok">' + shown + '</span>';
+      var slug = own(charLinks, key) ? charLinks[key] : '';
+      if (!slug || typeof slug !== 'string') return '<span class="tok">' + shown + '</span>';
       return '<a class="wiki-charlink" href="' + esc(root + 'c/' + slug) + '">' + shown + '</a>';
     });
 
@@ -389,24 +454,42 @@
       .replace(EM_RE, '$1')
       .replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g,
         function (m, target, label) { return (label != null && label !== '') ? label : target; })
-      .replace(/!?\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, '$1')
+      .replace(/!?\[([^\]\n]{1,160})\]\(([^)\s{}\u0000]{1,500})\)/g, '$1')
       .replace(/\*\*([^*\n]{1,300})\*\*/g, '$1')
       .replace(/~~([^~\n]{1,200})~~/g, '$1')
       .replace(/`([^`\n]{1,300})`/g, '$1');
   }
 
-  /* ── table of contents ── */
+  /* ── table of contents ──
+     Nested lists, one <ol> per level, so each level counts from 1 on its own:
+     1. / a. / i. under every parent. It was one flat <ol> styled per level,
+     which shared a single counter across the whole box — the first sub-entry
+     under item 1 came out as "b.", and one two deep as "iii.". A heading that
+     skips a level (an h1 straight to an h3) nests one step, not two, so a
+     list never opens with no item for it to hang under. */
   function tocHTML(headings, opts) {
     opts = opts || {};
     var items = headings.filter(function (h) { return h.level <= 3; });
     if (items.length < (opts.min || 2)) return '';
     var top = Math.min.apply(null, items.map(function (h) { return h.level; }));
+    var html = '';
+    var depth = -1;
+    items.forEach(function (h) {
+      var want = Math.min(h.level - top, depth + 1);
+      if (want > depth) {
+        html += '<ol class="' + (want === 0 ? 'wiki-toc-list' : 'wiki-toc-sub wiki-toc-l' + want) + '">';
+      } else {
+        html += '</li>';
+        for (; depth > want; depth--) html += '</ol></li>';
+      }
+      depth = want;
+      html += '<li><a href="#' + esc(h.id) + '">' + esc(h.text) + '</a>';
+    });
+    html += '</li>';
+    for (; depth > 0; depth--) html += '</ol></li>';
+    html += '</ol>';
     return '<nav class="wiki-toc" aria-label="Contents">' +
-      '<div class="wiki-toc-head">Contents</div>' +
-      '<ol class="wiki-toc-list">' + items.map(function (h) {
-        return '<li class="wiki-toc-l' + (h.level - top) + '">' +
-          '<a href="#' + esc(h.id) + '">' + esc(h.text) + '</a></li>';
-      }).join('') + '</ol></nav>';
+      '<div class="wiki-toc-head">Contents</div>' + html + '</nav>';
   }
 
   /* ── blocks ── */
@@ -420,9 +503,32 @@
     }).join('') + '</' + tag + '>';
   }
 
+  /* A row's cells. A pipe is also part of the marks themselves —
+     {{red|Imp}}, [[Imp|label]], ![](a.png|right) — so only a pipe outside
+     every {{…}}, […] and the (…) of a link or image separates cells. A row
+     whose brackets never close is split on every pipe, as it always was,
+     rather than swallowing the rest of the row into one cell. */
+  function splitCells(row) {
+    var cells = [], cur = '', brace = 0, square = 0, paren = 0;
+    for (var i = 0; i < row.length; i++) {
+      var ch = row.charAt(i), nx = row.charAt(i + 1);
+      if (ch === '{' && nx === '{') { brace++; cur += '{{'; i++; continue; }
+      if (ch === '}' && nx === '}' && brace) { brace--; cur += '}}'; i++; continue; }
+      if (ch === '[') square++;
+      else if (ch === ']' && square) square--;
+      else if (ch === '(' && row.charAt(i - 1) === ']') paren++;
+      else if (ch === ')' && paren) paren--;
+      else if (ch === '|' && !brace && !square && !paren) { cells.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    if (brace || square || paren) return row.split('|');
+    cells.push(cur);
+    return cells;
+  }
+
   function tableBlock(lines, opts) {
     var rows = lines.map(function (l) {
-      return l.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(function (c) { return c.trim(); });
+      return splitCells(l.replace(/^\s*\|/, '').replace(/\|\s*$/, '')).map(function (c) { return c.trim(); });
     });
     // A row of dashes right under the first row marks it as the header.
     var hasHead = rows.length > 1 && rows[1].every(function (c) { return /^:?-{2,}:?$/.test(c); });
@@ -441,24 +547,49 @@
   }
 
   function imageBlock(line, opts) {
-    var m = line.match(/^!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(?:\|(left|right|wide))?\)\s*$/);
+    var m = line.match(new RegExp('^!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)\\s*$'));
     if (!m) return null;
     var url = safeImg(m[2], (opts && opts.linkRoot) || '');
     if (!url) return '';
-    var align = m[3] || '';
+    var o = imgOptions(m[3]);
+    var align = o.align;
     var caption = m[1] || '';
-    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + '">' +
+    // The width goes on the FIGURE, so a caption wraps under the picture
+    // rather than running the full column, and a % is of the text column.
+    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + (o.width ? ' wiki-figure-sized' : '') + '"' + imgStyle(o) + '>' +
       '<img src="' + esc(url) + '" alt="' + esc(caption) + '" loading="lazy" decoding="async">' +
       (caption ? '<figcaption>' + inlineFormat(caption, opts) + '</figcaption>' : '') +
       '</figure>';
   }
 
+  /* A heading's text without the optional closing #s (`## Title ##`), the
+     same answer the old regex gave, in one pass. */
+  function trimClosingHashes(t) {
+    var end = t.length;
+    while (end > 0 && t.charAt(end - 1) === '#') end--;
+    var out = t.slice(0, end).trim();
+    return out || t.trim();
+  }
+
+  /* How deep quotes and callouts may nest. Each level is a nested call, and
+     '>'.repeat(3000) — or a custom box of them, which renders a whole script
+     page — used to run the stack out and take the page down with it. Past
+     the cap the rest is plain text, which nobody nesting that deep will miss. */
+  var MAX_NEST = 8;
+
   /* Turn a whole body of text into HTML.
      opts: {linkRoot, headings[] (filled in), toc:'auto'|false} */
+
   function renderBody(text, opts) {
     opts = opts || {};
     var headings = opts.headings || [];
-    var seen = {};
+    // Shared with the nested calls, so a heading inside a callout or a quote
+    // cannot be handed an id the page already used.
+    var seen = opts.seen || Object.create(null);
+    var depth = opts.depth || 0;
+    function nestedOpts() {
+      return { linkRoot: opts.linkRoot, headings: headings, nested: true, seen: seen, depth: depth + 1 };
+    }
     var src = String(text || '').replace(/\r\n/g, '\n').replace(/\t/g, '    ');
     var lines = src.split('\n');
     var html = '';
@@ -489,31 +620,39 @@
 
       // ::: callout … :::
       var call = trimmed.match(/^:::\s*([a-z]+)?\s*(.*)$/i);
-      if (call && trimmed.indexOf(':::') === 0 && !/^:::\s*$/.test(trimmed)) {
+      if (call && trimmed.indexOf(':::') === 0 && !/^:::\s*$/.test(trimmed) && depth < MAX_NEST) {
         closePara();
         var kind = String(call[1] || 'note').toLowerCase();
-        if (!CALLOUT_KINDS[kind]) kind = 'note';
-        var label = call[2].trim() || CALLOUT_KINDS[kind];
+        // `::: Important rule` names no kind, so all of it is the title — the
+        // first word used to be read as an unknown kind and thrown away.
+        var label = call[2].trim();
+        if (!Object.prototype.hasOwnProperty.call(CALLOUT_KINDS, kind)) {
+          kind = 'note';
+          label = trimmed.slice(3).trim();
+        }
+        label = label || CALLOUT_KINDS[kind];
         var inner = [];
         i++;
         while (i < lines.length && !/^\s*:::\s*$/.test(lines[i])) { inner.push(lines[i]); i++; }
         i++; // skip the closing :::
         html += '<div class="wiki-callout wiki-callout-' + kind + '">' +
           '<div class="wiki-callout-head">' + esc(label) + '</div>' +
-          '<div class="wiki-callout-body">' + renderBody(inner.join('\n'), {
-            linkRoot: opts.linkRoot, headings: headings, nested: true
-          }) + '</div></div>';
+          '<div class="wiki-callout-body">' + renderBody(inner.join('\n'), nestedOpts()) + '</div></div>';
         continue;
       }
 
       // heading
-      var h = trimmed.match(/^(#{1,4})\s+(.+?)\s*#*$/);
+      // The closing #s are trimmed by hand: the lazy `(.+?)\s*#*$` this was
+      // re-scanned every run of spaces once per character, which took
+      // seconds over a long one.
+      var h = trimmed.match(/^(#{1,4})\s+(.+)$/);
       if (h) {
         closePara();
         var level = h[1].length;
-        var htext = h[2].trim();
+        var htext = trimClosingHashes(h[2]);
         var id = headingId(htext);
-        headings.push({ level: level, id: id, text: htext.replace(/[*`~]/g, '') });
+        // The contents box prints plain text, so the marks come out of it.
+        headings.push({ level: level, id: id, text: plainText(htext).replace(/[*`~]/g, '') });
         var tag = 'h' + Math.min(level + 1, 5);   // # -> h2, the page title is the h1
         html += '<' + tag + ' class="wiki-h wiki-h' + level + '" id="' + id + '">' +
           '<a class="sec-anchor" href="#' + id + '">' + inlineFormat(htext, opts) + '</a></' + tag + '>';
@@ -550,14 +689,14 @@
       }
 
       // blockquote
-      if (/^>\s?/.test(trimmed)) {
+      if (/^>\s?/.test(trimmed) && depth < MAX_NEST) {
         closePara();
         var quote = [];
         while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
           quote.push(lines[i].trim().replace(/^>\s?/, '')); i++;
         }
         html += '<blockquote class="wiki-quote">' +
-          renderBody(quote.join('\n'), { linkRoot: opts.linkRoot, headings: headings, nested: true }) +
+          renderBody(quote.join('\n'), nestedOpts()) +
           '</blockquote>';
         continue;
       }
@@ -593,24 +732,46 @@
   }
 
   /* First ~200 characters of the body, marks stripped — used for card
-     summaries and the meta description when the author didn't write one. */
+     summaries and the meta description when the author didn't write one.
+
+     It runs for every published wiki page whenever the search index is
+     built, so it must stay linear in what one page holds. It used to be one
+     chain of multiline regexes over the whole body: `^\s*` restarted at
+     every line and ran on across the newlines after it, so 60,000 empty
+     lines took ~25 s, and one page like that took site search down. Now it
+     reads line by line and stops once it has enough text — a summary is a
+     couple of hundred characters, so the rest of a long page is never
+     looked at — and every mark comes out through plainText(), the same
+     answer the rest of the wiki gives ({{red|Imp}} reads as "Imp"). */
   function autoSummary(text, max) {
-    var flat = String(text || '')
-      .replace(/\r\n/g, '\n')
-      .replace(/^\s*:::.*$/gm, '')
-      .replace(/^\s*\|.*$/gm, '')
-      .replace(/^\s*#{1,4}\s+/gm, '')
-      .replace(/^\s*[-*]\s+/gm, '')
-      .replace(/^\s*\d+[.)]\s+/gm, '')
-      .replace(/^\s*>\s?/gm, '')
-      .replace(/!\[([^\]\n]*)\]\([^)\s]*\)/g, '')
-      .replace(/\[\[([^\]|\n]*)(?:\|([^\]\n]*))?\]\]/g, function (m, a, b) { return b || a; })
-      .replace(/\[([^\]\n]*)\]\([^)\s]*\)/g, '$1')
+    var n = max || 200;
+    var budget = n * 4 + 200;            // raw text wanted before stopping
+    var src = String(text || '');
+    var parts = [], got = 0, pos = 0;
+    while (pos < src.length && got < budget) {
+      var nl = src.indexOf('\n', pos);
+      if (nl === -1) nl = src.length;
+      // One line at a time, and never more of a line than the budget: a
+      // single 60,000-character line is still only read up to there.
+      var line = src.slice(pos, Math.min(nl, pos + budget)).trim();
+      pos = nl + 1;
+      if (!line) continue;
+      if (line.indexOf(':::') === 0 || line.charAt(0) === '|') continue;
+      if (/^\[toc\]$/i.test(line)) continue;
+      line = line.replace(/^#{1,4}\s+/, '')
+        .replace(/^[-*]\s+/, '')
+        .replace(/^\d+[.)]\s+/, '')
+        .replace(/^(?:>\s?)+/, '');
+      parts.push(line);
+      got += line.length + 1;
+    }
+    var flat = plainText(parts.join(' ')
+      // An image says nothing in a summary, caption included.
+      .replace(new RegExp('!\\[[^\\]\\n]{0,160}\\]\\([^)\\s|]{1,400}' + IMG_OPT_RE + '\\)', 'g'), ''))
       .replace(/[*`~]/g, '')
       .replace(/\[toc\]/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
-    var n = max || 200;
     return flat.length > n ? flat.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : flat;
   }
 
@@ -663,11 +824,14 @@
     var root = opts.linkRoot || '';
     var io = { linkRoot: root };
 
-    var parentHref = p.parentType === 'collection'
+    // A standalone article has no set; its way back is the /articles list.
+    var parentHref = p.parentType === 'article' ? root + 'articles'
+      : p.parentType === 'collection'
       ? root + 'collection/' + encodeURIComponent(p.parentKey || p.parentSlug || '')
       : root + 's/' + encodeURIComponent(p.parentKey || p.parentSlug || '');
     var crumb = p.parentName
-      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' + esc(p.parentName) + '</a></p>'
+      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' +
+        esc(p.parentType === 'article' ? 'All articles' : p.parentName) + '</a></p>'
       : '';
 
     var banner = p.header
@@ -725,7 +889,7 @@
 
   var API = {
     setCharLinks: setCharLinks, setOfficialNames: setOfficialNames,
-    setReminderTokens: setReminderTokens,
+    setReminderTokens: setReminderTokens, linkKey: normName,
     esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
     inlineFormat: inlineFormat, plainText: plainText,
     renderBody: renderBody, tocHTML: tocHTML,

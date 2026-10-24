@@ -60,7 +60,7 @@
   }
   .prof-sec-count {
     flex:0 0 auto; margin-left:auto;
-    font-family:'Oswald',sans-serif; font-size:.62em; letter-spacing:.06em;
+    font-family:'Roboto',sans-serif; font-size:.62em; letter-spacing:.06em;
     color:rgba(236,225,200,.55); text-transform:uppercase;
   }
   .prof-section.collapsed .prof-sec-caret { transform:rotate(-90deg); }
@@ -118,7 +118,7 @@
     display:block; font-family:'Dumbledor2',serif; font-size:1.05rem; letter-spacing:.04em;
     text-transform:uppercase; line-height:1.15; overflow-wrap:anywhere;
   }
-  .pin-kind { display:block; font-size:.74rem; font-family:'Oswald',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.6; }
+  .pin-kind { display:block; font-size:.74rem; font-family:'Roboto',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.6; }
   .cr-chars-count { text-align:center; }
 </style>
 </head>
@@ -163,11 +163,13 @@
     </div>
   </div>
 
-  <main class="home-panel" id="panel"></main>
+  <main class="home-panel prof-panel" id="panel"></main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="/assets/creators.js"></script>
   <script src="/assets/render-page.js"></script>
+  <script src="/assets/custom-css.js"></script>
   <!-- sao.js first: card-filters.js only offers Steven Approved Order when
        window.saoCompare is already defined. -->
   <script src="/assets/sao.js"></script>
@@ -233,6 +235,74 @@
     var hero = document.getElementById('profile-hero');
     var panel = document.getElementById('panel');
 
+    /* The creator's own look (Account → Profile Appearance): the same theme
+       kit and custom CSS a script page takes, applied here in the browser
+       because this page is static. The server sanitized it already; it is
+       sanitized again against the one background slot an account has. With
+       custom CSS the hero and the sections are moved into the scoped frame
+       (.ucss-frame > .ucss) the server builds around an SSR page. */
+    /* Applied again and again by the account page's live preview (see
+       __botcApplyTheme below), so every pass first takes off what the last
+       one added: its classes, its custom properties, its stylesheets and its
+       stickers. Classes the page had before any theme are left alone. */
+    var themed = { cls: [], props: [] };
+    function applyProfileTheme(theme) {
+      if (!PR || !PR.sanitizeTheme) return;
+      themed.cls.forEach(function (c) { document.body.classList.remove(c); });
+      themed.props.forEach(function (p) { document.body.style.removeProperty(p); });
+      themed = { cls: [], props: [] };
+      ['page-custom-css', 'page-moves'].forEach(function (id) {
+        var old = document.getElementById(id); if (old) old.remove();
+      });
+      var oldSt = document.querySelector('body > .pg-stickers'); if (oldSt) oldSt.remove();
+      if (!theme) return;
+      var bg = String(theme.background || '').match(/^(avatars\/u\d+)-bg\./);
+      var t = PR.sanitizeTheme(theme, bg ? bg[1] : null);
+      if (!t) return;
+      var ta = PR.themeAttrs(t);
+      ta.cls.split(' ').forEach(function (c) {
+        if (c && !document.body.classList.contains(c)) { document.body.classList.add(c); themed.cls.push(c); }
+      });
+      ta.style.split(';').forEach(function (decl) {
+        var i = decl.indexOf(':');
+        if (i > 0) { document.body.style.setProperty(decl.slice(0, i), decl.slice(i + 1)); themed.props.push(decl.slice(0, i)); }
+      });
+      (ta.fonts || []).forEach(function (href) {
+        if (document.querySelector('link[href="' + href + '"]')) return;
+        var l = document.createElement('link');
+        l.rel = 'stylesheet'; l.href = href;
+        document.head.appendChild(l);
+      });
+      // Stickers sit on <body> here (the page has no single main area around
+      // its hero and sections), placed against the whole page.
+      if (t.stickers && PR.stickersHTML) document.body.insertAdjacentHTML('beforeend', PR.stickersHTML(t.stickers));
+      if (ta.movesCss) {
+        var mv = document.createElement('style');
+        mv.id = 'page-moves';
+        mv.textContent = ta.movesCss;
+        document.head.appendChild(mv);
+      }
+      var css = t.css && window.CustomCSS ? window.CustomCSS.clean(t.css).css : '';
+      if (css) {
+        var st = document.createElement('style');
+        st.id = 'page-custom-css';
+        st.textContent = css;
+        document.head.appendChild(st);
+        var heroWrap = hero.parentNode;   // .home-hero
+        if (!heroWrap.parentNode.classList.contains('ucss')) {
+          var frame = document.createElement('div');
+          frame.className = 'ucss-frame';
+          var inner = document.createElement('div');
+          inner.className = 'ucss';
+          frame.appendChild(inner);
+          heroWrap.parentNode.insertBefore(frame, heroWrap);
+          inner.appendChild(heroWrap);
+          inner.appendChild(panel);
+        }
+      }
+    }
+    window.__botcApplyTheme = applyProfileTheme;
+
     function fail(msg) {
       hero.innerHTML = '<h1>Creator not found</h1>';
       panel.innerHTML = '<p class="profile-empty">' + esc(msg) +
@@ -251,7 +321,7 @@
       // box instead of being clipped. Same trick as the /c/ page title.
       var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
       var headerHTML = sc.header || sc.logo
-        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('/', sc.header || sc.logo, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
+        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('/', sc.header || sc.logo, sc.v, PageRender.TILE_SIZES) + ' alt="' + esc(sc.name) + '"></div>'
         : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
@@ -270,7 +340,7 @@
       // collection's own page falls back through.
       var collBanner = coll.header || coll.logo;
       var topHTML = collBanner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', collBanner, coll.v)) + '"' + PageRender.responsiveAttrs('/', collBanner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('/', collBanner, coll.v)) + '"' + PageRender.responsiveAttrs('/', collBanner, coll.v, PageRender.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
         : '';
       // The blurb goes in the tagline paragraph, the same slot (and the same
       // three-line cutoff) every other collection tile on the site uses. It
@@ -304,7 +374,9 @@
       var href, thumb, name;
       if (p.type === 'character') {
         href = '/' + String(hit.page || ('c/' + hit.slug)).replace(/^\//, '');
-        thumb = hit.art ? '/assets/' + hit.art : (hit.image || '/assets/favicon.png');
+        // PageRender.imgSrc, like the tiles: a path that is already a whole
+        // URL (art hosted elsewhere) must not get /assets/ glued on.
+        thumb = hit.art ? PageRender.imgSrc('/', hit.art, hit.v) : (hit.image || '/assets/favicon.png');
         name = hit.name;
       } else if (p.type === 'script') {
         href = '/s/' + encodeURIComponent(hit.slug);
@@ -312,13 +384,11 @@
         // /collection/ pages themselves fall back through. Reading `header`
         // alone put the skull on every page with a logo and no header, which
         // is every Bloodstar import.
-        thumb = hit.header ? '/assets/' + hit.header
-              : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
+        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/favicon.png';
         name = hit.name;
       } else {
         href = '/collection/' + encodeURIComponent(hit.id || hit.slug);
-        thumb = hit.header ? '/assets/' + hit.header
-              : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
+        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/favicon.png';
         name = hit.displayName || hit.slug;
       }
       // A pinned character carries the same quick actions as every other
@@ -440,7 +510,7 @@
       hero.innerHTML =
         '<div class="profile-avatar">' + avatarInner + '</div>' +
         '<div class="profile-hero-text">' +
-          '<h1>' + esc(title) + '</h1>' +
+          '<h1>' + esc(title) + '<span id="hero-mark"></span></h1>' +
           '<p class="profile-uname">' +
             (claimed ? '@' + esc(p.username) : 'Creator') +
             (bits.length ? ' &middot; ' + bits.join(' &middot; ') : '') + '</p>' +
@@ -453,8 +523,24 @@
           (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
         '</div>';
       fitHeroName();
+      heroMark(p);
 
       if (me && me.isAdmin) renderAdminLinkBox(p);
+    }
+
+    // The creator's mark after their name: the account's own (if they show
+    // it), else the mark of the credit name this page is about.
+    function heroMark(p) {
+      var CS = window.CreatorSymbols;
+      if (!CS) return;
+      CS.load().then(function () {
+        var m = (p.claimed && CS.userMark(p.username)) ||
+          CS.creatorMark((p.creatorNames && p.creatorNames[0]) || authorName || p.displayName || '');
+        var slot = document.getElementById('hero-mark');
+        if (!m || !slot) return;
+        slot.innerHTML = ' ' + CS.markHTML(m, { cls: 'creator-mark-hero' });
+        fitHeroName();
+      });
     }
 
     // Admins can attach a creator name to an account (or detach it) from the
@@ -560,11 +646,9 @@
       var mounted = window.mountCardFilters && window.mountCardFilters({
         grid: 'cr-grid', bar: 'cr-filter-bar',
         toggle: 'cr-filter-toggle', count: 'cr-chars-count',
-        // Unlike the browse listings, a creator page shows Partial pages by
-        // default: this is one person's body of work, and hiding half of it
-        // read as the wiki losing their characters. The chip starts active
-        // so a reader can still filter them out.
-        partialChip: true, partialOn: true, curataChip: true,
+        // Partial pages show, like everywhere else; "Hide Partial" takes
+        // them out on request.
+        partialChip: true, curataChip: true,
         // The reader's saved characters; hidden until one of them is here.
         favChip: true
       });
@@ -592,6 +676,7 @@
       var data = both[0], me = both[1] || {};
       if (!data || data.error) { fail((data && data.error) || 'Could not load this creator.'); return; }
       var p = data.profile;
+      applyProfileTheme(p.theme);
       document.title = (p.displayName || p.username || 'Creator') + ' — BOTC HomeBrew Wiki';
       var d = data.drafts || { characters: [], scripts: [], collections: [] };
       renderHero(p, {
@@ -602,6 +687,11 @@
         drafts: d.characters.length + d.scripts.length + d.collections.length
       }, me);
       renderBody(data, me);
+      // Inside the account page's live preview: hand the drawn page to the
+      // editor, which re-themes it as the settings change.
+      if (window.parent !== window) {
+        try { if (window.parent.__botcProfileFrame) window.parent.__botcProfileFrame(window); } catch (e) { /* another site framed it */ }
+      }
     }).catch(function () { fail('Could not load this creator.'); });
   })();
   </script>

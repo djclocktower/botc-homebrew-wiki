@@ -51,9 +51,17 @@
 
   var TEAMS = [['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
                ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'],
-               ['loric', 'Loric']];
+               ['loric', 'Loric'], ['other', 'Other']];
   var TEAM_INDEX = {};
   TEAMS.forEach(function (t, i) { TEAM_INDEX[t[0]] = i; });
+  /* The team a character is DRAWN under. A team no list here knows is drawn
+     with Other, as everywhere else on the wiki; the row itself is untouched,
+     so the export still says what the page says. */
+  function teamKey(c) {
+    var t = c && c.team;
+    if (t === 'traveler') return 'traveller';
+    return TEAM_INDEX[t] != null ? t : 'other';
+  }
 
   var SITE_ROOT = new URL('.', location.href).href;
 
@@ -489,7 +497,7 @@
     var chars = rosterChars();
     var o = view ? view.order : 'added';
     if (o === 'added' || (view && view.arrange)) return chars;
-    function ti(c) { return TEAM_INDEX[c.team] != null ? TEAM_INDEX[c.team] : 99; }
+    function ti(c) { return TEAM_INDEX[teamKey(c)]; }
     function nightKey(c) {
       var f = Number(c.firstNight) || 0, n = Number(c.otherNight) || 0;
       return (f > 0 ? f : 1e6) * 1e4 + (n > 0 ? n : 1e3);
@@ -514,6 +522,17 @@
     return map;
   }
 
+  /* Creator marks on names: stored on the script's meta, so publish-script
+     shows the same tick and the published page and its JSON carry them too
+     (PageRender.buildPageExport appends each creator's glyph). Here the
+     roster draws the mark itself. */
+  function nameHTML(c) {
+    var CS = window.CreatorSymbols;
+    if (!getMeta().creatorMarks || c.official || !CS) return esc(c.name);
+    var credits = CS.splitCreators(c.creator);
+    var marks = credits.map(function (n) { return CS.markHTMLFor(n, { noFocus: true }); }).join('');
+    return esc(CS.stripCreatorMark(c.name, credits[0] || '') || c.name) + (marks ? ' ' + marks : '');
+  }
   function rowHTML(c, jinxedWith, pos, len) {
     var v = view || {};
     var meta = '';
@@ -552,7 +571,7 @@
       '<p class="sbx-ch-txt">' +
         '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
           (c.official ? ' target="_blank" rel="noopener" title="Official character. Opens the official wiki"' : '') + '>' +
-          esc(c.name) + '</a>' +
+          nameHTML(c) + '</a>' +
         (c.official ? '<span class="sbx-off">official' + ico('external') + '</span> ' : '') +
         marks +
         '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
@@ -583,7 +602,7 @@
     noteMap = charNotes();
     var html = '';
     TEAMS.forEach(function (t) {
-      var group = chars.filter(function (c) { return c.team === t[0]; });
+      var group = chars.filter(function (c) { return teamKey(c) === t[0]; });
       if (!group.length) return;
       var head = window.SBView ? window.SBView.teamHeading(t[0], t[1], view) : t[1];
       var want = sh ? sh[t[0]] : 0;
@@ -888,7 +907,7 @@
     function byName(a, b) { return (a.name || '').localeCompare(b.name || ''); }
     if (how === 'team') {
       TEAMS.forEach(function (t) {
-        var group = browsable.filter(function (c) { return c.team === t[0]; }).sort(byName);
+        var group = browsable.filter(function (c) { return teamKey(c) === t[0]; }).sort(byName);
         if (group.length) groups.push({ team: t, key: t[0], label: t[1], chars: group, rowsEl: null, at: 0 });
       });
     } else {
@@ -959,7 +978,7 @@
       count: 'sb-add-count', search: 'sb-filter',
       sectionSel: '.sbx-add-group', innerSel: '.sbx-add-rows', cardSel: '.sbx-add-row',
       sectionCountSel: '.sbx-add-groupcount', abilitySel: '.sbx-add-ab',
-      label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
+      label: 'Filters', partialChip: true, curataChip: true,
       // The reader's saved characters, and everyone on a saved script or
       // collection (assets/favorites.js). Hidden until one is in the list.
       favChip: true,
@@ -1052,7 +1071,6 @@
         jinxUI.render();
         jinxDirty = false;
       }
-      paintOfficialJinxes();
     } else if (activeTab === 'analyse') {
       if (analyseDirty) { paintAnalysis(); analyseDirty = false; }
     } else if (activeTab === 'meta') {
@@ -1062,39 +1080,6 @@
       paintJsonPreview();
       if (idsUI) idsUI.refresh();
     }
-  }
-  /* Jinxes between two OFFICIAL characters on the script. They are not on
-     the character pages (the official roster carries no jinxes here) and
-     the app applies them itself, so they are shown for information and
-     never written into the export. assets/official-jinxes.json is fetched
-     the first time a script with two official characters opens the tab. */
-  var officialJinxes = null, officialJinxesLoading = false;
-  function paintOfficialJinxes() {
-    var host = $('sbx-jinx-official');
-    if (!host) return;
-    var offs = rosterChars().filter(function (c) { return c.official; });
-    if (offs.length < 2) { host.hidden = true; host.innerHTML = ''; return; }
-    if (!officialJinxes) {
-      if (!officialJinxesLoading) {
-        officialJinxesLoading = true;
-        fetch('assets/official-jinxes.json').then(function (r) { return r.json(); }).then(function (d) {
-          officialJinxes = (d && Array.isArray(d.jinxes)) ? d.jinxes : [];
-          if (activeTab === 'jinx') paintOfficialJinxes();
-        }).catch(function () { officialJinxes = []; });
-      }
-      return;
-    }
-    var ids = {};
-    offs.forEach(function (c) { ids[String(c.slug).replace(/^off-/, '')] = c; });
-    var hits = officialJinxes.filter(function (j) { return j && ids[j.a] && ids[j.b]; });
-    if (!hits.length) { host.hidden = true; host.innerHTML = ''; return; }
-    host.hidden = false;
-    host.innerHTML = '<p class="sjx-off-head" style="margin-top:14px">Official jinxes on this script</p>' +
-      '<p class="sbx-view-hint" style="margin:0 0 6px">Between official characters. The app applies these itself, so they are not in the export.</p>' +
-      '<div class="sjx-list">' + hits.map(function (j) {
-        return '<div class="sjx-row"><div class="sjx-text"><span class="sjx-pair">' + esc(ids[j.a].name) + ' &harr; ' + esc(ids[j.b].name) +
-          '</span><span class="sjx-reason">' + esc(j.text || '') + '</span></div></div>';
-      }).join('') + '</div>';
   }
   function nightView() {
     var o = prefs.night || {};
@@ -1522,7 +1507,7 @@
       ' &middot; ' + need.minion + ' Minion' + (need.minion === 1 ? '' : 's') + ' &middot; ' + need.demon + ' Demon' +
       (need.traveller ? ' &middot; ' + need.traveller + ' Traveller' + (need.traveller === 1 ? '' : 's') : '') + '</p>';
     TEAMS.forEach(function (tm) {
-      var group = chars.filter(function (c) { return c.team === tm[0]; });
+      var group = chars.filter(function (c) { return teamKey(c) === tm[0]; });
       if (!group.length) return;
       var want = need[tm[0]];
       var have = group.filter(function (c) { return b.picks[c.slug]; }).length;
@@ -1553,7 +1538,7 @@
     var b = bagState(), chars = rosterChars(), lines = [];
     lines.push('Bag for ' + b.players + ' players' + (b.travellers ? ' + ' + b.travellers + ' travellers' : ''));
     TEAMS.forEach(function (tm) {
-      var names = chars.filter(function (c) { return c.team === tm[0] && b.picks[c.slug]; }).map(function (c) { return c.name; });
+      var names = chars.filter(function (c) { return teamKey(c) === tm[0] && b.picks[c.slug]; }).map(function (c) { return c.name; });
       if (names.length) lines.push(tm[1] + ': ' + names.join(', '));
     });
     if (b.bluffs.length) lines.push('Demon bluffs: ' + b.bluffs.map(function (sl) { return bySlug[sl] ? bySlug[sl].name : sl; }).join(', '));
@@ -1565,7 +1550,7 @@
     teams.forEach(function (tm) {
       var want = need[tm];
       if (want == null) return;
-      var group = chars.filter(function (c) { return c.team === tm; });
+      var group = chars.filter(function (c) { return teamKey(c) === tm; });
       group.forEach(function (c) { delete b.picks[c.slug]; });
       var pool = group.slice();
       for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
@@ -1840,7 +1825,7 @@
     var m = getMeta();
     return window.PageRender.buildPageExport(
       (m.name || '').trim() || 'My Homebrew Script',
-      (m.author || '').trim(), m.header || '', rosterChars(), m,
+      (m.author || '').trim(), m.logo || m.header || '', rosterChars(), m,
       { credits: creditsFabled() });
   }
   /* What Download and Copy write: the export, minified on request. */
@@ -2019,6 +2004,10 @@
         if (meta.almanac) m.almanac = String(meta.almanac).slice(0, 300);
         if (Array.isArray(meta.bootlegger)) m.bootlegger = meta.bootlegger.slice(0, 20).map(String);
       }
+      // A new script may keep the file itself as its JSON: publish-script's
+      // Custom JSON box, which the published page's JSON box and download
+      // then give instead of the wiki-built one.
+      if (confirm('Keep this file as the script\'s JSON?\n\nOK = when you publish, the script page\'s JSON is exactly this file. Cancel = the wiki builds it from the characters.')) m.customJson = text;
       setMeta(m);
       primeForm();
     }
@@ -2296,6 +2285,7 @@
     $('sb-author').value = m.author || '';
     $('sb-author2').value = m.author || '';
     $('sb-hidetitle').checked = !!m.hideTitle;
+    $('sb-marks').checked = !!m.creatorMarks;
     $('sb-almanac').value = m.almanac || '';
     $('sb-notes').value = m.notes || '';
     if (idsUI) idsUI.set(m.exportIds || null);
@@ -2705,6 +2695,15 @@
       var on = this.checked;
       patchMeta(function (m) { if (on) m.hideTitle = true; else delete m.hideTitle; });
     });
+    $('sb-marks').addEventListener('change', function () {
+      var on = this.checked;
+      patchMeta(function (m) { if (on) m.creatorMarks = true; else delete m.creatorMarks; });
+      paintRoster();
+    });
+    // The live marks (account marks) replace the built-in table.
+    if (window.CreatorSymbols && window.CreatorSymbols.load) {
+      window.CreatorSymbols.load().then(function (list) { if (list && getMeta().creatorMarks) paintRoster(); });
+    }
     $('sb-almanac').addEventListener('input', debounce(function () {
       var v = $('sb-almanac').value.trim().slice(0, 300);
       patchMeta(function (m) { if (v) m.almanac = v; else delete m.almanac; }, 'typed');
@@ -3028,9 +3027,12 @@
   function loadOfficial() {
     return Promise.all([
       firstOf(cachedJSON('assets/roles.json')),
-      firstOf(cachedJSON('assets/night-order.json')).catch(function () { return null; })
+      firstOf(cachedJSON('assets/night-order.json')).catch(function () { return null; }),
+      // Jinxes between two official characters ride the official objects,
+      // so the Jinxes tab lists them like any other (official-roles.js).
+      firstOf(cachedJSON('assets/official-jinxes.json')).catch(function () { return null; })
     ]).then(function (both) {
-      window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function (c) {
+      window.OfficialRoles.buildOfficialRoles(both[0], both[1], both[2]).forEach(function (c) {
         officialChars.push(c);
         bySlug[c.slug] = c;
       });

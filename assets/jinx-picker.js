@@ -26,7 +26,7 @@
 
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion', demon: 'Demon',
-    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other'
   };
 
   function root() {

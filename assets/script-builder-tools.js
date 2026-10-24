@@ -14,10 +14,10 @@
 (function (global) {
   'use strict';
 
-  var TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+  var TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric', 'other'];
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion', demon: 'Demon',
-    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other'
   };
   var TEAM_INDEX = {};
   TEAMS.forEach(function (t, i) { TEAM_INDEX[t] = i; });
@@ -29,15 +29,15 @@
      nobody touched keeps following the site's rule. */
   var SHAPES = [
     { key: 'standard', label: 'Standard', hint: '13 · 4 · 4 · 4, like every official edition',
-      shape: { townsfolk: 13, outsider: 4, minion: 4, demon: 4, traveller: 0, fabled: 0, loric: 0 } },
+      shape: { townsfolk: 13, outsider: 4, minion: 4, demon: 4, traveller: 0, fabled: 0, loric: 0, other: 0 } },
     { key: 'travellers', label: 'Standard + Travellers', hint: 'the same, with three Travellers',
-      shape: { townsfolk: 13, outsider: 4, minion: 4, demon: 4, traveller: 3, fabled: 0, loric: 0 } },
+      shape: { townsfolk: 13, outsider: 4, minion: 4, demon: 4, traveller: 3, fabled: 0, loric: 0, other: 0 } },
     { key: 'teensy', label: 'Teensyville', hint: '6 · 2 · 2 · 1, for five to six players',
-      shape: { townsfolk: 6, outsider: 2, minion: 2, demon: 1, traveller: 0, fabled: 0, loric: 0 } },
+      shape: { townsfolk: 6, outsider: 2, minion: 2, demon: 1, traveller: 0, fabled: 0, loric: 0, other: 0 } },
     { key: 'big', label: 'Big', hint: '15 · 5 · 5 · 5, for a bigger script',
-      shape: { townsfolk: 15, outsider: 5, minion: 5, demon: 5, traveller: 0, fabled: 0, loric: 0 } },
+      shape: { townsfolk: 15, outsider: 5, minion: 5, demon: 5, traveller: 0, fabled: 0, loric: 0, other: 0 } },
     { key: 'none', label: 'No targets', hint: 'just count',
-      shape: { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveller: 0, fabled: 0, loric: 0 } }
+      shape: { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveller: 0, fabled: 0, loric: 0, other: 0 } }
   ];
   var DEFAULT_SHAPE = SHAPES[0].shape;
 

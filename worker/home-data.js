@@ -41,8 +41,9 @@ import WikiRender from '../assets/render-wiki.js';
       // their own creator page, so each of them gets their own turn — and the
       // page they share can be drawn under either name. Keyed case-folded so
       // one creator with two spellings is one creator; the display name is
-      // whichever spelling was seen first.
-      var byKey = {}, keys = [];
+      // whichever spelling was seen first. No prototype: a creator called
+      // "Constructor" found Object's own and threw, taking /api/home down.
+      var byKey = Object.create(null), keys = [];
       pool.forEach(function(c){
         Creators.splitCreators(c.creator).forEach(function(nm){
           var k = nm.toLowerCase();
@@ -96,7 +97,7 @@ export function homeData(characters, collections, scripts, day) {
     stats: { characters: characters.length, collections: groups.length, scripts: scripts.length,
       creators: creators.size, tags: tags.size, jinxed: characters.filter(c => c.jinxes?.length).length },
     collections: groups, scripts: scripts.map(s => ({ ...pick(s, tileFields), count: (s.characters || []).length })),
-    icons: icons(characters), recent: Classify.eligible(characters.slice().reverse()).slice(0, 8).map(c => pick(c, cardFields)),
+    icons: icons(characters), recent: characters.slice().reverse().slice(0, 8).map(c => pick(c, cardFields)),
     featured: featured ? { ...pick(featured, [...cardFields, 'lede','quote','ability','creator','appearsIn']),
       plainLede: WikiRender.plainText(featured.lede || featured.quote || '') } : null
   };

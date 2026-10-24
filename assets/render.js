@@ -11,12 +11,39 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function tok(s) {
-    return esc(s).replace(/\[\[(.+?)\]\]/g, '<span class="tok">$1</span>');
+    // Bounded like the engine's own [[…]], so a long run of '[[' that never
+    // closes is one pass rather than a rescan of the line from every one.
+    return esc(s).replace(/\[\[([^\]\n]{1,160})\]\]/g, '<span class="tok">$1</span>');
+  }
+  /* `\s+$` rescans a run of spaces from every space in it when anything
+     follows the run — quadratic on a long one — so the trailing trim is done
+     by hand. */
+  function trimEnd(s) {
+    s = String(s);
+    var e = s.length;
+    while (e > 0 && /\s/.test(s.charAt(e - 1))) e--;
+    return s.slice(0, e);
   }
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric',
+    other: 'Other'
   };
+  /* "Other" is the wiki's own eighth type, for characters of a homebrew type
+     the official game does not have. It is drawn in the wiki's purple, takes
+     a page-only display name (`typeName`, "Lycan"), and leaves the wiki as
+     Loric, because the official app's script JSON knows only its seven. */
+  var OTHER_EXPORT_TEAM = 'loric';
+  function typeNameOf(d) {
+    return (d && d.team === 'other' && String(d.typeName || '').trim()) || '';
+  }
+  var OTHER_NOTE = 'Not an official character type. Exported as Loric in script JSON.';
+  /* The owner may pick which official team an Other character leaves as
+     (`exportTeam`, Advanced Options); Loric when they picked none. */
+  var EXPORT_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+  function exportTeamOf(d) {
+    return d && EXPORT_TEAMS.indexOf(d.exportTeam) >= 0 ? d.exportTeam : OTHER_EXPORT_TEAM;
+  }
   /* The same seven teams as one solid colour each, mirroring the :root vars
      in styles.css that the {{townsfolk|…}} family of marks paints with
      (--good, --outsider, --minion, --evil, --fabled, --loric). It exists for
@@ -28,7 +55,8 @@
      the answer this file already gives when the split cannot be drawn. */
   var TEAM_COLOR = {
     townsfolk: '#2C7BD0', outsider: '#1a6a80', minion: '#b5441a',
-    demon: '#9A0D12', traveller: '#2C7BD0', fabled: '#8f6d1a', loric: '#2f6b3f'
+    demon: '#9A0D12', traveller: '#2C7BD0', fabled: '#8f6d1a', loric: '#2f6b3f',
+    other: '#4a2548'
   };
 
   /* ── a character's icons ────────────────────────────────────────────
@@ -87,6 +115,18 @@
     return n ? ' style="--art-scale:' + (n / 100) + '"' : '';
   }
 
+  /* The DISPLAY copy of a piece of art: media/full/{art path}.webp, the
+     picture at its own size as WebP, made in the browser beside the original
+     (assets/art-thumb.js) and served by the Worker with the original standing
+     in until it exists (serveMedia). Only art under art/ has one — not a GIF,
+     not the printable token. '' when there is none to ask for. The Worker
+     (mediaParts) and render-page.js (displaySrc) hold the same rule. */
+  function artDisplayPath(rel) {
+    rel = String(rel || '');
+    return /^art\/[^/?#]+\.(png|jpe?g|webp)$/i.test(rel) && !/-token\.[a-z]+$/i.test(rel)
+      ? 'media/full/' + rel + '.webp' : '';
+  }
+
   function artVersions(d, root) {
     d = d || {};
     var arr = Array.isArray(d.image) ? d.image : [];
@@ -112,6 +152,10 @@
         // what an <img> on the page loads: the relative file where there is
         // one, so a page renders against its own root and R2 serves it.
         src: rel ? (prefix + 'assets/' + rel + ver) : abs,
+        // what the /c/ emblem draws: the display copy where the art has one
+        // (the same picture as WebP), else `src`. Never exported.
+        display: artDisplayPath(rel) ? (prefix + 'assets/' + artDisplayPath(rel) + ver)
+          : (rel ? (prefix + 'assets/' + rel + ver) : abs),
         // what leaves the wiki — the JSON the official app reads, and the
         // Token Tool fetching art across origins. Always absolute.
         url: abs || (rel ? ART_ABS + rel : '')
@@ -134,6 +178,7 @@
           label: 'Printable token',
           rel: trel,
           src: trel ? (prefix + 'assets/' + trel + ver) : tabs,
+          display: trel ? (prefix + 'assets/' + trel + ver) : tabs,
           url: tabs || (trel ? ART_ABS + trel : '')
         });
       }
@@ -354,9 +399,11 @@
     '</div>';
   }
 
+  // A plain URL: every caller escapes it into its attribute, and escaping it
+  // here too turned "Tea & Crumpets" into a link to "Tea_&amp;amp;_…".
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
-      esc(String(name).trim().replace(/\s+/g, '_'));
+      String(name).trim().replace(/\s+/g, '_');
   }
   // Map known slugified IDs back to proper display names for jinx links
   var JINX_ID_NAMES = {
@@ -403,6 +450,24 @@
     var u = OFFICIAL_ICON_URLS[slugId(id)];
     return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : '';
   }
+  /* What a page DRAWS for an official character: the 192px self-hosted copy
+     (assets/icons-sm/{id}.webp, migration/make-small-icons.js) instead of the
+     CDN's 400px file on another origin. Display only: exports and the Token
+     Tool keep officialIconUrl(). The map is keyed by slugId of the id and of
+     the name, which are the same string for every official character, so a
+     key it knows names a file that exists; iconFallbackAttrs() falls back to
+     the CDN copy if one ever does not. '' when the map does not know it. */
+  function officialIconSmall(id, root) {
+    var k = slugId(id);
+    return officialIconUrl(k) ? (root || '') + 'assets/icons-sm/' + k + '.webp' : '';
+  }
+  /* The onerror for an <img> drawing officialIconSmall(): try the CDN copy
+     (data-fb) once, then run `then` (what the onerror used to do). */
+  function iconFallbackAttrs(fb, then) {
+    return (fb ? ' data-fb="' + esc(fb) + '"' : '') +
+      ' onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.removeAttribute(\'data-fb\')}' +
+      (then ? 'else{' + then + '}' : '') + '"';
+  }
 
   /* Official display names, keyed the same way. Jinx names are typed by hand,
      so the wiki carries "leviathan", "pithag" and "plaguedoctor" where it
@@ -425,6 +490,20 @@
     if (!OFFICIAL_NAMES || !id) return '';
     var n = OFFICIAL_NAMES[slugId(id)];
     return (typeof n === 'string' && n) ? n : '';
+  }
+  /* Does this jinx name an OFFICIAL character? The one test behind "official
+     beats this wiki" (gotcha 8) for everything that matches a jinx without
+     drawing it: the Worker's jinx index (mirroring, /jinxes), a script's
+     pairs and the importers' warning. Without it a homebrew page whose
+     identity is an official id ("atheist") collected every jinx written with
+     the real one. Answers the official id it matched, or ''. `names` is an
+     official-name map; the registry by default. */
+  function jinxOfficialId(j, names) {
+    names = names || OFFICIAL_NAMES;
+    if (!names || !j) return '';
+    var id = slugId(String(j.id || '').replace(/_festival_of_lanterns$/, ''));
+    var nm = slugId(jinxDisplayName(j));
+    return (id && names[id]) ? id : (nm && names[nm]) ? nm : '';
   }
 
   /* This wiki's own characters, keyed by normJinxId() of slug and of name, so a
@@ -498,10 +577,12 @@
 
     // 2. An official character keeps the official icon and the official wiki,
     //    and takes its proper name back from roles.json.
-    var offIcon = officialIconUrl(iconId) || officialIconUrl(nm);
-    if (offIcon) {
+    var offKey = officialIconUrl(iconId) ? iconId : (officialIconUrl(nm) ? nm : '');
+    if (offKey) {
       var offNm = officialName(iconId) || officialName(nm) || nm;
-      return { name: offNm, href: jinxURL(offNm), iconSrc: offIcon,
+      // Drawn small: the self-hosted copy, with the CDN one as its fallback.
+      return { name: offNm, href: jinxURL(offNm), iconSrc: officialIconSmall(offKey, root),
+               iconFallback: officialIconUrl(offKey),
                external: true, slug: '', team: '' };
     }
 
@@ -544,7 +625,7 @@
      never changes. */
   var REL_RIBBONS = { townsfolk: 'good', outsider: 'good', minion: 'evil',
                       demon: 'evil', traveller: 'traveller', traveler: 'traveller',
-                      fabled: 'fabled', loric: 'loric' };
+                      fabled: 'fabled', loric: 'loric', other: 'other' };
   function resolveRelatedTarget(r, root) {
     root = root || '';
     var nm = String(r.name || '').trim();
@@ -566,8 +647,8 @@
       var key = r.id || nm;
       var offNm = officialName(slugId(key)) || nm || String(r.id || '');
       return { name: offNm, href: jinxURL(offNm),
-               iconSrc: officialIconUrl(slugId(key)), external: true,
-               ribbon: REL_RIBBONS[r.team] || 'page' };
+               iconSrc: officialIconSmall(key, root), iconFallback: officialIconUrl(slugId(key)),
+               external: true, ribbon: REL_RIBBONS[r.team] || 'page' };
     }
     if (type === 'page')       return { name: nm, href: root + 'p/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
     if (type === 'script')     return { name: nm, href: root + 's/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
@@ -586,7 +667,7 @@
       if (!t || !t.name) return '';
       var icon = t.iconSrc ?
         '<img loading="lazy" decoding="async" class="rel-ico" src="' + esc(t.iconSrc) + '" alt=""' +
-        ' onerror="this.style.display=\'none\';this.closest(\'.rel-card\').classList.add(\'noicon\')">' : '';
+        iconFallbackAttrs(t.iconFallback, 'this.style.display=\'none\';this.closest(\'.rel-card\').classList.add(\'noicon\')') + '>' : '';
       // The embed: an optional preview image on a custom link, https-only
       // (enforced again by sanitizeRelated — this test is the render-side
       // seatbelt for rows written before the field existed).
@@ -623,6 +704,15 @@
     var c = creatorsApi();
     return (c && c.creatorSymbol) ? c.creatorSymbol(name) : '';
   }
+  // A creator's mark as markup ('' when they have none or chose to hide it).
+  function creatorMarkHTML(name, opts) {
+    var c = creatorsApi();
+    return (c && c.markHTMLFor) ? c.markHTMLFor(name, opts) : '';
+  }
+  function nameWithMarks(name, creator) {
+    var c = creatorsApi();
+    return (c && c.nameWithMarks) ? c.nameWithMarks(name, creator) : String(name == null ? '' : name);
+  }
   function stripCreatorMark(name, creator) {
     var c = creatorsApi();
     return (c && c.stripCreatorMark) ? c.stripCreatorMark(name, creator)
@@ -652,7 +742,7 @@
      What is enforced is the shape — a known type, a plain string name, and
      numbers/strings in the optional slots — so nothing can smuggle an object
      into somebody's exported JSON. */
-  var SPECIAL_TYPES = ['selection', 'ability', 'signal', 'vote', 'reveal', 'player'];
+  var SPECIAL_TYPES = ['selection', 'ability', 'signal', 'vote', 'reveal', 'player', 'reminder'];
   var SPECIAL_TIMES = ['pregame', 'day', 'night', 'firstNight', 'firstDay', 'otherNight', 'otherDay'];
   function sanitizeSpecial(list) {
     if (!Array.isArray(list)) return [];
@@ -663,10 +753,9 @@
       var name = String(s.name || '').trim().slice(0, 60);
       if (!name || SPECIAL_TYPES.indexOf(type) === -1) return;
       var o = { type: type, name: name };
-      if (s.value !== undefined && s.value !== null && s.value !== '') {
-        var v = Number(s.value);
-        if (!isNaN(v)) o.value = v;
-      }
+      // A number, or (the schema allows either) a short text value.
+      if (typeof s.value === 'number') { if (isFinite(s.value)) o.value = s.value; }
+      else if (typeof s.value === 'string' && s.value.trim()) o.value = s.value.trim().slice(0, 50);
       if (s.time && SPECIAL_TIMES.indexOf(String(s.time)) !== -1) o.time = String(s.time);
       if (s.global) {
         var g = String(s.global).trim().slice(0, 20);
@@ -808,7 +897,7 @@
     var o = {
       id: exportId(d, opts),
       name: d.name || '',
-      team: d.team || 'townsfolk',
+      team: d.team === 'other' ? exportTeamOf(d) : (d.team || 'townsfolk'),
       ability: d.ability || ''
     };
     /* image as an array (required by the official script tool), in the
@@ -820,28 +909,35 @@
        one as GOOD — so its evil token would render as its good one and it
        would have no evil token at all. Repeat the unaligned icon into the
        good slot instead, which is what every official traveller does anyway
-       (all 18 ship a single _g image used for every state). That repeat is
-       deliberate, so this is the one path that must not be de-duplicated. */
+       (all 18 ship a single _g image used for every state).
+
+       A traveller's array is POSITIONAL, so it is never de-duplicated: art
+       and good art that happen to be one file still export [A, A, E], where
+       dropping the repeat would hand the app [A, E] and the evil token in
+       the good slot. Everybody else exports at most [regular, flipped] — a
+       third slot left over from when the page was a traveller is hidden in
+       the editors, never cleared, and has no position to go to. */
     var vers = artVersions(d, '');
     var byKey = {};
     for (var vi = 0; vi < vers.length; vi++) byKey[vers[vi].key] = vers[vi];
-    var seq, repeated = false;
-    if (isTraveller(d.team) && byKey.alt2 && !byKey.alt) {
-      seq = [byKey.main, byKey.main, byKey.alt2];
-      repeated = true;
-    } else {
-      seq = [byKey.main, byKey.alt, byKey.alt2];
-    }
+    function url(v) { return (v && v.url) || ''; }
     var imgs = [];
-    for (var si = 0; si < seq.length; si++) {
-      var u = seq[si] && seq[si].url;
-      if (!u) continue;
-      if (!repeated && imgs.indexOf(u) !== -1) continue;
-      imgs.push(u);
+    if (isTraveller(d.team)) {
+      var un = url(byKey.main) || url(byKey.alt) || url(byKey.alt2);
+      if (un) imgs.push(un);
+      if (url(byKey.alt2)) imgs.push(url(byKey.alt) || un, url(byKey.alt2));
+      else if (url(byKey.alt)) imgs.push(url(byKey.alt));
+    } else {
+      [url(byKey.main), url(byKey.alt)].forEach(function (u) {
+        if (u && imgs.indexOf(u) === -1) imgs.push(u);
+      });
     }
     if (imgs.length) o.image = imgs;
     if (d.edition) o.edition = d.edition;
-    var fl = d.flavor || d.quote;
+    // The quote first, as the page reads it: an import stores both, the
+    // editor keeps the old `flavor` beside the one being edited, and the
+    // export carried that stale line while the page showed the new one.
+    var fl = d.quote || d.flavor;
     if (fl) o.flavor = plainText(String(fl).replace(/^["']|["']$/g, ''));
     o.firstNight = Number(d.firstNight) || 0;
     if (d.firstNightReminder) o.firstNightReminder = d.firstNightReminder;
@@ -901,7 +997,7 @@
      A page can credit several people ("Taiyi (太一), Saki") — each of them is
      credited separately, and a co-written character is listed under each. */
   function creditsByCreator(chars) {
-    var order = [], byName = {};
+    var order = [], byName = Object.create(null);
     (chars || []).forEach(function (c) {
       if (!c || c.official) return;
       splitCreators(c.creator).forEach(function (name) {
@@ -942,9 +1038,12 @@
   /* ── Find jinxes that are active between characters on the same script ──
      Takes an array of character objects; returns [{a, b, text}] where `a`
      carries the jinx and `b` is the matching character also in the list. */
+  // Accents fold away exactly as slugId() folds them, so a name and an id
+  // written for it ('Médium', 'medium') are one key, not two.
   function normJinxId(id) {
     return String(id || '').replace(/_festival_of_lanterns$/, '')
-      .toLowerCase().replace(/[^a-z0-9]/g, '');
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
   }
 
   /* The SET-QUALIFIED keys a character also answers to, on top of its
@@ -970,7 +1069,7 @@
      which is what every jinx typed by hand relies on. */
   function jinxQualKeys(c) {
     if (!c) return [];
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
 
     var nm = normJinxId(c.name);
@@ -1018,7 +1117,7 @@
         if (a.id) sets.push(a.id);
       });
     }
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     sets.forEach(function (sname) {
       var k = normJinxId(sname);
       if (k && !seen[k]) { seen[k] = 1; out.push(k); }
@@ -1046,7 +1145,7 @@
      resolves at step 3 exactly as it always did. */
   function jinxLookupKeys(j, host) {
     if (!j) return [];
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
     var nm = jinxDisplayName(j);
     var nameKey = normJinxId(nm);
@@ -1054,7 +1153,10 @@
     // `warden` is the name written twice, and putting it first would answer
     // the question before the host's own set was ever asked — which is the
     // whole tie-break, and exactly the case with four Wardens to choose from.
-    var idKey = normJinxId(j.id || slugId(nm));
+    // With no id there is nothing more to say than the name: slugId(name)
+    // differs from the name's own key only by its 50-character cut, which
+    // would put it first for no reason.
+    var idKey = j.id ? normJinxId(j.id) : nameKey;
     if (idKey !== nameKey) push(idKey);
     if (nameKey) {
       charSetKeys(host).forEach(function (k) { push(nameKey + k); });
@@ -1073,15 +1175,27 @@
      character. `byName` keeps EVERY page of a given name, which is what tells
      a tool that a name is ambiguous rather than just resolving it. */
   function jinxCharIndex(chars, row) {
-    var byKey = {}, byName = {}, items = [];
+    // Keyed by names people type, and a character can be called Constructor:
+    // a plain {} would find Object.prototype's member there and never let it
+    // register.
+    var byKey = Object.create(null), byName = Object.create(null), items = [];
     (chars || []).forEach(function (c) {
       if (!c || !c.slug) return;
       var v = row ? row(c) : c;
       if (!v) return;
       items.push({ c: c, v: v });
+      var sk = normJinxId(c.slug);
+      if (sk && !byKey[sk]) byKey[sk] = v;
       var nk = normJinxId(c.name);
-      [normJinxId(c.slug), nk].forEach(function (k) { if (k && !byKey[k]) byKey[k] = v; });
       if (nk) (byName[nk] = byName[nk] || []).push(v);
+    });
+    // Names only after EVERY identity: the picker stores a jinx by identity,
+    // and a name key registered first stole it — "Mystic ∇" (townsfolk,
+    // mystic-the-academy) took `mystic`, the Outsider's identity, so a jinx
+    // picked as the Outsider drew the Townsfolk.
+    items.forEach(function (it) {
+      var nk = normJinxId(it.c.name);
+      if (nk && !byKey[nk]) byKey[nk] = it.v;
     });
     items.forEach(function (it) {
       jinxQualKeys(it.c).forEach(function (k) { if (!byKey[k]) byKey[k] = it.v; });
@@ -1115,7 +1229,7 @@
     // needs setOfficialNames() to have been called — without it every jinx
     // with an official character looks homebrew, which is a warning on almost
     // every import.
-    out.official = !!(officialName(j.id || '') || officialName(out.name));
+    out.official = !!jinxOfficialId(j);
     if (out.official) return out;
     var keys = jinxLookupKeys(j, host), hit = '';
     for (var i = 0; i < keys.length && !out.picked; i++) {
@@ -1128,7 +1242,7 @@
   }
 
   function findScriptJinxes(chars) {
-    var byId = {};
+    var byId = Object.create(null);
     chars.forEach(function (c) {
       [slugId(c.name), normJinxId(c.jsonId), (c.slug || '').replace(/-/g, '')]
         .forEach(function (id) { if (id) byId[id] = c; });
@@ -1139,12 +1253,18 @@
     chars.forEach(function (c) {
       jinxQualKeys(c).forEach(function (id) { if (!byId[id]) byId[id] = c; });
     });
-    var out = [], seen = {};
+    var out = [], seen = Object.create(null);
     chars.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
         // An entry written by the jinx picker names its target outright; the
         // older ones have to be matched by id or by name.
         var target = j.slug && byId[normJinxId(j.slug)];
+        // One naming an official character pairs only with that official
+        // character's roster entry ('off-{id}'), never a homebrew namesake.
+        // Not on the roster as an entry: officialJinxesOnScript in
+        // render-page.js draws it from the bare name instead.
+        var offId = !target && jinxOfficialId(j);
+        if (offId && !(target = byId['off' + offId])) return;
         if (!target) {
           var ks = jinxLookupKeys(j, c);
           for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
@@ -1239,19 +1359,56 @@
     W.setReminderTokens(list);
   }
 
-  function characterBody(d, artSrc, root, opts) {
-    var team = d.team || 'townsfolk';
-    var label = TEAM_LABEL[team] || team;
+  /* The Alternate Almanac (`almanacAlt`), the way the official wiki
+     gives God of Ug a "Big Word Mode" and an "Ug Mode": the same character,
+     its almanac written twice, and a switch at the top of the page. Only the
+     prose and the shown ability differ; the name, team, icon, jinxes and the
+     JSON export stay the main version's. A box left empty in the second
+     version reads the main version's text, so a variant only has to write
+     what is different. Also the save's sanitizer (worker.js), so the shape
+     has one owner. */
+  var ALMANAC_ALT_TEXT = ['label', 'altLabel', 'ability', 'quote', 'lede', 'creator', 'iconBy', 'translatedBy'];
+  var ALMANAC_ALT_LISTS = ['summaryBullets', 'howToRun', 'callout', 'examples', 'tips', 'bluffing', 'fighting'];
+  // `hasIcon`: the editors' preview of an icon picked but not uploaded yet,
+  // which counts as content on its own.
+  function sanitizeAlmanacAlt(o, hasIcon) {
+    if (!o || typeof o !== 'object') return null;
+    var out = {}, any = !!hasIcon;
+    ALMANAC_ALT_TEXT.forEach(function (k) {
+      var v = String(o[k] == null ? '' : o[k]).trim().slice(0, /abel$/i.test(k) ? 40 : 4000);
+      if (v) out[k] = v;
+    });
+    /* Its own icon: the -alm slot beside the character's art (the editors
+       upload it there), or a picture hosted elsewhere. Anything else is
+       dropped, since both end up in an <img src>. */
+    var art = String(o.art || '');
+    if (/^art\/[a-z0-9-]{1,120}\.(png|webp|jpe?g|gif)$/i.test(art)) out.art = art;
+    var img = String(o.image || '').trim();
+    if (/^https:\/\/[^\s"'<>]{1,500}$/i.test(img)) out.image = img;
+    ALMANAC_ALT_LISTS.forEach(function (k) {
+      var list = (Array.isArray(o[k]) ? o[k] : [o[k]])
+        .filter(function (x) { return typeof x === 'string' && x.trim(); })
+        .map(function (x) { return x.trim().slice(0, 4000); });
+      if (list.length) { out[k] = list; any = true; }
+    });
+    for (var k in out) if (k !== 'label' && k !== 'altLabel') any = true;
+    return any ? out : null;
+  }
+
+  /* The almanac sections of one version. `sfx` keeps the section anchors
+     unique when two versions are on the page. */
+  function almanacParts(d, root, sfx) {
     var bullets  = (d.summaryBullets || []).filter(function (x) { return x && x.trim(); });
     var paras    = (d.howToRun || []).filter(function (x) { return x && x.trim(); });
     var examples = (d.examples || []).filter(function (x) { return x && x.trim(); });
     var tips     = (d.tips || []).filter(function (x) { return x && x.trim(); });
     var bluffing = (d.bluffing || []).filter(function (x) { return x && x.trim(); });
     var fighting = (d.fighting || []).filter(function (x) { return x && x.trim(); });
-    var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
+    function sech(id, title) {
+      return '<div class="gen-sech-wrap" id="' + id + sfx + '"><h2 class="gen-sech"><a class="sec-anchor" href="#' + id + sfx + '">' + title + '</a></h2></div>';
+    }
 
-    var summaryCol =
-      '<div class="gen-sech-wrap" id="sec-summary"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-summary">Summary</a></h2></div>' +
+    var summaryCol = sech('sec-summary', 'Summary') +
       /* The ability is the one prose field left deliberately escaped. It is
          not writing ABOUT the character, it is the character's rule: it is
          exported verbatim into official-schema JSON that the app and every
@@ -1276,16 +1433,15 @@
 
     var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
       callouts.map(function (c) { return '<div class="callout">' + inlineLinks(c) + '</div>'; }).join('');
-    var howCol = howColBody ?
-      '<div class="gen-sech-wrap" id="sec-howtorun"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-howtorun">How to Run</a></h2></div>' + howColBody : '';
+    var howCol = howColBody ? sech('sec-howtorun', 'How to Run') + howColBody : '';
 
     var examplesBlock = examples.length ?
-      ('<div class="examples"><div class="gen-sech-wrap" id="sec-examples"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-examples">Examples</a></h2></div>' +
+      ('<div class="examples">' + sech('sec-examples', 'Examples') +
         examples.map(function (e) { return '<div class="ex">' + inlineLinks(e) + '</div>'; }).join('') +
         '</div>') : '';
 
     var tipsBlock = tips.length ?
-      ('<div class="tips"><div class="gen-sech-wrap" id="sec-tips"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-tips">Tips &amp; Tricks</a></h2></div>' +
+      ('<div class="tips">' + sech('sec-tips', 'Tips &amp; Tricks') +
         '<ul>' + tips.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var charName = esc(d.name || 'Character');
@@ -1295,6 +1451,51 @@
     var fightingBlock = fighting.length ?
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
+
+    var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
+    return {
+      body: (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
+        examplesBlock + tipsBlock + bluffingBlock + fightingBlock,
+      quote: quoteClean.trim() ? '<p class="quote">"' + inlineLinks(quoteClean) + '"</p>' : ''
+    };
+  }
+
+  function characterBody(d, artSrc, root, opts) {
+    var team = d.team || 'townsfolk';
+    var label = typeNameOf(d) || TEAM_LABEL[team] || team;
+    var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
+    var main = almanacParts(d, root, '');
+    /* With an Alternate Almanac, both are on the page and two radio buttons
+       choose which shows — CSS only (:has, in styles.css under .alm-switch),
+       so the page, the editors' preview and a reader with scripts off all
+       switch the same way. The radios carry the page's slug in their name so
+       two characters in one document cannot share a group. */
+    var altSrc = (opts && opts.altArtSrc) || '';
+    var alt = sanitizeAlmanacAlt(d.almanacAlt, altSrc);
+    var almSwitch = '', parchBody = main.body, quoteHTML = main.quote;
+    /* The Alternate Almanac as a whole character: its own text, credits and
+       icon over the main one's. An icon of its own replaces every version
+       of the main one (alternates and printable token included). */
+    var altD = alt ? Object.assign({}, d, alt) : null;
+    var altIcon = alt && (alt.art || alt.image || altSrc);
+    if (altIcon) {
+      altD.art = alt.art || ''; altD.image = alt.image || '';
+      ['artAlt', 'imageAlt', 'artAlt2', 'imageAlt2', 'tokenArt'].forEach(function (k) { delete altD[k]; });
+    }
+    // Both versions of one piece of the page, or the piece once when the
+    // Alternate Almanac does not change it.
+    function pair(a, b) {
+      return (!alt || a === b) ? a : '<div class="alm-ver alm-v0">' + a + '</div><div class="alm-ver alm-v1">' + b + '</div>';
+    }
+    if (alt) {
+      var two = almanacParts(altD, root, '-alt');
+      var grp = 'alm-' + String(d.slug || 'page').replace(/[^a-z0-9-]/gi, '');
+      almSwitch = '<div class="alm-switch" role="radiogroup" aria-label="Almanac version" data-user-content>' +
+        '<input type="radio" class="alm-r0" name="' + grp + '" id="' + grp + '-0" checked><label for="' + grp + '-0">' + esc(alt.label || 'Standard') + '</label>' +
+        '<input type="radio" class="alm-r1" name="' + grp + '" id="' + grp + '-1"><label for="' + grp + '-1">' + esc(alt.altLabel || 'Alternate Almanac') + '</label></div>';
+      parchBody = pair(main.body, two.body);
+      quoteHTML = pair(main.quote, two.quote);
+    }
 
     // Tags row. The Curata wreath hangs off the end of it behind a hairline
     // rule: it is a mark, not a tag, so it is never a link and never joins the
@@ -1314,12 +1515,16 @@
         mark + '</dd>'
       : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
+    function infoFor(d) { return '<dl class="info"><dt>Type:</dt><dd>' +
+      // A renamed Other type is its own thing, not the Other team page.
+      (typeNameOf(d) ? esc(label) : '<a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a>') +
+      (team === 'other' ? '<span class="type-note">' + OTHER_NOTE.replace('Loric', TEAM_LABEL[exportTeamOf(d)]) + '</span>' : '') + '</dd>' +
       (splitCreators(d.creator).length
         ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +
           splitCreators(d.creator).map(function (n) {
+            var mk = creatorMarkHTML(n);
             return '<a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(n) + '">' + esc(n) + '</a>' +
-              (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
+              (mk ? ' ' + mk : '');
           }).join('<span class="tag-sep">, </span>') +
           '</dd>' : '') +
       appearsInRow(d, root, opts && opts.appearsInHref) +
@@ -1333,13 +1538,22 @@
          the engine absent it falls back to the plain escaped text. */
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd class="info-credit">' + inlineText(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
-      '</dl>';
+      '</dl>'; }
+    var info = pair(infoFor(d), alt ? infoFor(altD) : '');
 
     // Copy-link button lives in the top-right corner *inside* the info card so
-    // it never crowds the title (see .card-actions in styles.css).
-    var copyBtn = '<button type="button" class="copy-link-btn" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link</button>';
+    // it never crowds the title (see .card-actions in styles.css). Beside it,
+    // a square Snapshot button (charpage.js answers it); while that is there
+    // the link button is its icon alone. The owner can turn either off in the
+    // editor's Advanced Options, and with Snapshot off the link button is the
+    // labelled tab it always was.
+    var snapBtn = d.hideSnapshot ? '' :
+      '<button type="button" class="snap-page-btn" title="Snapshot: this whole page as one picture" aria-label="Snapshot"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>';
+    var copyBtn = d.hideCopyLink ? '' :
+      '<button type="button" class="copy-link-btn' + (snapBtn ? ' copy-link-short' : '') +
+      '" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' +
+      (snapBtn ? '' : ' Copy link') + '</button>';
 
-    var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
     /* The icon, and the other versions of it. A traveller has a good and an
        evil token, so the picture is no longer a mystery click: a faint row of
        pips underneath says how many there are and which one is showing.
@@ -1351,11 +1565,15 @@
        buttons read as app chrome; the name rides on each pip's title and
        accessible name instead, and the icon itself is the real answer to
        "which one is this". */
+    function emblemFor(d, artSrc) {
     var artVers = artVersions(d, root);
     // The caller resolved slot one itself (the Worker builds it from the row
     // and its own address depth), so let it win where it has an answer.
-    if (artVers.length && artSrc) artVers[0].src = artSrc;
-    else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, url: '' }];
+    // An explicit picture (the editors' preview of a file just picked) is
+    // what the emblem shows, display copy or not. The /c/ route passes the
+    // art's own address, which changes nothing: that keeps its display copy.
+    if (artVers.length && artSrc && artSrc !== artVers[0].src) artVers[0].src = artVers[0].display = artSrc;
+    else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, display: artSrc, url: '' }];
     /* The owner's "display size": how big the icon is DRAWN on this page,
        and nowhere else. It is a CSS variable on the emblem, which the
        stylesheet multiplies into the transform every emblem already has, so
@@ -1375,9 +1593,17 @@
        keep the owner's --art-scale off it — that setting is how big the
        ICON is displayed, and a token is not an icon. */
     function emblemClass(v) { return 'emblem' + (v.key === 'token' ? ' emblem-token' : ''); }
+    /* The emblem draws each version's DISPLAY copy (see artDisplayPath):
+       the same picture as the PNG at a fifth of the bytes. width/height give
+       the box its shape before the file arrives (the art standard is a
+       591-square frame; .emblem fixes the aspect ratio in CSS anyway, so a
+       legacy non-square icon still lays out exactly as before). The picture
+       on screen is the page's main image, so it asks for priority; the
+       others keep waiting on data-src. */
+    var EMB_DIM = ' width="591" height="591"';
     var emblem = '';
     if (artVers.length === 1) {
-      emblem = '<img class="' + emblemClass(artVers[0]) + '"' + scaleAttr + ' src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
+      emblem = '<img class="' + emblemClass(artVers[0]) + '"' + scaleAttr + EMB_DIM + ' src="' + esc(artVers[0].display) + '" alt="' + esc(d.name) + '" decoding="async" fetchpriority="high">';
     } else if (artVers.length) {
       /* Every version is its own <img>, stacked — see the icon gallery
          above for why swapping one src is not good enough. Only the one on
@@ -1388,10 +1614,10 @@
       emblem = '<div class="emblem-stack" data-at="0"' + scaleAttr +
         ' title="Swipe or click to see the other versions of this icon">' +
         artVers.map(function (v, i) {
-          return '<img class="' + emblemClass(v) + (i === 0 ? ' is-on' : '') + '" ' +
-            (i === 0 ? 'src' : 'data-src') + '="' + esc(v.src) +
+          return '<img class="' + emblemClass(v) + (i === 0 ? ' is-on' : '') + '"' + EMB_DIM + ' ' +
+            (i === 0 ? 'src' : 'data-src') + '="' + esc(v.display) +
             '" alt="' + (i === 0 ? esc(d.name) : '') + '"' +
-            (i === 0 ? '' : ' aria-hidden="true"') +
+            (i === 0 ? ' fetchpriority="high"' : ' aria-hidden="true"') +
             ' draggable="false" decoding="async">';
         }).join('') + '</div>' +
         '<div class="emblem-versions" role="group" aria-label="Versions of this icon">' +
@@ -1405,10 +1631,15 @@
             '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"></button>';
         }).join('') + '</div>';
     }
+    return emblem;
+    }
+    var emblem = emblemFor(d, artSrc);
+    // The hidden version's icon waits until the reader switches to it.
+    emblem = pair(emblem, altIcon ? emblemFor(altD, altSrc).replace(' fetchpriority="high"', ' loading="lazy"') : emblem);
     var infoCard = '<div class="card char-infocard">' +
-      '<div class="card-actions">' + copyBtn + '</div>' +
+      (snapBtn || copyBtn ? '<div class="card-actions">' + snapBtn + copyBtn + '</div>' : '') +
       emblem +
-      (quoteClean.trim() ? '<p class="quote">"' + inlineLinks(quoteClean) + '"</p>' : '') +
+      quoteHTML +
       pronounceBlock(d) +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
@@ -1423,7 +1654,7 @@
         '">' + esc(j.mirroredFrom.name) + '</a></span>' : '';
       return '<div class="jinx' + (t.iconSrc ? '' : ' noicon') + '">' +
         (t.iconSrc ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(t.iconSrc) + '" alt=""' +
-        ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
+        iconFallbackAttrs(t.iconFallback, 'this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')') + '>'
         : '') +
         '<div class="jbody">' +
         '<a class="jname ' + al + '" href="' + esc(t.href) + '"' +
@@ -1461,7 +1692,7 @@
       var content = String((b && b.content) || '');
       if (!title && !content.trim()) return '';
       var body = content.split(/\n{2,}/).map(function (p) {
-        p = p.replace(/\s+$/, '');
+        p = trimEnd(p);
         return p.trim() ? '<p>' + inlineLinks(p).replace(/\n/g, '<br>') + '</p>' : '';
       }).join('');
       return '<div class="card custom-box">' +
@@ -1488,9 +1719,7 @@
 
     return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1></div>' +
       '<div class="char-layout">' +
-      '<section class="char-parchment card">' +
-      (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
-      examplesBlock + tipsBlock + bluffingBlock + fightingBlock +
+      '<section class="char-parchment card">' + almSwitch + parchBody +
       (jinxMode === 'dropdown' ? jinxDrop : '') +
       '</section>' +
       '<div class="char-col2">' + infoCardFinal + sideBar + '</div>' +
@@ -1517,6 +1746,7 @@
     window.EXPORT_ID_MODES = EXPORT_ID_MODES;
     window.TEAM_LABEL = TEAM_LABEL;
     window.TEAM_COLOR = TEAM_COLOR;
+    window.OTHER_NOTE = OTHER_NOTE;
     window.artVersions = artVersions;
     window.artVersion = artVersion;
     window.mountEmblemGallery = mountEmblemGallery;
@@ -1525,6 +1755,7 @@
     window.ART_ABS = ART_ABS;
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
+    window.resolveRelatedTarget = resolveRelatedTarget;
     window.normJinxId = normJinxId;
     window.jinxQualKeys = jinxQualKeys;
     window.jinxLookupKeys = jinxLookupKeys;
@@ -1536,10 +1767,14 @@
     window.setCreators = setCreators;
     window.setCurataMark = setCurataMark;
     window.creatorSymbol = creatorSymbol;
+    window.creatorMarkHTML = creatorMarkHTML;
+    window.nameWithMarks = nameWithMarks;
+    window.stripCreatorMark = stripCreatorMark;
     window.splitCreators = splitCreators;
     window.editStatusHTML = editStatusHTML;
     window.draftedNoticeHTML = draftedNoticeHTML;
     window.artScaleValue = artScaleValue;
+    window.sanitizeAlmanacAlt = sanitizeAlmanacAlt;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1548,23 +1783,26 @@
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,
-      sanitizeSpecial: sanitizeSpecial,
+      sanitizeSpecial: sanitizeSpecial, sanitizeAlmanacAlt: sanitizeAlmanacAlt,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
       exportId: exportId, idSegment: idSegment, characterSet: characterSet,
       schemaJinxId: schemaJinxId, EXPORT_ID_MODES: EXPORT_ID_MODES,
-      artVersions: artVersions, artVersion: artVersion,
+      OTHER_NOTE: OTHER_NOTE, typeNameOf: typeNameOf, exportTeamOf: exportTeamOf,
+      artVersions: artVersions, artVersion: artVersion, artDisplayPath: artDisplayPath,
+      officialIconSmall: officialIconSmall,
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
-      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,
+      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
       jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
       charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
+      creatorMarkHTML: creatorMarkHTML, nameWithMarks: nameWithMarks,
       splitCreators: splitCreators,
       editStatusHTML: editStatusHTML, EDIT_STATUS: EDIT_STATUS,
       draftedNoticeHTML: draftedNoticeHTML

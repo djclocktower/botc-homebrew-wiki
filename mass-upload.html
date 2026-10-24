@@ -19,7 +19,7 @@
   .formcard h2 { font-family:'Dumbledor2',serif; color:var(--maroon); margin:0 0 4px; font-size:1.35rem; }
   .formcard .sub { font-size:.86rem; color:#6b5d49; margin:0 0 18px; }
   .fld { margin-bottom:15px; }
-  .fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.82rem;
+  .fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.82rem;
     letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:5px; }
   .fld .hint { font-weight:400; text-transform:none; letter-spacing:0; color:#726348; font-size:.78rem; }
   .fld input[type=text], .fld textarea, .fld select {
@@ -29,7 +29,7 @@
   .fld textarea { min-height:140px; line-height:1.4; }
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width:700px){ .row2 { grid-template-columns:1fr; } }
-  .btn { font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer;
+  .btn { font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer;
     border:none; border-radius:7px; padding:9px 16px; font-size:.9rem; }
   .btn-blue { background:#2f6fb8; color:#fff; }
   .btn-blue:hover { filter:brightness(1.08); }
@@ -48,11 +48,11 @@
   #status.work{ display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
   #status a { color:inherit; font-weight:700; }
   .mu-table { width:100%; border-collapse:collapse; font-size:.9rem; margin-top:14px; }
-  .mu-table th { font-family:'Oswald',sans-serif; font-size:.76rem; letter-spacing:.05em;
+  .mu-table th { font-family:'Roboto',sans-serif; font-size:.76rem; letter-spacing:.05em;
     text-transform:uppercase; color:#5b4632; text-align:left; padding:6px 8px;
     border-bottom:2px solid #cdbfa0; }
   .mu-table td { padding:6px 8px; border-bottom:1px solid #e4d9bf; vertical-align:top; }
-  .mu-team { font-family:'Oswald',sans-serif; font-size:.78rem; text-transform:capitalize; color:#5b4632; }
+  .mu-team { font-family:'Roboto',sans-serif; font-size:.78rem; text-transform:capitalize; color:#5b4632; }
   .mu-state-wait { color:#726348; }
   .mu-state-work { color:#234f74; font-weight:700; }
   .mu-state-ok { color:#1c5429; font-weight:700; }
@@ -126,6 +126,10 @@
           <label class="mu-check" for="replaceart"><input type="checkbox" id="replaceart"> Replace the art on pages that already exist</label>
           <p class="hint" style="margin:6px 0 0">If a character matches a page you already made, that page is <strong>updated</strong>: the file replaces its name, team, ability, night order, reminders and jinxes, and everything else is kept. Tick this to replace its icon too.</p>
         </div>
+        <div class="fld">
+          <label class="mu-check" for="keepjson"><input type="checkbox" id="keepjson"> Keep the JSON from this file</label>
+          <p class="hint" style="margin:6px 0 0">Each page&rsquo;s JSON box shows the character exactly as it is written in this file, instead of the JSON the wiki builds from the page. You can change or clear it later under Advanced Options &rarr; Custom JSON.</p>
+        </div>
         <div id="mu-jinx-warn"></div>
         <table class="mu-table" id="mu-table">
           <thead><tr><th>Character</th><th>Team</th><th>Page</th><th>Art</th><th>Status</th></tr></thead>
@@ -165,7 +169,7 @@
     function normTeam(t){
       t = String(t||'').toLowerCase();
       if (t === 'traveler') return 'traveller';
-      var ok = { townsfolk:1, outsider:1, minion:1, demon:1, traveller:1, fabled:1, loric:1 };
+      var ok = { townsfolk:1, outsider:1, minion:1, demon:1, traveller:1, fabled:1, loric:1, other:1 };
       return ok[t] ? t : 'townsfolk';
     }
 
@@ -351,6 +355,7 @@
       catch(e){ setStatus('err','Could not read that JSON: ' + esc(e.message)); return; }
       if (!res.chars.length) { setStatus('err','No characters with a name and ability found in that JSON.'); return; }
       parsed = res.chars;
+      madeByRow = {};
       $('mu-rows').innerHTML = parsed.map(buildRow).join('');
       $('options').style.display = '';
       if (meta && meta.name && !$('appears').value) $('appears').value = meta.name;
@@ -445,21 +450,38 @@
     // address, in the shape the wiki already uses for duplicate names
     // (witcher-odyssey, then -2, -3). Nothing to read, nothing to confirm.
     var usedThisRun = {};
+    // The identity each row was saved under, kept for as long as this file
+    // is on the page. A row that already says done is skipped on a second
+    // press, and its identity has to stay claimed or the next character of
+    // the same name would be handed it and merged into it.
+    var madeByRow = {};
+    // This account's own pages by name (ImportMerge.ownPages), read once per
+    // run — what lands a re-import back on the numbered pages the last run
+    // made instead of on a new one each time.
+    var ownByName = {};
     function resolveSlug(name, appearsIn){
       var base = slugify(name);
+      // A name with no a-z/0-9 in it (blank, or all Han, Cyrillic…) slugs to
+      // '': it used to be saved as '' and then "-2", "-3". Give it a fresh
+      // identity of its own instead, as create.html does for a nameless draft.
+      if (!base) return Promise.resolve({ slug: 'untitled-' + Math.random().toString(36).slice(2, 10), mine: false });
       var q = '/api/slug-check?type=character&name=' + encodeURIComponent(name) +
               '&appearsIn=' + encodeURIComponent(appearsIn || '');
       return fetch(q, { credentials:'same-origin' })
         .then(function(r){ return r.json(); })
         .catch(function(){ return null; })
         .then(function(j){
-          var pick;
+          var pick, reused = '';
           // If the check itself fails, carry on and let the save decide: the
           // Worker never lets anyone write over a page that isn't theirs.
           if (!j || j.error || !j.taken) pick = base;
           // `mine` means the URL is one of your own pages, so saving updates
           // it — re-running an import over your own characters is the point.
           else if (j.mine && !usedThisRun[base]) pick = base;
+          // Somebody else holds the name, or this file already used it: the
+          // free address the check suggests is a NEW page, so land on one of
+          // your own of the same name first, if one is left.
+          else if (window.ImportMerge && (reused = window.ImportMerge.reuseOwn(ownByName, name, usedThisRun))) pick = reused;
           else pick = j.suggestion || base;
           // Two characters with the same name in ONE file: each is saved
           // before the next is resolved, so the Worker normally sees the
@@ -472,7 +494,7 @@
           usedThisRun[pick] = 1;
           // `mine` holds only for the page the check found: a numbered
           // variant taken to step around a duplicate in this file is new.
-          return { slug: pick, mine: !!(j && j.taken && j.mine && pick === base) };
+          return { slug: pick, mine: !!(reused && pick === reused) || !!(j && j.taken && j.mine && pick === base) };
         });
     }
 
@@ -530,6 +552,9 @@
         special: window.sanitizeSpecial ? window.sanitizeSpecial(c.special) : [],
         jinxes: Array.isArray(c.jinxes) ? c.jinxes : []
       };
+      // "Keep the JSON from this file": the entry as written becomes the
+      // page's custom JSON, which replaces the generated JSON box (render.js).
+      if (opts.keepJson) fromFile.customJson = JSON.stringify([meta || { id: '_meta', name: '' }, c], null, 2);
 
       rowState(i, 'work', mine ? 'reading your page&hellip;' : 'loading art&hellip;');
       var pageJob = !window.ImportMerge
@@ -594,6 +619,7 @@
               if (r.status === 429) throw limitError(r, j);
               if (!r.ok) throw new Error(j.error || 'save failed');
               var pageUrl = (j && j.page) || ('c/' + slug);
+              madeByRow[i] = slug;
               rowSlug(i, pageUrl);
               var note = artHow === 'remote' && imgUrl ? ' (art linked from another site)'
                 : artHow === 'kept' ? ' (page updated, icon kept)'
@@ -621,13 +647,16 @@
         creator: $('creator').value.trim(),
         appearsIn: $('appears').value.trim(),
         status: $('pubstate').value === 'draft' ? 'draft' : 'published',
-        replaceArt: $('replaceart').checked
+        replaceArt: $('replaceart').checked,
+        keepJson: $('keepjson').checked
       };
       $('go').disabled = true; $('parse').disabled = true;
       // Fresh each run: re-running the same file (after a couple of failures,
       // say) must be able to land on the pages the first run created rather
-      // than stepping around them into duplicates.
+      // than stepping around them into duplicates. Rows already done keep
+      // their pages claimed: they are skipped, so nothing else would.
       usedThisRun = {};
+      Object.keys(madeByRow).forEach(function(k){ if (rowDone(+k)) usedThisRun[madeByRow[k]] = 1; });
       halted = null;
       setStatus('work', 'Creating ' + parsed.length + ' pages&hellip;');
       var i = 0, ok = 0, fail = 0;
@@ -646,7 +675,11 @@
         if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
         else setStatus('ok', '<span class="ico ico-check" aria-hidden="true"></span> All ' + ok + ' pages created! Find them ' + (opts.status==='draft' ? 'under drafts on <a href="account">your account page</a>' : 'under <a href="all-characters">All Characters</a>') + '.');
       }
-      (function next(){
+      var ownJob = fetch('/api/account', { credentials:'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(a){ ownByName = window.ImportMerge ? window.ImportMerge.ownPages(a && a.characters) : {}; })
+        .catch(function(){ ownByName = {}; });
+      ownJob.then(function next(){
         if (i >= parsed.length || halted) { finish(); return; }
         if (rowDone(i)) { ok++; i++; next(); return; }
         var c = parsed[i], idx = i;
@@ -661,7 +694,7 @@
           if (good) ok++; else fail++;
           i++; next();
         });
-      })();
+      });
     });
   })();
   </script>

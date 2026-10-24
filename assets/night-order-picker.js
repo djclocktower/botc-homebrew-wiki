@@ -35,7 +35,7 @@
 
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion', demon: 'Demon',
-    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other'
   };
 
   /* The character's own name, with a leading "the" trimmed so the sentence

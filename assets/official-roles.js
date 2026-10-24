@@ -47,8 +47,17 @@
   /* roles.json (+ night-order.json, optional) -> wiki character objects.
      `page` points at the official wiki, because these characters have no page
      here and never will. */
-  function buildOfficialRoles(roles, nightOrder) {
+  /* `officialJinxes` (optional) is assets/official-jinxes.json. Each pair
+     rides on its `a` side as an ordinary jinx naming the other end's roster
+     slug, so a script holding both shows it through findScriptJinxes like any
+     other pair, and the script's own jinx editor can switch it off. */
+  function buildOfficialRoles(roles, nightOrder, officialJinxes) {
     var nights = nightMap(nightOrder);
+    var jinxesOf = {};
+    ((officialJinxes && officialJinxes.jinxes) || []).forEach(function (j) {
+      if (!j || !j.a || !j.b || !j.text) return;
+      (jinxesOf[key(j.a)] = jinxesOf[key(j.a)] || []).push({ id: j.b, slug: 'off-' + key(j.b), text: j.text });
+    });
     return (roles || []).filter(function (r) { return r && r.id; }).map(function (r) {
       var n = nights[key(r.name || r.id)] || nights[key(r.id)] || { firstNight: 0, otherNight: 0 };
       return {
@@ -65,7 +74,8 @@
         firstNightReminder: cleanReminder(r.firstNightReminder),
         otherNightReminder: cleanReminder(r.otherNightReminder),
         page: 'https://wiki.bloodontheclocktower.com/' +
-          encodeURIComponent(String(r.name || r.id).replace(/ /g, '_'))
+          encodeURIComponent(String(r.name || r.id).replace(/ /g, '_')),
+        jinxes: jinxesOf[key(r.id)] || []
       };
     });
   }

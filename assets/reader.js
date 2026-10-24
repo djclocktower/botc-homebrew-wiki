@@ -315,6 +315,12 @@
   }
 
   /* ── one-time delegated handlers for JSON box toggle + copy ── */
+  function toggleJsonBox(tg) {
+    var box = tg.closest('.json-box');
+    var open = box.classList.toggle('open');
+    tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+    box.querySelector('.json-body').hidden = !open;
+  }
   if (typeof document !== 'undefined' && !window.__jsonBoxBound) {
     window.__jsonBoxBound = true;
     // The icon gallery keeps its own handlers — tap, drag and arrow keys are
@@ -325,22 +331,26 @@
       var cl = e.target.closest && e.target.closest('.copy-link-btn');
       if (cl) {
         var url = location.href.split('#')[0];
+        // Put back whatever the button held: the labelled tab, or the icon
+        // alone when the Snapshot square sits beside it (and has no room for
+        // words, so it answers with a tick or a cross).
+        var orig = cl.getAttribute('data-orig') || cl.innerHTML;
+        cl.setAttribute('data-orig', orig);
+        var short = cl.classList.contains('copy-link-short');
+        var linkLabel = function (text) {
+          cl.innerHTML = text;
+          setTimeout(function () { cl.innerHTML = orig; }, 1500);
+        };
+        // A refused clipboard (permissions, an insecure frame) says so
+        // rather than leaving the tap looking ignored, as Copy JSON does.
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(url).then(function () {
-            cl.innerHTML = '\u2713 Copied!';
-            setTimeout(function () { cl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link'; }, 1500);
-          });
-        }
+          navigator.clipboard.writeText(url).then(function () { linkLabel(short ? '\u2713' : '\u2713 Copied!'); },
+            function () { linkLabel(short ? '\u2715' : 'Copy failed'); });
+        } else linkLabel(short ? '\u2715' : 'Copy failed');
         return;
       }
       var tg = e.target.closest && e.target.closest('.json-bar-toggle');
-      if (tg) {
-        var box = tg.closest('.json-box');
-        var open = box.classList.toggle('open');
-        tg.setAttribute('aria-expanded', open ? 'true' : 'false');
-        box.querySelector('.json-body').hidden = !open;
-        return;
-      }
+      if (tg) { toggleJsonBox(tg); return; }
       var jd = e.target.closest && e.target.closest('.jinx-drop-bar');
       if (jd) {
         var jbox = jd.closest('.jinx-drop');
@@ -362,9 +372,13 @@
         }
       }
     });
-    // Keyboard toggle for the collapsible jinx dropdown (Enter / Space).
+    // Keyboard toggle for the collapsible jinx dropdown and the JSON box
+    // bar (Enter / Space): both are span role=button, which gets no key
+    // activation of its own.
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      var tg = e.target.closest && e.target.closest('.json-bar-toggle');
+      if (tg) { e.preventDefault(); toggleJsonBox(tg); return; }
       var jd = e.target.closest && e.target.closest('.jinx-drop-bar');
       if (!jd) return;
       e.preventDefault();

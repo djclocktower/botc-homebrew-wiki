@@ -51,15 +51,15 @@
   font-style: normal;
   font-weight: 600 700;
   font-display: swap;
-  src: url('fonts/cinzel-regular-latin.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('fonts/cinzel-regular-latin-ext-13f7088d.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Cinzel';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 600 700;
   font-display: swap;
-  src: url('fonts/cinzel-regular-latin-ext.woff2') format('woff2');
+  src: url('fonts/cinzel-regular-latin-e7ed1ab7.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
@@ -67,39 +67,31 @@
   font-style: italic;
   font-weight: 400 500;
   font-display: swap;
-  src: url('fonts/eb-garamond-italic-latin-ext.woff2') format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  src: url('fonts/eb-garamond-italic-latin-ext-af76e286.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'EB Garamond';
   font-style: italic;
   font-weight: 400 500;
   font-display: swap;
-  src: url('fonts/eb-garamond-italic-latin.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('fonts/eb-garamond-italic-latin-9cd12d29.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Grenze Gotisch';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url('fonts/grenze-gotisch-regular-latin-ext.woff2') format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  src: url('fonts/grenze-gotisch-regular-latin-ext-2e42ebbc.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Grenze Gotisch';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url('fonts/grenze-gotisch-regular-latin-400.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Grenze Gotisch';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/grenze-gotisch-regular-latin-600.woff2') format('woff2');
+  src: url('fonts/grenze-gotisch-regular-latin-c5bce5da.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
@@ -107,7 +99,15 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('fonts/im-fell-english-italic-latin.woff2') format('woff2');
+  src: url('fonts/im-fell-english-italic-latin-c480ab93.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IM Fell English';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/im-fell-english-regular-latin-72415626.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
@@ -115,55 +115,79 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('fonts/libre-franklin-italic-latin-ext.woff2') format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  src: url('fonts/libre-franklin-italic-latin-ext-40b9242d.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Libre Franklin';
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('fonts/libre-franklin-italic-latin.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('fonts/libre-franklin-italic-latin-d695a8d6.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Libre Franklin';
   font-style: normal;
   font-weight: 400 800;
   font-display: swap;
-  src: url('fonts/libre-franklin-regular-latin-ext.woff2') format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  src: url('fonts/libre-franklin-regular-latin-ext-50db3ad6.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Libre Franklin';
   font-style: normal;
   font-weight: 400 800;
   font-display: swap;
-  src: url('fonts/libre-franklin-regular-latin.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('fonts/libre-franklin-regular-latin-bc34823f.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: 'Oswald';
   font-style: normal;
   font-weight: 500 700;
   font-display: swap;
-  src: url('fonts/oswald-regular-latin-ext-500.woff2') format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  src: url('fonts/oswald-regular-latin-ext-4276e5fb.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: 'Oswald';
   font-style: normal;
   font-weight: 500 700;
   font-display: swap;
-  src: url('fonts/oswald-regular-latin.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('fonts/oswald-regular-latin-5f493290.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: 'Oswald';
+  font-family: 'Roboto';
   font-style: normal;
-  font-weight: 700;
+  font-weight: 400 700;
   font-display: swap;
-  src: url('fonts/oswald-regular-latin-ext-700.woff2') format('woff2');
+  src: url('fonts/roboto-regular-latin-ext-a6323dda.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('fonts/roboto-regular-latin-665db5e1.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Noto Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/noto-serif-italic-latin-ext-3907fcb0.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Noto Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/noto-serif-italic-latin-882c6b9a.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
@@ -171,8 +195,16 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('fonts/pirata-one-regular-latin.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url('fonts/pirata-one-regular-latin-ext-7908a762.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Pirata One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/pirata-one-regular-latin-6869a0ed.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* ─── Variables ────────────────────────────────────────────── */
@@ -189,6 +221,8 @@
      than the Related-ribbon fills on purpose: these paint bold TEXT on
      parchment, and the ribbon's gold (#b8952a) sits at ~2.6:1 there. */
   --outsider:#1a6a80; --minion:#b5441a; --fabled:#8f6d1a; --loric:#2f6b3f;
+  /* The wiki's own "Other" type (a homebrew character type) is the wiki's purple. */
+  --other:var(--purple-mid);
   --rule:#b79c6f;
 }
 
@@ -264,7 +298,7 @@ body::after { display: none; }
 /* ─── Shared Layout ──────────────────────────────────────────── */
 .wrap {
   position: relative; z-index: 5;
-  max-width: 1440px; margin: 0 auto;
+  max-width: 1800px; margin: 0 auto;
   padding: clamp(16px,3.5vw,40px) clamp(12px,3vw,40px) 64px;
 }
 .foot {
@@ -322,7 +356,7 @@ p { margin: 0 0 .8em; }
 ul { list-style: none; margin: .2em 0 0; padding: 0; }
 li { position: relative; padding-left: 1.1em; margin: 0 0 .85em; }
 li::before { content: "•"; position: absolute; left: 0; color: var(--evil); font-weight: 700; }
-.tok { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 0; }
+.tok { font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 0; }
 
 /* ── the inline marks a character page's prose carries ──
    Almanac text (the ability, the lede, the summary, How to Run, the
@@ -346,6 +380,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .wiki-demon { color: var(--evil); font-weight: 700; }
 .wiki-fabled { color: var(--fabled); font-weight: 700; }
 .wiki-loric { color: var(--loric); font-weight: 700; }
+.wiki-other { color: var(--other); font-weight: 700; }
 /* {{traveller|…}} — half good-blue, half evil-red, the same top/bottom split
    the Related ribbon draws for the team, as a gradient clipped to the glyphs.
    The solid colour first is the fallback for a browser without text clipping:
@@ -413,7 +448,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 
 .wiki-red a, .wiki-blue a, .wiki-townsfolk a, .wiki-outsider a,
 .wiki-minion a, .wiki-demon a, .wiki-traveller a, .wiki-fabled a,
-.wiki-loric a { color: inherit !important; }
+.wiki-loric a, .wiki-other a { color: inherit !important; }
 /* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
    rule, so without this an example's link is browser-default blue and
    underlined, sitting on parchment. Section headings carry their own
@@ -437,7 +472,30 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    follows .cols directly keeps the rule already under the columns and drops
    its own; at the top of the card there is nothing above it to separate from. */
 .cols + .tips { margin-top: 18px; padding-top: 0; border-top: 0; }
-.char-parchment > .tips:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.char-parchment > .tips:first-child, .alm-ver > .tips:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* A character with a second almanac version (render.js, almanacAlt): two
+   radio buttons at the top of the parchment and both versions on the page,
+   the second hidden until its radio is checked. CSS only, so the editors'
+   preview frame switches exactly like the page. The wrappers draw nothing
+   (display: contents), so each version lays out as if it were the only one. */
+.alm-switch {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0;
+  margin: 0 auto 16px; width: fit-content; max-width: 100%;
+  border: 1px solid var(--parch-frame); border-radius: 0; overflow: hidden;
+}
+.alm-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.alm-switch label {
+  padding: 6px 16px; cursor: pointer; font-size: .9rem; color: var(--maroon);
+  overflow-wrap: anywhere; -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.alm-switch label + input + label { border-left: 1px solid var(--parch-frame); }
+.alm-switch input:checked + label { background: var(--maroon); color: var(--parch); }
+.alm-switch input:focus-visible + label { outline: 2px solid var(--good); outline-offset: -2px; }
+.alm-v0 { display: contents; }
+.alm-v1 { display: none; }
+.char-layout:has(.alm-r1:checked) .alm-v1 { display: contents; }
+.char-layout:has(.alm-r1:checked) .alm-v0 { display: none; }
 
 /* callout box within a column (How to Run note etc.) */
 .callout {
@@ -473,11 +531,14 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    dip (reader.js's emPaint writes it as --em-s) and must not inherit this
    one. The printable token is the exception to all of it: see .emblem-token
    just below. */
+/* height:auto because the markup carries width/height="591" (space reserved
+   before the picture arrives); without it that height attribute would win
+   over the aspect ratio, as on .featured-art. */
 /* --art-scale is the owner's wiki-only display size (render.js writes it
    inline as a fraction, 0.5..2, only when one was chosen). It multiplies
    the 8/7 above rather than replacing it, so "100%" on the slider is
    exactly the page as drawn with the box switched off. */
-.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
+.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; height: auto; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
 /* The printable token (render.js marks it) is the one version that is NOT
    mostly transparent margin: it is a full-bleed disc, edge to edge. Every
    step above assumes the margin — the 7/6 box grows into room an icon on
@@ -489,7 +550,40 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    displayed, and a token is not an icon. The .75 in the stack rule below
    is this 6/7 with the stack's own 8/7 divided back out. */
 .emblem.emblem-token { transform: scale(.8571); }
-.quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
+/* A display size above 100% (--art-scale, the owner's slider) has to stay
+   inside the info card. The transform above costs no layout, which is fine
+   for the 8/7 it was built for (only transparent margin passes the column)
+   but not for 200%: the picture covered the title and the quote, ran past
+   the card and widened the whole page on a phone. Two parts, both written
+   only when the page carries a size (render.js writes the variable only
+   then), so a page nobody sized draws exactly as before:
+   - the margins grow by the height the scale adds, so the picture pushes
+     the title and the quote apart instead of covering them. The box is
+     min(100%, 334px) wide and square, and a percentage margin is a share of
+     the same width, so (s - 1) x 8/7 / 2 of it is exactly the growth.
+     Below 100% the same sum is negative and closes the gap instead;
+   - sideways the picture is clipped to the width it is drawn at by
+     default, which is the card's own width. In the element's own units
+     that is half the box over s either side of the middle. Taller is free;
+     wider stops at the card, so on a phone a big icon fills the card edge
+     to edge and the page never scrolls sideways. clip-path is in the
+     element's own coordinates, so it scales with the transform. It hides
+   what spills over but does not stop it counting: a transformed box is
+   still part of the page's scrollable width, so the card clips sideways as
+   well (only this card, and only when its icon is sized — tag tooltips hang
+   off <body>, so nothing else in it is cut). overflow-x: clip, unlike
+   hidden, leaves the vertical axis alone and makes no scroll container. */
+.char-infocard:has(> .emblem[style*="--art-scale"], > .emblem-stack[style*="--art-scale"]) { overflow-x: clip; }
+.emblem[style*="--art-scale"]:not(.emblem-token), .emblem-stack[style*="--art-scale"] {
+  margin-top: calc(4px + (var(--art-scale, 1) - 1) * min(57.14%, 190.85px));
+  margin-bottom: calc(6px + (var(--art-scale, 1) - 1) * min(57.14%, 190.85px));
+  clip-path: inset(-25% max(0%, 50% - 50% / var(--art-scale, 1)));
+}
+/* The flavour quote is Noto Serif italic, like jinx text: it asked for EB
+   Garamond, which never loaded before the 2026-10 font fix, so Chrome on
+   Android drew its own serif (Noto Serif). The owner preferred that look
+   over both EB Garamond and the official wiki's Trade Gothic italic. */
+.quote { font-family: 'Noto Serif', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 /* How to say the name — a quiet labelled line tucked under the flavour quote.
    Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
    so it can stress the right syllable. */
@@ -523,10 +617,13 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .jinx:hover { background: rgba(91,31,33,.05); }
 .jico { width: 48px; height: 48px; object-fit: contain; }
 .jbody { min-width: 0; }
-.jname { display: block; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.05rem; line-height: 1.1; margin-bottom: 2px; text-decoration: none; }
+.jname { display: block; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: 1.05rem; line-height: 1.1; margin-bottom: 2px; text-decoration: none; }
 .jname:hover { text-decoration: underline; }
 .jname.good { color: var(--good-name); } .jname.evil { color: var(--evil); }
-.jtext { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.02rem; line-height: 1.28; color: var(--ink); }
+/* Jinx text is Noto Serif italic: what Chrome on Android drew while EB
+   Garamond never loaded (before the 2026-10 font fix), and the owner preferred
+   it. Self-hosted so every device shows the same. */
+.jtext { font-family: 'Noto Serif', serif; font-style: italic; font-size: 1.02rem; line-height: 1.28; color: var(--ink); }
 /* A jinx stored on the OTHER character's page: same rule, but the line says
    where to go to change it. */
 .jfrom { display: block; margin-top: 3px; font-family: 'Trade Gothic', sans-serif; font-size: .78rem; letter-spacing: .03em; text-transform: uppercase; opacity: .62; }
@@ -616,20 +713,20 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   grid-template-columns: minmax(0, 1fr) 320px;
   column-gap: clamp(16px, 2vw, 28px);
   width: 100%;
-  max-width: 100%;
-  margin: 0;
+  max-width: 1800px;
+  margin: 0 auto;
   padding: 0 clamp(16px,3vw,48px) 64px;
 }
 .home-panel {
   position: relative; z-index: 5;
-  max-width: 1440px; margin: 0 auto;
+  max-width: 1800px; margin: 0 auto;
   padding: 0 clamp(12px,3vw,40px) 64px;
 }
 .home-layout > .home-panel {
   grid-column: 1;
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 0;
   min-width: 0;
 }
@@ -737,14 +834,14 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   margin: 0 0 3px; line-height: 1.15;
 }
 .char-card-type {
-  font-family: 'Oswald', sans-serif; font-size: .78rem;
+  font-family: 'Roboto', sans-serif; font-size: .78rem;
   letter-spacing: .1em; text-transform: uppercase;
   color: var(--evil); margin: 0 0 7px;
 }
 .char-card-type.good { color: var(--good-name); }
 .char-card-ability { font-size: .9rem; color: var(--ink); line-height: 1.35; margin: 0 0 10px; }
 .char-card-link {
-  font-family: 'Oswald', sans-serif; font-size: .82rem;
+  font-family: 'Roboto', sans-serif; font-size: .82rem;
   letter-spacing: .06em; color: var(--good-name);
 }
 .empty-card {
@@ -850,13 +947,14 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .rel-traveller::before { background: linear-gradient(to bottom, var(--good) 50%, var(--evil) 50%); }
 .rel-fabled::before    { background: #b8952a; }
 .rel-loric::before     { background: #3a7a4a; }
+.rel-other::before     { background: var(--other); }
 .rel-page::before      { background: #cdb488; }
 /* White on a cream card needs its own edge to read as a stripe at all. */
 .rel-ext::before       { background: #fff; border-right: 1px solid var(--card-edge); }
 .rel-ico { width: 44px; height: 44px; object-fit: contain; }
 .rel-bd { min-width: 0; }
 .rel-name {
-  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  display: block; font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: 1.02rem; line-height: 1.15; margin-bottom: 2px;
   color: var(--maroon); text-decoration: none;
 }
@@ -942,7 +1040,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 
 /* edit link in breadcrumb */
 .edit-link {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase; text-decoration: none;
   color: rgba(236,225,200,.5); border: 1px solid rgba(236,225,200,.2);
   border-radius: 0; padding: 2px 8px;
@@ -957,6 +1055,11 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   text-decoration: none;
 }
 .type-link:hover { text-decoration: underline; }
+/* "Other" is drawn in the wiki's purple wherever a team colours its label,
+   and its info-box row carries a one-line note that it is not official. */
+:is(.char-card-type, .search-result-type, .recent-type, .featured-type,
+  .script-team-head, .sv-subhead).other { color: var(--other); }
+.type-note { display: block; font-size: .75rem; font-style: italic; opacity: .75; line-height: 1.3; }
 
 /* Team header links on homepage */
 .team-header-link {
@@ -1034,7 +1137,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .search-result-type {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
   color: var(--evil);
 }
@@ -1068,7 +1171,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    opens the full results page. */
 .search-group-label {
   padding: 8px 14px 4px;
-  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .66rem; font-weight: 600;
   letter-spacing: .1em; text-transform: uppercase;
   color: rgba(236,225,200,.5);
   border-top: 1px solid rgba(214,196,150,.12);
@@ -1089,10 +1192,11 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .search-team-traveller::after { background: linear-gradient(90deg, var(--good) 50%, var(--evil) 50%); }
 .search-team-fabled::after { background: var(--fabled); }
 .search-team-loric::after { background: var(--loric); }
+.search-team-other::after { background: var(--other); }
 img.search-result-thumb.round { border-radius: 50%; object-fit: cover; }
 .search-drop .search-all, .nav-search-results .search-all {
   display: block; padding: 11px 14px;
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .06em;
   text-transform: uppercase; text-decoration: none;
   color: var(--parch); background: #331532;
   border-top: 1px solid rgba(214,196,150,.2);
@@ -1133,6 +1237,8 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   transition: border-color .2s, background-color .2s;
 }
 .sp-input::placeholder { color: rgba(200,185,138,.55); }
+.sp-hint { margin: 6px 2px 0; font-size: .8rem; color: rgba(236,225,200,.6); }
+.sp-hint code { font-size: .78rem; color: rgba(236,225,200,.85); background: rgba(255,255,255,.08); padding: 1px 5px; }
 .sp-input:focus { border-color: var(--parch); background-color: rgba(255,255,255,.14); }
 .sp-tabs {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
@@ -1155,7 +1261,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   gap: 12px; flex-wrap: wrap;
 }
 .sp-more {
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .05em;
   cursor: pointer; background: none; border: none; padding: 4px 0;
   color: rgba(236,225,200,.8); text-decoration: underline; text-underline-offset: 3px;
 }
@@ -1168,7 +1274,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sp-people { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .sp-tags { padding-bottom: 0; }
 .sp-pill-kind {
-  font-family: 'Oswald', sans-serif; font-weight: 400; font-size: .7rem;
+  font-family: 'Roboto', sans-serif; font-weight: 400; font-size: .7rem;
   letter-spacing: .08em; text-transform: uppercase; opacity: .65;
 }
 .sp-team-pill { border-left: 4px solid var(--good); }
@@ -1183,6 +1289,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sp-team-fabled { border-left-color: var(--fabled); }
 .sp-team-loric { border-left-color: var(--loric); }
+.sp-team-other { border-left-color: var(--other); }
 @media (max-width: 640px) {
   .sp-tabs { justify-content: flex-start; }
 }
@@ -1202,7 +1309,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .tag-pill {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .95rem; letter-spacing: .04em;
   text-decoration: none;
   background: var(--card); border: 1px solid var(--card-edge);
@@ -1234,16 +1341,40 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .info-credit a { color: var(--good-name); text-decoration: none; }
 .info-credit a:hover { text-decoration: underline; }
 
-/* Creator's credit symbol next to their name in a character's info box.
-   The glyph itself lives in the shared registry (assets/creators.js). */
+/* A creator's mark beside their name (credit lines, comments, the creator
+   page, rosters). Drawn by markHTML() in assets/creators.js: a glyph. */
 .creator-mark {
+  position: relative;
+  display: inline-block;
   margin-left: 2px;
   font-family: serif;
   color: var(--good-name);
   font-weight: 700;
   white-space: nowrap;
+  line-height: 1;
+  cursor: help;
 }
 .theme-text .creator-mark { color: var(--pg-text); }
+/* Who the mark belongs to: shown at once on hover, and on a tap (the mark is
+   focusable), rather than after the browser's own title delay. */
+.creator-mark[data-tip]:hover::after,
+.creator-mark[data-tip]:focus-visible::after,
+.creator-mark[data-tip]:focus::after {
+  content: attr(data-tip);
+  position: absolute; z-index: 60;
+  left: 50%; bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  background: #241a12; color: #f7ecd0;
+  font: 600 .78rem/1.3 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  letter-spacing: .02em; text-transform: none;
+  white-space: nowrap; border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+.creator-mark:focus { outline: none; }
+.creator-mark:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
+.creator-mark-hero { font-size: .8em; margin-left: .25em; color: inherit; }
 
 /* ════════════════════════════════════════════════════════════════
    CREATOR ICONS SIDEBAR — fixed to left of screen
@@ -1359,7 +1490,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   background-size: cover;
   border: 4px solid var(--parch-frame);
   padding: 28px 32px;
-  max-width: 1440px;
+  max-width: 1800px;
   margin: 0 auto 48px;
 }
 .creators-page-grid {
@@ -1376,15 +1507,106 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   font-size: 1.2rem;
   min-width: 26px;
 }
+/* ── Creators page: one card per person, the mark on a disc ──────── */
+.cr-intro {
+  max-width: 1800px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 12px 24px; padding: 16px 20px;
+  background: var(--parch); border: 2px solid var(--parch-frame);
+}
+.cr-intro-text { flex: 1 1 420px; min-width: 0; }
+.cr-intro h2 {
+  margin: 0 0 4px; font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; letter-spacing: .05em; color: var(--maroon);
+}
+.cr-intro p { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--ink); }
+.cr-claim {
+  flex: none; padding: 9px 16px; background: var(--maroon); color: #f7ecd0;
+  text-decoration: none; font-weight: 700; font-size: .9rem; border-radius: 4px;
+}
+.cr-claim:hover { background: var(--evil); }
+.cr-summary { margin: 0 0 14px; font-size: .84rem; opacity: .75; text-align: center; }
+.cr-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.cr-card { position: relative; min-width: 0; }
+.cr-link {
+  display: flex; align-items: center; gap: 14px; height: 100%; box-sizing: border-box;
+  padding: 12px 14px; text-decoration: none; color: var(--maroon);
+  background: rgba(255,253,248,.55); border: 2px solid var(--parch-frame);
+  transition: background .15s, transform .15s;
+}
+.cr-link:hover { background: rgba(255,253,248,.9); transform: translateY(-1px); }
+.cr-disc {
+  flex: none; width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--parch-frame); color: var(--maroon);
+}
+.cr-mark.creator-mark { font-size: 2.1rem; margin: 0; color: var(--maroon); }
+.cr-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cr-name {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-weight: 700; font-size: .98rem;
+  overflow-wrap: anywhere;
+}
+.cr-av { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex: none; border: 1px solid var(--parch-frame); }
+.cr-at, .cr-aka, .cr-count { font-size: .78rem; color: var(--ink); overflow-wrap: anywhere; }
+.cr-at { opacity: .8; }
+.cr-aka { font-style: italic; opacity: .75; }
+.cr-state { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #726348; margin-top: 2px; }
+.cr-state-own { color: #2f6b3a; }
+.cr-state-reserved { color: #8a5a12; }
+@media (max-width: 640px) {
+  .creators-page-box { padding: 16px 12px; }
+  .cr-link { gap: 10px; padding: 10px; }
+  .cr-disc { width: 52px; height: 52px; }
+  .cr-mark.creator-mark { font-size: 1.7rem; }
+}
+.cr-admin {
+  position: absolute; top: 6px; right: 6px; font-size: .7rem; padding: 2px 6px;
+  background: #fff; border: 1px solid #c9a; color: var(--evil); cursor: pointer;
+}
+
+/* ── Account page: "Your Creator Mark" (assets/mark-editor.js) ── */
+.mark-ed { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: flex-start; }
+.mark-ed-preview { flex: none; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 160px; }
+.mark-ed-preview .mark-disc { width: 110px; height: 110px; }
+.mark-disc {
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  border: 3px solid var(--parch-frame); color: var(--maroon);
+}
+.mark-disc .creator-mark { font-size: 3.6rem; margin: 0; color: var(--maroon); cursor: default; }
+.mark-disc-empty { font-size: 2.4rem; opacity: .25; font-family: serif; }
+.mark-ed-sample { margin: 0; font-size: .9rem; text-align: center; overflow-wrap: anywhere; }
+.mark-ed-sample .creator-mark { cursor: default; }
+.mark-ed-form { flex: 1 1 300px; min-width: 0; }
+.mark-ed-status { margin: 0 0 10px; font-size: .88rem; }
+.mark-ed-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mark-ed .mark-ed-row input { width: 9em; max-width: 100%; font-size: 1.3rem; text-align: center; font-family: serif; }
+.mark-ed-avail { font-size: .82rem; font-weight: 700; }
+.mark-ed-avail.ok { color: #2f6b3a; }
+.mark-ed-avail.err { color: var(--evil); }
+.mark-ed-hint { margin: 6px 0 0; font-size: .8rem; opacity: .8; line-height: 1.45; }
+.mark-ed-opt { font-weight: 400; opacity: .7; }
+.mark-ed-palette { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.mark-pick {
+  width: 34px; height: 34px; font-size: 1.15rem; font-family: serif; line-height: 1;
+  background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 4px; color: var(--maroon); cursor: pointer;
+}
+.mark-pick:hover { background: var(--parch-frame); color: #fff; }
+.mark-ed-check { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: .9rem; cursor: pointer; }
+.mark-ed-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+
 /* Creator index tiles: symbol (or profile picture) + name + what they made.
    The name column stacks, so the wide pill needs to stop forcing one line. */
 .creators-filter {
-  max-width: 1440px; margin: 0 auto 14px; display: flex; flex-wrap: wrap;
+  max-width: 1800px; margin: 0 auto 14px; display: flex; flex-wrap: wrap;
   gap: 10px; align-items: center; justify-content: center;
 }
 .creators-filter input {
   flex: 0 1 280px; padding: 8px 12px; font-size: .92rem;
-  color: #241a12; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  color: #241a12; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 0;
+  -webkit-appearance: none; appearance: none;
 }
 .creators-sort { display: flex; flex-wrap: wrap; gap: 6px; }
 .creators-empty { text-align: center; opacity: .7; margin: 14px 0 0; }
@@ -1401,7 +1623,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   text-overflow: unset;
 }
 .creator-at { font-size: .72rem; opacity: .7; }
-.creator-count { font-size: .7rem; opacity: .78; font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
+.creator-count { font-size: .7rem; opacity: .78; font-family: 'Roboto', sans-serif; letter-spacing: .03em; }
 
 /* ════════════════════════════════════════════════════════════════
    SCRIPT BUILDER
@@ -1481,7 +1703,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sb-toolbar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .sb-btn {
-  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .03em;
   cursor: pointer; border: none; padding: 9px 16px; font-size: .88rem;
   color: #f3ead4; transition: filter .15s;
 }
@@ -1787,7 +2009,11 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .landing-stats {
   display: inline-block;
-  font-family: 'Oswald', sans-serif; font-weight: 500;
+  /* Roboto, like every label that used to ask for Oswald. Oswald never loaded
+     until the 2026-10 font fix, so readers saw their phone's own sans (Roboto,
+     on Android); once Oswald finally appeared the owner preferred the old look,
+     so it is now self-hosted and the same on every device. */
+  font-family: 'Roboto', sans-serif; font-weight: 500;
   font-size: .92rem; letter-spacing: .08em; text-transform: uppercase;
   color: rgba(236,225,200,.7);
   padding: 8px 18px;
@@ -1866,7 +2092,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   border-top: 1px solid rgba(180,160,120,.4);
 }
 .collection-count {
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .8rem; letter-spacing: .06em; text-transform: uppercase;
   color: var(--maroon);
 }
@@ -1882,6 +2108,10 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
 }
+/* Eight cards: rows of 4 or 8, never a 6+2 or 7+1 with one left hanging. */
+.browse-section { container-type: inline-size; }
+@container (min-width: 682px) { .browse-paths { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 1250px) { .browse-paths { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .browse-card {
   display: flex; flex-direction: column; align-items: center; text-align: center;
   background: var(--parch);
@@ -1914,7 +2144,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   flex: 1;
 }
 .browse-card-count {
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .78rem; letter-spacing: .07em; text-transform: uppercase;
   color: var(--good-name);
   padding-top: 8px;
@@ -1952,7 +2182,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   word-break: break-word;
 }
 .recent-type {
-  font-family: 'Oswald', sans-serif; font-size: .68rem;
+  font-family: 'Roboto', sans-serif; font-size: .68rem;
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--evil);
 }
@@ -1996,7 +2226,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .featured-body { min-width: 0; }
 .featured-type {
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--evil); margin-bottom: 4px;
 }
@@ -2016,7 +2246,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   color: var(--ink); margin: 0 0 10px;
 }
 .featured-meta {
-  font-family: 'Oswald', sans-serif; font-size: .76rem;
+  font-family: 'Roboto', sans-serif; font-size: .76rem;
   letter-spacing: .04em;
   color: var(--ink);
   margin-bottom: 10px;
@@ -2102,6 +2332,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .char-infocard { position: relative; min-width: 0; }
 .card-actions {
   position: absolute; top: 0; right: 0; z-index: 2;
+  display: flex;
 }
 .copy-link-btn {
   flex-shrink: 0;
@@ -2115,6 +2346,23 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   padding: 6px 12px 5px; transition: background .15s, color .15s;
 }
 .copy-link-btn:hover { background: var(--parch-frame); color: #fff; }
+/* With the Snapshot square beside it the link tab is its icon alone, and the
+   two are the same square: each draws its own left and bottom edge, so the
+   pair reads as one tab cut in two. */
+.copy-link-btn.copy-link-short, .snap-page-btn {
+  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.snap-page-btn {
+  cursor: pointer; border: none;
+  border-left: 2px solid var(--parch-frame);
+  border-bottom: 2px solid var(--parch-frame);
+  background: var(--parch); color: var(--maroon);
+  transition: background .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.snap-page-btn:hover { background: var(--parch-frame); color: #fff; }
+.snap-page-btn:disabled { opacity: .55; cursor: progress; }
 
 /* Keep the title from getting oversized on small screens ("large" but not huge). */
 @media (max-width: 640px) {
@@ -2141,7 +2389,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .script-badge {
   display: inline-block; min-width: 18px; height: 18px; line-height: 18px;
   padding: 0 5px; margin-left: 6px;
-  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 700;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; font-weight: 700;
   text-align: center; color: #f3ead4;
   background: var(--maroon); border-radius: 9px;
   vertical-align: middle;
@@ -2163,7 +2411,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* ─── Search "matched field" tag ─────────────────────────── */
 .search-match {
   display: inline-block; margin-left: 8px;
-  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  font-family: 'Roboto', sans-serif; font-size: .64rem;
   letter-spacing: .04em; text-transform: uppercase;
   color: var(--good-name); opacity: .8;
   border: 1px solid rgba(47,111,184,.35); border-radius: 3px;
@@ -2192,12 +2440,12 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .filter-group-label {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .72rem;
   letter-spacing: .08em; text-transform: uppercase; color: var(--maroon);
 }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter-chip {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .03em;
   cursor: pointer; user-select: none;
   background: #fffdf8; color: var(--maroon);
   border: 1px solid var(--parch-frame); border-radius: 0;
@@ -2212,12 +2460,12 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   padding: 6px 10px;
 }
 .filter-reset {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .04em;
   cursor: pointer; background: none; border: none; color: var(--good-name);
   text-decoration: underline; padding: 4px 0;
 }
 .filter-count {
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .04em;
   color: rgba(236,225,200,.7); margin: 0 0 18px;
 }
 /* Until the JS builds them, keep the bar and toggle fully hidden — the
@@ -2327,7 +2575,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   color: rgba(236,225,200,.85); text-align: center; max-width: 760px; margin: 0 auto 8px;
 }
 .script-meta-line {
-  font-family: 'Oswald', sans-serif; font-size: .85rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .85rem; letter-spacing: .05em;
   text-transform: uppercase; color: rgba(236,225,200,.6); text-align: center; margin: 0 0 24px;
 }
 .script-view-layout {
@@ -2411,7 +2659,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 
 .coll-chars { margin: 8px 0; }
 .coll-chars-count {
-  text-align: center; font-family: 'Oswald', sans-serif;
+  text-align: center; font-family: 'Roboto', sans-serif;
   letter-spacing: .07em; text-transform: uppercase; font-size: .9rem;
   color: rgba(236,225,200,.72); margin: 0 0 20px;
 }
@@ -2491,7 +2739,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   width: 100%; max-width: 760px; margin: 0 auto; text-align: center;
 }
 .collection-hero-count {
-  font-family: 'Oswald', sans-serif; font-size: .92rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .92rem; letter-spacing: .04em;
   color: rgba(236,225,200,.6); margin: 0;
 }
 .collection-edit-btn { display: inline-block; margin: 0; }
@@ -2676,7 +2924,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sv-subhead.good { color: var(--good-name); }
 .sv-difficulty {
-  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .78rem;
+  display: inline-block; font-family: 'Roboto', sans-serif; font-size: .78rem;
   font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
   padding: 1px 9px; border-radius: 999px; border: 1px solid rgba(91,31,33,.4);
   color: var(--maroon); background: rgba(91,31,33,.08);
@@ -2695,7 +2943,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sv-credits-list li { position: static; padding: 4px 0; border-bottom: 1px solid rgba(180,160,120,.25); font-size: .95rem; }
 .sv-credits-list li::before { display: none; }
 .sv-credits-list li:last-child { border-bottom: none; }
-.sv-credits-count { font-family: 'Oswald', sans-serif; font-size: .78rem; opacity: .65; color: var(--maroon); }
+.sv-credits-count { font-family: 'Roboto', sans-serif; font-size: .78rem; opacity: .65; color: var(--maroon); }
 
 /* Night order (collapsible, reuses .jinx-drop chrome) */
 .sv-night { margin-top: 18px; }
@@ -2718,7 +2966,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    min-width here was always for. */
 .sv-night-item::before {
   content: counter(night) "."; position: static;
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: .78rem; color: var(--maroon); opacity: .55; min-width: 20px; padding-top: 3px;
 }
 .sv-night-item:last-child { border-bottom: none; }
@@ -2734,6 +2982,12 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .sv-night-name:hover { text-decoration: underline; }
 .sv-night-reminder { font-size: .8rem; color: var(--ink); opacity: .8; line-height: 1.3; }
+/* Dusk, Minion Info, Demon Info, Dawn: steps of the night, not characters,
+   so they take no number and their name is not a link. */
+.sv-night-step { counter-increment: none; }
+.sv-night-step::before { content: ''; }
+.sv-night-step .sv-night-name { opacity: .75; }
+.sv-night-step .sv-night-name:hover { text-decoration: none; }
 .sv-night-empty { font-size: .85rem; color: var(--ink); opacity: .6; margin: 4px 0; }
 .sv-json-wrap { margin-top: 0; }
 
@@ -2781,9 +3035,10 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* Custom page background: the theme classes + --pg-* props are emitted on
    <body>, so this simply swaps the image on the existing fixed background
    layer — same mobile-safe composited technique, no extra stacking layers. */
-body.theme-bg::before {
-  background: var(--pg-bg) center top / cover no-repeat var(--purple-deep);
-}
+body.theme-bg::before { background: var(--pg-bgl); }
+/* A blurred background is scaled up a touch so the soft edge the blur
+   leaves stays off screen. */
+body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); }
 
 /* ── Site-wide announcement banner (admin dashboard → Announcement) ──
    Injected by site.js at the very top of <body> on every page. */
@@ -2826,7 +3081,7 @@ body.theme-bg::before {
 .rules-item:last-child { margin-bottom: 0; }
 .rules-item-title {
   display: block;
-  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: 1.02rem; letter-spacing: .01em;
   color: var(--maroon);
 }
@@ -2956,7 +3211,7 @@ a:hover .curata-mark { opacity: .9; }
 /* Partial stays a word — a glyph can't say "unfinished" — but quietly. */
 .page-class {
   display: inline-block; vertical-align: middle;
-  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  font-family: 'Roboto', sans-serif; font-size: .64rem;
   letter-spacing: .07em; text-transform: uppercase;
   padding: 1px 6px; border: 1px solid currentColor; border-radius: 0;
   white-space: nowrap; cursor: help; margin-left: .45em;
@@ -3038,7 +3293,7 @@ a:hover .curata-mark { opacity: .9; }
 .filter-chip-selected-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .filter-chip-selected-row:empty { display: none; }
 .filter-more {
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .74rem; letter-spacing: .04em;
   color: rgba(236,225,200,.65); align-self: center;
 }
 @media (max-width: 640px) {
@@ -3057,7 +3312,7 @@ a:hover .curata-mark { opacity: .9; }
 }
 .news-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(40,12,30,.35); }
 .news-card-date {
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .74rem; letter-spacing: .06em;
   text-transform: uppercase; color: #8a7a5e;
 }
 .news-card-title {
@@ -3067,7 +3322,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-card-summary { color: var(--ink); font-size: .92rem; line-height: 1.45; margin: 0; }
 .news-card-more {
   display: inline-block; margin-top: 9px;
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .05em;
   color: var(--good-name);
 }
 .news-article {
@@ -3081,7 +3336,7 @@ a:hover .curata-mark { opacity: .9; }
   font-family: 'Dumbledor2', serif; font-size: 1.7rem; letter-spacing: .02em;
   color: var(--maroon); margin: 4px 0 8px; line-height: 1.2;
 }
-.news-meta { font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .05em; color: #8a7a5e; }
+.news-meta { font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .05em; color: #8a7a5e; }
 .news-hero { width: 100%; height: auto; margin: 0 0 16px; border: 2px solid var(--parch-frame); }
 .news-body { color: var(--ink); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
 .news-body p { margin: 0 0 13px; }
@@ -3095,7 +3350,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-empty { color: rgba(236,225,200,.7); text-align: center; padding: 28px 10px; }
 .news-back { max-width: 900px; margin: 0 auto 12px; }
 .news-back a {
-  font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .84rem; letter-spacing: .04em;
   color: rgba(236,225,200,.8); text-decoration: none;
 }
 .news-back a:hover { color: #fff; text-decoration: underline; }
@@ -3109,13 +3364,13 @@ a:hover .curata-mark { opacity: .9; }
   padding: 6px 2px 0;
 }
 .news-admin-pill {
-  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .68rem; letter-spacing: .05em;
   text-transform: uppercase; padding: 2px 9px; border-radius: 999px;
 }
 .news-admin-pill.draft { background: rgba(154,110,20,.22); color: #f0d79a; border: 1px solid rgba(214,170,70,.5); }
 .news-admin-pill.published { background: rgba(42,110,42,.22); color: #b7e0b7; border: 1px solid rgba(90,170,90,.5); }
 .news-admin-edit {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .04em;
   color: rgba(236,225,200,.85); text-decoration: none;
 }
 .news-admin-edit:hover { color: #fff; text-decoration: underline; }
@@ -3127,7 +3382,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .feature-add { margin: 0 0 16px; }
 .feature-add-label {
   display: block; margin: 0 0 6px;
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .04em;
   color: rgba(236,225,200,.8);
 }
 .feature-add-row { display: flex; gap: 8px; }
@@ -3142,7 +3397,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 .wiki-feature { margin: 10px 0 0; }
 .wiki-feature-btn {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .04em;
   padding: 5px 12px; cursor: pointer;
   background: rgba(122,92,24,.12); color: var(--maroon);
   border: 1px solid var(--parch-frame);
@@ -3165,7 +3420,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 /* Same amber the SSR draft banner uses, so "draft" always looks the same. */
 .draft-mark {
   display: inline-block; vertical-align: middle;
-  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  font-family: 'Roboto', sans-serif; font-size: .64rem;
   letter-spacing: .07em; text-transform: uppercase;
   padding: 1px 6px; margin-left: .45em;
   color: #7a5c18; border: 1px solid currentColor; border-radius: 0;
@@ -3174,12 +3429,12 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 /* A dashed edge marks the whole card as not-yet-public at a glance. */
 .char-card-draft { border-style: dashed; opacity: .9; }
 .draft-count {
-  font-family: 'Oswald', sans-serif; font-size: .6em;
+  font-family: 'Roboto', sans-serif; font-size: .6em;
   letter-spacing: .08em; text-transform: uppercase;
   opacity: .6; vertical-align: middle; margin-left: .5em;
 }
 .draft-note {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .03em;
   color: rgba(236,225,200,.6); text-align: center; margin: 0 0 14px;
 }
 
@@ -3192,7 +3447,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-page { max-width: 1080px; margin: 0 auto; }
 .wiki-crumb { margin: 0 0 10px; }
 .wiki-crumb a {
-  font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .84rem; letter-spacing: .04em;
   color: rgba(236,225,200,.8); text-decoration: none;
 }
 .wiki-crumb a:hover { color: #fff; text-decoration: underline; }
@@ -3216,7 +3471,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   opacity: .85; margin: 6px 0 0;
 }
 .wiki-meta {
-  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .05em;
+  font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .05em;
   color: #8a7a5e; margin: 8px 0 0;
 }
 .wiki-meta a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
@@ -3285,14 +3540,16 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 @media (max-width: 620px) { .wiki-toc { float: none; max-width: none; margin-left: 0; } }
 .wiki-toc-head {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .74rem;
   letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
   margin-bottom: 6px;
 }
-.wiki-toc-list { margin: 0; padding-left: 20px; font-size: .92rem; }
+.wiki-toc-list { margin: 0; padding-left: 20px; font-size: .92rem; list-style-type: decimal; }
 .wiki-toc-list li { margin-bottom: 3px; }
-.wiki-toc-l1 { margin-left: 12px; list-style-type: lower-alpha; }
-.wiki-toc-l2 { margin-left: 24px; list-style-type: lower-roman; }
+/* Each level is its own <ol>, so each counts from 1 (a., i.) under its parent. */
+.wiki-toc-sub { margin: 3px 0 0; padding-left: 18px; }
+.wiki-toc-l1 { list-style-type: lower-alpha; }
+.wiki-toc-l2 { list-style-type: lower-roman; }
 .wiki-toc a { color: var(--maroon); text-decoration: none; }
 .wiki-toc a:hover { text-decoration: underline; }
 
@@ -3306,14 +3563,14 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   border: 1px solid var(--parch-frame); padding: 6px 10px; text-align: left; vertical-align: top;
 }
 .wiki-table th {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .82rem;
   letter-spacing: .04em; text-transform: uppercase;
   background: rgba(91,31,33,.08); color: var(--maroon);
 }
 .wiki-table tbody tr:nth-child(even) { background: rgba(0,0,0,.03); }
 
 /* Images: full width by default, floated with |left / |right, edge-to-edge
-   with |wide. Floats drop to full width on phones. */
+   with |wide, centred with |center. Floats drop to full width on phones. */
 .wiki-figure { margin: 0 0 16px; }
 .wiki-figure img { display: block; max-width: 100%; height: auto; border: 2px solid var(--parch-frame); }
 .wiki-figure figcaption {
@@ -3323,8 +3580,17 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .wiki-figure-right { float: right; max-width: 46%; margin: 0 0 12px 18px; }
 .wiki-figure-left { float: left; max-width: 46%; margin: 0 18px 12px 0; }
 .wiki-figure-wide img { width: 100%; }
+/* |center, and a size (|300, |50%, |small…): the width is an inline style
+   on the figure, set by render-wiki.js from a number it parsed. The picture
+   fills the figure, and max-width keeps it inside the column on a phone. */
+.wiki-figure-center { margin-left: auto; margin-right: auto; }
+.wiki-figure-center img { margin-left: auto; margin-right: auto; }
+.wiki-figure-center figcaption { text-align: center; }
+.wiki-figure.wiki-figure-sized { max-width: 100%; }
+.wiki-figure-sized img { width: 100%; }
 @media (max-width: 620px) {
   .wiki-figure-right, .wiki-figure-left { float: none; max-width: none; margin: 0 0 16px; }
+  .wiki-figure.wiki-figure-sized { max-width: 100%; }
 }
 .wiki-inline-img { max-width: 100%; height: auto; vertical-align: middle; }
 
@@ -3335,7 +3601,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   padding: 10px 14px; margin: 0 0 16px;
 }
 .wiki-callout-head {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .76rem;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .76rem;
   letter-spacing: .09em; text-transform: uppercase; margin-bottom: 5px;
   color: var(--maroon);
 }
@@ -3374,7 +3640,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 .wiki-pagelink:hover { background: rgba(255,255,255,.55); }
 .wiki-pagelink-title {
-  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  display: block; font-family: 'Roboto', sans-serif; font-weight: 600;
   font-size: 1rem; letter-spacing: .02em; color: var(--maroon);
 }
 .wiki-pagelink-blurb {
@@ -3403,13 +3669,260 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .theme-panel .news-article {
   background-image: none; background-color: var(--pg-panel);
 }
+.theme-text .custom-box-body,
+.theme-text .custom-box-body :is(p, li),
 .theme-text .wiki-body,
 .theme-text .wiki-body p,
 .theme-text .wiki-body li,
 .theme-text .news-body,
 .theme-text .news-body p { color: var(--pg-text); }
+.theme-link .custom-box-body a,
 .theme-link .wiki-body a,
 .theme-link .news-body a { color: var(--pg-link); }
+
+/* ── Theme kit: the deeper knobs (render-page.js themeAttrs) ──
+   Every rule here is keyed on a theme-* class on <body>, so a page that
+   never touched the setting draws exactly as before. The selector lists are
+   the same three page families each time: script/collection pages, wiki and
+   news pages, and the creator page (profile.html). */
+.page-themed .home-hero h1,
+.page-themed .prof-section .type-header { font-family: var(--pg-font, 'Dumbledor2', serif); }
+.theme-accent .home-hero h1,
+.theme-accent .prof-section .type-header { color: var(--pg-accent); }
+/* Heading colour: a separate knob from the accent, for pages that want the
+   titles one colour and the links and rules another. */
+.theme-heading :is(.script-title-fallback, .gen-sech, .gen-sech a, .script-team-head, .sv-subhead,
+  .info-h, .sv-night-head, .wiki-title, .wiki-h, .wiki-h a.sec-anchor, .wiki-toc-head,
+  .news-article h1, .home-hero h1, .prof-section .type-header, .coll-title) { color: var(--pg-heading); }
+/* Heading letter case and glow */
+.theme-hcase-upper :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: uppercase; }
+.theme-hcase-lower :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: lowercase; }
+.theme-hcase-none :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: none; }
+.theme-hcase-caps :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-transform: none; font-variant: small-caps; }
+.theme-glow :is(.script-title-fallback, .gen-sech, .script-team-head, .sv-subhead, .info-h,
+  .sv-night-head, .wiki-title, .wiki-h, .news-article h1, .home-hero h1, .prof-section .type-header) { text-shadow: var(--pg-glow); }
+/* Body font: set on the reading text itself, because most of it names a
+   font of its own and would not inherit one from the page. */
+.theme-bfont #content :is(p, li, dd, dt, td, th, blockquote, .script-char-ability, .char-card-ability, .script-desc,
+  .sv-tagline, .wiki-body, .news-body, .sv-night-reminder),
+.theme-bfont :is(.home-hero, .home-panel) :is(p, li, dd, dt, .profile-bio, .char-card-ability) { font-family: var(--pg-bfont); }
+.theme-align-center #content :is(.sv-section p, .wiki-body p, .news-body p),
+.theme-align-center .home-panel p { text-align: center; }
+.theme-align-justify #content :is(.sv-section p, .wiki-body p, .news-body p),
+.theme-align-justify .home-panel p { text-align: justify; hyphens: auto; }
+/* Text on the creator page, which is light-on-dark rather than parchment */
+.theme-text :is(.profile-bio, .profile-uname, .profile-joined, .profile-aka, .home-panel p) { color: var(--pg-text); }
+.theme-link :is(.profile-links a, .home-panel a:not(.card):not(.coll-card)) { color: var(--pg-link); }
+/* Panels: opacity, corners, border, shadow. color-mix keeps the text solid
+   while the box goes see-through; a browser without it keeps the solid
+   colour from the rule above. */
+.theme-alpha :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--pg-panel, #f0e8d5) var(--pg-alpha), transparent);
+}
+.theme-panel .prof-section { background-image: none; background-color: var(--pg-panel); }
+.theme-radius :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section,
+  .wiki-infobox, .wiki-callout, .script-header-img, .sv-logo) { border-radius: var(--pg-radius); }
+.theme-border :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  border: var(--pg-bw) solid var(--pg-border, rgba(120,90,50,.6));
+}
+.theme-shadow :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) { box-shadow: var(--pg-shadow); }
+/* The creator page's sections are bare until a panel setting asks for a
+   box, and a box needs room inside it. */
+:is(.theme-panel, .theme-alpha, .theme-border, .theme-shadow) .prof-section { padding: 12px clamp(12px, 2.5vw, 22px) 16px; margin-bottom: 18px; }
+/* Size of everything in the page (not the site's own bar). zoom scales the
+   rem-sized text the site uses, which a font-size on a wrapper cannot. */
+.theme-scale :is(main#content, .home-hero, .home-panel) { zoom: var(--pg-scale); }
+/* Page width */
+.theme-width-narrow :is(main.wrap, .home-panel) { max-width: 860px; }
+.theme-width-wide :is(main.wrap, .home-panel) { max-width: 2200px; }
+.theme-width-full :is(main.wrap, .home-panel) { max-width: none; }
+
+/* ── Theme kit: character boxes, team headings, dividers ──
+   tc-* = the character boxes (a collection or creator page's cards, a
+   script page's roster rows), tt-* = the team headings above them, tr-* =
+   the dividers (the line under a team heading, the lines either side of a
+   section heading, a wiki page's rule). One class per setting, each written
+   by render-page.js themeAttrs only when that setting is chosen. Kept after
+   the blocks above so a setting here wins over the page-wide one. */
+.tc-bg :is(.char-card, .script-char-row) {
+  background: color-mix(in srgb, var(--pg-card-bg, var(--card)) var(--pg-card-alpha, 100%), transparent);
+}
+.tc-text :is(.char-card-ability, .script-char-ability) { color: var(--pg-card-text); }
+.tc-name :is(.char-card-name, .script-char-name) { color: var(--pg-card-name); }
+.tc-accent :is(.char-card-type, .char-card-type.good, .char-card-link) { color: var(--pg-card-accent); }
+.tc-font :is(.char-card-name, .script-char-name) { font-family: var(--pg-card-font); }
+.tc-border :is(.char-card, .script-char-row, .script-char-row + .script-char-row) {
+  border: var(--pg-card-bw) solid var(--pg-card-border, var(--parch-frame));
+}
+.tc-radius :is(.char-card, .script-char-row) { border-radius: var(--pg-card-radius); }
+.tc-shadow :is(.char-card, .script-char-row) { box-shadow: var(--pg-card-shadow); }
+/* A script's roster is a list until it is given a box look; then each row
+   is a box of its own and needs room around it. */
+.tc-box .script-char-row { padding: 8px 10px; margin-bottom: 6px; }
+.tc-hover-none .char-card:hover { transform: none; }
+.tc-hover-lift .script-char-row:hover { transform: translateY(-2px); }
+.tc-hover-grow :is(.char-card, .script-char-row):hover { transform: scale(1.03); }
+.tc-hover-glow :is(.char-card, .script-char-row):hover { transform: none; box-shadow: 0 0 20px var(--pg-card-glow); }
+:is(.tc-hover-lift, .tc-hover-grow, .tc-hover-glow) .script-char-row { transition: background .14s, transform .18s, box-shadow .18s; }
+.tc-icon .char-card-thumb { width: calc(64px * var(--pg-card-icon)); height: calc(64px * var(--pg-card-icon)); }
+.tc-icon .script-char-thumb { width: calc(42px * var(--pg-card-icon)); height: calc(42px * var(--pg-card-icon)); }
+
+.tt-font :is(.type-header, .script-team-head) { font-family: var(--pg-team-font); }
+.tt-color :is(.type-header, .type-header.good, .script-team-head, .script-team-head.good, .coll-chars-count) { color: var(--pg-team-color); }
+.tt-bg :is(.type-header, .script-team-head) { background: var(--pg-team-bg); padding: 6px 12px; border-radius: var(--pg-card-radius, 0); }
+.tt-glow :is(.type-header, .script-team-head) { text-shadow: var(--pg-team-glow); }
+.tt-size .type-header { font-size: calc(clamp(1.1rem, 2.5vw, 1.5rem) * var(--pg-team-size)); }
+.tt-size .script-team-head { font-size: calc(1.15rem * var(--pg-team-size)); }
+.tt-align-left :is(.type-header, .script-team-head) { text-align: left; }
+.tt-align-center :is(.type-header, .script-team-head) { text-align: center; }
+.tt-align-right :is(.type-header, .script-team-head) { text-align: right; }
+.tt-case-upper :is(.type-header, .script-team-head) { text-transform: uppercase; font-variant: normal; }
+.tt-case-lower :is(.type-header, .script-team-head) { text-transform: lowercase; font-variant: normal; }
+.tt-case-none :is(.type-header, .script-team-head) { text-transform: none; font-variant: normal; }
+.tt-case-caps :is(.type-header, .script-team-head) { text-transform: none; font-variant: small-caps; }
+
+/* Dividers. --pg-rule falls back to the wiki's own rule colour, so a page
+   that picks only a style or a thickness keeps the colour it had. */
+:is(.tr-fade, .tr-solid, .tr-glow) .type-rule { height: var(--pg-rule-w, 2px); }
+.tr-fade .type-rule { background: linear-gradient(90deg, var(--pg-rule, var(--rule)), transparent); }
+:is(.tr-solid, .tr-glow) .type-rule { background: var(--pg-rule, var(--rule)); }
+.tr-glow .type-rule { box-shadow: 0 0 10px var(--pg-rule, var(--rule)); }
+.tr-dashed .type-rule { height: 0; background: none; border-top: var(--pg-rule-w, 2px) dashed var(--pg-rule, var(--rule)); }
+.tr-dotted .type-rule { height: 0; background: none; border-top: var(--pg-rule-w, 2px) dotted var(--pg-rule, var(--rule)); }
+.tr-double .type-rule { height: 0; background: none; border-top: max(3px, var(--pg-rule-w, 4px)) double var(--pg-rule, var(--rule)); }
+.tr-none .type-rule { display: none; }
+:is(.tr-fade, .tr-solid, .tr-glow) .script-team-head { border-bottom: var(--pg-rule-w, 1px) solid var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-dashed .script-team-head { border-bottom: var(--pg-rule-w, 1px) dashed var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-dotted .script-team-head { border-bottom: var(--pg-rule-w, 2px) dotted var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-double .script-team-head { border-bottom: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, rgba(180,160,120,.45)); }
+.tr-none .script-team-head { border-bottom: none; }
+.tr-fade .gen-sech-wrap::before, .tr-fade .gen-sech-wrap::after { height: var(--pg-rule-w, 1px); background: linear-gradient(90deg, transparent, var(--pg-rule, var(--rule)), transparent); }
+.tr-solid .gen-sech-wrap::before, .tr-solid .gen-sech-wrap::after,
+.tr-glow .gen-sech-wrap::before, .tr-glow .gen-sech-wrap::after { height: var(--pg-rule-w, 1px); background: var(--pg-rule, var(--rule)); }
+.tr-glow .gen-sech-wrap::before, .tr-glow .gen-sech-wrap::after { box-shadow: 0 0 8px var(--pg-rule, var(--rule)); }
+.tr-dashed .gen-sech-wrap::before, .tr-dashed .gen-sech-wrap::after { height: 0; background: none; border-top: var(--pg-rule-w, 1px) dashed var(--pg-rule, var(--rule)); }
+.tr-dotted .gen-sech-wrap::before, .tr-dotted .gen-sech-wrap::after { height: 0; background: none; border-top: var(--pg-rule-w, 2px) dotted var(--pg-rule, var(--rule)); }
+.tr-double .gen-sech-wrap::before, .tr-double .gen-sech-wrap::after { height: 0; background: none; border-top: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, var(--rule)); }
+.tr-none .gen-sech-wrap::before, .tr-none .gen-sech-wrap::after { display: none; }
+:is(.tr-fade, .tr-solid) .wiki-rule { border-top: var(--pg-rule-w, 1px) solid var(--pg-rule, var(--parch-frame)); }
+.tr-glow .wiki-rule { border-top: var(--pg-rule-w, 1px) solid var(--pg-rule, var(--parch-frame)); box-shadow: 0 0 8px var(--pg-rule, var(--parch-frame)); }
+.tr-dashed .wiki-rule { border-top: var(--pg-rule-w, 1px) dashed var(--pg-rule, var(--parch-frame)); }
+.tr-dotted .wiki-rule { border-top: var(--pg-rule-w, 2px) dotted var(--pg-rule, var(--parch-frame)); }
+.tr-double .wiki-rule { border-top: max(3px, var(--pg-rule-w, 3px)) double var(--pg-rule, var(--parch-frame)); }
+.tr-none .wiki-rule { border-top: none; }
+
+/* ── Theme kit: layout (sizes and positions) ──
+   tl-* classes from render-page.js themeAttrs, one per setting, each written
+   only when the owner chose it. Column rules stay out of the phone range:
+   on a small screen every page keeps its one-column layout whatever the
+   desktop arrangement says, and a box never asks for more than the screen. */
+/* Character boxes: width, boxes per row, spacing */
+.tl-cardw .char-grid { grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w), 100%), 1fr)); }
+.tl-cols .char-grid { grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+:is(.tl-cardw, .tl-cols) .script-char-list {
+  display: grid; column-gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w, 260px), 100%), 1fr));
+}
+.tl-cols .script-char-list { grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+:not(.tc-border):is(.tl-cardw, .tl-cols) .script-char-row + .script-char-row { border-top: 0; }
+@media (max-width: 640px) {
+  .tl-cols :is(.char-grid, .script-char-list) { grid-template-columns: repeat(auto-fill, minmax(min(var(--pg-card-w, 240px), 100%), 1fr)); }
+}
+.tl-gap :is(.char-grid, .script-char-list) { gap: var(--pg-card-gap); }
+.tl-pad :is(.char-card, .script-char-row) { padding: var(--pg-card-pad); }
+/* Where the icon sits in a box, how its text lines up, how much ability shows */
+.tl-card-top :is(.char-card, .script-char-row) { flex-direction: column; align-items: center; text-align: center; }
+.tl-card-top .card-side { flex-direction: row; }
+.tl-card-top .card-side .cq { min-height: 0; }
+.tl-card-top :is(.char-card-info, .script-char-text) { width: 100%; }
+.tl-card-right :is(.char-card, .script-char-row) { flex-direction: row-reverse; }
+.tl-card-right :is(.char-card-info, .script-char-text) { text-align: right; }
+.tl-calign-left :is(.char-card-info, .script-char-text) { text-align: left; }
+.tl-calign-center :is(.char-card-info, .script-char-text) { text-align: center; }
+.tl-calign-right :is(.char-card-info, .script-char-text) { text-align: right; }
+.tl-ab-short :is(.char-card-ability, .script-char-ability) {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+}
+.tl-ab-hide :is(.char-card-ability, .script-char-ability) { display: none; }
+/* The page: its width, the room inside its boxes */
+.tl-pagew :is(main.wrap, .home-panel, .wiki-page) { max-width: var(--pg-page-w); }
+.tl-ppad :is(.script-chars-panel, .card, .wiki-body, .wiki-page-head, .news-article, .prof-section) {
+  padding: min(var(--pg-panel-pad), 6vw);
+}
+/* The title and the banner above it */
+.tl-title :is(.script-title-fallback, .coll-title, .wiki-title, .news-article h1) { zoom: var(--pg-title); }
+.tl-top-left :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: left; margin-left: 0; margin-right: auto; }
+.tl-top-center :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: center; margin-left: auto; margin-right: auto; }
+.tl-top-right :is(.script-header-wrap, .sv-logo-wrap, .coll-header-wrap, .script-title-fallback, .coll-title,
+  .sv-tagline, .script-desc, .script-meta-line, .page-owner-bar, .page-fav-bar, .wiki-page-head) { text-align: right; margin-left: auto; margin-right: 0; }
+/* The information box (a script's side column, a wiki page's fact box) */
+@media (min-width: 901px) {
+  .tl-infow .script-view-layout { grid-template-columns: minmax(0, 1fr) min(var(--pg-info-w), 45%); }
+  .tl-info-left .script-view-layout { grid-template-columns: minmax(300px, 1fr) minmax(0, 1.7fr); }
+  .tl-info-left.tl-infow .script-view-layout { grid-template-columns: min(var(--pg-info-w), 45%) minmax(0, 1fr); }
+  .tl-infow .wiki-layout:not(.wiki-layout-full) { grid-template-columns: minmax(0, 1fr) min(var(--pg-info-w), 45%); }
+  .tl-info-left .wiki-layout:not(.wiki-layout-full) { grid-template-columns: 300px minmax(0, 1fr); }
+  .tl-info-left.tl-infow .wiki-layout:not(.wiki-layout-full) { grid-template-columns: min(var(--pg-info-w), 45%) minmax(0, 1fr); }
+  /* On a phone "left" stays below the page, where a side box usually goes:
+     above it, the box and its JSON would push the characters a screen down. */
+  .tl-info-left :is(.script-json-panel, .wiki-side) { order: -1; }
+}
+.tl-info-top :is(.script-json-panel, .wiki-side) { order: -1; }
+:is(.tl-info-top, .tl-info-bottom) :is(.script-view-layout, .wiki-layout) { grid-template-columns: minmax(0, 1fr); }
+:is(.tl-info-top, .tl-info-bottom) .script-json-panel {
+  position: static; display: grid; gap: 14px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+:is(.tl-info-top, .tl-info-bottom) .wiki-side {
+  display: grid; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+/* Sections: their order and the space between them. Flex only when one of
+   the two is set, so an untouched page lays out exactly as before. */
+.tl-flow :is(.sv-main, .coll-flow, .prof-panel) { display: flex; flex-direction: column; }
+.tl-flow #page-wiki-links:empty { display: none; }
+.tl-gapy :is(.sv-main, .coll-flow, .prof-panel) { gap: var(--pg-sec-gap); }
+.tl-gapy :is(.sv-main, .coll-flow, .prof-panel) > * { margin-top: 0; margin-bottom: 0; }
+.tl-order .sv-main > .sv-s-synopsis { order: var(--pg-o-synopsis, 51); }
+.tl-order .sv-main > .sv-s-gameplay { order: var(--pg-o-gameplay, 52); }
+.tl-order .sv-main > #page-wiki-links { order: var(--pg-o-pages, 53); }
+.tl-order .sv-main > .sv-s-characters { order: var(--pg-o-characters, 54); }
+.tl-order .sv-main > .sv-bootlegger { order: var(--pg-o-bootlegger, 55); }
+.tl-order .sv-main > #sec-nightorder { order: var(--pg-o-night, 56); }
+.tl-order .sv-main > .script-missing { order: 99; }
+.tl-order .coll-flow > .coll-meta-row { order: var(--pg-o-info, 51); }
+.tl-order .coll-flow > .coll-prose { order: var(--pg-o-about, 52); }
+.tl-order .coll-flow > :is(.coll-filters, .coll-chars) { order: var(--pg-o-characters, 53); }
+.tl-order .coll-flow > .coll-jinx { order: var(--pg-o-jinx, 54); }
+.tl-order .prof-panel > * { order: 99; }
+.tl-order .prof-panel > [data-sec="pinned"] { order: var(--pg-o-pinned, 51); }
+.tl-order .prof-panel > [data-sec="characters"] { order: var(--pg-o-characters, 52); }
+.tl-order .prof-panel > [data-sec="scripts"] { order: var(--pg-o-scripts, 53); }
+.tl-order .prof-panel > [data-sec="collections"] { order: var(--pg-o-collections, 54); }
+.tl-order .prof-panel > [data-sec="pages"] { order: var(--pg-o-pages, 55); }
+
+/* Moved parts (theme.moves, render-page.js movesCSS) are drawn with
+   `translate`, which still counts towards the page's scrollable width: a part
+   dragged past the edge must not give a desktop page a sideways scrollbar. */
+@media (min-width: 901px) { body.tl-moved { overflow-x: clip; } }
+
+/* ── Custom CSS frame (assets/custom-css.js) ──
+   A page with a custom stylesheet has its content wrapped in
+   .ucss-frame > .ucss, and every rule the author wrote is rewritten to sit
+   under .ucss. The frame is what keeps it there visually: paint containment
+   clips anything drawn outside the page area (a negative margin, a transform,
+   a huge shadow) and makes the frame the containing block for position:fixed,
+   so a page can never cover the site's own bar or draw over the next page.
+   flow-root stops a child's negative margin collapsing out through it.
+   Nothing the author writes can select the frame itself. */
+.ucss-frame { display: flow-root; contain: paint; isolation: isolate; position: relative; min-width: 0; }
+.ucss { min-width: 0; }
 
 /* Page links on the dark list pages (author + /u/ profile). Same markup as
    the parchment version, inverted for the dark panel behind it. */
@@ -3523,7 +4036,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .jx-opt-ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
 .jx-opt-body, .sg-opt-body { min-width: 0; display: flex; flex-direction: column; }
 .jx-opt-name, .sg-opt-name {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .jx-opt-meta, .sg-opt-meta {
@@ -3553,9 +4066,100 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   line-height: 1.35; color: #5b4632;
 }
 .jx-conflict b { color: var(--maroon); }
+/* ─── Almanac snapshot (assets/char-snapshot.js) ────────────────
+   The preview that opens behind "Snapshot" on the two character editors.
+   The poster itself is drawn on a canvas and shown here as an <img>, because
+   an image is the thing a browser lets you right-click and copy and a phone
+   lets you long-press — a canvas offers neither reliably. The stage scrolls
+   rather than shrinking the picture to nothing: on a phone, fit-to-width and
+   a scroll is how you actually read it. */
+.snap-backdrop {
+  position: fixed; inset: 0; z-index: 3000;
+  background: rgba(20,12,10,.78);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 16px; overflow-y: auto;
+}
+.snap-panel {
+  background-color: var(--parch); background-image: url('parchment.webp'); background-size: cover;
+  border: 2px solid var(--parch-frame); border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  padding: 14px 16px 16px; width: min(860px, 100%);
+  margin: auto;
+}
+.snap-head { display: flex; align-items: center; gap: 10px; }
+.snap-title {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-size: 1.4rem; margin: 0; flex: 1; letter-spacing: .04em;
+}
+.snap-x {
+  background: transparent; border: none; cursor: pointer; font-size: 1.1rem;
+  color: var(--maroon); padding: 4px 8px; line-height: 1;
+}
+/* The settings wheel and what it opens: which sections the picture shows,
+   its shape and its size. */
+.snap-x svg { display: block; }
+.snap-gear { opacity: .7; }
+.snap-gear:hover, .snap-gear.on { opacity: 1; }
+.snap-settings {
+  margin: 8px 0 4px; padding: 10px 12px;
+  background: rgba(255,253,248,.55); border: 1px solid rgba(122,45,47,.25); border-radius: 6px;
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-end;
+}
+.snap-settings[hidden] { display: none; }
+.snap-show { border: 0; margin: 0; padding: 0; flex: 1 1 100%;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 4px 12px; }
+.snap-show legend, .snap-field span {
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); padding: 0; margin-bottom: 4px;
+}
+.snap-check { font-size: .88rem; color: var(--ink); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.snap-check input { accent-color: var(--maroon); width: 16px; height: 16px; margin: 0; }
+.snap-field { display: flex; flex-direction: column; flex: 1 1 180px; }
+.snap-select { font: inherit; font-size: .9rem; padding: 6px 8px; border: 1px solid #cdbfa0; border-radius: 4px; background: #fffdf8; color: var(--ink); }
+.snap-btn[hidden] { display: none; }
+.snap-hint { font-size: .82rem; color: var(--ink); opacity: .8; margin: 4px 0 10px; }
+.snap-hint.snap-error { color: var(--evil); opacity: 1; font-weight: 600; }
+.snap-stage {
+  background: #1d0a1a; border: 1px solid var(--parch-frame);
+  max-height: 62vh; overflow: auto; -webkit-overflow-scrolling: touch;
+  /* align-items must not be the default `stretch`: a flex row stretches the
+     picture to the stage's height and the poster comes out squashed. */
+  display: flex; justify-content: center; align-items: flex-start;
+  min-height: 120px;
+}
+/* Two views, swapped by tapping the picture: the whole poster at a glance,
+   or fit-to-width so the text can actually be read on a phone. */
+.snap-img { display: block; max-width: 100%; width: auto; max-height: 58vh; height: auto; cursor: zoom-in; }
+.snap-img.snap-full { width: 100%; max-height: none; cursor: zoom-out; }
+.snap-actions {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-top: 12px; border-top: 1px solid rgba(0,0,0,.12); padding-top: 12px;
+}
+.snap-btn {
+  font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .04em;
+  font-size: .9rem; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+  border: 1px solid rgba(122,45,47,.45); background: rgba(255,253,248,.6);
+  color: var(--maroon); text-decoration: none; display: inline-block;
+}
+.snap-btn:hover { background: rgba(255,253,248,.95); }
+.snap-btn:disabled { opacity: .5; cursor: not-allowed; }
+.snap-dl, .snap-share { background: var(--maroon); color: #f4ead2; border-color: #4a1719; }
+.snap-dl:hover, .snap-share:hover { background: #6d2628; color: #f4ead2; }
+.snap-close { margin-left: auto; }
+@media (max-width: 560px) {
+  .snap-panel { padding: 12px 12px 14px; }
+  /* The picture, not the stage: shrinking the stage alone leaves the fitted
+     poster taller than the box it sits in and clips its foot. */
+  .snap-img { max-height: 48vh; }
+  .snap-actions { align-items: stretch; }
+  .snap-actions .snap-btn { flex: 1; text-align: center; }
+}
+
 /* House rules (_meta.bootlegger) on a script page */
 .sv-boot-list { margin: 0; padding-left: 20px; }
 .sv-boot-list li { color: var(--ink); line-height: 1.5; margin-bottom: .4em; }
+.sv-boot-side { margin-bottom: 16px; }
+.sv-boot-side .sv-boot-list { font-size: .92rem; }
 .script-char-off { font-size: .78em; opacity: .6; }
 
 /* ─── Page history (/history) ──────────────────────────────────
@@ -3580,7 +4184,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   .hist-row { grid-template-columns: 1fr; gap: 2px; }
 }
 .hist-when {
-  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .03em;
   color: #6b5d49; padding-top: 2px;
 }
 .hist-body { min-width: 0; font-size: .92rem; color: var(--ink); }
@@ -3589,14 +4193,14 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .hist-who:hover { text-decoration: underline; }
 .hist-who-gone { font-weight: 400; font-style: italic; color: #6b5d49; }
 .hist-badge {
-  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .66rem; font-weight: 600;
   letter-spacing: .07em; text-transform: uppercase;
   color: #1c5429; background: rgba(42,110,42,.12);
   border: 1px solid rgba(42,110,42,.4); border-radius: 3px; padding: 1px 6px;
 }
 .hist-row-now .hist-body, .hist-row-first .hist-body { color: #6b5d49; }
 .hist-chip {
-  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .74rem;
+  display: inline-block; font-family: 'Roboto', sans-serif; font-size: .74rem;
   letter-spacing: .03em; color: var(--maroon); background: #fffdf8;
   border: 1px solid rgba(180,160,120,.7); border-radius: 3px;
   padding: 1px 7px; margin: 2px 4px 2px 0;
@@ -3604,7 +4208,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .hist-nochange { color: #6b5d49; font-style: italic; }
 .hist-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .hist-btn {
-  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  font-family: 'Roboto', sans-serif; font-size: .76rem; letter-spacing: .03em;
   color: var(--maroon); background: rgba(255,253,248,.7);
   border: 1px solid rgba(122,45,47,.4); border-radius: 4px;
   padding: 4px 10px; cursor: pointer;
@@ -3617,7 +4221,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   padding: 8px 10px; margin-bottom: 8px;
 }
 .hist-field-name {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; letter-spacing: .06em;
   text-transform: uppercase; color: var(--maroon); margin-bottom: 4px;
 }
 .hist-was, .hist-now {
@@ -3627,7 +4231,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .hist-was { color: #8a3a3a; }
 .hist-now { color: #1c5429; }
 .hist-tag {
-  flex-shrink: 0; font-family: 'Oswald', sans-serif; font-size: .66rem;
+  flex-shrink: 0; font-family: 'Roboto', sans-serif; font-size: .66rem;
   letter-spacing: .06em; text-transform: uppercase; opacity: .8; padding-top: 3px;
   min-width: 44px;
 }
@@ -3650,11 +4254,11 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   background: rgba(122,93,63,.07); border-color: var(--rule); color: #5f5240;
 }
 .edit-status-bar .es-label {
-  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  font-family: 'Roboto', sans-serif; font-size: .72rem; letter-spacing: .06em;
   text-transform: uppercase; opacity: .75;
 }
 .edit-status-bar .oe-chip {
-  font-family: 'Oswald', sans-serif; font-size: .7rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .7rem; font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase;
   color: #1c5429; background: rgba(42,110,42,.1);
   border: 1px solid rgba(42,110,42,.35); border-radius: 3px; padding: 1px 6px;
@@ -3663,7 +4267,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   color: #6b5d49; background: rgba(122,93,63,.08); border-color: rgba(122,93,63,.35);
 }
 .hist-page-link {
-  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  font-family: 'Roboto', sans-serif; font-size: .74rem; letter-spacing: .04em;
   color: var(--maroon); text-decoration: none; border-bottom: 1px solid rgba(122,45,47,.35);
 }
 .hist-page-link:hover { color: var(--evil); }
@@ -3674,7 +4278,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
    NOT .hist-open — that is already the "this page is open to editing" line on
    /history itself, and a second rule under the same name would restyle it. */
 .hist-open-link {
-  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .82rem;
+  display: inline-block; font-family: 'Roboto', sans-serif; font-size: .82rem;
   letter-spacing: .03em; color: var(--maroon); text-decoration: none;
   background: #fffdf8; border: 1px solid var(--rule); border-radius: 4px;
   padding: 7px 12px; min-height: 34px; line-height: 1.4;
@@ -3752,9 +4356,9 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .sg-row:first-child { border-top: none; padding-top: 4px; }
 .sg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .sg-who { font-weight: 700; color: var(--maroon); }
-.sg-when { font-family: 'Oswald', sans-serif; font-size: .76rem; color: #6b5d49; }
+.sg-when { font-family: 'Roboto', sans-serif; font-size: .76rem; color: #6b5d49; }
 .sg-chip {
-  font-family: 'Oswald', sans-serif; font-size: .68rem; font-weight: 600;
+  font-family: 'Roboto', sans-serif; font-size: .68rem; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase;
   border-radius: 3px; padding: 1px 7px; border: 1px solid;
 }
@@ -3786,7 +4390,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .sg-inbox-main { flex: 1; min-width: 0; }
 .sg-inbox-name { display: block; color: var(--maroon); font-weight: 700; text-decoration: none; }
 .sg-inbox-name:hover { text-decoration: underline; }
-.sg-inbox-meta { display: block; font-family: 'Oswald', sans-serif; font-size: .74rem; color: #6b5d49; }
+.sg-inbox-meta { display: block; font-family: 'Roboto', sans-serif; font-size: .74rem; color: #6b5d49; }
 .sg-inbox-note { display: block; font-size: .86rem; font-style: italic; color: var(--ink); margin-top: 2px; }
 /* The note box in the editor when a page takes suggestions */
 .suggest-note-fld textarea { min-height: 60px; }
@@ -3801,7 +4405,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .att-box { margin-top: 10px; }
 .att-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .att-add {
-  font-family: 'Oswald', sans-serif; text-transform: uppercase;
+  font-family: 'Roboto', sans-serif; text-transform: uppercase;
   font-size: .74rem; letter-spacing: .06em; cursor: pointer;
   padding: 5px 12px; color: inherit;
   background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.3);
@@ -4489,6 +5093,7 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 .sbx-team[data-team="traveller"] .sbx-team-head { color: #c9a0e6; border-bottom-color: rgba(201,160,230,.5); }
 .sbx-team[data-team="fabled"] .sbx-team-head { color: #e6c766; border-bottom-color: rgba(230,199,102,.5); }
 .sbx-team[data-team="loric"] .sbx-team-head { color: #8fd49e; border-bottom-color: rgba(143,212,158,.5); }
+.sbx-team[data-team="other"] .sbx-team-head { color: #c4a6e8; border-bottom-color: rgba(196,166,232,.5); }
 .sbx-no-accent .sbx-team .sbx-team-head { color: var(--parch); border-bottom-color: rgba(183,156,111,.5); }
 
 /* ── layouts ── */
@@ -4822,6 +5427,7 @@ button.sbx-counts:empty { display: none; }
 .sbx-row-stripe .sbx-team[data-team="traveller"] .sbx-ch { border-left: 4px solid #8a5bc4; }
 .sbx-row-stripe .sbx-team[data-team="fabled"] .sbx-ch { border-left: 4px solid #c9a227; }
 .sbx-row-stripe .sbx-team[data-team="loric"] .sbx-ch { border-left: 4px solid #3f9a58; }
+.sbx-row-stripe .sbx-team[data-team="other"] .sbx-ch { border-left: 4px solid var(--other, #7b4fae); }
 
 /* headings that stay put while a long roster scrolls under them */
 .sbx-sticky-heads .sbx-team-head {
@@ -4991,6 +5597,21 @@ button.sbx-counts:empty { display: none; }
 .sbx-lib-acts .sbi, .sbx-team-tools .sbi, .sbx-add-die .sbi { vertical-align: -.2em; }
 .card-load-more { display:block; margin:12px auto 24px; padding:10px 18px; cursor:pointer; font:inherit; color:var(--maroon); background:var(--parch); border:1px solid var(--parch-frame); }
 .card-load-more[hidden] { display:none; }
+/* The character lists (All Characters, team, tag). The spacer under a grid
+   holds the height of the cards not drawn yet (viewport.js), so a batch
+   fills space that was already there instead of pushing the button, the
+   next section and the footer down the screen; min-height keeps the footer
+   below the fold while the first cards are on their way. */
+.card-spacer { display:block; height:0; }
+.list-panel { min-height: 100vh; }
+/* The filter box drawn by the server before the list has arrived: visibly
+   not ready, and a tap on it is remembered (marked) and applied once the
+   list is in, instead of doing nothing (all-characters.html). */
+.filter-bar.cf-loading { cursor: progress; }
+.filter-bar.cf-loading .filter-chip, .filter-bar.cf-loading .filter-select,
+.filter-bar.cf-loading .filter-search, .filter-bar.cf-loading .filter-reset { opacity: .55; cursor: progress; }
+.filter-bar.cf-loading .filter-chip.cf-queued { opacity: 1; outline: 2px dashed var(--maroon); outline-offset: 1px; }
+.cf-loading-note { opacity: .75; font-style: italic; }
 
 /* ---- UI icons ----------------------------------------------------------
    Every icon the site draws in its own text, as SVG masks painted with
@@ -5075,3 +5696,36 @@ button.sbx-counts:empty { display: none; }
 .ico-grip { --ico: var(--ico-grip); }
 .ico-copy { --ico: var(--ico-copy); }
 .ico-quote { --ico: var(--ico-quote); }
+
+/* ── Stickers: free-standing images on a page (render-page.js stickersHTML)
+   The layer sits inside the page's main area (or <body> on a creator page)
+   and covers it exactly; each sticker is placed by its CENTRE at x%/y% of
+   that area, or of the screen when pinned (.pgs-fixed). They never take a
+   click, so an image can never be a link or sit between a reader and a
+   button. The layer clips what hangs over its edges, or a sticker at the
+   right edge would widen the page sideways on a phone; a pinned one is
+   measured against the screen and is not clipped by it. Behind (.pgs-back)
+   is under the page's boxes and over its background; in front stays under
+   the site's own top bar (z-index 30). */
+.pg-stickers { position: absolute; inset: 0; pointer-events: none; overflow: clip; }
+.pg-sticker {
+  position: absolute; height: auto; max-width: 90vw;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  translate: -50% -50%; rotate: var(--pgs-r, 0deg); scale: var(--pgs-fx, 1) 1;
+  opacity: var(--pgs-o, 1);
+}
+.pg-sticker.pgs-fixed { position: fixed; }
+.pg-sticker.pgs-back { z-index: -1; }
+.pg-sticker.pgs-front { z-index: 6; }
+@media (max-width: 640px) { .pg-sticker.pgs-hide-small { display: none; } }
+@keyframes pgs-spin { to { transform: rotate(360deg); } }
+@keyframes pgs-bob { 50% { transform: translateY(-14px); } }
+@keyframes pgs-wiggle { 25% { transform: rotate(-9deg); } 75% { transform: rotate(9deg); } }
+@keyframes pgs-pulse { 50% { transform: scale(1.14); } }
+@keyframes pgs-blink { 50% { opacity: .15; } }
+.pgs-anim-spin { animation: pgs-spin 6s linear infinite; }
+.pgs-anim-bob { animation: pgs-bob 2.4s ease-in-out infinite; }
+.pgs-anim-wiggle { animation: pgs-wiggle 1.2s ease-in-out infinite; }
+.pgs-anim-pulse { animation: pgs-pulse 1.8s ease-in-out infinite; }
+.pgs-anim-blink { animation: pgs-blink 1.6s steps(2, jump-none) infinite; }
+@media (prefers-reduced-motion: reduce) { .pg-sticker { animation: none !important; } }

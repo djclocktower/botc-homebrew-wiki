@@ -147,7 +147,7 @@ Each texture PNG is first grown once, by `grainSheet`, into a 2× mosaic that re
 Three things here are load-bearing, and the first two were the mirroring bug:
 
 - **The field is centred, not laid out from the centre.** It used to translate to `W/2` and draw the tile from there, which put the texture's top-left *corner* at the middle of the icon — so four mirrored tiles met exactly on both centre lines of every icon rendered. On anything with a large unbroken area that read as a kaleidoscope.
-- **Tiles are never mirrored.** Mirroring joins seamlessly but the eye finds the axes instantly. The mosaic wraps, so plain tiles join just as well with nothing to see.
+- **Tiles are never mirrored.** Mirroring joins seamlessly but the eye finds the axes instantly. The mosaic wraps, so plain tiles join just as well with nothing to see. The old look survives as an opt-in, `texTile` ("Original tiled texture" under Texture placement): the plain sheet, mirror-tiled from the centre.
 - **The crop size is a fraction of the SOURCE texture, not of the grown sheet.** Off the sheet it lands at ~90% of the source, so every crop is the whole texture over again and the mosaic decorrelates nothing.
 
 `grainSheet` is seeded and cached per image (a `WeakMap`), so a texture always grows the same mosaic and the live preview and the export cannot disagree. Building it is a few ms against a ~750 ms pipeline.

@@ -5,17 +5,20 @@
    data-tag attribute. */
 (function () {
   var TAG_INFO = {
+    'Ability Gain': 'Can gain or causes others to gain an ability.',
     'Alignment Change': 'Can change a player’s alignment, or make good and evil players swap sides.',
     'Binary Info': 'Can only learn 2 things.',
     'Character Change': 'Can change a player’s character, or become another character itself.',
     'Confirmation': 'Can confirm itself or others.',
     'Consult': 'Privately visits the Storyteller to ask questions or make decisions.',
+    'Day Deaths': 'This character causes or interacts with deaths during the day.',
     'Death': 'Kills players, or cares about players dying.',
     'Death Modification': 'Changes how, when, or whether deaths happen.',
     'Demonsbane': 'Benefits from being killed at night or by the Demon.',
     'Drunkenness': 'Causes drunkenness, or interacts with drunk players.',
     'Even If Dead': 'Its ability keeps working (fully or partly) after the player dies.',
     'Execution': 'Causes, prevents, or reacts to executions.',
+    'Execution Failure': 'Causes executions to fail completely.',
     'Execution Survival': 'Can survive execution, or lets another player survive one.',
     'Extra Evil': 'Adds, or can create, an extra evil player.',
     'False Info': 'Causes or interacts with False Info.',
@@ -23,12 +26,10 @@
     'Grim Peeker': 'Sees part of the Grimoire, or otherwise learns what the Storyteller can see.',
     'Hidden': 'Hides its presence, identity, or other game information from players.',
     'Information': 'The player learns something from their ability.',
+    'Joke': ';P',
     'Loud': 'Announces information or effects publicly to the whole town.',
     'Madness': 'Creates madness, or interacts with mad players.',
-    /* No description on purpose: an empty string means no hover box
-       (tagEl() only offers one for a tag that describes itself), which is
-       different from the tag being unknown. */
-    'Magic': '',
+    'Magic': 'Has the capability to cause absolutely anything to happen.',
     'Misregistration': 'Can register as another character, team, or alignment.',
     'Multi-Kill': 'An evil character that can kill more than one player per night.',
     'Neighbor': 'Cares about the players sitting next to someone.',
@@ -116,21 +117,31 @@
     if (!el) return null;
     return describeTag(el.getAttribute('data-tag')) ? el : null;
   }
-  document.addEventListener('mouseover', function (e) {
-    var el = tagEl(e.target);
-    if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
-    else hideTip();
-  });
-  document.addEventListener('focusin', function (e) {
-    var el = tagEl(e.target);
-    if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
-  });
-  document.addEventListener('focusout', hideTip);
-  window.addEventListener('scroll', hideTip, true);
-  window.addEventListener('resize', hideTip);
+  // The Worker reads the descriptions too (the /tag page's first screen is
+  // drawn there, worker/list-pages.js), so nothing here touches the DOM
+  // unless there is one.
+  if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    document.addEventListener('mouseover', function (e) {
+      var el = tagEl(e.target);
+      if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
+      else hideTip();
+    });
+    document.addEventListener('focusin', function (e) {
+      var el = tagEl(e.target);
+      if (el) showTip(el, describeTag(el.getAttribute('data-tag')));
+    });
+    document.addEventListener('focusout', hideTip);
+    window.addEventListener('scroll', hideTip, true);
+    window.addEventListener('resize', hideTip);
+  }
 
-  window.TAG_INFO = TAG_INFO;
-  window.KNOWN_TAGS = KNOWN_TAGS;
-  window.describeTag = describeTag;
-  window.buildTagPicker = buildTagPicker;
+  if (typeof window !== 'undefined') {
+    window.TAG_INFO = TAG_INFO;
+    window.KNOWN_TAGS = KNOWN_TAGS;
+    window.describeTag = describeTag;
+    window.buildTagPicker = buildTagPicker;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { TAG_INFO: TAG_INFO, KNOWN_TAGS: KNOWN_TAGS, describeTag: describeTag };
+  }
 })();

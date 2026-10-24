@@ -25,8 +25,9 @@ test('SSR keeps versioned main/alternate art, nested roots and unversioned expor
   const d = { slug: 'traveller', page: 'c/test-set/traveller', name: 'Traveller', team: 'traveller',
     art: 'art/traveller.png', artAlt: 'art/traveller-good.png', v: 'current' };
   const html = f.hooks.renderCharacterPage(d, 'https://botchomebrew.wiki', false, false, '');
-  assert.match(html, /src="\.\.\/\.\.\/assets\/art\/traveller\.png\?v=current"/);
-  assert.match(html, /assets\/art\/traveller-good\.png\?v=current/);
+  // The emblem draws the display copy (media/full/…), versioned; exports keep the PNG.
+  assert.match(html, /src="\.\.\/\.\.\/assets\/media\/full\/art\/traveller\.png\.webp\?v=current"/);
+  assert.match(html, /data-src="\.\.\/\.\.\/assets\/media\/full\/art\/traveller-good\.png\.webp\?v=current"/);
   assert.ok(Render.buildSchema(d).image.every(url => !url.includes('?v=')));
   const preview = Render.renderCharacter(d, 'blob:preview', '../../');
   assert.match(preview, /src="blob:preview"/);
@@ -274,7 +275,7 @@ test('resolved Appears in markup skips both browser feed requests', async () => 
   const field = { textContent: 'A Set', querySelector() { return null; }, getAttribute() { return 'A Set'; } };
   const context = vm.createContext({
     window: { CHAR_SLUG: 'demo', APPEARS_IN_RESOLVED: true }, location: { hash: '' },
-    document: { getElementById: id => id === 'content' ? {} : null,
+    document: { getElementById: id => id === 'content' ? {} : null, addEventListener() {},
       querySelector: selector => selector === '.info-appears-in' ? field : null },
     fetch: async () => { requests++; return ok([]); }
   });
@@ -289,11 +290,13 @@ test('resolved Appears in markup skips both browser feed requests', async () => 
 
 test('empty browse results disconnect the previous viewport renderer', async () => {
   const source = await read('all-characters.html');
-  const renderer = source.slice(source.indexOf('    function render(){'), source.indexOf('    Promise.all([', source.indexOf('    function render(){')));
+  const renderer = source.slice(source.indexOf('    function render(opts){'), source.indexOf('    var cancelCards = null;', source.indexOf('    function render(opts){')));
   let cancelled = 0;
-  const panel = { innerHTML: '' };
+  const panel = { innerHTML: '', getAttribute: () => null };
   let list = Array.from({ length: 200 }, (_, id) => ({ team: 'townsfolk', id }));
-  const context = vm.createContext({ FILTERS: { apply: () => list, state: { group: 'team' } }, FULL: list,
+  const context = vm.createContext({ FILTERS: { apply: () => list, state: { group: 'team' } }, FULL: list, AC_COLLECTIONS: [],
+    PANEL: panel, SSR: false, ADOPT: false, SET_OF: null, SETS_READY: true, AC_SCRIPTS: [], cancelCards: null,
+    CF: { makeSetOf: () => () => null, sections: () => ({ html: '<section></section>', groups: [] }), layoutSig: () => '' },
     TEAMS: [['townsfolk', 'Townsfolk']], card: () => '<a>card</a>',
     window: { mountCardBatches() { return () => { cancelled++; }; } },
     document: { getElementById: id => id === 'panel' ? panel : id === 'filter-count' ? {} : null } });

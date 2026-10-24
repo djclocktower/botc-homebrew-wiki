@@ -112,7 +112,7 @@
      "needs ___" in the editor, so they carry their own articles. */
   // Missing tags does NOT hold a page back from publishing — it only makes it
   // Partial. Tags were the sole reason 231 of 619 published pages failed this
-  // bar, and hiding them behind the "Show Partial" chip is the softer answer.
+  // bar, and a "Partial" mark a reader can filter out is the softer answer.
   var PUBLISH_REQUIREMENTS = [
     ['a name',     function (d) { return nonEmpty(d.name); }],
     ['an icon',    hasIcon],
@@ -210,7 +210,10 @@
      Partial for want of fields that were never sent. The Worker classifies
      each row BEFORE it trims it and stamps the answer, so the stamp is the
      only honest reading of a trimmed row and always wins over recomputing.
-     Rows built in an editor carry no stamp and are computed as normal. */
+     Rows built in an editor carry no stamp and are computed as normal.
+     A stamp is only ever the Worker's: the save handlers drop any posted one
+     and foldLegacyCurata() drops any already stored, and classifyPage()
+     never reads one at all. */
   function stampedClass(d) {
     var c = d && d.classification;
     return (c === 'partial' || c === 'standard' || c === 'curata') ? c : '';
@@ -238,9 +241,18 @@
   }
 
   /* Collections and scripts only have two states — they have no almanac and
-     no tags of their own, so "Partial" would be meaningless for them. */
+     no tags of their own, so "Partial" would be meaningless for them.
+
+     This is the Worker's call, made on the STORED row before anything is
+     trimmed from it, so a character is always worked out from its content
+     and a `classification` in the row is never read. Saves keep what was
+     posted, so trusting it (as isPartial trusts the feed's own stamp) let an
+     owner post classification:"standard" and never be Partial. */
   function classifyPage(d, type) {
-    if (type === 'character') return classifyCharacter(d);
+    if (type === 'character') {
+      if (isCurata(d)) return 'curata';
+      return isIncomplete(d) ? 'partial' : 'standard';
+    }
     return isCurata(d) ? 'curata' : 'standard';
   }
 
@@ -318,7 +330,10 @@
     return isCurata(d) ? CURATA_WEIGHT : 1;
   }
 
-  /* Everything a reader should see by default: drops Partial pages. Only
+  /* What the wiki's own picks draw from (Featured Character, /random): drops
+     Partial pages, since a page the wiki puts forward should be finished.
+     The listings (All Characters, Recently Added, team and tag pages) show
+     Partial pages and leave hiding them to the reader's chip. Only
      characters are ever dropped — `type` is accepted for clarity at the call
      site, but isPartial() is self-guarding either way. */
   function eligible(list, type) {

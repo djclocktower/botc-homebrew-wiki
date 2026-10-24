@@ -13,6 +13,10 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<!-- The sidebar draws from the small grid feed, which starts downloading here
+     rather than after the scripts at the end of the body; the card feed the
+     export needs follows in the background once the page is up. -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
@@ -242,6 +246,9 @@
             <div class="sbx-field" style="margin-bottom:10px">
               <label class="sbx-check" style="align-self:flex-start">
                 <input type="checkbox" id="sb-hidetitle"> Hide the script name on the character sheet
+              </label>
+              <label class="sbx-check" style="align-self:flex-start">
+                <input type="checkbox" id="sb-marks"> Creator marks on character names (in your roster, the export and the published page)
               </label>
             </div>
             <div class="sbx-field" style="margin-bottom:10px">

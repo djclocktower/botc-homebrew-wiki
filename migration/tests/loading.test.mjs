@@ -493,10 +493,13 @@ test('the link root comes from our own stylesheet, never an extension-injected o
 });
 
 test('card batches stop below the viewport, support section jumps, and cancel stale callbacks', async () => {
+  // A grid gets a spacer (the height of the cards still to come) and, under
+  // it, its "Show more" button; see list-pages.test.mjs for the rest.
   let intersect; const observed = new Set(), frames = [];
-  const grids = new Map(['first', 'second'].map(name => [name, { cards: '', insertAdjacentHTML(_, html) { this.cards += html; }, insertAdjacentElement(_, button) { this.button = button; } }]));
-  const context = vm.createContext({ window: {}, requestAnimationFrame: cb => frames.push(cb),
-    document: { createElement() { return { addEventListener(_, cb) { this.click = cb; } }; } },
+  const el = () => ({ addEventListener(_, cb) { this.click = cb; }, insertAdjacentElement(_, next) { this.next = next; } });
+  const grids = new Map(['first', 'second'].map(name => [name, { cards: '', insertAdjacentHTML(_, html) { this.cards += html; }, insertAdjacentElement(_, spacer) { this.spacer = spacer; } }]));
+  const context = vm.createContext({ window: { requestAnimationFrame: cb => frames.push(cb) }, setTimeout: () => 0,
+    document: { createElement: el },
     IntersectionObserver: class { constructor(cb) { intersect = cb; } observe(x) { observed.add(x); } unobserve(x) { observed.delete(x); } disconnect() { observed.clear(); } } });
   vm.runInContext(await read('assets/viewport.js'), context);
   const cancel = context.window.mountCardBatches({ querySelector: s => grids.get(s) },
@@ -504,12 +507,17 @@ test('card batches stop below the viewport, support section jumps, and cancel st
   assert.equal(grids.get('first').cards.length, 48); assert.equal(grids.get('second').cards.length, 0);
   while (frames.length) frames.shift()();
   assert.equal(grids.get('first').cards.length, 48); // idle does not finish the whole list
-  intersect([{ target: grids.get('second').button, isIntersecting: true }]);
-  assert.equal(grids.get('second').cards.length, 48);
-  grids.get('first').button.click(); assert.equal(grids.get('first').cards.length, 96);
+  // Approaching a section draws its first step on the next frame, not inside
+  // the observer callback (one step per frame; out of reach, it stops).
+  intersect([{ target: grids.get('second').spacer, isIntersecting: true }]);
+  assert.equal(grids.get('second').cards.length, 0);
+  while (frames.length) frames.shift()();
+  assert.equal(grids.get('second').cards.length, 24);
+  grids.get('first').spacer.next.click(); assert.equal(grids.get('first').cards.length, 96);
   cancel(); while (frames.length) frames.shift()();
-  intersect([{ target: grids.get('second').button, isIntersecting: true }]);
-  assert.equal(grids.get('second').cards.length, 48); assert.equal(observed.size, 0);
+  intersect([{ target: grids.get('second').spacer, isIntersecting: true }]);
+  while (frames.length) frames.shift()();
+  assert.equal(grids.get('second').cards.length, 24); assert.equal(observed.size, 0);
 });
 
 test('comments wait for proximity or intent; comment anchors and failed-load retries work', async () => {
@@ -609,12 +617,13 @@ test('the printable token in the /c/ gallery is marked apart from the icons, so 
   const page = await (await f.request('/c/test-set/disc')).text();
   assert.match(page, /<div class="emblem-stack" data-at="0" style="--art-scale:1\.5"/, 'the display size rides the stack, where the token can divide it back out');
   assert.deepEqual(page.match(/<img class="emblem[^"]*"/g), ['<img class="emblem is-on"', '<img class="emblem emblem-token"']);
-  assert.match(page, /class="emblem emblem-token" data-src="[^"]*art\/disc-token\.png/);
+  // The token keeps its own file (no display copy for -token); the icons draw theirs.
+  assert.match(page, /class="emblem emblem-token"[^>]* data-src="[^"]*assets\/art\/disc-token\.png/);
   // A page that never ticked the token, or has no saved image, grows no such version.
   f.insert('characters', 'plain', { slug: 'plain', name: 'Plain', team: 'townsfolk', ability: 'Each night, roll.', art: 'art/plain.png', token: 'art/plain-token.png' });
   const plain = await (await f.request('/c/test-set/plain')).text();
   assert.ok(!plain.includes('emblem-token'));
-  assert.match(plain, /<img class="emblem" src="[^"]*art\/plain\.png/);
+  assert.match(plain, /<img class="emblem"[^>]* src="[^"]*media\/full\/art\/plain\.png\.webp/);
 });
 
 test('a custom page background is a root-absolute URL, whatever stylesheet consumes it', async t => {
@@ -623,7 +632,7 @@ test('a custom page background is a root-absolute URL, whatever stylesheet consu
   // under /assets/immutable/, which turned '../assets/x-bg.png' into
   // /assets/assets/x-bg.png. A root-absolute URL cannot be moved by anything.
   const attrs = PageRender.themeAttrs({ background: 'scripts/demo-bg.png' }, '../');
-  assert.match(attrs.style, /--pg-bg:url\("\/assets\/scripts\/demo-bg\.png"\)/);
+  assert.match(attrs.style, /--pg-bgl:url\("\/assets\/scripts\/demo-bg\.png"\)/);
   assert.doesNotMatch(attrs.style, /\.\.\//);
   assert.match(attrs.cls, /\btheme-bg\b/);
   const f = await fixture();
@@ -634,8 +643,8 @@ test('a custom page background is a root-absolute URL, whatever stylesheet consu
   f.insert('collections', 'demo', { id: 'demo', slug: 'demo', include: ['char-0'], displayName: 'Demo',
     theme: { background: 'collections/demo-bg.png' } });
   const script = await (await f.request('/s/demo')).text();
-  assert.match(script, /<body class="[^"]*\btheme-bg\b[^"]*" style="[^"]*--pg-bg:url\(&quot;\/assets\/scripts\/demo-bg\.png&quot;\)/);
-  assert.doesNotMatch(script, /--pg-bg:url\(&quot;\.\.\//);
+  assert.match(script, /<body class="[^"]*\btheme-bg\b[^"]*" style="[^"]*--pg-bgl:url\(&quot;\/assets\/scripts\/demo-bg\.png&quot;\)/);
+  assert.doesNotMatch(script, /--pg-bgl:url\(&quot;\.\.\//);
   const collection = await (await f.request('/collection/demo')).text();
-  assert.match(collection, /--pg-bg:url\(&quot;\/assets\/collections\/demo-bg\.png&quot;\)/);
+  assert.match(collection, /--pg-bgl:url\(&quot;\/assets\/collections\/demo-bg\.png&quot;\)/);
 });
