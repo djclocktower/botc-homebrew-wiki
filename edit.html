@@ -477,6 +477,11 @@
       </div>
 
       <fieldset>
+        <legend>Second almanac version</legend>
+        <div id="almalt-box"></div>
+      </fieldset>
+
+      <fieldset>
         <legend>Page buttons</legend>
         <p class="sub" style="margin:0 0 10px">The two small buttons in the corner of the information box on the character page.</p>
         <div class="fld ck">
@@ -528,6 +533,7 @@
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/related-editor.js"></script>
+  <script src="assets/almanac-alt.js"></script>
   <script src="assets/approved-editors.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
@@ -749,6 +755,11 @@
     var relatedUI = window.RelatedEditor ?
       window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
 
+    // The second almanac version (assets/almanac-alt.js), under Advanced
+    // Options. Shared with the other character editor.
+    var almAltUI = window.AlmanacAlt ?
+      window.AlmanacAlt.mount($('almalt-box'), { onChange: schedule }) : null;
+
     function gatherBoxes(){
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function(r){
@@ -811,6 +822,7 @@
         hideSnapshot: $('hideSnapshot').checked || undefined,
         hideCopyLink: $('hideCopyLink').checked || undefined,
         related: relatedUI ? relatedUI.gather() : [],
+        almanacAlt: almAltUI ? almAltUI.gather() : null,
         customJson: $('customJson').value.trim(),
         publicEdit: $('publicEdit').value,
         curataOptOut: $('curataOptOut').checked,
@@ -1446,6 +1458,11 @@
         ab.title = 'The ability stays with the page\u2019s creator.';
         ab.classList.add('is-locked');
       }
+      var aa = $('almAltAbility');
+      if (aa) {
+        aa.readOnly = true;
+        aa.title = 'The ability stays with the page\u2019s creator.';
+      }
       var cj = $('customJson');
       if (cj) {
         cj.readOnly = true;
@@ -1698,6 +1715,7 @@
       $('curataOptOut').checked  = !!entry.curataOptOut;
       $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
+      if (almAltUI) almAltUI.set(entry.almanacAlt);
       syncEditorsBox();
       ALT_SLOTS.forEach(function (slot) {
         if (!entry[slot.field]) return;
@@ -1933,6 +1951,8 @@
           // Explicit like special[]: clearing every Related row has to reach
           // the save, and Object.assign would keep the loaded list forever.
           related: d.related,
+          // Explicit: null is how switching the second version off reaches the save.
+          almanacAlt: d.almanacAlt,
           customJson: d.customJson,
           // Explicit for the same reason special[] is: Object.assign would
           // otherwise keep whatever the LOADED row said, so changing "Who can

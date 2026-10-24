@@ -1246,19 +1246,47 @@
     W.setReminderTokens(list);
   }
 
-  function characterBody(d, artSrc, root, opts) {
-    var team = d.team || 'townsfolk';
-    var label = typeNameOf(d) || TEAM_LABEL[team] || team;
+  /* The second almanac version (`almanacAlt`), the way the official wiki
+     gives God of Ug a "Big Word Mode" and an "Ug Mode": the same character,
+     its almanac written twice, and a switch at the top of the page. Only the
+     prose and the shown ability differ; the name, team, icon, jinxes and the
+     JSON export stay the main version's. A box left empty in the second
+     version reads the main version's text, so a variant only has to write
+     what is different. Also the save's sanitizer (worker.js), so the shape
+     has one owner. */
+  var ALMANAC_ALT_TEXT = ['label', 'altLabel', 'ability', 'quote', 'lede'];
+  var ALMANAC_ALT_LISTS = ['summaryBullets', 'howToRun', 'callout', 'examples', 'tips', 'bluffing', 'fighting'];
+  function sanitizeAlmanacAlt(o) {
+    if (!o || typeof o !== 'object') return null;
+    var out = {}, any = false;
+    ALMANAC_ALT_TEXT.forEach(function (k) {
+      var v = String(o[k] == null ? '' : o[k]).trim().slice(0, /abel$/i.test(k) ? 40 : 4000);
+      if (v) out[k] = v;
+    });
+    ALMANAC_ALT_LISTS.forEach(function (k) {
+      var list = (Array.isArray(o[k]) ? o[k] : [o[k]])
+        .filter(function (x) { return typeof x === 'string' && x.trim(); })
+        .map(function (x) { return x.trim().slice(0, 4000); });
+      if (list.length) { out[k] = list; any = true; }
+    });
+    if (out.ability || out.quote || out.lede) any = true;
+    return any ? out : null;
+  }
+
+  /* The almanac sections of one version. `sfx` keeps the section anchors
+     unique when two versions are on the page. */
+  function almanacParts(d, root, sfx) {
     var bullets  = (d.summaryBullets || []).filter(function (x) { return x && x.trim(); });
     var paras    = (d.howToRun || []).filter(function (x) { return x && x.trim(); });
     var examples = (d.examples || []).filter(function (x) { return x && x.trim(); });
     var tips     = (d.tips || []).filter(function (x) { return x && x.trim(); });
     var bluffing = (d.bluffing || []).filter(function (x) { return x && x.trim(); });
     var fighting = (d.fighting || []).filter(function (x) { return x && x.trim(); });
-    var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
+    function sech(id, title) {
+      return '<div class="gen-sech-wrap" id="' + id + sfx + '"><h2 class="gen-sech"><a class="sec-anchor" href="#' + id + sfx + '">' + title + '</a></h2></div>';
+    }
 
-    var summaryCol =
-      '<div class="gen-sech-wrap" id="sec-summary"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-summary">Summary</a></h2></div>' +
+    var summaryCol = sech('sec-summary', 'Summary') +
       /* The ability is the one prose field left deliberately escaped. It is
          not writing ABOUT the character, it is the character's rule: it is
          exported verbatim into official-schema JSON that the app and every
@@ -1283,16 +1311,15 @@
 
     var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
       callouts.map(function (c) { return '<div class="callout">' + inlineLinks(c) + '</div>'; }).join('');
-    var howCol = howColBody ?
-      '<div class="gen-sech-wrap" id="sec-howtorun"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-howtorun">How to Run</a></h2></div>' + howColBody : '';
+    var howCol = howColBody ? sech('sec-howtorun', 'How to Run') + howColBody : '';
 
     var examplesBlock = examples.length ?
-      ('<div class="examples"><div class="gen-sech-wrap" id="sec-examples"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-examples">Examples</a></h2></div>' +
+      ('<div class="examples">' + sech('sec-examples', 'Examples') +
         examples.map(function (e) { return '<div class="ex">' + inlineLinks(e) + '</div>'; }).join('') +
         '</div>') : '';
 
     var tipsBlock = tips.length ?
-      ('<div class="tips"><div class="gen-sech-wrap" id="sec-tips"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-tips">Tips &amp; Tricks</a></h2></div>' +
+      ('<div class="tips">' + sech('sec-tips', 'Tips &amp; Tricks') +
         '<ul>' + tips.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var charName = esc(d.name || 'Character');
@@ -1302,6 +1329,36 @@
     var fightingBlock = fighting.length ?
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
+
+    var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
+    return {
+      body: (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
+        examplesBlock + tipsBlock + bluffingBlock + fightingBlock,
+      quote: quoteClean.trim() ? '<p class="quote">"' + inlineLinks(quoteClean) + '"</p>' : ''
+    };
+  }
+
+  function characterBody(d, artSrc, root, opts) {
+    var team = d.team || 'townsfolk';
+    var label = typeNameOf(d) || TEAM_LABEL[team] || team;
+    var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
+    var main = almanacParts(d, root, '');
+    /* With a second version, both are on the page and two radio buttons
+       choose which shows — CSS only (:has, in styles.css under .alm-switch),
+       so the page, the editors' preview and a reader with scripts off all
+       switch the same way. The radios carry the page's slug in their name so
+       two characters in one document cannot share a group. */
+    var alt = sanitizeAlmanacAlt(d.almanacAlt);
+    var almSwitch = '', parchBody = main.body, quoteHTML = main.quote;
+    if (alt) {
+      var two = almanacParts(Object.assign({}, d, alt), root, '-alt');
+      var grp = 'alm-' + String(d.slug || 'page').replace(/[^a-z0-9-]/gi, '');
+      almSwitch = '<div class="alm-switch" role="radiogroup" aria-label="Almanac version" data-user-content>' +
+        '<input type="radio" class="alm-r0" name="' + grp + '" id="' + grp + '-0" checked><label for="' + grp + '-0">' + esc(alt.label || 'Standard') + '</label>' +
+        '<input type="radio" class="alm-r1" name="' + grp + '" id="' + grp + '-1"><label for="' + grp + '-1">' + esc(alt.altLabel || 'Alternate') + '</label></div>';
+      parchBody = '<div class="alm-ver alm-v0">' + main.body + '</div><div class="alm-ver alm-v1">' + two.body + '</div>';
+      quoteHTML = '<div class="alm-ver alm-v0">' + main.quote + '</div><div class="alm-ver alm-v1">' + two.quote + '</div>';
+    }
 
     // Tags row. The Curata wreath hangs off the end of it behind a hairline
     // rule: it is a mark, not a tag, so it is never a link and never joins the
@@ -1359,7 +1416,6 @@
       '" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' +
       (snapBtn ? '' : ' Copy link') + '</button>';
 
-    var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
     /* The icon, and the other versions of it. A traveller has a good and an
        evil token, so the picture is no longer a mystery click: a faint row of
        pips underneath says how many there are and which one is showing.
@@ -1439,7 +1495,7 @@
     var infoCard = '<div class="card char-infocard">' +
       (snapBtn || copyBtn ? '<div class="card-actions">' + snapBtn + copyBtn + '</div>' : '') +
       emblem +
-      (quoteClean.trim() ? '<p class="quote">"' + inlineLinks(quoteClean) + '"</p>' : '') +
+      quoteHTML +
       pronounceBlock(d) +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
@@ -1519,9 +1575,7 @@
 
     return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1></div>' +
       '<div class="char-layout">' +
-      '<section class="char-parchment card">' +
-      (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
-      examplesBlock + tipsBlock + bluffingBlock + fightingBlock +
+      '<section class="char-parchment card">' + almSwitch + parchBody +
       (jinxMode === 'dropdown' ? jinxDrop : '') +
       '</section>' +
       '<div class="char-col2">' + infoCardFinal + sideBar + '</div>' +
@@ -1573,6 +1627,7 @@
     window.editStatusHTML = editStatusHTML;
     window.draftedNoticeHTML = draftedNoticeHTML;
     window.artScaleValue = artScaleValue;
+    window.sanitizeAlmanacAlt = sanitizeAlmanacAlt;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1581,7 +1636,7 @@
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,
-      sanitizeSpecial: sanitizeSpecial,
+      sanitizeSpecial: sanitizeSpecial, sanitizeAlmanacAlt: sanitizeAlmanacAlt,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
       OTHER_NOTE: OTHER_NOTE, typeNameOf: typeNameOf, exportTeamOf: exportTeamOf,

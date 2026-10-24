@@ -2091,7 +2091,7 @@ const FIELD_LABELS = {
   otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
   otherNightReminder: 'other-nights reminder', setup: 'setup flag',
   special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
-  related: 'related pages',
+  related: 'related pages', almanacAlt: 'second almanac version',
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
   respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
   edition: 'edition', publicEdit: 'who may edit',
@@ -2257,9 +2257,6 @@ async function ensureFavoritesTable(env) {
   ).run();
   _favoritesReady = true;
 }
-// Per account. Bounds the roster resolution ?expand=1 does, and nobody needs
-// more bookmarks than this to find their way around.
-const FAVORITES_MAX = 500;
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
 
 /* The page a favorite names, resolved the way every other route resolves that
@@ -2298,8 +2295,7 @@ async function favoriteTarget(env, type, key) {
    draft, or was deleted, stays in the table (so it comes back if the page
    does) but is reported with its status — 'deleted' for a page that was
    deleted or no longer exists at all, named only by the key that was saved.
-   Every row counts toward FAVORITES_MAX, so every row has to be listed, or a
-   bookmark nobody can see would hold a slot nobody can free. */
+   Every row is listed, or a bookmark nobody can see could never be removed. */
 async function favoritesPayload(env, userId, expand) {
   await ensureFavoritesTable(env);
   const { results } = await env.DB.prepare(
@@ -2309,7 +2305,7 @@ async function favoritesPayload(env, userId, expand) {
   const lists = { characters: [], scripts: [], collections: [] };
   const listOf = { character: 'characters', script: 'scripts', collection: 'collections' };
   for (const r of rows) if (listOf[r.entity_type]) lists[listOf[r.entity_type]].push(r.slug);
-  const out = { ...lists, total: rows.length, max: FAVORITES_MAX };
+  const out = { ...lists, total: rows.length };
 
   // A flat 90 per IN (...) chunk, like everything else here that binds
   // nothing beside the chunk (see D1_MAX_BINDS).
@@ -3049,9 +3045,9 @@ function sanitizeBoxes(boxes) {
 // Jinxes on a character. Everything else a user can post arrives sanitized;
 // this one used to be stored verbatim, so a malformed blob could sit in the
 // row forever. Keep the five fields the renderer reads, cap them, and drop
-// anything that names nobody. `mirrored`/`mirroredFrom` are deliberately NOT
+// anything that names nobody. There is no cap on how many: the payload size
+// limit is the only bound. `mirrored`/`mirroredFrom` are deliberately NOT
 // kept: those are added on read, and a client must never be able to fake one.
-const JINX_MAX = 60;
 /* A suggestion is the whole page as somebody else would have saved it, and
    approving one writes it through applyRollback() — which, like a rollback,
    stores the blob as given. So everything the owner alone decides is pinned
@@ -3084,6 +3080,8 @@ function pinSuggestedFields(type, d, stored) {
     if (!d.jinxes.length) delete d.jinxes;
     d.related = sanitizeRelated(d.related);
     if (!d.related.length) delete d.related;
+    d.almanacAlt = Render.sanitizeAlmanacAlt(d.almanacAlt);
+    if (!d.almanacAlt) delete d.almanacAlt;
     d.artScale = Render.artScaleValue(d.artScale);
     if (!d.artScale) delete d.artScale;
   } else if (type === 'script') {
@@ -3096,7 +3094,7 @@ function pinSuggestedFields(type, d, stored) {
 
 function sanitizeJinxes(jinxes) {
   if (!Array.isArray(jinxes)) return [];
-  return jinxes.slice(0, JINX_MAX).map(j => {
+  return jinxes.map(j => {
     const o = {
       name: String((j && j.name) || '').slice(0, 120).trim(),
       align: (j && j.align) === 'evil' ? 'evil' : 'good',
@@ -5831,10 +5829,10 @@ function sanitizeJinxEdits(o) {
   if (!o || typeof o !== 'object') return null;
   const slug = v => String(v || '').slice(0, 80);
   const off = Array.isArray(o.off)
-    ? [...new Set(o.off.slice(0, 200).map(k => String(k).slice(0, 165)).filter(k => k.includes('|')))]
+    ? [...new Set(o.off.map(k => String(k).slice(0, 165)).filter(k => k.includes('|')))]
     : [];
   const add = Array.isArray(o.add)
-    ? o.add.slice(0, 100).map(j => ({
+    ? o.add.map(j => ({
         a: slug(j && j.a), b: slug(j && j.b),
         text: String((j && j.text) || '').slice(0, 300)
       })).filter(j => j.a && j.b && j.a !== j.b)
@@ -6072,7 +6070,8 @@ async function bumpContentVersion(env, entityType) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink'
+  'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink',
+  'almanacAlt'
 ]);
 
 // ---- the GRID feed: only what a card needs ----
@@ -14151,6 +14150,11 @@ const app = {
           // JSON goes with it: it replaces the page's JSON box outright, so
           // leaving it open would be a second way to rewrite the ability.
           c.ability = stored.ability;
+          // The second almanac version's ability is the same rule, shown.
+          const altAbility = stored.almanacAlt && stored.almanacAlt.ability;
+          if (c.almanacAlt && typeof c.almanacAlt === 'object') {
+            if (altAbility) c.almanacAlt.ability = altAbility; else delete c.almanacAlt.ability;
+          }
           if (stored.customJson) c.customJson = stored.customJson; else delete c.customJson;
         }
         /* Who the tags came from — the switch on the tags-open default (see
@@ -14220,6 +14224,9 @@ const app = {
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
         if (!c.related.length) delete c.related;
+        // The second almanac version (render.js owns the shape).
+        c.almanacAlt = Render.sanitizeAlmanacAlt(c.almanacAlt);
+        if (!c.almanacAlt) delete c.almanacAlt;
         /* The wiki-only display size of the /c/ emblem (render.js draws it,
            buildSchema never exports it). A whole percentage inside
            Render's range, or nothing: 100 is the default and is not stored,
@@ -14366,13 +14373,6 @@ const app = {
           return jsonResponse({ error: 'No such page' }, { status: 404 });
         }
         if (on) {
-          const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM favorites WHERE user_id=?')
-            .bind(sess.userId).first().catch(() => null);
-          const already = await env.DB.prepare('SELECT 1 AS x FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
-            .bind(sess.userId, b.type, target.slug).first().catch(() => null);
-          if (!already && n && n.n >= FAVORITES_MAX) {
-            return jsonResponse({ error: 'You have reached the limit of ' + FAVORITES_MAX + ' favorites. Remove some to add more.' }, { status: 400 });
-          }
           await env.DB.prepare(
             'INSERT OR IGNORE INTO favorites (user_id, entity_type, slug) VALUES (?,?,?)'
           ).bind(sess.userId, b.type, target.slug).run();
