@@ -1,8 +1,12 @@
 /* Fancy Scripts — dragging things around the preview.
  *
  * One pointer handler for every page. Anything the renderers mark with
- * data-fs-drag="<kind>:<id>" can be picked up and moved; a child marked
- * data-fs-handle resizes it instead. The layer knows nothing about the
+ * data-fs-drag="<kind>:<id>" can be picked up and moved; a grip marked
+ * data-fs-handle="<the same id>" resizes it instead (anywhere on the page:
+ * the app draws the corner grips in an overlay, since an <img> holds no
+ * children). A resize reports `f`, the pointer's distance from the
+ * element's centre over its distance when the drag began, so every corner
+ * grows it outward and shrinks it inward. The layer knows nothing about the
  * option model: it reports pointer deltas in SHEET units (dx in % of the
  * sheet's width, dy in % of its height, which is the same thing as em)
  * and lets the app decide what those do to which field.
@@ -54,7 +58,7 @@ export function mountDrag(root, h) {
     if (ev.button != null && ev.button !== 0) return;
     const handle = ev.target.closest && ev.target.closest('[data-fs-handle]');
     const node = handle
-      ? handle.closest('[data-fs-drag]')
+      ? root.querySelector(`[data-fs-drag="${CSS.escape(handle.dataset.fsHandle)}"]`)
       : (ev.target.closest && ev.target.closest('[data-fs-drag]'));
     if (!node) {
       if (h.onBackground && root.contains(ev.target)) h.onBackground();
@@ -62,8 +66,11 @@ export function mountDrag(root, h) {
     }
     const id = node.dataset.fsDrag;
     if (h.onSelect) h.onSelect(id, node);
+    const r = node.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     drag = {
-      node, id, resize: !!handle,
+      node, id, resize: !!handle, cx, cy,
+      d0: Math.max(8, Math.hypot(ev.clientX - cx, ev.clientY - cy)),
       sx: ev.clientX, sy: ev.clientY, moved: false, last: { dx: 0, dy: 0 },
       pointerId: ev.pointerId,
     };
@@ -80,6 +87,7 @@ export function mountDrag(root, h) {
     drag.moved = true;
     let d = { dx: (dxPx / SHEET_W) * 100, dy: (dyPx / SHEET_H) * 100 };
     if (drag.resize) {
+      d.f = Math.hypot(ev.clientX - drag.cx, ev.clientY - drag.cy) / drag.d0;
       const r = h.onResize && h.onResize(drag.id, d, false);
       if (r && r.applied) { drag.last = d; return; }
       // no model hook: scale the node visually until release

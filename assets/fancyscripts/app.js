@@ -362,6 +362,47 @@ function render() {
   showSolvedDensity(node, p);
   fitPreview();
   updateSelectionInfo();
+  placeGrips();
+  // pictures and fonts can still change the selected element's box
+  requestAnimationFrame(placeGrips);
+  setTimeout(placeGrips, 400);
+}
+
+/* ── corner grips ──
+   Four handles round the selected element, in an overlay inside the
+   preview (an <img> element cannot hold children). drag.js finds the
+   element by the id each grip carries. Rows only reorder and the ribbon
+   art has no size, so neither gets them. */
+function resizable(id) {
+  return /^(el|back|custom|char):/.test(id || '') && id !== 'el:sidebar' && id !== 'el:appSidebar';
+}
+function placeGrips() {
+  const wrap = $('fs-sheet-wrap');
+  let box = wrap.querySelector('[data-fs-grips]');
+  const node = resizable(selectedId) && wrap.querySelector(`[data-fs-drag="${CSS.escape(selectedId)}"]`);
+  if (!node) { if (box) box.remove(); return; }
+  if (!box) {
+    box = document.createElement('div');
+    box.dataset.fsGrips = '1';
+    Object.assign(box.style, { position: 'absolute', left: '0', top: '0', width: '0', height: '0', zIndex: '60' });
+    wrap.append(box);
+  }
+  const s = lastScale || 1;
+  const w = wrap.getBoundingClientRect(), r = node.getBoundingClientRect();
+  if (!r.width && !r.height) { box.remove(); return; }
+  const x0 = (r.left - w.left) / s, y0 = (r.top - w.top) / s, x1 = (r.right - w.left) / s, y1 = (r.bottom - w.top) / s;
+  const size = 18 / s; // the same size on screen at any zoom
+  box.textContent = '';
+  for (const [x, y, cur] of [[x0, y0, 'nwse'], [x1, y0, 'nesw'], [x0, y1, 'nesw'], [x1, y1, 'nwse']]) {
+    const g = document.createElement('div');
+    g.dataset.fsHandle = selectedId;
+    Object.assign(g.style, {
+      position: 'absolute', left: (x - size / 2) + 'px', top: (y - size / 2) + 'px',
+      width: size + 'px', height: size + 'px', boxSizing: 'border-box', borderRadius: '50%',
+      background: '#f3e9d2', border: (2 / s) + 'px solid #5b1f21', cursor: cur + '-resize', touchAction: 'none',
+    });
+    box.append(g);
+  }
 }
 
 /* ── tabs ── */
@@ -1843,6 +1884,7 @@ function setSelected(id) {
       node.querySelectorAll('[data-fs-handle]').forEach((g) => { g.style.display = 'block'; });
     }
   }
+  placeGrips();
   buildElementPanel();
   updateSelectionInfo();
 }
@@ -1853,7 +1895,32 @@ function updateSelectionInfo() {
   if (!selectedId) { info.textContent = ''; return; }
   const p = currentPage();
   const it = selectableOnPage(p).find((x) => x.id === selectedId);
-  info.textContent = it ? 'Selected: ' + it.label + '. Drag to move, arrows to nudge.' : '';
+  info.textContent = it ? 'Selected: ' + it.label + (resizable(selectedId) ? '. Drag to move, drag a corner to resize, arrows to nudge.' : '. Drag to move, arrows to nudge.') : '';
+}
+
+/* the size field a corner grip drags, with the range its slider allows */
+function sizeModel(id) {
+  if (id.startsWith('el:')) {
+    const key = id.slice(3);
+    return { get: () => elGet(options, key).scale, set: (v) => elSet(options, key, { scale: v }), min: 0.3, max: 2.5 };
+  }
+  if (id.startsWith('back:')) {
+    const t = options.back.texts[Number(id.slice(5))];
+    return t ? { get: () => Number(t.size) || 100, set: (v) => { t.size = v; }, min: 12, max: 640 } : null;
+  }
+  if (id.startsWith('custom:')) {
+    const st = findSticker(id);
+    if (!st) return null;
+    return st.type === 'image'
+      ? { get: () => Number(st.w) || 24, set: (v) => { st.w = v; }, min: 2, max: 200 }
+      : { get: () => Number(st.size) || 64, set: (v) => { st.size = v; }, min: 8, max: 900 };
+  }
+  if (id.startsWith('char:')) {
+    const cid = id.slice(5);
+    const ov = () => (options.chars[cid] = options.chars[cid] || {});
+    return { get: () => Number(ov().iconScale) || 1, set: (v) => { ov().iconScale = v; }, min: 0.5, max: 1.8 };
+  }
+  return null;
 }
 
 /* ── drag wiring ── */
@@ -2013,6 +2080,8 @@ function mountPreviewDrag() {
     },
     onMove: (id, d) => {
       if (!dragStart || dragStart.id !== id) return null;
+      const grips = $('fs-sheet-wrap').querySelector('[data-fs-grips]');
+      if (grips) grips.remove(); // they come back with the render on release
       const m = dragStart.m;
       let x = dragStart.x + d.dx;
       let y = dragStart.y + d.dy;
@@ -2036,11 +2105,12 @@ function mountPreviewDrag() {
       commit();
     },
     onResize: (id, d, done) => {
-      const st = findSticker(id);
-      if (!st) return null;
-      if (!dragStart || dragStart.id !== id || dragStart.w == null) dragStart = { ...(dragStart || { id }), w: st.w, size: st.size };
-      if (st.type === 'image') st.w = clamp(dragStart.w + d.dx * 2, 2, 200);
-      else st.size = clamp(dragStart.size * (1 + d.dx / 15), 8, 900);
+      // every resizable thing has one size field; f scales what it was at the start
+      const z = sizeModel(id);
+      if (!z) return null;
+      if (!dragStart || dragStart.id !== id || dragStart.size0 == null) dragStart = { ...(dragStart || { id }), size0: z.get() };
+      z.set(clamp(dragStart.size0 * (d.f || 1), z.min, z.max));
+      syncElementPanel();
       if (done) { dragStart = null; commit(); } else requestRender();
       return { applied: true };
     },

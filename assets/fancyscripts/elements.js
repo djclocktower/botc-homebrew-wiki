@@ -236,16 +236,6 @@ export function renderImageElement(t, drag, selected) {
       boxSizing: 'border-box', borderRadius: '6px',
     }));
   }
-  if (drag) {
-    // the corner grip that resizes it (drag.js reads data-fs-handle)
-    const grip = el('div', {
-      position: 'absolute', right: '-9px', bottom: '-9px', width: '18px', height: '18px',
-      borderRadius: '50%', background: '#f3e9d2', border: '2px solid #5b1f21',
-      cursor: 'nwse-resize', display: selected ? 'block' : 'none', zIndex: '5',
-    });
-    grip.dataset.fsHandle = drag;
-    wrap.append(grip);
-  }
   if (selected) markSelected(wrap);
   return wrap;
 }

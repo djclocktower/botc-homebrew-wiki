@@ -4112,8 +4112,14 @@ classic printed sheet and the app view.
   renderers (`renderTextElement` / `renderImageElement` — the back cover's
   title words ARE text stickers), `applyEl()` and the **asset resolver**.
 - **`drag.js`** is the one pointer layer. Anything a renderer marks
-  `data-fs-drag="<kind>:<id>"` can be picked up; a child marked
-  `data-fs-handle` resizes it. It reports deltas in sheet units (dx in % of
+  `data-fs-drag="<kind>:<id>"` can be picked up; a grip marked
+  `data-fs-handle="<the same id>"` resizes it. app.js draws four corner
+  grips round whatever is selected (`placeGrips()`, an overlay in the
+  preview, since an `<img>` holds no children; rows and the ribbon get
+  none), and a resize scales the element's one size field
+  (`sizeModel()`: an element's scale, a sticker's width or type size, a
+  back-cover word's size, a character's icon scale) by the pointer's
+  distance from the element's centre over where it started. It reports deltas in sheet units (dx in % of
   width, dy in % of height — which is the same thing as em) and knows
   nothing about the model; app.js's `elementModel()` maps an id to its
   getters/setters and snap targets. **Dragging never rebuilds**: the moving
