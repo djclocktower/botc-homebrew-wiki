@@ -777,7 +777,11 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   // background: the baked parchment (texture + garland), or what was chosen
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   const gaT = elGet(options, 'garland');
-  for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: !!gaT.src || gaT.hidden })) sheet.append(n);
+  // the ribbon's right edge (% of width): everything that sits on the ribbon
+  // or meets it follows this rather than the reference's fixed numbers
+  const ribW = clamp(Number(options.sidebarWidth) || 1, 0.6, 1.4);
+  const RIB = (SHEET.sidebarX + SHEET.sidebarW) * ribW;
+  for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: !!gaT.src || gaT.hidden, squeezeLeft: ribW })) sheet.append(n);
   // stickers marked "behind" sit under the sheet's own content: painting
   // order is DOM order among positioned elements, so they go in here
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
@@ -823,8 +827,18 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       src: resolveSrc(sbT.src),
       opacity: sbT.opacity,
       shade: options.sidebarShade,
-      widthPct: SHEET.sidebarX + SHEET.sidebarW,
+      widthPct: RIB,
     }, { requestRender, forExport: ctx.forExport });
+    // the gold edge, top to bottom. ribbon-edge.png is the parchment's own
+    // band (cut where it is brightest and mirrored out to the full height,
+    // darkened with the paper's vignette); its third column is where the
+    // reference ribbon ends
+    if (options.ribbonEdge !== false && options.sidebarMode !== 'none') {
+      sheet.append(img(ART + 'ribbon-edge.png', {
+        position: 'absolute', left: (RIB - 0.121) + '%', top: '0', width: '1.532%', height: '100%',
+        objectFit: 'fill', opacity: String(sbT.opacity),
+      }));
+    }
   }
   // middle-layer stickers: over the ribbon and the paper's art, under the words
   for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
@@ -977,6 +991,13 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   }
   contentWrap.dataset.fsEl = 'content';
   contentWrap.style.pointerEvents = 'none'; // only the rows themselves grab the pointer
+  /* the ribbon labels and the dividers' ribbon ends belong to the RIBBON,
+     so they are drawn outside the grid: they follow it down the page (its
+     Vertical offset and Size, scaled from its top) but stay on the ribbon
+     across it. Inside it, sizing the grid walked them off the ribbon. */
+  const ribbonLayer = el('div', { position: 'absolute', inset: '0', pointerEvents: 'none', display: cT.hidden ? 'none' : 'block' });
+  const cs = cT.scale || 1;
+  const cy = (y) => e(cT.dy) + cs * y;
 
   page.sections.forEach((sec, si) => {
     const { team, chars, left, right, leftHeights, rightHeights, rightTopPx, topPx, heightPx } = sec;
@@ -1003,16 +1024,17 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       // like the built-in one, an ornament is drawn at its own proportions
       const pick = artChoice(dvT.src);
       const pickH = pick && pick.h ? pick.h * dvT.scale : divH;
-      wrap.append(img(resolveSrc(dvT.src) || ART + 'divider-taper.png', {
-        position: 'absolute', left: (8.3 + dvT.dx) + '%', top: px(divTop + ed(divH - pickH) / 2),
-        width: '89.35%', height: px(ed(pickH)),
+      const ruleL = RIB - 0.455; // the knot sits just inside the ribbon's edge
+      ribbonLayer.append(img(resolveSrc(dvT.src) || ART + 'divider-taper.png', {
+        position: 'absolute', left: (ruleL + dvT.dx) + '%', top: px(cy(divTop + ed(divH - pickH) / 2)),
+        width: (97.65 - ruleL) + '%', height: px(cs * ed(pickH)),
         objectFit: pick && pick.fit === 'contain' ? 'contain' : 'fill', mixBlendMode: 'multiply', opacity: op,
       }));
-      if (!dvT.src) wrap.append(img(ART + 'divider-cap.png', {
-        position: 'absolute', left: (2.337 + dvT.dx) + '%', top: px(divTop),
-        width: '6.26%', height: px(ed(divH * 0.56)),
+      if (!dvT.src) ribbonLayer.append(img(ART + 'divider-cap.png', {
+        position: 'absolute', left: (2.337 * ribW + dvT.dx) + '%', top: px(cy(divTop)),
+        width: (6.26 * ribW) + '%', height: px(cs * ed(divH * 0.56)),
         objectFit: 'fill', opacity: op,
-        marginTop: px(ed(divH * 0.22)),
+        marginTop: px(cs * ed(divH * 0.22)),
       }));
     }
 
@@ -1072,8 +1094,9 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       const halo = darkInk ? 'rgba(250,246,236,0.9)' : 'rgba(20,14,8,0.9)';
       const labelEl = el('div', {
         position: 'absolute',
-        left: (SHEET.sidebarX + SHEET.sidebarW / 2 + 0.3 + lT.dx) + '%',
-        top: px(topPx + spanH / 2 + e(lT.dy)),
+        // the reference's centre (sidebarX + sidebarW/2 + 0.3) as a share of the ribbon
+        left: (RIB * (SHEET.sidebarX + SHEET.sidebarW / 2 + 0.3) / (SHEET.sidebarX + SHEET.sidebarW) + lT.dx) + '%',
+        top: px(cy(topPx + spanH / 2) + e(lT.dy)),
         transform: 'translate(-50%, -50%)',
         writingMode: 'vertical-rl',
         textOrientation: 'upright',
@@ -1081,7 +1104,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         // the floor gives way before the word runs into the next team's
         // label: on a tightly packed sheet a two-row OUTSIDERS section is
         // shorter than the word at the usual minimum
-        fontSize: px(clamp(fitFs, Math.min(e(SHEET.labelSizeMin), Math.max(e(0.45), fitFs)), baseFs)),
+        fontSize: px(cs * clamp(fitFs, Math.min(e(SHEET.labelSizeMin), Math.max(e(0.45), fitFs)), baseFs)),
         lineHeight: '1',
         letterSpacing: (options.labelSpacing == null ? -0.15 : options.labelSpacing) + 'em',
         color: labelInk,
@@ -1097,7 +1120,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
           ? `0 0 ${e(0.25)}px ${halo}, 0 0 ${e(0.5)}px ${halo}` : '',
         whiteSpace: 'nowrap',
       }, label);
-      wrap.append(labelEl);
+      ribbonLayer.append(labelEl);
     }
 
     // columns
@@ -1136,6 +1159,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     contentWrap.append(wrap);
   });
   sheet.append(contentWrap);
+  sheet.append(ribbonLayer);
 
   // "*Not the first night" footnote inside the garland circle
   const fT = elGet(options, 'footnote');

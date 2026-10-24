@@ -4527,6 +4527,20 @@ needs its ratio re-measured or it is picked at the wrong size.
   (the Characters card's Ability box) is kept on the classic sheet
   (`white-space: pre-line`, and `wrappedLineCount()` counts each line), so
   an ability can be broken where the official sheets break it.
+  **The ribbon's width is `sidebarWidth`** (a share of the reference's,
+  0.6 to 1.4; the printed edition sheets measure about 0.79), and
+  everything that meets the ribbon follows its edge (`RIB` in
+  renderSheetPage): the labels, the dividers' knot and cap, and the paper.
+  A narrower ribbon draws the parchment's left 14% into the left 14 x
+  width % (`squeezeLeft` in `renderBackground()`), so the paper's burnt
+  edge comes in with it instead of leaving the dark frame showing.
+  `ribbonEdge` (on by default) lays `art/ribbon-edge.png` along that edge
+  top to bottom: the parchment's own gold band, cut where it is brightest,
+  mirrored out to the full height and darkened with the paper's vignette.
+  **The ribbon labels and the dividers are drawn in `ribbonLayer`, outside
+  the character grid**: they follow the grid's Vertical offset and Size
+  down the page (`cy()`, `cs`) but not across it, because inside the
+  scaled grid a Size above 100% walked the labels off the ribbon.
   The sidebar ribbon can be recoloured (`sidebarColor`) — **per pixel in
   real HSL, never with a CSS hue-rotate filter**: hue-rotate is a linear
   approximation that maps the art's near-black navy (the shadowed edges at

@@ -1328,6 +1328,11 @@ function buildLayoutCard() {
   makeToggle(box, 'Team labels', bindPath('showLabels'));
   const lc = styleGroup(box, 'front', 'classic');
   makeSelect(lc, 'Team labels as', [['ribbon', 'Ribbon labels (official)'], ['heading', 'Headings over each team'], ['both', 'Both']], bindPath('labelStyle'));
+  // where the team labels sit (the same offsets as the Elements card)
+  if (cardPaths) cardPaths.add('el.labels');
+  const lab = (k) => ({ get: () => elGet(options, 'labels')[k], set: (v) => elSet(options, 'labels', { [k]: v }) });
+  makeSlider(lc, 'Move team labels left / right', -3, 3, 0.05, signed(2, '%'), lab('dx'), { reset: 0 });
+  makeSlider(lc, 'Move team labels up / down', -5, 5, 0.05, signed(2), lab('dy'), { reset: 0 });
   makeToggle(box, 'Character counts in the team labels', bindPath('labelCounts'));
   makeToggle(styleGroup(box, 'front', 'classic'), 'Section dividers', bindPath('showDividers'));
   makeToggle(box, 'Even out icon sizes (ink normalisation)', bindPath('normalizeIcons'));
@@ -1393,6 +1398,8 @@ function buildColorsCard() {
   const sb = makeRow(rb, 'fs-colors');
   makeColor(sb, 'Ribbon colour', bindPath('sidebarColor'));
   makeSlider(rb, 'Ribbon shading', 0, 1, 0.01, pct, bindPath('sidebarShade'), { reset: 0 });
+  makeSlider(rb, 'Ribbon width', 0.6, 1.4, 0.01, pct, bindPath('sidebarWidth'), { reset: 1 });
+  makeToggle(rb, 'Gold edge beside the ribbon', bindPath('ribbonEdge'));
   const up = makeRow(rb);
   makeUpload(up, 'Upload ribbon art', 'image/*', (url) => { elSet(options, 'sidebar', { src: addAsset(url) }); commit(); });
   makeButton(up, 'Built-in art', () => { elSet(options, 'sidebar', { src: '' }); commit(); });

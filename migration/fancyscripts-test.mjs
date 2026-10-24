@@ -155,6 +155,10 @@ check('night: dusk and dawn in the printed sheets\' wording', [S.NIGHT_STEPS.dus
 // columns: the larger half on the left unless a design asks to balance by text
 check('columns: half and half by default', [S.DEFAULT_OPTIONS.columnSplit, S.normalizeOptions({ columnSplit: 'balance' }).columnSplit], ['count', 'balance']);
 
+// the ribbon: its width and the gold edge beside it
+check('ribbon: full width and a gold edge by default', [S.DEFAULT_OPTIONS.sidebarWidth, S.DEFAULT_OPTIONS.ribbonEdge], [1, true]);
+check('ribbon: the gold edge art exists', fs.existsSync(path.join(root, 'assets/fancyscripts/art/ribbon-edge.png')), true);
+
 // stickers: a layer each, the old "behind" switch folded into it
 const layered = S.normalizeOptions({ custom: [{ id: 'a', type: 'image', behind: true }, { id: 'b', type: 'image' }, { id: 'c', type: 'image', layer: 'mid' }, { id: 'd', type: 'image', layer: 'nonsense' }] });
 check('stickers: old "behind" becomes the paper layer', layered.custom.map((st) => [st.layer, 'behind' in st]), [['back', false], ['front', false], ['mid', false], ['front', false]]);

@@ -108,7 +108,18 @@ export function renderBackground(bg, page, extra) {
   } else {
     // a garland picked in its place (or none at all) wants the same paper
     // with the painted one taken out
-    nodes.push(img(ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg'), { ...full, filter: f || undefined }));
+    const file = ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg');
+    nodes.push(img(file, { ...full, filter: f || undefined }));
+    // a narrower ribbon: the paper's burnt edge and its gold band come in
+    // with it. The art's left 14% is drawn into the left 14 x squeeze %,
+    // so the band lands where the ribbon now ends; past that seam it is
+    // the art as it was, paper on both sides
+    const sq = extra && Number(extra.squeezeLeft);
+    if (sq && sq < 1) {
+      const clipBox = el('div', { position: 'absolute', left: '0', top: '0', height: '100%', width: (14 * sq) + '%', overflow: 'hidden' });
+      clipBox.append(img(file, { position: 'absolute', left: '0', top: '0', height: '100%', width: (10000 / 14) + '%', filter: f || undefined }));
+      nodes.push(clipBox);
+    }
   }
   const v = clamp(Number(b.vignette) || 0, 0, 1);
   if (v > 0) {

@@ -593,6 +593,12 @@ export const DEFAULT_OPTIONS = {
   // 0 = a solid, even strip (the default); 1 = the old baked-in blend,
   // which puts a strong left-to-right lightness ramp through it.
   sidebarShade: 0,
+  // the ribbon's width, as a share of the reference's (the printed edition
+  // sheets measure about 0.79). The paper's edge comes in with it.
+  sidebarWidth: 1,
+  // the gold torn edge between the ribbon and the paper, run the full
+  // height of the sheet (the parchment's own fades out top and bottom)
+  ribbonEdge: true,
   // fonts (keys into FONTS)
   fontTitle: 'unlovable',
   fontName: 'goudy',
