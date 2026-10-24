@@ -115,18 +115,28 @@ const notedMd = T.textExport(script.slice(0, 2), meta, { format: 'markdown', cha
 ok(/\*\*a\*\*: x _\(bluff this\)_/.test(notedMd), 'markdown italicises the note');
 
 // ── view normaliser ──
-const v = V.normalize({ layout: 'bogus', icon: 1000, text: '90', showAbility: 0, extra: 1 });
+const v = V.normalize({ layout: 'bogus', size: 'huge', columns: 3, showAbility: 0, extra: 1 });
 eq(v.layout, 'sheet', 'an unknown layout falls back');
-eq(v.icon, 96, 'icon clamps to the max');
-eq(v.text, 90, 'a numeric string is fine');
+eq(v.size, 'normal', 'an unknown size falls back');
+eq(v.columns, 'auto', 'an unknown column count falls back');
 eq(v.showAbility, false, 'checks coerce to booleans');
 ok(!('extra' in v), 'unknown keys are dropped');
 ok(V.isDefault(V.normalize({})), 'an empty view is the default');
-ok(!V.isDefault(V.normalize({ icon: 50 })), 'a changed size is not');
-eq(V.teamHeading('townsfolk', 'Townsfolk', { teamLabel: 'short' }), 'TF', 'short headings');
-eq(V.teamHeading('townsfolk', 'Townsfolk', { teamLabel: 'none' }), '', 'no headings');
+ok(!V.isDefault(V.normalize({ size: 'large' })), 'a changed size is not');
+ok(V.isDefault(V.normalize({ arrange: true, panelScope: 'on' })), 'Arrange and Show are not part of the look');
+eq(V.teamHeading('townsfolk', 'Townsfolk', { teamHeads: false }), '', 'no headings');
+eq(V.teamHeading('townsfolk', 'Townsfolk', {}), 'Townsfolk', 'headings by default');
 ok(V.SCHEMA.every(s => s.key in V.DEFAULTS), 'every schema row has a default');
-ok(V.PRESETS.every(p => Object.keys(p.view).every(k => k in V.DEFAULTS)), 'presets only name real settings');
+ok(V.SCHEMA.filter(s => s.ui !== false).length === 13, 'thirteen settings in the View popover');
+// A view stored before the settings were merged keeps what it chose.
+const old = V.normalize({ tone: 'paper', font: 'wiki', pageCols: true, columns: '1', accent: true, rowStripe: true, teamLabel: 'none', panelCreator: true });
+eq(old.look, 'printed', 'Plain paper becomes the Printed look');
+eq(old.columns, '2', 'Whole script in two columns becomes Columns 2');
+eq(old.teamColour, 'rows', 'the stripe becomes Headings and rows');
+eq(old.teamHeads, false, 'no team headings stays off');
+eq(old.showCreator, true, 'the panel creator line becomes Creator');
+eq(V.normalize({ tone: 'dark' }).look, 'dark', 'Dark stays dark');
+eq(V.normalize({ accent: false }).teamColour, 'off', 'no team colours stays off');
 
 console.log(fails ? '\n' + fails + ' FAILED' : '\nall good');
 process.exit(fails ? 1 : 0);

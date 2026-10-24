@@ -490,24 +490,8 @@
       (shortBits.length ? '. Short of ' + shortBits.join(', ') + ' in the panel.' : '.'));
   }
 
-  /* The roster as the VIEW shows it. `order` (and so rosterChars(), the
-     export and the published page) keeps the arranged sequence; a view sort
-     is only how this page lays it out. Team grouping always wins. */
-  function displayChars() {
-    var chars = rosterChars();
-    var o = view ? view.order : 'added';
-    if (o === 'added' || (view && view.arrange)) return chars;
-    function ti(c) { return TEAM_INDEX[teamKey(c)]; }
-    function nightKey(c) {
-      var f = Number(c.firstNight) || 0, n = Number(c.otherNight) || 0;
-      return (f > 0 ? f : 1e6) * 1e4 + (n > 0 ? n : 1e3);
-    }
-    var arr = chars.slice();
-    if (o === 'name') arr.sort(function (a, b) { return ti(a) - ti(b) || (a.name || '').localeCompare(b.name || ''); });
-    else if (o === 'sao' && window.saoCompare) arr.sort(function (a, b) { return ti(a) - ti(b) || window.saoCompare(a, b); });
-    else if (o === 'night') arr.sort(function (a, b) { return ti(a) - ti(b) || nightKey(a) - nightKey(b); });
-    return arr;
-  }
+  /* The roster as it is drawn: the arranged sequence, grouped by team. */
+  function displayChars() { return rosterChars(); }
 
   var noteMap = {};   // the script's own notes, likewise
 
@@ -648,11 +632,6 @@
     else if (act === 'az') members.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
     else return;
     setTeamOrder(team, members.map(function (c) { return c.slug; }));
-    // The result is only visible in the arranged order.
-    if (view && view.order !== 'added' && !view.arrange) {
-      var v = Object.assign({}, view, { order: 'added' });
-      setView(v, 'order');
-    }
     toast(label + ' arranged ' + (act === 'sao' ? 'into Steven Approved Order' : 'A to Z') + '.');
   }
 
@@ -983,7 +962,7 @@
       // collection (assets/favorites.js). Hidden until one is in the list.
       favChip: true,
       sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']],
-      searchAbility: function () { return !!(view && view.panelSearchAbility); }
+      searchAbility: function () { return !!prefs.abilities; }
     }) || null;
   }
 
@@ -1083,7 +1062,7 @@
   }
   function nightView() {
     var o = prefs.night || {};
-    return { reminders: o.reminders !== false, icons: !!o.icons, stacked: !!o.stacked, bagOnly: !!o.bagOnly };
+    return { reminders: o.reminders !== false, icons: !!o.icons, bagOnly: !!o.bagOnly };
   }
   /* The night lists for the characters in tonight's bag alone, when asked
      — the sheet to run the game from. The arrangement still applies. */
@@ -1274,15 +1253,32 @@
     if (rp === 'panel' || (!key && view.panelGroup !== beforeGroup)) {
       if (allChars.length) buildAddList(function () { mountAddFilters(); paintJinxHints(); paintPanelNeeds(); });
     }
-    if (key === 'panelSearchAbility' && filterAPI && filterAPI.apply) filterAPI.apply();
-    if (key === 'side' || !key) {
-      // The panel moved to the other edge, so the grip's arithmetic changes
-      // (wireResize reads view.side) and the drawer should shut in case it
-      // was open on the old side.
-      if (window.innerWidth <= 900) closeSide();
-    }
+    if (key === 'arrange') paintArrangeBtn();
+    if (key === 'panelScope') paintScopeSel();
+  }
+  /* Arrange by hand is an editing mode, so it is a button beside Sort rather
+     than a View setting; the panel's Show is a select in the panel. Both are
+     still stored with the view. */
+  function paintArrangeBtn() {
+    var b = $('sbx-arrange');
+    if (!b) return;
+    var on = !!(view && view.arrange);
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  function paintScopeSel() {
+    var sel = $('sbx-scope');
+    if (sel && view) sel.value = view.panelScope;
   }
   function mountView() {
+    $('sbx-arrange').addEventListener('click', function () {
+      setView(Object.assign({}, view, { arrange: !(view && view.arrange) }), 'arrange');
+    });
+    $('sbx-scope').addEventListener('change', function () {
+      setView(Object.assign({}, view, { panelScope: this.value }), 'panelScope');
+    });
+    paintArrangeBtn();
+    paintScopeSel();
     if (!window.SBView) return;
     window.SBView.mount($('sbx-view-body'), {
       get: function () { return view; },
@@ -1828,14 +1824,8 @@
       (m.author || '').trim(), m.logo || m.header || '', rosterChars(), m,
       { credits: creditsFabled() });
   }
-  /* What Download and Copy write: the export, minified on request. */
-  function exportText() {
-    var text = buildExport();
-    if (prefs.json && prefs.json.minified) {
-      try { text = JSON.stringify(JSON.parse(text)); } catch (e) { /* keep it pretty */ }
-    }
-    return text;
-  }
+  /* What Download and Copy write. */
+  function exportText() { return buildExport(); }
   function paintJsonPreview() {
     var d = $('sb-json-details'), box = $('sb-json-preview');
     if (!d || !box || !d.open) return;
@@ -1932,7 +1922,7 @@
      the jinx page, and exports it as PNG or PDF, so the wiki had two answers
      to "print this" and the worse one was the one on the button. The reader
      who wants the script on paper goes through doFancy(); the reader who
-     wants it on screen has View → Whole script in two columns, which is the
+     wants it on screen has View → Columns → 2, which is the
      printed flow without leaving the page. */
   function doFancy() {
     if (!notEmpty()) return;
@@ -2132,7 +2122,8 @@
     primeForm();
     replaceOrder([], true);
     paintLibrary();
-    if (window.innerWidth > 900) $('sb-name').focus();
+    showTab('meta');
+    if (window.innerWidth > 900) $('sb-name2').focus();
   }
 
   function deleteEntry(id) {
@@ -2240,14 +2231,7 @@
       var m = e.meta || {};
       return ((m.name || '') + ' ' + (m.author || '')).toLowerCase().indexOf(q) !== -1;
     });
-    var sort = (prefs.lib && prefs.lib.sort) || 'recent';
-    if (sort === 'name') {
-      shown.sort(function (a, b) { return ((a.meta && a.meta.name) || '').localeCompare((b.meta && b.meta.name) || ''); });
-    } else if (sort === 'size') {
-      shown.sort(function (a, b) { return ((b.chars || []).length - (a.chars || []).length) || ((b.updated || 0) - (a.updated || 0)); });
-    } else {
-      shown.sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
-    }
+    shown.sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
     if (!shown.length) {
       $('sbx-lib-list').innerHTML = '<p class="sbx-note">' +
         (lib.length ? 'No saved script matches that.'
@@ -2278,12 +2262,18 @@
   // ══════════════════════════════════════════════════════════════════════
   //  The details form
   // ══════════════════════════════════════════════════════════════════════
+  /* The bar shows the script's name and author; they are typed in Details. */
+  function paintBarName() {
+    var m = getMeta();
+    $('sb-name').textContent = (m.name || '').trim() || 'Untitled Script';
+    $('sb-name').classList.toggle('empty', !(m.name || '').trim());
+    $('sb-author').textContent = (m.author || '').trim() ? 'by ' + m.author.trim() : '';
+  }
   function primeForm() {
     var m = getMeta();
-    $('sb-name').value = m.name || '';
     $('sb-name2').value = m.name || '';
-    $('sb-author').value = m.author || '';
     $('sb-author2').value = m.author || '';
+    paintBarName();
     $('sb-hidetitle').checked = !!m.hideTitle;
     $('sb-marks').checked = !!m.creatorMarks;
     $('sb-almanac').value = m.almanac || '';
@@ -2398,7 +2388,7 @@
     grip.addEventListener('pointermove', function (e) {
       if (!dragging) return;
       var box = $('sbx').getBoundingClientRect();
-      setSideWidth(view && view.side === 'right' ? box.right - e.clientX : e.clientX - box.left, false);
+      setSideWidth(e.clientX - box.left, false);
       e.preventDefault();
     });
     function stop() {
@@ -2605,10 +2595,6 @@
       });
     });
     $('sb-text-copy').addEventListener('click', function () { copyText(this); });
-    $('sb-text-dl').addEventListener('click', function () {
-      if (!notEmpty()) return;
-      download(fileName().replace(/\.json$/, '.txt'), buildText(), 'text/plain');
-    });
     // from this wiki
     var pick = $('sb-wiki-pick');
     ['focus', 'pointerdown', 'touchstart'].forEach(function (ev) {
@@ -2654,6 +2640,8 @@
       prefs.abilities = this.checked;
       savePrefs();
       $('sb-add-list').classList.toggle('abil', this.checked);
+      // The same tick shows the abilities and searches them.
+      if (filterAPI && filterAPI.apply) filterAPI.apply();
     });
 
     // ── tabs ──
@@ -2672,9 +2660,10 @@
     $('sbx-scrim').addEventListener('click', closeSide);
     wireResize();
 
-    // ── name + author, in the bar and in the details tab, one value ──
-    function bindName(barId, tabId, key, max) {
-      function push(v) {
+    // ── name + author: typed in Details, shown in the bar ──
+    function bindName(id, key, max) {
+      $(id).addEventListener('input', function () {
+        var v = this.value;
         patchMeta(function (m) {
           var t = v.slice(0, max);
           if (t) m[key] = t; else delete m[key];
@@ -2683,12 +2672,15 @@
           document.title = (v.trim() || 'Script Builder') + ' — BOTC HomeBrew Wiki';
           paintLibrary();
         }
-      }
-      $(barId).addEventListener('input', function () { $(tabId).value = this.value; push(this.value); });
-      $(tabId).addEventListener('input', function () { $(barId).value = this.value; push(this.value); });
+        paintBarName();
+      });
     }
-    bindName('sb-name', 'sb-name2', 'name', 90);
-    bindName('sb-author', 'sb-author2', 'author', 70);
+    bindName('sb-name2', 'name', 90);
+    bindName('sb-author2', 'author', 70);
+    $('sbx-names').addEventListener('click', function () {
+      showTab('meta');
+      $('sb-name2').focus();
+    });
 
     // ── official-app options ──
     $('sb-hidetitle').addEventListener('change', function () {
@@ -2771,10 +2763,10 @@
       ACTIONS[b.getAttribute('data-do')](b);
     });
 
-    $('sb-export').addEventListener('click', function () { ACTIONS.export(this); });
-    $('sb-copy').addEventListener('click', function () { ACTIONS.copy(this); });
-    $('sb-share').addEventListener('click', function () { ACTIONS.share(this); });
-    $('sb-fancy').addEventListener('click', function () { ACTIONS.fancy(this); });
+    $('sb-export').addEventListener('click', function () { doExport(); });
+    $('sb-copy').addEventListener('click', function () { doCopy(this); });
+    $('sb-share').addEventListener('click', function () { doShare(this); });
+    $('sb-fancy').addEventListener('click', function () { doFancy(); });
     $('sb-import').addEventListener('click', function () { ACTIONS.import(this); });
     $('sb-randomize').addEventListener('click', randomize);
     $('sb-sort').addEventListener('click', function () {
@@ -2825,13 +2817,6 @@
     $('sbx-lib-q').addEventListener('input', paintLibrary);
     $('sbx-lib-save').addEventListener('click', saveCurrentToLibrary);
     $('sbx-lib-new').addEventListener('click', newScript);
-    $('sbx-lib-sort').value = (prefs.lib && prefs.lib.sort) || 'recent';
-    $('sbx-lib-sort').addEventListener('change', function () {
-      prefs.lib = prefs.lib || {};
-      prefs.lib.sort = this.value;
-      savePrefs();
-      paintLibrary();
-    });
     $('sbx-lib-backup').addEventListener('click', backupLibrary);
     $('sbx-lib-restore').addEventListener('click', function () { $('sbx-lib-file').click(); });
     $('sbx-lib-file').addEventListener('change', function (e) {
@@ -2847,15 +2832,12 @@
     var nv = nightView();
     $('sb-night-rem').checked = nv.reminders;
     $('sb-night-icons').checked = nv.icons;
-    $('sb-night-stack').checked = nv.stacked;
-    $('sbx-night-body').classList.toggle('stacked', nv.stacked);
     $('sb-night-bag').checked = nv.bagOnly;
-    [['sb-night-rem', 'reminders'], ['sb-night-icons', 'icons'], ['sb-night-stack', 'stacked'], ['sb-night-bag', 'bagOnly']].forEach(function (pair) {
+    [['sb-night-rem', 'reminders'], ['sb-night-icons', 'icons'], ['sb-night-bag', 'bagOnly']].forEach(function (pair) {
       $(pair[0]).addEventListener('change', function () {
         prefs.night = prefs.night || {};
         prefs.night[pair[1]] = this.checked;
         savePrefs();
-        $('sbx-night-body').classList.toggle('stacked', !!(prefs.night.stacked));
         if (nightUI) nightUI.render();
       });
     });
@@ -2870,13 +2852,6 @@
     $('sb-jinx-copy').addEventListener('click', function () { copyPlain(jinxText(), this, 'there are no jinxes on this script'); });
 
     // ── export options ──
-    $('sb-json-min').checked = !!(prefs.json && prefs.json.minified);
-    $('sb-json-min').addEventListener('change', function () {
-      prefs.json = prefs.json || {};
-      prefs.json.minified = this.checked;
-      savePrefs();
-      paintJsonPreview();
-    });
     $('sb-json-details').addEventListener('toggle', paintJsonPreview);
 
     // ── arranging ──
@@ -2921,10 +2896,7 @@
     undo: function () { undo(); },
     redo: function () { redo(); },
     publish: function () { location.href = $('sb-publish-link').getAttribute('href') || 'publish-script'; },
-    'export': function () { doExport(); },
-    copy: function (btn) { doCopy(btn); },
-    share: function (btn) { doShare(btn); },
-    fancy: function () { doFancy(); },
+    details: function () { showTab('meta'); },
     bag: function () { if (notEmpty()) togglePop('sbx-bag', $('sbx-more')); },
     'import': function () { $('sb-import-file').click(); },
     save: function () { saveCurrentToLibrary(); },

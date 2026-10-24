@@ -1,11 +1,10 @@
 /* script-builder-view.js — the Script Builder's View settings.
  *
  * Everything about HOW the builder draws a script, as opposed to what is on
- * it: the roster's layout (sheet, cards, list, icon wall), its columns, the
- * size of the icons and the text, what each row shows, the order inside a
- * team, the panel's side and density. None of it touches the script — the
- * same roster exports, publishes and shares identically under every one of
- * these — so it is kept in the reader's own browser (botc_builder_prefs.view,
+ * it: the roster's layout (sheet, cards, list, icon wall), its look, its
+ * size, its columns, what each row shows, how the panel is grouped. None of
+ * it touches the script — the same roster exports, publishes and shares
+ * identically under every one of these — so it is kept in the reader's own browser (botc_builder_prefs.view,
  * written by script-builder.js) and never in the script's meta.
  *
  * Three parts, and the split is the point:
@@ -27,75 +26,43 @@
 
   var DEFAULTS = {
     layout: 'sheet',      // sheet | cards | list | icons
-    columns: 'auto',      // auto | 1 | 2 | 3 — inside one team's sheet
-    pageCols: false,      // the WHOLE script flowed down two columns
-    order: 'added',       // added | name | sao | night
-    teamLabel: 'full',    // full | short | none
-    density: 'comfortable', // compact | comfortable | roomy
-    font: 'wiki',         // wiki | plain | print
-    accent: true,         // team colours on the headings and rules
-    arrange: false,       // a grip and the two arrows on every row
-    tone: 'parchment',    // parchment | dark | paper
-    rowStripe: false,     // a team-coloured edge on every row
-    stickyHeads: true,    // team headings stay put while the roster scrolls
-    icon: 40,             // px
-    text: 100,            // %
+    look: 'parchment',    // parchment | dark | printed
+    size: 'normal',       // small | normal | large — icons, text, spacing
+    columns: 'auto',      // auto | 1 | 2 (the whole script down two columns)
+    teamColour: 'heads',  // off | heads | rows
+    teamHeads: true,
     showAbility: true,
-    showCreator: false,
+    showCreator: false,   // on the roster AND in the panel
     showTags: false,
     showNight: false,
     showJinx: true,
     showNotes: true,      // the script's own note under a character
-    showOfficial: true,
-    showCounts: true,
-    removeHover: false,   // the remove button only on hover
-    side: 'left',         // left | right
-    panelIcon: 26,        // px
-    panelCompact: false,
-    panelScope: 'all',    // all | off (not on the script) | on
     panelGroup: 'team',   // team | creator | set | name
-    panelSearchAbility: false,
-    panelCreator: false,  // a creator line under each panel name
-    panelText: 100,       // %
-    quickPicks: true,     // the pinned + recent strip above the list
-    barUndo: true, barRandom: true, barSort: true, barPublish: true,
-    motion: true
-  };
-
-  var TEAM_SHORT = {
-    townsfolk: 'TF', outsider: 'OUT', minion: 'MIN', demon: 'DEM',
-    traveller: 'TRAV', fabled: 'FAB', loric: 'LOR'
+    // Kept with the view but set elsewhere: Arrange is a button beside Sort,
+    // the panel's Show is a select in the panel itself.
+    arrange: false,
+    panelScope: 'all'     // all | off (not on the script) | on
   };
 
   /* One row per setting. `repaint` names what the controller must redraw:
      'roster' (the row markup carries something this changes), 'panel'
-     (the add list does), or '' for a setting CSS alone can honour. */
+     (the add list does), or '' for a setting CSS alone can honour.
+     `ui: false` rows are stored here but drawn by the page, not the popover. */
   var VIEW_SCHEMA = [
     { group: 'Roster', key: 'layout', label: 'Layout', type: 'seg', repaint: '',
       options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons']],
       hint: 'Sheet is the character sheet, Cards the browse grid, List one line each, Icons the art alone.' },
-    { group: 'Roster', key: 'pageCols', label: 'Whole script in two columns', type: 'check', repaint: '',
-      hint: 'Teams flow down two columns, like a printed sheet. Columns below splits a single team instead.' },
+    { group: 'Roster', key: 'look', label: 'Look', type: 'seg', repaint: '',
+      options: [['parchment', 'Parchment'], ['dark', 'Dark'], ['printed', 'Printed']] },
+    { group: 'Roster', key: 'size', label: 'Size', type: 'seg', repaint: '',
+      options: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']],
+      hint: 'Icons, text and spacing together, in the roster and the panel.' },
     { group: 'Roster', key: 'columns', label: 'Columns', type: 'seg', repaint: '',
-      options: [['auto', 'Auto'], ['1', '1'], ['2', '2'], ['3', '3']] },
-    { group: 'Roster', key: 'order', label: 'Order inside a team', type: 'select', repaint: 'roster',
-      options: [['added', 'As arranged'], ['name', 'A to Z'], ['sao', 'Steven Approved Order'], ['night', 'Night order']],
-      hint: 'Display only. The export keeps the arranged order; Sort changes that.' },
-    { group: 'Roster', key: 'teamLabel', label: 'Team headings', type: 'seg', repaint: 'roster',
-      options: [['full', 'Full'], ['short', 'Short'], ['none', 'None']] },
-    { group: 'Roster', key: 'density', label: 'Spacing', type: 'seg', repaint: '',
-      options: [['compact', 'Tight'], ['comfortable', 'Normal'], ['roomy', 'Airy']] },
-    { group: 'Roster', key: 'tone', label: 'Paper', type: 'seg', repaint: '',
-      options: [['parchment', 'Parchment'], ['dark', 'Dark'], ['paper', 'Plain']] },
-    { group: 'Roster', key: 'accent', label: 'Team colours on the headings', type: 'check', repaint: '' },
-    { group: 'Roster', key: 'rowStripe', label: 'Team colour stripe on each row', type: 'check', repaint: '' },
-    { group: 'Roster', key: 'stickyHeads', label: 'Team headings stay in view', type: 'check', repaint: '' },
-    { group: 'Roster', key: 'arrange', label: 'Arrange by hand (drag, or the arrows)', type: 'check', repaint: 'roster' },
-
-    { group: 'Size', key: 'icon', label: 'Icon size', type: 'range', min: 20, max: 96, step: 2, unit: 'px', repaint: '' },
-    { group: 'Size', key: 'text', label: 'Text size', type: 'range', min: 75, max: 140, step: 5, unit: '%', repaint: '' },
-    { group: 'Size', key: 'font', label: 'Type', type: 'seg', repaint: '',
-      options: [['wiki', 'Wiki'], ['plain', 'Plain'], ['print', 'Print']] },
+      options: [['auto', 'Auto'], ['1', '1'], ['2', '2']],
+      hint: '2 pours the whole script down two columns, like a printed sheet.' },
+    { group: 'Roster', key: 'teamColour', label: 'Team colours', type: 'seg', repaint: '',
+      options: [['off', 'Off'], ['heads', 'Headings'], ['rows', 'Headings and rows']] },
+    { group: 'Roster', key: 'teamHeads', label: 'Team headings', type: 'check', repaint: 'roster' },
 
     { group: 'Show on each character', key: 'showAbility', label: 'Ability', type: 'check', repaint: '' },
     { group: 'Show on each character', key: 'showCreator', label: 'Creator', type: 'check', repaint: 'roster' },
@@ -103,53 +70,30 @@
     { group: 'Show on each character', key: 'showNight', label: 'Night marks (F / O)', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showJinx', label: 'Jinx marks', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showNotes', label: 'Your notes', type: 'check', repaint: 'roster' },
-    { group: 'Show on each character', key: 'showOfficial', label: 'Official badge', type: 'check', repaint: '' },
-    { group: 'Show on each character', key: 'removeHover', label: 'Remove button only on hover', type: 'check', repaint: '' },
-    { group: 'Show on each character', key: 'showCounts', label: 'Team counts in the bar', type: 'check', repaint: '' },
 
-    { group: 'Character panel', key: 'side', label: 'Panel side', type: 'seg', repaint: '',
-      options: [['left', 'Left'], ['right', 'Right']] },
-    { group: 'Character panel', key: 'panelIcon', label: 'Panel icon size', type: 'range', min: 16, max: 56, step: 2, unit: 'px', repaint: '' },
-    { group: 'Character panel', key: 'panelText', label: 'Panel text size', type: 'range', min: 75, max: 130, step: 5, unit: '%', repaint: '' },
     { group: 'Character panel', key: 'panelGroup', label: 'Grouped by', type: 'seg', repaint: 'panel',
       options: [['team', 'Team'], ['creator', 'Creator'], ['set', 'Set'], ['name', 'A to Z']],
       hint: 'Set is the script or collection a character is filed under.' },
-    { group: 'Character panel', key: 'panelScope', label: 'Show', type: 'seg', repaint: '',
-      options: [['all', 'Everyone'], ['off', 'Not on the script'], ['on', 'On the script']] },
-    { group: 'Character panel', key: 'panelSearchAbility', label: 'Search abilities too', type: 'check', repaint: '' },
-    { group: 'Character panel', key: 'panelCompact', label: 'Tighter rows', type: 'check', repaint: '' },
-    { group: 'Character panel', key: 'panelCreator', label: 'Creator under each name', type: 'check', repaint: '' },
-    { group: 'Character panel', key: 'quickPicks', label: 'Pinned and recent strip', type: 'check', repaint: '' },
 
-    { group: 'The bar', key: 'barUndo', label: 'Undo and redo', type: 'check', repaint: '' },
-    { group: 'The bar', key: 'barRandom', label: 'Random', type: 'check', repaint: '' },
-    { group: 'The bar', key: 'barSort', label: 'Sort', type: 'check', repaint: '' },
-    { group: 'The bar', key: 'barPublish', label: 'Publish', type: 'check', repaint: '',
-      hint: 'Anything taken off the bar is still in the More menu.' },
-
-    { group: 'Motion', key: 'motion', label: 'Animations', type: 'check', repaint: '' }
+    { key: 'arrange', type: 'check', repaint: 'roster', ui: false },
+    { key: 'panelScope', type: 'select', repaint: '', ui: false,
+      options: [['all', 'Everyone'], ['off', 'Not on the script'], ['on', 'On the script']] }
   ];
 
-  /* Quick looks: a few whole views, applied on top of the current one. Only
-     the keys named move, so a preset never resets a size somebody chose. */
-  var PRESETS = [
-    { key: 'sheet', label: 'Character sheet',
-      view: { layout: 'sheet', columns: 'auto', density: 'comfortable', icon: 40, text: 100, showAbility: true, font: 'wiki', teamLabel: 'full' } },
-    { key: 'cards', label: 'Card grid',
-      view: { layout: 'cards', columns: 'auto', density: 'comfortable', icon: 56, showAbility: true, teamLabel: 'full' } },
-    { key: 'list', label: 'Tight list',
-      view: { layout: 'list', columns: '1', density: 'compact', icon: 24, text: 90, showAbility: true, teamLabel: 'short' } },
-    { key: 'icons', label: 'Icon wall',
-      view: { layout: 'icons', columns: 'auto', density: 'comfortable', icon: 64, showAbility: false, teamLabel: 'full' } },
-    { key: 'big', label: 'Big print',
-      view: { layout: 'sheet', columns: '1', density: 'roomy', icon: 56, text: 125, showAbility: true, font: 'print', teamLabel: 'full' } },
-    /* The printed sheet: one narrow column per team, both poured down the
-       page, the serif face — what the builder's own print window used to
-       make, now something you can simply look at. */
-    { key: 'printed', label: 'Printed sheet',
-      view: { layout: 'sheet', pageCols: true, columns: '1', density: 'compact', icon: 30, text: 95,
-              showAbility: true, font: 'print', teamLabel: 'full', tone: 'paper' } }
-  ];
+  /* What each Size means, per layout: the icon a layout wants is its own
+     (a card is mostly picture, a list row hardly any), and the rest follow
+     the size alone. The old sliders' defaults are the Normal row. */
+  var ICON = { sheet: 40, cards: 56, list: 28, icons: 64 };
+  var SIZES = {
+    small:  { icon: 0.75, text: 0.9,  density: 'compact',     panelIcon: 22, panelText: 0.9,  panelCompact: true },
+    normal: { icon: 1,    text: 1,    density: 'comfortable', panelIcon: 26, panelText: 1,    panelCompact: false },
+    large:  { icon: 1.4,  text: 1.25, density: 'roomy',       panelIcon: 34, panelText: 1.15, panelCompact: false }
+  };
+  var LOOKS = {
+    parchment: { tone: 'parchment', font: 'wiki' },
+    dark:      { tone: 'dark',      font: 'wiki' },
+    printed:   { tone: 'paper',     font: 'print' }
+  };
 
   var byKey = {};
   VIEW_SCHEMA.forEach(function (s) { byKey[s.key] = s; });
@@ -159,22 +103,35 @@
       .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /* A view stored by the builder before the settings were merged, read into
+     the merged ones so a reader's choices survive: the paper and type became
+     Look, the two column settings Columns, the two colour switches Team
+     colours. The sizes start over at Normal. */
+  function migrate(v) {
+    if (v.look == null && (v.tone != null || v.font != null)) {
+      v.look = v.tone === 'dark' ? 'dark' : (v.tone === 'paper' || v.font === 'print') ? 'printed' : 'parchment';
+    }
+    if (v.columns != null && v.pageCols != null) {
+      v.columns = v.pageCols ? '2' : (String(v.columns) === '1' ? '1' : 'auto');
+    }
+    if (v.teamColour == null && (v.accent != null || v.rowStripe != null)) {
+      v.teamColour = v.accent === false ? 'off' : v.rowStripe ? 'rows' : 'heads';
+    }
+    if (v.teamHeads == null && v.teamLabel != null) v.teamHeads = v.teamLabel !== 'none';
+    if (v.showCreator == null && v.panelCreator) v.showCreator = true;
+    return v;
+  }
+
   /* Whatever was stored, made whole and legal: every key present, every
      value one the schema allows. A setting from a later version that this
      build does not know is dropped rather than kept as a stranger. */
   function normalize(v) {
-    v = (v && typeof v === 'object') ? v : {};
+    v = (v && typeof v === 'object') ? migrate(Object.assign({}, v)) : {};
     var out = {};
     VIEW_SCHEMA.forEach(function (s) {
       var d = DEFAULTS[s.key];
       var x = v[s.key];
       if (s.type === 'check') { out[s.key] = x == null ? d : !!x; return; }
-      if (s.type === 'range') {
-        x = Number(x);
-        if (!isFinite(x)) x = d;
-        out[s.key] = Math.min(s.max, Math.max(s.min, Math.round(x / s.step) * s.step));
-        return;
-      }
       var ok = s.options.some(function (o) { return o[0] === String(x); });
       out[s.key] = ok ? String(x) : d;
     });
@@ -183,7 +140,7 @@
 
   function isDefault(v) {
     v = normalize(v);
-    return VIEW_SCHEMA.every(function (s) { return v[s.key] === DEFAULTS[s.key]; });
+    return VIEW_SCHEMA.every(function (s) { return s.ui === false || v[s.key] === DEFAULTS[s.key]; });
   }
 
   /* View -> the DOM. Everything CSS can read is written here, once, and the
@@ -191,52 +148,36 @@
   function apply(root, v) {
     if (!root) return;
     v = normalize(v);
+    var size = SIZES[v.size], look = LOOKS[v.look];
     root.setAttribute('data-layout', v.layout);
-    root.setAttribute('data-cols', v.columns);
+    root.setAttribute('data-cols', v.columns === 'auto' ? 'auto' : '1');
     /* The two-column FLOW, not the per-team grid: the whole roster poured
        down two columns of the page, the way a printed script sheet reads.
        It is dropped while Arrange is on — a row lifted out of a multicol
        flow lands back in the wrong column, and arranging is the one mode
        where where a row sits has to be exactly where it looks. */
-    root.classList.toggle('sbx-two-col', !!v.pageCols && !v.arrange);
-    root.setAttribute('data-density', v.density);
-    root.setAttribute('data-font', v.font);
-    root.setAttribute('data-side', v.side);
-    root.setAttribute('data-teamlabel', v.teamLabel);
-    root.setAttribute('data-tone', v.tone);
+    root.classList.toggle('sbx-two-col', v.columns === '2' && !v.arrange);
+    root.setAttribute('data-density', size.density);
+    root.setAttribute('data-font', look.font);
+    root.setAttribute('data-tone', look.tone);
     root.setAttribute('data-panelscope', v.panelScope);
-    root.style.setProperty('--sbx-icon', v.icon + 'px');
-    root.style.setProperty('--sbx-text', String(v.text / 100));
-    root.style.setProperty('--sbx-panel-icon', v.panelIcon + 'px');
-    root.style.setProperty('--sbx-panel-text', String(v.panelText / 100));
+    root.style.setProperty('--sbx-icon', (Math.round(ICON[v.layout] * size.icon / 2) * 2) + 'px');
+    root.style.setProperty('--sbx-text', String(size.text));
+    root.style.setProperty('--sbx-panel-icon', size.panelIcon + 'px');
+    root.style.setProperty('--sbx-panel-text', String(size.panelText));
     var cls = {
       'sbx-no-ability': !v.showAbility,
-      'sbx-no-official': !v.showOfficial,
-      'sbx-no-counts': !v.showCounts,
-      'sbx-remove-hover': v.removeHover,
-      'sbx-no-accent': !v.accent,
-      'sbx-no-motion': !v.motion,
-      'sbx-panel-compact': v.panelCompact,
-      'sbx-panel-creator': v.panelCreator,
-      'sbx-bar-no-undo': !v.barUndo,
-      'sbx-bar-no-random': !v.barRandom,
-      'sbx-bar-no-sort': !v.barSort,
-      'sbx-bar-no-publish': !v.barPublish,
-      'sbx-no-picks': !v.quickPicks,
-      'sbx-row-stripe': v.rowStripe,
-      'sbx-sticky-heads': v.stickyHeads
+      'sbx-no-accent': v.teamColour === 'off',
+      'sbx-row-stripe': v.teamColour === 'rows',
+      'sbx-panel-compact': size.panelCompact,
+      'sbx-panel-creator': v.showCreator
     };
     Object.keys(cls).forEach(function (k) { root.classList.toggle(k, !!cls[k]); });
-    // The document root carries the motion flag too, for the drawer and the
-    // popovers that live outside the grid.
-    document.documentElement.classList.toggle('sbx-no-motion', !v.motion);
   }
 
   function teamHeading(team, label, v) {
     v = v || DEFAULTS;
-    if (v.teamLabel === 'none') return '';
-    if (v.teamLabel === 'short') return TEAM_SHORT[team] || label;
-    return label;
+    return v.teamHeads === false ? '' : label;
   }
 
   /* ── the popover ──────────────────────────────────────────────────── */
@@ -254,22 +195,13 @@
           return '<button type="button" data-value="' + esc(o[0]) + '" class="' + (String(val) === o[0] ? 'on' : '') +
             '" aria-pressed="' + (String(val) === o[0] ? 'true' : 'false') + '">' + esc(o[1]) + '</button>';
         }).join('') + '</div>';
-    } else if (s.type === 'select') {
-      out += '<select id="' + id + '" data-key="' + s.key + '" aria-labelledby="' + id + '-l">' +
-        s.options.map(function (o) {
-          return '<option value="' + esc(o[0]) + '"' + (String(val) === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-        }).join('') + '</select>';
-    } else if (s.type === 'range') {
-      out += '<span class="sbx-view-range"><input type="range" id="' + id + '" data-key="' + s.key + '" min="' + s.min +
-        '" max="' + s.max + '" step="' + s.step + '" value="' + val + '" aria-labelledby="' + id + '-l">' +
-        '<output for="' + id + '">' + val + esc(s.unit || '') + '</output></span>';
     }
     if (s.hint) out += '<p class="sbx-view-hint">' + esc(s.hint) + '</p>';
     return out + '</div>';
   }
 
   /* host: the popover's body. opts.get() -> the view; opts.set(view, key)
-     stores and applies it (key is what changed, '' for a preset / reset). */
+     stores and applies it (key is what changed, '' for a reset). */
   function mount(host, opts) {
     if (!host) return null;
     opts = opts || {};
@@ -280,13 +212,11 @@
       var groups = [];
       var seen = {};
       VIEW_SCHEMA.forEach(function (s) {
+        if (s.ui === false) return;
         if (!seen[s.group]) { seen[s.group] = { name: s.group, rows: [] }; groups.push(seen[s.group]); }
         seen[s.group].rows.push(s);
       });
-      var html = '<div class="sbx-view-presets" role="group" aria-label="Quick looks">' +
-        PRESETS.map(function (p) {
-          return '<button type="button" class="sbx-view-preset" data-preset="' + esc(p.key) + '">' + esc(p.label) + '</button>';
-        }).join('') + '</div>';
+      var html = '';
       groups.forEach(function (g) {
         html += '<fieldset class="sbx-view-group"><legend>' + esc(g.name) + '</legend>';
         var checks = g.rows.filter(function (s) { return s.type === 'check'; });
@@ -309,12 +239,11 @@
       var s = byKey[key];
       if (!s) return;
       if (s.type === 'check') v[key] = !!value;
-      else if (s.type === 'range') v[key] = Number(value);
       else v[key] = String(value);
       v = normalize(v);
       if (opts.set) opts.set(v, key);
       // Keep the segmented buttons and the reset button honest without a
-      // whole re-render (a slider in flight must not lose its thumb).
+      // whole re-render.
       if (s.type === 'seg') {
         [].slice.call(host.querySelectorAll('.sbx-view-seg[data-key="' + key + '"] button')).forEach(function (b) {
           var on = b.getAttribute('data-value') === v[key];
@@ -329,19 +258,11 @@
     host.addEventListener('click', function (e) {
       var seg = e.target.closest && e.target.closest('.sbx-view-seg button');
       if (seg) { change(seg.parentNode.getAttribute('data-key'), seg.getAttribute('data-value')); return; }
-      var pre = e.target.closest && e.target.closest('.sbx-view-preset');
-      if (pre) {
-        var p = null;
-        PRESETS.forEach(function (x) { if (x.key === pre.getAttribute('data-preset')) p = x; });
-        if (!p) return;
-        var v = get();
-        Object.keys(p.view).forEach(function (k) { v[k] = p.view[k]; });
-        if (opts.set) opts.set(normalize(v), '');
-        render();
-        return;
-      }
       if (e.target.closest && e.target.closest('#sbv-reset')) {
-        if (opts.set) opts.set(normalize({}), '');
+        // Back to the default look, keeping what is set outside the popover.
+        var keep = get(), d = normalize({});
+        VIEW_SCHEMA.forEach(function (s) { if (s.ui === false) d[s.key] = keep[s.key]; });
+        if (opts.set) opts.set(d, '');
         render();
       }
     });
@@ -352,18 +273,7 @@
       if (!key) return;
       if (t.type === 'checkbox') change(key, t.checked);
       else if (t.tagName === 'SELECT') change(key, t.value);
-      else if (t.type === 'range') change(key, t.value);
     });
-    // Sliders follow the thumb live; the output beside them too.
-    host.addEventListener('input', function (e) {
-      var t = e.target;
-      if (!t || t.type !== 'range') return;
-      var key = t.getAttribute('data-key');
-      var out = t.nextElementSibling;
-      if (out) out.textContent = t.value + ((byKey[key] && byKey[key].unit) || '');
-      change(key, t.value);
-    });
-
     render();
     return { render: render };
   }
@@ -371,7 +281,6 @@
   global.SBView = {
     DEFAULTS: DEFAULTS,
     SCHEMA: VIEW_SCHEMA,
-    PRESETS: PRESETS,
     normalize: normalize,
     isDefault: isDefault,
     apply: apply,

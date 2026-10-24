@@ -1546,24 +1546,31 @@ What shapes it:
 Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
-`SBView.SCHEMA` is the whole list — four layouts (sheet, cards, list, icon
-wall), the two column settings (see below), the order inside a team, team
-headings, spacing, paper tone
-(parchment, dark, plain), type, icon and text sizes, what a row shows
-(ability, creator, tags, night marks, jinx marks, official badge, remove on
-hover, counts), team colours on the headings and a stripe on the rows,
-sticky headings, arrange mode, the panel's side, icon and text sizes,
-tighter rows, a creator line, hiding characters already on the script, the
-pinned + recent strip, animations. Each row names its `repaint` — `'roster'` when the
-row markup carries it, `''` when CSS alone honours it — and `SBView.apply()`
-writes the view onto `#sbx` as `--sbx-icon` / `--sbx-text` /
-`--sbx-panel-icon`, `data-layout|cols|density|font|side|teamlabel` and a few
-classes; the `.sbx` block in styles.css reads them. **A new setting is one
-schema row plus the CSS that reads it.** Presets are partial views applied
-over the current one, so they never reset a size somebody chose. The view's
-**order** is display only: `displayChars()` sorts what `paintRoster()` draws;
-`rosterChars()` — the export, the publish page, the night order — keeps the
-arranged `order`. Arrange mode forces display order back to the arranged one.
+`SBView.SCHEMA` is the whole list, and it is short on purpose: **13
+settings** in the popover, cut down from 37 plus 6 presets at the owner's
+request (2026-10). Layout (sheet, cards, list, icon wall), **Look**
+(Parchment / Dark / Printed — paper tone and type in one), **Size** (Small /
+Normal / Large — icons, text, spacing and the panel's rows together; the
+icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
+/ 1 / 2, where 2 is the whole script poured down two columns), **Team
+colours** (Off / Headings / Headings and rows), Team headings, six "Show on
+each character" ticks (ability, creator — on the roster and in the panel —
+tags, night marks, jinx marks, notes) and the panel's Grouped by. Two more
+keys ride the view without being in the popover (`ui: false`): `arrange`,
+the **Arrange** button beside Sort, and `panelScope`, the panel's own Show
+select. There is no display-only order any more (it read like Sort and was
+not), no presets (four were the layouts again), no bar switches, no
+Animations switch (the CSS follows `prefers-reduced-motion`), no panel side,
+and sticky team headings and the official badge are simply always on.
+**Before adding a setting back, ask the owner.** `normalize()` runs
+`migrate()` first, so a view stored by the 37-setting builder keeps its
+look, columns and colours.
+Each row names its `repaint` — `'roster'` when the row markup carries it,
+`''` when CSS alone honours it — and `SBView.apply()` writes the view onto
+`#sbx` as `--sbx-icon` / `--sbx-text` / `--sbx-panel-icon`,
+`data-layout|cols|density|font|tone|panelscope` and a few classes; the
+`.sbx` block in styles.css reads them. **A new setting is one schema row
+plus the CSS that reads it.**
 
 ### Shape, Random and Fill
 
@@ -1644,10 +1651,11 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   now: it takes the old box down (`grid._cfDestroy`) before building the
   new one, or the toggle and the search box would answer to two sets of
   listeners. Folding is remembered per group key. **Show** narrows the panel
-  to everyone, those not on the script, or those on it (pure CSS off
-  `data-panelscope`), and **Search abilities too** makes the search box
-  match ability text (`opts.searchAbility`, a function the box asks at
-  each keystroke, so the toggle applies at once through `filterAPI.apply()`).
+  to everyone, those not on the script, or those on it (the select beside
+  Abilities; pure CSS off `data-panelscope`), and the panel's **Abilities**
+  tick both shows every ability and makes the search box match them
+  (`opts.searchAbility`, a function the box asks at each keystroke, so the
+  tick applies at once through `filterAPI.apply()`).
 - **⚯ on a panel row** marks a character jinxed with someone on the script
   but not on it — the Analyse tab's suggestions, painted onto the rows in the
   settle pass (`paintJinxHints`, touching only the rows whose mark changed).
@@ -1655,10 +1663,12 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   of a character on the script, shown under its row (View → Your notes),
   carried into Copy as text and along share links.
   Never in the export.
-- **The bar** is configurable (View → The bar): Undo/redo, Random, Sort and
-  Publish can each be taken off it; whatever is off appears in the More
-  menu instead (`.sbx-menu-bar` items, shown by the `sbx-bar-no-*` classes),
-  so nothing is ever unreachable — which is most of the point on a phone.
+- **The bar** shows the script's name and author (typed in Details &
+  Export, the one place they are typed; a tap on them goes there), the
+  counts, Undo/redo, View, Random, Sort, Arrange, More and Publish. More holds
+  "Export, share or print…" (which opens Details & Export, where Download,
+  Copy, Share and Fancy Sheet live), Import, Tonight's bag and the library
+  actions.
 - **Each panel group heading has a die** (add one at random from what that
   group is showing) and, grouped by team, says how many more the shape wants
   (`paintPanelNeeds`). Roster teams **fold** with a click on the heading
@@ -1712,7 +1722,7 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
 - **Two settings say "columns" and they are different things.**
   **Columns** (auto / 1 / 2 / 3) splits ONE team's own parchment into that
   many columns of rows, and `auto` is a container query on `#sb-script`.
-  **Whole script in two columns** (`pageCols`) is the printed sheet's flow
+  **Columns → 2** is the printed sheet's flow
   instead: a `column-count: 2` multicol on the whole roster, so Townsfolk
   fills the left column and the other teams run on down the right, each
   team's own grid pinned to one column inside it. A team is kept whole and
@@ -1721,17 +1731,17 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   foot of a column with an empty parchment under it, because `break-after:
   avoid` on a heading is honoured patchily in a multicol. It unwinds to one
   column below 700px, and it is **dropped while Arrange is on**: a row
-  lifted out of a multicol flow lands back in the wrong column. The
-  **Printed sheet** preset is this plus one column per team, the serif face
-  and the paper tone.
-- **Arrange** (View → Arrange by hand): every row gets a grip and two
+  lifted out of a multicol flow lands back in the wrong column.
+- **Arrange** (the button beside Sort): every row gets a grip and two
   arrows; moves
   stay inside a team and write straight into `order` (`setTeamOrder`), which
   is what the export and the published page read. Drag with a mouse anywhere
   on the row, on a phone from the grip, the same lifted-row-plus-placeholder
   technique as the night arranger. Undoable like everything else.
 - **Night Order / Jinxes tabs** take `getView` + `artOf` into the shared
-  widgets (reminders, icons, stacked lists; icons on the jinx pairs). The
+  widgets (reminders, icons; icons on the jinx pairs). The two night lists
+  sit side by side while there is room for both and stack when there is not.
+  The
   publish page passes neither and gets the plain lists it always had.
 - **There is no print sheet here any more.** The builder used to write its
   own print window — icons, team colours, one or two columns, the night
@@ -1741,8 +1751,8 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   one was on the button, so **Fancy Scripts is the only visual export**: the
   Fancy Sheet button hands the roster over (`doFancy`). Do not add a second
   one. What the print sheet could do that nothing on screen could is now
-  **View → Whole script in two columns**.
-- **Details & Export** also carries a JSON preview, a Minified switch, and
+  **View → Columns → 2**.
+- **Details & Export** also carries a JSON preview and
   the **Character ids** widget (`export-ids-editor.js`, the same one
   publish-script mounts) writing `meta.exportIds`, which `buildPageExport`
   already reads. **The credits Fabled is not optional** — see below.
