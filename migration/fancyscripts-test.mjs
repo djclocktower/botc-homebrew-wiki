@@ -66,6 +66,7 @@ check('every default present', [n.night.titleOther, n.bg.mode, n.jinxPage.title,
 check('page list', S.pageList(n, { front: 2 }).map(S.pageKey), ['front:0', 'front:1', 'night:first']);
 check('page list with everything', S.pageList(S.normalizeOptions({ night: { first: true, other: true }, jinxPage: { enabled: true } }), { front: 1, first: 2, other: 1, jinx: 1 }).map(S.pageKey),
   ['front:0', 'night:first', 'night:first:1', 'night:other', 'jinx', 'back']);
+check('page list: an empty jinx page is no page', S.pageList(S.normalizeOptions({ jinxPage: { enabled: true } }), { front: 1, jinx: 0 }).map(S.pageKey).includes('jinx'), false);
 
 // per-character overrides and team hiding
 const ov = S.deriveScript(S.parseScript(blending, true), S.normalizeOptions({ chars: { poisoner: { hidden: true }, imp: { name: 'The Imp!', color: '#ff0000', team: 'minion' } }, hideTeams: { outsider: true } }));

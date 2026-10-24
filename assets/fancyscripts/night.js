@@ -24,7 +24,7 @@
  * blocks, a block is an optional heading over rows, a row is icon(s) +
  * name + text. The night sheets are one column; "both nights on one
  * page" is two; the jinx page is one column of three blocks (jinxes,
- * house rules, notes), and takes the night sheets' chrome (ribbon and
+ * Bootlegger rules, notes), and takes the night sheets' chrome (ribbon and
  * logo) with its rows stacked, since a pair's two names do not fit a name
  * column. One renderer, so the pages cannot drift apart.
  *
@@ -164,7 +164,7 @@ export function buildNightSpec(script, options, which) {
   };
 }
 
-/* the jinx page: every jinx pair on the script once, house rules
+/* the jinx page: every jinx pair on the script once, Bootlegger rules
    (_meta.bootlegger) and the writer's own notes */
 export function buildJinxSpec(script, options) {
   const cfg = options.jinxPage;
@@ -198,7 +198,7 @@ export function buildJinxSpec(script, options) {
     blocks.push({
       heading: cfg.houseTitle || 'Bootlegger Rules',
       rows: script.meta.bootlegger.map((r, i) => ({
-        icons: [STEP_ICONS.rule], kind: 'rule', id: 'rule' + i, name: '', color: cfg.textColor, text: r,
+        icons: [STEP_ICONS.bootlegger], kind: 'rule', id: 'rule' + i, name: '', color: cfg.textColor, text: r,
       })),
     });
   }
@@ -211,13 +211,8 @@ export function buildJinxSpec(script, options) {
       })),
     });
   }
-  // Nothing to print: the preview says so, and the exports leave the page out
-  // (`empty`) rather than print a sheet that only says it is blank.
+  // nothing to print: the page is left out altogether (pageList)
   const empty = !rows.length && blocks.length === 1;
-  if (empty) {
-    blocks[0].rows = [{ icons: [STEP_ICONS.jinx], kind: 'note', id: 'none', name: 'No jinxes', color: cfg.textColor,
-      text: 'None of the characters on this script are jinxed with each other. This page is left out of the exports.' }];
-  }
   return {
     kind: 'jinx', which: 'jinx', elPrefix: 'jinx', empty,
     title: cfg.title || 'Jinxes',

@@ -273,7 +273,7 @@ function computeLayouts() {
   if (options.jinxPage.enabled) {
     layouts.jinxSpec = buildJinxSpec(derived, options);
     layouts.jinx = layoutList(layouts.jinxSpec, options, requestRender);
-    counts.jinx = layouts.jinx.pages.length;
+    counts.jinx = layouts.jinxSpec.empty ? 0 : layouts.jinx.pages.length;
   }
   const ni = options.night;
   if (ni.combined && (ni.first || ni.other)) {
@@ -2385,10 +2385,8 @@ function copyImage() {
 
 function exportPages() {
   const x = options.exportOpts.pages;
-  // a jinx page with nothing on it is shown in the preview, never exported
-  const jinxEmpty = !!(layouts.jinxSpec && layouts.jinxSpec.empty);
   const list = pages.filter((p) => (p.kind === 'front' ? x.front !== false : p.kind === 'night' ? x.night !== false
-    : p.kind === 'jinx' ? x.jinx !== false && !jinxEmpty : true));
+    : p.kind === 'jinx' ? x.jinx !== false : true));
   if (options.exportOpts.duplex) {
     // double-sided printing: the back cover on the reverse of the last
     // script sheet, then the night sheets and the jinx page

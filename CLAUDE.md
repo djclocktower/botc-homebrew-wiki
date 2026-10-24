@@ -4064,7 +4064,7 @@ classic parchment script sheet (or sheets — a long script continues onto a
 second one) with the damask sidebar, engraved dividers and the gold-leaf
 swash title; **First Night / Other Nights** sheets in the official night-order
 style (the name beside a team-coloured bar, the title down a ribbon on the
-right, the logo bottom right); an optional **jinx & house-rules page**; and
+right, the logo bottom right); an optional **jinx & Bootlegger rules page**; and
 the damask **back cover**.
 Every element on every page can be moved, sized, turned, faded, hidden or
 replaced with an upload, and free text/image stickers go anywhere.
@@ -4706,7 +4706,7 @@ carries it too, or a round trip would come back with the box unticked.
   - `reminderParts()` matches `:reminder:` in any case (homebrew writes
     `:Reminder:`); render-page.js's `nightItems()` strips it from the
     wiki's own night lists the same way.
-  - A jinx page with nothing on it is `spec.empty` and left out of exports.
+  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note. Bootlegger rules on it carry the official Bootlegger icon.
   - Ribbon labels glow in the label colour's opposite (`isDark`), and get
     a halo of it when the ribbon is off: Ink Saver's dark labels were
     smeared into blots by the shadows made for the stock white ones.

@@ -849,30 +849,16 @@ export const PLACEHOLDER_ICON =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#6b7ba0" stroke-width="3" opacity="0.8"/><circle cx="50" cy="50" r="33" fill="none" stroke="#6b7ba0" stroke-width="1.4" opacity="0.6"/><text x="50" y="68" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="52" text-anchor="middle" fill="#6b7ba0">?</text></svg>`,
   );
 
-/* the night sheet's own step icons. Dusk, Dawn and the two info steps are
-   the official painted discs (the moon, the sun, the M and the D), bundled
-   in art/; the house-rule and jinx marks are drawn here as SVG data URLs —
-   no font is needed, the letters are paths. */
-function discIcon(inner, fill, ring) {
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
-    `<circle cx="50" cy="50" r="46" fill="${fill}" stroke="${ring}" stroke-width="3"/>` + inner + `</svg>`);
-}
+/* the night sheet's own step icons: the official painted discs (the moon,
+   the sun, the M and the D), bundled in art/. Bootlegger rules on the jinx
+   page carry the official Bootlegger's own icon. */
 const STEP_ART = '/assets/fancyscripts/art/';
 export const STEP_ICONS = {
   dusk: STEP_ART + 'night-dusk.webp',
   dawn: STEP_ART + 'night-dawn.webp',
   minion: STEP_ART + 'night-minion.webp',
   demon: STEP_ART + 'night-demon.webp',
-  rule: discIcon(
-    `<path d="M32 26h30l10 10v38H32z" fill="#f6f1e3" stroke="#1c1c1c" stroke-width="3"/>` +
-    `<path d="M62 26v10h10" fill="none" stroke="#1c1c1c" stroke-width="3"/>` +
-    `<path d="M39 46h22M39 54h22M39 62h14" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round"/>`,
-    '#e6dcc3', '#1c1c1c'),
-  jinx: discIcon(
-    `<path d="M30 34c0-6 6-10 12-8l8 4 8-4c6-2 12 2 12 8v6c0 8-8 14-20 26C38 54 30 48 30 40z" fill="#8a1d21" stroke="#4a0e10" stroke-width="3"/>` +
-    `<path d="M50 30v36" stroke="#f6f1e3" stroke-width="3" stroke-linecap="round"/>`,
-    '#f6f1e3', '#1c1c1c'),
+  bootlegger: '/assets/fancyscripts/icons/bootlegger.webp',
 };
 
 export function normalizeTeam(t) {
@@ -1660,7 +1646,8 @@ export function pageList(options, counts) {
     if (ni.first) nightPages('first', ni.titleFirst || 'First Night');
     if (ni.other) nightPages('other', ni.titleOther || 'Other Nights');
   }
-  if (options.jinxPage && options.jinxPage.enabled) {
+  // a jinx page with nothing on it (counts.jinx === 0) is no page at all
+  if (options.jinxPage && options.jinxPage.enabled && c.jinx !== 0) {
     const n = Math.max(1, c.jinx || 1);
     for (let i = 0; i < n; i++) {
       pages.push({ kind: 'jinx', index: i, of: n, label: (options.jinxPage.title || 'Jinxes') + (n > 1 ? ' ' + (i + 1) : '') });
