@@ -477,6 +477,11 @@
       </div>
 
       <fieldset>
+        <legend>Alternate Almanac</legend>
+        <div id="almalt-box"></div>
+      </fieldset>
+
+      <fieldset>
         <legend>Page buttons</legend>
         <p class="sub" style="margin:0 0 10px">The two small buttons in the corner of the information box on the character page.</p>
         <div class="fld ck">
@@ -528,6 +533,7 @@
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/related-editor.js"></script>
+  <script src="assets/almanac-alt.js"></script>
   <script src="assets/approved-editors.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
@@ -749,6 +755,11 @@
     var relatedUI = window.RelatedEditor ?
       window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
 
+    // The Alternate Almanac (assets/almanac-alt.js), under Advanced
+    // Options. Shared with the other character editor.
+    var almAltUI = window.AlmanacAlt ?
+      window.AlmanacAlt.mount($('almalt-box'), { onChange: schedule }) : null;
+
     function gatherBoxes(){
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function(r){
@@ -811,6 +822,7 @@
         hideSnapshot: $('hideSnapshot').checked || undefined,
         hideCopyLink: $('hideCopyLink').checked || undefined,
         related: relatedUI ? relatedUI.gather() : [],
+        almanacAlt: almAltUI ? almAltUI.gather() : null,
         customJson: $('customJson').value.trim(),
         publicEdit: $('publicEdit').value,
         curataOptOut: $('curataOptOut').checked,
@@ -836,7 +848,8 @@
       d.tokenArt = $('tokenArt').checked;
       if (tokenDataURL) d.tokenImage = tokenDataURL;
       else if (!tokenRemoved && originalEntry && originalEntry.token) d.token = originalEntry.token;
-      preview.paint(window.renderCharacter(d, src));
+      preview.paint(window.renderCharacter(d, src, undefined,
+        { altArtSrc: almAltUI && almAltUI.pendingIcon() }));
       // The default token follows the form: redrawn (debounced and keyed in
       // token-auto.js) whenever something printed on it changed.
       if (tokenAuto) tokenAuto.poke();
@@ -1213,7 +1226,7 @@
       // The art inputs would upload into the page's own R2 slot, which is
       // exactly what an unapproved suggestion must not touch, so they are
       // closed rather than left there to be filled in and ignored.
-      ['art', 'artAlt', 'artAlt2', 'tokenFile'].forEach(function (id) {
+      ['art', 'artAlt', 'artAlt2', 'tokenFile', 'almAltIconFile'].forEach(function (id) {
         var el = $(id);
         if (!el) return;
         el.disabled = true;
@@ -1445,6 +1458,11 @@
         ab.readOnly = true;
         ab.title = 'The ability stays with the page\u2019s creator.';
         ab.classList.add('is-locked');
+      }
+      var aa = $('almAltAbility');
+      if (aa) {
+        aa.readOnly = true;
+        aa.title = 'The ability stays with the page\u2019s creator.';
       }
       var cj = $('customJson');
       if (cj) {
@@ -1698,6 +1716,7 @@
       $('curataOptOut').checked  = !!entry.curataOptOut;
       $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
+      if (almAltUI) almAltUI.set(entry.almanacAlt);
       syncEditorsBox();
       ALT_SLOTS.forEach(function (slot) {
         if (!entry[slot.field]) return;
@@ -1903,6 +1922,12 @@
             return apiUpload('art/'+slug+'-token.png', tokenDataURL);
           });
         }
+        if(almAltUI && almAltUI.pendingIcon()){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading the Alternate Almanac icon');
+            return apiUpload('art/'+slug+'-alm.png', almAltUI.pendingIcon());
+          });
+        }
         return p;
       }
 
@@ -1933,6 +1958,8 @@
           // Explicit like special[]: clearing every Related row has to reach
           // the save, and Object.assign would keep the loaded list forever.
           related: d.related,
+          // Explicit: null is how switching the Alternate Almanac off reaches the save.
+          almanacAlt: d.almanacAlt,
           customJson: d.customJson,
           // Explicit for the same reason special[] is: Object.assign would
           // otherwise keep whatever the LOADED row said, so changing "Who can
@@ -1966,6 +1993,10 @@
         if(artChanged){
           entry.art   = 'art/'+slug+'.png';
           entry.image = ART_BASE+slug+'.png';
+        }
+        if(entry.almanacAlt && almAltUI && almAltUI.pendingIcon()){
+          entry.almanacAlt.art   = 'art/'+slug+'-alm.png';
+          entry.almanacAlt.image = ART_BASE+slug+'-alm.png';
         }
         // Explicit for the same reason curataOptOut is: unticking the gallery
         // box has to reach the save, and Object.assign would keep the loaded
@@ -2031,6 +2062,8 @@
         // posted becomes the baseline, so the next save still carries the
         // art paths this one wrote.
         if (posted) { delete posted.baseUpdatedAt; originalEntry = posted; }
+        // The icon just uploaded is the stored one now, not a pending upload.
+        if (almAltUI && posted) almAltUI.set(posted.almanacAlt);
         artChanged = false;
         artAltDataURL = artAlt2DataURL = tokenDataURL = null;
         artAltRemoved = artAlt2Removed = tokenRemoved = false;

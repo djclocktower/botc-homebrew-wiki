@@ -773,6 +773,9 @@ assets/
                        character an official one", asked by /api/character's
                        guard, the Bloodstar importer and the admin sweep. See
                        "No official characters" below.
+  almanac-alt.js       "Alternate Almanac" in Advanced Options on
+                       create.html + edit.html. See "The Alternate
+                       Almanac" below.
   special-editor.js    The `special[]` repeater on create.html + edit.html — the
                        official schema's per-character behaviour flags ("cannot
                        go in the bag", "show the Storyteller the grimoire"), of
@@ -2064,6 +2067,42 @@ and they feed `WikiRender.setCharLinks()` off the `characters.json`
 fetch they already make, so `[[Name]]` links in the live preview exactly as it
 will on the published page.
 
+## The Alternate Almanac (`almanacAlt`)
+
+A character can carry its almanac written twice, the way the official wiki
+gives God of Ug a "Big Word Mode" and an "Ug Mode". The owner ticks "This
+character has an Alternate Almanac" in Advanced Options
+(`assets/almanac-alt.js`, mounted by both editors) and names the two versions.
+
+- **Stored as `almanacAlt`** on the character: `label`, `altLabel`,
+  `ability`, `quote`, `lede`, the info-box credits `creator`, `iconBy`,
+  `translatedBy`, the lists `summaryBullets`, `howToRun`, `callout`,
+  `examples`, `tips`, `bluffing`, `fighting`, and its own icon as
+  `art` / `image`. The icon lives at **`art/{identity}-alm.png`**, a slot
+  suffix like `-alt` / `-token` (`ART_SLOT_SUFFIX_RE` in worker.js, so
+  `uploadSlotDenied`, `artSlotClash`, `artRowSlugs` and a re-key all know
+  it; `retargetArtPaths` reaches inside `almanacAlt`). The editors upload it
+  on save; until then the preview draws the picked file through
+  `renderCharacter(d, src, root, {altArtSrc})`. `art` must be an `art/` path
+  and `image` an https URL, or the sanitizer drops it. An icon of its own
+  replaces every version of the main one in the alternate's info card; the
+  hidden one loads lazily. Pieces the Alternate Almanac does not change are
+  printed once (`pair()` in `characterBody`).
+  `Render.sanitizeAlmanacAlt()` is the one owner of the shape: the save,
+  `pinSuggestedFields` and the renderer all go through it. Nothing typed means
+  no key. It is in `CARD_DROP_FIELDS`.
+- **An empty box reads the main version's text**, so a variant only writes
+  what differs. Name, team, jinxes, tags and the JSON export (and the
+  Snapshot poster, cards and tokens) are always the main version's.
+- **The switch is CSS only**: two radio buttons at the top of the parchment
+  (`.alm-switch`), both versions on the page in `display: contents` wrappers
+  (`.alm-v0` / `.alm-v1`, the quote included), and `:has(.alm-r1:checked)`
+  swaps them. So the SSR page, the editors' preview frame and a reader with
+  scripts off all switch the same way; a browser without `:has` shows the
+  main version. The Alternate Almanac's section anchors carry `-alt`.
+- **The Alternate Almanac's ability is the rule too**: an `'all-but-ability'`
+  guest has it re-pinned from the stored row, and edit.html locks its box.
+
 ## The character link unfurl (what Discord shows)
 
 A `/c/` link posted in Discord used to unfurl as the name, the icon and the
@@ -2758,7 +2797,9 @@ only: `data.jinxes` on the character whose editor typed it, as
 (an official character). Older rows use the official-schema `{id, reason}`
 shape and bulk imports use `{id, name, text}`; every reader normalizes with
 `j.name || j.id` and `j.text || j.reason`, and `sanitizeJinxes()` in worker.js
-caps and whitelists the fields on save.
+caps and whitelists the fields on save. There is **no cap on how many** a
+character (or a script's `jinxEdits`) may carry; the owner asked for the old
+60 to go.
 
 - **`resolveJinxTarget()` (render.js) answers "who is this jinx with"** for
   every consumer: the `/c/` sidebar box, the script and collection lists, and
@@ -2891,8 +2932,8 @@ saved characters PLUS those rosters, resolved server-side.
   (404, no name), or the route would tell anyone a draft's or a deleted
   page's name. The one exception is un-saving a page this account already
   saved, which must keep working after it goes to draft; that reply carries
-  no name either. Capped at `FAVORITES_MAX` (500) per account, which bounds what `?expand=1`
-  has to resolve. Rate-limited on its own bucket (`fav`, 300/hour). **Not a
+  no name either. There is **no per-account cap** (the owner asked for the old
+  500 to go). Rate-limited on its own bucket (`fav`, 300/hour). **Not a
   content write**: nothing about the page changes, so it is not in
   `isContentWrite`, bumps no feed version and logs nothing — a bookmark is not
   an edit and does not belong in "Your Recent Edits".
@@ -2906,9 +2947,8 @@ saved characters PLUS those rosters, resolved server-side.
   collection. A saved page that has gone to draft **stays saved** (it comes
   back with the page) but is out of `characterSlugs` and reported with its
   `status`. One that was deleted, or no longer exists at all, is listed with
-  `status: 'deleted'` and only the key that was saved as its name: it still
-  counts toward the cap, so it has to stay visible and removable (the account
-  page shows it unlinked, with Remove).
+  `status: 'deleted'` and only the key that was saved as its name: it has to
+  stay visible and removable (the account page shows it unlinked, with Remove).
 - **`assets/favorites.js` is the whole browser side**, and the reason the
   five places that touch favorites cannot drift. `mountButton()` draws the
   button unsaved at once and corrects it when the list arrives, so no page

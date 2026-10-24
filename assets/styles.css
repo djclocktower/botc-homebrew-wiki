@@ -472,7 +472,30 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    follows .cols directly keeps the rule already under the columns and drops
    its own; at the top of the card there is nothing above it to separate from. */
 .cols + .tips { margin-top: 18px; padding-top: 0; border-top: 0; }
-.char-parchment > .tips:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.char-parchment > .tips:first-child, .alm-ver > .tips:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* A character with a second almanac version (render.js, almanacAlt): two
+   radio buttons at the top of the parchment and both versions on the page,
+   the second hidden until its radio is checked. CSS only, so the editors'
+   preview frame switches exactly like the page. The wrappers draw nothing
+   (display: contents), so each version lays out as if it were the only one. */
+.alm-switch {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0;
+  margin: 0 auto 16px; width: fit-content; max-width: 100%;
+  border: 1px solid var(--parch-frame); border-radius: 0; overflow: hidden;
+}
+.alm-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.alm-switch label {
+  padding: 6px 16px; cursor: pointer; font-size: .9rem; color: var(--maroon);
+  overflow-wrap: anywhere; -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.alm-switch label + input + label { border-left: 1px solid var(--parch-frame); }
+.alm-switch input:checked + label { background: var(--maroon); color: var(--parch); }
+.alm-switch input:focus-visible + label { outline: 2px solid var(--good); outline-offset: -2px; }
+.alm-v0 { display: contents; }
+.alm-v1 { display: none; }
+.char-layout:has(.alm-r1:checked) .alm-v1 { display: contents; }
+.char-layout:has(.alm-r1:checked) .alm-v0 { display: none; }
 
 /* callout box within a column (How to Run note etc.) */
 .callout {

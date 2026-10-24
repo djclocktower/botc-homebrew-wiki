@@ -471,6 +471,11 @@
       </fieldset>
 
       <fieldset>
+        <legend>Alternate Almanac</legend>
+        <div id="almalt-box"></div>
+      </fieldset>
+
+      <fieldset>
         <legend>Page buttons</legend>
         <p class="sub" style="margin:0 0 10px">The two small buttons in the corner of the information box on the character page.</p>
         <div class="fld ck">
@@ -521,6 +526,7 @@
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/related-editor.js"></script>
+  <script src="assets/almanac-alt.js"></script>
   <script src="assets/approved-editors.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
@@ -747,6 +753,11 @@
     var relatedUI = window.RelatedEditor ?
       window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
 
+    // The Alternate Almanac (assets/almanac-alt.js), under Advanced
+    // Options. Shared with the other character editor.
+    var almAltUI = window.AlmanacAlt ?
+      window.AlmanacAlt.mount($('almalt-box'), { onChange: schedule }) : null;
+
     function gatherBoxes() {
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function (r) {
@@ -820,6 +831,7 @@
         hideCopyLink: $('hideCopyLink').checked || undefined,
         customBoxes: gatherBoxes(),
         related: relatedUI ? relatedUI.gather() : [],
+        almanacAlt: almAltUI ? almAltUI.gather() : null,
         customJson: $('customJson').value.trim(),
         // Who may edit the page once it exists (Advanced Options). Owner-only
         // unless the creator opens it up; the Worker is the enforcer.
@@ -865,7 +877,8 @@
       if (artAlt2DataURL) d.imageAlt2 = artAlt2DataURL;
       d.tokenArt = $('tokenArt').checked;
       if (tokenDataURL) d.tokenImage = tokenDataURL;
-      preview.paint(window.renderCharacter(d, artDataURL || importedImage || ''));
+      preview.paint(window.renderCharacter(d, artDataURL || importedImage || '', undefined,
+        { altArtSrc: almAltUI && almAltUI.pendingIcon() }));
       // The default token follows the form: redrawn (debounced and keyed in
       // token-auto.js) whenever something printed on it changed.
       if (tokenAuto) tokenAuto.poke();
@@ -1376,6 +1389,11 @@
           setStatus('work', verb + '&hellip; uploading token image');
           return apiUpload('art/' + slug + '-token.png', tokenDataURL);
         })
+        .then(function () {
+          if (!almAltUI || !almAltUI.pendingIcon()) return;
+          setStatus('work', verb + '&hellip; uploading the Alternate Almanac icon');
+          return apiUpload('art/' + slug + '-alm.png', almAltUI.pendingIcon());
+        })
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
           setStatus('work', verb + '&hellip; saving the page');
@@ -1399,7 +1417,7 @@
             setup: d.setup, special: d.special, jinxes: d.jinxes,
             jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
             hideSnapshot: d.hideSnapshot, hideCopyLink: d.hideCopyLink,
-            related: d.related,
+            related: d.related, almanacAlt: d.almanacAlt,
             customJson: d.customJson,
             // Who may edit the page once it exists, and (for approved editing)
             // exactly who. Both were gathered and then never posted, so the
@@ -1421,6 +1439,10 @@
           if (tokenDataURL) {
             entry.token      = 'art/' + slug + '-token.png';
             entry.tokenImage = ART_BASE + slug + '-token.png';
+          }
+          if (entry.almanacAlt && almAltUI && almAltUI.pendingIcon()) {
+            entry.almanacAlt.art   = 'art/' + slug + '-alm.png';
+            entry.almanacAlt.image = ART_BASE + slug + '-alm.png';
           }
           return fetch('/api/character', {
             method: 'POST',
