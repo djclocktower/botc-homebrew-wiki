@@ -1524,13 +1524,14 @@ async function uploadSlotDenied(env, sess, key) {
        with an existing one's ("Scarlet Woman" blocked by "Scarlet").
        -token is the saved printable token (the Token Tool's "Save to page"
        and the editors' Printable token slot) and inherits the character's
-       own permission check exactly as the alternates do. */
+       own permission check exactly as the alternates do, and so does -alm,
+       the Alternate Almanac's own icon. */
     /* ...and a key can name TWO pages at once: art/imp-alt.png is the main
        art of a character called "Imp Alt" and the second icon of "Imp".
        Answering only for the first row found let whoever made "Imp Alt"
        write over Imp's alternate art (their own row said yes and the
        catch-all below was skipped). So both are asked, see slotVerdict. */
-    const stripped = /-(alt2?|token)$/.test(named) ? named.replace(/-(alt2?|token)$/, '') : '';
+    const stripped = ART_SLOT_SUFFIX_RE.test(named) ? named.replace(ART_SLOT_SUFFIX_RE, '') : '';
     const suffixRow = stripped ? await getEntityRow(env, 'character', stripped) : null;
     if (!row && suffixRow) { slug = stripped; row = suffixRow; }
     const verdict = await slotVerdict(env, sess, 'character', [row, row === suffixRow ? null : suffixRow]);
@@ -4668,9 +4669,9 @@ async function identityParked(env, slug) {
    overwrite the other's art (uploadSlotDenied can only refuse it after the
    fact). Deleted rows count: their art is still in the bucket and they can be
    restored. Throws on a read error; callers treat that as "try again". */
-const ART_SLOT_SUFFIX_RE = /-(alt2?|token)$/;
+const ART_SLOT_SUFFIX_RE = /-(alt2?|token|alm)$/;
 async function artSlotClash(env, slug) {
-  const keys = [slug + '-alt', slug + '-alt2', slug + '-token'];
+  const keys = [slug + '-alt', slug + '-alt2', slug + '-token', slug + '-alm'];
   const m = ART_SLOT_SUFFIX_RE.exec(slug);
   if (m && m.index > 0) keys.push(slug.slice(0, m.index));
   const r = await env.DB.prepare(
@@ -5117,6 +5118,11 @@ function retargetArtPaths(obj, from, to) {
   for (const k of ['art', 'image', 'artAlt', 'imageAlt', 'artAlt2', 'imageAlt2', 'token', 'tokenImage']) {
     if (typeof obj[k] === 'string') obj[k] = obj[k].replace(re, 'art/' + to);
   }
+  // The Alternate Almanac's own icon.
+  const alm = obj.almanacAlt;
+  if (alm && typeof alm === 'object') {
+    for (const k of ['art', 'image']) if (typeof alm[k] === 'string') alm[k] = alm[k].replace(re, 'art/' + to);
+  }
 }
 
 // ===================== CHARACTER ADDRESSES =====================
@@ -5526,16 +5532,19 @@ async function renameCharacter(env, from, to) {
     // The editors always write .png, but an imported page may carry another
     // extension, so try what the row actually points at as well.
     const keys = new Set(['art/' + from + '.png',
-      'art/' + from + '-alt.png', 'art/' + from + '-alt2.png', 'art/' + from + '-token.png']);
+      'art/' + from + '-alt.png', 'art/' + from + '-alt2.png', 'art/' + from + '-token.png',
+      'art/' + from + '-alm.png']);
     /* Any suffixed art file, not just the two the editors write.
        retargetArtPaths below rewrites 'art/{from}' before ANY '-' or '.',
        so a stored path this loop failed to move was rewritten to a file
        that had not moved: a legacy row pointing at 'art/vampire-good.png'
        came out of a rename pointing at 'art/{new}-good.png', which does
        not exist. Move whatever the row actually names. */
-    for (const k of ['art', 'artAlt', 'artAlt2', 'token']) {
-      const v = typeof entry[k] === 'string'
-        ? entry[k].replace(/^\/+/, '').replace(/^assets\//, '') : '';
+    const alm = entry.almanacAlt && typeof entry.almanacAlt === 'object' ? entry.almanacAlt : {};
+    for (const k of ['art', 'artAlt', 'artAlt2', 'token', 'alm']) {
+      const raw = k === 'alm' ? alm.art : entry[k];
+      const v = typeof raw === 'string'
+        ? raw.replace(/^\/+/, '').replace(/^assets\//, '') : '';
       if (v.startsWith('art/' + from + '.') || v.startsWith('art/' + from + '-')) keys.add(v);
     }
     for (const key of keys) {
@@ -8887,7 +8896,7 @@ function dropThumbFor(env, ctx, key) {
    refreshed). */
 function artRowSlugs(key) {
   const named = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
-  const stripped = named.replace(/-(alt2|alt|token)$/, '');
+  const stripped = named.replace(ART_SLOT_SUFFIX_RE, '');
   return stripped === named ? [named] : [named, stripped];
 }
 

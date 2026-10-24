@@ -19,14 +19,16 @@ test('a character keeps every jinx and an Alternate Almanac; a guest cannot rewr
   const page = {
     slug: 'ug', name: 'Ug', team: 'loric', ability: 'Big words.', art: 'art/ug.png',
     publicEdit: 'all-but-ability', status: 'published', jinxes,
-    almanacAlt: { label: 'Big Word Mode', altLabel: 'Ug Mode', ability: 'Me go Ug.', summaryBullets: ['Ug.', ''], junk: 'x' }
+    almanacAlt: { label: 'Big Word Mode', altLabel: 'Ug Mode', ability: 'Me go Ug.', summaryBullets: ['Ug.', ''], junk: 'x',
+      creator: 'Chlo M', art: 'art/ug-alm.png', image: 'https://botchomebrew.wiki/assets/art/ug-alm.png' }
   };
   const r = await f.request('/api/character', post(1, page));
   assert.equal(r.status, 200, await r.text());
   const stored = () => JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='ug'").get().data);
   let d = stored();
   assert.equal(d.jinxes.length, 90);
-  assert.deepEqual(d.almanacAlt, { label: 'Big Word Mode', altLabel: 'Ug Mode', ability: 'Me go Ug.', summaryBullets: ['Ug.'] });
+  assert.deepEqual(d.almanacAlt, { label: 'Big Word Mode', altLabel: 'Ug Mode', ability: 'Me go Ug.', summaryBullets: ['Ug.'],
+    creator: 'Chlo M', art: 'art/ug-alm.png', image: 'https://botchomebrew.wiki/assets/art/ug-alm.png' });
 
   // An 'all-but-ability' guest keeps the Alternate Almanac's ability as stored.
   const g = await f.request('/api/character', post(2, { ...page, almanacAlt: { ...page.almanacAlt, ability: 'Hacked.' } }));
@@ -39,6 +41,14 @@ test('a character keeps every jinx and an Alternate Almanac; a guest cannot rewr
   const page2 = await (await f.request('/c/' + row.url_slug)).text();
   assert.match(page2, /class="alm-switch"/);
   assert.match(page2, /Me go Ug\./);
+  // Its own icon and credits, beside the main ones.
+  assert.match(page2, /art\/ug-alm\.png/);
+  assert.match(page2, /author\?a=Chlo%20M/);
+
+  // An icon path or URL that is not one of ours, or not https, is dropped.
+  await f.request('/api/character', post(1, { ...page, almanacAlt: { ...page.almanacAlt, art: 'art/../x.png', image: 'javascript:alert(1)' } }));
+  assert.equal(stored().almanacAlt.art, undefined);
+  assert.equal(stored().almanacAlt.image, undefined);
 
   // Switching it off (null) removes it.
   await f.request('/api/character', post(1, { ...page, almanacAlt: null }));

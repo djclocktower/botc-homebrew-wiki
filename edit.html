@@ -848,7 +848,8 @@
       d.tokenArt = $('tokenArt').checked;
       if (tokenDataURL) d.tokenImage = tokenDataURL;
       else if (!tokenRemoved && originalEntry && originalEntry.token) d.token = originalEntry.token;
-      preview.paint(window.renderCharacter(d, src));
+      preview.paint(window.renderCharacter(d, src, undefined,
+        { altArtSrc: almAltUI && almAltUI.pendingIcon() }));
       // The default token follows the form: redrawn (debounced and keyed in
       // token-auto.js) whenever something printed on it changed.
       if (tokenAuto) tokenAuto.poke();
@@ -1225,7 +1226,7 @@
       // The art inputs would upload into the page's own R2 slot, which is
       // exactly what an unapproved suggestion must not touch, so they are
       // closed rather than left there to be filled in and ignored.
-      ['art', 'artAlt', 'artAlt2', 'tokenFile'].forEach(function (id) {
+      ['art', 'artAlt', 'artAlt2', 'tokenFile', 'almAltIconFile'].forEach(function (id) {
         var el = $(id);
         if (!el) return;
         el.disabled = true;
@@ -1921,6 +1922,12 @@
             return apiUpload('art/'+slug+'-token.png', tokenDataURL);
           });
         }
+        if(almAltUI && almAltUI.pendingIcon()){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading the Alternate Almanac icon');
+            return apiUpload('art/'+slug+'-alm.png', almAltUI.pendingIcon());
+          });
+        }
         return p;
       }
 
@@ -1987,6 +1994,10 @@
           entry.art   = 'art/'+slug+'.png';
           entry.image = ART_BASE+slug+'.png';
         }
+        if(entry.almanacAlt && almAltUI && almAltUI.pendingIcon()){
+          entry.almanacAlt.art   = 'art/'+slug+'-alm.png';
+          entry.almanacAlt.image = ART_BASE+slug+'-alm.png';
+        }
         // Explicit for the same reason curataOptOut is: unticking the gallery
         // box has to reach the save, and Object.assign would keep the loaded
         // value forever.
@@ -2051,6 +2062,8 @@
         // posted becomes the baseline, so the next save still carries the
         // art paths this one wrote.
         if (posted) { delete posted.baseUpdatedAt; originalEntry = posted; }
+        // The icon just uploaded is the stored one now, not a pending upload.
+        if (almAltUI && posted) almAltUI.set(posted.almanacAlt);
         artChanged = false;
         artAltDataURL = artAlt2DataURL = tokenDataURL = null;
         artAltRemoved = artAlt2Removed = tokenRemoved = false;

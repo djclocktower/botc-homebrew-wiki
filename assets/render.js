@@ -1254,22 +1254,31 @@
      version reads the main version's text, so a variant only has to write
      what is different. Also the save's sanitizer (worker.js), so the shape
      has one owner. */
-  var ALMANAC_ALT_TEXT = ['label', 'altLabel', 'ability', 'quote', 'lede'];
+  var ALMANAC_ALT_TEXT = ['label', 'altLabel', 'ability', 'quote', 'lede', 'creator', 'iconBy', 'translatedBy'];
   var ALMANAC_ALT_LISTS = ['summaryBullets', 'howToRun', 'callout', 'examples', 'tips', 'bluffing', 'fighting'];
-  function sanitizeAlmanacAlt(o) {
+  // `hasIcon`: the editors' preview of an icon picked but not uploaded yet,
+  // which counts as content on its own.
+  function sanitizeAlmanacAlt(o, hasIcon) {
     if (!o || typeof o !== 'object') return null;
-    var out = {}, any = false;
+    var out = {}, any = !!hasIcon;
     ALMANAC_ALT_TEXT.forEach(function (k) {
       var v = String(o[k] == null ? '' : o[k]).trim().slice(0, /abel$/i.test(k) ? 40 : 4000);
       if (v) out[k] = v;
     });
+    /* Its own icon: the -alm slot beside the character's art (the editors
+       upload it there), or a picture hosted elsewhere. Anything else is
+       dropped, since both end up in an <img src>. */
+    var art = String(o.art || '');
+    if (/^art\/[a-z0-9-]{1,120}\.(png|webp|jpe?g|gif)$/i.test(art)) out.art = art;
+    var img = String(o.image || '').trim();
+    if (/^https:\/\/[^\s"'<>]{1,500}$/i.test(img)) out.image = img;
     ALMANAC_ALT_LISTS.forEach(function (k) {
       var list = (Array.isArray(o[k]) ? o[k] : [o[k]])
         .filter(function (x) { return typeof x === 'string' && x.trim(); })
         .map(function (x) { return x.trim().slice(0, 4000); });
       if (list.length) { out[k] = list; any = true; }
     });
-    if (out.ability || out.quote || out.lede) any = true;
+    for (var k in out) if (k !== 'label' && k !== 'altLabel') any = true;
     return any ? out : null;
   }
 
@@ -1348,16 +1357,31 @@
        so the page, the editors' preview and a reader with scripts off all
        switch the same way. The radios carry the page's slug in their name so
        two characters in one document cannot share a group. */
-    var alt = sanitizeAlmanacAlt(d.almanacAlt);
+    var altSrc = (opts && opts.altArtSrc) || '';
+    var alt = sanitizeAlmanacAlt(d.almanacAlt, altSrc);
     var almSwitch = '', parchBody = main.body, quoteHTML = main.quote;
+    /* The Alternate Almanac as a whole character: its own text, credits and
+       icon over the main one's. An icon of its own replaces every version
+       of the main one (alternates and printable token included). */
+    var altD = alt ? Object.assign({}, d, alt) : null;
+    var altIcon = alt && (alt.art || alt.image || altSrc);
+    if (altIcon) {
+      altD.art = alt.art || ''; altD.image = alt.image || '';
+      ['artAlt', 'imageAlt', 'artAlt2', 'imageAlt2', 'tokenArt'].forEach(function (k) { delete altD[k]; });
+    }
+    // Both versions of one piece of the page, or the piece once when the
+    // Alternate Almanac does not change it.
+    function pair(a, b) {
+      return (!alt || a === b) ? a : '<div class="alm-ver alm-v0">' + a + '</div><div class="alm-ver alm-v1">' + b + '</div>';
+    }
     if (alt) {
-      var two = almanacParts(Object.assign({}, d, alt), root, '-alt');
+      var two = almanacParts(altD, root, '-alt');
       var grp = 'alm-' + String(d.slug || 'page').replace(/[^a-z0-9-]/gi, '');
       almSwitch = '<div class="alm-switch" role="radiogroup" aria-label="Almanac version" data-user-content>' +
         '<input type="radio" class="alm-r0" name="' + grp + '" id="' + grp + '-0" checked><label for="' + grp + '-0">' + esc(alt.label || 'Standard') + '</label>' +
         '<input type="radio" class="alm-r1" name="' + grp + '" id="' + grp + '-1"><label for="' + grp + '-1">' + esc(alt.altLabel || 'Alternate Almanac') + '</label></div>';
-      parchBody = '<div class="alm-ver alm-v0">' + main.body + '</div><div class="alm-ver alm-v1">' + two.body + '</div>';
-      quoteHTML = '<div class="alm-ver alm-v0">' + main.quote + '</div><div class="alm-ver alm-v1">' + two.quote + '</div>';
+      parchBody = pair(main.body, two.body);
+      quoteHTML = pair(main.quote, two.quote);
     }
 
     // Tags row. The Curata wreath hangs off the end of it behind a hairline
@@ -1378,7 +1402,7 @@
         mark + '</dd>'
       : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd>' +
+    function infoFor(d) { return '<dl class="info"><dt>Type:</dt><dd>' +
       // A renamed Other type is its own thing, not the Other team page.
       (typeNameOf(d) ? esc(label) : '<a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a>') +
       (team === 'other' ? '<span class="type-note">' + OTHER_NOTE.replace('Loric', TEAM_LABEL[exportTeamOf(d)]) + '</span>' : '') + '</dd>' +
@@ -1401,7 +1425,8 @@
          the engine absent it falls back to the plain escaped text. */
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd class="info-credit">' + inlineText(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
-      '</dl>';
+      '</dl>'; }
+    var info = pair(infoFor(d), alt ? infoFor(altD) : '');
 
     // Copy-link button lives in the top-right corner *inside* the info card so
     // it never crowds the title (see .card-actions in styles.css). Beside it,
@@ -1427,6 +1452,7 @@
        buttons read as app chrome; the name rides on each pip's title and
        accessible name instead, and the icon itself is the real answer to
        "which one is this". */
+    function emblemFor(d, artSrc) {
     var artVers = artVersions(d, root);
     // The caller resolved slot one itself (the Worker builds it from the row
     // and its own address depth), so let it win where it has an answer.
@@ -1492,6 +1518,11 @@
             '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"></button>';
         }).join('') + '</div>';
     }
+    return emblem;
+    }
+    var emblem = emblemFor(d, artSrc);
+    // The hidden version's icon waits until the reader switches to it.
+    emblem = pair(emblem, altIcon ? emblemFor(altD, altSrc).replace(' fetchpriority="high"', ' loading="lazy"') : emblem);
     var infoCard = '<div class="card char-infocard">' +
       (snapBtn || copyBtn ? '<div class="card-actions">' + snapBtn + copyBtn + '</div>' : '') +
       emblem +

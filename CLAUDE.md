@@ -2075,14 +2075,25 @@ character has an Alternate Almanac" in Advanced Options
 (`assets/almanac-alt.js`, mounted by both editors) and names the two versions.
 
 - **Stored as `almanacAlt`** on the character: `label`, `altLabel`,
-  `ability`, `quote`, `lede` and the lists `summaryBullets`, `howToRun`,
-  `callout`, `examples`, `tips`, `bluffing`, `fighting`.
+  `ability`, `quote`, `lede`, the info-box credits `creator`, `iconBy`,
+  `translatedBy`, the lists `summaryBullets`, `howToRun`, `callout`,
+  `examples`, `tips`, `bluffing`, `fighting`, and its own icon as
+  `art` / `image`. The icon lives at **`art/{identity}-alm.png`**, a slot
+  suffix like `-alt` / `-token` (`ART_SLOT_SUFFIX_RE` in worker.js, so
+  `uploadSlotDenied`, `artSlotClash`, `artRowSlugs` and a re-key all know
+  it; `retargetArtPaths` reaches inside `almanacAlt`). The editors upload it
+  on save; until then the preview draws the picked file through
+  `renderCharacter(d, src, root, {altArtSrc})`. `art` must be an `art/` path
+  and `image` an https URL, or the sanitizer drops it. An icon of its own
+  replaces every version of the main one in the alternate's info card; the
+  hidden one loads lazily. Pieces the Alternate Almanac does not change are
+  printed once (`pair()` in `characterBody`).
   `Render.sanitizeAlmanacAlt()` is the one owner of the shape: the save,
   `pinSuggestedFields` and the renderer all go through it. Nothing typed means
   no key. It is in `CARD_DROP_FIELDS`.
 - **An empty box reads the main version's text**, so a variant only writes
-  what differs. Name, team, icon, jinxes, tags and the JSON export (and the
-  Snapshot poster) are always the main version's.
+  what differs. Name, team, jinxes, tags and the JSON export (and the
+  Snapshot poster, cards and tokens) are always the main version's.
 - **The switch is CSS only**: two radio buttons at the top of the parchment
   (`.alm-switch`), both versions on the page in `display: contents` wrappers
   (`.alm-v0` / `.alm-v1`, the quote included), and `:has(.alm-r1:checked)`

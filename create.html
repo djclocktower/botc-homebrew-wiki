@@ -877,7 +877,8 @@
       if (artAlt2DataURL) d.imageAlt2 = artAlt2DataURL;
       d.tokenArt = $('tokenArt').checked;
       if (tokenDataURL) d.tokenImage = tokenDataURL;
-      preview.paint(window.renderCharacter(d, artDataURL || importedImage || ''));
+      preview.paint(window.renderCharacter(d, artDataURL || importedImage || '', undefined,
+        { altArtSrc: almAltUI && almAltUI.pendingIcon() }));
       // The default token follows the form: redrawn (debounced and keyed in
       // token-auto.js) whenever something printed on it changed.
       if (tokenAuto) tokenAuto.poke();
@@ -1388,6 +1389,11 @@
           setStatus('work', verb + '&hellip; uploading token image');
           return apiUpload('art/' + slug + '-token.png', tokenDataURL);
         })
+        .then(function () {
+          if (!almAltUI || !almAltUI.pendingIcon()) return;
+          setStatus('work', verb + '&hellip; uploading the Alternate Almanac icon');
+          return apiUpload('art/' + slug + '-alm.png', almAltUI.pendingIcon());
+        })
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
           setStatus('work', verb + '&hellip; saving the page');
@@ -1433,6 +1439,10 @@
           if (tokenDataURL) {
             entry.token      = 'art/' + slug + '-token.png';
             entry.tokenImage = ART_BASE + slug + '-token.png';
+          }
+          if (entry.almanacAlt && almAltUI && almAltUI.pendingIcon()) {
+            entry.almanacAlt.art   = 'art/' + slug + '-alm.png';
+            entry.almanacAlt.image = ART_BASE + slug + '-alm.png';
           }
           return fetch('/api/character', {
             method: 'POST',
