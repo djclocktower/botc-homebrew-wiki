@@ -5,10 +5,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jinxes — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Every jinx on the BOTC HomeBrew Wiki, as a searchable list and a map of which fan-made Blood on the Clocktower characters are jinxed with which.">
+<meta name="description" content="Every jinx on the BOTC HomeBrew Wiki as a map: look up a fan-made Blood on the Clocktower character, script, collection or official edition and see what it is jinxed with.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Jinxes">
-<meta property="og:description" content="Every jinx on the wiki, as a searchable list and a map of how the characters connect.">
+<meta property="og:description" content="Look up a character, script, collection or official edition and see what it is jinxed with.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -16,153 +16,123 @@
 <link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
-  /* Page-local: the map and its furniture. Everything reusable (the picker
-     dropdown, the jinx pair rows) lives in styles.css. */
-  .jg-wrap { position: relative; margin: 0 0 10px; }
-  .jg-stage {
-    position: relative; width: 100%; height: clamp(420px, 80vh, 860px);
-    background: var(--parch); background-image: url('assets/parchment.webp');
-    background-size: cover;
-    border: 4px solid var(--parch-frame);
-    overflow: hidden; touch-action: none; cursor: grab;
-  }
-  .jg-stage:active { cursor: grabbing; }
-  .jg-svg { display: block; width: 100%; height: 100%; }
-  .jg-edge { stroke-width: 1.4; stroke-opacity: .5; }
-  .jg-edge.jg-lit { stroke-width: 2.6; stroke-opacity: .95; }
-  .jg-edge.jg-dim { stroke-opacity: .07; }
-  .jg-node { cursor: pointer; }
-  .jg-ring { stroke-width: 2.5; }
-  .jg-node.jg-sel .jg-ring { stroke-width: 4.5; }
-  .jg-node.jg-dim { opacity: .13; }
-  .jg-node:focus { outline: none; }
-  .jg-node:focus .jg-ring { stroke-dasharray: 3 2; }
-
-  .jg-tip {
-    position: absolute; z-index: 12; max-width: 260px; pointer-events: none;
-    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
-    box-shadow: 0 8px 20px rgba(40,12,30,.3); padding: 7px 10px;
-    font-family: 'Trade Gothic', sans-serif; font-size: .8rem; color: #5b4632;
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .jg-tip strong { font-family: 'Roboto',sans-serif; color: var(--maroon); font-size: .88rem; }
-  .jg-tip-text { font-family: 'Noto Serif', serif; font-style: italic; font-size: .86rem; line-height: 1.25; }
-
-  .jg-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
-  .jg-bar input[type="search"] {
-    flex: 1 1 190px; min-width: 0; padding: 7px 10px;
-    border: 1px solid var(--parch-frame); background: #fffdf8;
-    font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
-  }
-  .jg-bar select {
-    padding: 7px 10px; max-width: 260px;
-    border: 1px solid var(--parch-frame); background: #fffdf8;
-    font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
-  }
-  /* The running instruction while two characters are being linked. */
-  .jg-linkbar {
-    margin: 0 0 10px; padding: 8px 12px;
-    background: #fffdf8; border: 1px solid var(--parch-frame);
-    font-family: 'Trade Gothic', sans-serif; font-size: .85rem; color: #5b4632;
-  }
-  .jg-linkbar b { color: var(--maroon); }
-  .jg-linkbar button {
-    background: none; border: 0; padding: 0; margin-left: 8px;
-    font: inherit; color: #726348; text-decoration: underline; cursor: pointer;
-  }
-  /* In link mode the cursor is a crosshair and the picked character keeps a
-     heavy ring, so it is obvious the next click completes a pair. */
-  .jg-stage.jg-linking, .jg-linking .jg-node { cursor: crosshair; }
-  .jg-node.jg-pick .jg-ring { stroke-width: 5; stroke: var(--maroon); }
-
-  .jg-legend {
-    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
-    margin: 8px 0 0; font-family: 'Trade Gothic', sans-serif;
-    font-size: .76rem; color: var(--parch); opacity: .8;
-  }
-  .jg-legend span { display: inline-flex; align-items: center; gap: 5px; }
-  .jg-swatch { width: 16px; height: 0; border-top: 2.5px solid; }
-  /* These sit on the purple page background, not on parchment, so they
-     take the light ink .type-header uses rather than the dark body ink. */
-  .jg-hint { margin: 6px 0 0; font-size: .78rem; font-family: 'Trade Gothic', sans-serif; color: var(--parch); opacity: .72; }
-
-  /* Detail panel: slides over the map on a phone, sits beside it on a desktop. */
-  .jg-panel {
-    position: absolute; right: 0; top: 0; bottom: 0; width: min(330px, 86%);
-    z-index: 14; overflow-y: auto; padding: 14px 16px;
-    background: #fffdf8; border-left: 3px solid var(--parch-frame);
-    box-shadow: -8px 0 22px rgba(40,12,30,.18);
-  }
-  .jg-panel[hidden] { display: none; }
-  .jg-panel-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
-  .jg-panel-ico { width: 46px; height: 46px; object-fit: contain; flex: none; }
-  .jg-panel h3 { margin: 0; font-family: 'Roboto',sans-serif; font-size: 1.05rem; color: var(--maroon); }
-  .jg-panel-meta { font-family: 'Trade Gothic', sans-serif; font-size: .76rem; opacity: .7; }
-  .jg-panel-close {
-    position: absolute; top: 8px; right: 10px; background: none; border: 0;
-    font-size: 1.2rem; line-height: 1; cursor: pointer; color: #726348;
-  }
-  .jg-panel-jinx { padding: 9px 0; border-top: 1px solid #eadfc6; }
-  .jg-panel-jinx a { font-family: 'Roboto',sans-serif; font-weight: 600; text-decoration: none; font-size: .95rem; }
-  .jg-panel-jinx a.good { color: var(--good-name); }
-  .jg-panel-jinx a.evil { color: var(--evil); }
-  .jg-panel-jinx a:hover { text-decoration: underline; }
-  .jg-panel-jinx p { margin: 2px 0 0; font-family: 'Noto Serif', serif; font-style: italic; font-size: .95rem; line-height: 1.3; }
-  /* On a phone a side panel covers the whole map, so the reader loses sight
-     of what they just tapped. Become a bottom sheet instead: the map stays
-     visible above it, and the sheet is only as tall as it needs to be. */
-  @media (max-width: 620px) {
-    .jg-panel {
-      left: 0; right: 0; top: auto; bottom: 0; width: auto;
-      max-height: 58%; border-left: 0; border-top: 3px solid var(--parch-frame);
-      box-shadow: 0 -8px 22px rgba(40,12,30,.22);
-    }
-  }
-
+  /* Page-local: the focus map and the Add a Jinx form. The look-up drop-down
+     wears the jinx picker's skin (.jx-drop/.jx-opt in styles.css). */
+  .jx-hint { margin: 6px 0 0; font-size: .78rem; font-family: 'Trade Gothic', sans-serif; color: var(--parch); opacity: .72; }
   .jx-panel {
     background-color: var(--parch);
     background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 4px solid var(--parch-frame);
-    padding: 24px 28px;
+    padding: 20px 24px;
     color: var(--ink);
   }
-  @media (max-width: 620px) { .jx-panel { padding: 16px 14px; } }
+  @media (max-width: 620px) { .jx-panel { padding: 14px 12px; } }
 
-  /* Jump-to-letter strip: 127 characters is a very long scroll on a phone. */
-  .jx-az {
-    display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px;
+  /* The look-up bar and its starting points, on the purple. */
+  .jf-search { position: relative; }
+  .jf-search > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #726348; pointer-events: none; }
+  .jf-search input {
+    width: 100%; min-width: 0; padding: 11px 12px 11px 40px;
+    border: 1px solid var(--parch-frame); background: #fffdf8;
+    font-family: 'Roboto', sans-serif; font-size: 1.02rem; color: #3b2d20;
   }
-  .jx-az a, .jx-az span {
-    display: inline-block; min-width: 25px; padding: 3px 5px; text-align: center;
-    font-family: 'Trade Gothic', sans-serif; font-size: .8rem; text-decoration: none;
-    background: #fffdf8; border: 1px solid var(--parch-frame); color: #5b4632;
-  }
-  .jx-az a:hover { background: #efe7d3; }
-  .jx-az span { opacity: .35; }
-  .jx-list-char { scroll-margin-top: 90px; }
+  .jf-drop .jx-opt-ico { border-radius: 50%; }
+  .jf-setico { display: inline-grid; place-items: center; flex: none; border-radius: 50%; background: var(--maroon); color: var(--parch); }
+  .jf-setico svg { width: 60%; height: 60%; }
+  .jf-starts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0; }
+  .jf-starts .filter-chip { display: inline-flex; align-items: center; gap: 6px; }
+  .jf-starts .filter-chip img, .jf-starts .jf-setico { width: 18px; height: 18px; }
+  .jf-trail { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 10px 0 0;
+    font-family: 'Roboto', sans-serif; font-size: .82rem; color: var(--parch); }
+  .jf-trail span { opacity: .65; }
+  .jf-trail button { background: none; border: 0; padding: 0; cursor: pointer; color: var(--parch); font: inherit; text-decoration: underline; }
 
-  /* Edit / remove, on jinxes stored on a character you own. */
-  .jg-panel-act { display: flex; gap: 10px; margin-top: 4px; }
-  .jg-panel-act button {
-    background: none; border: 0; padding: 0; cursor: pointer;
-    font-family: 'Trade Gothic', sans-serif; font-size: .74rem;
-    letter-spacing: .04em; text-transform: uppercase; color: #726348;
-    text-decoration: underline;
-  }
-  .jg-panel-act button:hover { color: var(--maroon); }
-  .jg-panel-act .jg-act-del:hover { color: var(--evil); }
-  .jg-panel-note { font-family: 'Trade Gothic', sans-serif; font-size: .72rem; opacity: .6; margin: 3px 0 0; }
+  /* What is in focus. */
+  .jf-head { display: flex; gap: 14px; align-items: center; margin: 0 0 6px; }
+  .jf-head > div { min-width: 0; }
+  .jf-head .jf-ico, .jf-head .jf-setico { width: 60px; height: 60px; }
+  .jf-head .jf-nm { font-size: 1.35rem; display: block; line-height: 1.15; overflow-wrap: anywhere; }
+  .jf-kind { font-family: 'Roboto', sans-serif; font-weight: 500; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+  .jf-meta { font-family: 'Roboto', sans-serif; font-size: .85rem; color: #6b5a45; }
+  .jf-sets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 0; }
+  .jf-sets .filter-chip { display: inline-flex; align-items: center; gap: 6px; }
+  .jf-sets .jf-setico { width: 18px; height: 18px; }
+  .jf-lbl { font-family: 'Roboto', sans-serif; font-weight: 500; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: #6b5a45; }
 
-  /* The list below the map */
-  .jx-list-char { margin: 0 0 22px; }
-  .jx-list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
-  .jx-list-head img { width: 42px; height: 42px; object-fit: contain; flex: none; }
-  .jx-list-head a { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: 1.06rem; color: var(--maroon); text-decoration: none; }
-  .jx-list-head a:hover { text-decoration: underline; }
-  .jx-list-count { font-family: 'Trade Gothic', sans-serif; font-size: .76rem; opacity: .6; }
-  .jx-list-body { border-left: 2px solid var(--parch-frame); padding-left: 12px; margin-left: 20px; }
+  .jf-ico { width: 44px; height: 44px; object-fit: contain; flex: none; display: block; }
+  .jf-ph { border-radius: 50%; display: inline-grid; place-items: center; font: 700 .9rem 'Roboto', sans-serif; color: var(--parch); flex: none; }
+  .jf-nm { font-family: 'Roboto', sans-serif; font-weight: 600; text-decoration: none; color: var(--maroon); }
+  .jf-nm:hover { text-decoration: underline; }
+  .jf-nm.good { color: var(--good-name); } .jf-nm.evil { color: var(--evil); }
 
+  /* The map and the panel beside it. */
+  .jf-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; margin-top: 12px; }
+  @media (max-width: 760px) { .jf-grid { grid-template-columns: 1fr; } }
+  .jf-map { background: #fffdf8; border: 1px solid var(--parch-frame); min-width: 0; }
+  .jf-map svg { width: 100%; height: auto; display: block; }
+  .jf-pn { cursor: pointer; }
+  .jf-pn:focus { outline: none; }
+  .jf-pn:focus-visible .jf-ring { stroke-dasharray: 3 2; }
+  .jf-ring { fill: #fffdf8; stroke-width: 2.5; }
+  .jf-pn.out .jf-ring { stroke-dasharray: 4 3; fill: #f3ede1; }
+  .jf-pn.out image { opacity: .55; }
+  .jf-pn.sel .jf-ring { stroke-width: 5; }
+  .jf-pn.dim { opacity: .18; }
+  /* Quiet at rest; only the tapped character's lines take a colour. */
+  .jf-ed { fill: none; stroke: #5b4632; stroke-width: 1.2; stroke-opacity: .2; }
+  .jf-ed.out { stroke-dasharray: 3 4; stroke-opacity: .16; }
+  .jf-ed.lit { stroke-width: 3; stroke-opacity: 1; }
+  .jf-ed.dim { stroke-opacity: .04; }
+  .jf-zone { fill: none; stroke: #d9c8a6; stroke-width: 1; stroke-dasharray: 2 5; }
+  .jf-lab { font: 500 12px 'Roboto', sans-serif; fill: #1d140d; paint-order: stroke; stroke: #fffdf8; stroke-width: 4px; text-anchor: middle; pointer-events: none; }
+  .jf-lab.big { font-size: 15px; font-weight: 700; }
+
+  .jf-card { background: #fffdf8; border: 1px solid var(--parch-frame); padding: 12px 14px; align-self: start; min-width: 0;
+    font-family: 'Roboto', sans-serif; font-size: .9rem; }
+  .jf-card .jf-ttl { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .jf-card .jf-ttl > div { min-width: 0; }
+  .jf-card h4 { margin: 12px 0 4px; font: 500 .7rem 'Roboto', sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #6b5a45; }
+  .jf-sum { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .jf-sum li { padding: 0; margin: 0; }
+  .jf-sum li::before { content: none; }
+  .jf-sum .filter-chip { margin-top: 5px; }
+  .jf-sum .jf-tip { color: #6b5a45; }
+  .jf-mini { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid #e3d6ba; }
+  .jf-mini .jf-ico, .jf-mini .jf-ph { width: 28px; height: 28px; font-size: .7rem; }
+  .jf-mini .jtext { font-size: .92rem; display: block; }
+  .jf-act { display: flex; gap: 12px; margin-top: 3px; }
+  .jf-act button { background: none; border: 0; padding: 0; cursor: pointer; font: .72rem 'Trade Gothic', sans-serif;
+    letter-spacing: .04em; text-transform: uppercase; color: #726348; text-decoration: underline; }
+  .jf-act button:hover { color: var(--maroon); }
+  .jf-btn { margin-top: 10px; font: 500 .82rem 'Roboto', sans-serif; background: var(--maroon); color: var(--parch); border: 0; padding: 7px 12px; cursor: pointer; }
+
+  /* Every jinx in focus, under the map. */
+  .jf-lists { margin-top: 18px; display: grid; gap: 12px; }
+  .jf-lists details { border-top: 2px solid var(--parch-frame); }
+  .jf-lists summary { cursor: pointer; padding: 10px 0 6px; list-style: none; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    font-family: 'Roboto', sans-serif; }
+  .jf-lists summary::-webkit-details-marker { display: none; }
+  .jf-lists summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid #6b5a45; border-bottom: 2px solid #6b5a45;
+    transform: rotate(-45deg); transition: transform .2s; align-self: center; }
+  .jf-lists details[open] > summary::before { transform: rotate(45deg); }
+  .jf-lists summary b { font-weight: 500; font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; color: var(--maroon); }
+  .jf-lists summary span { color: #6b5a45; font-size: .85rem; }
+  .jf-note { font-family: 'Roboto', sans-serif; font-size: .85rem; color: #6b5a45; margin: 0 0 4px; }
+  .jf-pair { padding: 10px 0; }
+  .jf-pair + .jf-pair { border-top: 1px solid #e3d6ba; }
+  .jf-pair .jx-pair { margin-bottom: 3px; }
+  .jf-pair .jx-pair-name { font-family: 'Roboto', sans-serif; font-weight: 600; }
+  .jf-pair .jx-pair-side.good .jx-pair-name { color: var(--good-name); }
+  .jf-pair .jx-pair-side.evil .jx-pair-name { color: var(--evil); }
+  .jf-pair .jx-pair-side.first .jx-pair-name { color: var(--maroon); }
+  .jf-tag { font: 500 .66rem 'Roboto', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #6b5a45;
+    border: 1px solid var(--parch-frame); padding: 0 5px; }
+  .jf-more { display: block; margin: 10px auto 0; font: 500 .85rem 'Roboto', sans-serif; background: #fffdf8;
+    border: 1px solid var(--parch-frame); color: var(--maroon); padding: 7px 14px; cursor: pointer; }
+  .jf-empty { font-family: 'Roboto', sans-serif; color: #6b5a45; margin: 6px 0 0; }
+
+  /* Add a Jinx. */
   .jx-form { display: grid; gap: 10px; max-width: 640px; }
   .jx-form label { font-family: 'Trade Gothic', sans-serif; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #5b4632; display: block; margin-bottom: 3px; }
   .jx-form input, .jx-form select, .jx-form textarea {
@@ -174,10 +144,8 @@
   .jx-msg { font-family: 'Trade Gothic', sans-serif; font-size: .85rem; margin: 0; }
   .jx-msg.err { color: var(--evil); }
   .jx-msg.ok { color: #2f6f3f; }
-  @media (max-width: 620px) {
-    .jx-form-row { grid-template-columns: 1fr; }
-    .jx-list-body { margin-left: 0; }
-  }
+  @media (max-width: 620px) { .jx-form-row { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .jf-lists summary::before { transition: none; } }
 </style>
 </head>
 <body>
@@ -225,46 +193,23 @@
     <section class="landing-section">
       <h2 class="type-header">The Map</h2>
       <div class="type-rule"></div>
-      <p class="jg-hint" id="jg-summary">Loading the map…</p>
-
-      <div class="jg-bar">
-        <input type="search" id="jg-search" placeholder="Find a character on the map…" autocomplete="off" aria-label="Find a character on the map">
-        <select id="jg-author" aria-label="Show one creator's characters">
-          <option value="">Any creator</option>
-        </select>
+      <div class="jf-search jx-combo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="jf-q" placeholder="A character, script or collection" autocomplete="off" enterkeyhint="search" aria-label="Look up a character, script or collection" aria-expanded="false" aria-controls="jf-drop">
+        <div class="jx-drop jf-drop" id="jf-drop" role="listbox" hidden></div>
       </div>
-      <div class="jg-bar">
-        <button type="button" class="filter-chip" id="jg-f-homebrew">Wiki characters only</button>
-        <button type="button" class="filter-chip" id="jg-f-official">Official only</button>
-        <button type="button" class="filter-chip" id="jg-f-base" hidden>Show base-game jinxes</button>
-        <button type="button" class="filter-chip" id="jg-f-fit">Fit all</button>
-        <button type="button" class="filter-chip" id="jg-f-reset">Reset view</button>
-        <button type="button" class="filter-chip" id="jg-f-relayout">Reset layout</button>
-        <button type="button" class="filter-chip" id="jg-f-link" hidden>Link two characters</button>
+      <div class="jf-starts" id="jf-starts"></div>
+      <div class="jf-trail" id="jf-trail"></div>
+      <div class="jx-panel" style="margin-top:14px">
+        <div id="jf-view"><p class="jf-empty">Loading jinxes…</p></div>
       </div>
-      <p class="jg-linkbar" id="jg-linkbar" hidden></p>
-
-      <div class="jg-wrap">
-        <div class="jg-stage" id="jg-stage"></div>
-        <aside class="jg-panel" id="jg-panel" hidden aria-live="polite">
-          <button type="button" class="jg-panel-close" id="jg-panel-close" aria-label="Close">&times;</button>
-          <div id="jg-panel-body"></div>
-        </aside>
-      </div>
-
-      <div class="jg-legend">
-        <span><i class="jg-swatch" style="border-color:#2f6fb8"></i> Jinx on a good character</span>
-        <span><i class="jg-swatch" style="border-color:#9a0d12"></i> Jinx on an evil character</span>
-        <span><i class="jg-swatch" style="border-color:#8a7a5c"></i> Grey ring = official character</span>
-        <span id="jg-legend-base" hidden><i class="jg-swatch" style="border-color:#8a7a5c;border-style:dashed"></i> Base-game jinx</span>
-      </div>
-      <p class="jg-hint">Tap a character to see its jinxes. Drag to move or pan, pinch or scroll to zoom. <b>Fit all</b> shows the whole map; <b>Reset layout</b> puts back anything you dragged. <b>Link two characters</b> picks a pair for the form below.</p>
+      <p class="jx-hint">Tap a character on the map to light up its jinxes. Official characters always show; wiki characters from other sets are drawn faded, and only matter if you play them together.</p>
     </section>
 
     <section class="landing-section" id="jx-add-section" hidden>
       <h2 class="type-header">Add a Jinx</h2>
       <div class="type-rule"></div>
-      <p class="jg-hint" style="margin-bottom:12px">You only need to own one of the two characters. The jinx shows on both pages.</p>
+      <p class="jx-hint" style="margin:0 0 12px">You only need to own one of the two characters. The jinx shows on both pages.</p>
       <div class="jx-panel">
       <form class="jx-form" id="jx-form">
         <div>
@@ -296,33 +241,39 @@
       </div>
     </section>
 
-    <section class="landing-section">
-      <h2 class="type-header">Every Jinx</h2>
-      <div class="type-rule"></div>
-      <div class="jg-bar">
-        <input type="search" id="jx-list-search" placeholder="Search names and rule text…" autocomplete="off" aria-label="Search jinxes">
-        <button type="button" class="filter-chip" id="jx-list-homebrew">Between wiki characters only</button>
-      </div>
-      <p class="jg-hint" id="jx-list-count"></p>
-      <nav class="jx-az" id="jx-az" aria-label="Jump to a letter" hidden></nav>
-      <div class="jx-panel">
-        <div id="jx-list"><p style="opacity:.7">Loading jinxes…</p></div>
-      </div>
-    </section>
-
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-  <script src="assets/jinx-graph.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script>
-    /* /jinxes: the whole jinx picture in one place.
+    /* /jinxes: the focus map.
 
-       Built entirely from GET /api/jinxes, which returns {nodes, edges}: every
-       wiki character that takes part in a jinx, the official characters they
-       are jinxed with, and one edge per jinx. The map and the list are two
-       views of that one payload, so they cannot disagree.
+       One thing at a time is drawn: a character, a script, a collection or an
+       official edition, picked from one look-up bar. Drawing every jinx on the
+       wiki at once (700+ characters, 2,000+ jinxes) made a map nobody could
+       read, so the page never does.
+
+       Data: GET /api/jinxes ({nodes, edges, baseEdges}: every character in a
+       jinx, one edge per jinx, `a` always the wiki character it is written
+       on) and GET /api/jinx-sets (the characters on every published script
+       and collection). Editions come from the official nodes' `edition`.
+
+       A set is drawn as a ring of its characters with the characters they are
+       jinxed with round the outside:
+       - official characters always show, at full strength;
+       - a wiki character from another set is drawn faded with dotted lines,
+         and the panel says it only matters if you play them together;
+       - a jinx between an official character ON the set and a wiki character
+         elsewhere is left out: it is that other character's jinx, and a
+         script with the Spy on it would otherwise pull in every homebrew
+         character on the wiki that is jinxed with the Spy. An official
+         edition is the exception (its characters are all official, so those
+         jinxes are the whole point), with them hidden until asked for.
+
+       The URL follows the focus (?c=, ?o=, ?s=, ?coll=, ?ed=), so a map can
+       be linked; ?c= is what the "See this on the jinx map" link on a
+       character page sends.
 
        "Add a Jinx" only appears for a logged-in account that owns at least one
        character. The Worker is the real gate (POST /api/jinx re-checks
@@ -336,130 +287,400 @@
           .replace(/&/g, '&amp;').replace(/</g, '&lt;')
           .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
+      function norm(s) { return String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+      function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : (w === 'jinx' ? 'es' : 's')); }
 
-      var DATA = null, GRAPH = null, NODE = {}, NEIGHBOURS = {};
-      var homebrewOnly = false, officialOnly = false, author = '';
-      var listHomebrewOnly = false, listQuery = '';
+      var TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric', 'other'];
+      var TL = { townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion', demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other' };
+      var TC = { townsfolk: '#2c7bd0', outsider: '#1a6a80', minion: '#b5441a', demon: '#9a0d12', traveller: '#6a4a9a', fabled: '#8f6d1a', loric: '#2f6b3f', other: '#4a2548' };
+      var EDITIONS = [['tb', 'Trouble Brewing'], ['bmr', 'Bad Moon Rising'], ['snv', 'Sects & Violets'], ['carousel', 'Experimental Characters']];
+      var SVG = {
+        swap: '<svg class="jx-pair-link" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>',
+        script: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h11v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-1h11v1a3 3 0 0 0 3 3"/><path d="M7 3a2 2 0 0 0-2 2v11M10 8h5M10 12h5"/></svg>',
+        collection: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M6 5h12M9 2h6"/></svg>',
+        edition: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5h6a3.5 3.5 0 0 1 3.5 3.5V20a2.5 2.5 0 0 0-2.5-2.5h-7ZM21.5 5h-6A3.5 3.5 0 0 0 12 8.5V20a2.5 2.5 0 0 1 2.5-2.5h7Z"/></svg>'
+      };
+
+      var N = [], IDX = {}, E = [], ADJ = [], SETS = [], SETS_OF = [];
       var MY_CHARS = {};        // slug -> name, for the characters you own
 
-      // ---------- the map ----------
-      function buildGraph() {
-        if (!window.mountJinxGraph) return;
-        GRAPH = window.mountJinxGraph({
-          mount: 'jg-stage',
-          data: DATA,
-          onSelect: showPanel,
-          onLinkStep: showLinkStep,
-          onPair: startJinxForPair
+      function build(data, setData) {
+        (data.nodes || []).forEach(function (n) {
+          // Both spellings of traveller reach here (see Render.isTraveller).
+          var team = /^travell?er$/i.test(n.team || '') ? 'traveller' : String(n.team || '').toLowerCase();
+          IDX[n.id] = N.length;
+          N.push({
+            kind: 'char', i: N.length, id: n.id, slug: n.slug || '', name: n.name || '',
+            team: TL[team] ? team : 'other', creator: n.creator || '', off: !!n.official,
+            edition: n.edition || '', icon: n.icon || '', href: n.href || '', key: norm(n.name)
+          });
+          ADJ.push([]); SETS_OF.push([]);
         });
-        if (!GRAPH) {
-          $('jg-summary').textContent = 'No jinxes to map yet.';
+        (data.edges || []).concat(data.baseEdges || []).forEach(function (e) {
+          if (IDX[e.a] == null || IDX[e.b] == null) return;
+          var x = { a: IDX[e.a], b: IDX[e.b], evil: e.align === 'evil', text: e.text || '', base: !!e.base };
+          E.push(x); ADJ[x.a].push(x); ADJ[x.b].push(x);
+        });
+        function addSet(kind, key, name, author, href, total, members) {
+          var m = [], seen = {};
+          members.forEach(function (i) { if (i != null && !seen[i]) { seen[i] = 1; m.push(i); } });
+          if (!m.length) return;
+          var s = { kind: kind, k: SETS.length, key: key, name: name, creator: author, href: href, total: total, members: m, norm: norm(name) };
+          SETS.push(s);
+          m.forEach(function (i) { SETS_OF[i].push(s); });
+        }
+        EDITIONS.forEach(function (ed) {
+          var m = N.filter(function (n) { return n.off && n.edition === ed[0]; }).map(function (n) { return n.i; });
+          addSet('edition', ed[0], ed[1], 'The Pandemonium Institute',
+            'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(ed[1].replace(/ /g, '_')), m.length, m);
+        });
+        ((setData && setData.sets) || []).forEach(function (s) {
+          var m = (s.members || []).map(function (slug) {
+            slug = String(slug);
+            return slug.indexOf('off-') === 0 ? IDX['o:' + slug.slice(4)] : IDX['c:' + slug];
+          });
+          addSet(s.type === 'script' ? 'script' : 'collection', s.key, s.name, s.author,
+            (s.type === 'script' ? 's/' : 'collection/') + encodeURIComponent(s.key), s.total || m.length, m);
+        });
+      }
+      function other(e, i) { return N[e.a === i ? e.b : e.a]; }
+
+      function ico(n, size) {
+        var wh = size ? 'width:' + size + 'px;height:' + size + 'px;' : '', st = wh ? ' style="' + wh + '"' : '';
+        if (n.kind !== 'char') return '<span class="jf-setico"' + st + '>' + SVG[n.kind] + '</span>';
+        if (n.icon) return '<img class="jf-ico"' + st + ' src="' + esc(n.icon) + '" alt="" loading="lazy" decoding="async" onerror="this.style.visibility=\'hidden\'">';
+        return '<span class="jf-ico jf-ph" style="' + wh + 'background:' + TC[n.team] + '">' + esc(n.name.charAt(0)) + '</span>';
+      }
+      function offsite(x) { return /^https?:/.test(x.href) ? ' target="_blank" rel="noopener noreferrer"' : ''; }
+      function link(n, cls) { return '<a class="jf-nm ' + (cls || '') + '" href="' + esc(n.href) + '"' + offsite(n) + '>' + esc(n.name) + '</a>'; }
+      function kindLabel(x) {
+        if (x.kind === 'script') return 'Script';
+        if (x.kind === 'collection') return 'Collection';
+        if (x.kind === 'edition') return 'Official edition';
+        return (x.off ? 'Official ' : '') + TL[x.team];
+      }
+      function where(s) { return s.kind === 'script' ? 'on this script' : 'in this ' + s.kind; }
+
+      /* ---------- the look-up bar ---------- */
+      var input = $('jf-q'), drop = $('jf-drop'), hits = [], cur = 0;
+      function weight(x) { return x.kind === 'char' ? ADJ[x.i].length : 1000 + x.members.length; }
+      function drawDrop() {
+        var q = norm(input.value);
+        if (!q || !N.length) { closeDrop(); return; }
+        hits = N.concat(SETS).filter(function (x) {
+          return (x.kind === 'char' ? x.key : x.norm).indexOf(q) >= 0 || (x.kind !== 'char' && norm(x.creator).indexOf(q) === 0);
+        }).sort(function (x, y) {
+          var px = (x.kind === 'char' ? x.key : x.norm).indexOf(q) === 0, py = (y.kind === 'char' ? y.key : y.norm).indexOf(q) === 0;
+          return (py - px) || weight(y) - weight(x);
+        }).slice(0, 14);
+        cur = 0;
+        drop.innerHTML = hits.length ? hits.map(function (x, k) {
+          var meta = x.kind === 'char' ? kindLabel(x) + ' · ' + plural(ADJ[x.i].length, 'jinx')
+            : kindLabel(x) + (x.creator ? ' by ' + x.creator : '') + ' · ' + plural(x.total, 'character');
+          return '<button type="button" class="jx-opt' + (k ? '' : ' on') + '" role="option" data-k="' + k + '">' +
+            (x.kind === 'char' ? ico(x, 30).replace('jf-ico', 'jf-ico jx-opt-ico') : ico(x, 30)) +
+            '<span class="jx-opt-body"><span class="jx-opt-name">' + esc(x.name) + '</span><span class="jx-opt-meta">' + esc(meta) + '</span></span></button>';
+        }).join('') : '<p class="jx-empty">Nothing with a jinx goes by that name.</p>';
+        drop.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+      }
+      function closeDrop() { drop.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+      function pick(x) { closeDrop(); input.value = ''; input.blur(); focus(x); }
+      input.addEventListener('input', drawDrop);
+      input.addEventListener('focus', drawDrop);
+      input.addEventListener('blur', function () { setTimeout(closeDrop, 150); });
+      input.addEventListener('keydown', function (ev) {
+        if (drop.hidden || !hits.length) return;
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+          ev.preventDefault(); cur = (cur + (ev.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length;
+          drop.querySelectorAll('.jx-opt').forEach(function (b, k) { b.classList.toggle('on', k === cur); });
+        } else if (ev.key === 'Enter') { ev.preventDefault(); pick(hits[cur]); }
+        else if (ev.key === 'Escape') closeDrop();
+      });
+      drop.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      drop.addEventListener('click', function (ev) { var b = ev.target.closest('.jx-opt'); if (b) pick(hits[+b.dataset.k]); });
+
+      /* ---------- what is in focus ---------- */
+      var view = $('jf-view'), trailEl = $('jf-trail');
+      var trail = [], current = null, sel = null, showOutside = true, M = null;
+
+      function urlFor(x) {
+        if (x.kind === 'char') return x.off ? '?o=' + encodeURIComponent(x.id.slice(2)) : '?c=' + encodeURIComponent(x.slug);
+        return '?' + { script: 's', collection: 'coll', edition: 'ed' }[x.kind] + '=' + encodeURIComponent(x.key);
+      }
+      function fromUrl() {
+        var p = new URLSearchParams(location.search), v;
+        if ((v = p.get('c'))) return N[IDX['c:' + v]];
+        if ((v = p.get('o'))) return N[IDX['o:' + v]];
+        var kinds = { s: 'script', coll: 'collection', ed: 'edition' };
+        for (var k in kinds) {
+          if ((v = p.get(k))) return SETS.filter(function (s) { return s.kind === kinds[k] && s.key === v; })[0];
+        }
+        return null;
+      }
+
+      function focus(x, fromTrail) {
+        current = x; sel = null;
+        // An edition's wiki characters number in the hundreds: off until asked for.
+        showOutside = x.kind !== 'edition';
+        if (!fromTrail) {
+          var at = trail.indexOf(x);
+          if (at >= 0) trail = trail.slice(0, at + 1); else trail.push(x);
+          if (trail.length > 6) trail = trail.slice(-6);
+        }
+        trailEl.innerHTML = trail.length > 1 ? '<span>Path:</span>' + trail.map(function (t, k) {
+          return (k ? '<span>&rsaquo;</span>' : '') + (t === current ? '<b>' + esc(t.name) + '</b>' : '<button type="button" data-k="' + k + '">' + esc(t.name) + '</button>');
+        }).join('') : '';
+        try { history.replaceState(null, '', location.pathname + urlFor(x)); } catch (e) {}
+        M = x.kind === 'char' ? charModel(x) : setModel(x);
+        render();
+      }
+      trailEl.addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) focus(trail[+b.dataset.k], true); });
+
+      /* A model: members (inner ring), partners (outer ring) and the edges
+         between them, each classed: in (both on the set), off (with an
+         official character), out (with a wiki character from elsewhere), hb
+         (a single character's jinx with a wiki character). */
+      function setModel(s) {
+        var on = {}; s.members.forEach(function (i) { on[i] = 1; });
+        var edges = [], partners = {};
+        E.forEach(function (e) {
+          var ia = on[e.a], ib = on[e.b];
+          if (!ia && !ib) return;
+          if (ia && ib) { edges.push({ e: e, cls: 'in' }); return; }
+          var m = N[ia ? e.a : e.b], o = N[ia ? e.b : e.a];
+          if (o.off) { edges.push({ e: e, cls: 'off', m: m, o: o }); partners[o.i] = 1; }
+          else if (!m.off || s.kind === 'edition') { edges.push({ e: e, cls: 'out', m: m, o: o }); partners[o.i] = 1; }
+        });
+        return { set: s, members: s.members.map(function (i) { return N[i]; }),
+          partners: Object.keys(partners).map(function (i) { return N[i]; }), edges: edges };
+      }
+      function charModel(n) {
+        var seen = {};
+        var edges = ADJ[n.i].map(function (e) { var o = other(e, n.i); return { e: e, cls: o.off ? 'off' : 'hb', m: n, o: o }; });
+        return { set: null, members: [n], edges: edges,
+          partners: edges.map(function (x) { return x.o; }).filter(function (o) { return !seen[o.i] && (seen[o.i] = 1); }) };
+      }
+
+      function byTeam(a, b) { return TEAMS.indexOf(a.team) - TEAMS.indexOf(b.team) || a.name.localeCompare(b.name); }
+      /* Members on the inner ring by team; partners round the outside, as many
+         rings as they need, each placed near what it is jinxed with (the
+         average angle of its members) so the lines stay short. */
+      function layout() {
+        var pos = {}, single = !M.set, members = M.members.slice().sort(byTeam), m = members.length;
+        var outEdges = M.edges.filter(function (x) { return x.cls !== 'in' && (showOutside || x.cls !== 'out'); });
+        var partners = M.partners.filter(function (p) { return showOutside || p.off || single; });
+        var rm = single ? 52 : m <= 10 ? 26 : m <= 24 ? 20 : m <= 40 ? 15 : 12;
+        var R1 = single ? 0 : Math.max(120, m * rm * 2.5 / (2 * Math.PI));
+        var ang = {};
+        members.forEach(function (n, k) { ang[n.i] = -Math.PI / 2 + k * 2 * Math.PI / Math.max(m, 1); });
+        var pa = {};
+        if (single) partners.sort(byTeam);
+        else {
+          partners.forEach(function (p) {
+            var sx = 0, sy = 0;
+            outEdges.forEach(function (x) { if (x.o === p) { sx += Math.cos(ang[x.m.i]); sy += Math.sin(ang[x.m.i]); } });
+            pa[p.i] = Math.atan2(sy, sx);
+          });
+          partners.sort(function (a, b) { return pa[a.i] - pa[b.i]; });
+        }
+        var p = partners.length, rp = p <= 14 ? 22 : p <= 30 ? 18 : p <= 60 ? 15 : 12;
+        var rings = [], left = p, R = single ? 150 : R1 + rm + 70, placed = 0;
+        while (left > 0) {
+          var take = Math.min(left, Math.max(6, Math.floor(2 * Math.PI * R / (rp * 2.6))));
+          rings.push({ R: R, from: placed, n: take }); placed += take; left -= take; R += rp * 2.6 + 6;
+        }
+        var outerR = rings.length ? rings[rings.length - 1].R : R1;
+        var W = Math.ceil(2 * (Math.max(outerR, R1) + Math.max(rp, rm) + 34)), C = W / 2;
+        members.forEach(function (n) {
+          pos[n.i] = { n: n, x: single ? C : C + R1 * Math.cos(ang[n.i]), y: single ? C : C + R1 * Math.sin(ang[n.i]), r: rm, role: 'member' };
+        });
+        var start = single ? -Math.PI / 2 : (p ? pa[partners[0].i] : 0);
+        rings.forEach(function (rg, ri) {
+          for (var k = 0; k < rg.n; k++) {
+            var n = partners[rg.from + k], a = start + (k + (ri % 2 ? .5 : 0)) * 2 * Math.PI / rg.n;
+            pos[n.i] = { n: n, x: C + rg.R * Math.cos(a), y: C + rg.R * Math.sin(a), r: rp, role: n.off || single ? 'partner' : 'out' };
+          }
+        });
+        return { pos: pos, W: W, C: C, R1: R1, rm: rm, labels: { m: single || m <= 16, p: p <= 18 } };
+      }
+
+      function svgHTML() {
+        var L = layout(), pos = L.pos, C = L.C, f = function (v) { return v.toFixed(1); };
+        var shown = M.edges.filter(function (x) { return showOutside || x.cls !== 'out'; });
+        var near = null;
+        if (sel != null) {
+          near = {}; near[sel] = 1;
+          shown.forEach(function (x) { if (x.e.a === sel || x.e.b === sel) { near[x.e.a] = 1; near[x.e.b] = 1; } });
+        }
+        var out = '<svg viewBox="0 0 ' + L.W + ' ' + L.W + '" role="group" aria-label="Jinx map for ' + esc(current.name) + '">';
+        if (M.set) out += '<circle class="jf-zone" cx="' + C + '" cy="' + C + '" r="' + f(L.R1 + L.rm + 22) + '"/>';
+        shown.forEach(function (x) {
+          var A = pos[x.e.a], B = pos[x.e.b]; if (!A || !B) return;
+          var lit = sel != null && (x.e.a === sel || x.e.b === sel);
+          var cls = 'jf-ed' + (x.cls === 'out' ? ' out' : '') + (lit ? ' lit' : sel != null ? ' dim' : '');
+          var col = lit ? ' stroke="' + (x.e.base ? '#5b4632' : x.e.evil ? '#9a0d12' : '#2f6fb8') + '"' : '';
+          if (x.cls === 'in') {
+            // A jinx between two members bows towards the middle.
+            var qx = C + ((A.x + B.x) / 2 - C) * .2, qy = C + ((A.y + B.y) / 2 - C) * .2;
+            out += '<path class="' + cls + '"' + col + ' d="M' + f(A.x) + ' ' + f(A.y) + 'Q' + f(qx) + ' ' + f(qy) + ' ' + f(B.x) + ' ' + f(B.y) + '"/>';
+          } else {
+            out += '<line class="' + cls + '"' + col + ' x1="' + f(A.x) + '" y1="' + f(A.y) + '" x2="' + f(B.x) + '" y2="' + f(B.y) + '"/>';
+          }
+        });
+        Object.keys(pos).forEach(function (i) {
+          var P = pos[i], n = P.n, isSel = sel === n.i, big = !M.set && P.role === 'member';
+          var lab = isSel || big || (P.role === 'member' ? L.labels.m : L.labels.p);
+          out += '<g class="jf-pn' + (P.role === 'out' ? ' out' : '') + (isSel ? ' sel' : '') + (near && !near[n.i] ? ' dim' : '') +
+            '" tabindex="0" role="button" data-i="' + n.i + '" aria-label="' + esc(n.name) + '" aria-pressed="' + isSel + '"><title>' + esc(n.name) + '</title>' +
+            '<circle class="jf-ring" cx="' + f(P.x) + '" cy="' + f(P.y) + '" r="' + P.r + '" stroke="' + TC[n.team] + '"/>' +
+            (n.icon ? '<image href="' + esc(n.icon) + '" x="' + f(P.x - P.r * .8) + '" y="' + f(P.y - P.r * .8) + '" width="' + f(P.r * 1.6) + '" height="' + f(P.r * 1.6) + '"/>' : '') +
+            (lab ? '<text class="jf-lab' + (big ? ' big' : '') + '" x="' + f(P.x) + '" y="' + f(P.y + P.r + (big ? 20 : 14)) + '">' +
+              esc(n.name.length > 18 ? n.name.slice(0, 17) + '…' : n.name) + '</text>' : '') + '</g>';
+        });
+        return out + '</svg>';
+      }
+
+      function render() {
+        var x = current, s = M.set;
+        var html = '<div class="jf-head">' + ico(x) + '<div>' + link(x) +
+          '<div class="jf-meta"><span class="jf-kind" style="color:' + (x.kind === 'char' ? TC[x.team] : 'var(--maroon)') + '">' + esc(kindLabel(x)) + '</span>' +
+          (x.creator ? ' · by ' + esc(x.creator) : '') +
+          (s ? ' · ' + (s.members.length === s.total ? plural(s.total, 'character')
+                : s.members.length + ' of its ' + s.total + ' characters have jinxes')
+             : ' · ' + plural(M.edges.length, 'jinx')) + '</div></div></div>';
+        if (!s && SETS_OF[x.i].length) {
+          var sets = SETS_OF[x.i];
+          html += '<div class="jf-sets"><span class="jf-lbl">Map its ' + (sets.length === 1 ? sets[0].kind : 'sets') + '</span>' +
+            sets.slice(0, 6).map(function (t) { return '<button type="button" class="filter-chip" data-set="' + t.k + '">' + ico(t) + esc(t.name) + '</button>'; }).join('') + '</div>';
+        }
+        html += '<div class="jf-grid"><div class="jf-map">' + svgHTML() + '</div><div class="jf-card" id="jf-card" aria-live="polite"></div></div>' +
+          '<div class="jf-lists">' + listsHTML() + '</div>';
+        view.innerHTML = html;
+        drawCard();
+      }
+
+      function drawCard() {
+        var card = $('jf-card');
+        if (sel == null) {
+          var c = { in: 0, off: 0, out: 0, hb: 0 }, s = M.set;
+          M.edges.forEach(function (x) { c[x.cls]++; });
+          card.innerHTML = '<ul class="jf-sum">' + (s
+            ? '<li>The inner ring is ' + esc(s.name) + '.</li>' +
+              (c.in ? '<li><b>' + c.in + '</b> ' + (c.in === 1 ? 'jinx' : 'jinxes') + ' between its own characters.</li>' : '') +
+              '<li><b>' + c.off + '</b> with official characters round the outside.</li>' +
+              (c.out ? '<li><b>' + c.out + '</b> with wiki characters not ' + where(s) + '. They only matter if you play them together.<br>' +
+                '<button type="button" class="filter-chip' + (showOutside ? ' active' : '') + '" id="jf-tog" aria-pressed="' + showOutside + '">' +
+                (showOutside ? 'Hide them' : 'Show them') + '</button></li>' : '')
+            : '<li><b>' + plural(M.edges.length, 'jinx') + '</b>, one line each.</li>') +
+            '<li class="jf-tip">Tap a character to light up its jinxes and read them here.</li></ul>';
           return;
         }
-        $('jg-summary').textContent =
-          GRAPH.nodeCount + ' characters, ' + GRAPH.edgeCount + ' jinxes between them.';
-        if (GRAPH.baseCount) $('jg-f-base').hidden = false;
+        var n = N[sel];
+        var mine = M.edges.filter(function (x) { return (x.e.a === sel || x.e.b === sel) && (showOutside || x.cls !== 'out'); });
+        var groups = [['in', s2('Inside the ')], ['off', 'With official characters'], ['hb', 'With wiki characters'], ['out', 'With wiki characters from other sets']];
+        function s2(p) { return M.set ? p + M.set.kind : ''; }
+        var html = '<div class="jf-ttl">' + ico(n) + '<div>' + link(n) + '<div class="jf-meta">' + esc(kindLabel(n)) +
+          (n.creator ? ' · by ' + esc(n.creator) : '') + '</div></div></div>';
+        groups.forEach(function (g) {
+          var rows = mine.filter(function (x) { return x.cls === g[0]; });
+          if (!rows.length) return;
+          html += '<h4>' + g[1] + ' (' + rows.length + ')</h4>' + rows.map(function (x) {
+            var o = other(x.e, sel), k = E.indexOf(x.e);
+            // A jinx is stored on its wiki character (`a`). Only that page's
+            // owner can change it, so only they get the buttons.
+            var own = !x.e.base && MY_CHARS[N[x.e.a].slug];
+            return '<div class="jf-mini">' + ico(o) + '<div style="min-width:0">' + link(o, x.e.evil ? 'evil' : 'good') +
+              '<span class="jtext">' + esc(x.e.text) + '</span>' +
+              (x.e.base ? '<span class="jf-tag">Base game</span>' : '') +
+              (own ? '<div class="jf-act"><button type="button" data-edit="' + k + '">Edit</button><button type="button" data-del="' + k + '">Remove</button></div>' : '') +
+              '</div></div>';
+          }).join('');
+        });
+        if (n !== current) html += '<button type="button" class="jf-btn" id="jf-solo">Map ' + esc(n.name) + ' on its own</button>';
+        card.innerHTML = html;
+      }
 
-        /* /jinxes?c={slug} opens focused on that character: where the "See
-           this on the jinx map" link on every /c/ page points, and what makes
-           a view of the map shareable. */
-        var want = new URLSearchParams(location.search).get('c');
-        if (want) {
-          var hit = GRAPH.focus('c:' + want);
-          if (!hit) {
-            for (var i = 0; i < DATA.nodes.length; i++) {
-              if (DATA.nodes[i].name.toLowerCase() === want.toLowerCase()) {
-                GRAPH.focus(DATA.nodes[i].id);
-                break;
-              }
-            }
-          }
+      function rowsOf(cls) {
+        return M.edges.filter(function (x) { return x.cls === cls; }).sort(function (x, y) {
+          return N[x.e.a].name.localeCompare(N[y.e.a].name) || N[x.e.b].name.localeCompare(N[y.e.b].name);
+        });
+      }
+      function pairHTML(e) {
+        function side(n, cls) {
+          return '<a class="jx-pair-side ' + cls + '" href="' + esc(n.href) + '"' + offsite(n) + '>' + ico(n, 30) +
+            '<span class="jx-pair-name">' + esc(n.name) + '</span></a>';
         }
+        return '<div class="jf-pair"><div class="jx-pair">' + side(N[e.a], 'first') + SVG.swap + side(N[e.b], e.evil ? 'evil' : 'good') +
+          (e.base ? ' <span class="jf-tag">Base game</span>' : '') + '</div><span class="jtext">' + esc(e.text) + '</span></div>';
+      }
+      var LIST_STEP = 30;
+      function listsHTML() {
+        var s = M.set, out = '', opened = false;
+        function section(cls, title, note) {
+          var rows = rowsOf(cls);
+          if (!rows.length) return '';
+          var open = !opened; opened = true;
+          return '<details' + (open ? ' open' : '') + '><summary><b>' + esc(title) + '</b><span>' + plural(rows.length, 'jinx') + '</span></summary>' +
+            (note ? '<p class="jf-note">' + note + '</p>' : '') + rows.slice(0, LIST_STEP).map(function (x) { return pairHTML(x.e); }).join('') +
+            (rows.length > LIST_STEP ? '<button type="button" class="jf-more" data-rest="' + cls + '">Show all ' + rows.length + '</button>' : '') + '</details>';
+        }
+        if (s) {
+          out += section('in', 'Inside ' + s.name);
+          out += section('off', 'With official characters');
+          out += section('out', 'With wiki characters from other sets',
+            'These characters are not ' + (s.kind === 'script' ? 'on ' : 'in ') + esc(s.name) +
+            '. The jinxes only apply if you play them together.');
+        } else {
+          out += section('off', 'With official characters');
+          out += section('hb', 'With wiki characters');
+        }
+        return out || '<p class="jf-empty">No jinxes here yet.</p>';
       }
 
-      function showPanel(sel) {
-        var panel = $('jg-panel');
-        if (!sel) { panel.hidden = true; return; }
-        var n = sel.node;
-        var meta = n.official ? 'Official character'
-          : ((n.team ? n.team.charAt(0).toUpperCase() + n.team.slice(1) : '') +
-             (n.creator ? ' · ' + n.creator : ''));
-        var html =
-          '<div class="jg-panel-head">' +
-            (n.icon ? '<img class="jg-panel-ico" src="' + esc(n.icon) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-            '<div><h3>' + esc(n.name) + '</h3>' +
-            '<span class="jg-panel-meta">' + esc(meta) + '</span></div>' +
-          '</div>' +
-          '<p style="margin:6px 0 2px"><a href="' + esc(n.href) + '"' +
-            (n.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
-            (n.official ? 'View on the official wiki →' : 'Open this page →') + '</a></p>';
-        sel.jinxes.forEach(function (j, i) {
-          // A jinx is stored on one of the two characters. Only that page's
-          // owner can change it, so only they get the buttons; everyone else
-          // is told where it lives instead of getting a button that 403s.
-          var mine = !j.base && j.storedOn && MY_CHARS[j.storedOn.slug];
-          var elsewhere = !j.base && j.storedOn && j.storedOn.slug !== n.slug;
-          html += '<div class="jg-panel-jinx">' +
-            '<a class="' + (j.align === 'evil' ? 'evil' : 'good') + '" href="' + esc(j.with.href) + '"' +
-            (j.with.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
-            esc(j.with.name) + '</a>' +
-            (j.base ? '<span class="jg-panel-note">Base-game jinx</span>' : '') +
-            '<p>' + esc(j.text) + '</p>' +
-            (mine
-              ? '<div class="jg-panel-act">' +
-                  '<button type="button" class="jg-act-edit" data-i="' + i + '">Edit</button>' +
-                  '<button type="button" class="jg-act-del" data-i="' + i + '">Remove</button>' +
-                '</div>'
-              : (elsewhere
-                  ? '<p class="jg-panel-note">Written on ' + esc(j.storedOn.name) + '</p>'
-                  : '')) +
-            '</div>';
-        });
-        $('jg-panel-body').innerHTML = html;
-        panel.hidden = false;
+      view.addEventListener('click', function (ev) {
+        var t = ev.target, b;
+        if ((b = t.closest('.jf-pn'))) { var i = +b.dataset.i; sel = sel === i ? null : i; render(); return; }
+        if ((b = t.closest('[data-set]'))) { focus(SETS[+b.dataset.set]); return; }
+        if (t.closest('#jf-tog')) { showOutside = !showOutside; sel = null; render(); return; }
+        if (t.closest('#jf-solo')) { focus(N[sel]); return; }
+        if ((b = t.closest('[data-rest]'))) {
+          b.insertAdjacentHTML('beforebegin', rowsOf(b.dataset.rest).slice(LIST_STEP).map(function (x) { return pairHTML(x.e); }).join(''));
+          b.remove(); return;
+        }
+        if ((b = t.closest('[data-edit]'))) { editJinx(E[+b.dataset.edit]); return; }
+        if ((b = t.closest('[data-del]'))) { removeJinx(E[+b.dataset.del], b); }
+      });
+      view.addEventListener('keydown', function (ev) {
+        var g = ev.target.closest && ev.target.closest('.jf-pn');
+        if (!g || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+        ev.preventDefault();
+        var i = +g.dataset.i; sel = sel === i ? null : i; render();
+        var again = view.querySelector('.jf-pn[data-i="' + i + '"]');
+        if (again) again.focus();
+      });
 
-        $('jg-panel-body').querySelectorAll('.jg-act-edit').forEach(function (b) {
-          b.addEventListener('click', function () { editJinx(sel.jinxes[+b.dataset.i], n); });
-        });
-        $('jg-panel-body').querySelectorAll('.jg-act-del').forEach(function (b) {
-          b.addEventListener('click', function () { removeJinx(sel.jinxes[+b.dataset.i], b, n); });
-        });
-      }
-
-      /* A jinx is saved on one of its two characters. `j.with` is the far end
-         seen from the panel that is open; when the jinx is stored on THAT end
-         (a mirrored entry) the far end from the storing page is the character
-         being viewed. Getting this wrong posts a character jinxed with
-         itself, which the Worker refuses. */
-      function otherEnd(j, viewed) {
-        return (j.storedOn.slug === j.with.slug) ? viewed : j.with;
-      }
-
+      /* ---------- editing a jinx you own ---------- */
       /* Editing is the add form with the pair and the text already in it.
          POST /api/jinx overwrites the entry for that pair, so saving is the
-         edit. */
-      function editJinx(j, viewed) {
-        var other = otherEnd(j, viewed);
-        $('jx-mine').value = j.storedOn.slug;
+         edit. The jinx lives on `a`; `b` is the far end. */
+      function editJinx(e) {
+        var from = N[e.a], to = N[e.b];
+        $('jx-mine').value = from.slug;
         if (window.setJinxField) {
-          window.setJinxField($('jx-other'), other.name,
-            other.official ? '' : other.slug,
-            other.official ? String(other.id).replace(/^o:/, '') : '');
+          window.setJinxField($('jx-other'), to.name, to.off ? '' : to.slug, to.off ? to.id.slice(2) : '');
         }
-        $('jx-align').value = j.align === 'evil' ? 'evil' : 'good';
-        $('jx-text').value = j.text || '';
+        $('jx-align').value = e.evil ? 'evil' : 'good';
+        $('jx-text').value = e.text || '';
         $('jx-add-section').hidden = false;
         $('jx-add-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         $('jx-text').focus();
       }
-
-      function removeJinx(j, btn, viewed) {
-        var other = otherEnd(j, viewed);
-        if (!window.confirm('Remove the jinx between ' + j.storedOn.name +
-            ' and ' + other.name + '?')) return;
-        var body = { from: j.storedOn.slug, remove: true };
-        if (other.official) body.toId = String(other.id).replace(/^o:/, '');
-        else body.toSlug = other.slug;
+      function removeJinx(e, btn) {
+        var from = N[e.a], to = N[e.b];
+        if (!window.confirm('Remove the jinx between ' + from.name + ' and ' + to.name + '?')) return;
+        var body = { from: from.slug, remove: true };
+        if (to.off) body.toId = to.id.slice(2); else body.toSlug = to.slug;
         btn.disabled = true;
         btn.textContent = 'Removing…';
         fetch('/api/jinx', {
@@ -481,275 +702,6 @@
           });
       }
 
-      $('jg-panel-close').addEventListener('click', function () {
-        $('jg-panel').hidden = true;
-        if (GRAPH) GRAPH.select(null);
-      });
-
-      $('jg-search').addEventListener('input', function () {
-        var q = this.value.trim().toLowerCase();
-        if (!q || !GRAPH) return;
-        for (var i = 0; i < DATA.nodes.length; i++) {
-          if (DATA.nodes[i].name.toLowerCase().indexOf(q) === 0) {
-            GRAPH.focus(DATA.nodes[i].id);
-            return;
-          }
-        }
-      });
-
-      /* One place that decides what is shown, so the three controls cannot
-         contradict each other. A creator filter keeps the characters they are
-         jinxed WITH as well. A creator's pages on their own are a scatter of
-         disconnected dots, and the point is seeing what they connect to. */
-      function applyGraphFilter() {
-        if (!GRAPH) return;
-        if (!homebrewOnly && !officialOnly && !author) return GRAPH.filter(null);
-
-        var keep = null;
-        if (author) {
-          keep = {};
-          DATA.nodes.forEach(function (n) {
-            if (n.official || !n.creator) return;
-            if (creatorNames(n.creator).indexOf(author) === -1) return;
-            keep[n.id] = 1;
-            (NEIGHBOURS[n.id] || []).forEach(function (id) { keep[id] = 1; });
-          });
-        }
-        GRAPH.filter(function (n) {
-          if (keep && !keep[n.id]) return false;
-          if (homebrewOnly && n.official) return false;
-          if (officialOnly && !n.official) return false;
-          return true;
-        });
-      }
-
-      // A page can be co-credited ("Taiyi (太一), Saki"); each name is its own
-      // creator, the same way the rest of the wiki treats a credit string.
-      function creatorNames(s) {
-        return String(s || '').split(',').map(function (x) { return x.trim(); })
-          .filter(Boolean);
-      }
-
-      $('jg-f-homebrew').addEventListener('click', function () {
-        homebrewOnly = !homebrewOnly;
-        if (homebrewOnly) { officialOnly = false; $('jg-f-official').classList.remove('active'); }
-        this.classList.toggle('active', homebrewOnly);
-        applyGraphFilter();
-      });
-
-      $('jg-f-official').addEventListener('click', function () {
-        officialOnly = !officialOnly;
-        if (officialOnly) { homebrewOnly = false; $('jg-f-homebrew').classList.remove('active'); }
-        this.classList.toggle('active', officialOnly);
-        applyGraphFilter();
-      });
-
-      $('jg-author').addEventListener('change', function () {
-        author = this.value;
-        applyGraphFilter();
-      });
-
-      $('jg-f-relayout').addEventListener('click', function () {
-        if (!GRAPH) return;
-        var moved = GRAPH.resetLayout();
-        this.textContent = moved ? 'Layout reset' : 'Nothing moved';
-        var btn = this;
-        setTimeout(function () { btn.textContent = 'Reset layout'; }, 1400);
-      });
-
-      $('jg-f-base').addEventListener('click', function () {
-        var on = !this.classList.contains('active');
-        this.classList.toggle('active', on);
-        this.textContent = on ? 'Hide base-game jinxes' : 'Show base-game jinxes';
-        $('jg-legend-base').hidden = !on;
-        if (GRAPH) GRAPH.setBaseLayer(on);
-      });
-
-      /* Deliberately zooms past the legibility floor to show the whole shape
-         at once. The default view never does that on its own: on a big map it
-         would draw every icon too small to make out. */
-      $('jg-f-fit').addEventListener('click', function () {
-        if (!GRAPH) return;
-        GRAPH.fitAll();
-        $('jg-panel').hidden = true;
-      });
-
-      $('jg-f-reset').addEventListener('click', function () {
-        if (!GRAPH) return;
-        GRAPH.select(null);
-        GRAPH.fit();
-        $('jg-panel').hidden = true;
-      });
-
-      // ---------- the list ----------
-      /* Grouped by the wiki character that carries the jinx, because that is
-         the page the reader would go to next. An edge whose two ends are both
-         wiki characters is listed under the one that declares it; the index
-         already de-duplicates the pair, so it appears once. */
-      function renderList() {
-        var groups = {};
-        DATA.edges.forEach(function (e) {
-          var a = NODE[e.a], b = NODE[e.b];
-          if (!a || !b) return;
-          if (listHomebrewOnly && (a.official || b.official)) return;
-          if (listQuery) {
-            var hay = (a.name + ' ' + b.name + ' ' + e.text).toLowerCase();
-            if (hay.indexOf(listQuery) === -1) return;
-          }
-          // Group under the wiki character; a is always one by construction.
-          (groups[a.id] = groups[a.id] || { node: a, rows: [] }).rows.push({ other: b, e: e });
-        });
-
-        var keys = Object.keys(groups).sort(function (x, y) {
-          return groups[x].node.name.toLowerCase().localeCompare(groups[y].node.name.toLowerCase());
-        });
-
-        var total = 0;
-        keys.forEach(function (k) { total += groups[k].rows.length; });
-        $('jx-list-count').textContent = total
-          ? total + ' jinx' + (total === 1 ? '' : 'es') + ' across ' + keys.length +
-            ' character' + (keys.length === 1 ? '' : 's') + '.'
-          : '';
-
-        if (!keys.length) {
-          $('jx-list').innerHTML = '<p style="opacity:.7">No jinx matches that.</p>';
-          return;
-        }
-
-        var html = '';
-        var seenLetter = {};
-        keys.forEach(function (k) {
-          var g = groups[k];
-          var L = String(g.node.name).trim().charAt(0).toUpperCase();
-          if (!/[A-Z]/.test(L)) L = 'other';
-          var anchor = seenLetter[L] ? '' : ' id="jxL-' + L + '"';
-          seenLetter[L] = 1;
-          html += '<div class="jx-list-char"' + anchor + '>' +
-            '<div class="jx-list-head">' +
-              (g.node.icon ? '<img loading="lazy" decoding="async" src="' + esc(g.node.icon) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-              '<a href="' + esc(g.node.href) + '">' + esc(g.node.name) + '</a>' +
-              '<span class="jx-list-count">' + g.rows.length + ' jinx' + (g.rows.length === 1 ? '' : 'es') + '</span>' +
-            '</div><div class="jx-list-body">';
-          g.rows.forEach(function (r) {
-            html += '<div class="jinx">' +
-              (r.other.icon ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(r.other.icon) + '" alt="" onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">' : '') +
-              '<div class="jbody">' +
-              '<a class="jname ' + (r.e.align === 'evil' ? 'evil' : 'good') + '" href="' + esc(r.other.href) + '"' +
-              (r.other.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
-              esc(r.other.name) + '</a>' +
-              '<span class="jtext">' + esc(r.e.text) + '</span></div></div>';
-          });
-          html += '</div></div>';
-        });
-        $('jx-list').innerHTML = html;
-        buildAZ(keys.map(function (k) { return groups[k].node.name; }));
-      }
-
-      /* One entry per letter that has characters behind it; letters with
-         none are shown greyed rather than removed, so the strip does not
-         reflow as the search narrows. */
-      function buildAZ(names) {
-        var have = {};
-        names.forEach(function (n) {
-          var c = String(n).trim().charAt(0).toUpperCase();
-          have[/[A-Z]/.test(c) ? c : '#'] = 1;
-        });
-        var letters = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        var az = $('jx-az');
-        az.innerHTML = letters.map(function (L) {
-          return have[L]
-            ? '<a href="#jxL-' + (L === '#' ? 'other' : L) + '">' + L + '</a>'
-            : '<span>' + L + '</span>';
-        }).join('');
-        az.hidden = names.length < 12;
-      }
-
-      var listTimer = null;
-      $('jx-list-search').addEventListener('input', function () {
-        var v = this.value.trim().toLowerCase();
-        clearTimeout(listTimer);
-        listTimer = setTimeout(function () { listQuery = v; renderList(); }, 140);
-      });
-      $('jx-list-homebrew').addEventListener('click', function () {
-        listHomebrewOnly = !listHomebrewOnly;
-        this.classList.toggle('active', listHomebrewOnly);
-        renderList();
-      });
-
-      /* Only creators with a jinxed character are worth listing: the wiki has
-         hundreds of creators and few of them are on this map. */
-      function buildAuthorList() {
-        var seen = {};
-        DATA.nodes.forEach(function (n) {
-          if (n.official) return;
-          creatorNames(n.creator).forEach(function (c) { seen[c] = (seen[c] || 0) + 1; });
-        });
-        var names = Object.keys(seen).sort(function (a, b) {
-          return a.toLowerCase().localeCompare(b.toLowerCase());
-        });
-        var sel = $('jg-author');
-        names.forEach(function (name) {
-          var o = document.createElement('option');
-          o.value = name;
-          o.textContent = name + ' (' + seen[name] + ')';
-          sel.appendChild(o);
-        });
-      }
-
-      // ---------- link two characters on the map ----------
-      /* The map already shows who is jinxed with whom, so it is also the
-         natural place to say "these two should be". Pick two characters and
-         the form below opens filled in. The Worker still decides whether the
-         save is allowed; this only saves typing. */
-      function showLinkStep(state) {
-        var bar = $('jg-linkbar');
-        if (!state) { bar.hidden = true; $('jg-f-link').classList.remove('active'); return; }
-        $('jg-f-link').classList.add('active');
-        bar.innerHTML = state.step === 1
-          ? 'Pick the <b>first</b> character.<button type="button" id="jg-link-cancel">cancel</button>'
-          : 'Picked <b>' + esc(state.first.name) + '</b>. Now pick the <b>second</b>.' +
-            '<button type="button" id="jg-link-cancel">cancel</button>';
-        bar.hidden = false;
-        var c = document.getElementById('jg-link-cancel');
-        if (c) c.addEventListener('click', function () { GRAPH.setLinkMode(false); });
-      }
-
-      $('jg-f-link').addEventListener('click', function () {
-        if (!GRAPH) return;
-        GRAPH.setLinkMode(!GRAPH.isLinkMode());
-      });
-
-      function startJinxForPair(pair) {
-        var bar = $('jg-linkbar');
-        // You have to own one of them. Officials are nobody's, so a pair of
-        // official characters can never be linked here.
-        var mine = MY_CHARS[pair.a.slug] ? pair.a : (MY_CHARS[pair.b.slug] ? pair.b : null);
-        var other = (mine === pair.a) ? pair.b : pair.a;
-        if (!mine) {
-          bar.innerHTML = 'You own neither <b>' + esc(pair.a.name) + '</b> nor <b>' + esc(pair.b.name) +
-            '</b>, so you cannot jinx them.';
-          bar.hidden = false;
-          return;
-        }
-        if (pair.linked) {
-          bar.innerHTML = '<b>' + esc(pair.a.name) + '</b> and <b>' + esc(pair.b.name) +
-            '</b> are already jinxed. Saving replaces their rule.';
-          bar.hidden = false;
-        } else {
-          bar.hidden = true;
-        }
-
-        $('jx-mine').value = mine.slug;
-        if (window.setJinxField) {
-          window.setJinxField($('jx-other'), other.name,
-            other.official ? '' : other.slug,
-            other.official ? other.id.replace(/^o:/, '') : '');
-        }
-        $('jx-add-section').hidden = false;
-        $('jx-add-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        $('jx-text').focus();
-      }
-
       // ---------- add a jinx ----------
       /* Shown only when the reader has a character to hang a jinx off. The
          Worker checks ownership again on POST: convenience, not security. */
@@ -759,19 +711,19 @@
           .then(function (acct) {
             var chars = (acct && acct.characters) || [];
             if (!chars.length) return;
-            var sel = $('jx-mine');
+            var mineSel = $('jx-mine');
             chars.slice().sort(function (a, b) {
               return String(a.name || '').localeCompare(String(b.name || ''));
             }).forEach(function (c) {
               var o = document.createElement('option');
               o.value = c.slug;
               o.textContent = c.name + (c.status === 'draft' ? ' (draft)' : '');
-              sel.appendChild(o);
+              mineSel.appendChild(o);
             });
             chars.forEach(function (c) { MY_CHARS[c.slug] = c.name; });
             $('jx-add-section').hidden = false;
-            $('jg-f-link').hidden = false;
             if (window.mountJinxPicker) window.mountJinxPicker($('jx-other'));
+            if (current) drawCard();
           })
           .catch(function () { /* logged out: the form stays hidden */ });
       }
@@ -816,30 +768,24 @@
       });
 
       // ---------- go ----------
-      fetch('/api/jinxes', { credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          DATA = d || { nodes: [], edges: [] };
-          DATA.nodes.forEach(function (n) { NODE[n.id] = n; });
-          // Adjacency, so the creator filter can keep each of their
-          // characters' jinx partners on screen too.
-          DATA.edges.forEach(function (e) {
-            (NEIGHBOURS[e.a] = NEIGHBOURS[e.a] || []).push(e.b);
-            (NEIGHBOURS[e.b] = NEIGHBOURS[e.b] || []).push(e.a);
-          });
-          buildAuthorList();
-          if (!DATA.edges.length) {
-            $('jg-summary').textContent = 'No jinxes on the wiki yet.';
-            $('jx-list').innerHTML = '<p style="opacity:.7">No jinxes yet. Add the first one above.</p>';
-          } else {
-            buildGraph();
-            renderList();
-          }
+      function json(u) { return fetch(u, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+      Promise.all([json('/api/jinxes'), json('/api/jinx-sets').catch(function () { return { sets: [] }; })])
+        .then(function (res) {
+          build(res[0] || {}, res[1]);
+          if (!E.length) { view.innerHTML = '<p class="jf-empty">No jinxes on the wiki yet.</p>'; return; }
+          function setNamed(nm) { return SETS.filter(function (s) { return s.name === nm; })[0]; }
+          function charNamed(nm) { return N.filter(function (n) { return n.name === nm; })[0]; }
+          var starts = [setNamed('Trouble Brewing'), setNamed('Bad Moon Rising'), setNamed('Sects & Violets'),
+            setNamed('Experimental Characters'), setNamed('Trouble Homebrewing'), charNamed('Huli Jing')].filter(Boolean);
+          $('jf-starts').innerHTML = '<span class="jf-lbl" style="color:var(--parch);opacity:.75">Try</span>' + starts.map(function (x, k) {
+            return '<button type="button" class="filter-chip" data-k="' + k + '">' + ico(x, 18) + esc(x.name) + '</button>';
+          }).join('');
+          $('jf-starts').addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) focus(starts[+b.dataset.k]); });
+          focus(fromUrl() || starts[0] || SETS[0] || N[0]);
           setupForm();
         })
         .catch(function () {
-          $('jg-summary').textContent = 'Could not load the jinx list.';
-          $('jx-list').innerHTML = '<p style="opacity:.7">Could not load the jinx list.</p>';
+          view.innerHTML = '<p class="jf-empty">Could not load the jinxes. Try reloading the page.</p>';
         });
     })();
   </script>

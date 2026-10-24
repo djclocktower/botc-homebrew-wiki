@@ -147,6 +147,8 @@
  *   GET  /api/tag-counts      -> characters per tag, for /tags (see SUMMARIES)
  *   GET  /api/collection-tiles -> member counts + icons per collection, for
  *                                /all-collections (see SUMMARIES)
+ *   GET  /api/jinx-sets       -> the characters on every published script and
+ *                                collection, for the /jinxes focus map (see SUMMARIES)
  *   GET  /api/did-you-mean    -> ?path=: the 404 page's four best suggestions
  *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
  *                                the /jinxes index and its relationship graph
@@ -6857,12 +6859,19 @@ async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
                                   tagline, header, logo, curata, v, count,
                                   icons: [{art, v}]}]}
 
-   Both are public, published-only and identical for every reader. The rules
+     GET /api/jinx-sets         {sets: [{type: 'script'|'collection', key, name,
+                                  author, total, members: [slug]}]}
+
+   All three are public, published-only and identical for every reader. The rules
    are the pages' own, moved here unchanged: a tag counts once per occurrence
    in a character's comma list, keyed title-cased like tags.html always did;
    a collection's members come from PageRender.resolveCollectionMembers over
    the grid in feed order, only collections with at least one member are
    listed, and the icons are one per team first, then the rest, art only.
+   /jinxes maps a whole script or collection, so it needs the rosters: a
+   script's is its `characters` list as stored (an `off-` slug is an official
+   character), a collection's goes through the same membership rule. `key` is
+   what the page links to (/s/{slug}, /collection/{id}).
    Bump SUMMARY_FORMAT_V if either shape changes. */
 const SUMMARY_FORMAT_V = 1;
 const _summaryCache = new Map();    // name -> { version, body }
@@ -6899,6 +6908,23 @@ function collectionTiles(chars, collections) {
   }
   return { collections: out };
 }
+function jinxSets(chars, collections, scripts) {
+  const sets = [];
+  for (const sc of scripts) {
+    const members = (Array.isArray(sc.characters) ? sc.characters : []).map(x => String(x || '')).filter(Boolean);
+    if (members.length && sc.slug) {
+      sets.push({ type: 'script', key: sc.slug, name: sc.name || sc.slug, author: sc.author || '', total: members.length, members });
+    }
+  }
+  for (const coll of collections) {
+    const members = PageRender.resolveCollectionMembers(coll, chars).map(c => c.slug).filter(Boolean);
+    if (members.length && (coll.id || coll.slug)) {
+      sets.push({ type: 'collection', key: coll.id || coll.slug, name: coll.displayName || coll.slug || coll.id,
+        author: coll.author || '', total: members.length, members });
+    }
+  }
+  return { sets };
+}
 const SUMMARIES = {
   'tag-counts': {
     deps: FEED_DEPS.characters,
@@ -6912,6 +6938,17 @@ const SUMMARIES = {
         cachedFeedBody(env, ctx, 'collections', 'browse')
       ]);
       return collectionTiles(JSON.parse(chars), JSON.parse(colls));
+    }
+  },
+  'jinx-sets': {
+    deps: [...FEED_DEPS.characters, 'script'],
+    async build(env, ctx) {
+      const [chars, colls, scripts] = await Promise.all([
+        cachedFeedBody(env, ctx, 'characters', 'grid'),
+        cachedFeedBody(env, ctx, 'collections', 'browse'),
+        cachedFeedBody(env, ctx, 'scripts', 'browse')
+      ]);
+      return jinxSets(JSON.parse(chars), JSON.parse(colls), JSON.parse(scripts));
     }
   }
 };
@@ -9209,9 +9246,9 @@ const app = {
       }));
     }
 
-    // Counts for /tags and tiles for /all-collections (see SUMMARIES): small
-    // public answers instead of the whole grid feed.
-    if (method === 'GET' && (path === '/api/tag-counts' || path === '/api/collection-tiles')) {
+    // Counts for /tags, tiles for /all-collections and rosters for /jinxes
+    // (see SUMMARIES): small public answers instead of the whole grid feed.
+    if (method === 'GET' && (path === '/api/tag-counts' || path === '/api/collection-tiles' || path === '/api/jinx-sets')) {
       const summary = await cachedSummary(env, ctx, request, path.slice(5));
       const headers = { ...JSON_HEADERS, ETag: summary.etag, 'Cache-Control': FEED_CACHE_CONTROL };
       return summary.body === undefined
@@ -10342,8 +10379,8 @@ const app = {
     // ---------- JINX INDEX (the /jinxes page: list + relationship graph) ----------
     // Nodes are every character that takes part in a jinx: the wiki pages
     // themselves, plus the official characters they are jinxed with, which are
-    // what most of the edges actually point at. Official↔official jinxes are
-    // not here: this is a map of the homebrew wiki, not of the base game.
+    // what most of the edges actually point at. Official↔official jinxes come
+    // separately as `baseEdges`.
     if (method === 'GET' && path === '/api/jinxes') {
       let index;
       try {
@@ -10353,8 +10390,13 @@ const app = {
       }
       const officialIcons = await officialIconMap(env, url.origin).catch(() => ({}));
       const officialNames = await officialNameMap(env, url.origin).catch(() => ({}));
-      const officialIds = new Set((await loadOfficialRoles(env, url.origin).catch(() => []))
-        .map(r => r && r.id ? Render.slugId(r.id) : '').filter(Boolean));
+      // Team and edition per official id: the focus map colours official
+      // characters by team and can map a whole edition (Trouble Brewing…).
+      const officialRoles = {};
+      for (const r of await loadOfficialRoles(env, url.origin).catch(() => [])) {
+        if (r && r.id) officialRoles[Render.slugId(r.id)] = { team: r.team || '', edition: r.edition || '' };
+      }
+      const officialIds = new Set(Object.keys(officialRoles));
 
       const nodes = new Map();
       function addWiki(slug) {
@@ -10379,7 +10421,8 @@ const app = {
         if (nodes.has(id)) return id;
         const nm = officialNames[key] || name || key;
         nodes.set(id, {
-          id, slug: '', name: nm, team: '', creator: '', official: true,
+          id, slug: '', name: nm, team: (officialRoles[key] || {}).team || '', creator: '', official: true,
+          edition: (officialRoles[key] || {}).edition || '',
           // The 192px self-hosted copy (assets/icons-sm/{id}.webp, made by
           // migration/make-small-icons.js for every roles.json id) rather
           // than the CDN's 400px file or the 539px committed PNG.
@@ -10420,9 +10463,10 @@ const app = {
       });
       // Same edge-cache treatment as the JSON feeds: the index underneath is
       // already keyed by contentVersion, so the response can be too.
-      // `i2`: the node icons moved to thumbnails — a browser holding the old
-      // body under the old tag must not be told it is still current.
-      const etag = `W/"jinxes-v${await contentVersion(env)}-i2"`;
+      // `i2`: the node icons moved to thumbnails; `i3`: official nodes carry
+      // team and edition. A browser holding an older body under an older tag
+      // must not be told it is still current.
+      const etag = `W/"jinxes-v${await contentVersion(env)}-i3"`;
       if ((request.headers.get('If-None-Match') || '') === etag) {
         return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL } });
       }

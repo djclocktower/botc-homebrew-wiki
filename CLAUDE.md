@@ -112,6 +112,7 @@ Key dynamic behavior:
   thumbnails" scan, see "Caching"),
   **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
+  `GET /api/jinx-sets` for every script's and collection's roster,
   `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
   (`GET /api/bloodstar` reads a project on Bloodstar, `POST
   /api/bloodstar-art` copies one of its images into R2), admin tools
@@ -305,8 +306,8 @@ assets/
                        #team by assigning .value, which fires no event, so a
                        listener alone leaves an existing traveller's slots
                        reading "Alternate art".
-  official-jinxes.json Jinxes between two OFFICIAL characters, for the opt-in
-                       base-game layer on /jinxes. Generated, partial, with a
+  official-jinxes.json Jinxes between two OFFICIAL characters: the base-game
+                       jinxes on /jinxes and on script pages. Generated, partial, with a
                        `source` field inside; same treatment as night-order.json.
   suggest.js           mountSuggest(input, {source}): type-ahead on a plain text
                        field. The admin dashboard mounts it on EVERY box that
@@ -327,23 +328,6 @@ assets/
                        jinx no longer depends on the typed name matching later.
                        Shaped like night-order-picker.js on purpose. Used by
                        create.html, edit.html and /jinxes.
-  jinx-graph.js        The relationship map on /jinxes: hand-rolled SVG plus a
-                       small spring layout, no library and no CDN. Positions are
-                       seeded from a hash of the node id so the map looks the
-                       same every visit, and the simulation runs a fixed number
-                       of ticks and STOPS rather than animating forever. Read the
-                       header before touching the physics: REPEL_CAP, the
-                       DRAG_SLOP threshold and MIN_ICON_PX all exist because of
-                       specific bugs. NODE_GAP/LINK_REST set how far apart the
-                       icons sit; MIN_ICON_PX stops the opening view zooming out
-                       past legibility (fitting 172 nodes to a phone gives 8px
-                       icons), so the map may overflow and pan; "Fit all" is
-                       the deliberate way to see the whole shape. Every node
-                       keeps its computed homeX/homeY so resetLayout() can undo
-                       dragging without re-running the simulation. Link mode
-                       (setLinkMode + onPair) reuses the ordinary click to pick
-                       two characters. A long press or two-finger gesture would
-                       be both harder to find and easier to hit by accident.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token,
                        and the Favorite button — see favorites.js). The three
                        stacked buttons share one skin — .tog-ico (an outline
@@ -995,10 +979,31 @@ publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/autho
                        body images (R2 pages/), fact box, custom boxes, theme kit,
                        contents + comments toggles. ?p={slug} edits,
                        ?parentType=&parentSlug= starts a new one.
-jinxes.html            /jinxes: every jinx on the wiki, as a grouped list and an
-                       interactive map, both built from GET /api/jinxes so they
-                       cannot disagree. Creators can add a jinx to a character
-                       they own (POST /api/jinx). Linked from tools.html and the
+jinxes.html            /jinxes: the FOCUS MAP. One look-up bar finds a
+                       character, a script, a collection or an official edition
+                       (Trouble Brewing, Bad Moon Rising, Sects & Violets,
+                       Experimental), and the map draws just that: a set as a
+                       ring of its characters with what they are jinxed with
+                       round the outside, a character in the middle of its
+                       partners. Lines are faint until a character is tapped;
+                       the panel beside the map then lists its jinxes, and the
+                       whole focus is listed under the map. Official characters
+                       always show; a wiki character from another set is drawn
+                       faded and dotted, with a note that it only matters if
+                       played together. A jinx between an official character ON
+                       a set and a wiki character elsewhere is left out (it is
+                       that character's jinx; a script with the Spy would
+                       otherwise pull in 100+ strangers), except on an edition,
+                       where those are shown on request. Never draw every jinx
+                       at once again: 700+ characters and 2,000+ jinxes on one
+                       map is what this page replaced (the old jinx-graph.js).
+                       Built from GET /api/jinxes (official nodes carry `team`
+                       and `edition`) + GET /api/jinx-sets (a SUMMARIES entry:
+                       script rosters as stored, collections through
+                       resolveCollectionMembers). The URL follows the focus
+                       (?c= ?o= ?s= ?coll= ?ed=); ?c= is the /c/ page's "See
+                       this on the jinx map" link. Creators can add, edit and
+                       remove a jinx on a character they own (POST /api/jinx). Linked from tools.html and the
                        homepage browse cards; in the sitemap's staticPages.
 articles.html          /articles — every published STANDALONE ARTICLE (a wiki
                        page with no script or collection; see "Standalone
@@ -2830,10 +2835,9 @@ character (or a script's `jinxEdits`) may carry; the owner asked for the old
 - **`assets/official-jinxes.json`** holds jinxes between two OFFICIAL
   characters: the official list from `botc-release` (131 pairs, refreshed
   2026-10-23; the `source` and `note` fields say where from and how to
-  refresh it). They are an **opt-in layer** on `/jinxes`, off by default: the
-  base game's own rules would drown what this wiki made. Served in
-  `/api/jinxes` as `baseEdges`, drawn hidden so switching them on does not
-  move the layout.
+  refresh it). Served in `/api/jinxes` as `baseEdges`; on the `/jinxes`
+  focus map they are always drawn (official characters always show) and
+  light up brown, marked "Base game" in the lists.
   **On a script page they are always on**: `buildOfficialRoles(roles, night,
   officialJinxes)` hangs each pair on its `a` side's roster entry as a jinx
   naming `off-{b}`, so a script holding both ends lists it through
@@ -4829,7 +4833,7 @@ release.botc.app (another origin, cached ten minutes) to draw ~42 px.
 `/jinxes` nodes also take the versioned 192px thumbnail for a wiki
 character (they took the full art, unversioned: ~65 MB for one visit);
 the jinx index rows carry `v` for it (cache key `&s=2`, `/api/jinxes` ETag
-`-i2`). The static pages' inline CSS uses `parchment.webp` (10 KB, same
+`-i2`, now `-i3`). The static pages' inline CSS uses `parchment.webp` (10 KB, same
 `cover` look) instead of `parchment.jpg` (64 KB). The top-bar skull and badge
 WebPs were re-encoded at ~3x their drawn height (16 → 12 KB, 17 → 8 KB) in
 place — the same picture, so a cached old copy looks identical; that is the

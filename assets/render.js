@@ -96,7 +96,7 @@
   var ART_LABELS_OTHER = ['Main', 'Alternate', 'Alternate 2'];
   /* Both spellings. /api/character validates no team, the importers normalise
      'traveler' but nothing else does, and two other files already defend
-     against it (jinx-graph.js, dashboard.html). */
+     against it (jinxes.html, dashboard.html). */
   function isTraveller(team) { return /^travell?er$/i.test(String(team == null ? '' : team)); }
 
   /* The owner's wiki-only display size for the /c/ emblem, as a whole
