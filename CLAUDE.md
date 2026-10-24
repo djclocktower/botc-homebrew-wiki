@@ -4477,7 +4477,10 @@ this), the app view's foot flowers (`appGarland`) and its night corner art.
 header card, the App view card and the Elements panel. A pick just writes the
 path into `el[key].src`, the same field an upload writes an asset id to, so
 the renderers, the design file and the export need nothing new. A skull is
-resized as it is picked to the built-in one's height (`ratio`); a divider
+resized as it is picked to 0.85 of the built-in one's height (`ratio`), and
+the title hug gives a picked or uploaded skull a gap rather than the
+built-in one's tuck (its leaves run to its edge, so the first letter sat on
+them); a divider
 carries its own shape (`fit`, `h`), and only the built-in one gets the cap.
 `DECOR_STICKERS` is the rest of the pack behind "+ Decoration" in the
 Elements card, added as image stickers by path rather than stored as assets.

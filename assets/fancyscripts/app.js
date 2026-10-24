@@ -776,8 +776,9 @@ function makeToggle(parent, label, b, extra) {
 
 /* a row of pictures to pick an element's art from (ART_CHOICES): the
    built-in art, the official decorations in decor/, and for the garland
-   none at all. A skull is resized as it is picked so it comes in at the
-   height of the built-in one, whatever its shape. */
+   none at all. A skull is resized as it is picked so it comes in a little
+   under the height of the built-in one (0.85), whatever its shape: the
+   pack's skulls carry leaves out to their edges. */
 const STOCK_SKULL_RATIO = 336 / 501;
 const STOCK_THUMB = {
   skull: ART + 'skull.png', dividers: ART + 'divider-taper.png', garland: ART + 'garland-thumb.webp',
@@ -805,7 +806,7 @@ function makeArtPicker(parent, label, key) {
     btn.append(cap);
     btn.addEventListener('click', () => {
       const patch = { src: c.src };
-      if (key === 'skull') patch.scale = c.ratio ? Math.round(Math.min(1.2, Math.max(0.45, STOCK_SKULL_RATIO / c.ratio)) * 100) / 100 : 1;
+      if (key === 'skull') patch.scale = c.ratio ? Math.round(Math.min(1.2, Math.max(0.45, 0.85 * STOCK_SKULL_RATIO / c.ratio)) * 100) / 100 : 1;
       elSet(options, key, patch);
       commit();
       syncControls();

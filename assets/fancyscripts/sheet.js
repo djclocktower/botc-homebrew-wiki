@@ -1310,8 +1310,11 @@ export function fitTitle(sheet, options) {
   // The insets tuck the decor into the swash title's side bearings. A logo
   // or an uploaded title image has no bearings, so the same tuck put the
   // skull on top of the picture; an image is given a small gap instead.
+  // Only the built-in skull fades out at its right edge: a picked or
+  // uploaded one is drawn to its edge, and the swash overhangs its box, so
+  // it gets a wider gap.
   const isImg = tbox.tagName === 'IMG';
-  const skullIn = isImg ? -0.6 : 1.49, flRIn = isImg ? -0.6 : 0.58;
+  const skullIn = isImg ? -0.6 : skT.src ? -1.4 : 1.49, flRIn = isImg ? -0.6 : 0.58;
   // never ride onto the ribbon, however long the name gets
   const skullLeft = Math.max(9.2, leftPct + skullIn - skullW + skT.dx);
   const flLLeft = skullLeft - skT.dx + 1.24 - flLW + flLT.dx;
