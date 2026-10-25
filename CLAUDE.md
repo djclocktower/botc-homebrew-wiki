@@ -1716,7 +1716,8 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   links (`shape` rides along too), never in the export.
 - **Copy as text** (`SBTools.textExport`): plain, Discord, Markdown or names
   only; abilities, jinxes, night order, house rules and notes as options;
-  `.txt` download. The night and jinx tabs have their own copy buttons.
+  `.txt` download. The jinx tab has its own copy button; the night tab always
+  shows icons.
 - **From this wiki**: the Import panel's picker lists `scripts.json` and
   `collections.json` (fetched on first focus) and loads `/api/page-json` —
   the same export the page's Download JSON button saves — through the

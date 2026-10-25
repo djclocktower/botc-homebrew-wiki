@@ -1062,7 +1062,7 @@
   }
   function nightView() {
     var o = prefs.night || {};
-    return { reminders: o.reminders !== false, icons: !!o.icons, bagOnly: !!o.bagOnly };
+    return { reminders: o.reminders !== false, icons: true, bagOnly: !!o.bagOnly };
   }
   /* The night lists for the characters in tonight's bag alone, when asked
      — the sheet to run the game from. The arrangement still applies. */
@@ -1078,23 +1078,7 @@
     if (!wrap) return;
     wrap.hidden = !bagHasPicks();
   }
-  /* The night order and the jinxes as text, for a Discord post or a
-     storyteller's notes — the lists alone, not the whole script. */
-  function nightText() {
-    var PR = window.PageRender;
-    if (!PR || !PR.nightItems) return '';
-    var L = PR.nightItems(nightEntries(), getNightOrder());
-    var v = nightView(), lines = [];
-    if (v.bagOnly && bagHasPicks()) lines.push("TONIGHT'S BAG");
-    [['first', 'FIRST NIGHT'], ['other', 'OTHER NIGHTS']].forEach(function (col) {
-      var items = L[col[0]] || [];
-      if (!items.length) return;
-      lines.push(col[1]);
-      items.forEach(function (it, i) { lines.push((i + 1) + '. ' + it.c.name + (v.reminders && it.r ? ': ' + it.r : '')); });
-      lines.push('');
-    });
-    return lines.join('\n').trim();
-  }
+  /* The jinxes as text, for a Discord post or a storyteller's notes. */
   function jinxText() {
     return scriptJinxes().map(function (j) { return j.a.name + ' & ' + j.b.name + ': ' + (j.text || ''); }).join('\n');
   }
@@ -2831,9 +2815,8 @@
     // ── the night and jinx tabs' own options ──
     var nv = nightView();
     $('sb-night-rem').checked = nv.reminders;
-    $('sb-night-icons').checked = nv.icons;
     $('sb-night-bag').checked = nv.bagOnly;
-    [['sb-night-rem', 'reminders'], ['sb-night-icons', 'icons'], ['sb-night-bag', 'bagOnly']].forEach(function (pair) {
+    [['sb-night-rem', 'reminders'], ['sb-night-bag', 'bagOnly']].forEach(function (pair) {
       $(pair[0]).addEventListener('change', function () {
         prefs.night = prefs.night || {};
         prefs.night[pair[1]] = this.checked;
@@ -2841,7 +2824,6 @@
         if (nightUI) nightUI.render();
       });
     });
-    $('sb-night-copy').addEventListener('click', function () { copyPlain(nightText(), this, 'nobody on this script acts at night'); });
     $('sb-jinx-icons').checked = !(prefs.jinx && prefs.jinx.icons === false);
     $('sb-jinx-icons').addEventListener('change', function () {
       prefs.jinx = prefs.jinx || {};

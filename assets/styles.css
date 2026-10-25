@@ -4793,7 +4793,7 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 .sbx-team-head {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
   font-size: 1rem; color: var(--parch); margin: 0 0 7px;
-  padding-bottom: 4px; border-bottom: 2px solid rgba(183,156,111,.5);
+  padding-bottom: 4px;
 }
 .sbx-team-head span { color: rgba(236,225,200,.5); font-size: .8rem; }
 
@@ -4946,7 +4946,10 @@ html.sbx-page .nav-dropdown { z-index: 80; }
   /* Nothing to widen: the drawer's width is the screen's. */
   #sbx-wide { display: none; }
   .sbx-close-mob { display: block; }
-  .sbx-b-open { display: inline-flex; }
+  /* the menu mark centred on the word beside it, with a gap: inline-flex
+     drops the space typed between them and lines the svg up at the top */
+  .sbx-b-open { display: inline-flex; align-items: center; gap: .45em; }
+  .sbx-b-open .sbi { width: 1.1em; height: 1.1em; vertical-align: 0; }
   .sbx-add-rows { grid-template-columns: minmax(0, 1fr); }
   /* Share the first row with the drawer button rather than taking one of
      its own: on a phone the bar is four wrapped rows before the script
@@ -5071,16 +5074,16 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 .sbx-ch-jx { color: #8a3d3d; border-color: rgba(138,61,61,.45); background: rgba(138,61,61,.08); }
 
 /* team colours on the headings — light enough to read on the purple */
-.sbx-team-head { transition: color .12s, border-color .12s; }
-.sbx-team[data-team="townsfolk"] .sbx-team-head { color: #7fb4ee; border-bottom-color: rgba(127,180,238,.55); }
-.sbx-team[data-team="outsider"] .sbx-team-head { color: #7fd0e2; border-bottom-color: rgba(127,208,226,.5); }
-.sbx-team[data-team="minion"] .sbx-team-head { color: #f0a070; border-bottom-color: rgba(240,160,112,.5); }
-.sbx-team[data-team="demon"] .sbx-team-head { color: #ef6b6b; border-bottom-color: rgba(239,107,107,.55); }
-.sbx-team[data-team="traveller"] .sbx-team-head { color: #c9a0e6; border-bottom-color: rgba(201,160,230,.5); }
-.sbx-team[data-team="fabled"] .sbx-team-head { color: #e6c766; border-bottom-color: rgba(230,199,102,.5); }
-.sbx-team[data-team="loric"] .sbx-team-head { color: #8fd49e; border-bottom-color: rgba(143,212,158,.5); }
-.sbx-team[data-team="other"] .sbx-team-head { color: #c4a6e8; border-bottom-color: rgba(196,166,232,.5); }
-.sbx-no-accent .sbx-team .sbx-team-head { color: var(--parch); border-bottom-color: rgba(183,156,111,.5); }
+.sbx-team-head { transition: color .12s; }
+.sbx-team[data-team="townsfolk"] .sbx-team-head { color: #7fb4ee; }
+.sbx-team[data-team="outsider"] .sbx-team-head { color: #7fd0e2; }
+.sbx-team[data-team="minion"] .sbx-team-head { color: #f0a070; }
+.sbx-team[data-team="demon"] .sbx-team-head { color: #ef6b6b; }
+.sbx-team[data-team="traveller"] .sbx-team-head { color: #c9a0e6; }
+.sbx-team[data-team="fabled"] .sbx-team-head { color: #e6c766; }
+.sbx-team[data-team="loric"] .sbx-team-head { color: #8fd49e; }
+.sbx-team[data-team="other"] .sbx-team-head { color: #c4a6e8; }
+.sbx-no-accent .sbx-team .sbx-team-head { color: var(--parch); }
 
 /* ── layouts ── */
 /* Cards: the browse grid's tiles, one to a character. */
@@ -5416,8 +5419,8 @@ button.sbx-counts:empty { display: none; }
 /* headings that stay put while a long roster scrolls under them */
 .sbx .sbx-team-head {
   position: sticky; top: -12px; z-index: 5;
-  background: linear-gradient(180deg, rgba(26,10,31,.97) 70%, rgba(26,10,31,0));
-  padding-top: 8px; margin-top: -8px;
+  background: #1a0a1f;
+  padding: 8px 10px 6px; margin-top: -8px;
 }
 .sbx-team-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .sbx-team-tools { margin-left: auto; display: flex; gap: 3px; opacity: 0; transition: opacity .12s; }
