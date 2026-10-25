@@ -42,7 +42,7 @@ import {
   el, img, px, clamp, solveFit, wrappedRunLineCount, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter,
   ICON_IDENTITY, drawIcon,
 } from './util.js';
-import { pageFrame, renderBackground, renderStickers, resolveSrc, markSelected } from './elements.js';
+import { pageFrame, renderBackground, renderStickers, resolveSrc, markSelected, watermark } from './elements.js';
 import { appendRibbon } from './sheet.js';
 
 const G = NIGHT_RIBBON;
@@ -1166,6 +1166,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
     listWrap.append(col);
   });
   sheet.append(listWrap);
+  if (ctx.forExport) sheet.append(watermark(50, PAGE_EM - 1.9));
 
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;

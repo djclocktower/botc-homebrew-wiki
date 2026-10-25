@@ -4477,6 +4477,17 @@ jinx page and the back cover have one style.
   script's own background image") otherwise set its width on a phone and
   pushed the whole page sideways once a card holding one was open.
 
+### The watermark
+
+Every EXPORTED page says "botchomebrew.wiki" (`watermark()` in
+elements.js); the preview never does. Each renderer adds it only when
+`ctx.forExport`, so it is in the PNGs, the share JPEG, Copy and the PDF
+alike. On a script sheet (both styles) it sits under the footnote,
+centred on the footnote's own x, which is the garland oval's centre; with
+no footnote it takes the oval's middle. The night and jinx pages put it
+at the foot, centred, and the back cover in light ink. The owner picked
+this placement from six mockups; ask before moving it.
+
 ### The Bootlegger tick
 
 `options.bootlegger` puts the Bootlegger — the Fabled that says a script

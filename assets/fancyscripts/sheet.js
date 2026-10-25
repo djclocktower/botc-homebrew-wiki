@@ -41,7 +41,7 @@ import {
   normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
 } from './util.js';
 import {
-  ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected,
+  ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark,
 } from './elements.js';
 import { runPixelJob } from './jobs.js';
 
@@ -1064,6 +1064,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   const fT = elGet(options, 'footnote');
   // a garland from the pack: centred in its oval, wherever it is moved
   const oval = !gaT.hidden && garlandOval(gaT.src, 88, gaT.scale, gaT.dy);
+  let footEnd = null; // where the footnote's last line ends, for the watermark under it
   if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) &&
       !fT.hidden && (isLastPage || options.footnoteEveryPage)) {
     const custom = (options.footnoteText || '').trim();
@@ -1082,10 +1083,13 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       height: px(e(0.705)),
       width: px(e(0.743)),
     }, '*'));
+    const footX = SHEET.footnoteCX + (oval ? gaT.dx : 0) + fT.dx;
+    const footY = fT.dy + (oval ? footInOval(oval, custom, SHEET.footnoteLine) : footEm(SHEET.footnoteTop));
+    footEnd = { x: footX, y: footY + (custom ? custom.split('\n').length : 2) * SHEET.footnoteLine * fT.scale };
     const foot = el('div', {
       position: 'absolute',
-      left: (SHEET.footnoteCX + (oval ? gaT.dx : 0) + fT.dx) + '%',
-      top: px(e(fT.dy + (oval ? footInOval(oval, custom, SHEET.footnoteLine) : footEm(SHEET.footnoteTop)))),
+      left: footX + '%',
+      top: px(e(footY)),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',
@@ -1108,7 +1112,10 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     }
     sheet.append(mark(foot, 'el:footnote'));
   }
-
+  if (ctx.forExport) {
+    sheet.append(footEnd ? watermark(footEnd.x, footEnd.y + 0.1, false, 0.95, 0.05)
+      : watermark(SHEET.footnoteCX + (oval ? gaT.dx : 0), oval ? (oval.top + oval.bottom) / 2 - 0.5 : footEm(SHEET.footnoteTop) + 1, false, 0.95, 0.05));
+  }
 
   // the rest of the stickers last, over everything
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);

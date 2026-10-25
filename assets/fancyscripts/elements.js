@@ -19,7 +19,7 @@
  * the drag layer (drag.js) reads nothing else. Browser-only.
  */
 
-import { fontFamily, EL_DEFAULT, stickerLayer, SHEET, SHEET_W, SHEET_H } from './script.js';
+import { fontFamily, EL_DEFAULT, stickerLayer, SHEET, SHEET_W, SHEET_H, U, PAGE_EM } from './script.js';
 import { el, img, px, clamp } from './util.js';
 
 export const ART = '/assets/fancyscripts/art/';
@@ -34,6 +34,30 @@ export function resolveSrc(v) {
   if (!s) return '';
   if (s.startsWith('asset:')) return (assetResolver && assetResolver(s)) || '';
   return s;
+}
+
+/* ── the watermark ─────────────────────────────────────────────────────
+   "botchomebrew.wiki" on every exported page, never in the preview.
+   Centred on `cx` (% of the page width) with its top `topEm` down the
+   page, kept off the bottom edge; `light` for a dark page (the back). */
+export const WATERMARK = 'botchomebrew.wiki';
+export function watermark(cx, topEm, light, sizeEm = 1, spacing = 0.2) {
+  return el('div', {
+    position: 'absolute',
+    left: cx + '%',
+    top: px(Math.min(topEm, PAGE_EM - 1.6) * U),
+    transform: 'translateX(-50%)',
+    paddingLeft: spacing + 'em', // the letter spacing trails the last letter; this centres the word
+    fontFamily: fontFamily('trade'),
+    fontSize: px(sizeEm * U),
+    lineHeight: '1',
+    letterSpacing: spacing + 'em',
+    whiteSpace: 'nowrap',
+    color: light ? '#f3ead2' : '#3a2a1a',
+    opacity: light ? '0.8' : '0.7',
+    pointerEvents: 'none',
+    zIndex: '60',
+  }, WATERMARK);
 }
 
 /* ── the page frame ──────────────────────────────────────────────────── */

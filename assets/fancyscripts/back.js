@@ -37,9 +37,9 @@
  * Browser-only (canvas + DOM) — do not import from the Worker.
  */
 
-import { BACK_BASE, SHEET_W, SHEET_H, U } from './script.js';
+import { BACK_BASE, SHEET_W, SHEET_H, U, PAGE_EM } from './script.js';
 import { px, clamp, hexHsl } from './util.js';
-import { ART, pageFrame, renderTextElement, renderStickers, resolveSrc, markSelected } from './elements.js';
+import { ART, pageFrame, renderTextElement, renderStickers, resolveSrc, markSelected, watermark } from './elements.js';
 import { runPixelJob } from './jobs.js';
 
 /* working canvas: print resolution, the page's own shape (3:4 unless the
@@ -234,6 +234,7 @@ export function renderBack(script, options, requestRender, ui) {
   (back.texts || []).forEach((t, i) => {
     root.append(renderTextElement(t, t.locked ? '' : 'back:' + i, selected === 'back:' + i));
   });
+  if (ui && ui.forExport) root.append(watermark(50, PAGE_EM - 2.2, true));
   for (const n of renderStickers(ui && ui.stickers, selected, 'front')) root.append(n);
 
   return root;
