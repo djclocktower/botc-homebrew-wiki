@@ -1667,8 +1667,8 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   settle pass (`paintJinxHints`, touching only the rows whose mark changed).
 - **Each roster row** has, under its ✕, a dots button that opens the peek
   card (the same card a hover or a long press opens, but it stays until
-  closed) and, on a homebrew character, a gear that opens it with the
-  ability in a text box. **That ability is the script's, not the wiki's**:
+  closed). On a homebrew character the card's gear button, "Edit ability",
+  turns the ability into a text box. **That ability is the script's, not the wiki's**:
   `meta.abilities[slug]`, read by the roster, the peek card, Copy as text
   and the export (`withAbilities()`), carried in share links, and never
   written to the character. An official character has no gear, because it

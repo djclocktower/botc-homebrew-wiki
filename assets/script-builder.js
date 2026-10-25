@@ -601,8 +601,6 @@
           '" aria-label="Remove ' + esc(c.name) + '">' + ico('close') + '</button>' +
         '<button type="button" class="sbx-ch-b" data-ch-peek="' + esc(c.slug) +
           '" aria-label="More about ' + esc(c.name) + '" title="More">' + ico('more') + '</button>' +
-        (c.official ? '' : '<button type="button" class="sbx-ch-b" data-ch-edit="' + esc(c.slug) +
-          '" aria-label="Edit the ability of ' + esc(c.name) + ' on this script" title="Edit the ability for this script">' + ico('cog') + '</button>') +
       '</span>' +
     '</div>';
   }
@@ -2560,11 +2558,11 @@
       }
       var x = e.target.closest('.sbx-ch-x');
       if (x) { removeSlug(x.getAttribute('data-slug')); return; }
-      var pk = e.target.closest('button[data-ch-peek], button[data-ch-edit]');
+      var pk = e.target.closest('button[data-ch-peek]');
       if (pk) {
-        var r = pk.getBoundingClientRect(), ed = pk.hasAttribute('data-ch-edit');
+        var r = pk.getBoundingClientRect();
         hidePeek();
-        showPeek(pk.getAttribute(ed ? 'data-ch-edit' : 'data-ch-peek'), r.left, r.bottom, ed);
+        showPeek(pk.getAttribute('data-ch-peek'), r.left, r.bottom);
         peekSticky = true;
         return;
       }
@@ -2774,7 +2772,7 @@
       closeMenu();
       // A peek opened from a row's button closes on a click anywhere else.
       if (peekSticky && e.target.isConnected !== false && e.target.closest &&
-          !e.target.closest('#sbx-peek') && !e.target.closest('[data-ch-peek], [data-ch-edit]')) hidePeek();
+          !e.target.closest('#sbx-peek') && !e.target.closest('[data-ch-peek]')) hidePeek();
       if (!openPopId) return;
       // A target no longer in the document was re-rendered by its own
       // handler (a preset button inside the popover); that is never a click
