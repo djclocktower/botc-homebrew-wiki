@@ -1177,6 +1177,12 @@
      slug is '@' + id (no identity has an '@', so the arrangement can store
      them beside the characters and an owner can put a character either side
      of one). Without NIGHT_META they are simply absent. */
+  /* ':reminder:' marks where the official app places a reminder token. A
+     list has no token to place, so it is dropped — in any case, because
+     homebrew text writes ':Reminder:' and it was printed as words. */
+  function listReminder(t) {
+    return String(t || '').replace(/:reminder:/gi, '').replace(/\s{2,}/g, ' ').trim();
+  }
   function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
     if (!buildSchema) return { first: [], other: [] };
@@ -1184,8 +1190,8 @@
     (entries || []).forEach(function (c) {
       var s;
       try { s = buildSchema(c); } catch (e) { return; }
-      if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: s.firstNightReminder || '' });
-      if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: s.otherNightReminder || '' });
+      if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: listReminder(s.firstNightReminder) });
+      if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: listReminder(s.otherNightReminder) });
     });
     (NIGHT_META || []).forEach(function (m) {
       var t = NIGHT_MARK_TEXT[m.id] || { name: m.id, r: '' };
@@ -1349,26 +1355,94 @@
   }
 
   /* The id the exported JSON uses for a character, the same one buildSchema
-     writes, so a jinx can point at it. */
-  function exportId(c) {
+     writes, so a jinx, a night list and the roster all name it identically.
+     Render.exportId is the rule (name + creator + set); `opts` is the
+     script's or collection's own export settings plus the set the export is
+     FOR, so every character in one file is qualified by that file's page.
+     Without render.js this falls back to the bare squashed name, which is
+     what the wiki wrote before ids were qualified. */
+  function exportId(c, opts) {
+    var f = dep('exportId');
+    if (f) return f(c, opts);
     var slugId = dep('slugId');
     return c.jsonId || (slugId ? slugId(c.name) : String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+  }
+
+  /* The export settings a script or collection carries, as buildSchema wants
+     them. `set` is the page the export is for — "the collection or script
+     it's in" — so the same character exports under this script's name here
+     and under that collection's name there, and a tool loading both sees two
+     entries rather than one silently overwriting the other. */
+  function exportOpts(sc, setName) {
+    var e = (sc && sc.exportIds) || {};
+    return {
+      mode: e.mode || 'full',
+      prefix: e.prefix || '',
+      suffix: e.suffix || '',
+      set: setName === undefined ? undefined : (setName || '')
+    };
+  }
+
+  /* A jinx's id exactly as the character stored it — what the export falls
+     back to when the target is not on this script and so cannot be qualified
+     against it. */
+  function rawJinxId(j) {
+    var slugId = dep('slugId');
+    return j.id || (slugId ? slugId(j.name || '') : norm(j.name));
+  }
+
+  /* The id every jinx on this export writes for its target.
+
+     A jinx has to meet its target INSIDE the file — the app reads jinxes off
+     the characters and pairs them by id — and the id a character exports
+     under is now qualified (Render.exportId), while the id a jinx stored is
+     whatever its writer or an import typed years ago. So a jinx whose target
+     is on this script is rewritten to that target's exported id; one whose
+     target is not keeps the raw id, which is the best answer there is.
+
+     `host` is the character whose jinx it is, which is what settles a name
+     more than one page answers to (Render.jinxLookupKeys, gotcha 8).
+     Render.jinxTargetCheck is the shared resolver, so this cannot disagree
+     with the jinx list the page itself draws — and it leaves an OFFICIAL
+     character's id alone, because that id is the app's own key for a
+     character it already ships. */
+  function jinxIdWriter(entries, xo) {
+    var jinxCharIndex = dep('jinxCharIndex');
+    var jinxTargetCheck = dep('jinxTargetCheck');
+    if (!jinxCharIndex || !jinxTargetCheck) return null;
+    var index = jinxCharIndex(entries);
+    return function (host) {
+      return function (j) {
+        var chk = jinxTargetCheck(j, host, index);
+        if (chk.official || !chk.picked) return rawJinxId(j);
+        return exportId(chk.picked, xo);
+      };
+    };
   }
 
   /* Per-character jinx lists for the export, but ONLY for the characters this
      script's own jinx edits actually touch. Everyone else exports exactly what
      they always did. Returns null when the script has no jinx edits at all. */
-  function jinxExportMap(entries, edits) {
+  function jinxExportMap(entries, edits, xo) {
     edits = edits || {};
+    xo = xo || {};
     var off = Array.isArray(edits.off) ? edits.off : [];
     var add = Array.isArray(edits.add) ? edits.add : [];
     if (!off.length && !add.length) return null;
 
+    // `byId` answers "is this jinx's target on this script", and it is asked
+    // with the id the CHARACTER STORED, so it has to hold every shape a jinx
+    // can name a target by: the id this export writes, the identity, and the
+    // bare name a jinx typed by hand carries. Keying it on the exported id
+    // alone left every hand-typed jinx looking off-script, which kept it as
+    // written AND rebuilt it from the script's list — the same jinx twice.
     var bySlug = Object.create(null), byId = Object.create(null);
     (entries || []).forEach(function (c) {
       bySlug[c.slug] = c;
-      byId[exportId(c)] = c;
-      byId[String(c.slug || '').replace(/-/g, '')] = c;
+      [exportId(c, xo), c.jsonId, c.name, c.slug].forEach(function (k) {
+        var key = norm(k);
+        if (key && !byId[key]) byId[key] = c;
+      });
     });
     var touched = Object.create(null);
     off.forEach(function (k) {
@@ -1387,14 +1461,13 @@
         var idKey = String(j.id || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         return !byId[idKey];
       }).map(function (j) {
-        // The same id the character's own export would write for this jinx
-        // (render.js jinxExportId), so the two cannot disagree.
-        var jid = dep('jinxExportId');
-        return { id: jid ? jid(j, c) : (j.id || exportId({ name: j.name })), reason: j.text || j.reason || '' };
+        // The target is NOT on this script, so there is no entry to qualify
+        // this against: the id stays exactly as the character stored it.
+        return { id: j.id || rawJinxId(j), reason: j.text || j.reason || '' };
       });
       final.forEach(function (j) {
         if (j.a !== c) return;
-        kept.push({ id: exportId(j.b), reason: j.text });
+        kept.push({ id: exportId(j.b, xo), reason: j.text });
       });
       // Only characters whose jinxes actually CHANGED go in the map. Switching
       // a jinx off touches both ends of the pair, but the text usually lives
@@ -1426,12 +1499,12 @@
   var NIGHT_META = null;
   function setNightMeta(list) { NIGHT_META = Array.isArray(list) ? list : null; }
 
-  function nightSequences(entries, nightOrder) {
+  function nightSequences(entries, nightOrder, xo) {
     if (!nightOrder || (!(nightOrder.first || []).length && !(nightOrder.other || []).length)) return null;
     if (!NIGHT_META || !NIGHT_META.length) return null;
     var lists = nightItems(entries, nightOrder);
     function seq(which) {
-      return lists[which].map(function (it) { return it.mark || exportId(it.c); });
+      return lists[which].map(function (it) { return it.mark || exportId(it.c, xo); });
     }
     return { first: seq('first'), other: seq('other') };
   }
@@ -1497,6 +1570,20 @@
     var buildSchema = dep('buildSchema');
     sc = sc || {};
     opts = opts || {};
+    /* The set every character in this file is qualified by: the page the
+       export is FOR (see Render.exportId).
+
+       The id, not the display name — a script's name can be edited and every
+       id would move with it, while its address never does; a collection is
+       keyed on its kebab `id` for the same reason its URL is. An unnamed
+       roster (the Script Builder before it has been named) has no set to
+       qualify by at all, so each character keeps its own, which is what an
+       undefined `set` means to Render.exportId. */
+    var setKey = opts.set === undefined
+      ? (sc.id || sc.slug || sc.name || sc.displayName || '')
+      : opts.set;
+    var xo = exportOpts(sc, setKey || undefined);
+    var writeJinxId = jinxIdWriter(entries, xo);
     var meta = { id: '_meta', name: name || 'Homebrew Script' };
     if (author) meta.author = author;
     if (logoPath) meta.logo = exportImageURL(logoPath);
@@ -1507,7 +1594,7 @@
     var boot = (sc.bootlegger || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
     if (boot.length) meta.bootlegger = boot;
 
-    var jinxMap = jinxExportMap(entries, sc.jinxEdits);
+    var jinxMap = jinxExportMap(entries, sc.jinxEdits, xo);
     var arr = [meta];
     entries.forEach(function (c) {
       var own = jinxMap && jinxMap[c.slug];
@@ -1515,14 +1602,20 @@
       if (!buildSchema) return;
       var src = c;
       if (own) { src = {}; for (var k in c) src[k] = c[k]; src.jinxes = own.list; }
-      var o = buildSchema(src);
+      // A character rebuilt by jinxExportMap already carries this script's
+      // ids; everyone else's jinxes are rewritten as they are built.
+      var cOpts = { mode: xo.mode, prefix: xo.prefix, suffix: xo.suffix, set: xo.set };
+      cOpts.jinxId = own
+        ? function (j) { return j.id; }   // jinxExportMap already wrote these
+        : (writeJinxId ? writeJinxId(c) : undefined);
+      var o = buildSchema(src, cOpts);
       // The script asked for its creators' marks on the names: the official
       // app prints names as text, so this is the mark's glyph.
       var nwm = sc.creatorMarks && dep('nameWithMarks');
       if (nwm && o && o.name) o.name = nwm(o.name, c.creator);
       arr.push(o);
     });
-    var seq = nightSequences(entries, sc.nightOrder);
+    var seq = nightSequences(entries, sc.nightOrder, xo);
     if (seq) { meta.firstNight = seq.first; meta.otherNight = seq.other; }
     // Last, so it reads as the script's footer and never joins a night list.
     if (opts.credits) arr.push(opts.credits);
@@ -1701,7 +1794,8 @@
         href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
         label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
-      { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
+      { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' },
+      { href: root + 'fancyscripts?s=' + encodeURIComponent(sc.slug || ''), label: 'Fancy Sheet' }
     ];
     return renderPageBody({
       root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v, imageW: sc.imageW,
@@ -1721,7 +1815,12 @@
     var root = opts.linkRoot || '';
     var members = sortCollectionMembers(coll, resolveCollectionMembers(coll, allChars || []));
     var name = coll.displayName || coll.slug || 'Collection';
-    var jsonText = customExport(coll.customJson) || buildPageExport(name, coll.author, coll.logo || coll.header, members);
+    // A narrow view of the collection, not the whole row: buildPageExport
+    // reads a SCRIPT's _meta fields off this object (background, hideTitle,
+    // almanac, bootlegger, the night order) and a collection has none of
+    // them — it only needs to say which set it is and how it wants its ids.
+    var jsonText = customExport(coll.customJson) || buildPageExport(name, coll.author, coll.logo || coll.header, members,
+      { id: coll.id, slug: coll.slug, name: name, exportIds: coll.exportIds });
     // orderMap: each slug's index in the full character list, for "recently
     // added" sorting in the on-page filter (higher index = more recent).
     var orderMap = Object.create(null);
@@ -1731,7 +1830,8 @@
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=collection&slug=' + encodeURIComponent(coll.id || coll.slug || ''),
         label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
-      { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
+      { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' },
+      { href: root + 'fancyscripts?c=' + encodeURIComponent(coll.id || coll.slug || ''), label: 'Fancy Sheet' }
     ];
     return renderCollectionBody({
       root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v, imageW: coll.imageW,

@@ -110,13 +110,13 @@ test('the browse pages ask for the small answers, not the character feed', async
   const nf = await read('404.html');
   assert.doesNotMatch(nf, /characters\.json|scripts\.json|collections\.json/);
   assert.match(nf, /api\/did-you-mean/);
-  // The Script Builder draws from the grid first; the card feed is fetched
-  // after the first paint.
+  // The Script Builder draws from the grid first: the page preloads it, and
+  // the controller asks for it ahead of the card feed.
   const sb = await read('script.html');
   assert.match(sb, /rel="preload" href="characters\.json\?fields=grid"/);
-  assert.ok(sb.indexOf("feed('characters.json?fields=grid')") > sb.indexOf("feed('characters.json?fields=card')"));
-  assert.match(sb, /requestAnimationFrame\(function \(\) \{ setTimeout\(after, 0\); \}\)/);
-  assert.match(sb, /Promise.all\(\[feed\(.characters.json\?fields=card.\), painted\]\)/);
+  const sbx = await read('assets/script-builder.js');
+  assert.ok(sbx.indexOf("cachedJSON('characters.json?fields=grid')") > 0);
+  assert.ok(sbx.indexOf("cachedJSON('characters.json?fields=grid')") < sbx.indexOf("cachedJSON('characters.json?fields=card')"));
 });
 
 test('/api/did-you-mean answers with the four best published rows, matched like the 404 page', async t => {

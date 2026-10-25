@@ -174,9 +174,8 @@
      loading) had a phone downloading hundreds of MB alongside the engine. */
   function thumbSrc(c) {
     if (c.ext) return c.image || 'assets/favicon.png';
-    if (c.art && /^art\/[^/]+$/.test(c.art)) {
-      return 'assets/thumb/' + c.art.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
-    }
+    var a = c.art || ('art/' + c.slug + '.png');
+    if (/^art\/[^/]+$/.test(a)) return 'assets/thumb/' + a.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
     return artRel(c);
   }
   /* The character's SAVED token — art/{identity}-token.png, written by this

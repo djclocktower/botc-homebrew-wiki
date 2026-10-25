@@ -156,16 +156,16 @@ test('the export: traveller art positions, the quote, and jinx ids', () => {
   assert.equal(s.flavor, 'New line');
 
   // A jinx exports the id its target's own export carries.
-  Render.setWikiChars(Render.jinxCharIndex([
-    { slug: 'warden-2', name: 'Warden', jsonId: 'warden_potato' },
-    { slug: 'gardener', name: 'Gardener' }
-  ]).byKey);
+  const warden = { slug: 'warden-2', name: 'Warden', jsonId: 'warden_potato', creator: 'Potato' };
+  const gardener = { slug: 'gardener', name: 'Gardener' };
+  Render.setWikiChars(Render.jinxCharIndex([warden, gardener]).byKey);
   s = Render.buildSchema({ name: 'X', jinxes: [
     { slug: 'warden-2', name: 'Warden', text: 'a' },
     { id: 'kept_as_written', name: 'Whoever', text: 'b' },
     { name: 'Gardener', text: 'c' }
   ] });
-  assert.deepEqual(s.jinxes.map(j => j.id), ['warden_potato', 'kept_as_written', 'gardener']);
+  assert.deepEqual(s.jinxes.map(j => j.id),
+    [Render.buildSchema(warden).id, 'kept_as_written', Render.buildSchema(gardener).id]);
   Render.setWikiChars(null);
 });
 
