@@ -6152,6 +6152,19 @@ function rowSeconds(ts) {
 // `card` drops character almanac fields; `grid` trims further for browsing.
 // Script/collection `browse` projections omit editor/export-only fields.
 // Full feeds and the character card feed keep the complete export schema.
+// A draft going live counts as newly added. "Recently added" everywhere is
+// feed order, and the feeds read rows in rowid order (ORDER BY rowid below),
+// so a page drafted a week before it was published used to land a week deep.
+// Move the row to the end and restamp created_at (the date the search's
+// "Newest first" and /articles read). Never fails the save it rides on.
+// ponytail: a page unpublished and republished jumps too; keep a
+// first-published mark if that ever matters.
+async function markNewlyLive(env, table, slug) {
+  await env.DB.prepare(
+    `UPDATE ${table} SET rowid=(SELECT MAX(rowid)+1 FROM ${table}), created_at=datetime('now') WHERE slug=?`
+  ).bind(slug).run().catch(e => console.error('markNewlyLive ' + table + ' ' + slug, e));
+}
+
 async function buildPublicJSON(env, table, opts = {}) {
   const drafts = !!opts.includeDrafts;
   const chars = table === 'characters';
@@ -6173,7 +6186,7 @@ async function buildPublicJSON(env, table, opts = {}) {
   // published-only filter and expose drafts in a public, cached response.
   // The url_slug column is added (and the same query retried) only when the
   // read says it is missing — not by an ALTER in front of every build.
-  const readRows = () => env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all();
+  const readRows = () => env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where} ORDER BY rowid`).all();
   // The collection sets the two passes at the end read come from one shared,
   // memoised query: start it beside the character read, not after it.
   if (chars) { curataCollections(env).catch(() => {}); includeCollections(env).catch(() => {}); }
@@ -14297,6 +14310,7 @@ const app = {
           return jsonResponse({ error: 'Another page has just taken that name. Pick a different name.' }, { status: 409 });
         }
         // The address this page's name and set now ask for (refreshCharAddress).
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'characters', c.slug);
         // Never lose a save over an address.
         const { address, movedFrom } = await refreshCharAddress(
           env, c.slug, c, existing ? existing.owner_id : sess.userId, existing);
@@ -14597,6 +14611,7 @@ const app = {
         if (!existing && !(written && written.meta && written.meta.changes)) {
           return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
         }
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'collections', pkSlug);
         const urlDone = await commitCustomUrl(env, 'collection', pkSlug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
         if (existing && perm !== 'owner') {
@@ -14716,6 +14731,7 @@ const app = {
         if (!existing && !(written && written.meta && written.meta.changes)) {
           return jsonResponse({ error: 'A script with that name already exists.' }, { status: 409 });
         }
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'scripts', s.slug);
         const urlDone = await commitCustomUrl(env, 'script', s.slug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
         if (existing && perm !== 'owner') {
@@ -14866,6 +14882,7 @@ const app = {
         ).bind(slug, title, parent.type, parent.slug, page.author || null,
                existing ? existing.owner_id : (access === 'owner' ? sess.userId : parent.ownerId),
                JSON.stringify(page), status).run();
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'pages', slug);
         const urlDone = await commitCustomUrl(env, 'wikipage', slug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
         if (access !== 'owner') {
@@ -14929,6 +14946,7 @@ const app = {
           await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
             .bind(status, row.slug).run();
         }
+        if (row.status === 'draft' && status === 'published') await markNewlyLive(env, t.table, row.slug);
         await logActivity(env, sess, status === 'published' ? 'publish' : 'unpublish', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug, status });
       }
@@ -16960,6 +16978,7 @@ const app = {
                 await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
                   .bind(action === 'publish' ? 'published' : 'draft', row.slug).run();
               }
+              if (action === 'publish' && row.status === 'draft') await markNewlyLive(env, t.table, row.slug);
             } else if (action === 'delete') {
               if (row.status === 'deleted') { done++; continue; }
               let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }

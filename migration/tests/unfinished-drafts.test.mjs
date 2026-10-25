@@ -57,3 +57,22 @@ test('an unfinished character cannot be published', async t => {
   assert.equal(r.status, 200);
   assert.equal((await r.json()).status, 'draft');
 });
+
+test('a draft published later counts as recently added, by either door', async t => {
+  const f = await setup(t);
+  const full = (slug, status) => ({ slug, name: slug, team: 'townsfolk', ability: 'Does a thing.',
+    art: 'art/' + slug + '.png', status });
+  await post(f, '/api/character', full('early', 'draft'));
+  await post(f, '/api/character', full('saved', 'draft'));
+  await post(f, '/api/character', full('live', 'published'));
+  const recent = async () => (await (await f.request('/api/home')).json()).recent.map(c => c.slug);
+  assert.deepEqual(await recent(), ['live']);
+  // Publishing from the editor, then through /api/publish: each goes to the top.
+  assert.equal((await post(f, '/api/character', full('saved', 'published'))).status, 200);
+  assert.deepEqual(await recent(), ['saved', 'live']);
+  assert.equal((await post(f, '/api/publish', { type: 'character', slug: 'early', status: 'published' })).status, 200);
+  assert.deepEqual(await recent(), ['early', 'saved', 'live']);
+  // An ordinary save of a live page does not move it.
+  await post(f, '/api/character', full('saved', 'published'));
+  assert.deepEqual(await recent(), ['early', 'saved', 'live']);
+});
