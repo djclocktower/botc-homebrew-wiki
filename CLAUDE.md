@@ -4422,6 +4422,12 @@ text title's 5.39) and the header grows to its real height
 (`headerMetrics()`, from `artAspectOf()`). The
 jinx page and the back cover have one style.
 
+- **The App view card opens with the script sheet's rows**: "Space between
+  characters" (`app.rowGap`, extra em under every row, so a full page sets its
+  type smaller to fit), "Move the ability toward the icons" (`app.textShift`,
+  % width: the bar and the text slide, the name column gives up the room,
+  `appColumns()`) and the bar toggle (`app.showBars`). The owner asked for
+  all three on the app sheet and did not find the bar toggle where it was.
 - **`APP_SHEET` / `APP_NIGHT` in script.js are measurements**, like `SHEET`,
   taken off the screenshots and scaled by WIDTH onto the 3:4 sheet, so the
   ability column wraps where the app's does (its width is bounded by where

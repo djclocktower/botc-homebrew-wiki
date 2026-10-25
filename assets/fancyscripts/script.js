@@ -478,6 +478,8 @@ export const DEFAULT_APP = {
   footnoteColor: '#8b786b',
   showBars: true,
   barWidth: 1,
+  rowGap: 1, // the script sheet's space between characters (1 = the app's)
+  textShift: 0, // % width: the bar and the ability moved toward the icons (negative) or away
   showDividers: true,
   dividerStrength: 1,
   bg: { ...DEFAULT_BG, mode: 'parchment' },

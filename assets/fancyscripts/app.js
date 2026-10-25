@@ -1554,6 +1554,11 @@ function buildNightCard() {
 function buildAppCard() {
   const box = $('fs-app-box');
   beginCard();
+  makeLabel(box, 'Rows');
+  makeSlider(box, 'Space between characters', 0.5, 3, 0.05, pct, bindPath('app.rowGap'), { reset: 1 });
+  makeSlider(box, 'Move the ability toward the icons', -10, 6, 0.1, signed(1, '%'), bindPath('app.textShift'), { reset: 0 });
+  makeToggle(box, 'Coloured bar beside the ability', bindPath('app.showBars'));
+  makeHint(box, 'For the script sheet. More space makes the text smaller to fit.');
   makeSelect(box, 'Ribbon', [['damask', 'Damask art (tinted)'], ['flat', 'Flat colour'], ['none', 'No ribbon']], bindPath('app.sidebarMode'));
   const rc = makeRow(box, 'fs-colors');
   makeColor(rc, 'Ribbon colour', bindPath('app.sidebarColor'));
@@ -1574,7 +1579,6 @@ function buildAppCard() {
   makeFont(box, 'Team names', bindPath('app.fontLabel'));
   makeSlider(box, 'Team name spacing', -0.1, 0.3, 0.01, fmtEm, bindPath('app.labelSpacing'), { reset: 0.04 });
   makeLabel(box, 'Bars and lines');
-  makeToggle(box, 'Coloured bar beside the text', bindPath('app.showBars'));
   makeSlider(box, 'Bar width', 0.5, 3, 0.05, pct, bindPath('app.barWidth'), { reset: 1 });
   makeToggle(box, 'Lines between the teams', bindPath('app.showDividers'));
   makeSlider(box, 'Line strength', 0, 1.5, 0.01, pct, bindPath('app.dividerStrength'), { reset: 1 });

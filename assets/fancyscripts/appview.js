@@ -163,8 +163,11 @@ export function layoutAppSheet(script, options, requestRender) {
     normalizeIcons([...urls], requestRender);
   }
 
-  const textW = ((A.textRight - A.textX) / 100) * SHEET_W;
-  const nameW = (A.nameW / 100) * SHEET_W;
+  const g = appColumns(a);
+  const textW = ((g.textRight - g.textX) / 100) * SHEET_W;
+  const nameW = (g.nameW / 100) * SHEET_W;
+  // extra space under every row, em (the "Space between characters" slider)
+  const rowExtra = (clamp(Number(a.rowGap) || 1, 0.5, 3) - 1) * 1.6;
   const lineEm = A.textLine * textSize * lineMul;
   const nameLineEm = (s) => A.nameSize * nameSize * s * A.nameLine;
   const rowMin = A.rowMin * Math.max(1, iconSize);
@@ -186,7 +189,7 @@ export function layoutAppSheet(script, options, requestRender) {
     const textH = lines.length * lineEm;
     const nameH = nm.lines.length * nameLineEm(nm.scale);
     const blockH = Math.max(textH, nameH);
-    return { lines, name: nm, textH, nameH, blockH, h: Math.max(rowMin, blockH + A.rowPad) };
+    return { lines, name: nm, textH, nameH, blockH, h: Math.max(blockH + 0.15, Math.max(rowMin, blockH + A.rowPad) + rowExtra) };
   };
 
   // the team names are set at the sheet's size (they scale with density
@@ -265,7 +268,16 @@ export function layoutAppSheet(script, options, requestRender) {
     });
   });
 
-  return { style: 'app', pages, d, fonts, groups, hm, iconEm: A.iconSize * iconSize, lineEm, nameLineEm };
+  return { style: 'app', pages, d, fonts, groups, hm, g, iconEm: A.iconSize * iconSize, lineEm, nameLineEm };
+}
+
+/* the sheet's columns across a row, % of the width: "Move the ability
+   toward the icons" slides the bar and the text left, and the name column
+   gives up the room (its names shrink to fit, as ever) */
+function appColumns(a) {
+  const A = APP_SHEET;
+  const s = clamp(Number(a.textShift) || 0, -10, 6);
+  return { nameX: A.nameX, nameW: Math.max(5, A.nameW + s), barX: A.barX + s, textX: A.textX + s, textRight: A.textRight };
 }
 
 /* the text title: the script's name between the tool's own flourishes,
@@ -335,6 +347,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
   const A = APP_SHEET;
   const a = appCfg(options);
   const { fonts, lineEm, nameLineEm } = layout;
+  const g = layout.g || appColumns(a);
   const row = el('div', { position: 'relative', height: px(ed(h)) });
   row.dataset.fsChar = c.id;
   if (mark) mark(row, 'crow:' + c.id);
@@ -364,7 +377,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
   m.name.lines.forEach((ln, i) => {
     row.append(el('div', {
       position: 'absolute',
-      left: A.nameX + '%',
+      left: g.nameX + '%',
       top: px(ed(nameTop + i * nlh)),
       height: px(ed(nlh)),
       lineHeight: px(ed(nlh)),
@@ -382,7 +395,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
   if (a.showBars !== false) {
     row.append(el('div', {
       position: 'absolute',
-      left: A.barX + '%',
+      left: g.barX + '%',
       top: px(ed(textTop) + ed(0.08)),
       width: px(Math.max(1.5, (A.barW / 100) * SHEET_W * (a.barWidth || 1))),
       height: px(Math.max(2, ed(m.textH) - ed(0.16))),
@@ -394,7 +407,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
   const textPx = ed(A.textSize * (options.textSize || 1));
   m.lines.forEach((ln, i) => {
     row.append(lineNode(ln, {
-      left: A.textX + '%',
+      left: g.textX + '%',
       top: px(ed(textTop + i * lineEm)),
       height: px(ed(lineEm)),
       lineHeight: px(ed(lineEm)),
