@@ -284,6 +284,7 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
         f = _transform_bg(bg_scale, bg_dx, bg_dy, bg_rot)
     else:
         f = BARE.copy()
+    edge = f.getchannel('A')   # the token's real outline, whatever was done to its background
     # "Everything" size (web_render.py): the rim pieces grow or shrink in
     # place, each from where it meets the edge, so they stay cut off by it.
     rim = float(g('all_scale', 1.0))
@@ -305,4 +306,9 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
     # The top leaves hang from the rim already (_place_top pins their top),
     # so they need only the size.
     _reminders(f, n, float(g('leaf_scale', 1.0)) * rim, g('leaf_dy', 0), g('leaf_dx', 0), g('leaf_rot', 0))
+    # Leaves, sprigs and flower never cross the token's edge. Each piece is
+    # clipped to the stock circle as it is placed, which misses a background
+    # that was resized, moved, rotated or replaced: clip to the real one.
+    from PIL import ImageChops
+    f.putalpha(ImageChops.darker(f.getchannel('A'), edge))
     return f
