@@ -1308,7 +1308,7 @@ function buildTitleCard() {
     bindPath('bootRulesIcon'));
   makeFont(tc, 'Rules font', bindPath('bootRulesFont'));
   makeColor(makeRow(tc, 'fs-colors'), 'Rules colour', bindPath('bootRulesColor'));
-  makeHint(tc, 'The rules come from the script. They take the right flourish’s place. Move the title to the left to give them more room.');
+  makeHint(tc, 'Rules from the script, in the right flourish’s place. Move the title left for more room.');
   makeArtPicker(tc, 'Skull art', 'skull');
   makeArtPicker(tc, 'Section dividers', 'dividers');
   makeArtPicker(tc, 'Garland at the foot', 'garland');
