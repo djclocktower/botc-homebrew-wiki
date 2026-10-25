@@ -571,7 +571,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   }
 
 
-  if (ctx.forExport) sheet.append(watermark(3.4, 0.7, fonts.name));
+  if (ctx.forExport) sheet.append(watermark(1.4, 6.8, fonts.name));
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
 }
