@@ -579,7 +579,7 @@ export function layoutSheet(script, options, requestRender) {
   };
 
   let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
-  if (options.fitToContent && groups.length) d = solveFit((dd) => availFor(0) / totalNeedAt(dd), 0.3, FIT.growMax);
+  if (options.fitToContent && groups.length) d = solveFit((dd) => availFor(0) / totalNeedAt(dd), 0.01, FIT.growMax);
   const pages = pack(d);
 
   const ed = (em) => em * U * d; // density-scaled px

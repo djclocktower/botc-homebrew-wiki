@@ -4319,7 +4319,7 @@ itself smaller; nothing else moves.
 
 The owner asked for it (2026-10): a long script shrinks to fit rather than
 running onto a second sheet. `layoutSheet()` and `layoutAppSheet()` solve one
-density for every section on the one page (`solveFit`, down to 0.3) and
+density for every section on the one page (`solveFit`, down to 0.01, so even the whole wiki fits) and
 `pack(d)` puts them all there; there is no split team, no repeated label,
 no page number. `paginate`, `minFit`, `repeatHeader` and `showPageNumbers`
 are gone and `normalizeOptions()` drops them from an old design, as it does
