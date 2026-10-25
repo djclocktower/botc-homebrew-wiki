@@ -1,0 +1,2842 @@
+[
+ {
+  "gap": 1,
+  "gapScore": 1.27,
+  "team": "fabled",
+  "tags": [
+   "Poison",
+   "Information",
+   "Drunkenness",
+   "Passive",
+   "False Info"
+  ],
+  "abilityHints": [
+   "Drunk or poisoned players cannot learn true info",
+   "The 1st time a player would be drunk, poisoned or get false info, you learn them instead",
+   "Each night*, learn how many players are drunk from your ability",
+   "Drunk or poisoned players may receive false info",
+   "Each night*, learn how many players are poisoned",
+   "Drunk or poisoned players receive false information",
+   "If you are drunk or poisoned, you learn this, your info can’t be wrong",
+   "Each night learn how many players learned false information that day & night"
+  ],
+  "styleHints": [
+   "There are two kinds of drunk in this world. The first comes from drinking too much of the same wine; the second from hearing too many different lies. The first kind passes after a night's sleep. The second kind seeps int",
+   "It feels so good! Yes! Keep going! Oh my god! This is the best lay I've ever had in this town...wait...what are you doi-...Is that a knife?! HELP ME! The PLAYBOY visits people at night to have a little fun. Hence why the",
+   "Ohh, Jerry... Hm? Nooo, I'm not having a party, who told you that? Allison? Yeah, no, she must have meant some other party, one that isn't happening... here. The Merrymaker gets to keep people alive - as long as they don"
+  ],
+  "between": [
+   {
+    "name": "Mixologist",
+    "team": "fabled",
+    "ability": "Drunk or poisoned players cannot learn true info."
+   },
+   {
+    "name": "Honor Guard ⋒",
+    "team": "fabled",
+    "ability": "On the first night, three people (all learn who) learn how this ability affected setup. One player learns false info. [-1 to +1 Outsider]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Mixologist",
+    "ability": "Drunk or poisoned players cannot learn true info.",
+    "dist": 0.532
+   },
+   {
+    "name": "Honor Guard ⋒",
+    "ability": "On the first night, three people (all learn who) learn how this ability affected setup. One player learns false info. [-1 to +1 Outsider]",
+    "dist": 0.642
+   },
+   {
+    "name": "Mercy Society",
+    "ability": "Each night, one player learns which alignment the Storyteller believes is winning: good, evil, or neither. Drunk or poisoned players may receive false info.",
+    "dist": 0.664
+   },
+   {
+    "name": "Djinn",
+    "ability": "Use the Djinn's special rule. All players know what it is.",
+    "dist": 0.694
+   },
+   {
+    "name": "Curio Dealer",
+    "ability": "Characters being babysat die with their babysitter & players babysitting Minions & Demons register as such during info steps. Players learn what they are babysitting each night.",
+    "dist": 0.702
+   },
+   {
+    "name": "The Cauldron",
+    "ability": "_",
+    "dist": 0.767
+   }
+  ]
+ },
+ {
+  "gap": 2,
+  "gapScore": 1.25,
+  "team": "townsfolk",
+  "tags": [
+   "Death",
+   "You Start Knowing",
+   "Nominations",
+   "Passive",
+   "Drunkenness"
+  ],
+  "abilityHints": [
+   "The 1st Outsider you nominate is drunk & dies if you die",
+   "The 1st time an Outsider nominates you, they die",
+   "You know the 1st time an Outsider nominates a Minion",
+   "The 1st outsider to nominate you’s vote secretly counts as -2, even if you are dead",
+   "chosen Minions become Outsiders until either your 3rd day or you die",
+   "1 Minion is drunk, but may, at any time, publicly choose that you die (they know this)",
+   "the 1st Townsfolk, Outsider, & Minion who choose them with their ability before you next wake die then",
+   "the latest chosen is drunk if Outsider or Minion & cannot die at night if allied"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "I am not the hero that Ravenswood Bluff deserves. I am also not the hero it needs. I'll be honest, I was supposed to be on the evil team, but they already had two minions, so here we are. The Vigilante takes matters into"
+  ],
+  "between": [
+   {
+    "name": "Overseer",
+    "team": "townsfolk",
+    "ability": "You & Minions start knowing a condition. Minions are drunk unless it is true."
+   },
+   {
+    "name": "Rifleman",
+    "team": "townsfolk",
+    "ability": "The 1st time an Outsider nominates you, they die."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Rifleman",
+    "ability": "The 1st time an Outsider nominates you, they die.",
+    "dist": 0.532
+   },
+   {
+    "name": "Jester",
+    "ability": "Votes on you secretly fail.",
+    "dist": 0.632
+   },
+   {
+    "name": "Chantry",
+    "ability": "Each night*, choose a good character: if in-play, they die. Outsiders who die this way might keep their ability.",
+    "dist": 0.668
+   },
+   {
+    "name": "Bodyguard",
+    "ability": "You start knowing the *actually good* VIP. You learn the Demon – who knows VIP+character – if they kill the VIP. VIP's character is declared if they die, even if you died.",
+    "dist": 0.675
+   },
+   {
+    "name": "Patroness",
+    "ability": "Each night, choose 1 alive player without outsider abilities (not yourself) who gets immune against wishes or changes caused by others until dusk. The Demon knows who.",
+    "dist": 0.677
+   },
+   {
+    "name": "Cloud City Committee",
+    "ability": "You start knowing 3 numbers. 1 is the number of characters affected by madness, 1 is the number of good players who wake on night 1, 1 is the number of Outsiders in play.",
+    "dist": 0.678
+   }
+  ]
+ },
+ {
+  "gap": 3,
+  "gapScore": 1.25,
+  "team": "minion",
+  "tags": [
+   "Passive",
+   "Neighbor",
+   "Setup",
+   "Social",
+   "Madness"
+  ],
+  "abilityHints": [
+   "If the 2nd neighbors an alive Minion, they also die",
+   "All Minions know you are in play and if they are ‘mad’ about being a Minion, you might die",
+   "if they are a Minion, they die",
+   "If they are a minion they die",
+   "You can only die if there are no alive Minions",
+   "If all minions are alive, you cannot die",
+   "You might register as evil & as a Minion or Demon, even if dead",
+   "Minions “mad” about being Minions might keep their ability if executed"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Teehee... I didn't imagine the Count's son would have such a cute side! Don't worry, I guard my own and others' secrets well. Look into my eyes. You don't remember where you saw my face... The Hypnotist renders evil play",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg"
+  ],
+  "between": [
+   {
+    "name": "Magnate",
+    "team": "minion",
+    "ability": "Your 2 living neighbors are mad that you are good if they are both good, or they might die. If you are executed, one of your 2 living neighbors might die instead."
+   },
+   {
+    "name": "Replicur ₽",
+    "team": "minion",
+    "ability": "[+1 Minion, 2 Minions are Replicur]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Magnate",
+    "ability": "Your 2 living neighbors are mad that you are good if they are both good, or they might die. If you are executed, one of your 2 living neighbors might die instead.",
+    "dist": 0.575
+   },
+   {
+    "name": "Lunger",
+    "ability": "You think you are a non-Minion (the Demon knows which) & might die. The first Lunger to die becomes evil at night. [2 Lungers, Both are good]",
+    "dist": 0.634
+   },
+   {
+    "name": "Saruman",
+    "ability": "If Gandalf the White is in play when the Dark Lord dies, you become the Dark Lord.",
+    "dist": 0.643
+   },
+   {
+    "name": "Marusok",
+    "ability": "You have a not-in-play Demon ability & register as them too. Evil players might not wake. [All Minions are Marusok]",
+    "dist": 0.656
+   },
+   {
+    "name": "Cultist",
+    "ability": "You are many. [+1 Cultist]",
+    "dist": 0.664
+   },
+   {
+    "name": "Morsel",
+    "ability": "If an evil player nominates & executes you, your team wins. [All minions are Morsels]",
+    "dist": 0.676
+   }
+  ]
+ },
+ {
+  "gap": 4,
+  "gapScore": 1.24,
+  "team": "outsider",
+  "tags": [
+   "Alignment Change",
+   "Once Per Game",
+   "Information",
+   "Character Change",
+   "Setup"
+  ],
+  "abilityHints": [
+   "You start knowing how many steps the evil Townsfolk is in a direction from the Demon",
+   "You start knowing 2 other players who have the same alignment",
+   "Once per game, a player of your alignment might be resurrected",
+   "You start knowing 1 player of the opposing alignment & do not know your alignment",
+   "Each night, starting from Demon, learn the alignment of the next clockwise player",
+   "If Townsfolk or Outsider, they become your alignment",
+   "Each dawn, you change your alignment if the other alive players of your alignment are more than the alive players of the opposite alignment, even if dead",
+   "If that player is evil, you & them swap character & alignment"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was ",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "Shapeshifter",
+    "team": "outsider",
+    "ability": "Your alignment is the alignment of the last player you hugged. Once per game, you may publicly fix your alignment to your current alignment."
+   },
+   {
+    "name": "Wapiti",
+    "team": "outsider",
+    "ability": "You start knowing how many steps the evil Townsfolk is in a direction from the Demon. [1 Townsfolk is evil]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Shapeshifter",
+    "ability": "Your alignment is the alignment of the last player you hugged. Once per game, you may publicly fix your alignment to your current alignment.",
+    "dist": 0.566
+   },
+   {
+    "name": "Persephone",
+    "ability": "Half the game you function as good, half as evil (alternating at dusk), you do not know which you start as.",
+    "dist": 0.63
+   },
+   {
+    "name": "Activist",
+    "ability": "Each dawn, you change your alignment if the other alive players of your alignment are more than the alive players of the opposite alignment, even if dead.",
+    "dist": 0.65
+   },
+   {
+    "name": "Flat-Earther",
+    "ability": "[A split is between 2 neighboring players. The Demon knows where & may move it.]",
+    "dist": 0.655
+   },
+   {
+    "name": "Bilbo",
+    "ability": "If you receive the One Ring, the first time Frodo attempts to give it to another player, you secretly keep it. Frodo is not told.",
+    "dist": 0.661
+   },
+   {
+    "name": "Traitor",
+    "ability": "Each night, your alignment changes. Once per game, you may choose to not change alignment at night. You are an Ogre.",
+    "dist": 0.662
+   }
+  ]
+ },
+ {
+  "gap": 5,
+  "gapScore": 1.23,
+  "team": "minion",
+  "tags": [
+   "Passive",
+   "Poison",
+   "Neighbor",
+   "Once Per Game",
+   "Even If Dead"
+  ],
+  "abilityHints": [
+   "they die & one of their good neighbors is poisoned until dusk",
+   "they are poisoned & die when 1 of their alive neighbors dies",
+   "While any of them live, you are evil, even if dead, drunk, or poisoned",
+   "If they die 1 of their good alive neighbors is permanently poisoned & you learn a new player",
+   "You can only die by execution, & turn evil if 4 or less players live, even if poisoned",
+   "they die & poison 1 good neighbor until dusk",
+   "Evil does not learn each other even if you are dead, poisoned, or drunk",
+   "they die, and the players neighboring them are poisoned until your next attack"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was ",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Duckweed",
+    "team": "minion",
+    "ability": "Your closest living flora neighbors are poisoned."
+   },
+   {
+    "name": "Doom Bot",
+    "team": "minion",
+    "ability": "Evil does not lose as long as you are alive. Once per game, at night*, you may kill yourself to resurrect Dr. Doom."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Duckweed",
+    "ability": "Your closest living flora neighbors are poisoned.",
+    "dist": 0.518
+   },
+   {
+    "name": "Spin Doctor",
+    "ability": "You are the Bounty Hunter's 1st target. If they're mad you're evil, they're poisoned, even if you're dead. [+the Bounty Hunter]",
+    "dist": 0.627
+   },
+   {
+    "name": "Illithid",
+    "ability": "Players whose distance from you equals the current day number are poisoned.",
+    "dist": 0.65
+   },
+   {
+    "name": "Shackler",
+    "ability": "You start by choosing a direction. All townsfolk players between you & the Demon in that direction are poisoned untill 1 of them dies, who then learns this.",
+    "dist": 0.672
+   },
+   {
+    "name": "Centurion",
+    "ability": "If 5 or more non-Travellers live, you & the Demon can’t die. If only evil lives at dawn, evil loses.",
+    "dist": 0.677
+   },
+   {
+    "name": "Switchmaster",
+    "ability": "Each night, choose a direction: The closest alive Townsfolk in that direction is poisoned until dusk.",
+    "dist": 0.685
+   }
+  ]
+ },
+ {
+  "gap": 6,
+  "gapScore": 1.23,
+  "team": "minion",
+  "tags": [
+   "Alignment Change",
+   "Character Change",
+   "Nominations",
+   "Poison",
+   "Once Per Game"
+  ],
+  "abilityHints": [
+   "Until dawn, players you nominate register as the opposing alignment & if a Townsfolk, are also poisoned",
+   "The 1st Townsfolk who chooses you with their ability is poisoned until dusk, then dies the following night (even if dead)",
+   "When the game ends, become the alignment of the player you nominated, or evil if none, even if drunk, poisoned, or dead",
+   "If you were the last player to nominate today, all Townsfolk are poisoned until dusk, even if you are dead",
+   "The 1st time an evil player is nominated & executed by another evil player, their Townsfolk neighbors are poisoned (even if dead)",
+   "If 5 or fewer players live, tonight, an opposing player may choose to become your alignment (Once)",
+   "until dusk, if an evil player's ability would kill, poison, make drunk or make mad that player, or change their alignment, it affects you instead",
+   "Each night*, become the alignment of the player you nominated today"
+  ],
+  "styleHints": [
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was ",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "puppeteer",
+    "team": "minion",
+    "ability": "on the first night. choose a player, they become your alignment but they don't learn the alignment swap. if you change alignment they do too"
+   },
+   {
+    "name": "Jikininki",
+    "team": "minion",
+    "ability": "If you were the last player to nominate today, all Townsfolk are poisoned until dusk, even if you are dead."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Glykon",
+    "ability": "You might register as good. Until dawn, players you nominate register as the opposing alignment & if a Townsfolk, are also poisoned.",
+    "dist": 0.569
+   },
+   {
+    "name": "Moray",
+    "ability": "Each night: Choose 1 player & alignment, until dusk this player registerd as that alignment",
+    "dist": 0.623
+   },
+   {
+    "name": "Temptress",
+    "ability": "On your 1st night choose two players: they learn that they were chosen. The 1st time one of them dies by execution, the other becomes evil that night.",
+    "dist": 0.647
+   },
+   {
+    "name": "Percussion",
+    "ability": "Each night, choose a player: until dusk, 1 of their actions are poisoned & they might act an additional time.",
+    "dist": 0.649
+   },
+   {
+    "name": "Rokurokubi",
+    "ability": "On your first night, select clockwise or anti-clockwise: starting that night, sequentially poison good players in that direction until dusk.",
+    "dist": 0.653
+   },
+   {
+    "name": "Sorcerer",
+    "ability": "Each non-last night, choose 1 player OR character (not yourself) & make a game-related wish (≤ 2 predicates, no AND-like connections) about them which reverts next dusk.",
+    "dist": 0.654
+   }
+  ]
+ },
+ {
+  "gap": 7,
+  "gapScore": 1.23,
+  "team": "minion",
+  "tags": [
+   "Passive",
+   "Poison",
+   "Setup",
+   "Outsider Modification",
+   "Social"
+  ],
+  "abilityHints": [
+   "You know which players are Outsiders",
+   "Each night*, learn either how many Outsiders are in play or how many players are evil",
+   "each night* guess how many outsiders are in play, if correct, that amount of players die, all in play outsiders become good and might become townsfolk",
+   "If an Outsider malfunctions, good players must learn false info",
+   "Each night, learn an evil player or Outsider",
+   "Players who are mad they learned info about you might be poisoned",
+   "Players that are mad about being an Outsider might die",
+   "2 to 4 players have Outsider abilities, even if you die"
+  ],
+  "styleHints": [
+   "Teehee... I didn't imagine the Count's son would have such a cute side! Don't worry, I guard my own and others' secrets well. Look into my eyes. You don't remember where you saw my face... The Hypnotist renders evil play",
+   "Unfortunate, yes. It appears that I couldn't stop you in time from wrongly acquiring the Orb That Makes You Immortal®. Yeah, it sucks to be me, all right. And yes, I do suppose that this has gone in such a way where no o",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Yamabushi",
+    "team": "minion",
+    "ability": "You start knowing which Outsiders are in play. Outsiders think they are Townsfolk. When you die, they learn their character. [+0 to +2 Outsiders]"
+   },
+   {
+    "name": "Operative",
+    "team": "minion",
+    "ability": "Players who are mad they learned info about you might be poisoned."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Operative",
+    "ability": "Players who are mad they learned info about you might be poisoned.",
+    "dist": 0.59
+   },
+   {
+    "name": "Lumenancer",
+    "ability": "Players between you & the Demon might register falsely to good players (you learn the direction). [You're 3 to 5 steps from them]",
+    "dist": 0.632
+   },
+   {
+    "name": "Tyrantt",
+    "ability": "All Townsfolk additionally have 1 outsider character. Everyone or nobody knows which one.",
+    "dist": 0.634
+   },
+   {
+    "name": "Yamabushi",
+    "ability": "You start knowing which Outsiders are in play. Outsiders think they are Townsfolk. When you die, they learn their character. [+0 to +2 Outsiders]",
+    "dist": 0.638
+   },
+   {
+    "name": "Chum Seller",
+    "ability": "You start knowing which Outsiders are in play. They are poisoned, even if you are dead. [Any number of Outsiders]",
+    "dist": 0.639
+   },
+   {
+    "name": "Sovereign",
+    "ability": "You start knowing 2 pairs of Townsfolk characters & choose 1: they are poisoned. [-1 Outsider]",
+    "dist": 0.641
+   }
+  ]
+ },
+ {
+  "gap": 8,
+  "gapScore": 1.23,
+  "team": "loric",
+  "tags": [
+   "Nonconformist",
+   "Setup",
+   "Information",
+   "Death",
+   "Public"
+  ],
+  "abilityHints": [
+   "if a demon, 1 other alive player gets evil+this demon",
+   "1 Demon OR -2 Minions & +1 Demon & +2 Outsiders OR -3 Minions & +2 Demons & +1 Outsider",
+   "If evil (not a Demon)",
+   "You might register as evil & as a Minion or Demon, even if dead",
+   "they die if they neighbor an evil player & aren't a Demon",
+   "To good, Outsiders register as evil & as a Minion or Demon",
+   "No Demon, +1 Minion",
+   "Unless just you, the Demon & another player live, good can't win by killing the Demon"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "What's that? An Assassin? A Spy? A Poisoner? They sound like dreadful people; I'll have nothing to do with them! The Mandragora gets to kill twice as often, but their minions are forbidden from telling the demon who they"
+  ],
+  "between": [
+   {
+    "name": "Demon Tamer",
+    "team": "loric",
+    "ability": "Multiple equal Demon characters can be in play. [1 Demon OR -2 Minions & +1 Demon & +2 Outsiders OR -3 Minions & +2 Demons & +1 Outsider]"
+   },
+   {
+    "name": "The Matchmaker",
+    "team": "loric",
+    "ability": "Each Dawn, 1 pair of players might be announced as having the same alignment (once per game this might be false). If the Demon kills 1, the other might die too."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Demon Tamer",
+    "ability": "Multiple equal Demon characters can be in play. [1 Demon OR -2 Minions & +1 Demon & +2 Outsiders OR -3 Minions & +2 Demons & +1 Outsider]",
+    "dist": 0.576
+   },
+   {
+    "name": "Nightmare",
+    "ability": "Non-Demon players think to be 1 good or 1 minion character. The Demon chooses (covertly) which players are Minions. No minion info. [? equal Minions, ? Outsiders]",
+    "dist": 0.626
+   },
+   {
+    "name": "Potion of Panic",
+    "ability": "Cannot be nullified. This potion cannot be veiled once unveiled. When broken, if veiled, the Megalomaniac acts twice next night.",
+    "dist": 0.634
+   },
+   {
+    "name": "Plotter (Role)",
+    "ability": "≤ 1 minion is the Plotter: If you live or Story Teller is executed, winning Townsfolk/Demons don't win, else winning Outsiders/Minions. Night 1 has alignment-separated Plotter info for minions and outsider. You choose your registration. If guessed publicly, the Demon kills you. On night X, Townsfolk & Demons are deranged until dusk. [X Outsiders]",
+    "dist": 0.643
+   },
+   {
+    "name": "Branch ⨈",
+    "ability": "This script contains characters being used as different types. Demons & only Demons each night*, choose a player: they die.",
+    "dist": 0.655
+   },
+   {
+    "name": "Pope",
+    "ability": "There are duplicate good characters in play. They might also be bluffs.",
+    "dist": 0.658
+   }
+  ]
+ },
+ {
+  "gap": 9,
+  "gapScore": 1.22,
+  "team": "minion",
+  "tags": [
+   "Passive",
+   "Nominations",
+   "Character Change",
+   "Social",
+   "Misregistration"
+  ],
+  "abilityHints": [
+   "If you nominate or are nominated by a Minion or Demon, they may become a not-in-play same-type character tonight, even if you are dead",
+   "If you died today or tonight, the Minion & Demon players may choose new Minion & Demon characters to be",
+   "Minions might register as Demons",
+   "If you did not nominate a Minion today, evil players may choose to rise tonight (Demons may not if 1 lives)",
+   "The Demon might register as a Minion to you",
+   "Minions do not know you are the Demon",
+   "The hunter knows who the minions are, but the minions do not know who the demon is, the demon is not allowed to claim to their minions",
+   "Minions and Demons think they are Minion or Demon"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "What's that? An Assassin? A Spy? A Poisoner? They sound like dreadful people; I'll have nothing to do with them! The Mandragora gets to kill twice as often, but their minions are forbidden from telling the demon who they"
+  ],
+  "between": [
+   {
+    "name": "Spawn",
+    "team": "minion",
+    "ability": "If there has been 1 nomination per Townsfolk or none nominated today, you become a not-in-play Demon tonight."
+   },
+   {
+    "name": "False Giant",
+    "team": "minion",
+    "ability": "Minions might register as Demons."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "False Giant",
+    "ability": "Minions might register as Demons.",
+    "dist": 0.499
+   },
+   {
+    "name": "Spawn",
+    "ability": "If there has been 1 nomination per Townsfolk or none nominated today, you become a not-in-play Demon tonight.",
+    "dist": 0.592
+   },
+   {
+    "name": "Scepter Father",
+    "ability": "You're jinxed with each Demon: they get a unique boon.",
+    "dist": 0.674
+   },
+   {
+    "name": "Counterfeiter",
+    "ability": "On Nights 1 and 2, you see the Grimoire, with characters removed: you may move 1 unique reminder token in play.",
+    "dist": 0.674
+   },
+   {
+    "name": "Saruman",
+    "ability": "If Gandalf the White is in play when the Dark Lord dies, you become the Dark Lord.",
+    "dist": 0.678
+   },
+   {
+    "name": "Rune Eater",
+    "ability": "You have the ability of the most recent character killed by the Demon. You know which & might register as they would.",
+    "dist": 0.699
+   }
+  ]
+ },
+ {
+  "gap": 10,
+  "gapScore": 1.22,
+  "team": "outsider",
+  "tags": [
+   "Passive",
+   "Information",
+   "You Start Knowing",
+   "Execution",
+   "Even If Dead"
+  ],
+  "abilityHints": [
+   "You do not know you are the Demon",
+   "If the Demon, learn a Demon they aren’t",
+   "You start knowing 2 players that are not the Demon",
+   "You don’t know the demon",
+   "You know who the Demon is",
+   "if a demon, 1 other alive player gets evil+this demon",
+   "The Demon doesn’t know who their Minions are",
+   "You & the Demon know a player"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "There's one way to find out if a man is honest - ask him. If he says, 'Yes,' he's a damned liar. The Crook lulls the Demon into a false sense of security, then steals their watch.",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg"
+  ],
+  "between": [
+   {
+    "name": "Familiar",
+    "team": "outsider",
+    "ability": "The demon knows who you are. You don’t know the demon."
+   },
+   {
+    "name": "Tsarevna",
+    "team": "outsider",
+    "ability": "Players who are mad you aren't the Tsarevna might be executed."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Familiar",
+    "ability": "The demon knows who you are. You don’t know the demon.",
+    "dist": 0.491
+   },
+   {
+    "name": "Flat-Earther",
+    "ability": "[A split is between 2 neighboring players. The Demon knows where & may move it.]",
+    "dist": 0.65
+   },
+   {
+    "name": "Record Keeper",
+    "ability": "If you are executed, the Demon sees the Grimoire tonight.",
+    "dist": 0.654
+   },
+   {
+    "name": "Lunatic",
+    "ability": "You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night.",
+    "dist": 0.657
+   },
+   {
+    "name": "Snoop",
+    "ability": "You start knowing a neighbour's character (Travellers don't count); if they are evil, info you receive is arbitrary. The Demon starts knowing the player and character of the other neighbour.",
+    "dist": 0.663
+   },
+   {
+    "name": "Bakeneko",
+    "ability": "While alive, arbitrary false pings & abilities occur. If you are mad about being the Bakeneko, something bad happens. The Demon learns who you are.",
+    "dist": 0.671
+   }
+  ]
+ },
+ {
+  "gap": 11,
+  "gapScore": 1.22,
+  "team": "outsider",
+  "tags": [
+   "Execution",
+   "Drunkenness",
+   "Neighbor",
+   "Poison",
+   "Passive"
+  ],
+  "abilityHints": [
+   "If a player dies by execution, their alive neighbours are drunk until dusk tomorrow",
+   "If no-one is executed at day, you are drunk until dusk",
+   "tonight, they choose 1) they drunk, even if dead or 2) one of your alive neighbor drunk, even if dead",
+   "If an evil player was executed, you are drunk until dawn",
+   "The Demon wakes every other night, even if you are dead, drunk or poisoned",
+   "Your Townsfolk neighbours are drunk, but every other night, you are drunk until dusk, even if you are dead",
+   "If they are executed, you die that night",
+   "Each night*, you are drunk if evil was executed yesterday, & learn how many other nominees would have been a good execution for you"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Attorney",
+    "team": "outsider",
+    "ability": "Each night*, if no-one died by execution today, you change alignment."
+   },
+   {
+    "name": "Party Animal",
+    "team": "outsider",
+    "ability": "1 of your Townsfolk neighbors is drunk. If you're executed, the drunk one becomes sober & the sober, drunk."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Party Animal",
+    "ability": "1 of your Townsfolk neighbors is drunk. If you're executed, the drunk one becomes sober & the sober, drunk.",
+    "dist": 0.579
+   },
+   {
+    "name": "Server",
+    "ability": "One of your good neighbors (not a Traveller) is drunk, even if you die by execution.",
+    "dist": 0.598
+   },
+   {
+    "name": "Prosecutorr",
+    "ability": "Each day, you may claim the execution. If the executee aligns like you, they don't die & you are drunk from now on. You might be an Ogre or evil.",
+    "dist": 0.617
+   },
+   {
+    "name": "Miser",
+    "ability": "On your 1st night, choose 3 players. While any of them live, you are evil, even if dead, drunk, or poisoned.",
+    "dist": 0.655
+   },
+   {
+    "name": "Nephilim",
+    "ability": "Each night*, learn the alignment of the last executee. This becomes your alignment. If no-one is executed at day, you are drunk until dusk.",
+    "dist": 0.656
+   },
+   {
+    "name": "Playwright",
+    "ability": "If you died today or tonight, 2 players are each mad as a character the other was mad about being today from now on, or might (once) be executed.",
+    "dist": 0.678
+   }
+  ]
+ },
+ {
+  "gap": 12,
+  "gapScore": 1.22,
+  "team": "outsider",
+  "tags": [
+   "Poison",
+   "Setup",
+   "Neighbor",
+   "Passive",
+   "Outsider Modification"
+  ],
+  "abilityHints": [
+   "If an Outsider died today, that night, their 2 alive Townsfolk neighbors are poisoned until dusk",
+   "All Outsiders are poisoned, +2 Outsiders",
+   "Each night*, if you would be drunk or poisoned, you aren't & a living Townsfolk neighbour dies",
+   "Each Night, Learn if you or your neighbors were affected by Minions or Outsiders",
+   "1 Outsider's poisoned, if they die, their living Townsfolk neighbors are instead",
+   "they die & one of their good neighbors is poisoned until dusk",
+   "Outsiders executed while you live poison 1 Townsfolk neighbour, even if you are dead",
+   "Evil does not learn each other even if you are dead, poisoned, or drunk"
+  ],
+  "styleHints": [
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was ",
+   "AYES SEEEN IT! Down in da mines! Runs shaway when ye make too much noise, but ayes I seen it. None of ye' beleeve ol Tommy ... none of ya' ever but it was a - NO! NO LISTEN! The Nocker is a friendly spirit that lives in ",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "Amalgamate",
+    "team": "outsider",
+    "ability": "Amalgamates think they are the same not in play character. [-1 to +1 Outsiders. All Outsiders are Amalgamates]"
+   },
+   {
+    "name": "Sporecloud",
+    "team": "outsider",
+    "ability": "One of your neighbours is poisoned. Each night, the poison continuously spreads to that direction. A player can only be affected for one night."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Amalgamate",
+    "ability": "Amalgamates think they are the same not in play character. [-1 to +1 Outsiders. All Outsiders are Amalgamates]",
+    "dist": 0.583
+   },
+   {
+    "name": "Sporecloud",
+    "ability": "One of your neighbours is poisoned. Each night, the poison continuously spreads to that direction. A player can only be affected for one night.",
+    "dist": 0.608
+   },
+   {
+    "name": "Examination Palace",
+    "ability": "1 player starts in the Examination Palace. Each night*, 1 of their living neighbor goes to the Examination Palace instead. Players in the Examination Palace is registered as Outsider characters. The Examination Palace leaves the game when at least 2 good players choose 1 same evil player at night*. [+1 Townsfolk]",
+    "dist": 0.616
+   },
+   {
+    "name": "Fishhead",
+    "ability": "On night (Max Outsiders + 1 - X), Townsfolk abilities yield false info until dusk. You're sober & healthy. [X Outsiders]",
+    "dist": 0.624
+   },
+   {
+    "name": "Flat-Earther",
+    "ability": "[A split is between 2 neighboring players. The Demon knows where & may move it.]",
+    "dist": 0.665
+   },
+   {
+    "name": "Big Shot",
+    "ability": "Good players who killed you (or challenged your protection) are assassinated next night.",
+    "dist": 0.675
+   }
+  ]
+ },
+ {
+  "gap": 13,
+  "gapScore": 1.21,
+  "team": "townsfolk",
+  "tags": [
+   "Passive",
+   "Nominations",
+   "Neighbor",
+   "Death Modification",
+   "Protection"
+  ],
+  "abilityHints": [
+   "Other players who nominate you are safe from the demon",
+   "Players can only nominate their alive neighbors (Minions neighbor the Demon) Each night* Choose a player",
+   "If an evil player nominates a Demon",
+   "they die if they neighbor an evil player & aren't a Demon",
+   "Each day, if you are the first or the last player to nominate, and the player you nominated is evil, they die that night",
+   "If you nominate another player, that night learn if they are the Demon",
+   "Players (not yourself or the Demon) that nominate you are drunk until you are nominated again, even if you are dead",
+   "If 5 or more players live and you nominate, execute & kill the Demon, you become the evil Demon"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Don't worry, captain! I have kept the witness firmly in my si- ... wait, where've they gone? The Lookout prevents evil from winning and can make the Demon drunk."
+  ],
+  "between": [
+   {
+    "name": "Waterlily",
+    "team": "townsfolk",
+    "ability": "Flora. If both your living neighbors are good, you cannot die."
+   },
+   {
+    "name": "Reverend",
+    "team": "townsfolk",
+    "ability": "Other players who nominate you are safe from the demon."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Reverend",
+    "ability": "Other players who nominate you are safe from the demon.",
+    "dist": 0.446
+   },
+   {
+    "name": "Hippie",
+    "ability": "If an evil player nominated another today, you die tonight.",
+    "dist": 0.631
+   },
+   {
+    "name": "Haberdasher",
+    "ability": "If the Demon chooses their good neighbors (except you) with their ability, they immediately lose it until dawn (even if you died tonight).",
+    "dist": 0.659
+   },
+   {
+    "name": "Mermaid",
+    "ability": "Each day, you may publicly accept a player's compliment: evil abilities cannot affect them until you accept another player's compliment.",
+    "dist": 0.672
+   },
+   {
+    "name": "Banshee",
+    "ability": "If the Demon kills you, all players learn this. From now on, you may nominate twice per day and vote twice per nomination.",
+    "dist": 0.681
+   },
+   {
+    "name": "Lemming",
+    "ability": "Good players who nominate you become Lemmings. If 1 Lemming dies, that night, all do.",
+    "dist": 0.7
+   }
+  ]
+ },
+ {
+  "gap": 14,
+  "gapScore": 1.21,
+  "team": "minion",
+  "tags": [
+   "Death",
+   "Execution",
+   "Poison",
+   "Neighbor",
+   "Nominations"
+  ],
+  "abilityHints": [
+   "Outsiders executed while you live poison 1 Townsfolk neighbour, even if you are dead",
+   "Their alive townsfolk neighbors are poisoned untill that player is nominated, then they are executed today",
+   "1 Outsider's poisoned, if they die, their living Townsfolk neighbors are instead",
+   "The 1st time an evil player is nominated & executed by another evil player, their Townsfolk neighbors are poisoned (even if dead)",
+   "If an Outsider died today, that night, their 2 alive Townsfolk neighbors are poisoned until dusk",
+   "One Townsfolk player who nominates you or votes on your execution is drunk until dawn, even if you are dead",
+   "If you publicly guess (once) who the alive evil Townsfolk is, 2 players die tonight, even if you die today",
+   "If you were the last player to nominate today, all Townsfolk are poisoned until dusk, even if you are dead"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Hurt is never just, but killing with mercy those who hurt others is least unjust. Grudges and spite are chains of humanity we must cast off, lest we corrupt ourselves; we fight not to kill the King, but to save those lik",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Yasha",
+    "team": "minion",
+    "ability": "Each night*, you may choose a player you nominated today, or who nominated you: they die, even if you are dead."
+   },
+   {
+    "name": "Blight ₽",
+    "team": "minion",
+    "ability": "Outsiders executed while you live poison 1 Townsfolk neighbour, even if you are dead. [+1 Outsider]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Vulture",
+    "ability": "Once per game, choose a player who has already died. Their alive townsfolk neighbors are poisoned untill that player is nominated, then they are executed today.",
+    "dist": 0.587
+   },
+   {
+    "name": "The Seraph",
+    "ability": "You know a living Townsfolk neighbour; they're poisoned. Each night*, guess their character; if you're right, they die.",
+    "dist": 0.609
+   },
+   {
+    "name": "Blight ₽",
+    "ability": "Outsiders executed while you live poison 1 Townsfolk neighbour, even if you are dead. [+1 Outsider]",
+    "dist": 0.62
+   },
+   {
+    "name": "Undead Pirate",
+    "ability": "After you are executed & die, tonight you may choose a living good neighbour: they die.",
+    "dist": 0.632
+   },
+   {
+    "name": "Asphyxiant",
+    "ability": "Townsfolk players who survive execution become poisoned. Players who would die by execution might not today, but tonight.",
+    "dist": 0.637
+   },
+   {
+    "name": "Poltergeist",
+    "ability": "Each night* if you died by execution, and more than 3 players live, you may choose a living neighbor: they die. If you are executed while dead, your team loses.",
+    "dist": 0.64
+   }
+  ]
+ },
+ {
+  "gap": 15,
+  "gapScore": 1.21,
+  "team": "minion",
+  "tags": [
+   "Passive",
+   "Once Per Game",
+   "Execution",
+   "Poison",
+   "Quiet"
+  ],
+  "abilityHints": [
+   "Once per game, at night*, the Demon may become poisoned & choose a player",
+   "Once per game, at night, choose a character (not a Demon)",
+   "Once per game, at night*, you may choose to learn who the Demon is",
+   "If the Demon chooses them at night, learn whether the Demon is a known player",
+   "Once per game, at night*, choose a different player to become \"the Demon\"",
+   "Once per game, at night*, choose a Demon to become",
+   "Once per game, at night*, choose a non-Demon character",
+   "If you choose a Demon character, the Demon learns who you are"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "I once held up the sky; now I only want to tear it down. The gods call me 'evil', then I shall be evil incarnate, the primordial darkness that devours all light. I have sacrificed my broken body to a will older than the "
+  ],
+  "between": [
+   {
+    "name": "Exotic Businessman",
+    "team": "minion",
+    "ability": "Once per a game, on day, you may privately visit the Storyteller & choose a non-Demon player: you learn their abilities. They are poisoned until dusk when you are executed. 【】"
+   },
+   {
+    "name": "Sorcerer ⋒",
+    "team": "minion",
+    "ability": "The Demon has a second Demon ability fused with the one they drew. Both of you learn the new ability."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Exotic Businessman",
+    "ability": "Once per a game, on day, you may privately visit the Storyteller & choose a non-Demon player: you learn their abilities. They are poisoned until dusk when you are executed. 【】",
+    "dist": 0.604
+   },
+   {
+    "name": "Sorcerer ⋒",
+    "ability": "The Demon has a second Demon ability fused with the one they drew. Both of you learn the new ability.",
+    "dist": 0.608
+   },
+   {
+    "name": "Caliban",
+    "ability": "Once per game, at night, the Demon chooses which alive player is an evil Caliban. [No one is Caliban, +1 Outsider]",
+    "dist": 0.62
+   },
+   {
+    "name": "Necromancer",
+    "ability": "Once per game, at night*, choose a dead player (not a Demon). You gain their ability.",
+    "dist": 0.625
+   },
+   {
+    "name": "Summoner",
+    "ability": "You get 3 bluffs. On the 3rd night, choose a player: they become an evil Demon of your choice. [No Demon]",
+    "dist": 0.625
+   },
+   {
+    "name": "Scepter Father",
+    "ability": "You're jinxed with each Demon: they get a unique boon.",
+    "dist": 0.626
+   }
+  ]
+ },
+ {
+  "gap": 16,
+  "gapScore": 1.21,
+  "team": "minion",
+  "tags": [
+   "Setup",
+   "Nonconformist",
+   "Information",
+   "Consult",
+   "Outsider Modification"
+  ],
+  "abilityHints": [
+   "Each day, visit the Storyteller to learn a fact no other on-script Townsfolk could learn with their ability",
+   "Each day, you may visit the Storyteller to learn something",
+   "When you die, a Townsfolk might become an Outsider",
+   "Each day, you may visit the Storyteller",
+   "Each day, you may visit the Storyteller to learn 2 things in private",
+   "Townsfolk and Outsiders think they are Townsfolk or Outsider",
+   "Each day, you may visit the Storyteller to learn a riddle",
+   "Each day, you may visit the Storyteller to learn something about a player neighboring the last one"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Teehee... I didn't imagine the Count's son would have such a cute side! Don't worry, I guard my own and others' secrets well. Look into my eyes. You don't remember where you saw my face... The Hypnotist renders evil play",
+   "Unfortunate, yes. It appears that I couldn't stop you in time from wrongly acquiring the Orb That Makes You Immortal®. Yeah, it sucks to be me, all right. And yes, I do suppose that this has gone in such a way where no o"
+  ],
+  "between": [
+   {
+    "name": "Plagiarist",
+    "team": "minion",
+    "ability": "You also register as a not-in-play Townsfolk & know which. [+1 Outsider]"
+   },
+   {
+    "name": "Mawmett",
+    "team": "minion",
+    "ability": "Each day, you may visit the Storyteller & offer something: the Storyteller offers something in return."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Begetter ₽",
+    "ability": "Each day, you may visit the Storyteller to privately change 1 word in a character's ability. If accepted, some players learn the change that night.",
+    "dist": 0.6
+   },
+   {
+    "name": "Adviser ⨈",
+    "ability": "The Storyteller might wake you to see the grimoire & make a decision in their stead (the Storyteller can decline or alter them).",
+    "dist": 0.602
+   },
+   {
+    "name": "Femme Fatale",
+    "ability": "Each night, see the Grimoire. The Storyteller might prompt you to make decisions for them.",
+    "dist": 0.607
+   },
+   {
+    "name": "Mawmett",
+    "ability": "Each day, you may visit the Storyteller & offer something: the Storyteller offers something in return.",
+    "dist": 0.632
+   },
+   {
+    "name": "Favourite",
+    "ability": "The Story Teller tries to answer *all* your *game facts* questions truely & obeys you within the rules.",
+    "dist": 0.639
+   },
+   {
+    "name": "Tyrantt",
+    "ability": "All Townsfolk additionally have 1 outsider character. Everyone or nobody knows which one.",
+    "dist": 0.64
+   }
+  ]
+ },
+ {
+  "gap": 17,
+  "gapScore": 1.21,
+  "team": "townsfolk",
+  "tags": [
+   "Information",
+   "Drunkenness",
+   "Votes",
+   "Neighbor",
+   "Passive"
+  ],
+  "abilityHints": [
+   "Each night*, if you voted today, 1 Townsfolk is drunk until dusk",
+   "Your Townsfolk neighbours are drunk, but every other night, you are drunk until dusk, even if you are dead",
+   "A Townsfolk starts drunk & each night*",
+   "Each night*, even if you are dead, the Drunk token moves to a Townsfolk the Drunk whispered today",
+   "If both of your neighbors are Townsfolk they are drunk",
+   "1 of your Townsfolk neighbors is drunk",
+   "If they are a townsfolk, they are drunk until dusk",
+   "When you are executed, all Townsfolk players are drunk until dusk"
+  ],
+  "styleHints": [
+   "There are two kinds of drunk in this world. The first comes from drinking too much of the same wine; the second from hearing too many different lies. The first kind passes after a night's sleep. The second kind seeps int",
+   "AYES SEEEN IT! Down in da mines! Runs shaway when ye make too much noise, but ayes I seen it. None of ye' beleeve ol Tommy ... none of ya' ever but it was a - NO! NO LISTEN! The Nocker is a friendly spirit that lives in ",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Dockmaster",
+    "team": "townsfolk",
+    "ability": "Each Night learn how many players are drunk, if there are none you are drunk"
+   },
+   {
+    "name": "Cobbler",
+    "team": "townsfolk",
+    "ability": "Your Townsfolk neighbors votes count as 0."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Socialite",
+    "ability": "Each night, you may choose a unique player: learn how many of their neighbors are evil. Townsfolk you choose are drunk.",
+    "dist": 0.592
+   },
+   {
+    "name": "Dockmaster",
+    "ability": "Each Night learn how many players are drunk, if there are none you are drunk",
+    "dist": 0.592
+   },
+   {
+    "name": "Bard",
+    "ability": "Each day, publicly choose any players: Townsfolk among them are drunk until you choose again. Tonight, learn how many you made drunk.",
+    "dist": 0.621
+   },
+   {
+    "name": "Maître d'",
+    "ability": "Each night, choose 2 players. If neither are Townsfolk, one is drunk until dusk",
+    "dist": 0.623
+   },
+   {
+    "name": "Lookout",
+    "ability": "Each night, you learn whether an odd or even number of good players woke due to their own ability.",
+    "dist": 0.648
+   },
+   {
+    "name": "Mendicant",
+    "ability": "Each night, learn 2 players. Both or neither are good, sober and healthy",
+    "dist": 0.651
+   }
+  ]
+ },
+ {
+  "gap": 18,
+  "gapScore": 1.21,
+  "team": "minion",
+  "tags": [
+   "Setup",
+   "Poison",
+   "Alignment Change",
+   "You Start Knowing",
+   "Nominations"
+  ],
+  "abilityHints": [
+   "You start knowing 3 players, 1 and only 1 of which is evil",
+   "You start knowing 1 evil player",
+   "The 1st time you nominate, execute, and kill an Outsider, learn an evil player tonight",
+   "You start knowing all Initiates & how to turn 1 evil",
+   "You start knowing an evil player",
+   "An evil starts knowing 1 good player who cannot be chosen by evil killing abilities",
+   "The 1st good player to nominate each evil player is poisoned until that evil player is dead",
+   "Each night, learn if an evil player was chosen due to an ability, The 1st time an evil is chosen, the player that chose the evil is poisoned until dusk"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Gutter Rat",
+    "team": "minion",
+    "ability": "On the 1st night, choose 2 players: they are poisoned, The 1st time you are nominated, you only poison 1 of those players"
+   },
+   {
+    "name": "Mouthpiece",
+    "team": "minion",
+    "ability": "You start knowing all Initiates & how to turn 1 evil. [+1 to +? Initiates]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Mouthpiece",
+    "ability": "You start knowing all Initiates & how to turn 1 evil. [+1 to +? Initiates]",
+    "dist": 0.522
+   },
+   {
+    "name": "Mezepheles",
+    "ability": "You start knowing a secret word. The 1st good player to say this word becomes evil that night.",
+    "dist": 0.62
+   },
+   {
+    "name": "Widow",
+    "ability": "On your 1st night, look at the Grimoire & choose a player: they are poisoned. 1 good player knows a Widow is in play.",
+    "dist": 0.637
+   },
+   {
+    "name": "Wraith",
+    "ability": "You may choose to open your eyes at night. You wake when other evil players do.",
+    "dist": 0.639
+   },
+   {
+    "name": "Shankaar",
+    "ability": "Each night, evil players secretly communicate for 1 minute. [A good neighbor is an evil Shankaar]",
+    "dist": 0.652
+   },
+   {
+    "name": "Shankaar",
+    "ability": "Each night, evil players secretly communicate for 1 minute. [A good neighbor is an evil Shankaar]",
+    "dist": 0.652
+   }
+  ]
+ },
+ {
+  "gap": 19,
+  "gapScore": 1.21,
+  "team": "townsfolk",
+  "tags": [
+   "Execution",
+   "Death",
+   "Character Change",
+   "Passive",
+   "Neighbor"
+  ],
+  "abilityHints": [
+   "if they are an Outsider, they become a Minion on your 3rd night",
+   "-1 Minion, +1 Evil Townsfolk or Outsider",
+   "the 1st Townsfolk, Outsider, & Minion who choose them with their ability before you next wake die then",
+   "If chosen by a Townsfolk player's ability, you immediately become a not-in-play Minion & learn who is the Demon",
+   "On your 1st night, learn an Outsider or Minion player",
+   "If you nominated a player today (not yourself), tonight, learn if they are a Minion, and if so, what Minion they are",
+   "On your 1st & 3rd nights, choose Outsider, Minion or Demon",
+   "The Demon thinks an Outsider is a Minion"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "Hostess",
+    "team": "townsfolk",
+    "ability": "The 1st night a Minion is your alive neighbor, they learn this. If a Minion is not executed tomorrow, the Demon is drunk."
+   },
+   {
+    "name": "Scholar",
+    "team": "townsfolk",
+    "ability": "The 1st time you nominate a living Outsider, they immediately become a not-in-play Townsfolk. [+1 Outsider]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Hostess",
+    "ability": "The 1st night a Minion is your alive neighbor, they learn this. If a Minion is not executed tomorrow, the Demon is drunk.",
+    "dist": 0.551
+   },
+   {
+    "name": "Patroness",
+    "ability": "Each night, choose 1 alive player without outsider abilities (not yourself) who gets immune against wishes or changes caused by others until dusk. The Demon knows who.",
+    "dist": 0.612
+   },
+   {
+    "name": "Sauelsuesor",
+    "ability": "If you nominated a player today (not yourself), tonight, learn if they are a Minion, and if so, what Minion they are.",
+    "dist": 0.633
+   },
+   {
+    "name": "Naturalist",
+    "ability": "On your 1st & 3rd nights, choose Outsider, Minion or Demon. Each night, learn a player of an unchosen type. [+0 to +1 Outsider]",
+    "dist": 0.636
+   },
+   {
+    "name": "Treebeard",
+    "ability": "On your first night, choose another player to be guarded by an Ent. The first time the Dark Lord would kill them at night, they survive and the Ent is destroyed.",
+    "dist": 0.637
+   },
+   {
+    "name": "Brawler",
+    "ability": "On your 1st night, 1 Minion player may choose to be drunk (you learn this). If they don't & are executed, good wins.",
+    "dist": 0.654
+   }
+  ]
+ },
+ {
+  "gap": 20,
+  "gapScore": 1.2,
+  "team": "minion",
+  "tags": [
+   "Execution",
+   "Death",
+   "Once Per Game",
+   "Passive",
+   "Nominations"
+  ],
+  "abilityHints": [
+   "Once per game, before nominations, you may choose a player to be executed without voting",
+   "an Outsider chosen this way becomes a not-in-play Townsfolk",
+   "Once per game, guess which players are the Outsiders",
+   "If you chose all other Townsfolk & Outsiders, your team wins",
+   "Once per game choose 2 other players",
+   "Once per game, before nominations, publicly choose 2 players",
+   "Each night*, choose 1 player who dies if it is an outsider",
+   "Once per game, at night*, choose to learn the characters of players that have nominated you"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Pyromancer",
+    "team": "minion",
+    "ability": "Once per game, before nominations, you may choose a player to be executed without voting."
+   },
+   {
+    "name": "Contagion",
+    "team": "minion",
+    "ability": "Townsfolk neighboring Outsiders yield reversed info. [+1 Outsider]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Pyromancer",
+    "ability": "Once per game, before nominations, you may choose a player to be executed without voting.",
+    "dist": 0.553
+   },
+   {
+    "name": "Gambit",
+    "ability": "Once per game, while dead & before nominations, publicly choose a player: they win if (& only if) you do.",
+    "dist": 0.611
+   },
+   {
+    "name": "Beast 𓅪",
+    "ability": "If you publicly claim to be the Beast when nominated, after voting, you may kill all other players who voted for you.",
+    "dist": 0.628
+   },
+   {
+    "name": "Jurist",
+    "ability": "The 1st outsider to nominate you’s vote secretly counts as -2, even if you are dead. You learn when this happens. [+1 Outsider]",
+    "dist": 0.629
+   },
+   {
+    "name": "Siren",
+    "ability": "Twice per Game: Start \"singing\" while casting votes, for this nomination the count of votes is cut in half. You can not die by execution.",
+    "dist": 0.639
+   },
+   {
+    "name": "Wendigo",
+    "ability": "You think you are a good character (players receiving bluffs learn which). Players you nominate or choose at night might die until dawn. [-1 Outsider]",
+    "dist": 0.642
+   }
+  ]
+ },
+ {
+  "gap": 21,
+  "gapScore": 1.19,
+  "team": "townsfolk",
+  "tags": [
+   "Death",
+   "Nominations",
+   "Character Change",
+   "Once Per Game",
+   "Drunkenness"
+  ],
+  "abilityHints": [
+   "If you nominate or are nominated by a Minion or Demon, they may become a not-in-play same-type character tonight, even if you are dead",
+   "Each day, if you are the first or the last player to nominate, and the player you nominated is evil, they die that night",
+   "If an evil player was nominated today, they may choose a not-in-play character (not an extra Demon) to become tonight",
+   "On day 3, Minions become Riot & nominees die but nominate an alive player immediately",
+   "If the Demon was nominated today, they may choose if they swap characters with a Minion tonight",
+   "if a Minion, their ability becomes \"Each night, choose a player",
+   "When you or a Minion dies, an evil player becomes an out-of-play character",
+   "A Minion, if chosen, may choose a new Minion to be & another player might die instead"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "I am not the hero that Ravenswood Bluff deserves. I am also not the hero it needs. I'll be honest, I was supposed to be on the evil team, but they already had two minions, so here we are. The Vigilante takes matters into"
+  ],
+  "between": [
+   {
+    "name": "Architect",
+    "team": "townsfolk",
+    "ability": "Once per game, at night, choose a Demon and a Minion. In play chosen characters become different characters of the same type."
+   },
+   {
+    "name": "Boxer",
+    "team": "townsfolk",
+    "ability": "Minions you nominate die. If you nominate a good player, you are drunk."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Boxer",
+    "ability": "Minions you nominate die. If you nominate a good player, you are drunk.",
+    "dist": 0.534
+   },
+   {
+    "name": "Swordfighter",
+    "ability": "Each night, choose a player. If you chose a Minion, the Damsel learns who they are [+the Damsel]",
+    "dist": 0.617
+   },
+   {
+    "name": "Powder Monkey",
+    "ability": "On your 1st day, publicly choose 2 players: if either is a Minion, you & a chosen Minion die tonight.",
+    "dist": 0.628
+   },
+   {
+    "name": "Tea-Leaf",
+    "ability": "Once per game, at night, choose a player: a Minion, if chosen, swaps characters with you.",
+    "dist": 0.63
+   },
+   {
+    "name": "Gimli",
+    "ability": "If Legolas publicly tosses you at a player and you consent, if that player is a Minion, they die. Otherwise, you may no longer nominate.",
+    "dist": 0.633
+   },
+   {
+    "name": "Forger",
+    "ability": "Each night, choose a player; a chosen Demon swaps characters with a living Minion.",
+    "dist": 0.635
+   }
+  ]
+ },
+ {
+  "gap": 22,
+  "gapScore": 1.19,
+  "team": "loric",
+  "tags": [
+   "Death",
+   "Execution",
+   "Nonconformist",
+   "Setup",
+   "Death Modification"
+  ],
+  "abilityHints": [
+   "The 1st Townsfolk or Minion to die from execution is resurrected tonight",
+   "the 1st Townsfolk, Outsider, & Minion who choose them with their ability before you next wake die then",
+   "they die, if a Minion was killed this way poison all Townsfolk until dusk, All Players know you are in play",
+   "Townsfolk are \"the Demon\" & you're not, a player dies each night*",
+   "When you die, the Demon might register as good & as a Townsfolk or Outsider until dusk",
+   "Each night*, you may change Minions into bluff characters OR choose 1 Townsfolk to register as minion, ELSE 1 player dies",
+   "-1 Minion, +1 Evil Townsfolk or Outsider",
+   "If you nominate an evil player & they are executed, Townsfolk are safe from the Demon tonight"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "Dazzler",
+    "team": "loric",
+    "ability": "Townsfolk and Outsiders think they are Townsfolk or Outsider. Minions and Demons think they are Minion or Demon."
+   },
+   {
+    "name": "Götterdämmerung",
+    "team": "loric",
+    "ability": "Someone must die by execution each day. Someone must die each night*."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Parallel Timeline",
+    "ability": "When a non-Townsfolk dies, the living Demon becomes the next Demon on the script (looping).",
+    "dist": 0.574
+   },
+   {
+    "name": "Potion of Panic",
+    "ability": "Cannot be nullified. This potion cannot be veiled once unveiled. When broken, if veiled, the Megalomaniac acts twice next night.",
+    "dist": 0.578
+   },
+   {
+    "name": "Plotter (Role)",
+    "ability": "≤ 1 minion is the Plotter: If you live or Story Teller is executed, winning Townsfolk/Demons don't win, else winning Outsiders/Minions. Night 1 has alignment-separated Plotter info for minions and outsider. You choose your registration. If guessed publicly, the Demon kills you. On night X, Townsfolk & Demons are deranged until dusk. [X Outsiders]",
+    "dist": 0.591
+   },
+   {
+    "name": "God of Ug",
+    "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+    "dist": 0.647
+   },
+   {
+    "name": "Pope",
+    "ability": "There are duplicate good characters in play. They might also be bluffs.",
+    "dist": 0.649
+   },
+   {
+    "name": "Potion of Obsession",
+    "ability": "When this potion is unveiled; until dusk, the number of votes needed to be marked for death is increased by one. This potion breaks.",
+    "dist": 0.649
+   }
+  ]
+ },
+ {
+  "gap": 23,
+  "gapScore": 1.19,
+  "team": "outsider",
+  "tags": [
+   "Death",
+   "Alignment Change",
+   "Nominations",
+   "Execution",
+   "Death Modification"
+  ],
+  "abilityHints": [
+   "You might die at any time when you nominate & execute a player with a different alignment",
+   "If you are executed or not 'mad' about being the in play Townsfolk you start knowing, a good player might become evil",
+   "Townsfolk you have nominated die if you are executed",
+   "If 5 or more players are alive and you nominate, execute, and kill an evil player, you become their character & alignment",
+   "The 1st time a good Townsfolk nominates you, they becomes evil tonight, even if you are dead",
+   "The 1st time you nominate, you lose your ability & if the nominee is a Townsfolk, they die",
+   "If you nominate & execute another good player, they do not die",
+   "When you nominate and execute a player, if they were good, you die as well"
+  ],
+  "styleHints": [
+   "Unfortunate, yes. It appears that I couldn't stop you in time from wrongly acquiring the Orb That Makes You Immortal®. Yeah, it sucks to be me, all right. And yes, I do suppose that this has gone in such a way where no o",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Mimic",
+    "team": "outsider",
+    "ability": "You think you are a Townsfolk & have that ability. Each night*, the last Townsfolk to choose you with their ability, dies."
+   },
+   {
+    "name": "Concubine",
+    "team": "outsider",
+    "ability": "You do not know your alignment(you might be evil). You might die at any time when you nominate & execute a player with a different alignment."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Concubine",
+    "ability": "You do not know your alignment(you might be evil). You might die at any time when you nominate & execute a player with a different alignment.",
+    "dist": 0.447
+   },
+   {
+    "name": "Doppelganger",
+    "ability": "You do not know you are the Doppelganger. You think you are a Townsfolk character that might be in play and you duplicate their ability. [+0 to +3 Doppelgangers]",
+    "dist": 0.638
+   },
+   {
+    "name": "Eccentric",
+    "ability": "If you are nominated by evil and executed, your team loses. Anyone 'mad' that you are in play might die. You cannot self-nominate. [Your token is a square]",
+    "dist": 0.648
+   },
+   {
+    "name": "The Boy",
+    "ability": "Each day* You are mad that you were turned into a sheep or a good player might die",
+    "dist": 0.65
+   },
+   {
+    "name": "Colossus",
+    "ability": "You might not die if executed. Your neighbours might register as a Colossus of your alignment.",
+    "dist": 0.652
+   },
+   {
+    "name": "Schizo",
+    "ability": "You have any townsfolk or minion ability & alignment but you get false character – & possibly alignment – signals about yourself & possibly others.",
+    "dist": 0.655
+   }
+  ]
+ },
+ {
+  "gap": 24,
+  "gapScore": 1.19,
+  "team": "townsfolk",
+  "tags": [
+   "Execution",
+   "Information",
+   "Poison",
+   "Votes",
+   "Nominations"
+  ],
+  "abilityHints": [
+   "Each night, choose 2 players, learn if any are poisoned",
+   "You die when poisoned players choose you by their abilities",
+   "If you nominate & execute the first person executed, that night (even if dead), choose a player",
+   "The 1st time a Minion chooses you with their ability, they learn this & act twice more, even if you are dead, drunk, or poisoned",
+   "Minions you don't nominate keep their abilities if executed, even if you die by execution",
+   "Each day, if nominate and execute someone, you may kill tonight",
+   "When you are executed, learn how many evil players voted for you",
+   "Good players who you nominate & kill by execution learn you are in play"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Calm your mind and try to let a single mote fall from your hand, and you’ll find that… you can’t do it. But check how close you were. You’ll find something very interesting indeed. Don’t ask where I learned this. The Spi",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Viking",
+    "team": "townsfolk",
+    "ability": "When you vote with your vote token, the nominee is executed immediately."
+   },
+   {
+    "name": "Witch doctor ₽",
+    "team": "townsfolk",
+    "ability": "Each night, choose a player: you learn if they're poisoned. Poisoned characters' abilities yield false info, even if you're poisoned."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Jester",
+    "ability": "Votes on you secretly fail.",
+    "dist": 0.577
+   },
+   {
+    "name": "Apothecary",
+    "ability": "All types of potions you are holding are nullified.",
+    "dist": 0.583
+   },
+   {
+    "name": "Cleric",
+    "ability": "You may Submit the 3rd Forbidden Spell without repercussions.",
+    "dist": 0.609
+   },
+   {
+    "name": "Mentor",
+    "ability": "Each night, choose a player. If they learn information tonight, it is true, ignoring drunkenness, poisoning, and misregistration.",
+    "dist": 0.621
+   },
+   {
+    "name": "Yogi",
+    "ability": "Drunk or poisoned players receive false information",
+    "dist": 0.643
+   },
+   {
+    "name": "Carpenter",
+    "ability": "Each night: Choose 1 player; you learn if they are currently influenced (drunk, poison, madness, protection)",
+    "dist": 0.653
+   }
+  ]
+ },
+ {
+  "gap": 25,
+  "gapScore": 1.19,
+  "team": "minion",
+  "tags": [
+   "Death",
+   "Drunkenness",
+   "Poison",
+   "Neighbor",
+   "Passive"
+  ],
+  "abilityHints": [
+   "-? Townsfolk, +? Outsiders so that all Outsiders on script are in play, one of witch is drunk",
+   "If an Outsider died today, that night, their 2 alive Townsfolk neighbors are poisoned until dusk",
+   "All Outsiders are drunk",
+   "Your Townsfolk neighbours are drunk, but every other night, you are drunk until dusk, even if you are dead",
+   "All Outsiders are drunk until Night X+1",
+   "Outsiders are drunk, even if you die at night",
+   "If both of your neighbors are Townsfolk they are drunk",
+   "Outsiders executed while you live poison 1 Townsfolk neighbour, even if you are dead"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Smotherer",
+    "team": "minion",
+    "ability": "The last person you hugged is drunk."
+   },
+   {
+    "name": "Biter",
+    "team": "minion",
+    "ability": "You start knowing which Outsiders are in-play. Dead Outsiders poison 1 Townsfolk neighbor. [-1 to +1 Outsider]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Tyrantt",
+    "ability": "All Townsfolk additionally have 1 outsider character. Everyone or nobody knows which one.",
+    "dist": 0.566
+   },
+   {
+    "name": "Lamp Lighter",
+    "ability": "Each night, choose up to a third of the players. Chosen good players are sober and heathy until dusk. [All Outsiders are poisoned, +2 Outsiders]",
+    "dist": 0.568
+   },
+   {
+    "name": "Smotherer",
+    "ability": "The last person you hugged is drunk.",
+    "dist": 0.623
+   },
+   {
+    "name": "Baron",
+    "ability": "There are extra Outsiders in play. [+2 Outsiders]",
+    "dist": 0.625
+   },
+   {
+    "name": "Xaan",
+    "ability": "On night X, all Townsfolk are poisoned until dusk. [X Outsiders]",
+    "dist": 0.642
+   },
+   {
+    "name": "Tracker",
+    "ability": "Each dawn, see all players (not yourself) whose abilities queried your registered or actual player state or properties correctly since last dawn.",
+    "dist": 0.645
+   }
+  ]
+ },
+ {
+  "gap": 26,
+  "gapScore": 1.19,
+  "team": "loric",
+  "tags": [
+   "Nonconformist",
+   "Neighbor",
+   "Public",
+   "Character Change",
+   "Setup"
+  ],
+  "abilityHints": [
+   "If they are alive, instead learn if both their neighbors are Townsfolk",
+   "If you die, 1 Townsfolk neighbour, if alive, becomes an evil Nonow tonight (once)",
+   "Townsfolk abilities have no effect on your alive neighbors",
+   "The Demon's neighbors register as good Outsiders to Townsfolk",
+   "each night* guess how many outsiders are in play, if correct, that amount of players die, all in play outsiders become good and might become townsfolk",
+   "You might register as good & as a Townsfolk or Outsider, even if dead",
+   "1 Outsider's poisoned, if they die, their living Townsfolk neighbors are instead",
+   "If you die without speaking to a Townsfolk, or if all Outsiders are in play, another player might die that night"
+  ],
+  "styleHints": [
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg"
+  ],
+  "between": [
+   {
+    "name": "Polymath (Role)",
+    "team": "loric",
+    "ability": "On night 1, ≤1 good Townsfolk becomes outsider+Polymath: On night/day X, play ≤1 bluffable townsfolk/minion. Any chosen ability after X choices might overdrive. You register as evil. The evil *might* know your character. [1 evil Townsfolk/Outsider]"
+   },
+   {
+    "name": "CEO",
+    "team": "loric",
+    "ability": "Players register as alive during the day (not to this) if both their neighbors live."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "CEO",
+    "ability": "Players register as alive during the day (not to this) if both their neighbors live.",
+    "dist": 0.537
+   },
+   {
+    "name": "Pope",
+    "ability": "There are duplicate good characters in play. They might also be bluffs.",
+    "dist": 0.598
+   },
+   {
+    "name": "Polymath (Role)",
+    "ability": "On night 1, ≤1 good Townsfolk becomes outsider+Polymath: On night/day X, play ≤1 bluffable townsfolk/minion. Any chosen ability after X choices might overdrive. You register as evil. The evil *might* know your character. [1 evil Townsfolk/Outsider]",
+    "dist": 0.611
+   },
+   {
+    "name": "God of Ug",
+    "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+    "dist": 0.633
+   },
+   {
+    "name": "Cookie",
+    "ability": "Players might not learn other in-play NPCs until the game starts. [+? NPCs]",
+    "dist": 0.643
+   },
+   {
+    "name": "Potion of Empathy",
+    "ability": "Each night you learn what good and evil potions your living neighbors are holding.",
+    "dist": 0.649
+   }
+  ]
+ },
+ {
+  "gap": 27,
+  "gapScore": 1.19,
+  "team": "townsfolk",
+  "tags": [
+   "Nominations",
+   "Death",
+   "Character Change",
+   "Passive",
+   "Alignment Change"
+  ],
+  "abilityHints": [
+   "On your 1st night, a Townsfolk becomes a not in-play Outsider",
+   "If you die at night, choose a player & a Townsfolk",
+   "If you die without speaking to a Townsfolk, or if all Outsiders are in play, another player might die that night",
+   "If an Outsider dies, a 2nd might become a not-in-play Townsfolk tonight (you know them) & vice versa",
+   "One Townsfolk player who nominates you or votes on your execution is drunk until dawn, even if you are dead",
+   "The 1st time a good Townsfolk nominates you, they becomes evil tonight, even if you are dead",
+   "If you are paralyzed until you guess all Townsfolk players' characters, your team wins or until you die at night (before guessing), choose a Townsfolk to become",
+   "For each non-Townsfolk teammate (or yourself) that died since last night, choose a player tonight"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "I am not the hero that Ravenswood Bluff deserves. I am also not the hero it needs. I'll be honest, I was supposed to be on the evil team, but they already had two minions, so here we are. The Vigilante takes matters into"
+  ],
+  "between": [
+   {
+    "name": "Ninja",
+    "team": "townsfolk",
+    "ability": "Each day, if you are the first or the last player to nominate, and the player you nominated is evil, they die that night."
+   },
+   {
+    "name": "Landlord",
+    "team": "townsfolk",
+    "ability": "On your 1st night, a Townsfolk becomes a not in-play Outsider."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Landlord",
+    "ability": "On your 1st night, a Townsfolk becomes a not in-play Outsider.",
+    "dist": 0.575
+   },
+   {
+    "name": "Demigod",
+    "ability": "You can’t die unless you are the last living Townsfolk. If a good player nominates you, you are drunk.",
+    "dist": 0.604
+   },
+   {
+    "name": "Village Gargoyle",
+    "ability": "On night ≥ 2, when your team has majority, you are demon-killed & become not-in-play Townsfolk. Give it to 1 chosen player, once your team loses majority. Your character lives even if dead.",
+    "dist": 0.612
+   },
+   {
+    "name": "Shephard",
+    "ability": "Each night, pick a player, if that player is a sheep, turn them into a not in play townsfolk [+Sheep]",
+    "dist": 0.613
+   },
+   {
+    "name": "Samurai",
+    "ability": "Each night*, choose 1 player who dies if it is an outsider. You are of Townsfolk+Outsider type. [? Samurai]",
+    "dist": 0.616
+   },
+   {
+    "name": "Huntsman",
+    "ability": "Once per game, at night, choose a living player: the Damsel, if chosen, becomes a not-in-play Townsfolk. [+the Damsel]",
+    "dist": 0.624
+   }
+  ]
+ },
+ {
+  "gap": 28,
+  "gapScore": 1.19,
+  "team": "outsider",
+  "tags": [
+   "Passive",
+   "Execution",
+   "Nominations",
+   "Even If Dead",
+   "Win/Loss Condition"
+  ],
+  "abilityHints": [
+   "The 1st time the Demon kills a Minion, you become evil, even if you are executed",
+   "Minions you don't nominate keep their abilities if executed, even if you die by execution",
+   "If you nominate, execute, & kill the Demon, you become the evil Demon",
+   "If 5 or more players live and you nominate, execute & kill the Demon, you become the evil Demon",
+   "The 1st time you nominate and execute a minion, and they die, you learn this",
+   "If you nominate the Demon, they are executed & assassinated & another alive player becomes the evil Demon",
+   "If a Minion nominates, executes, & kills the Demon (ending the game), they change alignment, even if you are dead",
+   "If you are nominated & executed by a Minion, all learn this"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Rustbringer",
+    "team": "outsider",
+    "ability": "Minions you don't nominate keep their abilities if executed, even if you die by execution."
+   },
+   {
+    "name": "Occultist",
+    "team": "outsider",
+    "ability": "The Demon learns 2 extra bluffs"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "The Lamb",
+    "ability": "If you are executed, all living Minions become Demons & kills are arbitrary tonight.",
+    "dist": 0.547
+   },
+   {
+    "name": "Myconid",
+    "ability": "Minions that die by execution keep their ability. You do too.",
+    "dist": 0.601
+   },
+   {
+    "name": "Child of Lir",
+    "ability": "All know who you are. Half the players (rounded down) may be executed on your 1st day. On your 3rd, evil wins. You can't be executed.",
+    "dist": 0.616
+   },
+   {
+    "name": "Rustbringer",
+    "ability": "Minions you don't nominate keep their abilities if executed, even if you die by execution.",
+    "dist": 0.626
+   },
+   {
+    "name": "Bakeneko",
+    "ability": "While alive, arbitrary false pings & abilities occur. If you are mad about being the Bakeneko, something bad happens. The Demon learns who you are.",
+    "dist": 0.629
+   },
+   {
+    "name": "Accursed",
+    "ability": "Your Spells must give some benefit to the opposite team. If you die by execution, you may not Invoke a Curse.",
+    "dist": 0.642
+   }
+  ]
+ },
+ {
+  "gap": 29,
+  "gapScore": 1.18,
+  "team": "minion",
+  "tags": [
+   "Neighbor",
+   "Passive",
+   "Misregistration",
+   "Character Change",
+   "Information"
+  ],
+  "abilityHints": [
+   "Players register as alive during the day (not to this) if both their neighbors live",
+   "Once per day, you may choose to kill an alive neighbor, if your other alive neighbor agrees",
+   "You know your alive neighbor’s characters",
+   "If 1 of your alive neighbors dies, that night you learn the other alive neighbor's character",
+   "If both your alive neighbors are good, they can't die",
+   "If 4 or more players live, each living player may publicly choose (once per game) that a player of their own alignment dies",
+   "Once per game, during the day, publicly declare that, tonight, your alive neighbours learn who the other is if the other is good",
+   "Tonight, you might learn 1 or both of your alive neighbors' characters"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "AYES SEEEN IT! Down in da mines! Runs shaway when ye make too much noise, but ayes I seen it. None of ye' beleeve ol Tommy ... none of ya' ever but it was a - NO! NO LISTEN! The Nocker is a friendly spirit that lives in "
+  ],
+  "between": [
+   {
+    "name": "Extortionist",
+    "team": "minion",
+    "ability": "You know your alive neighbor’s characters. They might register as one another."
+   },
+   {
+    "name": "Ariel",
+    "team": "minion",
+    "ability": "Once per game, while dead, publicly choose a player: if they're executed, their team loses."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Extortionist",
+    "ability": "You know your alive neighbor’s characters. They might register as one another.",
+    "dist": 0.371
+   },
+   {
+    "name": "Blood Mage",
+    "ability": "You may submit Forbidden Spells without repercussions. While there are 5 or more players alive, you die if (& only if) 1 is Successfully Cast.",
+    "dist": 0.65
+   },
+   {
+    "name": "Tracker",
+    "ability": "Each dawn, see all players (not yourself) whose abilities queried your registered or actual player state or properties correctly since last dawn.",
+    "dist": 0.659
+   },
+   {
+    "name": "Terror Brim",
+    "ability": "If a player is executed & doesn't correctly guess you're their living neighbour: a player dies tonight. A good player knows you're in play.",
+    "dist": 0.665
+   },
+   {
+    "name": "Gollum",
+    "ability": "You begin as Sméagol and register as Good. If you receive the One Ring, you become Gollum. Each night thereafter, if one of your living neighbours possesses the One Ring, you steal it. Frodo learns that the Ring was stolen, but not who has it.",
+    "dist": 0.666
+   },
+   {
+    "name": "Garak",
+    "ability": "Each night, you see the bridge console. You might register as good & as a Crew Member or Outsider, even if dead.\"",
+    "dist": 0.666
+   }
+  ]
+ },
+ {
+  "gap": 30,
+  "gapScore": 1.18,
+  "team": "outsider",
+  "tags": [
+   "Neighbor",
+   "Alignment Change",
+   "Character Change",
+   "Misregistration",
+   "Extra Evil"
+  ],
+  "abilityHints": [
+   "If your alive neighbors have the same alignment, you inherit their alignment",
+   "Learn whether they share an alignment with both living neighbors",
+   "Each night, you become the alignment of an alive neighbor",
+   "Each dawn, you change your alignment if the other alive players of your alignment are more than the alive players of the opposite alignment, even if dead",
+   "2 neighboring players are known to be the same alignment",
+   "If both your living neighbors are the same alignment, the Demon learns this and can only attack them",
+   "If your neighbors are the same alignment, all learn the Queen's in play",
+   "You start knowing the alignment of your clockwise Hunter neighbor’s clockwise neighbor"
+  ],
+  "styleHints": [
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was ",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Hanger-on",
+    "team": "outsider",
+    "ability": "If your alive neighbors have the same alignment, you inherit their alignment. Else, you are good."
+   },
+   {
+    "name": "Wire Walker",
+    "team": "outsider",
+    "ability": "You think you are an in-play Townsfolk, but your info is reversed. You might (once) swap characters with them at dusk."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Hanger-on",
+    "ability": "If your alive neighbors have the same alignment, you inherit their alignment. Else, you are good.",
+    "dist": 0.394
+   },
+   {
+    "name": "Activist",
+    "ability": "Each dawn, you change your alignment if the other alive players of your alignment are more than the alive players of the opposite alignment, even if dead.",
+    "dist": 0.625
+   },
+   {
+    "name": "Boredom",
+    "ability": "Your neighbours might think or not think anything.",
+    "dist": 0.638
+   },
+   {
+    "name": "Flat-Earther",
+    "ability": "[A split is between 2 neighboring players. The Demon knows where & may move it.]",
+    "dist": 0.668
+   },
+   {
+    "name": "Schizo",
+    "ability": "You have any townsfolk or minion ability & alignment but you get false character – & possibly alignment – signals about yourself & possibly others.",
+    "dist": 0.675
+   },
+   {
+    "name": "Tom Bombadil",
+    "ability": "You think you are a Fellowship character, but you are not. Any ability that targets you may instead affect either of your living neighbours.",
+    "dist": 0.702
+   }
+  ]
+ },
+ {
+  "gap": 31,
+  "gapScore": 1.18,
+  "team": "loric",
+  "tags": [
+   "Votes",
+   "Nonconformist",
+   "Nominations",
+   "Setup",
+   "Character Change"
+  ],
+  "abilityHints": [
+   "Dead players don't use vote tokens on nominations you make",
+   "Townsfolk nominators secretly gain 2 extra votes for their nomination",
+   "When nominations are called, your dead neighbors regain their vote token",
+   "Dead players who vote with you don't lose their vote tokens",
+   "Your Townsfolk neighbors votes count as 0",
+   "tomorrow, votes on them fail if no vote tokens are spent on their nomination",
+   "Each day, if all living players vote to ratify you, you run nominations, and you may change the nomination and voting rules, except on yourself",
+   "One Townsfolk player who nominates you or votes on your execution is drunk until dawn, even if you are dead"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "Dragon",
+    "team": "loric",
+    "ability": "Townsfolk might become leftover characters. [+? Tokens in the bag]"
+   },
+   {
+    "name": "Harbringer",
+    "team": "loric",
+    "ability": "Votes are counted silently. On a successful nomination, the total vote tally is announced."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Pirate Costume",
+    "ability": "If only the pirate(s) vote(not all need to), the player is \"about to die\" with no changes to the required votes amount.",
+    "dist": 0.558
+   },
+   {
+    "name": "Suggestion Box",
+    "ability": "Before setup, Any player can make a suggestion once. After a suggestion is made, a vote begins. If there are more hands than half of the people, the Suggestion is implemented.",
+    "dist": 0.581
+   },
+   {
+    "name": "God of Ug",
+    "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+    "dist": 0.6
+   },
+   {
+    "name": "Breaker Box",
+    "ability": "There is a lever in town square whose position affects the game. Each day, players may take a vote for whether the position should change.",
+    "dist": 0.612
+   },
+   {
+    "name": "Treasure Hunters",
+    "ability": "Offline: At setup, claim any non-listed characters & hide their tokens in the room. The 1st player to find one may visit you by day & gain its ability.",
+    "dist": 0.644
+   },
+   {
+    "name": "Harbringer",
+    "ability": "Votes are counted silently. On a successful nomination, the total vote tally is announced.",
+    "dist": 0.649
+   }
+  ]
+ },
+ {
+  "gap": 32,
+  "gapScore": 1.18,
+  "team": "townsfolk",
+  "tags": [
+   "Information",
+   "Passive",
+   "Nominations",
+   "Setup",
+   "Outsider Modification"
+  ],
+  "abilityHints": [
+   "The 1st Outsider you nominate is drunk & dies if you die",
+   "The 1st time an Outsider nominates you, they die",
+   "When you do, if the nominee is not the Demon, they die",
+   "they gain that Outsider ability until you die",
+   "if they are an Outsider, they die",
+   "You know the 1st time an Outsider nominates a Minion",
+   "On your 1st night (& only then), on death Outsider abilities occur",
+   "If you nominate or are nominated by a Minion or Demon, they may become a not-in-play same-type character tonight, even if you are dead"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "I am not the hero that Ravenswood Bluff deserves. I am also not the hero it needs. I'll be honest, I was supposed to be on the evil team, but they already had two minions, so here we are. The Vigilante takes matters into"
+  ],
+  "between": [
+   {
+    "name": "Confessor",
+    "team": "townsfolk",
+    "ability": "You know the 1st time an Outsider nominates a Minion. [+0 or +1 Outsider]"
+   },
+   {
+    "name": "Daydreamer",
+    "team": "townsfolk",
+    "ability": "You cannot die during the day."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Vagrant",
+    "ability": "You might count as Outsider or Traveller all the game. [-0 or -1 Outsiders, ? Vagrants]",
+    "dist": 0.584
+   },
+   {
+    "name": "Deputy",
+    "ability": "If the Sheriff dies, you become the Sheriff [+The Sheriff]",
+    "dist": 0.586
+   },
+   {
+    "name": "Fool",
+    "ability": "The 1st time you die, you don't.",
+    "dist": 0.602
+   },
+   {
+    "name": "Yacht Broker",
+    "ability": "If you die at night, the Ferryman enters play.",
+    "dist": 0.609
+   },
+   {
+    "name": "Sheep",
+    "ability": "When you die a new player becomes a sheep [+Shephard]",
+    "dist": 0.613
+   },
+   {
+    "name": "Cleric",
+    "ability": "You may Submit the 3rd Forbidden Spell without repercussions.",
+    "dist": 0.623
+   }
+  ]
+ },
+ {
+  "gap": 33,
+  "gapScore": 1.17,
+  "team": "minion",
+  "tags": [
+   "Passive",
+   "Death",
+   "Execution",
+   "Nominations",
+   "Outsider Modification"
+  ],
+  "abilityHints": [
+   "Players who are mad an Outsider is an Outsider might be executed",
+   "Players that are mad about being an Outsider might die",
+   "Players who are mad about being an Outsider might register as evil & a Demon",
+   "Players who nominate & execute others might die at any time",
+   "If a player is mad as a fresh character during their nomination, they might not die if executed today",
+   "If you nominate & execute another good player, they do not die",
+   "The 1st time you nominate, execute, and kill an Outsider, learn an evil player tonight",
+   "For each Outsider executed, the next time evil would die, they don't"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Hurt is never just, but killing with mercy those who hurt others is least unjust. Grudges and spite are chains of humanity we must cast off, lest we corrupt ourselves; we fight not to kill the King, but to save those lik",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Fugitive",
+    "team": "minion",
+    "ability": "Players who are mad about being an Outsider might register as evil & a Demon. [+1 Outsider]"
+   },
+   {
+    "name": "Guilt",
+    "team": "minion",
+    "ability": "Players who nominate & execute others might die at any time."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Mistress",
+    "ability": "If the number of players mad as Outsiders isn’t expected, a mad player might be executed. [-1 or +1 Outsider]",
+    "dist": 0.558
+   },
+   {
+    "name": "Guilt",
+    "ability": "Players who nominate & execute others might die at any time.",
+    "dist": 0.567
+   },
+   {
+    "name": "Sinister Fog",
+    "ability": "*Player-specific* knowledge is hidden. Dead players may nominate. As many good as evil dead players may succeed in voting. Fabled don't change.",
+    "dist": 0.617
+   },
+   {
+    "name": "Terminator",
+    "ability": "If you nominate, execute & remove the Demon, evil wins. If you are executed deadly, 1 alive team member gets Terminator. You *might* register as Outsider. [≥3 evils]",
+    "dist": 0.618
+   },
+   {
+    "name": "Wendigo",
+    "ability": "You think you are a good character (players receiving bluffs learn which). Players you nominate or choose at night might die until dawn. [-1 Outsider]",
+    "dist": 0.632
+   },
+   {
+    "name": "Bully",
+    "ability": "Each night, ≤ 1 good player is notified, even if you are drunk/poisoned. They die if they are not publicly mad about their actual character before nominations end.",
+    "dist": 0.633
+   }
+  ]
+ },
+ {
+  "gap": 34,
+  "gapScore": 1.17,
+  "team": "townsfolk",
+  "tags": [
+   "Information",
+   "Execution",
+   "Passive",
+   "Nominations",
+   "Neighbor"
+  ],
+  "abilityHints": [
+   "Each night*, learn if today's executee is a Townsfolk",
+   "Each Night* learn a Townsfolk, you have their ability tonight",
+   "all Townsfolk except them learn false info tonight",
+   "Each night*, if you did not nominate yesterday, you learn how many Townsfolk did",
+   "Your Townsfolk neighbours must learn true info",
+   "If no Townsfolk who learned info tonight covered their eyes, you may choose (once) to poison all Townsfolk tomorrow",
+   "Each night, learn the next clockwise Townsfolk",
+   "Each night, learn how many Townsfolk are in the longest line of neighboring Townsfolk"
+  ],
+  "styleHints": [
+   "It was a grizzly morning. I was reading yesterday's paper, because I was too lazy to get today's from the letterbox. Not that I minded, I only got them for the word searches. But my hunt for 'Clues' and 'Leads' were inte",
+   "AYES SEEEN IT! Down in da mines! Runs shaway when ye make too much noise, but ayes I seen it. None of ye' beleeve ol Tommy ... none of ya' ever but it was a - NO! NO LISTEN! The Nocker is a friendly spirit that lives in ",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Insomniac",
+    "team": "townsfolk",
+    "ability": "Each night*, you learn if the player you nominated today would have been a better execution than today's executee."
+   },
+   {
+    "name": "Zepplinist",
+    "team": "townsfolk",
+    "ability": "Each night, learn how many Townsfolk are in the longest line of neighboring Townsfolk. You learn false info."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Lady of the Lake",
+    "ability": "Each night*, learn if today's executee is a Townsfolk. If they are alive, instead learn if both their neighbors are Townsfolk.",
+    "dist": 0.564
+   },
+   {
+    "name": "Mariner",
+    "ability": "Your Townsfolk neighbours must learn true info. If you're mad about being the Mariner, you become a different Townsfolk tonight.",
+    "dist": 0.589
+   },
+   {
+    "name": "Zepplinist",
+    "ability": "Each night, learn how many Townsfolk are in the longest line of neighboring Townsfolk. You learn false info.",
+    "dist": 0.592
+   },
+   {
+    "name": "Birdwatcher",
+    "ability": "Each night*, if you did not nominate yesterday, you learn how many Townsfolk did.",
+    "dist": 0.615
+   },
+   {
+    "name": "Imbecile",
+    "ability": "You are a Townsfolk that wakes at night. You learn your character on death. [? Imbeciles]",
+    "dist": 0.629
+   },
+   {
+    "name": "Medium",
+    "ability": "If a Townsfolk you nominated dies by execution, they learn that night that the Medium is in play.",
+    "dist": 0.63
+   }
+  ]
+ },
+ {
+  "gap": 35,
+  "gapScore": 1.17,
+  "team": "minion",
+  "tags": [
+   "Information",
+   "Neighbor",
+   "Once Per Game",
+   "False Info",
+   "Poison"
+  ],
+  "abilityHints": [
+   "Each night, choose a player, both their good neighbors might register as evil, Minion, or Demon, until dusk",
+   "Each night, choose if  the Townsfolk neighbors of Demons learn reversed info",
+   "Each night, Minions choose one to be \"the Demon\", sober, and evil, until dusk",
+   "Each night, if the Demon does not kill a good player, Townsfolk info is reversed until tomorrow night (even if they killed you)",
+   "Each night*, you or the evil Townsfolk wake to choose a player",
+   "Once per game, at night*, choose to make all Townsfolk (not yourself) safe from the Demon tonight",
+   "When you die, the Demon might register as good & as a Townsfolk or Outsider until dusk",
+   "to Townsfolk, they register as evil Demons until next choice"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Teehee... I didn't imagine the Count's son would have such a cute side! Don't worry, I guard my own and others' secrets well. Look into my eyes. You don't remember where you saw my face... The Hypnotist renders evil play"
+  ],
+  "between": [
+   {
+    "name": "Cyclist",
+    "team": "minion",
+    "ability": "Each night, choose if  the Townsfolk neighbors of Demons learn reversed info."
+   },
+   {
+    "name": "Seneschal",
+    "team": "minion",
+    "ability": "Each night, choose a player: until dusk, they might register as evil & as a Minion or Demon, even if dead. [+1 Outsider]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Seneschal",
+    "ability": "Each night, choose a player: until dusk, they might register as evil & as a Minion or Demon, even if dead. [+1 Outsider]",
+    "dist": 0.518
+   },
+   {
+    "name": "Thrall",
+    "ability": "Each night*, you learn the last player that died to the demon. You may choose to kill either of their neighbours.",
+    "dist": 0.611
+   },
+   {
+    "name": "Modiste",
+    "ability": "Each night, choose a character you haven't before (only 1 Demon): you learn if they are in-play & have their ability until dusk.",
+    "dist": 0.613
+   },
+   {
+    "name": "Gu Diao",
+    "ability": "Each night, learn the next clockwise Townsfolk: they are poisoned & might register as evil Gu Diao until dusk. Once per game, at night, change directions.",
+    "dist": 0.619
+   },
+   {
+    "name": "Poltergeist",
+    "ability": "Each night*, choose 1 different good character. While you register as it until dusk: you get its info & its actual players are Alchemist-constrained minions.",
+    "dist": 0.623
+   },
+   {
+    "name": "Summoner",
+    "ability": "You get 3 bluffs. On the 3rd night, choose a player: they become an evil Demon of your choice. [No Demon]",
+    "dist": 0.626
+   }
+  ]
+ },
+ {
+  "gap": 36,
+  "gapScore": 1.17,
+  "team": "fabled",
+  "tags": [
+   "Death",
+   "Drunkenness",
+   "Poison",
+   "Death Modification",
+   "Protection"
+  ],
+  "abilityHints": [
+   "Each night*, if at least 2 good players live, each evil player may choose to die",
+   "For each evil player you vote on, a player is drunk, even if you die",
+   "Each night*, choose a player, if they are evil, or was chosen by an evil player tonight",
+   "If you choose an evil player, you'll be drunk that night",
+   "Each night* choose one player more than last night (you may not choose dead players)",
+   "each night* all evil players may choose to kill a player separately",
+   "Drunk players might not die",
+   "Each night* choose a player they die"
+  ],
+  "styleHints": [
+   "Ohh, Jerry... Hm? Nooo, I'm not having a party, who told you that? Allison? Yeah, no, she must have meant some other party, one that isn't happening... here. The Merrymaker gets to keep people alive - as long as they don",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg"
+  ],
+  "between": [
+   {
+    "name": "Rehab ⊕",
+    "team": "fabled",
+    "ability": "Drunk players might be sober. Poisoned players might be healthy."
+   },
+   {
+    "name": "Highroller ∇",
+    "team": "fabled",
+    "ability": "Each night*, if at least 2 good players live, each evil player may choose to die."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Solicitor",
+    "ability": "2 living players may publicly choose to trade all potions once per day. If either player is dead when the trade would happen, no trade occurs.",
+    "dist": 0.567
+   },
+   {
+    "name": "Highroller ∇",
+    "ability": "Each night*, if at least 2 good players live, each evil player may choose to die.",
+    "dist": 0.572
+   },
+   {
+    "name": "Mercy Society",
+    "ability": "Each night, one player learns which alignment the Storyteller believes is winning: good, evil, or neither. Drunk or poisoned players may receive false info.",
+    "dist": 0.595
+   },
+   {
+    "name": "Rehab ⊕",
+    "ability": "Drunk players might be sober. Poisoned players might be healthy.",
+    "dist": 0.616
+   },
+   {
+    "name": "Thurifer",
+    "ability": "At night, if 2 or less players would live, some deaths may be prevented so 3 players live at dawn, & all learn this occurred.",
+    "dist": 0.634
+   },
+   {
+    "name": "Angel",
+    "ability": "Something bad might happen to whoever is most responsible for the death of a new player.",
+    "dist": 0.644
+   }
+  ]
+ },
+ {
+  "gap": 37,
+  "gapScore": 1.17,
+  "team": "outsider",
+  "tags": [
+   "Nominations",
+   "Character Change",
+   "Alignment Change",
+   "Setup",
+   "Passive"
+  ],
+  "abilityHints": [
+   "If Townsfolk or Outsider, they become your alignment",
+   "The 1st time you nominate a living Outsider, they immediately become a not-in-play Townsfolk",
+   "When you die, a Townsfolk might become an Outsider",
+   "If an Outsider dies, a 2nd might become a not-in-play Townsfolk tonight (you know them) & vice versa",
+   "chosen Outsiders become Townsfolk & chosen Minions become Outsiders",
+   "an Outsider chosen this way becomes a not-in-play Townsfolk",
+   "Chosen Townsfolk become not-in-play Outsiders",
+   "You *might* be an Outsider"
+  ],
+  "styleHints": [
+   "Look I just don't think we've heard the full story yet. I'd like to hear what EVERYBODY has to say before I make up my mind. The Contrarian is a fickle outsider who never wants to admit that their team may have found the",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "I don't wanna play this silly game, I wanna do it this way, I wanna do it exactly this way. It doesn't matter if you're a Townsfolk or an Outsider or a Minion or a Demon! You're all going down, none of these niceties, th"
+  ],
+  "between": [
+   {
+    "name": "Kabuki",
+    "team": "outsider",
+    "ability": "If you're mad you're a Townsfolk, you might become one. [+0 or +1 Outsider, most Outsiders are Kabuki]"
+   },
+   {
+    "name": "Cardinal",
+    "team": "outsider",
+    "ability": "If nominated, tonight, you become the allignment opposite to whoever nominated you."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Kabuki",
+    "ability": "If you're mad you're a Townsfolk, you might become one. [+0 or +1 Outsider, most Outsiders are Kabuki]",
+    "dist": 0.571
+   },
+   {
+    "name": "Syntheholic",
+    "ability": "You do not know you are the Syntheholic. You think you are a Crew Member character, but you are not.",
+    "dist": 0.575
+   },
+   {
+    "name": "Apparition",
+    "ability": "You think you're a Townsfolk. Players you nominate become the Apparition instead of you. If they're the Demon, the Storyteller now is.",
+    "dist": 0.609
+   },
+   {
+    "name": "Doppelganger",
+    "ability": "You do not know you are the Doppelganger. You think you are a Townsfolk character that might be in play and you duplicate their ability. [+0 to +3 Doppelgangers]",
+    "dist": 0.611
+   },
+   {
+    "name": "Seven of Nine",
+    "ability": "Start knowing 2 players, one is Borg, one is not. You must nominate one of these 2 players at the end of the first day, if you guess wrong, you get assimilated. [+ Borg]",
+    "dist": 0.613
+   },
+   {
+    "name": "Stowaway",
+    "ability": "You do not know you are the Stowaway. You think you are an in-play Outsider, but you are not. [+0 or +1 Outsider]",
+    "dist": 0.616
+   }
+  ]
+ },
+ {
+  "gap": 38,
+  "gapScore": 1.17,
+  "team": "minion",
+  "tags": [
+   "Information",
+   "Neighbor",
+   "Execution",
+   "Poison",
+   "Nominations"
+  ],
+  "abilityHints": [
+   "If you nominate an evil player & they are executed, Townsfolk are safe from the Demon tonight",
+   "1 Townsfolk with no evil neighbors is poisoned",
+   "Outsiders executed while you live poison 1 Townsfolk neighbour, even if you are dead",
+   "Minions you kill keep their ability & poison 1 Townsfolk neighbor",
+   "The 1st time an evil player is nominated & executed by another evil player, their Townsfolk neighbors are poisoned (even if dead)",
+   "Their alive townsfolk neighbors are poisoned untill that player is nominated, then they are executed today",
+   "If a townsfolk was executed today, you are safe from the Demon tonight",
+   "Outsiders you kill keep their ability & poison 1 Townsfolk neighbor"
+  ],
+  "styleHints": [
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was ",
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem"
+  ],
+  "between": [
+   {
+    "name": "Plant Owner",
+    "team": "minion",
+    "ability": "Your 2 Townsfolk neighbors are poisoned."
+   },
+   {
+    "name": "Fogwarden",
+    "team": "minion",
+    "ability": "If you nominated & executed an alive Fogwarden today, learn it tonight. [+? Good Fogwarden excluded from Minion & Demon info]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Fogwarden",
+    "ability": "If you nominated & executed an alive Fogwarden today, learn it tonight. [+? Good Fogwarden excluded from Minion & Demon info]",
+    "dist": 0.508
+   },
+   {
+    "name": "Caruncula",
+    "ability": "Your Townsfolk neighbours are poisoned & if you are chosen by an ability, they might instead. [You are the farthest from evil]",
+    "dist": 0.594
+   },
+   {
+    "name": "Sister of Fey",
+    "ability": "You start knowing the duplicated Townsfolk: 1 is poisoned, & if both die all good players are poisoned until dusk. [2 duplicate Townsfolk]",
+    "dist": 0.611
+   },
+   {
+    "name": "The Seraph",
+    "ability": "You know a living Townsfolk neighbour; they're poisoned. Each night*, guess their character; if you're right, they die.",
+    "dist": 0.617
+   },
+   {
+    "name": "Coffee brewer",
+    "ability": "Townsfolk abilities have no effect on your alive neighbors.",
+    "dist": 0.65
+   },
+   {
+    "name": "Vampire",
+    "ability": "The 1st evil player nominated by evil today lives if executed. Townsfolk who nominate you poison you both until dawn.",
+    "dist": 0.653
+   }
+  ]
+ },
+ {
+  "gap": 39,
+  "gapScore": 1.17,
+  "team": "townsfolk",
+  "tags": [
+   "Passive",
+   "Execution",
+   "Nominations",
+   "Alignment Change",
+   "Once Per Game"
+  ],
+  "abilityHints": [
+   "If you nominate & execute a player, ending the game, the Demon becomes your alignment",
+   "If 5 or more players are alive and you nominate, execute, and kill an evil player, you become their character & alignment",
+   "The 1st time you nominate, execute, and kill an Outsider, learn an evil player tonight",
+   "Good players who you nominate & kill by execution learn you are in play",
+   "If you nominate an evil player & they are executed, Townsfolk are safe from the Demon tonight",
+   "The first evil player to nominate and execute another player wakes each night* to choose a player",
+   "If 5 or more players live and you nominate, execute & kill the Demon, you become the evil Demon",
+   "If you nominate another player, that night learn if they are the Demon"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "Every Demon head I sever twists my shadow a little more. The townsfolk keep telling me to be careful not to get hurt, but they don't know, the real danger is hearing my own heartbeat grow more and more like Its. I've beg",
+   "That boy should be grateful! He grew up in a wonderful loving family, and this is how he repays me? Disgusting. I raised him as any mother should, but I couldn’t let him live in his pathetic fantasy world forever; I was "
+  ],
+  "between": [
+   {
+    "name": "Errai",
+    "team": "townsfolk",
+    "ability": "Townsfolk abilities learn you if possible."
+   },
+   {
+    "name": "Deacon",
+    "team": "townsfolk",
+    "ability": "If you nominate & execute a player, ending the game, the Demon becomes your alignment."
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Deacon",
+    "ability": "If you nominate & execute a player, ending the game, the Demon becomes your alignment.",
+    "dist": 0.477
+   },
+   {
+    "name": "Seraph",
+    "ability": "Good players who you nominate & kill by execution learn you are in play.",
+    "dist": 0.598
+   },
+   {
+    "name": "Lemming",
+    "ability": "Good players who nominate you become Lemmings. If 1 Lemming dies, that night, all do.",
+    "dist": 0.61
+   },
+   {
+    "name": "Deputy",
+    "ability": "If the Sheriff dies, you become the Sheriff [+The Sheriff]",
+    "dist": 0.637
+   },
+   {
+    "name": "Merry",
+    "ability": "The first time you nominate an evil player, their ability does not work until dawn.",
+    "dist": 0.656
+   },
+   {
+    "name": "Hallowed Spirit",
+    "ability": "The 1st time evil wins (no matter how), play instead must continue until a player is executed: their team loses.",
+    "dist": 0.661
+   }
+  ]
+ },
+ {
+  "gap": 40,
+  "gapScore": 1.17,
+  "team": "townsfolk",
+  "tags": [
+   "Setup",
+   "Passive",
+   "Votes",
+   "Outsider Modification",
+   "Drunkenness"
+  ],
+  "abilityHints": [
+   "All Outsiders are drunk until Night X+1",
+   "The 1st outsider to nominate you’s vote secretly counts as -2, even if you are dead",
+   "Each night*, learn how many vote tokens were used by evil players today",
+   "Each night*, the 1st good & 1st evil player nominated by an Outsider are drunk until dusk",
+   "Outsiders are drunk, even if you die at night",
+   "Each night*, if the Demon wasn't nominated today, all Minions are drunk until dusk",
+   "Each night*, you learn how many Minions voted today",
+   "No Minions, +1 or +2 Outsider"
+  ],
+  "styleHints": [
+   "Every night I pray, begging God to let me meet someone 'who shouldn't be saved.' At last, you've come. Your curiosity about me and mine about you are the two ends of the same rope. You're wondering: 'Will this woman trem",
+   "I am too big, and you are too small. There is a sea of nothing and islands of light. I am their shore. To you come the monsters. The pounding fists of void. The longing gods beyond our knowledge. I am the lookout. I see ",
+   "AYES SEEEN IT! Down in da mines! Runs shaway when ye make too much noise, but ayes I seen it. None of ye' beleeve ol Tommy ... none of ya' ever but it was a - NO! NO LISTEN! The Nocker is a friendly spirit that lives in "
+  ],
+  "between": [
+   {
+    "name": "Believer",
+    "team": "townsfolk",
+    "ability": "When you vote with the Apostle, your votes count 1 more. [+1 Apostle]"
+   },
+   {
+    "name": "Maria Makiling",
+    "team": "townsfolk",
+    "ability": "All Outsiders are drunk until Night X+1. On night X, all Minions are drunk until dusk. [X Outsiders]"
+   }
+  ],
+  "avoid": [
+   {
+    "name": "Believer",
+    "ability": "When you vote with the Apostle, your votes count 1 more. [+1 Apostle]",
+    "dist": 0.45
+   },
+   {
+    "name": "Concrete Worker",
+    "ability": "If there were an even number of votes on them, you have their ability.",
+    "dist": 0.603
+   },
+   {
+    "name": "Pilgrim",
+    "ability": "If you didn't vote today, you can not die tonight. If more than 1 alive Pilgrims didn't vote today, all Pilgrims are drunk tonight. [+0 to +2 Pilgrims]",
+    "dist": 0.63
+   },
+   {
+    "name": "Apprentice",
+    "ability": "Your neighbours get 2 votes.",
+    "dist": 0.637
+   },
+   {
+    "name": "Cloud City Committee",
+    "ability": "You start knowing 3 numbers. 1 is the number of characters affected by madness, 1 is the number of good players who wake on night 1, 1 is the number of Outsiders in play.",
+    "dist": 0.652
+   },
+   {
+    "name": "Jester",
+    "ability": "Votes on you secretly fail.",
+    "dist": 0.677
+   }
+  ]
+ }
+]
