@@ -339,7 +339,27 @@
         return list;
     }
 
-    function mountFilters() {
+    // Back from a character page loads this page afresh, and the list is
+    // drawn in batches after that, so the browser's own scroll restore lands
+    // on a page not drawn yet. The filters and the scroll position go into
+    // the history entry as the page is left and are put back once the list
+    // is in (the same as /search).
+    var SAVED = null;
+    try {
+      SAVED = history.state && history.state.ac ? history.state : null;
+      history.scrollRestoration = 'manual';
+    } catch (e) { /* sandboxed */ }
+    function saveState() {
+      // Left before the list loaded: what was saved has not been used yet.
+      try { history.replaceState(SAVED || { ac: 1, f: FILTERS ? FILTERS.state : null, y: window.pageYOffset,
+        open: document.getElementById('filter-bar').classList.contains('open') }, ''); } catch (e) { /* file:// or sandboxed */ }
+    }
+    window.addEventListener('pagehide', saveState);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') saveState();
+    });
+
+    function mountFilters(saved) {
       var typed = document.getElementById('fc-creator-search');
       typed = typed ? typed.value : '';
       FILTERS = CF.mount({
@@ -351,6 +371,7 @@
         sourceOf: CF.makeSourceOf(AC_COLLECTIONS, AC_SCRIPTS),
         onChange: function () { render({ tap: true }); }
       });
+      if (saved) FILTERS.restore(saved);
       var note = document.querySelector('#filter-count .cf-loading-note');
       if (note) note.remove();
       var search = document.getElementById('fc-creator-search');
@@ -386,6 +407,14 @@
       ready.then(function (list) {
         if (!list) return;
         FULL = list;
+        if (SAVED) return setsP.then(function () {
+          mountFilters(SAVED.f);
+          // An open filter box pushes the list down by its height.
+          if (SAVED.open && !document.getElementById('filter-bar').classList.contains('open')) document.getElementById('filter-toggle').click();
+          render();
+          window.scrollTo(0, SAVED.y || 0);
+          SAVED = null;
+        });
         render();
         // A "Show more" tapped while the list was on its way.
         if (clicked && clicked.isConnected) clicked.click();
@@ -438,7 +467,7 @@
       var ssrBar = document.getElementById('filter-bar');
       CF.wireToggle(document.getElementById('filter-toggle'), ssrBar);
       queueWhileLoading(ssrBar);
-      window.mountCardBatches.whenNeeded(PANEL, load);
+      if (SAVED) load(); else window.mountCardBatches.whenNeeded(PANEL, load);
     } else load();
   </script>
 

@@ -449,6 +449,61 @@
   };
 })();
 
+/* ── Back to where you were ──────────────────────────────────────────────
+   Back from a page, or a reload, loads most browse pages afresh, and their
+   lists arrive after the page itself (a fetch, then cards drawn in batches).
+   The browser puts the scroll back before they are there, finds the page too
+   short, and leaves the reader near the top. So the position goes into the
+   history entry as the page is left, and when the page comes back it is put
+   back as soon as the page is tall enough to hold it. Anything the reader
+   does first (a scroll, a tap, a key) wins, and it gives up after ten
+   seconds. A page that keeps its own place (all-characters, /search) sets
+   history.scrollRestoration to 'manual' and this leaves it alone. */
+(function () {
+  var KEY = 'botcY';
+  function own() { try { return history.scrollRestoration === 'manual'; } catch (e) { return true; } }
+  function save() {
+    if (own()) return;
+    try {
+      var st = {}, cur = history.state;
+      if (cur && typeof cur === 'object') for (var k in cur) st[k] = cur[k];
+      st[KEY] = window.pageYOffset;
+      history.replaceState(st, '');
+    } catch (e) { /* file:// or sandboxed */ }
+  }
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') save();
+  });
+
+  var y = 0;
+  try { y = history.state && +history.state[KEY] || 0; } catch (e) {}
+  if (!y) return;
+  var done = false, ro = null, t0 = Date.now();
+  var STOP = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+  function quit() {
+    if (done) return;
+    done = true;
+    STOP.forEach(function (ev) { window.removeEventListener(ev, quit, true); });
+    if (ro) ro.disconnect();
+  }
+  function tryIt() {
+    if (done) return;
+    if (own() || Date.now() - t0 > 10000) return quit();
+    var room = document.documentElement.scrollHeight - window.innerHeight;
+    if (room >= y - 2) { window.scrollTo(0, y); quit(); }
+  }
+  STOP.forEach(function (ev) { window.addEventListener(ev, quit, { capture: true, passive: true }); });
+  if (typeof ResizeObserver === 'function' && document.body) {
+    ro = new ResizeObserver(tryIt);
+    ro.observe(document.body);
+  }
+  // After the page's own scripts have run (and set 'manual' if they keep
+  // their own place), and again once everything has loaded.
+  setTimeout(tryIt, 0);
+  window.addEventListener('load', tryIt);
+})();
+
 /* ── Live text editing (admin, opt-in) ────────────────────────────────────
    The switch on /text-editor turns on a mode where the admin browses the
    wiki normally and double-clicks any of the site's own wording to rewrite
