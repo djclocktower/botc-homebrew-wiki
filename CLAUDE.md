@@ -4477,6 +4477,23 @@ jinx page and the back cover have one style.
   script's own background image") otherwise set its width on a phone and
   pushed the whole page sideways once a card holding one was open.
 
+### Bootlegger rules at the top, and the title moved left
+
+Two title-card options on the classic script sheet. **`bootRulesTop`** draws
+the script's `_meta.bootlegger` rules in the top right, in the right
+flourish's place (the flourish is not drawn while there are rules), with
+an icon beside them: `bootRulesIcon` is `bootlegger`, `djinn` or `none`
+(`BOOT_ICONS` in script.js). The box runs from the top of the band to the
+right column's first row; `fitTitle()` → `fitBootRules()` sets its left edge
+just past the title and shrinks its type until every rule fits, so it is
+right in an export too. It is an element (`el.bootRules`), so it can be
+moved, sized and hidden. With rules there the title's band narrows
+(`titleBandW()`). **`titleLeft`** puts the title's left edge just past the
+ribbon and the skull (`titleLeftEdge()`), the author follows, and the left
+flourish is hidden (it would land on the ribbon). They are separate
+options, but rules beside a centred title get a narrow box, so the hint
+suggests both. The app view has neither.
+
 ### The watermark
 
 Every EXPORTED page says "botchomebrew.wiki" (`watermark()` in

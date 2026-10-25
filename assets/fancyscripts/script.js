@@ -408,6 +408,7 @@ export const ELEMENTS = [
   { key: 'skull', label: 'Skull', page: 'front', kind: 'image', only: 'classic' },
   { key: 'fll', label: 'Left flourish', page: 'front', kind: 'image', only: 'classic' },
   { key: 'flr', label: 'Right flourish', page: 'front', kind: 'image', only: 'classic' },
+  { key: 'bootRules', label: 'Bootlegger rules', page: 'front', kind: 'block', only: 'classic' },
   { key: 'sidebar', label: 'Sidebar ribbon', page: 'front', kind: 'image', fixed: true, only: 'classic' },
   { key: 'labels', label: 'Team labels', page: 'front', kind: 'text', fixed: true, only: 'classic' },
   { key: 'appTitle', label: 'Title', page: 'front', kind: 'text', only: 'app' },
@@ -657,6 +658,9 @@ export const DEFAULT_OPTIONS = {
   showSkull: true,
   showFlourishes: true,
   hugDecor: true, // slide the skull and flourishes in to meet a short title
+  titleLeft: false, // title and skull pushed over to the ribbon, for more room on the right
+  bootRulesTop: false, // the script's Bootlegger rules top right, in the right flourish's place
+  bootRulesIcon: 'bootlegger', // the icon beside them: bootlegger | djinn | none
   // background
   bg: { ...DEFAULT_BG },
   // movable elements: key -> partial EL_DEFAULT
@@ -1001,6 +1005,11 @@ export const STEP_ICONS = {
   minion: STEP_ART + 'night-minion.webp',
   demon: STEP_ART + 'night-demon.webp',
   bootlegger: '/assets/fancyscripts/icons/bootlegger.webp',
+};
+/* the icon beside the Bootlegger rules at the top of the script sheet */
+export const BOOT_ICONS = {
+  bootlegger: STEP_ICONS.bootlegger,
+  djinn: '/assets/fancyscripts/icons/djinn.webp',
 };
 
 export function normalizeTeam(t) {

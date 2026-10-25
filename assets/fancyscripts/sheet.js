@@ -32,7 +32,7 @@
  */
 
 import {
-  SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm,
+  SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
 } from './script.js';
@@ -763,6 +763,9 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     const flRW = SHEET.flRW * flRT.scale;
     const flRLeft = SHEET.flRX + flRT.dx;
     const flRTop = SHEET.flRY + (SHEET.flRH * (1 - flRT.scale)) / 2 + flRT.dy;
+    // the script's Bootlegger rules, when asked for, take the right flourish's place
+    const brT = elGet(options, 'bootRules');
+    const rules = options.bootRulesTop && !brT.hidden ? (script.meta.bootlegger || []) : [];
 
     if (options.showSkull && !skT.hidden) {
       /* The stock skull is cut from the reference sheet WITH its patch of
@@ -789,7 +792,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         flLEl.dataset.fsDecor = 'fll';
         sheet.append(mark(flLEl, 'el:fll'));
       }
-      if (!flRT.hidden) {
+      if (!flRT.hidden && !rules.length) {
         const flREl = img(resolveSrc(flRT.src) || ART + 'flourish-right.png', {
           position: 'absolute', left: flRLeft + '%', top: px(e(flRTop)), width: flRW + '%',
           opacity: String(flRT.opacity), transform: flRT.rot ? `rotate(${flRT.rot}deg)` : '',
@@ -809,7 +812,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
           left: (SHEET.titleCX + tT.dx) + '%',
           top: px(e(SHEET.titleCY + tT.dy)),
           transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
-          maxWidth: px(0.4911 * SHEET_W * tT.scale),
+          maxWidth: px(titleBandW(rules.length) * SHEET_W * tT.scale),
           maxHeight: px(e(artMaxHEm(options, tT))),
           objectFit: 'contain',
           opacity: String(tT.opacity),
@@ -869,6 +872,42 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(author));
       authorEl.dataset.fsAuthor = '1';
       sheet.append(mark(authorEl, 'el:author'));
+    }
+
+    /* the Bootlegger rules, top right beside the title. The box runs from the
+       top of the band down to the first row of the right column; its left
+       edge and its type size are settled by fitTitle(), which knows how wide
+       the title came out. */
+    if (rules.length) {
+      const first = page.sections[0];
+      const topEm = 2.6 + brT.dy;
+      const bottomEm = (first ? first.rightTopPx / U : SHEET.contentTop) - 0.6 + brT.dy;
+      const box = el('div', {
+        position: 'absolute',
+        left: (64 + brT.dx) + '%',
+        right: (6.4 - brT.dx) + '%', // clear of the burnt right edge
+        top: px(e(topEm)),
+        height: px(e(Math.max(2, bottomEm - topEm))),
+        display: 'flex',
+        alignItems: 'center',
+        gap: px(e(0.6)),
+        opacity: String(brT.opacity),
+      });
+      const iconSrc = BOOT_ICONS[options.bootRulesIcon];
+      if (iconSrc) {
+        box.append(img(iconSrc, {
+          flex: '0 0 auto', width: px(e(4.4 * brT.scale)), maxHeight: '100%', objectFit: 'contain',
+        }, ''));
+      }
+      const text = el('div', {
+        flex: '1 1 auto', minWidth: '0', fontFamily: fonts.ability, lineHeight: '1.22',
+        color: options.inkColor || '#222222', fontSize: px(e(1.12 * brT.scale)),
+      });
+      text.dataset.fsBootText = String(e(1.12 * brT.scale));
+      rules.forEach((r, i) => text.append(el('div', i ? { marginTop: px(e(0.35)) } : null, smartTypography(r))));
+      box.append(text);
+      box.dataset.fsBoot = String(brT.dx);
+      sheet.append(mark(box, 'el:bootRules'));
     }
   }
 
@@ -1145,12 +1184,27 @@ export function renderSheet(script, options, requestRender, ctx) {
       (plus whatever it was dragged by). */
 export function fitTitle(sheet, options) {
   const titleEl = sheet.querySelector('[data-fs-title]');
+  const bootEl = sheet.querySelector('[data-fs-boot]');
   if (titleEl) {
     const naturalFs = Number(titleEl.dataset.fsTitle);
-    const bandW = 0.4911 * SHEET_W; // reference title ink width (skull → right swirl)
+    const bandW = titleBandW(!!bootEl) * SHEET_W;
     titleEl.style.fontSize = px(naturalFs);
     const trueW = titleEl.scrollWidth;
     if (trueW > bandW) titleEl.style.fontSize = px(naturalFs * (bandW / trueW));
+  }
+  // "Move the title to the left": its left edge goes to the ribbon's side
+  // (after the skull), and the author line follows it
+  const tbox0 = sheet.querySelector('[data-fs-tbox]');
+  if (options && options.titleLeft && tbox0) {
+    const sr = sheet.getBoundingClientRect(), tr = tbox0.getBoundingClientRect();
+    if (sr.width && tr.width) {
+      const tT = elGet(options, 'title'), aT = elGet(options, 'author');
+      const skullEl = sheet.querySelector('[data-fs-decor="skull"]');
+      const centerPct = titleLeftEdge(options, skullEl, tbox0.tagName === 'IMG') + tT.dx + ((tr.width / sr.width) * 100) / 2;
+      tbox0.style.left = centerPct + '%';
+      const authorEl = sheet.querySelector('[data-fs-author]');
+      if (authorEl) authorEl.style.left = (centerPct + aT.dx) + '%';
+    }
   }
   /* In the 'shared' layout the left column's first row sits level with the
      author line, so a long "by …" centred under the title ran into that
@@ -1165,7 +1219,8 @@ export function fitTitle(sheet, options) {
       authorEl.style.left = (parseFloat(authorEl.style.left) + Math.min(over, Math.max(0, room))) + '%';
     }
   }
-  if (!options || options.hugDecor === false) return;
+  if (bootEl) fitBootRules(sheet, bootEl, tbox0);
+  if (!options || (options.hugDecor === false && !options.titleLeft)) return;
 
   const tbox = sheet.querySelector('[data-fs-tbox]');
   const skullEl = sheet.querySelector('[data-fs-decor="skull"]');
@@ -1181,7 +1236,7 @@ export function fitTitle(sheet, options) {
   const flRT = elGet(options, 'flr');
   // rects survive the preview's scale transform because both are scaled alike
   const wPct = (tRect.width / sheetRect.width) * 100;
-  const centerPct = SHEET.titleCX + tT.dx;
+  const centerPct = options.titleLeft ? parseFloat(tbox.style.left) : SHEET.titleCX + tT.dx;
   const leftPct = centerPct - wPct / 2;
   const rightPct = centerPct + wPct / 2;
 
@@ -1201,6 +1256,46 @@ export function fitTitle(sheet, options) {
   const flLLeft = skullLeft - skT.dx + 1.24 - flLW + flLT.dx;
   const flRLeft = Math.min(97.65 - flRW, rightPct - flRIn + flRT.dx);
   if (skullEl) skullEl.style.left = skullLeft + '%';
-  if (flLEl) flLEl.style.left = flLLeft + '%';
+  // with the title moved left the left flourish would land on the ribbon
+  if (flLEl) { flLEl.style.left = flLLeft + '%'; flLEl.style.display = options.titleLeft ? 'none' : ''; }
   if (flREl) flREl.style.left = flRLeft + '%';
+}
+
+/* how wide the title may be, as a share of the sheet: the reference's ink
+   width (skull to right swirl), a little less when the Bootlegger rules
+   take the top right */
+function titleBandW(withRules) { return withRules ? 0.42 : 0.4911; }
+
+/* where a title moved to the left starts, in % of the sheet: just past the
+   ribbon, and past the skull when there is one (the same tuck fitTitle's
+   hug pass gives it) */
+function titleLeftEdge(options, skullEl, isImg) {
+  const ribW = clamp(Number(options.sidebarWidth) || 1, 0.6, 1.4);
+  const start = Math.max(9.2, (SHEET.sidebarX + SHEET.sidebarW) * ribW + 0.45);
+  if (!skullEl) return start + 1;
+  const skT = elGet(options, 'skull');
+  const skullIn = isImg ? -0.6 : skT.src ? -1.4 : 1.49;
+  return start + SHEET.skullW * skT.scale - skullIn;
+}
+
+/* the Bootlegger rules box: starts a little right of the title, and its
+   type shrinks until every rule fits the box */
+function fitBootRules(sheet, box, tbox) {
+  const sr = sheet.getBoundingClientRect();
+  if (tbox && sr.width) {
+    const tr = tbox.getBoundingClientRect();
+    if (tr.width) {
+      const dx = Number(box.dataset.fsBoot) || 0;
+      const right = ((tr.right - sr.left) / sr.width) * 100;
+      box.style.left = Math.min(78, right + 2) + dx + '%';
+    }
+  }
+  const text = box.querySelector('[data-fs-boot-text]');
+  if (!text) return;
+  let fs = Number(text.dataset.fsBootText);
+  text.style.fontSize = px(fs);
+  for (let i = 0; i < 40 && text.scrollHeight > box.clientHeight + 0.5 && fs > 3; i++) {
+    fs *= 0.94;
+    text.style.fontSize = px(fs);
+  }
 }

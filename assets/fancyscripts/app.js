@@ -1302,6 +1302,11 @@ function buildTitleCard() {
   makeToggle(box, 'Flourishes', bindPath('showFlourishes'));
   const tc = styleGroup(box, 'front', 'classic');
   makeToggle(tc, 'Slide the skull and flourishes in to meet a short title', bindPath('hugDecor'));
+  makeToggle(tc, 'Move the title and skull to the left', bindPath('titleLeft'));
+  makeToggle(tc, 'Bootlegger rules in the top right', bindPath('bootRulesTop'));
+  makeSelect(tc, 'Icon beside the rules', [['bootlegger', 'Bootlegger'], ['djinn', 'Djinn'], ['none', 'No icon']],
+    bindPath('bootRulesIcon'));
+  makeHint(tc, 'The rules come from the script. They take the right flourish’s place. Move the title to the left to give them more room.');
   makeArtPicker(tc, 'Skull art', 'skull');
   makeArtPicker(tc, 'Section dividers', 'dividers');
   makeArtPicker(tc, 'Garland at the foot', 'garland');
