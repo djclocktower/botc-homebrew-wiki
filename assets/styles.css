@@ -4858,6 +4858,18 @@ html.sbx-page .nav-dropdown { z-index: 80; }
   font-size: .82rem; padding: 0; transition: color .12s;
 }
 .sbx-ch-x:hover { color: var(--evil); }
+/* Remove, then the menu and the ability editor under it. */
+.sbx-ch-btns { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.sbx-ch-b {
+  width: 20px; height: 20px; padding: 0; cursor: pointer; line-height: 1;
+  background: none; border: none; color: rgba(91,31,33,.45); transition: color .12s;
+}
+.sbx-ch-b:hover, .sbx-ch-b:focus-visible { color: var(--maroon); }
+.sbx-ch-b .sbi { width: 15px; height: 15px; vertical-align: -.2em; }
+.sbx-ch-ab.edited { border-bottom: 1px dotted rgba(91,31,33,.5); }
+.sbx-peek-abedit { width: 100%; margin-top: 8px; font: inherit; font-size: .84rem; line-height: 1.4; color: var(--ink); background: #fffdf8; border: 1px solid var(--parch-frame); padding: 5px 7px; resize: vertical; box-sizing: border-box; }
+.sbx-peek-hint { font-size: .74rem; color: rgba(42,26,14,.7); margin: 4px 0 0; }
+.sbx-peek-edited { font-size: .74rem; font-style: italic; color: rgba(42,26,14,.65); }
 .sbx-empty {
   color: rgba(236,225,200,.6); text-align: center; padding: 40px 16px; font-size: .95rem;
 }
@@ -5099,7 +5111,7 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 }
 .sbx[data-layout="cards"] .sbx-ch-img { width: calc(var(--sbx-icon) * 1.6); height: calc(var(--sbx-icon) * 1.6); }
 .sbx[data-layout="cards"] .sbx-ch-name { display: block; margin: 4px 0 2px; }
-.sbx[data-layout="cards"] .sbx-ch-x { position: absolute; top: 4px; right: 4px; }
+.sbx[data-layout="cards"] .sbx-ch-btns { position: absolute; top: 4px; right: 4px; }
 /* List: one line each, the ability trailing off. */
 .sbx[data-layout="list"] .sbx-sheet { grid-template-columns: minmax(0, 1fr); }
 .sbx[data-layout="list"] .sbx-sheet > .sbx-ch { align-items: center; padding-top: 3px; padding-bottom: 3px; border-right: none; }
@@ -5120,7 +5132,9 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 .sbx[data-layout="icons"] .sbx-ch-txt { font-size: calc(.66rem * var(--sbx-text)); line-height: 1.15; }
 .sbx[data-layout="icons"] .sbx-ch-name { display: block; font-size: calc(.72rem * var(--sbx-text)); margin: 0; overflow-wrap: anywhere; }
 .sbx[data-layout="icons"] .sbx-ch-ab, .sbx[data-layout="icons"] .sbx-ch-meta, .sbx[data-layout="icons"] .sbx-off { display: none; }
-.sbx[data-layout="icons"] .sbx-ch-x { position: absolute; top: 0; right: 0; }
+.sbx[data-layout="icons"] .sbx-ch-btns { position: absolute; top: 0; right: 0; gap: 0; }
+.sbx[data-layout="icons"] .sbx-ch-btns button { width: 16px; height: 16px; }
+.sbx[data-layout="list"] .sbx-ch-btns { flex-direction: row; }
 .sbx[data-layout="icons"] .sbx-ch:hover { background: rgba(91,31,33,.06); }
 
 /* ── the panel's own settings ── */
@@ -5393,6 +5407,9 @@ button.sbx-counts:empty { display: none; }
 .sbx[data-tone="dark"] .sbx-ch-meta, .sbx[data-tone="dark"] .sbx-tag { color: rgba(232,220,196,.6); border-color: rgba(232,220,196,.3); }
 .sbx[data-tone="dark"] .sbx-off { color: rgba(232,220,196,.7); border-color: rgba(232,220,196,.35); }
 .sbx[data-tone="dark"] .sbx-ch-x { color: rgba(255,140,140,.6); }
+.sbx[data-tone="dark"] .sbx-ch-b { color: rgba(232,220,196,.55); }
+.sbx[data-tone="dark"] .sbx-ch-b:hover { color: #e8dcc4; }
+.sbx[data-tone="dark"] .sbx-ch-ab.edited { border-bottom-color: rgba(232,220,196,.5); }
 .sbx[data-tone="dark"] .sbx-ch-moves button { background: #362a3b; color: #e8dcc4; border-color: #4a3550; }
 .sbx[data-tone="dark"] .sbx-ch-grip { color: rgba(232,220,196,.4); }
 .sbx[data-tone="dark"] .sbx-ch-n { color: #9fc0f0; border-color: rgba(159,192,240,.4); background: rgba(159,192,240,.1); }

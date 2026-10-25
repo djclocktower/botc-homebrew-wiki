@@ -243,6 +243,41 @@
     paintRoster();
   }
 
+  /* An ability rewritten for this script only (`meta.abilities[slug]`).
+     Nothing is written back to the character: the roster, the peek card,
+     the text copy and the export read it, the wiki page never does.
+     Homebrew only, since an official character exports as a bare id. */
+  function abilityEdits() {
+    var m = getMeta();
+    return (m.abilities && typeof m.abilities === 'object') ? m.abilities : {};
+  }
+  function abilityOf(c) {
+    var a = !c.official && abilityEdits()[c.slug];
+    return typeof a === 'string' ? a : (c.ability || '');
+  }
+  function setAbility(slug, text) {
+    var c = bySlug[slug];
+    if (!c || c.official) return;
+    text = String(text || '').trim().slice(0, 1000);
+    if (text === (c.ability || '').trim()) text = '';
+    var had = abilityEdits()[slug];
+    if ((had || '') === text) return;
+    patchMeta(function (m) {
+      var a = (m.abilities && typeof m.abilities === 'object') ? m.abilities : {};
+      if (text) a[slug] = text; else delete a[slug];
+      if (Object.keys(a).length) m.abilities = a; else delete m.abilities;
+    }, '', (text ? 'edit ' : 'reset ') + c.name + "'s ability");
+    paintRoster();
+  }
+  // The roster with this script's abilities in place, for what leaves the page.
+  function withAbilities(chars) {
+    var a = abilityEdits();
+    if (!Object.keys(a).length) return chars;
+    return chars.map(function (c) {
+      return (!c.official && typeof a[c.slug] === 'string') ? Object.assign({}, c, { ability: a[c.slug] }) : c;
+    });
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   //  Selection
   // ══════════════════════════════════════════════════════════════════════
@@ -558,11 +593,17 @@
           nameHTML(c) + '</a>' +
         (c.official ? '<span class="sbx-off">official' + ico('external') + '</span> ' : '') +
         marks +
-        '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
+        '<span class="sbx-ch-ab' + (abilityOf(c) !== (c.ability || '') ? ' edited" title="Changed for this script' : '') + '">' + esc(abilityOf(c)) + '</span>' +
         (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') + note +
       '</p>' + moves +
-      '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
-        '" aria-label="Remove ' + esc(c.name) + '">' + ico('close') + '</button>' +
+      '<span class="sbx-ch-btns">' +
+        '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
+          '" aria-label="Remove ' + esc(c.name) + '">' + ico('close') + '</button>' +
+        '<button type="button" class="sbx-ch-b" data-ch-peek="' + esc(c.slug) +
+          '" aria-label="More about ' + esc(c.name) + '" title="More">' + ico('more') + '</button>' +
+        (c.official ? '' : '<button type="button" class="sbx-ch-b" data-ch-edit="' + esc(c.slug) +
+          '" aria-label="Edit the ability of ' + esc(c.name) + ' on this script" title="Edit the ability for this script">' + ico('cog') + '</button>') +
+      '</span>' +
     '</div>';
   }
 
@@ -1555,7 +1596,7 @@
     var T = window.SBTools, PR = window.PageRender;
     if (!T) return '';
     var o = textOpts();
-    var chars = rosterChars();
+    var chars = withAbilities(rosterChars());
     return T.textExport(chars, getMeta(), {
       format: o.format, abilities: o.abilities, jinxes: o.jinxes, night: o.night, rules: o.rules, notes: o.notes,
       charNotes: o.notes ? charNotes() : null,
@@ -1638,10 +1679,11 @@
      the ability, tags, when it acts, who it is jinxed with. A click still
      adds or removes — the card never gets in the way of that. */
   var peekTimer = null, peekSlug = '', peekPress = null;
+  var peekSticky = false;   // opened by a button: stays until closed
   var suppressClickUntil = 0;   // the click that follows a long press
   var FINE = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : { matches: true };
 
-  function peekHTML(c) {
+  function peekHTML(c, edit) {
     var PR = window.PageRender;
     var schema = null;
     try { if (window.buildSchema) schema = window.buildSchema(c); } catch (e) { schema = null; }
@@ -1679,24 +1721,35 @@
           (!c.official && c.creator ? '<p class="sbx-peek-by">by ' + esc(c.creator) + '</p>' : '') +
         '</div>' +
       '</div>' +
-      '<p class="sbx-peek-ab">' + esc(c.ability || '(no ability text)') + '</p>' +
+      (edit && isOn && !c.official
+        ? '<textarea class="sbx-peek-abedit" data-peek-ab="' + esc(c.slug) + '" rows="4" maxlength="1000">' + esc(abilityOf(c)) + '</textarea>' +
+          '<p class="sbx-peek-hint">Only this script changes. The wiki page keeps its own text.</p>' +
+          '<div class="sbx-peek-acts">' +
+            '<button type="button" class="sbx-b-sm" data-peek-absave="' + esc(c.slug) + '">' + ico('check') + ' Save</button>' +
+            (abilityOf(c) !== (c.ability || '') ? '<button type="button" class="sbx-b-sm" data-peek-abreset="' + esc(c.slug) + '">Use the wiki\'s text</button>' : '') +
+          '</div>'
+        : '<p class="sbx-peek-ab">' + esc(abilityOf(c) || '(no ability text)') +
+          (abilityOf(c) !== (c.ability || '') ? ' <span class="sbx-peek-edited">(changed for this script)</span>' : '') + '</p>') +
       (tags.length ? '<p class="sbx-peek-facts" style="margin-top:6px">' + tags.map(function (t) { return '<span class="sbx-tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
       '<p class="sbx-peek-facts">' + facts.join('<br>') + '</p>' +
       (isOn ? '<textarea class="sbx-peek-note" data-peek-note="' + esc(c.slug) + '" rows="2" maxlength="500" placeholder="A note about ' + esc(c.name) + ' on this script: a bluff, a ruling, a reminder.">' + esc(charNotes()[c.slug] || '') + '</textarea>' : '') +
       '<div class="sbx-peek-acts">' +
         '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? ico('close') + ' Remove from script' : ico('plus') + ' Add to script') + '</button>' +
         (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">' + ico('dice') + ' Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
+        (isOn && !c.official && !edit ? '<button type="button" class="sbx-b-sm" data-peek-abopen="' + esc(c.slug) + '">' + ico('cog') + ' Edit ability</button>' : '') +
         '<button type="button" class="sbx-b-sm" data-peek-pin="' + esc(c.slug) + '">' + (isPinned(c.slug) ? ico('pin', { fill: true }) + ' Unpin' : ico('pin') + ' Pin to the panel') + '</button>' +
         (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page' + ico('external') + '</a>' : '') +
       '</div>';
   }
-  function showPeek(slug, x, y) {
+  function showPeek(slug, x, y, edit) {
     var c = bySlug[slug];
     var pop = $('sbx-peek');
     if (!c || !pop || openPopId) return;
     peekSlug = slug;
-    pop.innerHTML = peekHTML(c);
+    pop.innerHTML = peekHTML(c, edit);
     pop.hidden = false;
+    var ab = pop.querySelector('[data-peek-ab]');
+    if (ab) ab.focus();
     var mobile = window.innerWidth <= 900;
     if (mobile) {
       pop.style.top = pop.style.left = '';
@@ -1714,9 +1767,12 @@
   function hidePeek() {
     if (peekTimer) { clearTimeout(peekTimer); peekTimer = null; }
     var pop = $('sbx-peek');
+    peekSticky = false;
     if (!pop || pop.hidden) { peekSlug = ''; return; }
     var ta = pop.querySelector('[data-peek-note]');
     if (ta && ta.value.trim() !== (charNotes()[ta.getAttribute('data-peek-note')] || '')) setCharNote(ta.getAttribute('data-peek-note'), ta.value);
+    var ab = pop.querySelector('[data-peek-ab]');
+    if (ab) setAbility(ab.getAttribute('data-peek-ab'), ab.value);
     pop.hidden = true;
     peekSlug = '';
     if (!openPopId) {
@@ -1739,7 +1795,7 @@
       peekTimer = setTimeout(function () { peekTimer = null; showPeek(slug, x, y); }, 520);
     });
     list.addEventListener('mouseout', function (e) {
-      if (!FINE.matches) return;
+      if (!FINE.matches || peekSticky) return;
       var to = e.relatedTarget;
       if (to && to.closest && (to.closest('#sbx-peek') || slugUnder(to) === peekSlug)) return;
       hidePeek();
@@ -1772,7 +1828,9 @@
     list.addEventListener('contextmenu', function (e) { if (peekPress || peekSlug) e.preventDefault(); });
   }
   // Scroll does not bubble, so one capturing listener covers both panes.
-  document.addEventListener('scroll', function () { if (peekSlug && FINE.matches) hidePeek(); }, true);
+  document.addEventListener('scroll', function (e) {
+    if (peekSlug && FINE.matches && !(e.target.closest && e.target.closest('#sbx-peek'))) hidePeek();
+  }, true);
 
   // ══════════════════════════════════════════════════════════════════════
   //  The credits Fabled
@@ -1803,7 +1861,7 @@
     var m = getMeta();
     return window.PageRender.buildPageExport(
       (m.name || '').trim() || 'My Homebrew Script',
-      (m.author || '').trim(), m.logo || m.header || '', rosterChars(), m,
+      (m.author || '').trim(), m.logo || m.header || '', withAbilities(rosterChars()), m,
       { credits: creditsFabled() });
   }
   /* What Download and Copy write. */
@@ -1876,7 +1934,7 @@
   function encodeShare() {
     var m = getMeta();
     var extra = {};
-    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes'].forEach(function (k) {
+    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
       if (m[k] != null && m[k] !== '' && m[k] !== false) extra[k] = m[k];
     });
     var payload = { n: m.name || '', a: m.author || '', c: order.slice() };
@@ -2502,6 +2560,14 @@
       }
       var x = e.target.closest('.sbx-ch-x');
       if (x) { removeSlug(x.getAttribute('data-slug')); return; }
+      var pk = e.target.closest('button[data-ch-peek], button[data-ch-edit]');
+      if (pk) {
+        var r = pk.getBoundingClientRect(), ed = pk.hasAttribute('data-ch-edit');
+        hidePeek();
+        showPeek(pk.getAttribute(ed ? 'data-ch-edit' : 'data-ch-peek'), r.left, r.bottom, ed);
+        peekSticky = true;
+        return;
+      }
       var mv = e.target.closest('button[data-move]');
       if (mv) moveInTeam(mv.getAttribute('data-slug'), mv.getAttribute('data-move'));
     });
@@ -2593,6 +2659,17 @@
     wirePeek($('sb-script'));
     $('sbx-peek').addEventListener('click', function (e) {
       if (e.target.closest('[data-peek-close]')) { hidePeek(); return; }
+      var ao = e.target.closest('button[data-peek-abopen]');
+      if (ao) { var rr = $('sbx-peek').getBoundingClientRect(), s0 = ao.getAttribute('data-peek-abopen'); hidePeek(); showPeek(s0, rr.left - 18, rr.top - 14, true); peekSticky = true; return; }
+      if (e.target.closest('button[data-peek-absave]')) { hidePeek(); return; }
+      var ar = e.target.closest('button[data-peek-abreset]');
+      if (ar) {
+        var abox = $('sbx-peek').querySelector('[data-peek-ab]');
+        if (abox) abox.remove();
+        setAbility(ar.getAttribute('data-peek-abreset'), '');
+        hidePeek();
+        return;
+      }
       var sw = e.target.closest('button[data-peek-swap]');
       if (sw) { swapChar(sw.getAttribute('data-peek-swap')); hidePeek(); return; }
       var pn = e.target.closest('button[data-peek-pin]');
@@ -2606,7 +2683,8 @@
     });
     $('sbx-peek').addEventListener('mouseleave', function () {
       // Not while a note is being written.
-      if (FINE.matches && !(document.activeElement && document.activeElement.hasAttribute('data-peek-note'))) hidePeek();
+      var ae = document.activeElement;
+      if (FINE.matches && !peekSticky && !(ae && (ae.hasAttribute('data-peek-note') || ae.hasAttribute('data-peek-ab')))) hidePeek();
     });
     $('sbx-peek').addEventListener('input', debounce(function () {
       var ta = $('sbx-peek').querySelector('[data-peek-note]');
@@ -2694,6 +2772,9 @@
     });
     document.addEventListener('click', function (e) {
       closeMenu();
+      // A peek opened from a row's button closes on a click anywhere else.
+      if (peekSticky && e.target.isConnected !== false && e.target.closest &&
+          !e.target.closest('#sbx-peek') && !e.target.closest('[data-ch-peek], [data-ch-edit]')) hidePeek();
       if (!openPopId) return;
       // A target no longer in the document was re-rendered by its own
       // handler (a preset button inside the popover); that is never a click
@@ -3256,10 +3337,11 @@
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);
         if (sh.m && typeof sh.m === 'object') {
-          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes'].forEach(function (k) {
+          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
             if (sh.m[k] != null) m[k] = sh.m[k];
           });
           if (m.charNotes && typeof m.charNotes !== 'object') delete m.charNotes;
+          if (m.abilities && typeof m.abilities !== 'object') delete m.abilities;
           if (typeof m.notes === 'string') m.notes = m.notes.slice(0, 4000); else delete m.notes;
         }
         setMeta(m);

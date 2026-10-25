@@ -1665,6 +1665,14 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
 - **⚯ on a panel row** marks a character jinxed with someone on the script
   but not on it — the Analyse tab's suggestions, painted onto the rows in the
   settle pass (`paintJinxHints`, touching only the rows whose mark changed).
+- **Each roster row** has, under its ✕, a dots button that opens the peek
+  card (the same card a hover or a long press opens, but it stays until
+  closed) and, on a homebrew character, a gear that opens it with the
+  ability in a text box. **That ability is the script's, not the wiki's**:
+  `meta.abilities[slug]`, read by the roster, the peek card, Copy as text
+  and the export (`withAbilities()`), carried in share links, and never
+  written to the character. An official character has no gear, because it
+  exports as a bare id.
 - **Notes on a character** (`meta.charNotes[slug]`): typed on the peek card
   of a character on the script, shown under its row (View → Your notes),
   carried into Copy as text and along share links.
