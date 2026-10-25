@@ -57,7 +57,7 @@ def load_corpus():
             rows.append({'name': c['name'], 'team': c['team'], 'ability': c['ability'].strip(),
                          'style': ' '.join(filter(None, [c.get('quote'), c.get('lede')])),
                          'tags': split_tags(c.get('tags')), 'creator': c.get('creator') or '',
-                         'url': 'https://botchomebrew.wiki/c/' + (c.get('page') or c.get('slug', ''))})
+                         'url': 'https://botchomebrew.wiki/' + (c.get('page') or 'c/' + c.get('slug', ''))})
     for c in json.loads((REPO / 'assets/roles.json').read_text()):
         if c.get('team') in TEAMS and c.get('ability'):
             rows.append({'name': c['name'], 'team': c['team'], 'ability': c['ability'],

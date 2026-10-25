@@ -1,0 +1,1502 @@
+[
+ {
+  "gap": 8,
+  "name": "Interregnum",
+  "team": "loric",
+  "ability": "[No Demon, +1 Minion] Each night*, the Storyteller chooses a player to die. Each dawn, the number of alive Minions is announced. Good wins when no Minions live.",
+  "quote": "The throne below is empty. Its servants squabble in the dark, and the dark kills whoever it likes.",
+  "tags": [
+   "Setup",
+   "Nonconformist",
+   "Death",
+   "Public",
+   "Information"
+  ],
+  "pitch": "A Demonless game where the Storyteller does the killing and the town hunts Minions against a public body count.",
+  "style": "The throne below is empty. Its servants squabble in the dark, and the dark kills whoever it likes.",
+  "novelty": 1.49,
+  "percentile": 99.4,
+  "closest": [
+   {
+    "name": "Fascist",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/imppreposterous-syncretastrophy/fascist",
+    "dist": 1.38
+   },
+   {
+    "name": "Plotter (Role)",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/imppreposterous-syncretastrophy/plotter-role",
+    "dist": 1.46
+   },
+   {
+    "name": "Nightmare",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/imppreposterous-syncretastrophy/nightmare",
+    "dist": 1.46
+   }
+  ]
+ },
+ {
+  "gap": 29,
+  "name": "Bodysnatcher",
+  "team": "minion",
+  "ability": "When one of your alive neighbours dies, you become their character, but stay evil. You register as that character.",
+  "quote": "I carry them to the churchyard, and every time, I come back a little heavier.",
+  "tags": [
+   "Character Change",
+   "Neighbor",
+   "Passive",
+   "Misregistration"
+  ],
+  "pitch": "An evil scavenger that takes on each dead neighbour's character, so good's own roles keep reappearing on the evil team.",
+  "style": "I carry them to the churchyard, and every time, I come back a little heavier.",
+  "novelty": 1.47,
+  "percentile": 99.2,
+  "closest": [
+   {
+    "name": "Moth Mother",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/astra/moth-mother",
+    "dist": 1.39
+   },
+   {
+    "name": "Extortionist",
+    "creator": "AP",
+    "url": "https://botchomebrew.wiki/c/steam-s-might/extortionist",
+    "dist": 1.41
+   },
+   {
+    "name": "Horologist",
+    "creator": "PercyTheGreat",
+    "url": "https://botchomebrew.wiki/c/call-of-the-executioner/horologist",
+    "dist": 1.47
+   }
+  ]
+ },
+ {
+  "gap": 36,
+  "name": "Nightcap",
+  "team": "fabled",
+  "ability": "Players who were drunk or poisoned at dusk cannot die tonight.",
+  "quote": "One more round, and then to bed. Nothing finds you when you are too far gone to be found.",
+  "tags": [
+   "Drunkenness",
+   "Poison",
+   "Protection",
+   "Death Modification"
+  ],
+  "pitch": "A Fabled that shields drunk and poisoned players from night deaths, softening heavy-poison scripts by protection rather than sobriety.",
+  "style": "One more round, and then to bed. Nothing finds you when you are too far gone to be found.",
+  "novelty": 1.44,
+  "percentile": 98.8,
+  "closest": [
+   {
+    "name": "W's Library",
+    "creator": "legitch",
+    "url": "https://botchomebrew.wiki/c/scp-fragmented-veil/w-s-library",
+    "dist": 1.28
+   },
+   {
+    "name": "Rehab ⊕",
+    "creator": "Coda",
+    "url": "https://botchomebrew.wiki/c/coda-s-comprehension-collection/rehab",
+    "dist": 1.41
+   },
+   {
+    "name": "Lady Justice",
+    "creator": "Imze & Nexus",
+    "url": "https://botchomebrew.wiki/c/day-by-day/lady-justice",
+    "dist": 1.45
+   }
+  ]
+ },
+ {
+  "gap": 21,
+  "name": "Defrocker",
+  "team": "townsfolk",
+  "ability": "Once per game, when you nominate, you may publicly declare it: if the nominee is a Minion, they become a not-in-play Outsider tonight (staying evil). If not, you are drunk until dusk.",
+  "quote": "Take off the robe. Go on. Let us all see how little you are without it.",
+  "tags": [
+   "Once Per Game",
+   "Nominations",
+   "Character Change",
+   "Drunkenness",
+   "Public"
+  ],
+  "pitch": "Strips a Minion of its ability by demoting it to an Outsider, rather than killing it or swapping it for another Minion.",
+  "style": "Take off the robe. Go on. Let us all see how little you are without it.",
+  "novelty": 1.42,
+  "percentile": 98.5,
+  "closest": [
+   {
+    "name": "Cupbearer",
+    "creator": "Exonen",
+    "url": "https://botchomebrew.wiki/c/broken-seals/cupbearer",
+    "dist": 1.3
+   },
+   {
+    "name": "Orchard Worker",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/jesrenshadowz/orchard-worker",
+    "dist": 1.44
+   },
+   {
+    "name": "Tunisian",
+    "creator": "legitch",
+    "url": "https://botchomebrew.wiki/c/scp-fragmented-veil/tunisian",
+    "dist": 1.45
+   }
+  ]
+ },
+ {
+  "gap": 25,
+  "name": "Keener",
+  "team": "minion",
+  "ability": "When a good player dies, their 2 alive neighbours are drunk the following night.",
+  "quote": "I wail for every one of them, and those who sit nearest the grave wail with me, until they cannot think at all.",
+  "tags": [
+   "Drunkenness",
+   "Neighbor",
+   "Passive",
+   "Death"
+  ],
+  "pitch": "A passive Minion whose drunkenness spreads outward from each good death, rather than sitting on Outsiders or a chosen target.",
+  "style": "I wail for every one of them, and those who sit nearest the grave wail with me, until they cannot think at all.",
+  "novelty": 1.42,
+  "percentile": 98.4,
+  "closest": [
+   {
+    "name": "Sawbones",
+    "creator": "Panfex",
+    "url": "https://botchomebrew.wiki/c/pandora-s-box/sawbones",
+    "dist": 1.37
+   },
+   {
+    "name": "Chirurgeon",
+    "creator": "Cygnus",
+    "url": "https://botchomebrew.wiki/c/principia-horologia/chirurgeon",
+    "dist": 1.39
+   },
+   {
+    "name": "Herder",
+    "creator": "nerdguy",
+    "url": "https://botchomebrew.wiki/c/siege-of-the-wheatonhog/herder",
+    "dist": 1.44
+   }
+  ]
+ },
+ {
+  "gap": 27,
+  "name": "Guildmaster",
+  "team": "townsfolk",
+  "ability": "The 1st Outsider to nominate you becomes a not-in-play Townsfolk tonight. The 1st Minion to nominate you dies tonight.",
+  "quote": "Knock on my door and ask for work. I will see what you are made of, one way or another.",
+  "tags": [
+   "Nominations",
+   "Character Change",
+   "Death",
+   "Passive"
+  ],
+  "pitch": "A passive Townsfolk that rewards being nominated: Outsiders get promoted and Minions get caught, both triggered by who nominates them.",
+  "style": "Knock on my door and ask for work. I will see what you are made of, one way or another.",
+  "novelty": 1.42,
+  "percentile": 98.5,
+  "closest": [
+   {
+    "name": "Rifleman",
+    "creator": "Kag",
+    "url": "https://botchomebrew.wiki/c/trivialities/rifleman",
+    "dist": 1.41
+   },
+   {
+    "name": "Virgin",
+    "creator": "Official",
+    "url": "https://wiki.bloodontheclocktower.com/Virgin",
+    "dist": 1.41
+   },
+   {
+    "name": "Socialite",
+    "creator": "malvora.",
+    "url": "https://botchomebrew.wiki/c/charged-dinner/socialite",
+    "dist": 1.42
+   }
+  ]
+ },
+ {
+  "gap": 11,
+  "name": "Toastmaster",
+  "team": "outsider",
+  "ability": "After each execution, you must publicly raise a toast to a living neighbour of the executee: they are drunk until dusk tomorrow.",
+  "quote": "To the dear departed! And to you, friend, who sat closest. Drink. No, all of it. It is only polite.",
+  "tags": [
+   "Execution",
+   "Drunkenness",
+   "Neighbor",
+   "Public"
+  ],
+  "pitch": "An Outsider who is forced to spread drunkenness out from every execution seat, in public, so good must weigh each hanging against who it will blind next.",
+  "style": "To the dear departed! And to you, friend, who sat closest. Drink. No, all of it. It is only polite.",
+  "novelty": 1.41,
+  "percentile": 98.0,
+  "closest": [
+   {
+    "name": "Journalist",
+    "creator": "nerdguy",
+    "url": "https://botchomebrew.wiki/c/siege-of-the-wheatonhog/journalist-2",
+    "dist": 1.31
+   },
+   {
+    "name": "The Twins",
+    "creator": "Alex S.",
+    "url": "https://botchomebrew.wiki/c/fall-of-rome/the-twins",
+    "dist": 1.39
+   },
+   {
+    "name": "Server",
+    "creator": "Gstone Games",
+    "url": "https://botchomebrew.wiki/c/storm-is-coming/server",
+    "dist": 1.42
+   }
+  ]
+ },
+ {
+  "gap": 13,
+  "name": "Duenna",
+  "team": "townsfolk",
+  "ability": "If you nominate a living neighbour, they cannot die tonight. You may not vote today.",
+  "quote": "Not tonight, I think. You will stay where I can see you, and you will thank me in the morning.",
+  "tags": [
+   "Nominations",
+   "Neighbor",
+   "Protection",
+   "Public"
+  ],
+  "pitch": "Protection delivered through the nomination itself, aimed only at a neighbour and paid for with the Duenna's own vote.",
+  "style": "Not tonight, I think. You will stay where I can see you, and you will thank me in the morning.",
+  "novelty": 1.4,
+  "percentile": 97.8,
+  "closest": [
+   {
+    "name": "Pilgrim",
+    "creator": "PercyTheGreat",
+    "url": "https://botchomebrew.wiki/c/call-of-the-executioner/pilgrim",
+    "dist": 1.25
+   },
+   {
+    "name": "Socialite",
+    "creator": "malvora.",
+    "url": "https://botchomebrew.wiki/c/charged-dinner/socialite",
+    "dist": 1.39
+   },
+   {
+    "name": "Haberdasher",
+    "creator": "Luis S",
+    "url": "https://botchomebrew.wiki/c/homebrews-by-luis/haberdasher",
+    "dist": 1.44
+   }
+  ]
+ },
+ {
+  "gap": 10,
+  "name": "Gallows Bird",
+  "team": "outsider",
+  "ability": "You start knowing 2 players: 1 is the Demon. If the other is executed, you die & the Demon learns who you are.",
+  "quote": "I've seen the true face of this town, and one of these two wears it. Choose wrong, and you hang me alongside the innocent.",
+  "tags": [
+   "You Start Knowing",
+   "Information",
+   "Execution",
+   "Death",
+   "Passive"
+  ],
+  "pitch": "A Demon-pair info Outsider whose wrong guess costs good a player and exposes them to the Demon, making the coin-flip expensive.",
+  "style": "I've seen the true face of this town, and one of these two wears it. Choose wrong, and you hang me alongside the innocent.",
+  "novelty": 1.39,
+  "percentile": 97.5,
+  "closest": [
+   {
+    "name": "Familiar",
+    "creator": "p3ng0o",
+    "url": "https://botchomebrew.wiki/c/wicked-game/familiar",
+    "dist": 1.29
+   },
+   {
+    "name": "Snoop",
+    "creator": "Goodpart",
+    "url": "https://botchomebrew.wiki/c/the-menagerie/snoop",
+    "dist": 1.38
+   },
+   {
+    "name": "Bellboy",
+    "creator": "Pynstripe",
+    "url": "https://botchomebrew.wiki/c/oblivion-theatre/bellboy",
+    "dist": 1.39
+   }
+  ]
+ },
+ {
+  "gap": 1,
+  "name": "The Sobriety Test",
+  "team": "fabled",
+  "ability": "Once per game, during the day, a player may publicly ask the Storyteller whether they are drunk or poisoned. The Storyteller answers truthfully.",
+  "quote": "Walk the line, touch your nose, recite last night. If you stumble, the town will know which of your stories to throw away.",
+  "tags": [
+   "Public",
+   "Once Per Game",
+   "Drunkenness",
+   "Poison",
+   "True Info"
+  ],
+  "pitch": "A one-shot public truth check on a player's own sobriety, letting a script with heavy droison give good one guaranteed anchor instead of changing what false info means.",
+  "style": "Walk the line, touch your nose, recite last night. If you stumble, the town will know which of your stories to throw away.",
+  "novelty": 1.37,
+  "percentile": 97.2,
+  "closest": [
+   {
+    "name": "Deus ex Fiasco",
+    "creator": "Official",
+    "url": "https://wiki.bloodontheclocktower.com/Deus_ex_Fiasco",
+    "dist": 1.17
+   },
+   {
+    "name": "Commentator",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/imppreposterous/commentator",
+    "dist": 1.38
+   },
+   {
+    "name": "X-Card",
+    "creator": "Harry & Co & Bendan",
+    "url": "https://botchomebrew.wiki/c/travel-by-starlight/x-card",
+    "dist": 1.42
+   }
+  ]
+ },
+ {
+  "gap": 12,
+  "name": "Mudlark",
+  "team": "outsider",
+  "ability": "Townsfolk sitting between 2 Outsiders are poisoned. [+1 or +2 Outsiders. You neighbour another Outsider]",
+  "quote": "Down at low tide the river gives up its treasures. Mind the silt, though. Stand in it too long and it gets into you.",
+  "tags": [
+   "Setup",
+   "Poison",
+   "Neighbor",
+   "Outsider Modification",
+   "Passive"
+  ],
+  "pitch": "Turns Outsider seating itself into a poison map: the extra Outsiders matter by where they sit, and sandwiched Townsfolk are silently poisoned.",
+  "style": "Down at low tide the river gives up its treasures. Mind the silt, though. Stand in it too long and it gets into you.",
+  "novelty": 1.37,
+  "percentile": 97.2,
+  "closest": [
+   {
+    "name": "Amalgamate",
+    "creator": "Panfex",
+    "url": "https://botchomebrew.wiki/c/pandora-s-box/amalgamate",
+    "dist": 1.31
+   },
+   {
+    "name": "Reaper",
+    "creator": "BakedIce",
+    "url": "https://botchomebrew.wiki/c/bakedice/reaper",
+    "dist": 1.37
+   },
+   {
+    "name": "Hermit",
+    "creator": "Official",
+    "url": "https://wiki.bloodontheclocktower.com/Hermit",
+    "dist": 1.39
+   }
+  ]
+ },
+ {
+  "gap": 19,
+  "name": "Heir Presumptive",
+  "team": "townsfolk",
+  "ability": "If a neighbour of yours is executed, you become their character, but stay good. If they were evil, you die instead.",
+  "quote": "The line passes to the nearest blood. I did not ask for the crown. I only sat beside it.",
+  "tags": [
+   "Execution",
+   "Character Change",
+   "Neighbor",
+   "Death",
+   "Passive"
+  ],
+  "pitch": "A good inheritor whose neighbour's execution either hands over their character or, by killing the Heir, publicly confirms the executee was evil.",
+  "style": "The line passes to the nearest blood. I did not ask for the crown. I only sat beside it.",
+  "novelty": 1.37,
+  "percentile": 97.1,
+  "closest": [
+   {
+    "name": "Conservationist",
+    "creator": "Pynstripe",
+    "url": "https://botchomebrew.wiki/c/oblivion-theatre/conservationist",
+    "dist": 1.28
+   },
+   {
+    "name": "Mourner",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/astra/mourner",
+    "dist": 1.35
+   },
+   {
+    "name": "Tea Lady",
+    "creator": "Official",
+    "url": "https://wiki.bloodontheclocktower.com/Tea_Lady",
+    "dist": 1.4
+   }
+  ]
+ },
+ {
+  "gap": 26,
+  "name": "Carousel",
+  "team": "loric",
+  "ability": "Once per game, at dusk, the Storyteller may publicly turn the wheel: each player becomes their clockwise neighbour's character & alignment.",
+  "quote": "Round and round, and when the music stops, you are somebody else, sitting exactly where you were.",
+  "tags": [
+   "Character Change",
+   "Neighbor",
+   "Public",
+   "Nonconformist"
+  ],
+  "pitch": "A public rules modifier that rotates every character one seat at once, so all the information gathered so far must be shifted round the circle.",
+  "style": "Round and round, and when the music stops, you are somebody else, sitting exactly where you were.",
+  "novelty": 1.35,
+  "percentile": 96.3,
+  "closest": [
+   {
+    "name": "Abberation ⊕",
+    "creator": "Coda",
+    "url": "https://botchomebrew.wiki/c/coda-s-comprehension-collection/abberation",
+    "dist": 1.3
+   },
+   {
+    "name": "Shapeshifter",
+    "creator": "Pynstripe",
+    "url": "https://botchomebrew.wiki/c/oblivion-theatre/shapeshifter",
+    "dist": 1.32
+   },
+   {
+    "name": "Cookie",
+    "creator": "Harry & Co & Bendan",
+    "url": "https://botchomebrew.wiki/c/travel-by-starlight/cookie",
+    "dist": 1.36
+   }
+  ]
+ },
+ {
+  "gap": 37,
+  "name": "Disinherited",
+  "team": "outsider",
+  "ability": "You start knowing a good player. If they are executed, you become their character & turn evil.",
+  "quote": "Father always said the house would be mine. He never said what I would have to become to keep it.",
+  "tags": [
+   "You Start Knowing",
+   "Character Change",
+   "Alignment Change",
+   "Execution"
+  ],
+  "pitch": "An Outsider whose true info about one good player comes with a cost: if town executes them, the Disinherited inherits their ability for evil.",
+  "style": "Father always said the house would be mine. He never said what I would have to become to keep it.",
+  "novelty": 1.35,
+  "percentile": 96.6,
+  "closest": [
+   {
+    "name": "Thrall",
+    "creator": "Music",
+    "url": "https://botchomebrew.wiki/c/music/thrall-2",
+    "dist": 1.28
+   },
+   {
+    "name": "Fanatic",
+    "creator": "Kinky Clocktower",
+    "url": "https://botchomebrew.wiki/c/kinky-clocktower/fanatic",
+    "dist": 1.3
+   },
+   {
+    "name": "Rest",
+    "creator": "Oversplat & Lumious",
+    "url": "https://botchomebrew.wiki/c/orchestral-chorus/rest",
+    "dist": 1.37
+   }
+  ]
+ },
+ {
+  "gap": 4,
+  "name": "Foundling",
+  "team": "outsider",
+  "ability": "You start knowing a Minion character in play. Once per game, at night*, the Demon may choose you: you become that Minion & evil.",
+  "quote": "They left me on the church steps with a name pinned to my blanket. Not mine. Theirs. Someday they will come back to collect what they left.",
+  "tags": [
+   "You Start Knowing",
+   "Information",
+   "Character Change",
+   "Alignment Change",
+   "Once Per Game"
+  ],
+  "pitch": "An Outsider who holds real Minion info but is a standing recruitment target for the Demon, turning into exactly the Minion they warned the town about.",
+  "style": "They left me on the church steps with a name pinned to my blanket. Not mine. Theirs. Someday they will come back to collect what they left.",
+  "novelty": 1.34,
+  "percentile": 95.9,
+  "closest": [
+   {
+    "name": "Fan",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/trust-me-bro/fan",
+    "dist": 1.22
+   },
+   {
+    "name": "Pig",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/nuke/pig",
+    "dist": 1.31
+   },
+   {
+    "name": "Fireblood",
+    "creator": "Snowe",
+    "url": "https://botchomebrew.wiki/c/the-princess-requiem/fireblood",
+    "dist": 1.35
+   }
+  ]
+ },
+ {
+  "gap": 33,
+  "name": "Gallows Widow",
+  "team": "minion",
+  "ability": "If an Outsider is executed, the player who nominated them dies tonight. [+1 Outsider]",
+  "quote": "You hanged a fool and called it justice. Tonight, the rope remembers whose hand pulled it.",
+  "tags": [
+   "Passive",
+   "Death",
+   "Execution",
+   "Nominations",
+   "Outsider Modification"
+  ],
+  "pitch": "A Minion that punishes the nominator of an executed Outsider, making Outsider executions costly without any madness.",
+  "style": "You hanged a fool and called it justice. Tonight, the rope remembers whose hand pulled it.",
+  "novelty": 1.34,
+  "percentile": 96.0,
+  "closest": [
+   {
+    "name": "Shrike ∇",
+    "creator": "Hystrex",
+    "url": "https://botchomebrew.wiki/c/the-academy/shrike",
+    "dist": 1.16
+   },
+   {
+    "name": "Buggane",
+    "creator": "Tir-Far-Thóinn",
+    "url": "https://botchomebrew.wiki/c/tales-from-tir-fars-archive/buggane",
+    "dist": 1.34
+   },
+   {
+    "name": "Huntress",
+    "creator": "Spear_",
+    "url": "https://botchomebrew.wiki/c/spear-parts/huntress",
+    "dist": 1.38
+   }
+  ]
+ },
+ {
+  "gap": 5,
+  "name": "Blightroot",
+  "team": "minion",
+  "ability": "If you die, your good alive neighbours are poisoned for the rest of the game. Once per game, at night*, you may choose to die.",
+  "quote": "Cut me down if you like. My roots are already in the soil beneath your neighbours' beds.",
+  "tags": [
+   "Poison",
+   "Neighbor",
+   "Once Per Game",
+   "Death",
+   "Even If Dead"
+  ],
+  "pitch": "A Minion whose death is the weapon: it plants permanent poison on whoever sits beside it, and can choose its own moment to go.",
+  "style": "Cut me down if you like. My roots are already in the soil beneath your neighbours' beds.",
+  "novelty": 1.33,
+  "percentile": 95.4,
+  "closest": [
+   {
+    "name": "Undead Pirate",
+    "creator": "gordy_gordy_gordy",
+    "url": "https://botchomebrew.wiki/c/high-seas-of-mutiny/undead-pirate",
+    "dist": 1.31
+   },
+   {
+    "name": "Changeling",
+    "creator": "Gobinator",
+    "url": "https://botchomebrew.wiki/c/the-potato-patch/changeling",
+    "dist": 1.33
+   },
+   {
+    "name": "Poltergeist",
+    "creator": "Gobinator",
+    "url": "https://botchomebrew.wiki/c/the-potato-patch/poltergeist",
+    "dist": 1.33
+   }
+  ]
+ },
+ {
+  "gap": 2,
+  "name": "Doorwarden",
+  "team": "townsfolk",
+  "ability": "You start knowing if any player is drunk. The 1st player to nominate you is drunk until dusk tomorrow; if they already were, they die instead.",
+  "quote": "I've thrown out every sot in this town at least once. You stagger towards me with an accusation on your breath, and I'll show you the door, and the ditch behind it.",
+  "tags": [
+   "You Start Knowing",
+   "Nominations",
+   "Drunkenness",
+   "Death",
+   "Passive"
+  ],
+  "pitch": "A nomination trap that punishes whoever accuses you with drunkenness, escalating to death against an already-drunk accuser, with starting info on whether drunkenness exists at all.",
+  "style": "I've thrown out every sot in this town at least once. You stagger towards me with an accusation on your breath, and I'll show you the door, and the ditch behind it.",
+  "novelty": 1.31,
+  "percentile": 94.7,
+  "closest": [
+   {
+    "name": "Moonshiner",
+    "creator": "TheDarkArtist",
+    "url": "https://botchomebrew.wiki/c/and-dark-forgot-how-how-finish-this-joke/moonshiner",
+    "dist": 1.1
+   },
+   {
+    "name": "Cupbearer",
+    "creator": "Exonen",
+    "url": "https://botchomebrew.wiki/c/broken-seals/cupbearer",
+    "dist": 1.3
+   },
+   {
+    "name": "Executioner",
+    "creator": "FakeTier",
+    "url": "https://botchomebrew.wiki/c/faketier-s-collection/executioner",
+    "dist": 1.38
+   }
+  ]
+ },
+ {
+  "gap": 14,
+  "name": "Tattler",
+  "team": "minion",
+  "ability": "Each night*, if a good player was executed today, choose 1 of their living neighbours: they are poisoned. If they nominated today, they die instead.",
+  "quote": "Oh, I never said a word against her. I only mentioned who sat beside her. And who spoke first.",
+  "tags": [
+   "Execution",
+   "Poison",
+   "Death",
+   "Neighbor",
+   "Nominations"
+  ],
+  "pitch": "A Minion that punishes the seats around a mistaken execution, killing them if they were eager to nominate and poisoning them if not.",
+  "style": "Oh, I never said a word against her. I only mentioned who sat beside her. And who spoke first.",
+  "novelty": 1.29,
+  "percentile": 92.9,
+  "closest": [
+   {
+    "name": "Vulture",
+    "creator": "Guill",
+    "url": "https://botchomebrew.wiki/c/guill/vulture-2",
+    "dist": 1.23
+   },
+   {
+    "name": "Eben",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/imme/eben",
+    "dist": 1.24
+   },
+   {
+    "name": "Medusa",
+    "creator": "Spear_",
+    "url": "https://botchomebrew.wiki/c/spear-parts/medusa",
+    "dist": 1.26
+   }
+  ]
+ },
+ {
+  "gap": 22,
+  "name": "Gallows Dawn",
+  "team": "loric",
+  "ability": "Executed players do not die until the next dawn. Until then, they keep their ability and may act tonight as if alive.",
+  "quote": "The rope is tied, the sentence read. But the hangman sleeps late, and the night is long.",
+  "tags": [
+   "Execution",
+   "Death Modification",
+   "Nonconformist"
+  ],
+  "pitch": "Delays every execution death to dawn, giving the condemned one last night of ability, a rules modifier no existing Loric touches.",
+  "style": "The rope is tied, the sentence read. But the hangman sleeps late, and the night is long.",
+  "novelty": 1.28,
+  "percentile": 91.9,
+  "closest": [
+   {
+    "name": "Puck",
+    "creator": "Luis S",
+    "url": "https://botchomebrew.wiki/c/homebrews-by-luis/puck",
+    "dist": 1.11
+   },
+   {
+    "name": "Tanner",
+    "creator": "Peri L'Flamme",
+    "url": "https://botchomebrew.wiki/c/peri-l-flamme/tanner",
+    "dist": 1.23
+   },
+   {
+    "name": "Cowpoke Costume",
+    "creator": "Natlove",
+    "url": "https://botchomebrew.wiki/c/natlove/cowpoke-costume",
+    "dist": 1.34
+   }
+  ]
+ },
+ {
+  "gap": 31,
+  "name": "Weathervane",
+  "team": "loric",
+  "ability": "If exactly half the living players vote on a nomination, the nominee & their nominator swap characters tonight.",
+  "quote": "Half for, half against. The wind cannot decide, so it turns you both around.",
+  "tags": [
+   "Votes",
+   "Nominations",
+   "Character Change",
+   "Public"
+  ],
+  "pitch": "A Loric that turns a perfect split vote into a character swap between nominee and nominator, rather than counting or hiding votes.",
+  "style": "Half for, half against. The wind cannot decide, so it turns you both around.",
+  "novelty": 1.28,
+  "percentile": 92.2,
+  "closest": [
+   {
+    "name": "Breaker Box",
+    "creator": "Jackonian",
+    "url": "https://botchomebrew.wiki/c/jackonian/breaker-box",
+    "dist": 1.13
+   },
+   {
+    "name": "Pardoner",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/imppreposterous-syncretastrophy/pardoner",
+    "dist": 1.17
+   },
+   {
+    "name": "Pirate Costume",
+    "creator": "Natlove",
+    "url": "https://botchomebrew.wiki/c/natlove/pirate-costume",
+    "dist": 1.34
+   }
+  ]
+ },
+ {
+  "gap": 39,
+  "name": "Absolver",
+  "team": "townsfolk",
+  "ability": "Once per game, if you nominate a Minion & they are executed, they don't die & become good instead.",
+  "quote": "I do not cut off the hand that sinned. I take it, and I lead it home.",
+  "tags": [
+   "Once Per Game",
+   "Nominations",
+   "Execution Survival",
+   "Alignment Change"
+  ],
+  "pitch": "Turns a correct execution of a Minion into a conversion, a redemption effect no execution-alignment Townsfolk offers.",
+  "style": "I do not cut off the hand that sinned. I take it, and I lead it home.",
+  "novelty": 1.28,
+  "percentile": 92.3,
+  "closest": [
+   {
+    "name": "Houndsmaster",
+    "creator": "TheDarkArtist",
+    "url": "https://botchomebrew.wiki/c/and-dark-forgot-how-how-finish-this-joke/houndsmaster",
+    "dist": 1.09
+   },
+   {
+    "name": "Croupier",
+    "creator": "Pixlate",
+    "url": "https://botchomebrew.wiki/c/of-manors-mayhem/croupier",
+    "dist": 1.23
+   },
+   {
+    "name": "Gimli",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/asdah/gimli",
+    "dist": 1.34
+   }
+  ]
+ },
+ {
+  "gap": 40,
+  "name": "Tapster",
+  "team": "townsfolk",
+  "ability": "Outsiders who did not vote today are drunk tonight. [+1 Outsider]",
+  "quote": "Raise your hand, friend, or I raise the jug. One way or another, you'll be heard tonight.",
+  "tags": [
+   "Setup",
+   "Votes",
+   "Outsider Modification",
+   "Drunkenness",
+   "Passive"
+  ],
+  "pitch": "Drunkenness gated on Outsiders abstaining, pushing Outsiders to vote and rewarding town for reading who sits out.",
+  "style": "Raise your hand, friend, or I raise the jug. One way or another, you'll be heard tonight.",
+  "novelty": 1.28,
+  "percentile": 92.4,
+  "closest": [
+   {
+    "name": "Maria Makiling",
+    "creator": "Ren",
+    "url": "https://botchomebrew.wiki/c/ren-homebrews/maria-makiling",
+    "dist": 1.23
+   },
+   {
+    "name": "Psychiatrist",
+    "creator": "Elden Thorn",
+    "url": "https://botchomebrew.wiki/c/elden-s-thorn-collection/psychiatrist",
+    "dist": 1.26
+   },
+   {
+    "name": "Biker",
+    "creator": "Tir-Far-Thóinn",
+    "url": "https://botchomebrew.wiki/c/tales-from-tir-fars-archive/biker",
+    "dist": 1.29
+   }
+  ]
+ },
+ {
+  "gap": 15,
+  "name": "Kidnapper",
+  "team": "minion",
+  "ability": "Once per game, at night*, choose a player: they are poisoned until a Minion is executed. If you are executed, they die.",
+  "quote": "Your friend is perfectly safe. For now. Whether that lasts is entirely up to how the town votes.",
+  "tags": [
+   "Once Per Game",
+   "Poison",
+   "Execution",
+   "Quiet"
+  ],
+  "pitch": "A hostage Minion whose single long poison only lifts on a Minion execution, and executing the Kidnapper itself kills the hostage.",
+  "style": "Your friend is perfectly safe. For now. Whether that lasts is entirely up to how the town votes.",
+  "novelty": 1.27,
+  "percentile": 91.2,
+  "closest": [
+   {
+    "name": "Frustrator",
+    "creator": "christoph-ehm",
+    "url": "https://botchomebrew.wiki/c/imppreposterous/frustrator",
+    "dist": 1.12
+   },
+   {
+    "name": "Exotic Businessman",
+    "creator": "302B3",
+    "url": "https://botchomebrew.wiki/c/the-second-visit/exotic-businessman",
+    "dist": 1.26
+   },
+   {
+    "name": "Atañip",
+    "creator": "legitch",
+    "url": "https://botchomebrew.wiki/c/scp-fragmented-veil/atanip",
+    "dist": 1.31
+   }
+  ]
+ },
+ {
+  "gap": 24,
+  "name": "Poll Warden",
+  "team": "townsfolk",
+  "ability": "Each night*, if a player was executed today, you learn how many players who voted for it are drunk or poisoned.",
+  "quote": "A steady hand marks the ballot. A trembling one tells me far more.",
+  "tags": [
+   "Information",
+   "Votes",
+   "Poison",
+   "Drunkenness",
+   "Execution"
+  ],
+  "pitch": "Reads drunkenness and poison off the vote, the first info role that audits who was impaired when they raised their hand.",
+  "style": "A steady hand marks the ballot. A trembling one tells me far more.",
+  "novelty": 1.26,
+  "percentile": 90.8,
+  "closest": [
+   {
+    "name": "Toxicologist ",
+    "creator": "Gobinator",
+    "url": "https://botchomebrew.wiki/c/the-potato-patch/toxicologist",
+    "dist": 1.21
+   },
+   {
+    "name": "Germaphobe",
+    "creator": "NiceHandsomeFruit",
+    "url": "https://botchomebrew.wiki/c/nicehandsomefruit/germaphobe",
+    "dist": 1.22
+   },
+   {
+    "name": "Scud",
+    "creator": "Zenzic",
+    "url": "https://botchomebrew.wiki/c/biota/scud",
+    "dist": 1.22
+   }
+  ]
+ },
+ {
+  "gap": 34,
+  "name": "Inquest Clerk",
+  "team": "townsfolk",
+  "ability": "Each night*, if today's executee was nominated by one of their neighbours, you learn their alignment.",
+  "quote": "I only carry those whose neighbours walked them to the gallows. They are always heavier than they look.",
+  "tags": [
+   "Information",
+   "Execution",
+   "Nominations",
+   "Neighbor"
+  ],
+  "pitch": "Rewards neighbours nominating each other with an alignment read on the executee, tying seating to nomination choices.",
+  "style": "I only carry those whose neighbours walked them to the gallows. They are always heavier than they look.",
+  "novelty": 1.26,
+  "percentile": 90.2,
+  "closest": [
+   {
+    "name": "Horned Owl",
+    "creator": "Drosselmeyer",
+    "url": "https://botchomebrew.wiki/c/the-winding-undergrowth/horned-owl",
+    "dist": 1.08
+   },
+   {
+    "name": "Headliner",
+    "creator": "Pynstripe",
+    "url": "https://botchomebrew.wiki/c/oblivion-theatre/headliner",
+    "dist": 1.27
+   },
+   {
+    "name": "Insomniac",
+    "creator": "Ethan J",
+    "url": "https://botchomebrew.wiki/c/sleepless-nights-sunless-daze/insomniac-3",
+    "dist": 1.29
+   }
+  ]
+ },
+ {
+  "gap": 18,
+  "name": "Lodestone",
+  "team": "minion",
+  "ability": "You start knowing 2 good players: 1 is poisoned. If the other nominates you, they turn evil tonight.",
+  "quote": "Iron does not choose the magnet. It only drifts a little closer each day, and calls it its own idea.",
+  "tags": [
+   "You Start Knowing",
+   "Poison",
+   "Alignment Change",
+   "Nominations"
+  ],
+  "pitch": "A Minion with a known pair of targets: one is quietly poisoned, the other is converted the moment they dare to nominate the Lodestone.",
+  "style": "Iron does not choose the magnet. It only drifts a little closer each day, and calls it its own idea.",
+  "novelty": 1.25,
+  "percentile": 89.5,
+  "closest": [
+   {
+    "name": "Seducer",
+    "creator": "PercyTheGreat",
+    "url": "https://botchomebrew.wiki/c/call-of-the-executioner/seducer",
+    "dist": 1.19
+   },
+   {
+    "name": "Incubus",
+    "creator": "ThomasRNG",
+    "url": "https://botchomebrew.wiki/c/a-right-proper-kerfuffle/incubus",
+    "dist": 1.23
+   },
+   {
+    "name": "Lookout",
+    "creator": "Numbing_Cream",
+    "url": "https://botchomebrew.wiki/c/the-big-apple/lookout",
+    "dist": 1.27
+   }
+  ]
+ },
+ {
+  "gap": 16,
+  "name": "Census Taker",
+  "team": "minion",
+  "ability": "Each day, you may visit the Storyteller & name a not-in-play Outsider: tonight, a Townsfolk becomes it. You learn who. [+1 Outsider]",
+  "quote": "Name, trade, and standing, please. Ah, you were a blacksmith. Let us correct that. Here you are listed as a fool.",
+  "tags": [
+   "Consult",
+   "Character Change",
+   "Outsider Modification",
+   "Setup",
+   "Information"
+  ],
+  "pitch": "A Minion who reclassifies Townsfolk into Outsiders of their choosing through daily Storyteller visits, growing the Outsider count mid-game.",
+  "style": "Name, trade, and standing, please. Ah, you were a blacksmith. Let us correct that. Here you are listed as a fool.",
+  "novelty": 1.24,
+  "percentile": 89.1,
+  "closest": [
+   {
+    "name": "Anubis",
+    "creator": "Luis S",
+    "url": "https://botchomebrew.wiki/c/homebrews-by-luis/anubis",
+    "dist": 1.18
+   },
+   {
+    "name": "Illusionist",
+    "creator": "Ma'ayan",
+    "url": "https://botchomebrew.wiki/c/megalomania/illusionist",
+    "dist": 1.22
+   },
+   {
+    "name": "Scion",
+    "creator": "Tir-Far-Thóinn",
+    "url": "https://botchomebrew.wiki/c/tales-from-tir-fars-archive/scion",
+    "dist": 1.23
+   }
+  ]
+ },
+ {
+  "gap": 23,
+  "name": "Whipping Boy",
+  "team": "outsider",
+  "ability": "If you are executed, you do not die: the player who nominated you dies instead, and you become their alignment.",
+  "quote": "I never asked to hang for anybody. I simply happened to be standing where the blame landed.",
+  "tags": [
+   "Execution",
+   "Death Modification",
+   "Alignment Change",
+   "Nominations"
+  ],
+  "pitch": "Turns the nominator into the victim and hands the Outsider their alignment, so a wrong call by good costs a life and a vote.",
+  "style": "I never asked to hang for anybody. I simply happened to be standing where the blame landed.",
+  "novelty": 1.24,
+  "percentile": 89.1,
+  "closest": [
+   {
+    "name": "Concubine",
+    "creator": "302B3",
+    "url": "https://botchomebrew.wiki/c/the-second-visit/concubine",
+    "dist": 1.08
+   },
+   {
+    "name": "Poet",
+    "creator": "PercyTheGreat",
+    "url": "https://botchomebrew.wiki/c/call-of-the-executioner/poet",
+    "dist": 1.18
+   },
+   {
+    "name": "Turncoat",
+    "creator": "Gstone Games",
+    "url": "https://botchomebrew.wiki/c/temple-fair/turncoat",
+    "dist": 1.29
+   }
+  ]
+ },
+ {
+  "gap": 28,
+  "name": "Sworn Witness",
+  "team": "outsider",
+  "ability": "If the Demon dies by execution on a day you did not vote, evil wins, even if you are dead.",
+  "quote": "I saw it with my own eyes, and if I did not say so in front of everyone, then it did not happen.",
+  "tags": [
+   "Win/Loss Condition",
+   "Execution",
+   "Votes",
+   "Even If Dead",
+   "Passive"
+  ],
+  "pitch": "A win-loss Outsider tied to their own vote, so good must guard the Witness's vote token as carefully as the Demon execution itself.",
+  "style": "I saw it with my own eyes, and if I did not say so in front of everyone, then it did not happen.",
+  "novelty": 1.23,
+  "percentile": 87.5,
+  "closest": [
+   {
+    "name": "Sin-Eater",
+    "creator": "Bhamber and Paradox",
+    "url": "https://botchomebrew.wiki/c/brewulation-and-boilers/sin-eater",
+    "dist": 1.08
+   },
+   {
+    "name": "Lich",
+    "creator": "Lady Mist",
+    "url": "https://botchomebrew.wiki/c/the-mistfits-experimental/lich",
+    "dist": 1.22
+   },
+   {
+    "name": "Composer",
+    "creator": "Pynstripe",
+    "url": "https://botchomebrew.wiki/c/oblivion-theatre/composer",
+    "dist": 1.25
+   }
+  ]
+ },
+ {
+  "gap": 30,
+  "name": "Impressionable",
+  "team": "outsider",
+  "ability": "If you start a night with an evil alive neighbour, you might become an evil not-in-play Minion tonight.",
+  "quote": "They were so kind to me. They listened. Nobody else ever listened.",
+  "tags": [
+   "Alignment Change",
+   "Character Change",
+   "Neighbor",
+   "Extra Evil"
+  ],
+  "pitch": "An Outsider who can be recruited onto the evil team, not just turned evil, by sitting next to evil.",
+  "style": "They were so kind to me. They listened. Nobody else ever listened.",
+  "novelty": 1.23,
+  "percentile": 87.8,
+  "closest": [
+   {
+    "name": "Propagandist ₽",
+    "creator": "ODE",
+    "url": "https://botchomebrew.wiki/c/the-garden-centre/propagandist",
+    "dist": 1.13
+   },
+   {
+    "name": "Loyal Servant",
+    "creator": "legitch",
+    "url": "https://botchomebrew.wiki/c/scp-fragmented-veil/loyal-servant",
+    "dist": 1.17
+   },
+   {
+    "name": "Initiate",
+    "creator": "Panfex",
+    "url": "https://botchomebrew.wiki/c/pandora-s-box/initiate",
+    "dist": 1.22
+   }
+  ]
+ },
+ {
+  "gap": 6,
+  "name": "Press-Gang",
+  "team": "minion",
+  "ability": "Once per game, the player you nominate is poisoned until dusk. If they are executed today, they do not die: they become evil & a not-in-play Minion.",
+  "quote": "Every hand on this ship signed the papers. Some of them were just a little too drunk to read them. Welcome aboard, sailor.",
+  "tags": [
+   "Nominations",
+   "Poison",
+   "Execution Survival",
+   "Alignment Change",
+   "Character Change"
+  ],
+  "pitch": "A Minion that recruits through the public execution itself: a successful vote on its nominee converts them to evil instead of killing them.",
+  "style": "Every hand on this ship signed the papers. Some of them were just a little too drunk to read them. Welcome aboard, sailor.",
+  "novelty": 1.22,
+  "percentile": 87.0,
+  "closest": [
+   {
+    "name": "Ghoul",
+    "creator": "TheDarkArtist",
+    "url": "https://botchomebrew.wiki/c/and-dark-forgot-how-how-finish-this-joke/ghoul-7",
+    "dist": 1.08
+   },
+   {
+    "name": "Carpenter",
+    "creator": "Tir-Far-Thóinn",
+    "url": "https://botchomebrew.wiki/c/tales-from-tir-fars-archive/carpenter",
+    "dist": 1.2
+   },
+   {
+    "name": "Chancellor",
+    "creator": "Gobinator",
+    "url": "https://botchomebrew.wiki/c/the-potato-patch/chancellor",
+    "dist": 1.24
+   }
+  ]
+ },
+ {
+  "gap": 9,
+  "name": "Body Double",
+  "team": "minion",
+  "ability": "You might register as the Demon. If you are executed after the Demon nominated you, you do not die: tonight, you & the Demon swap characters.",
+  "quote": "The master needed a face for the crowd. Mine was available. After tonight, so is the master's.",
+  "tags": [
+   "Misregistration",
+   "Nominations",
+   "Character Change",
+   "Execution Survival",
+   "Social"
+  ],
+  "pitch": "A Minion the Demon can deliberately feed to the gallows, surviving the execution and stepping into the Demon role while the old Demon takes the fallen Minion seat.",
+  "style": "The master needed a face for the crowd. Mine was available. After tonight, so is the master's.",
+  "novelty": 1.2,
+  "percentile": 84.8,
+  "closest": [
+   {
+    "name": "Enra",
+    "creator": "FakeTier",
+    "url": "https://botchomebrew.wiki/c/faketier-s-collection/enra",
+    "dist": 1.16
+   },
+   {
+    "name": "Stonewarden",
+    "creator": "AP",
+    "url": "https://botchomebrew.wiki/c/steam-s-might/stonewarden",
+    "dist": 1.19
+   },
+   {
+    "name": "Umbilical",
+    "creator": "legitch",
+    "url": "https://botchomebrew.wiki/c/scp-fragmented-veil/umbilical",
+    "dist": 1.2
+   }
+  ]
+ },
+ {
+  "gap": 35,
+  "name": "Switchboard",
+  "team": "minion",
+  "ability": "Each night, choose a player: their two neighbours swap any info they learn tonight. Once per game, at night, also poison the chosen player.",
+  "quote": "I never lie. I just make sure every secret reaches the wrong ear.",
+  "tags": [
+   "Information",
+   "Neighbor",
+   "False Info",
+   "Once Per Game",
+   "Poison"
+  ],
+  "pitch": "Corrupts info by routing it to the wrong neighbour instead of reversing or poisoning it.",
+  "style": "I never lie. I just make sure every secret reaches the wrong ear.",
+  "novelty": 1.18,
+  "percentile": 82.2,
+  "closest": [
+   {
+    "name": "Syren",
+    "creator": "p3ng0o",
+    "url": "https://botchomebrew.wiki/c/wicked-game/syren",
+    "dist": 1.01
+   },
+   {
+    "name": "Scam Caller",
+    "creator": "ADapperSeal",
+    "url": "https://botchomebrew.wiki/c/adapperseal/scam-caller",
+    "dist": 1.14
+   },
+   {
+    "name": "Wormtongue",
+    "creator": "",
+    "url": "https://botchomebrew.wiki/c/asdah/wormtongue",
+    "dist": 1.23
+   }
+  ]
+ },
+ {
+  "gap": 38,
+  "name": "Turnkey",
+  "team": "minion",
+  "ability": "Each night, choose a player: they are poisoned until they nominate. When they do, their nominee is poisoned instead until dusk tomorrow.",
+  "quote": "Every cell has a key, and every key has to hang on someone's belt. Point at a neighbour and I'll pass it along.",
+  "tags": [
+   "Poison",
+   "Nominations",
+   "Quiet"
+  ],
+  "pitch": "Poison that a victim can only shed by nominating someone, who then carries it, so every accusation might be a hand-off.",
+  "style": "Every cell has a key, and every key has to hang on someone's belt. Point at a neighbour and I'll pass it along.",
+  "novelty": 1.18,
+  "percentile": 82.1,
+  "closest": [
+   {
+    "name": "Gutter Rat",
+    "creator": "Numbing_Cream",
+    "url": "https://botchomebrew.wiki/c/the-big-apple/gutter-rat",
+    "dist": 0.98
+   },
+   {
+    "name": "Chancellor",
+    "creator": "Gobinator",
+    "url": "https://botchomebrew.wiki/c/the-potato-patch/chancellor",
+    "dist": 1.1
+   },
+   {
+    "name": "Medusa",
+    "creator": "Spear_",
+    "url": "https://botchomebrew.wiki/c/spear-parts/medusa",
+    "dist": 1.22
+   }
+  ]
+ },
+ {
+  "gap": 3,
+  "name": "Toady",
+  "team": "minion",
+  "ability": "[You neighbour the Demon] Each night*, a player who was mad today that you or one of your neighbours is evil might die.",
+  "quote": "My lord is generous, my lord is wise, my lord sits right beside me. Say otherwise too loudly and see how long you keep your tongue.",
+  "tags": [
+   "Setup",
+   "Neighbor",
+   "Madness",
+   "Social",
+   "Passive"
+  ],
+  "pitch": "A seating-locked Minion that turns public accusations against its little cluster into a death threat, so good must find the Demon without ever saying so out loud.",
+  "style": "My lord is generous, my lord is wise, my lord sits right beside me. Say otherwise too loudly and see how long you keep your tongue.",
+  "novelty": 1.17,
+  "percentile": 80.9,
+  "closest": [
+   {
+    "name": "Shankaar",
+    "creator": "BakedIce",
+    "url": "https://botchomebrew.wiki/c/circus-music/shankaar",
+    "dist": 1.12
+   },
+   {
+    "name": "Shankaar",
+    "creator": "BakedIce",
+    "url": "https://botchomebrew.wiki/c/the-last-cull/shankaar-2",
+    "dist": 1.12
+   },
+   {
+    "name": "Shankaar",
+    "creator": "BakedIce",
+    "url": "https://botchomebrew.wiki/c/the-last-cull/shankaar",
+    "dist": 1.12
+   }
+  ]
+ },
+ {
+  "gap": 32,
+  "name": "Toll Keeper",
+  "team": "townsfolk",
+  "ability": "The 1st time you are nominated, that night, learn how many Outsiders voted on you. [+1 Outsider]",
+  "quote": "Nobody crosses my bridge for free. Not even the odd ones. Especially not the odd ones.",
+  "tags": [
+   "Information",
+   "Nominations",
+   "Setup",
+   "Outsider Modification",
+   "Passive"
+  ],
+  "pitch": "Turns being nominated into a count of Outsider votes, a vote-reading info role that no Outsider-nomination character offers.",
+  "style": "Nobody crosses my bridge for free. Not even the odd ones. Especially not the odd ones.",
+  "novelty": 1.17,
+  "percentile": 81.0,
+  "closest": [
+   {
+    "name": "Pursuivant",
+    "creator": "PercyTheGreat",
+    "url": "https://botchomebrew.wiki/c/call-of-the-executioner/pursuivant",
+    "dist": 1.01
+   },
+   {
+    "name": "Confessor",
+    "creator": "Cellscape",
+    "url": "https://botchomebrew.wiki/c/cog-in-the-machine/confessor",
+    "dist": 1.15
+   },
+   {
+    "name": "Realtor",
+    "creator": "Spear_",
+    "url": "https://botchomebrew.wiki/c/spear-parts/realtor",
+    "dist": 1.22
+   }
+  ]
+ },
+ {
+  "gap": 7,
+  "name": "Ostracist",
+  "team": "minion",
+  "ability": "[+1 Outsider] While you live, Outsiders who have publicly claimed to be an Outsider are poisoned.",
+  "quote": "Of course you may tell everyone what you are. Honesty is a virtue. Shame about what it costs.",
+  "tags": [
+   "Setup",
+   "Outsider Modification",
+   "Poison",
+   "Social",
+   "Passive"
+  ],
+  "pitch": "Punishes Outsiders for coming out, pushing them to hide or lie and muddying the Outsider count good relies on.",
+  "style": "Of course you may tell everyone what you are. Honesty is a virtue. Shame about what it costs.",
+  "novelty": 1.13,
+  "percentile": 75.9,
+  "closest": [
+   {
+    "name": "Xenophobe ⋒",
+    "creator": "Cute Mage",
+    "url": "https://botchomebrew.wiki/c/a-cute-collection-of-characters/xenophobe",
+    "dist": 0.99
+   },
+   {
+    "name": "Baron",
+    "creator": "Official",
+    "url": "https://wiki.bloodontheclocktower.com/Baron",
+    "dist": 1.12
+   },
+   {
+    "name": "Folly",
+    "creator": "TheDarkArtist",
+    "url": "https://botchomebrew.wiki/c/and-dark-forgot-how-how-finish-this-joke/folly",
+    "dist": 1.14
+   }
+  ]
+ },
+ {
+  "gap": 17,
+  "name": "Pollwatcher",
+  "team": "townsfolk",
+  "ability": "Each night*, learn whether any player who voted with you today is drunk or poisoned. If you didn't vote today, you are drunk until dusk.",
+  "quote": "Every hand that rose with mine, I counted. Steady hands, mostly. One was shaking.",
+  "tags": [
+   "Information",
+   "Votes",
+   "Drunkenness",
+   "Binary Info"
+  ],
+  "pitch": "Information drawn from your own voting bloc, which forces the Townsfolk to vote every day or go drunk.",
+  "style": "Every hand that rose with mine, I counted. Steady hands, mostly. One was shaking.",
+  "novelty": 1.13,
+  "percentile": 75.4,
+  "closest": [
+   {
+    "name": "Fact Checker",
+    "creator": "SuperGDPWYL",
+    "url": "https://botchomebrew.wiki/c/super-s-character-collection/fact-checker",
+    "dist": 1.08
+   },
+   {
+    "name": "Dockmaster",
+    "creator": "Numbing_Cream",
+    "url": "https://botchomebrew.wiki/c/the-big-apple/dockmaster",
+    "dist": 1.08
+   },
+   {
+    "name": "Spice Trader",
+    "creator": "Elluna",
+    "url": "https://botchomebrew.wiki/c/the-bootlegger-s-anthology/spice-trader",
+    "dist": 1.11
+   }
+  ]
+ },
+ {
+  "gap": 20,
+  "name": "Scapegoater",
+  "team": "minion",
+  "ability": "The 1st time an evil player is executed, they survive & the player who nominated them dies instead.",
+  "quote": "The rope was meant for him? Strange. It seems to have found the one who pointed.",
+  "tags": [
+   "Execution",
+   "Execution Survival",
+   "Death",
+   "Nominations",
+   "Passive"
+  ],
+  "pitch": "A one-shot evil safety net that turns the first correct execution into the death of the good accuser.",
+  "style": "The rope was meant for him? Strange. It seems to have found the one who pointed.",
+  "novelty": 1.09,
+  "percentile": 68.0,
+  "closest": [
+   {
+    "name": "Guilt",
+    "creator": "TheDarkArtist",
+    "url": "https://botchomebrew.wiki/c/and-dark-forgot-how-how-finish-this-joke/guilt",
+    "dist": 0.91
+   },
+   {
+    "name": "Jester",
+    "creator": "Gobinator",
+    "url": "https://botchomebrew.wiki/c/the-potato-patch/jester",
+    "dist": 1.04
+   },
+   {
+    "name": "Asphyxiant",
+    "creator": "Guill",
+    "url": "https://botchomebrew.wiki/c/guill/asphyxiant",
+    "dist": 1.14
+   }
+  ]
+ }
+]
