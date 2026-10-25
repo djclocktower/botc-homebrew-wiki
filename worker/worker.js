@@ -367,7 +367,7 @@ function loadOdysseyCleanup() {
     import('../migration/odyssey-cleanup.js').then(m => m.default || m));
 }
 import { homeData } from './home-data.js';
-import { renderHomePage, homeRegions } from './home-page.js';
+import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
@@ -6926,8 +6926,39 @@ const SUMMARIES = {
       ]);
       return collectionTiles(JSON.parse(chars), JSON.parse(colls));
     }
+  },
+  // /recent: the feeds are in the order pages went live (markNewlyLive), so
+  // the newest is the last row. Drawn here with the homepage's own tiles.
+  // A collection with no characters yet is skipped, as on the homepage.
+  'recent': {
+    deps: ['character', 'collection', 'script'],
+    async build(env, ctx) {
+      const [chars, colls, scripts] = (await Promise.all([
+        cachedFeedBody(env, ctx, 'characters', 'grid'),
+        cachedFeedBody(env, ctx, 'collections', 'browse'),
+        cachedFeedBody(env, ctx, 'scripts', 'browse')
+      ])).map(b => JSON.parse(b));
+      const coll = collectionTiles(chars, colls).collections.pop(), sc = scripts[scripts.length - 1];
+      return {
+        characters: chars.slice(-RECENT_PAGE_CHARACTERS).reverse().map(recentCardHTML).join(''),
+        script: sc ? scriptTileHTML({ ...sc, count: (sc.characters || []).length }) : '',
+        collection: coll ? collectionTileHTML(coll) : ''
+      };
+    }
   }
 };
+const RECENT_PAGE_CHARACTERS = 48;
+const RECENT_PAGE_MEMBERS = 12;
+// New accounts bump no content version, so they are read live: one indexed
+// query, newest id first. Suspended accounts are left out, as in the search.
+async function recentMembersHTML(env) {
+  await ensureBanColumn(env);
+  const { results } = await env.DB.prepare(
+    `SELECT username, display_name, avatar_url, created_at FROM users
+     WHERE COALESCE(banned,0)=0 AND username IS NOT NULL ORDER BY id DESC LIMIT ${RECENT_PAGE_MEMBERS}`
+  ).all();
+  return (results || []).map(memberTileHTML).join('');
+}
 async function cachedSummary(env, ctx, request, name) {
   const spec = SUMMARIES[name];
   const version = await contentVersion(env, spec.deps);
@@ -9232,6 +9263,16 @@ const app = {
         : new Response(summary.body, { headers });
     }
 
+    // The /recent page: newest characters, script and collection (cached on
+    // the content versions) and the newest members (live).
+    if (method === 'GET' && path === '/api/recent') {
+      const [content, members] = await Promise.all([
+        cachedSummary(env, ctx, null, 'recent'),
+        recentMembersHTML(env).catch(e => { console.error('recent members', e); return null; })
+      ]);
+      return jsonResponse({ ...JSON.parse(content.body), members });
+    }
+
     if (method === 'GET' && path === '/api/did-you-mean') {
       return jsonResponse({ rows: await didYouMean(env, ctx, url.searchParams.get('path')) });
     }
@@ -10560,7 +10601,7 @@ const app = {
         pub('characters'), pub('scripts'), pubCollections(), pubNews(), pubArticles(),
         customUrls('script'), customUrls('wikipage')
       ]);
-      const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
+      const staticPages = ['', 'recent', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
         'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');

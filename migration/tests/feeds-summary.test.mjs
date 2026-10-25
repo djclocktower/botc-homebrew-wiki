@@ -148,3 +148,29 @@ test('the sliced search index ranks every query exactly as the one-pass build di
   assert.ok(slices > 5, 'built in ' + slices + ' slices');
   assert.deepEqual(rankingsOf(index), golden);
 });
+
+test('/api/recent draws the newest characters, script, collection and members', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  seed(f);
+  f.insert('scripts', 'old-script', { slug: 'old-script', name: 'Old Script', characters: ['sculptor'] });
+  f.insert('scripts', 'new-script', { slug: 'new-script', name: 'New Script', characters: ['sculptor', 'oracle'] });
+  f.db.prepare("INSERT INTO users(id,username,display_name,password_hash,created_at) VALUES(1,'first','First','','2026-01-02 00:00:00')").run();
+  f.db.prepare("INSERT INTO users(id,username,password_hash,created_at) VALUES(2,'second','','2026-10-24 00:00:00')").run();
+  await f.request('/api/recent');   // creates the lazy banned column
+  f.db.prepare("INSERT INTO users(id,username,password_hash,banned) VALUES(3,'banned-one','',1)").run();
+  const body = await (await f.request('/api/recent')).json();
+  // Newest first; drafts never; feed (go-live) order.
+  const names = [...body.characters.matchAll(/class="recent-name">([^<]*)</g)].map(m => m[1]);
+  assert.deepEqual(names, ['Baker', 'Oracle', 'Imp Two', 'Warden', 'Sculptor']);
+  assert.match(body.script, /New Script/);
+  assert.doesNotMatch(body.script, /Old Script/);
+  assert.match(body.script, /2 characters/);
+  // The empty collection is newer but has nobody in it yet.
+  assert.match(body.collection, /Odyssey/);
+  assert.ok(body.members.indexOf('@second') < body.members.indexOf('@first'));
+  assert.match(body.members, /Joined Jan 2, 2026/);
+  assert.doesNotMatch(body.members + body.characters, /banned-one|Secret Draft/);
+  const page = await read('recent.html');
+  assert.match(page, /BotcData\.json\('\/api\/recent'\)/);
+  assert.match(await read('index.html'), /href="recent"/);
+});

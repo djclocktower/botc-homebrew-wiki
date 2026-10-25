@@ -1157,6 +1157,11 @@ favorites.html         /favorites — the pages this account saved, as cards:
                        with them. Same shape as /drafts, and linked from the
                        Your Favorites panel on the account page, which keeps
                        its own table with a Remove button. See "Favorites".
+recent.html            /recent — Recently Added: the 12 newest members, 48 newest
+                       characters, the newest script and collection, all drawn
+                       by the Worker (GET /api/recent, the homepage's tiles;
+                       the 'recent' entry in SUMMARIES plus a live members
+                       query). Linked from the homepage's Recently Added strip.
 404.html               The custom Not Found page. Nothing links to it: the
                        Worker serves it AT the address that failed (no
                        redirect) with a 404 status, via assetsOrNotFound(),
