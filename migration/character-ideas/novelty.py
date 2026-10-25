@@ -2,8 +2,9 @@
 
   python3 novelty.py gaps            scrape, embed, find sparse spots -> candidates.json
   python3 novelty.py score ideas.json   rank written-up ideas by distance -> IDEAS.md
+  python3 novelty.py plot             2D map of everything + ranked ideas -> map.json
 
-Needs: pip install model2vec numpy   (model2vec is a small static embedder,
+Needs: pip install model2vec numpy (plot also needs umap-learn)   (model2vec is a small static embedder,
 no torch). The corpus is the live wiki's published characters plus the
 official roster, so an idea has to be unlike both.
 
@@ -246,5 +247,36 @@ def score(path):
         print(f'{r["novelty"]:5.2f} {r["percentile"]:5.1f}%  {r["name"]} ({r["team"]})')
 
 
+def plot():
+    """UMAP of the same 32-d space novelty is measured in, ideas fitted with
+    the corpus so they land among their real neighbours. A 2D map keeps who is
+    near whom, not how far: the novelty number is the measure, the map is a
+    picture of it."""
+    import umap
+    rows = load_corpus()
+    sp = Space(rows)
+    ideas = json.loads((HERE / 'ideas-ranked.json').read_text())
+    Zi = sp.project(sp.embed(ideas))
+    xy = umap.UMAP(n_neighbors=15, min_dist=0.15, random_state=7).fit_transform(np.vstack([sp.Z, Zi]))
+    xy = (xy - xy.min(0)) / (xy.max(0) - xy.min(0))
+    base, _ = self_nn(sp.Z, K)
+    iso = base.mean(1) / np.median(base.mean(1))
+    out = []
+    for i, r in enumerate(rows):
+        out.append({'kind': 'official' if r['creator'] == 'Official' else 'wiki', 'name': r['name'],
+                    'team': r['team'], 'creator': r['creator'], 'ability': r['ability'],
+                    'tags': ', '.join(r['tags']), 'url': r['url'], 'novelty': round(float(iso[i]), 2),
+                    'rank': None, 'x': round(float(xy[i, 0]), 4), 'y': round(float(xy[i, 1]), 4)})
+    for n, r in enumerate(ideas, 1):
+        j = len(rows) + n - 1
+        out.append({'kind': 'idea', 'name': r['name'], 'team': r['team'], 'creator': '',
+                    'ability': r['ability'], 'tags': ', '.join(r['tags']), 'url': '',
+                    'novelty': r['novelty'], 'rank': n, 'pitch': r.get('pitch', ''),
+                    'nearest': '; '.join(c['name'] for c in r['closest']),
+                    'x': round(float(xy[j, 0]), 4), 'y': round(float(xy[j, 1]), 4)})
+    (HERE / 'map.json').write_text(json.dumps(out, ensure_ascii=False))
+    print(f'wrote {len(out)} points -> map.json')
+
+
 if __name__ == '__main__':
-    {'gaps': gaps, 'score': lambda: score(sys.argv[2])}[sys.argv[1]]()
+    {'gaps': gaps, 'score': lambda: score(sys.argv[2]), 'plot': plot}[sys.argv[1]]()
