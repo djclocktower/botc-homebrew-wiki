@@ -5119,7 +5119,13 @@ keeps `content-visibility: auto`.
    token's centre at the same ~8.6° spacing, alternating left then right) and
    are placed by the token's centre (`GEN_ANCHOR_X`), not by the leaves'
    extent, so an odd count does not slide sideways. 13+ draws 12; the old
-   loose fallback fan bunched into a clump that poked out of the token. And
+   loose fallback fan bunched into a clump that poked out of the token.
+   **Every top leaf is drawn whole, never cut by the rim** (`_pull_inside()`):
+   the leaf art hides about a third of each leaf behind the edge, so each one
+   that reaches past it is moved straight in toward the centre, and all of
+   them shrink by one shared factor so none reaches more than `LEAF_REACH`
+   (30px) deeper than drawn, which keeps the long arcs off the ability text.
+   It splits the leaves itself (`_leaf_labels()`, no scipy in Pyodide). And
    `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
    file has a flat patch on its left edge that printed as a nub on every
    token.
