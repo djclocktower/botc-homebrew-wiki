@@ -33,6 +33,7 @@
     teamHeads: true,
     showAbility: true,
     showCreator: false,   // on the roster AND in the panel
+    showMarks: false,     // creator marks beside names, roster and panel
     showTags: false,
     showNight: false,
     showJinx: true,
@@ -66,6 +67,8 @@
 
     { group: 'Show on each character', key: 'showAbility', label: 'Ability', type: 'check', repaint: '' },
     { group: 'Show on each character', key: 'showCreator', label: 'Creator', type: 'check', repaint: 'roster' },
+    { group: 'Show on each character', key: 'showMarks', label: 'Creator mark', type: 'check', repaint: 'roster',
+      hint: 'The creator\'s mark beside each name. On screen only.' },
     { group: 'Show on each character', key: 'showTags', label: 'Tags', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showNight', label: 'Night marks (F / O)', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showJinx', label: 'Jinx marks', type: 'check', repaint: 'roster' },

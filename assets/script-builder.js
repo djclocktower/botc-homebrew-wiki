@@ -544,10 +544,12 @@
   /* Creator marks on names: stored on the script's meta, so publish-script
      shows the same tick and the published page and its JSON carry them too
      (PageRender.buildPageExport appends each creator's glyph). Here the
-     roster draws the mark itself. */
-  function nameHTML(c) {
+     roster draws the mark itself. View → Creator mark shows them on screen
+     only, in the roster and the panel, without touching the script. */
+  function nameHTML(c, panel) {
     var CS = window.CreatorSymbols;
-    if (!getMeta().creatorMarks || c.official || !CS) return esc(c.name);
+    var on = (view && view.showMarks) || (!panel && getMeta().creatorMarks);
+    if (!on || c.official || !CS) return esc(c.name);
     var credits = CS.splitCreators(c.creator);
     var marks = credits.map(function (n) { return CS.markHTMLFor(n, { noFocus: true }); }).join('');
     return esc(CS.stripCreatorMark(c.name, credits[0] || '') || c.name) + (marks ? ' ' + marks : '');
@@ -872,7 +874,7 @@
           // The badge sits OUTSIDE the name, which is ellipsised: inside
           // it, a long name would cut the one word saying whose character
           // this is.
-          '<span class="sbx-add-txt"><span class="sbx-add-name">' + esc(c.name) + '</span>' +
+          '<span class="sbx-add-txt"><span class="sbx-add-name">' + nameHTML(c, true) + '</span>' +
             (!c.official && c.creator ? '<span class="sbx-add-by">by ' + esc(c.creator) + '</span>' : '') + '</span>' +
           (c.official ? '<span class="sbx-off">official</span>' : '') +
           '<span class="sbx-add-tick" aria-hidden="true">' + ico('check') + '</span>' +
@@ -1274,12 +1276,20 @@
     if (rp === 'panel' || (!key && view.panelGroup !== beforeGroup)) {
       if (allChars.length) buildAddList(function () { mountAddFilters(); paintJinxHints(); paintPanelNeeds(); });
     }
+    if (key === 'showMarks') paintPanelMarks();
     if (key === 'arrange') paintArrangeBtn();
     if (key === 'panelScope') paintScopeSel();
   }
   /* Arrange by hand is an editing mode, so it is a button beside Sort rather
      than a View setting; the panel's Show is a select in the panel. Both are
      still stored with the view. */
+  // Marks on the panel's names, row by row: cheaper than rebuilding the panel.
+  function paintPanelMarks() {
+    Object.keys(rowBySlug).forEach(function (slug) {
+      var n = rowBySlug[slug] && rowBySlug[slug].querySelector('.sbx-add-name');
+      if (n && bySlug[slug]) n.innerHTML = nameHTML(bySlug[slug], true);
+    });
+  }
   function paintArrangeBtn() {
     var b = $('sbx-arrange');
     if (!b) return;
@@ -2752,7 +2762,11 @@
     });
     // The live marks (account marks) replace the built-in table.
     if (window.CreatorSymbols && window.CreatorSymbols.load) {
-      window.CreatorSymbols.load().then(function (list) { if (list && getMeta().creatorMarks) paintRoster(); });
+      window.CreatorSymbols.load().then(function (list) {
+        if (!list) return;
+        if (getMeta().creatorMarks || (view && view.showMarks)) paintRoster();
+        if (view && view.showMarks) paintPanelMarks();
+      });
     }
     $('sb-almanac').addEventListener('input', debounce(function () {
       var v = $('sb-almanac').value.trim().slice(0, 300);

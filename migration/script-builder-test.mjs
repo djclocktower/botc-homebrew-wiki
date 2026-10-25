@@ -127,7 +127,7 @@ ok(V.isDefault(V.normalize({ arrange: true, panelScope: 'on' })), 'Arrange and S
 eq(V.teamHeading('townsfolk', 'Townsfolk', { teamHeads: false }), '', 'no headings');
 eq(V.teamHeading('townsfolk', 'Townsfolk', {}), 'Townsfolk', 'headings by default');
 ok(V.SCHEMA.every(s => s.key in V.DEFAULTS), 'every schema row has a default');
-ok(V.SCHEMA.filter(s => s.ui !== false).length === 13, 'thirteen settings in the View popover');
+ok(V.SCHEMA.filter(s => s.ui !== false).length === 14, 'fourteen settings in the View popover');
 // A view stored before the settings were merged keeps what it chose.
 const old = V.normalize({ tone: 'paper', font: 'wiki', pageCols: true, columns: '1', accent: true, rowStripe: true, teamLabel: 'none', panelCreator: true });
 eq(old.look, 'printed', 'Plain paper becomes the Printed look');

@@ -1552,16 +1552,16 @@ What shapes it:
 Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
-`SBView.SCHEMA` is the whole list, and it is short on purpose: **13
+`SBView.SCHEMA` is the whole list, and it is short on purpose: **14
 settings** in the popover, cut down from 37 plus 6 presets at the owner's
-request (2026-10). Layout (sheet, cards, list, icon wall), **Look**
+request (2026-10), then Creator mark added at the owner's request. Layout (sheet, cards, list, icon wall), **Look**
 (Parchment / Dark / Printed — paper tone and type in one), **Size** (Small /
 Normal / Large — icons, text, spacing and the panel's rows together; the
 icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
 / 1 / 2, where 2 is the whole script poured down two columns), **Team
-colours** (Off / Headings / Headings and rows), Team headings, six "Show on
+colours** (Off / Headings / Headings and rows), Team headings, seven "Show on
 each character" ticks (ability, creator — on the roster and in the panel —
-tags, night marks, jinx marks, notes) and the panel's Grouped by. Two more
+creator mark, tags, night marks, jinx marks, notes) and the panel's Grouped by. Two more
 keys ride the view without being in the popover (`ui: false`): `arrange`,
 the **Arrange** button beside Sort, and `panelScope`, the panel's own Show
 select. There is no display-only order any more (it read like Sort and was
@@ -1673,6 +1673,12 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   and the export (`withAbilities()`), carried in share links, and never
   written to the character. An official character has no gear, because it
   exports as a bare id.
+- **View → Creator mark** (`view.showMarks`) draws each homebrew
+  character's creator marks beside its name in the roster and the panel,
+  on screen only. The Details & Export tick (`meta.creatorMarks`) is the
+  other one: it puts them in the export and on the published page too, and
+  the roster shows them for either. The panel's names are repainted in
+  place (`paintPanelMarks()`), never rebuilt.
 - **Notes on a character** (`meta.charNotes[slug]`): typed on the peek card
   of a character on the script, shown under its row (View → Your notes),
   carried into Copy as text and along share links.
