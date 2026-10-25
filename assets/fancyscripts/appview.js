@@ -33,11 +33,11 @@
 
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
-  groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
+  groupByTeam, frontCharacters, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
   breakRuns, fitNameLines,
 } from './script.js';
 import {
-  el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
+  el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt, artAspectOf, shade,
 } from './util.js';
 import { ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark } from './elements.js';
 import { appendRibbon } from './sheet.js';
@@ -113,11 +113,32 @@ function labelTextFor(options, team, total) {
 function headerMetrics(script, options) {
   const A = APP_SHEET;
   const aT = elGet(options, 'appAuthor');
+  const tT = elGet(options, 'appTitle');
   const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
   const withAuthor = !!(options.showAuthor && author && !aT.hidden);
-  const authorCY = A.titleCY + A.titleMaxH / 2 + A.authorGap + A.authorSize / 2;
-  const top = withAuthor ? authorCY + A.authorSize / 2 + 0.75 : A.contentTop;
-  return { withAuthor, author, authorCY, top };
+  /* a logo is drawn larger than the text title, and as tall as its shape
+     allows: the header grows to hold it */
+  const art = tT.hidden ? '' : titleArt(script, options);
+  let titleH = A.titleMaxH, titleCY = A.titleCY;
+  if (art) {
+    const aspect = artAspectOf(art);
+    const maxH = A.logoMaxH * tT.scale;
+    const byW = aspect ? (A.titleMaxW / 100) * SHEET_W * tT.scale / aspect / U : maxH;
+    titleH = Math.min(maxH, byW);
+    titleCY = A.titleCY - A.titleMaxH / 2 + titleH / 2;
+  }
+  const authorCY = titleCY + titleH / 2 + A.authorGap + A.authorSize / 2;
+  const top = withAuthor ? authorCY + A.authorSize / 2 + 0.75
+    : Math.max(A.contentTop, titleCY + titleH / 2 + 0.9);
+  return { withAuthor, author, authorCY, top, art, titleH, titleCY };
+}
+
+// the title image: an upload, else the script's logo (trimmed to its ink)
+function titleArt(script, options) {
+  const tT = elGet(options, 'appTitle');
+  let art = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+  if (art && failedArt.has(art)) art = '';
+  return trimmedArt(art);
 }
 
 /* layoutAppSheet(script, options, requestRender) → {style:'app', pages, d, …}
@@ -129,7 +150,7 @@ function headerMetrics(script, options) {
 export function layoutAppSheet(script, options, requestRender) {
   const A = APP_SHEET;
   const a = appCfg(options);
-  const groups = groupByTeam(script.characters, options.sortMode);
+  const groups = groupByTeam(frontCharacters(script, options), options.sortMode);
   const fonts = fontsOf(options);
   const iconSize = options.iconSize || 1;
   const textSize = options.textSize || 1;
@@ -449,16 +470,15 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   if (page.header) {
     const tT = elGet(options, 'appTitle');
     if (!tT.hidden) {
-      let art = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
-      if (art && failedArt.has(art)) art = '';
+      const art = titleArt(script, options);
       if (art) {
         const logoEl = img(art, {
           position: 'absolute',
           left: (cx + tT.dx) + '%',
-          top: px(e(A.titleCY + tT.dy)),
+          top: px(e(hm.titleCY + tT.dy)),
           transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
           maxWidth: (A.titleMaxW * tT.scale) + '%',
-          maxHeight: px(e(A.titleMaxH) * tT.scale),
+          maxHeight: px(e(A.logoMaxH) * tT.scale),
           objectFit: 'contain',
           opacity: String(tT.opacity),
         }, title);
@@ -733,8 +753,8 @@ export function layoutAppList(spec, options, requestRender) {
   return { style: 'app', pages, d, cols, fonts, listTop, two, iconEm, nameLineEm, logoOn, titleOn, pitch };
 }
 
-/* a reminder mark: the app's plum disc, the little token with the icon,
-   or nothing */
+/* a reminder mark: a disc in the dot colour (the app's is plum; the owner
+   asked for black), the little token with the icon, or nothing */
 function dotNode(cfg, row, size) {
   if (cfg.dotStyle === 'token') {
     const tok = el('span', {
@@ -753,8 +773,8 @@ function dotNode(cfg, row, size) {
   return el('span', {
     display: 'inline-block', width: px(d), height: px(d), borderRadius: '50%', verticalAlign: 'middle',
     margin: `0 ${px(size * 0.15)}`, boxSizing: 'border-box',
-    background: 'radial-gradient(circle at 38% 32%, #5d4a73 0%, #3c2c49 55%, #2a1e34 100%)',
-    border: `${Math.max(1, size * 0.05)}px solid rgba(20, 12, 28, 0.55)`,
+    background: `radial-gradient(circle at 38% 32%, ${shade(cfg.dotColor || '#1c1c1c', 0.14)} 0%, ${cfg.dotColor || '#1c1c1c'} 60%)`,
+    border: `${Math.max(1, size * 0.05)}px solid rgba(0, 0, 0, 0.5)`,
     boxShadow: `0 ${px(size * 0.04)} ${px(size * 0.08)} rgba(0, 0, 0, 0.3)`,
   });
 }
@@ -974,6 +994,7 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
     const top = listTop + (page.naturalEm || 0) * d + A.logoGap + A.logoMaxH / 2;
     let logoSrc = resolveSrc(lT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
     if (logoSrc && failedArt.has(logoSrc)) logoSrc = '';
+    logoSrc = trimmedArt(logoSrc);
     if (logoSrc) {
       const logoEl = img(logoSrc, {
         position: 'absolute',

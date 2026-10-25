@@ -119,6 +119,9 @@ export const FIT = {
      Bars stay their own height; only the space between them grows. */
   listGrowMax: 1.6,
   listSpreadMax: 2.2,
+  // the jinx page: a few rows are set larger and kept together
+  jinxGrowMax: 1.75,
+  jinxSpreadMax: 1.15,
 };
 
 /* CSS pixel size of the rendered sheet (3:4, matching the reference trim
@@ -203,7 +206,7 @@ export const APP_SHEET = {
   iconSize: 4.54, // em
   nameX: 16.39,
   nameW: 12.36, // the name column, to just short of the bar
-  nameSize: 1.665, // em (Trade Gothic Bold Condensed)
+  nameSize: 1.84, // em (Trade Gothic Bold Condensed; the app sets 1.665, larger reads better on paper)
   nameLine: 1.02, // × nameSize, for a name that wraps
   barX: 29.7,
   barW: 0.378,
@@ -219,6 +222,7 @@ export const APP_SHEET = {
   titleCY: 4.07,
   titleMaxH: 5.39,
   titleMaxW: 67,
+  logoMaxH: 8.6, // em, a logo (the app's text title is smaller)
   titleSize: 4.6, // em, the text title when the script has no logo
   authorGap: 0.35, // em between the title and the author credit
   authorSize: 1.2,
@@ -254,7 +258,7 @@ export const APP_NIGHT = {
   titleTop: 2.4, // the optional page title (the app has none)
   titleSize: 2.6,
   logoGap: 1.2, // em between the last step and the script's logo
-  logoMaxH: 5.4,
+  logoMaxH: 8, // em (a trimmed logo; 5.4 drew it small)
   logoMaxW: 70,
   logoNameSize: 4.4,
   listBottom: 95.6, // the list (and the logo after it) ends above this
@@ -517,7 +521,7 @@ export const DEFAULT_NIGHT = {
   metaColor: '', // '' = the style's own (khaki on the ribbon style, ink on classic)
   textColor: '#2b2b2b',
   titleColor: '#1c1c1c',
-  dotColor: '#62489b', // the ':reminder:' dots
+  dotColor: '#1c1c1c', // the ':reminder:' dots (purple until the owner asked for black)
   fontTitle: 'dumbledor',
   fontName: 'goudy',
   fontText: 'trade',
@@ -543,6 +547,7 @@ export const DEFAULT_JINX = {
   title: '', // blank: named after what is on it (jinxPageTitle in night.js)
   showHouseRules: true,
   houseTitle: 'Bootlegger Rules',
+  extraTeams: false, // Travellers, Fabled and Loric here instead of on the script sheet
   notes: '', // free text printed under the list
   notesTitle: 'Notes',
   iconSize: 1,
@@ -811,6 +816,18 @@ export function seedBackTexts(title) {
 export const TEAM_ORDER = [
   'townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'
 ];
+
+/* Travellers, Fabled and Loric can be printed on the jinx page instead of
+   the script sheet. Only while that page is on, or they would be on none. */
+export const SIDE_TEAMS = ['traveller', 'fabled', 'loric'];
+export function movedTeams(options) {
+  const j = options.jinxPage || {};
+  return j.enabled && j.extraTeams ? SIDE_TEAMS : [];
+}
+export function frontCharacters(script, options) {
+  const moved = movedTeams(options);
+  return moved.length ? script.characters.filter((c) => !moved.includes(c.team)) : script.characters;
+}
 
 export const TEAM_LABELS = {
   townsfolk: 'townsfolk',
@@ -1735,6 +1752,8 @@ export function normalizeOptions(o) {
   for (const k of ['paginate', 'minFit', 'repeatHeader', 'showPageNumbers']) delete out[k];
   // 'Jinxes' was the stored default before the title named itself
   if (out.jinxPage.title === 'Jinxes') out.jinxPage.title = '';
+  // the old purple default, saved into designs, follows the new black one
+  if (out.night.dotColor === '#62489b') out.night.dotColor = DEFAULT_NIGHT.dotColor;
   delete out.iconFrame; // the circle behind every icon, taken out at the owner's request
   if (src.includeBackCover != null) out.exportOpts.pages.back = !!src.includeBackCover;
   out.includeBackCover = out.exportOpts.pages.back;

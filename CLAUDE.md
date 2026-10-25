@@ -4288,9 +4288,10 @@ on the night or jinx pages any more: the owner asked for both off, and
   of it; since that moves the rows below, the solve repeats until no new
   row reaches the logo (rows are only ever added, so it settles). A column
   that would be left a sliver beside the logo (the right-hand column of
-  two) **stops above it** instead (`floorOf()`). Dots are purple circles
-  (`night.dotColor`) and the info tokens bold caps in the text face
-  (`tokenStyle: 'bold'`), both the reference's look; the wrap measurer
+  two) **stops above it** instead (`floorOf()`). Dots are black circles
+  (`night.dotColor`, the owner's choice over the reference's purple; a
+  design saved with the old purple is folded to black) and the info tokens
+  bold caps in the text face (`tokenStyle: 'bold'`), the reference's look; the wrap measurer
   counts a dot as a fixed-width box and a token's letter spacing.
 - **`'classic'`**: the earlier look, `NIGHT`, measured off "Blending In"
   (903×1225): the title at the top left, the logo at the top right, the
@@ -4414,7 +4415,11 @@ cards written for "classic" serve both printed night styles. It copies the offic
 script view off the owner's screenshots: one column, a red damask ribbon with
 the team names turned up it, then icon, name, a coloured bar and the ability;
 the night sheets set the names flush right against the bar, mark each
-`:reminder:` with a plum disc and put the script's logo after the list. The
+`:reminder:` with a disc in `night.dotColor` (black; the app's is plum) and
+put the script's logo after the list (`APP_NIGHT.logoMaxH`, 8 em). A logo
+on the app sheet is drawn up to `APP_SHEET.logoMaxH` (8.6 em, against the
+text title's 5.39) and the header grows to its real height
+(`headerMetrics()`, from `artAspectOf()`). The
 jinx page and the back cover have one style.
 
 - **`APP_SHEET` / `APP_NIGHT` in script.js are measurements**, like `SHEET`,
@@ -4516,6 +4521,11 @@ the footnote oval; ask before moving it.
 
 ### The Bootlegger tick
 
+The tick sits in the Script card, under the script picker (`buildScriptOpts()`,
+`#fs-script-opts`), where it is seen first. Any options swap (undo, a loaded
+design, `FancyScripts.patch`) reads the script again (`afterOptionsReplaced()`
+calls `reparse()`), since the tick changes the roster.
+
 `options.bootlegger` puts the Bootlegger — the Fabled that says a script
 carries homebrew characters or house rules — on the sheet, or takes it off
 one that came with it. It is a tick rather than a rule because it is the
@@ -4586,9 +4596,14 @@ needs its ratio re-measured or it is picked at the wrong size.
   The unit system: 1 em = 1% of sheet height, horizontals in % of sheet
   width, rendered at 1242×1656. Odd-looking values are load-bearing —
   `nameSize 1.318` / `abilitySize 1.031` are wrap-fidelity corrections, the
-  0.7 row-growth margin is what keeps 3-line abilities inside one row pitch,
-  and rows deliberately do NOT grow for 1–3-line abilities (constant pitch,
-  like the reference). Change one constant at a time against a known render.
+  and the rest of `SHEET` is the reference's. **The rows do not keep the
+  reference's constant pitch any more**: a row is as tall as its icon (plus
+  0.35 em) or its text (plus 1.05 em under the last line), whichever is
+  taller. The constant `rowPitch` left a band of paper under every two-line
+  ability and held the auto fit's type small; the owner asked for the sheet
+  filled out with larger type (a 25-character script went from density 0.88
+  to 0.91 with three-line abilities, from 0.82 with the Bootlegger). Change
+  one constant at a time against a known render.
   Two two-column layouts (`columnLayout`): **'even'** (default — both
   columns of a section start together and END together, each column dealing
   the section's leftover height evenly between its rows, like the official
@@ -4860,7 +4875,10 @@ needs its ratio re-measured or it is picked at the wrong size.
   - `reminderParts()` matches `:reminder:` in any case (homebrew writes
     `:Reminder:`); render-page.js's `nightItems()` strips it from the
     wiki's own night lists the same way.
-  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note. Bootlegger rules on it carry the official Bootlegger icon. Its title (`jinxPage.title`) is blank by default and names the page after what is on it: Jinxes, Bootlegger Rules, Jinxes & Rules or Notes. An old design's stored "Jinxes" is folded to blank.
+  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note. Bootlegger rules on it carry the official Bootlegger icon. Its title (`jinxPage.title`) is blank by default and names the page after what is on it: Jinxes, Bootlegger Rules, Jinxes & Rules, Notes, or the sections joined ("Fabled, Jinxes & Rules"). An old design's stored "Jinxes" is folded to blank.
+  - **The jinx page is sections**, each under a centred heading between two fading hairlines (no heading when there is only one, the page title says it): the Travellers, Fabled and Loric when `jinxPage.extraTeams` moves them there (`movedTeams()` / `frontCharacters()` in script.js take them off the script sheet, only while the jinx page is on, or they would be on no page), then Jinxes, Bootlegger Rules, Notes. Its rows are kept together (`FIT.jinxGrowMax` 1.75, `FIT.jinxSpreadMax` 1.15) and centred, rather than spread down the page. **A sparse ribbon-style jinx page moves the logo to the top**, large: when the rows are as big as they go and more than 22 em is left, `layoutList()` lays out again with `spec.topLogo` (its height), never past twice the picture's own pixels.
+  - **A logo is trimmed to its ink** (`trimmedArt()` in util.js): many sit in a wide transparent margin, which drew them small and left the skull and flourishes standing off the picture. The first render draws the URL as given; once the image has loaded a cropped copy (a data URL, at most 1600 px) replaces it and one re-render is asked for (`onArtTrimmed`, set to `requestRender`). An unreadable (tainted) image or one with no margin is drawn as it is. Every logo goes through it: the classic and app sheets, the night and jinx pages.
+  - **The back cover keeps its words on the page** (`keepOnPage()` in back.js): each word's ink is measured with the canvas (`textInk()`, swashes included, which no DOM box sees), shrunk if wider than the page and moved in from an edge. Only the drawing changes, never the stored word. LHF Unlovable's tail on "Carnival" ran off the right edge.
   - Ribbon labels glow in the label colour's opposite (`isDark`), and get
     a halo of it when the ribbon is off: Ink Saver's dark labels were
     smeared into blots by the shadows made for the stock white ones.

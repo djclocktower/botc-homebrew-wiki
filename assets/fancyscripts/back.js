@@ -38,7 +38,7 @@
  */
 
 import { BACK_BASE, SHEET_W, SHEET_H, U, fontFamily } from './script.js';
-import { px, clamp, hexHsl } from './util.js';
+import { px, clamp, hexHsl, textInk } from './util.js';
 import { ART, pageFrame, renderTextElement, renderStickers, resolveSrc, markSelected, watermark } from './elements.js';
 import { runPixelJob } from './jobs.js';
 
@@ -232,10 +232,38 @@ export function renderBack(script, options, requestRender, ui) {
   for (const n of renderStickers(ui && ui.stickers, selected, 'back')) root.append(n);
   for (const n of renderStickers(ui && ui.stickers, selected, 'mid')) root.append(n);
   (back.texts || []).forEach((t, i) => {
-    root.append(renderTextElement(t, t.locked ? '' : 'back:' + i, selected === 'back:' + i));
+    root.append(renderTextElement(keepOnPage(t), t.locked ? '' : 'back:' + i, selected === 'back:' + i));
   });
   if (ui && ui.forExport) root.append(watermark(3.4, 0.7, fontFamily(options.fontName || 'goudy')));
   for (const n of renderStickers(ui && ui.stickers, selected, 'front')) root.append(n);
 
   return root;
+}
+
+/* A title word drawn with its swashes past the edge of the cover is pulled
+   back on: shrunk if its ink is wider than the page, then moved in. Only
+   what is drawn changes, never the stored word. */
+function keepOnPage(t) {
+  const text = String(t.text == null ? '' : t.text);
+  if (!text.trim() || text.includes('\n') || Number(t.rotate)) return t;
+  let size = Number(t.size) || 100;
+  const fam = fontFamily(t.font || 'unlovable');
+  const ink = textInk(text, `400 ${size}px ${fam}`);
+  if (!ink) return t;
+  const spacing = (Number(t.spacing) || 0) * size * Math.max(0, text.length - 1);
+  const stroke = (Number(t.strokeW) || 0) * 2;
+  const margin = SHEET_W * 0.03;
+  // ink edges relative to the box centre (the default anchor)
+  let l = ink.left - (ink.width + spacing) / 2 - stroke, r = ink.right + spacing - (ink.width + spacing) / 2 + stroke;
+  if (t.align === 'left') { l += (ink.width + spacing) / 2; r += (ink.width + spacing) / 2; }
+  if (t.align === 'right') { l -= (ink.width + spacing) / 2; r -= (ink.width + spacing) / 2; }
+  const room = SHEET_W - 2 * margin;
+  if (r - l > room) {
+    const k = room / (r - l);
+    size *= k; l *= k; r *= k;
+  }
+  let cx = ((Number(t.x) || 0) / 100) * SHEET_W;
+  if (cx + l < margin) cx = margin - l;
+  if (cx + r > SHEET_W - margin) cx = SHEET_W - margin - r;
+  return { ...t, size, x: (cx / SHEET_W) * 100 };
 }

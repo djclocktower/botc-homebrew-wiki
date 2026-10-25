@@ -37,10 +37,11 @@
 import {
   NIGHT, NIGHT_RIBBON, FIT, SHEET_W, SHEET_H, U, PAGE_EM, PLACEHOLDER_ICON, STEP_ICONS, footEm,
   nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
+  movedTeams, TEAM_LABELS,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, wrappedRunLineCount, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter,
-  ICON_IDENTITY, drawIcon,
+  ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import { pageFrame, renderBackground, renderStickers, resolveSrc, markSelected, watermark } from './elements.js';
 import { appendRibbon } from './sheet.js';
@@ -165,10 +166,26 @@ export function buildNightSpec(script, options, which) {
 }
 
 /* the jinx page: every jinx pair on the script once, Bootlegger rules
-   (_meta.bootlegger) and the writer's own notes */
+   (_meta.bootlegger), the writer's own notes, and (when asked) the
+   Travellers, Fabled and Loric taken off the script sheet */
 export function buildJinxSpec(script, options) {
   const cfg = options.jinxPage;
+  const ink = cfg.textColor || '#2b2b2b';
   const chars = sortCharacters(script.characters, options.sortMode);
+  const blocks = [];
+  // the characters moved here, a section per team, before the rules
+  for (const team of movedTeams(options)) {
+    const list = chars.filter((c) => c.team === team);
+    if (!list.length) continue;
+    const label = TEAM_LABELS[team];
+    blocks.push({
+      heading: label.charAt(0).toUpperCase() + label.slice(1),
+      rows: list.map((c) => ({
+        icons: [c.icon], kind: 'char', id: 'char:' + c.id, name: c.name,
+        color: c.color || teamColor(options, c.team), text: c.ability || '',
+      })),
+    });
+  }
   const seen = new Set();
   const rows = [];
   for (const c of chars) {
@@ -183,20 +200,20 @@ export function buildJinxSpec(script, options) {
         id: key,
         nameParts: [
           { s: c.name, color: c.color || teamColor(options, c.team) },
-          { s: ' & ', color: cfg.textColor || '#2b2b2b' },
+          { s: ' & ', color: ink },
           { s: j.name, color: teamColor(options, j.team) },
         ],
         name: c.name + ' & ' + j.name,
-        color: cfg.textColor || '#2b2b2b',
+        color: ink,
         text: j.reason || '',
       });
     }
   }
-  const blocks = [];
-  blocks.push({ heading: '', rows });
+  if (rows.length) blocks.push({ heading: 'Jinxes', kind: 'jinx', rows });
   if (cfg.showHouseRules && script.meta.bootlegger && script.meta.bootlegger.length) {
     blocks.push({
       heading: cfg.houseTitle || 'Bootlegger Rules',
+      kind: 'rule',
       rows: script.meta.bootlegger.map((r, i) => ({
         icons: [STEP_ICONS.bootlegger], kind: 'rule', id: 'rule' + i, name: '', color: cfg.textColor, text: r,
       })),
@@ -206,20 +223,26 @@ export function buildJinxSpec(script, options) {
   if (notes) {
     blocks.push({
       heading: cfg.notesTitle || 'Notes',
+      kind: 'note',
       rows: notes.split(/\n\s*\n/).map((p, i) => ({
         icons: [], kind: 'note', id: 'note' + i, name: '', color: cfg.textColor, text: p.replace(/\s*\n\s*/g, ' '),
       })),
     });
   }
   // nothing to print: the page is left out altogether (pageList)
-  const empty = !rows.length && blocks.length === 1;
-  // a blank title names the page after what is on it
-  const hasRules = blocks.some((b) => b.rows.some((r) => r.kind === 'rule'));
-  const auto = rows.length ? (hasRules ? 'Jinxes & Rules' : 'Jinxes')
-    : hasRules ? (cfg.houseTitle || 'Bootlegger Rules') : notes ? (cfg.notesTitle || 'Notes') : 'Jinxes';
+  const empty = !blocks.length;
+  /* a blank title names the page after what is on it. The page title says
+     it, so a lone section needs no heading of its own. */
+  const names = blocks.map((b) => (b.kind === 'rule' && blocks.length > 1 ? 'Rules' : b.heading));
+  const auto = !names.length ? 'Jinxes'
+    : names.length === 1 ? names[0]
+      : names.length === 2 ? names[0] + ' & ' + names[1]
+        : names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
+  if (blocks.length === 1) blocks[0].heading = '';
+  if (!blocks.length) blocks.push({ heading: '', rows: [] });
   return {
     kind: 'jinx', which: 'jinx', elPrefix: 'jinx', empty,
-    title: cfg.title || auto,
+    title: cfg.title || (auto.length > 34 ? names[0] + ' & More' : auto),
     columns: [{ heading: '', blocks }],
     cfg, style: styleOf(cfg), bars: false, meta: script.meta, numbered: false, paginate: true,
   };
@@ -350,6 +373,7 @@ function logoPlan(spec, options, geo, requestRender) {
   let src = custom || (cfg.showLogo !== false && spec.meta.logo && options.useLogo
     ? proxied(spec.meta.logo, options.proxyIcons) : '');
   if (src && failedArt.has(src)) src = '';
+  src = trimmedArt(src);
   const right = geo.edge + G.logoRight - lT.dx; // % from the sheet's right edge
   const bottom = G.logoBottom - lT.dy; // em up from the foot
   const maxW = G.logoMaxW * lT.scale;
@@ -376,6 +400,22 @@ function logoPlan(spec, options, geo, requestRender) {
   if (!plan) return null;
   plan.x0 = 100 - right - plan.w;
   plan.y0 = PAGE_EM - bottom - plan.h;
+  /* a sparse jinx page draws the logo large at the top instead
+     (layoutList decides; spec.topLogo is its height in em) */
+  if (spec.topLogo && plan.kind === 'img') {
+    const colW = geo.x1 - geo.x0;
+    let h = spec.topLogo * lT.scale, w = colW * 0.8 * lT.scale;
+    const dim = logoSize(src, requestRender);
+    if (dim) {
+      const s = Math.min(((w / 100) * SHEET_W) / dim.w, (h * U) / dim.h);
+      w = ((dim.w * s) / SHEET_W) * 100;
+      h = (dim.h * s) / U;
+    }
+    plan.top = true;
+    plan.w = w; plan.h = h;
+    plan.x0 = (geo.x0 + geo.x1) / 2 - w / 2 + lT.dx;
+    plan.y0 = geo.listTop + 1 + lT.dy;
+  }
   return plan;
 }
 
@@ -427,9 +467,10 @@ export function layoutList(spec, options, requestRender) {
     : Math.max(NIGHT.textX - NIGHT.iconX, ((m.iconEm * d * U) / SHEET_W) * 100 + 0.6));
   const hangAt = (d) => (bars && cfg.hang !== false ? (barAt(d).hang / 100) * SHEET_W : 0);
   const hasHeadings = spec.columns.some((c) => c.heading);
-  const listTop = geo.listTop + (hasHeadings ? (two ? 4.6 : 3.2) : 0);
-  const availEm = geo.listBottom - listTop;
   const logo = logoPlan(spec, options, geo, requestRender);
+  const listTop = logo && logo.top ? logo.y0 + logo.h + 2.4
+    : geo.listTop + (hasHeadings ? (two ? 4.6 : 3.2) : 0);
+  const availEm = geo.listBottom - listTop;
 
   /* a stacked row with two icons (a jinx pair) needs its text pushed right
      of the second icon; everything else starts at the text column. Layout
@@ -483,7 +524,7 @@ export function layoutList(spec, options, requestRender) {
      the page — stops above the logo instead of wrapping round it: a
      reminder squeezed into a sliver there broke a word to a line. */
   const floorOf = (ci) => {
-    if (!logo || cols[ci].x1 <= logo.x0 - G.logoClear) return null;
+    if (!logo || logo.top || cols[ci].x1 <= logo.x0 - G.logoClear) return null;
     const full = cols[ci].x1 - cols[ci].x0 - textXAt(1);
     const left = logo.x0 - G.logoClear - cols[ci].x0 - textXAt(1);
     return left < Math.max(18, full * 0.5) ? logo.y0 - G.logoClear : null;
@@ -495,8 +536,11 @@ export function layoutList(spec, options, requestRender) {
   const narrow = new Set();
   const unitMeasure = (u, ci, d) => (u.type === 'row' ? measure(u.row, ci, d, narrow.has(u.key)) : { h: u.h, lines: 0, blockEm: 0 });
   const needAt = (ci, d) => colUnits[ci].reduce((n, u) => n + unitMeasure(u, ci, d).h, 0);
-  const growMax = geo.ribbon ? FIT.listGrowMax : FIT.growMax;
-  const spreadMax = geo.ribbon ? FIT.listSpreadMax : FIT.spreadMax;
+  /* the jinx page keeps its rows together: a short one is set larger and
+     centred on the page rather than spread down it */
+  const jinx = spec.kind === 'jinx';
+  const growMax = jinx ? FIT.jinxGrowMax : geo.ribbon ? FIT.listGrowMax : FIT.growMax;
+  const spreadMax = jinx ? FIT.jinxSpreadMax : geo.ribbon ? FIT.listSpreadMax : FIT.spreadMax;
   const minFit = clamp(Number(cfg.minFit) || 0.68, 0.3, 1);
 
   const solve = () => {
@@ -590,7 +634,7 @@ export function layoutList(spec, options, requestRender) {
       gapEm = Math.min(gapEm, (spreadMax - 1) * (natural / Math.max(1, units)));
       p.gapEm = gapEm;
       const rest = Math.max(0, Math.min(...cs.map((c) => c.slack - gapEm * Math.max(0, c.n - 1))));
-      p.offsetEm = geo.ribbon ? rest / 2 : Math.min(rest * FIT.topShare, FIT.listTopMax);
+      p.offsetEm = geo.ribbon || jinx ? rest / 2 : Math.min(rest * FIT.topShare, FIT.listTopMax);
       // where every unit is drawn, in layout em from the top of its column
       p.columns.forEach((pc) => {
         let y = p.offsetEm;
@@ -604,7 +648,16 @@ export function layoutList(spec, options, requestRender) {
   };
 
   let solved = solve();
-  if (logo) {
+  /* A jinx page with a few rows set as large as they go still leaves most
+     of the page empty. The logo then moves from the foot to the top, as
+     large as the room allows, and the rows sit under it. */
+  if (jinx && logo && logo.kind === 'img' && !spec.topLogo && geo.ribbon && cfg.fit !== false &&
+      solved.pages.length === 1 && solved.d >= growMax - 0.001) {
+    const used = Math.max(...solved.pages[0].columns.map((pc) => pc.units.reduce((a, u) => a + u.hEm, 0))) * solved.d;
+    const free = (geo.listBottom - geo.listTop) - used;
+    if (free > 22) return layoutList({ ...spec, topLogo: Math.min(24, free * 0.55) }, options, requestRender);
+  }
+  if (logo && !logo.top) {
     const zoneTop = logo.y0 - G.logoClear;
     for (let pass = 0; pass < 6; pass++) {
       let added = false;
@@ -668,7 +721,7 @@ function reminderNodes(row, cfg, fonts, ed) {
       // DOT_W.dot is this box plus its margins
       out.push(el('span', {
         display: 'inline-block', width: '0.9em', height: '0.9em', borderRadius: '50%',
-        background: cfg.dotColor || '#62489b', verticalAlign: '-0.14em', margin: '0 0.07em',
+        background: cfg.dotColor || '#1c1c1c', verticalAlign: '-0.14em', margin: '0 0.07em',
       }));
     }
   }
@@ -954,7 +1007,15 @@ function footLogo(script, spec, options, layout, ctx, mark, e) {
   const { lT } = plan;
   const rot = lT.rot ? ` rotate(${lT.rot}deg)` : '';
   if (plan.kind === 'img') {
-    const style = {
+    const style = plan.top ? {
+      position: 'absolute',
+      left: plan.x0 + '%',
+      top: px(e(plan.y0)),
+      transform: rot.trim() || '',
+      objectFit: 'contain',
+      opacity: String(lT.opacity),
+      filter: `drop-shadow(${e(0.06)}px ${e(0.1)}px ${e(0.12)}px rgba(40, 26, 10, 0.35))`,
+    } : {
       position: 'absolute',
       right: plan.right + '%',
       bottom: px(e(plan.bottom)),
@@ -1036,6 +1097,7 @@ function classicHead(script, spec, options, layout, pageIndex, ctx, mark, e) {
     let logoSrc = custom || (cfg.showLogo !== false && script.meta.logo && options.useLogo
       ? proxied(script.meta.logo, options.proxyIcons) : '');
     if (logoSrc && failedArt.has(logoSrc)) logoSrc = '';
+    logoSrc = trimmedArt(logoSrc);
     if (logoSrc) {
       const logoEl = img(logoSrc, {
         position: 'absolute',
@@ -1147,11 +1209,18 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
     let rowIndex = 0;
     for (const u of pc.units) {
       if (u.type === 'heading') {
+        // centred between two hairlines that fade out towards the edges
+        const ink = cfg.titleColor || '#1c1c1c';
+        const rule = (dir) => el('div', {
+          flex: '1', height: px(Math.max(1, ed(0.12))),
+          background: `linear-gradient(to ${dir}, ${ink}, transparent)`, opacity: '0.55',
+        });
         col.append(el('div', {
-          position: 'absolute', left: '0', top: px(ed(u.yEm) + ed(u.hEm - 2.9) + ed(0.5)),
+          position: 'absolute', left: '0', right: '0', top: px(ed(u.yEm) + ed(u.hEm - 2.9) + ed(0.5)),
+          display: 'flex', alignItems: 'center', gap: px(ed(1.1)),
           fontFamily: fonts.title, fontWeight: '700', fontSize: px(ed(2.0)), lineHeight: '1',
-          color: cfg.titleColor || '#1c1c1c', whiteSpace: 'nowrap',
-        }, u.text));
+          color: ink, whiteSpace: 'nowrap',
+        }, rule('left'), el('span', {}, u.text), rule('right')));
         continue;
       }
       const rn = layout.bars

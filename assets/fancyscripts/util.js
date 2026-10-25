@@ -328,3 +328,84 @@ export function hashStr(s) {
   }
   return (h >>> 0).toString(36);
 }
+
+/* ── logos, trimmed to their ink ────────────────────────────────────────
+   A script's logo often sits in a big transparent margin, so it drew small
+   in its box and the skull and flourishes, placed against the box, stood
+   off from the picture. trimmedArt(url) hands back the URL as given the
+   first time, crops the margin off a copy once the image has loaded, and
+   asks for one re-render (onArtTrimmed) to draw the copy. An image that
+   cannot be read (a tainted canvas) or has no margin is drawn as it is. */
+const trimCache = new Map();
+const trimAspect = new Map(); // width / height, under the URL and the trimmed copy
+let trimNotify = null;
+export function artAspectOf(url) { return trimAspect.get(url) || 0; }
+export function onArtTrimmed(fn) { trimNotify = fn; }
+export function trimmedArt(url) {
+  if (!url || /^data:image\/svg/.test(url)) return url;
+  const got = trimCache.get(url);
+  if (got !== undefined) return got || url;
+  trimCache.set(url, '');
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = () => {
+    let out = '';
+    try { out = trimImage(image); } catch { out = ''; }
+    trimCache.set(url, out);
+    if (out) {
+      const probe = new Image();
+      probe.onload = () => {
+        const a = probe.naturalWidth / probe.naturalHeight;
+        trimAspect.set(url, a); trimAspect.set(out, a);
+        if (trimNotify) trimNotify();
+      };
+      probe.src = out;
+      return;
+    }
+    if (image.naturalHeight) trimAspect.set(url, image.naturalWidth / image.naturalHeight);
+  };
+  image.src = url;
+  return url;
+}
+
+function trimImage(image) {
+  const nw = image.naturalWidth, nh = image.naturalHeight;
+  if (!nw || !nh) return '';
+  // find the ink on a small copy, then crop the full-size one
+  const k = Math.min(1, 300 / Math.max(nw, nh));
+  const w = Math.max(1, Math.round(nw * k)), h = Math.max(1, Math.round(nh * k));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(image, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++)
+      if (d[(y * w + x) * 4 + 3] > 16) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+  if (x1 < 0) return '';
+  // one sample of slack each way, so a soft edge is not cut
+  x0 = Math.max(0, x0 - 1); y0 = Math.max(0, y0 - 1); x1 = Math.min(w - 1, x1 + 1); y1 = Math.min(h - 1, y1 + 1);
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > w * h * 0.94) return '';
+  const sx = (x0 / w) * nw, sy = (y0 / h) * nh, sw = ((x1 - x0 + 1) / w) * nw, sh = ((y1 - y0 + 1) / h) * nh;
+  const s = Math.min(1, 1600 / Math.max(sw, sh));
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round(sw * s)); out.height = Math.max(1, Math.round(sh * s));
+  out.getContext('2d').drawImage(image, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
+}
+
+/* the ink of one line of text, swashes included, in px from the left of
+   its advance box: {left, right, width}. A swash font's tails reach well
+   past the advance box, which is all a DOM box ever measures. */
+export function textInk(text, font) {
+  const c = ctx2d();
+  if (!c) return null;
+  c.font = font;
+  const m = c.measureText(text);
+  const left = -(m.actualBoundingBoxLeft || 0), right = m.actualBoundingBoxRight || m.width;
+  return { left, right, width: m.width };
+}

@@ -34,11 +34,11 @@
 import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
-  groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
+  groupByTeam, frontCharacters, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
-  normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
+  normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import {
   ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark,
@@ -71,7 +71,7 @@ const artAspect = new Map();
 function titleArtOf(script, options) {
   const t = elGet(options, 'title');
   const art = resolveSrc(t.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
-  return art && !failedArt.has(art) ? art : '';
+  return art && !failedArt.has(art) ? trimmedArt(art) : '';
 }
 /* The tallest the title image may be drawn, in em. In the 'shared' column
    layout the left column's first row starts at contentTop, level with the
@@ -458,7 +458,7 @@ function headerExtraEm(script, options) {
    only genuine spill grows a row. fitToContent solves for the density
    that fills contentTop..contentBottom (3 iterations converge). */
 export function layoutSheet(script, options, requestRender) {
-  const groups = groupByTeam(script.characters, options.sortMode);
+  const groups = groupByTeam(frontCharacters(script, options), options.sortMode);
   const { iconSize, textSize, nameSize } = options;
   const fonts = fontsOf(options);
 
@@ -488,12 +488,16 @@ export function layoutSheet(script, options, requestRender) {
   const lineMul = options.abilityLine || 1;
 
   const rowHeightEm = (char, density) => {
-    let need = Math.max(SHEET.rowPitch, iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + 0.2);
+    /* A row is as tall as its icon or its text, whichever is taller. The
+       reference keeps one pitch for every row (rowPitch), which left a
+       band of paper under every two-line ability and held the auto fit's
+       type small; hugging the content lets the fit set it larger. */
+    let need = iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + 0.35;
     if (char) {
       const fontPx = SHEET.abilitySize * textSize * U * density;
       const lines = wrappedLineCount(smartTypography(char.ability), `400 ${fontPx}px ${fonts.ability}`, maxTextW);
-      // 0.7 margin keeps 3-line rows inside one pitch (1.0 broke it)
-      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + 0.7);
+      // room under the last line, so the next name does not sit on it
+      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + 1.05);
     }
     return need;
   };

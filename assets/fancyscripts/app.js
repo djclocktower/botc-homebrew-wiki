@@ -38,7 +38,7 @@ import { layoutAppSheet, renderAppSheetPage, layoutAppList, renderAppListPage } 
 import { renderBack, backCanvas, backReady } from './back.js';
 import { setAssetResolver, ART } from './elements.js';
 import { mountDrag, snapTo } from './drag.js';
-import { fontsChanged, hexToRgb, rgbToHex, hslToHex, clamp, setHiresIcons } from './util.js';
+import { fontsChanged, hexToRgb, rgbToHex, hslToHex, clamp, setHiresIcons, onArtTrimmed } from './util.js';
 import { pixelWorkerActive } from './jobs.js';
 
 const $ = (id) => document.getElementById(id);
@@ -214,6 +214,9 @@ function updateHistoryButtons() {
 /* everything that has to happen when `options` is swapped wholesale
    (undo, a preset, a loaded design, a restored autosave) */
 function afterOptionsReplaced() {
+  // the Bootlegger tick changes the roster, so an undo or a loaded design
+  // has to read the script again
+  reparse();
   syncControls();
   buildElementPanel();
   buildCharPanel();
@@ -1205,6 +1208,16 @@ function showSolvedDensity(node, p) {
 }
 
 /* ── the fixed cards ─────────────────────────────────────────────────── */
+/* under the script picker, where it is seen first: the Bootlegger changes
+   the roster, so the script is read again (as the icon proxy toggle does) */
+function buildScriptOpts() {
+  const box = $('fs-script-opts');
+  makeToggle(box, 'Bootlegger', bindPath('bootlegger'), {
+    onChange: () => { reparse(); buildCharPanel(); requestRender(); },
+  });
+  makeHint(box, 'The Fabled that says a script has homebrew characters or rules.');
+}
+
 function buildPagesCard() {
   const box = $('fs-pages-box');
   const styles = [['classic', 'Printed sheet'], ['app', 'App view']];
@@ -1337,12 +1350,6 @@ function buildLayoutCard() {
   makeSelect(styleGroup(box, 'front', 'classic'), 'Split each team', [['count', 'Half and half'], ['balance', 'Balance by text length']],
     bindPath('columnSplit'));
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
-  makeToggle(box, 'Add the Bootlegger', bindPath('bootlegger'), {
-    // it changes the ROSTER, so the script has to be read again — the same
-    // reason the icon proxy toggle does it
-    onChange: () => { reparse(); buildCharPanel(); requestRender(); },
-  });
-  makeHint(box, 'The Fabled that says a script has homebrew characters or rules. Untick it to leave it off the sheet, even if the script came with one.');
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, '“*Not the first night” footnote', bindPath('showFootnote'));
   makeToggle(box, 'Team labels', bindPath('showLabels'));
@@ -1596,6 +1603,8 @@ function buildJinxCard() {
   makeText(box, 'Page title (blank = automatic)', bindPath('jinxPage.title'));
   makeToggle(box, 'Ribbon down the right edge (ribbon style)', bindPath('jinxPage.ribbon'));
   makeToggle(box, 'Bootlegger rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
+  makeToggle(box, 'Travellers, Fabled and Loric on this page', bindPath('jinxPage.extraTeams'));
+  makeHint(box, 'They leave the script sheet, which gives the other characters more room.');
   makeText(box, 'Bootlegger rules heading', bindPath('jinxPage.houseTitle'));
   makeText(box, 'Notes heading', bindPath('jinxPage.notesTitle'));
   makeText(box, 'Notes, printed under the jinxes (blank line = new paragraph)', bindPath('jinxPage.notes'), { multiline: true, rows: 4 });
@@ -2624,6 +2633,8 @@ async function exportPDF() {
 
 /* ── boot ── */
 async function boot() {
+  onArtTrimmed(requestRender);
+  buildScriptOpts();
   buildPagesCard();
   buildTitleCard();
   buildLayoutCard();
