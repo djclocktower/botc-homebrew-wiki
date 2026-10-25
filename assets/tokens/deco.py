@@ -107,82 +107,6 @@ BARE = _true_circle(BARE)
 _DISK = (_np.array(BARE)[:,:,3] > 0)            # token shape, for clipping
 TOP_ANCHOR = -24                                # lifted slightly off the ability text
 
-def _leaf_labels(alpha):
-    """Connected pieces (8-way) of a mask, found by joining runs row to row:
-    a few thousand runs, so it is quick in Pyodide with no scipy."""
-    lab = _np.zeros(alpha.shape, _np.int32)
-    parent = [0]
-    def find(i):
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]; i = parent[i]
-        return i
-    prev = []
-    for y in range(alpha.shape[0]):
-        d = _np.diff(_np.concatenate(([0], alpha[y].astype(_np.int8), [0])))
-        cur = []
-        for s, e in zip(_np.nonzero(d == 1)[0].tolist(), _np.nonzero(d == -1)[0].tolist()):
-            me = len(parent); parent.append(me)
-            for ps, pe, pl in prev:
-                if ps <= e and pe >= s:                  # touching, diagonals included
-                    a, b = find(me), find(pl)
-                    if a != b: parent[max(a, b)] = min(a, b)
-            cur.append((s, e, me)); lab[y, s:e] = me
-        prev = cur
-    roots = _np.array([find(i) for i in range(len(parent))], _np.int32)
-    return roots[lab]
-
-LEAF_REACH = 30   # px a leaf may reach deeper than drawn once it is pulled whole onto the token
-
-def _pull_inside(layer, margin=3):
-    """Keep every leaf whole. The leaf art hides about a third of each leaf
-    behind the rim; each leaf that does is moved straight in toward the token
-    centre until its outer end sits just inside the edge. Moving them in by
-    the full hidden length would push the long arcs (7+) into the ability
-    text, so all of them also shrink by one shared factor -- each about its
-    outer end -- until none reaches more than LEAF_REACH deeper than drawn."""
-    la = _np.array(layer)
-    A = la[:, :, 3]
-    rows = _np.nonzero((A > 0).any(1))[0]
-    if not len(rows): return layer
-    y0 = rows[0]
-    lab = _leaf_labels(A[y0:rows[-1] + 1] > 0)
-    ys, xs = _np.nonzero(lab); ls = lab[ys, xs]; ys = ys + y0
-    o = _np.argsort(ls, kind='stable'); ys, xs, ls = ys[o], xs[o], ls[o]
-    cut = _np.nonzero(_np.diff(ls))[0] + 1
-    lim = _R - margin
-    leaves = []
-    for py, px in zip(_np.split(ys, cut), _np.split(xs, cut)):
-        solid = A[py, px] > 20
-        if not solid.any(): continue
-        d = _np.hypot(px - _DCX, py - _DCY)
-        ds = _np.where(solid, d, -1.0); i = int(_np.argmax(ds))
-        far, near = ds[i], d[solid].min()
-        if far > lim: leaves.append((py, px, far, near, i))
-    if not leaves: return layer
-    # a leaf nudged (leaf_dx/dy) almost wholly off the token has no drawn
-    # depth to keep; the floor stops it shrinking the whole arc to nothing
-    s = min([1.0] + [(max(lim - near, 0) + LEAF_REACH) / (far - near) for _, _, far, near, _ in leaves])
-    s = max(s, 0.6)
-    out = []
-    for py, px, far, near, i in leaves:
-        fx, fy = float(px[i]), float(py[i])
-        ux, uy = (fx - _DCX) / far, (fy - _DCY) / far
-        over = far - lim
-        pad = int(over) + 3
-        rx0, ry0 = max(0, int(px.min()) - pad), max(0, int(py.min()) - pad)
-        rx1, ry1 = min(A.shape[1], int(px.max()) + pad + 1), min(A.shape[0], int(py.max()) + pad + 1)
-        piece = _np.zeros((ry1 - ry0, rx1 - rx0, 4), _np.uint8)
-        piece[py - ry0, px - rx0] = la[py, px]
-        la[py, px] = 0
-        Fx, Fy = fx - rx0, fy - ry0                    # the outer end, which lands at lim
-        Tx, Ty = Fx - ux * over, Fy - uy * over
-        img = Image.fromarray(piece).transform((rx1 - rx0, ry1 - ry0), Image.AFFINE,
-              (1/s, 0, Fx - Tx/s, 0, 1/s, Fy - Ty/s), resample=Image.BICUBIC)
-        out.append((img, rx0, ry0))
-    res = Image.fromarray(la)
-    for img, x, y in out: res.alpha_composite(img, (x, y))
-    return res
-
 def _place_top(canvas, asset, scale, dy=0, dx=0, rot=0, anchor_x=None):
     big = asset.resize((int(asset.width*scale), int(asset.height*scale)), Image.LANCZOS)
     if float(rot) != 0:
@@ -200,8 +124,7 @@ def _place_top(canvas, asset, scale, dy=0, dx=0, rot=0, anchor_x=None):
     x0, y0 = max(0,ox), max(0,oy)
     sub = big.crop((x0-ox, y0-oy, big.width, big.height))
     layer.alpha_composite(sub, (x0, y0))
-    layer = _pull_inside(layer)
-    # clip to the token disk: only the anti-aliased fringe is left to cut
+    # clip to the token disk: cut anything outside the edge (i.e. the bits poking past the top)
     la = _np.array(layer)
     la[:,:,3] = _np.where(_DISK, la[:,:,3], 0)
     canvas.alpha_composite(Image.fromarray(la))
