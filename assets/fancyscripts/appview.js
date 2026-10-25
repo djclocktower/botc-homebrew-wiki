@@ -617,16 +617,19 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
    two split the paper right of the ribbon, and keep the icon and the name
    nearly their full width (a name squeezed into a proportional share of
    the page spills over its icon) while the text column narrows */
-function nightCols(n) {
+function nightCols(n, shift) {
   const A = APP_NIGHT;
-  if (n < 2) return [{ iconCX: A.iconCX, nameRight: A.nameRight, barX: A.barX, textX: A.textX, textRight: A.textRight }];
+  /* "Move the reminder toward the icons": the bar and the text slide, and
+     the names, set flush right against the bar, give up the room */
+  const s = clamp(Number(shift) || 0, -10, 6);
+  if (n < 2) return [{ iconCX: A.iconCX, nameRight: A.nameRight + s, barX: A.barX + s, textX: A.textX + s, textRight: A.textRight }];
   const x0 = A.sidebarW;
   const half = (100 - x0 - A.colGap) / 2;
   const at = (start) => ({
     iconCX: start + 4.4,
-    nameRight: start + 19.5,
-    barX: start + 20.6,
-    textX: start + 22.0,
+    nameRight: start + 19.5 + s,
+    barX: start + 20.6 + s,
+    textX: start + 22.0 + s,
     textRight: Math.min(start + half - 0.8, A.textRight),
   });
   return [at(x0), at(x0 + half + A.colGap)];
@@ -639,7 +642,10 @@ export function layoutAppList(spec, options, requestRender) {
   const cfg = spec.cfg;
   const fonts = fontsOf(options, cfg);
   const two = spec.columns.length > 1;
-  const cols = nightCols(spec.columns.length);
+  const a = appCfg(options);
+  const cols = nightCols(spec.columns.length, a.nightTextShift);
+  // extra space under every step, em (the App view card's slider)
+  const rowExtra = (clamp(Number(a.nightRowGap) || 1, 0.5, 3) - 1) * 1.6;
   const textSize = cfg.textSize || 1;
   const nameSize = cfg.nameSize || 1;
   const iconEm = A.iconSize * (cfg.iconSize || 1);
@@ -677,7 +683,7 @@ export function layoutAppList(spec, options, requestRender) {
       { shrinkFirst: 0.8, minScale: 0.4 });
     const nameH = row.name ? nm.lines.length * nameLineEm(nm.scale) : 0;
     const blockH = Math.max(textH, nameH);
-    return { lines, lineHs, textH, name: nm, nameH, blockH, h: Math.max(pitch, blockH + A.rowPad) };
+    return { lines, lineHs, textH, name: nm, nameH, blockH, h: Math.max(blockH + 0.15, Math.max(pitch, blockH + A.rowPad) + rowExtra) };
   };
 
   // headings: a column heading (both nights on one page), and the page

@@ -1554,11 +1554,14 @@ function buildNightCard() {
 function buildAppCard() {
   const box = $('fs-app-box');
   beginCard();
-  makeLabel(box, 'Rows');
+  makeLabel(box, 'Script sheet rows');
   makeSlider(box, 'Space between characters', 0.5, 3, 0.05, pct, bindPath('app.rowGap'), { reset: 1 });
   makeSlider(box, 'Move the ability toward the icons', -10, 6, 0.1, signed(1, '%'), bindPath('app.textShift'), { reset: 0 });
   makeToggle(box, 'Coloured bar beside the ability', bindPath('app.showBars'));
-  makeHint(box, 'For the script sheet. More space makes the text smaller to fit.');
+  makeHint(box, 'More space makes the text smaller to fit. The bar switch is for every app page.');
+  makeLabel(box, 'Night sheet rows');
+  makeSlider(box, 'Space between steps', 0.5, 3, 0.05, pct, bindPath('app.nightRowGap'), { reset: 1 });
+  makeSlider(box, 'Move the reminder toward the icons', -10, 6, 0.1, signed(1, '%'), bindPath('app.nightTextShift'), { reset: 0 });
   makeSelect(box, 'Ribbon', [['damask', 'Damask art (tinted)'], ['flat', 'Flat colour'], ['none', 'No ribbon']], bindPath('app.sidebarMode'));
   const rc = makeRow(box, 'fs-colors');
   makeColor(rc, 'Ribbon colour', bindPath('app.sidebarColor'));

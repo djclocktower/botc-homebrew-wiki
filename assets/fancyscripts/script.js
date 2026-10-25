@@ -480,6 +480,8 @@ export const DEFAULT_APP = {
   barWidth: 1,
   rowGap: 1, // the script sheet's space between characters (1 = the app's)
   textShift: 0, // % width: the bar and the ability moved toward the icons (negative) or away
+  nightRowGap: 1, // the same two for the app view's night sheets
+  nightTextShift: 0,
   showDividers: true,
   dividerStrength: 1,
   bg: { ...DEFAULT_BG, mode: 'parchment' },

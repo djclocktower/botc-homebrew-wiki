@@ -4428,6 +4428,11 @@ jinx page and the back cover have one style.
   % width: the bar and the text slide, the name column gives up the room,
   `appColumns()`) and the bar toggle (`app.showBars`). The owner asked for
   all three on the app sheet and did not find the bar toggle where it was.
+  The night sheets have their own pair under "Night sheet rows"
+  (`app.nightRowGap`, `app.nightTextShift`: `nightCols(n, shift)` moves the
+  bar, the text and the names' right edge together); the bar toggle serves
+  every app page. The older "Space between steps" in the Night order card
+  (`night.rowGap`) belongs to the printed night styles.
 - **`APP_SHEET` / `APP_NIGHT` in script.js are measurements**, like `SHEET`,
   taken off the screenshots and scaled by WIDTH onto the 3:4 sheet, so the
   ability column wraps where the app's does (its width is bounded by where
