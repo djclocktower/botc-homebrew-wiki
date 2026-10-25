@@ -557,6 +557,25 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script>
+    /* Before anything else on the page can fail: an error that stops the page
+       script used to leave it blank under the heading (neither the account nor
+       the login box drawn), which tells nobody anything. Say what broke instead,
+       so it can be reported. Only while the account has not been drawn. */
+    function acctFail(msg, always) {
+      var g = document.getElementById('gate'), a = document.getElementById('acct');
+      if (!g || (!always && a && a.style.display !== 'none')) return;
+      g.innerHTML = '<p class="acct-body">Something went wrong loading your account. ' +
+        'Try reloading the page. If it keeps happening, send the admins this message:</p>' +
+        '<p class="acct-body" style="font-family:monospace;font-size:.85rem;overflow-wrap:anywhere"></p>';
+      g.lastChild.textContent = String(msg || 'Unknown error') + ' (' + navigator.userAgent + ')';
+      g.style.display = 'block';
+    }
+    window.addEventListener('error', function (e) {
+      acctFail((e.message || 'Script error') + (e.filename ? ' at ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+    });
+  </script>
+
   <!-- The picker AND the gallery for images on modmail messages. Loaded
        BEFORE the page script, which mounts the picker as it draws the form. -->
   <script src="assets/attachment-view.js"></script>
@@ -1460,8 +1479,10 @@
           loadShared();
           loadFavorites();
         })
-        .catch(function(){
-          $('gate').style.display = 'block';
+        .catch(function(err){
+          // Not "you need an account": a 401 is answered above, so this is a
+          // failed request or a fault drawing the page.
+          acctFail(err && (err.stack || err.message) || err, true);
         });
     }
     load();
