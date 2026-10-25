@@ -1355,6 +1355,9 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   cursor: help;
 }
 .theme-text .creator-mark { color: var(--pg-text); }
+/* Script Builder: a mark after a character's name takes the name's own ink,
+   and a symbol a phone would paint as an emoji is asked for as text. */
+.sbx-ch-name .creator-mark, .sbx-add-name .creator-mark { color: inherit; font-variant-emoji: text; }
 /* Who the mark belongs to: shown at once on hover, and on a tap (the mark is
    focusable), rather than after the browser's own title delay. */
 .creator-mark[data-tip]:hover::after,
