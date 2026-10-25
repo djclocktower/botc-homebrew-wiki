@@ -1306,6 +1306,8 @@ function buildTitleCard() {
   makeToggle(tc, 'Bootlegger rules in the top right', bindPath('bootRulesTop'));
   makeSelect(tc, 'Icon beside the rules', [['bootlegger', 'Bootlegger'], ['djinn', 'Djinn'], ['none', 'No icon']],
     bindPath('bootRulesIcon'));
+  makeFont(tc, 'Rules font', bindPath('bootRulesFont'));
+  makeColor(makeRow(tc, 'fs-colors'), 'Rules colour', bindPath('bootRulesColor'));
   makeHint(tc, 'The rules come from the script. They take the right flourish’s place. Move the title to the left to give them more room.');
   makeArtPicker(tc, 'Skull art', 'skull');
   makeArtPicker(tc, 'Section dividers', 'dividers');

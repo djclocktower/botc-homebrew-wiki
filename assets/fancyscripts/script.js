@@ -661,6 +661,8 @@ export const DEFAULT_OPTIONS = {
   titleLeft: false, // title and skull pushed over to the ribbon, for more room on the right
   bootRulesTop: false, // the script's Bootlegger rules top right, in the right flourish's place
   bootRulesIcon: 'bootlegger', // the icon beside them: bootlegger | djinn | none
+  bootRulesFont: 'dumbledor2', // the token tool's character name face
+  bootRulesColor: '', // '' = the sheet's ink
   // background
   bg: { ...DEFAULT_BG },
   // movable elements: key -> partial EL_DEFAULT

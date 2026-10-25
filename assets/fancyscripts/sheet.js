@@ -894,17 +894,40 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         opacity: String(brT.opacity),
       });
       const iconSrc = BOOT_ICONS[options.bootRulesIcon];
+      const ink = options.bootRulesColor || options.inkColor || '#2a1d14';
+      // the gold of the ribbon's edge: a hairline between the icon and the rules,
+      // and between one rule and the next, fading out at the ends
+      const gold = 'rgba(138, 106, 52, 0.75)';
       if (iconSrc) {
         box.append(img(iconSrc, {
-          flex: '0 0 auto', width: px(e(4.4 * brT.scale)), maxHeight: '100%', objectFit: 'contain',
+          flex: '0 0 auto', width: px(e(4.2 * brT.scale)), maxHeight: '100%', objectFit: 'contain',
+          filter: iconFilter(options.iconEffect, options.iconShadow, e),
         }, ''));
       }
       const text = el('div', {
-        flex: '1 1 auto', minWidth: '0', fontFamily: fonts.ability, lineHeight: '1.22',
-        color: options.inkColor || '#222222', fontSize: px(e(1.12 * brT.scale)),
+        flex: '1 1 auto', minWidth: '0', fontFamily: fontFamily(options.bootRulesFont || 'dumbledor2'),
+        lineHeight: '1.18', letterSpacing: '0.01em', color: ink, mixBlendMode: 'multiply',
+        fontSize: px(e(1.3 * brT.scale)), textWrap: 'pretty',
       });
-      text.dataset.fsBootText = String(e(1.12 * brT.scale));
-      rules.forEach((r, i) => text.append(el('div', i ? { marginTop: px(e(0.35)) } : null, smartTypography(r))));
+      if (iconSrc) {
+        // the hairline runs the height of the rules themselves, however few
+        Object.assign(text.style, {
+          paddingLeft: px(e(0.8)),
+          backgroundImage: `linear-gradient(180deg, transparent, ${gold} 15%, ${gold} 85%, transparent)`,
+          backgroundRepeat: 'no-repeat', backgroundPosition: 'left center',
+          backgroundSize: `${px(Math.max(1, e(0.09)))} 100%`,
+        });
+      }
+      text.dataset.fsBootText = String(e(1.3 * brT.scale));
+      rules.forEach((r, i) => {
+        if (i) {
+          text.append(el('div', {
+            height: px(Math.max(1, e(0.07))), width: '70%', margin: `${px(e(0.42))} 0`,
+            background: `linear-gradient(90deg, ${gold}, transparent)`,
+          }));
+        }
+        text.append(el('div', null, smartTypography(r)));
+      });
       box.append(text);
       box.dataset.fsBoot = String(brT.dx);
       sheet.append(mark(box, 'el:bootRules'));

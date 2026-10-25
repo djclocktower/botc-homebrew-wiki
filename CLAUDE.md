@@ -4483,7 +4483,11 @@ Two title-card options on the classic script sheet. **`bootRulesTop`** draws
 the script's `_meta.bootlegger` rules in the top right, in the right
 flourish's place (the flourish is not drawn while there are rules), with
 an icon beside them: `bootRulesIcon` is `bootlegger`, `djinn` or `none`
-(`BOOT_ICONS` in script.js). The box runs from the top of the band to the
+(`BOOT_ICONS` in script.js). The rules are set in Dumbledor 2, the face
+the Token Tool prints character names in (`bootRulesFont`, with a colour of
+their own, `bootRulesColor`), beside a gold hairline the height of the text
+and with a faded gold rule between one rule and the next; the icon takes the
+sheet's own icon shadow. The box runs from the top of the band to the
 right column's first row; `fitTitle()` → `fitBootRules()` sets its left edge
 just past the title and shrinks its type until every rule fits, so it is
 right in an export too. It is an element (`el.bootRules`), so it can be
