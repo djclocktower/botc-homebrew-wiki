@@ -4483,8 +4483,9 @@ Every EXPORTED page says "botchomebrew.wiki" (`watermark()` in
 elements.js); the preview never does. Each renderer adds it only when
 `ctx.forExport`, so it is in the PNGs, the share JPEG, Copy and the PDF
 alike. White with a dark halo, in that page's character-name font, in the
-bottom right corner (on a script sheet, raised clear of the garland's leaf
-tips: `watermark(1.4, 6.8, …)`); on a ribbon-style night or jinx page it sits under
+bottom right corner (on a script sheet tucked as far right and down as the
+burnt edge allows, `watermark(1.2, 0.5, …)`, which keeps it off the
+garland; the owner wants it IN the corner, not raised); on a ribbon-style night or jinx page it sits under
 the logo (or the script's name) at the foot, right-aligned with it and a
 little smaller so it clears the title. The owner picked the corner over
 the footnote oval; ask before moving it.
