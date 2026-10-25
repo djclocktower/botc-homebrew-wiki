@@ -25,6 +25,7 @@
 
 import {
   DEFAULT_OPTIONS, DEFAULT_BACK, DEFAULT_NIGHT, DEFAULT_JINX, DEFAULT_BG, PAGE_FORMATS, SHEET, SHEET_W, SHEET_H, U,
+  PAGE_EM, PAGE_SHAPES, setPageRatio,
   FONTS, PRESETS, ELEMENTS, ELEMENT_BY_KEY, EL_DEFAULT, TEAM_ORDER, TEAM_NAMES,
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
   withBootlegger, hasBootlegger,
@@ -260,6 +261,7 @@ function stickersFor(p) {
    counts are kept from the same pass */
 let layouts = {};
 function computeLayouts() {
+  setPageRatio(options.pageRatio);
   derived = deriveScript(parsed, options, resolveAsset);
   layouts = {};
   layouts.front = pageStyle(options, 'front') === 'app'
@@ -1216,6 +1218,16 @@ function buildPagesCard() {
     onChange: (on) => { if (on && !options.night.first && !options.night.other) { options.night.first = true; options.night.other = true; syncControls(); } },
   });
   makeToggle(box, 'Jinxes & bootlegger rules page', bindPath('jinxPage.enabled'));
+  makeSelect(box, 'Page shape', PAGE_SHAPES.map(([, label], i) => [String(i), label]), {
+    get: () => {
+      const r = Number(options.pageRatio) || SHEET.ratio;
+      let best = 0;
+      PAGE_SHAPES.forEach(([v], i) => { if (Math.abs(v - r) < Math.abs(PAGE_SHAPES[best][0] - r)) best = i; });
+      return String(best);
+    },
+    set: (v) => { options.pageRatio = PAGE_SHAPES[Number(v)][0]; },
+  });
+  makeHint(box, 'Every page. A longer page gives the characters more room.');
   makeToggle(box, 'Back cover', { get: () => options.exportOpts.pages.back, set: (v) => { options.exportOpts.pages.back = v; options.includeBackCover = v; } });
   makeHint(box, 'Ticked pages get a tab above the preview and a page in the PDF.');
 
@@ -1315,9 +1327,6 @@ function buildLayoutCard() {
   makeSelect(styleGroup(box, 'front', 'classic'), 'Split each team', [['count', 'Half and half'], ['balance', 'Balance by text length']],
     bindPath('columnSplit'));
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
-  makeToggle(box, 'Continue onto a second sheet when the script is too long', bindPath('paginate'));
-  makeToggle(box, 'Title band on every sheet', bindPath('repeatHeader'));
-  makeToggle(box, 'Page numbers on a multi-sheet script', bindPath('showPageNumbers'));
   makeToggle(box, 'Add the Bootlegger', bindPath('bootlegger'), {
     // it changes the ROSTER, so the script has to be read again — the same
     // reason the icon proxy toggle does it
@@ -1344,7 +1353,6 @@ function buildLayoutCard() {
     onInput: () => { if (options.fitToContent) { options.fitToContent = false; syncControls(); } },
     reset: 1,
   });
-  makeSlider(box, 'Smallest auto-fit before a second sheet', 0.4, 1, 0.01, pct, bindPath('minFit'), { reset: 0.62 });
   makeSlider(box, 'Icon size', 0.6, 1.6, 0.01, pct, bindPath('iconSize'), { reset: 1 });
   makeSlider(box, 'Move every icon left / right', -5, 5, 0.05, signed(2, '%'), bindPath('iconShiftX'), { reset: 0 });
   makeSlider(box, 'Move every icon up / down', -3, 3, 0.05, signed(2), bindPath('iconShiftY'), { reset: 0 });
@@ -1640,7 +1648,7 @@ function selectableOnPage(p) {
       if (!e.page.split(' ').includes(p.kind)) continue;
       if (e.only && e.only !== style) continue;
       if (e.which && p.kind === 'night' && e.which !== (p.which === 'other' ? 'other' : 'first')) continue;
-      if (p.kind === 'front' && p.index > 0 && !options.repeatHeader && ['title', 'author', 'skull', 'fll', 'flr', 'appTitle', 'appAuthor'].includes(e.key)) continue;
+      if (p.kind === 'front' && p.index > 0 && ['title', 'author', 'skull', 'fll', 'flr', 'appTitle', 'appAuthor'].includes(e.key)) continue;
       list.push({ id: 'el:' + e.key, label: e.label, kind: e.kind, fixed: e.fixed, el: e });
     }
   }
@@ -1942,7 +1950,7 @@ function elementModel(id) {
     return {
       get: () => { const t = elGet(options, key); return { x: t.dx, y: t.dy }; },
       set: (x, y) => elSet(options, key, { dx: x, dy: y }),
-      snapX: [0], snapY: [0], guide: false,
+      snapX: [0], snapY: [0], guide: false, em: true,
     };
   }
   if (id.startsWith('back:')) {
@@ -1962,7 +1970,7 @@ function elementModel(id) {
     return {
       get: () => ({ x: Number(ov().iconDX) || 0, y: Number(ov().iconDY) || 0 }),
       set: (x, y) => { ov().iconDX = x; ov().iconDY = y; },
-      snapX: [0], snapY: [0], guide: false,
+      snapX: [0], snapY: [0], guide: false, em: true,
     };
   }
   if (id.startsWith('crow:') || id.startsWith('nrow:')) {
@@ -2094,8 +2102,11 @@ function mountPreviewDrag() {
       const grips = $('fs-sheet-wrap').querySelector('[data-fs-grips]');
       if (grips) grips.remove(); // they come back with the render on release
       const m = dragStart.m;
+      // drag.js measures down the page in % of its height; an em offset is
+      // the same thing only on a 3:4 page
+      const k = m.em ? PAGE_EM / 100 : 1;
       let x = dragStart.x + d.dx;
-      let y = dragStart.y + d.dy;
+      let y = dragStart.y + d.dy * k;
       let guideX = null, guideY = null;
       const sx = snapTo(x, m.snapX, 0.7);
       const sy = snapTo(y, m.snapY, 0.7);
@@ -2103,7 +2114,7 @@ function mountPreviewDrag() {
       if (sy != null) { y = sy; if (m.guide) guideY = sy; }
       m.set(x, y);
       syncElementPanel();
-      return { dx: x - dragStart.x, dy: y - dragStart.y, guideX, guideY };
+      return { dx: x - dragStart.x, dy: (y - dragStart.y) / k, guideX, guideY };
     },
     onCommit: (id, d) => {
       const m = dragStart && dragStart.m;
@@ -2576,7 +2587,9 @@ async function exportAll() {
 
 async function exportPDF() {
   await loadScriptOnce('assets/fancyscripts/vendor/jspdf.umd.min.js', () => window.jspdf);
-  const fmt = PAGE_FORMATS[options.exportOpts.pageSize] || PAGE_FORMATS.trim;
+  let fmt = PAGE_FORMATS[options.exportOpts.pageSize] || PAGE_FORMATS.trim;
+  // the sheet-size paper is the page's own shape, however long it is
+  if (fmt === PAGE_FORMATS.trim) fmt = { w: fmt.w, h: (fmt.w * SHEET_H) / SHEET_W };
   const list = exportPages();
   if (!list.length) throw new Error('No pages ticked for the PDF.');
   const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: [fmt.w, fmt.h] });

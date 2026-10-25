@@ -4081,8 +4081,8 @@ uploaded — except for the one opt-in save described below.
 ## Fancy Scripts (`/fancyscripts`)
 
 Official script-tool JSON in, a set of official-style print pages out: the
-classic parchment script sheet (or sheets — a long script continues onto a
-second one) with the damask sidebar, engraved dividers and the gold-leaf
+classic parchment script sheet (always one page: a long script shrinks to
+fit, or the page is made longer) with the damask sidebar, engraved dividers and the gold-leaf
 swash title; **First Night / Other Nights** sheets in the official night-order
 style (the name beside a team-coloured bar, the title down a ribbon on the
 right, the logo bottom right); an optional **jinx & Bootlegger rules page**; and
@@ -4187,7 +4187,7 @@ classic printed sheet and the app view.
 `options.el[key]` is a partial `EL_DEFAULT` (`dx` % width, `dy` em, `scale`,
 `rot`, `opacity`, `hidden`, `src`) for every movable piece in `ELEMENTS`
 (title, author, skull, both flourishes, ribbon, team labels, character grid
-and its two columns, dividers, footnote, page number; the night/jinx pages'
+and its two columns, dividers, footnote; the night/jinx pages'
 title, logo and list). `elGet()` gives the effective
 transform; renderers add the offsets to the CALIBRATED position, so a
 design with an empty `el` is the reference sheet exactly, and "Reset this
@@ -4315,23 +4315,48 @@ each icon's own position (and, on the script sheet, to a character's own
 nudge). On a bar row a name keeps clear of an icon moved right by setting
 itself smaller; nothing else moves.
 
-### Long scripts continue onto more sheets
+### The script sheet is always one page
 
-`layoutSheet()` first solves the single-page fit exactly as the original
-tool did. If that fit would fall below `options.minFit` (0.62) and
-`paginate` is on, it packs the sections onto pages at density 1 instead —
-a team that does not fit the room left on a page is split, as many of its
-characters as fit stay, and the rest open the next page under a repeated
-label — then relaxes the density so one sheet fewer holds it whenever
-that stays above minFit (solved to a fixed point, since rows wrap more as
-they shrink, and stepped down a little to cover the space the splits
-waste). **Sections are measured in layout em and drawn at `d` of that, so
-a page holds `availFor(i) / d` of them** — the pack step compared them
-unscaled at first and density had no effect on it. Only page 0 carries the
-title band unless `repeatHeader`; a bare page starts at `SHEET.bareTop`.
-The footnote sits on the last page (or every page), and pages get a
-"1 / 2" number. `columnLayout: 'single'` is one column the width of both
-(`widthMul`).
+The owner asked for it (2026-10): a long script shrinks to fit rather than
+running onto a second sheet. `layoutSheet()` and `layoutAppSheet()` solve one
+density for every section on the one page (`solveFit`, down to 0.3) and
+`pack(d)` puts them all there; there is no split team, no repeated label,
+no page number. `paginate`, `minFit`, `repeatHeader` and `showPageNumbers`
+are gone and `normalizeOptions()` drops them from an old design, as it does
+the retired `pageno` element. The night sheets still continue onto a second
+page (`night.minFit`): that is a different list. **Sections are measured in
+layout em and drawn at `d` of that, so a page holds `availFor / d` of them.**
+`columnLayout: 'single'` is one column the width of both (`widthMul`).
+A script too long for 3:4 is what **Page shape** is for (below).
+
+### Page shape (`options.pageRatio`)
+
+Every page (the sheets, the night and jinx pages, the back) can be made
+longer: the Pages card's **Page shape** offers 3:4 (the default), A4, 2:3,
+9:16 and 1:2 (`PAGE_SHAPES`), stored as height / width and never shorter
+than 3:4. Three rules make it work:
+
+- **The em stays the same size and the page grows more of them.**
+  `setPageRatio()` in script.js moves the LIVE bindings `SHEET_H` and
+  `PAGE_EM` (U stays 16.56px), and app.js calls it at the top of
+  `computeLayouts()`, so every renderer and the export read the shape the
+  design asks for. A longer page holds more rows at the same type size.
+- **Whatever sits at the foot is measured from the foot**: `footEm(em)`
+  is an em on the 3:4 page moved down by the extra length (`contentBottom`,
+  `listBottom`, the footnote, the last ribbon label's run, the night logo's
+  `y0`, `garlandOval()`). Anything new anchored to the bottom goes through it.
+- **The page art is not stretched where it has a shape.**
+  `bandedArt()` in elements.js draws the parchment's top 22% and its bottom
+  26% (frame, garland) at their own size, and stretches only the plain band
+  between. At 3:4 it is one image, exactly as before. The ribbon is
+  `object-fit: cover` and the night pages' clean parchment and the vignette
+  simply stretch. The back cover's canvas is built at the page's own shape
+  (`srcH()`, in its cache key).
+
+Drag offsets: drag.js measures down the page in % of its height, and an
+element's `dy` is in em, which is the same thing only at 3:4, so
+`elementModel()` marks em-based models (`em: true`) and `onMove` converts.
+The PDF's "Sheet size" paper follows the shape.
 
 ### A sheet fills its page, at both ends of the range (`FIT`)
 
@@ -4365,14 +4390,6 @@ drift apart.
 A page the pack already filled solves stretch 1 and no offset, so **nothing
 about a normal script moves** — the fit and the page count are unchanged
 from 13 characters up.
-
-The same fill is what settles a LONG script. Once the page COUNT is
-settled (the loop above), the density is re-solved against the room on
-*every* page rather than one, so the sheets fill evenly instead of the
-pack filling each in turn and leaving the last one ragged: 40 characters
-came out as a sheet 93% full and a sheet 66% full, and now both are full.
-The re-solve is verified by re-packing and stepped back down if it does
-not hold, because growing the type wraps more abilities.
 
 One thing follows from the stretch: a character's icon is placed against
 the row's **natural** height, not its drawn height (`naturalEm` in

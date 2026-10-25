@@ -37,17 +37,15 @@
  * Browser-only (canvas + DOM) — do not import from the Worker.
  */
 
-import { BACK_BASE } from './script.js';
+import { BACK_BASE, SHEET_W, SHEET_H, U } from './script.js';
 import { px, clamp, hexHsl } from './util.js';
 import { ART, pageFrame, renderTextElement, renderStickers, resolveSrc, markSelected } from './elements.js';
 import { runPixelJob } from './jobs.js';
 
-export const BACK_W = 1242;
-export const BACK_H = 1656;
-
-/* working canvas: print-resolution 3:4 */
+/* working canvas: print resolution, the page's own shape (3:4 unless the
+   design made its pages longer) */
 const SRC_W = 2480;
-const SRC_H = 3307;
+const srcH = () => Math.round((SRC_W * SHEET_H) / SHEET_W);
 
 /* the tile asset is 2134×1067 — two motif periods wide, one tall, kept at
    the source texture's full resolution (period 1067px). ×0.75 draws a motif
@@ -121,12 +119,13 @@ function backKey(back) {
   return [back.bgColor, p.grad ? back.bgColor2 + '@' + p.gradAngle : '-',
     p.bright.toFixed(2), p.sat.toFixed(2), p.shading.toFixed(2),
     p.patScale.toFixed(2), p.patRot.toFixed(1),
-    p.patStrength.toFixed(2)].join('|').toLowerCase();
+    p.patStrength.toFixed(2), srcH()].join('|').toLowerCase();
 }
 
 /* the main-thread half: tile the pattern (pattern fills follow the CTM)
    and stretch the vignette map, then hand both buffers to the worker */
 function buildBackCanvas(p) {
+  const SRC_H = srcH();
   const c = document.createElement('canvas');
   c.width = SRC_W; c.height = SRC_H;
   const ctx = c.getContext('2d', { willReadFrequently: true });
@@ -192,7 +191,7 @@ export function renderBack(script, options, requestRender, ui) {
   const back = options.back;
   const selected = (ui && ui.selected) || '';
 
-  const root = pageFrame(BACK_W, BACK_H, BACK_H / 100, 'script-back');
+  const root = pageFrame(SHEET_W, SHEET_H, U, 'script-back');
   root.style.background = back.bgColor || BACK_BASE.hex;
 
   const mode = back.bgMode || 'pattern';

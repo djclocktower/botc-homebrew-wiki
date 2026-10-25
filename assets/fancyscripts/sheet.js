@@ -9,11 +9,8 @@
  *
  * Two passes:
  *   layoutSheet()     — measures every row (word-wrap in the real fonts),
- *                       solves the density, and PACKS the sections onto
- *                       pages. A script that would have to shrink below
- *                       options.minFit continues onto a second sheet (a
- *                       team is split across the break and its label is
- *                       repeated) instead of becoming unreadable.
+ *                       solves the density that fits every section on the
+ *                       one page (the script sheet is always one page).
  *   renderSheetPage() — draws one of those pages: background, ribbon,
  *                       header band, sections, footnote, page number,
  *                       stickers. Every movable piece carries
@@ -35,7 +32,7 @@
  */
 
 import {
-  SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
+  SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
 } from './script.js';
@@ -483,8 +480,8 @@ export function layoutSheet(script, options, requestRender) {
   const widthMul = (options.columnWidth || 1) *
     (single ? (SHEET.col2IconX - SHEET.col1IconX + SHEET.textWidth) / SHEET.textWidth : 1);
   const maxTextW = ((SHEET.textWidth * widthMul) / 100) * SHEET_W;
-  const availableEm = SHEET.contentBottom - SHEET.contentTop;
-  const bareAvailEm = SHEET.contentBottom - SHEET.bareTop;
+  const availableEm = footEm(SHEET.contentBottom) - SHEET.contentTop;
+  const bareAvailEm = footEm(SHEET.contentBottom) - SHEET.bareTop;
   // the icon must never spill into the text gutter, whatever the density
   const gutterEm = ((SHEET.textOffsetX - 0.05) / 100) * (SHEET_W / U);
   const iconEmFor = (density) => Math.min(SHEET.rowIcon * iconSize, gutterEm / density);
@@ -553,70 +550,23 @@ export function layoutSheet(script, options, requestRender) {
   };
 
   const headerExtra = headerExtraEm(script, options);
-  const pageHasHeader = (i) => options.showHeader && (i === 0 || options.repeatHeader);
+  const pageHasHeader = () => !!options.showHeader;
   const availFor = (i) => (pageHasHeader(i)
     ? availableEm - (layoutEven ? headerExtra : 0)
     : bareAvailEm);
   const topFor = (i) => (pageHasHeader(i) ? SHEET.contentTop + (layoutEven ? headerExtra : 0) : SHEET.bareTop);
 
-  /* pack every section onto pages at density d. A team that does not fit
-     the room left on a page is split: as many of its characters as fit
-     stay, the rest open the next page under a repeated label. */
-  const pack = (d, single) => {
-    const pages = [];
-    let page = { sections: [], used: 0, index: 0 };
-    // sections are measured in layout em and drawn at `d` of that, so a
-    // page holds availFor / d of them
-    const avail = () => availFor(page.index) / d;
-    const gapEm = SHEET.sectionGap;
-    const pushSection = (team, chars, cont, total) => {
-      const shift = (!layoutEven && page.index === 0 && page.sections.length === 0 && pageHasHeader(0)) ? 1 : 0;
-      const m = measureSection(chars, d, shift);
-      page.sections.push({ team, chars, cont, total, ...m });
-      page.used += m.need + (page.sections.length > 1 ? gapEm : 0);
-    };
-    const newPage = () => { pages.push(page); page = { sections: [], used: 0, index: pages.length }; };
-    for (const g of groups) {
-      let chars = g.characters;
-      let cont = false;
-      while (chars.length) {
-        const gap = page.sections.length ? gapEm : 0;
-        const room = avail() - page.used - gap;
-        const shift = (!layoutEven && page.index === 0 && page.sections.length === 0 && pageHasHeader(0)) ? 1 : 0;
-        const whole = measureSection(chars, d, shift).need;
-        if (single || whole <= room + 0.001) {
-          pushSection(g.team, chars, cont, g.characters.length);
-          chars = [];
-          break;
-        }
-        // split: the largest prefix that fits the room left
-        let n = 0;
-        if (room > avail() * 0.22 || page.sections.length === 0) {
-          for (let k = chars.length - 1; k >= 1; k--) {
-            if (measureSection(chars.slice(0, k), d, shift).need <= room + 0.001) { n = k; break; }
-          }
-        }
-        if (n === 0) {
-          if (page.sections.length === 0) {
-            // a single team taller than an empty page: force the biggest
-            // prefix that fits, or one character, so we always make progress
-            for (let k = chars.length - 1; k >= 1; k--) {
-              if (measureSection(chars.slice(0, k), d, shift).need <= room + 0.001) { n = k; break; }
-            }
-            if (n === 0) n = 1;
-          } else {
-            newPage();
-            continue;
-          }
-        }
-        pushSection(g.team, chars.slice(0, n), cont, g.characters.length);
-        chars = chars.slice(n);
-        cont = true;
-        newPage();
-      }
-    }
-    if (page.sections.length || !pages.length) pages.push(page);
-    return pages;
+  /* every section on the one page, at density d. The script sheet is
+     always one page: a long script shrinks to fit rather than running on. */
+  const pack = (d) => {
+    const page = { sections: [], used: 0, index: 0 };
+    groups.forEach((g, i) => {
+      const shift = (!layoutEven && i === 0 && pageHasHeader(0)) ? 1 : 0;
+      const m = measureSection(g.characters, d, shift);
+      page.sections.push({ team: g.team, chars: g.characters, cont: false, total: g.characters.length, ...m });
+      page.used += m.need + (i ? SHEET.sectionGap : 0);
+    });
+    return [page];
   };
 
   // ── solve the density ──
@@ -629,63 +579,8 @@ export function layoutSheet(script, options, requestRender) {
   };
 
   let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
-  let pages;
-  const minFit = clamp(Number(options.minFit) || 0.62, 0.3, 1);
-  if (options.fitToContent) {
-    // single-page fit first, as the original tool did
-    const fit = solveFit((dd) => availFor(0) / totalNeedAt(dd), 0.42, FIT.growMax);
-    if (fit >= minFit || !options.paginate || groups.length === 0) {
-      d = fit;
-      pages = pack(d, true);
-    } else {
-      // continue onto more sheets: pack at 1, then relax the density so the
-      // pages fill evenly (never above 1 — the reference pitch is the cap)
-      d = 1;
-      pages = pack(d, false);
-      // if one sheet fewer would hold it at a density still above minFit,
-      // take that: a last sheet carrying three characters is a waste of
-      // paper and reads as a mistake. The density is solved for the smaller
-      // page count (rows wrap more as they shrink, so it iterates), then
-      // stepped down a little at a time to cover the space the splits waste
-      for (let iter = 0; iter < 4 && pages.length > 1; iter++) {
-        const n = pages.length - 1;
-        let avail = 0;
-        for (let i = 0; i < n; i++) avail += availFor(i);
-        let d2 = d;
-        for (let k = 0; k < 3; k++) d2 = clamp(avail / (totalNeedAt(d2) + (n - 1) * SHEET.sectionGap * 0.5), minFit, 1);
-        let found = null;
-        for (let tries = 0; tries < 8 && d2 >= minFit - 1e-9; tries++, d2 -= 0.025) {
-          const p2 = pack(d2, false);
-          if (p2.length <= n) { found = { d: d2, pages: p2 }; break; }
-        }
-        if (!found) break;
-        d = found.d;
-        pages = found.pages;
-      }
-      /* ── fill the sheets it settled on ──
-         Packing greedily at one density fills every page but the last and
-         leaves that one ragged: 40 characters came out as a full sheet and
-         a sheet two-thirds empty. So once the page COUNT is settled, solve
-         the density that fills them all — the same sum as the single-sheet
-         fit, over the room on every page rather than one, and under the
-         same cap. Verified by re-packing: growing the type wraps more
-         abilities, so a density that does not hold is stepped back down
-         rather than trusted. */
-      const n = pages.length;
-      let room = 0;
-      for (let i = 0; i < n; i++) room += availFor(i);
-      let grown = d;
-      for (let k = 0; k < 3; k++) {
-        grown = clamp(room / (totalNeedAt(grown) + (n - 1) * SHEET.sectionGap * 0.5), d, FIT.growMax);
-      }
-      for (let tries = 0; tries < 10 && grown > d + 1e-9; tries++, grown -= 0.02) {
-        const p3 = pack(grown, false);
-        if (p3.length <= n) { d = grown; pages = p3; break; }
-      }
-    }
-  } else {
-    pages = pack(d, !options.paginate);
-  }
+  if (options.fitToContent && groups.length) d = solveFit((dd) => availFor(0) / totalNeedAt(dd), 0.3, FIT.growMax);
+  const pages = pack(d);
 
   const ed = (em) => em * U * d; // density-scaled px
   const iconEm = iconEmFor(d);
@@ -1086,7 +981,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
          blank sheet. The band may reach past its own height, but not by
          more than its own height again. */
       const spanH = isLast
-        ? clamp(87.5 * U - topPx, ownH, ownH * 2) : ownH;
+        ? clamp(footEm(87.5) * U - topPx, ownH, ownH * 2) : ownH;
       // upright vertical letters advance ≈ font-size (Chromium ignores
       // line-height in vertical-rl/upright) — shrink-to-fit uses 0.85/letter
       // with room at both ends, or two labels meeting at a divider read as
@@ -1190,7 +1085,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     const foot = el('div', {
       position: 'absolute',
       left: (SHEET.footnoteCX + (oval ? gaT.dx : 0) + fT.dx) + '%',
-      top: px(e(fT.dy + (oval ? footInOval(oval, custom, SHEET.footnoteLine) : SHEET.footnoteTop))),
+      top: px(e(fT.dy + (oval ? footInOval(oval, custom, SHEET.footnoteLine) : footEm(SHEET.footnoteTop)))),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',
@@ -1214,23 +1109,6 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     sheet.append(mark(foot, 'el:footnote'));
   }
 
-  // page number, when the script runs to more than one sheet
-  const pT = elGet(options, 'pageno');
-  if (layout.pages.length > 1 && options.showPageNumbers && !pT.hidden) {
-    const pn = el('div', {
-      position: 'absolute',
-      right: (3.0 - pT.dx) + '%',
-      top: px(e(96.2 + pT.dy)),
-      fontFamily: fonts.author,
-      fontStyle: 'italic',
-      fontSize: px(e(1.05) * pT.scale),
-      color: options.footnoteColor || '#786254',
-      opacity: String(pT.opacity),
-      mixBlendMode: 'multiply',
-      whiteSpace: 'nowrap',
-    }, (pageIndex + 1) + ' / ' + layout.pages.length);
-    sheet.append(mark(pn, 'el:pageno'));
-  }
 
   // the rest of the stickers last, over everything
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);

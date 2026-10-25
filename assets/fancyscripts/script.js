@@ -124,8 +124,25 @@ export const FIT = {
 /* CSS pixel size of the rendered sheet (3:4, matching the reference trim
    595.57 × 794.05 pt) and the em unit in px. */
 export const SHEET_W = 1242;
-export const SHEET_H = Math.round(SHEET_W * SHEET.ratio); // 1656
-export const U = SHEET_H / 100;
+export const U = (SHEET_W * SHEET.ratio) / 100; // 16.56px, whatever the page shape
+/* The page can be made longer (options.pageRatio, height / width). The em
+   stays the same size, so a longer page has more em, PAGE_EM of them, and
+   everything measured from the foot moves down with it (foot()). These are
+   live bindings: setPageRatio() changes them for every importer, and
+   app.js calls it before each layout. */
+export let SHEET_H = Math.round(SHEET_W * SHEET.ratio); // 1656 at 3:4
+export let PAGE_EM = 100;
+export const PAGE_SHAPES = [
+  [4 / 3, '3:4 (official)'], [Math.SQRT2, 'A4'], [1.5, '2:3'], [16 / 9, '9:16'], [2, '1:2'],
+];
+export function setPageRatio(r) {
+  r = Math.min(2.2, Math.max(SHEET.ratio, Number(r) || SHEET.ratio));
+  SHEET_H = Math.round(SHEET_W * r);
+  PAGE_EM = SHEET_H / U;
+}
+/* an em measured on the 3:4 page from its top, for something that sits at
+   the page's foot: the same distance from the bottom on a longer page */
+export const footEm = (em) => em + PAGE_EM - 100;
 /* reference trim in PDF points, for the PDF page size */
 export const TRIM_W_PT = 595.57;
 export const TRIM_H_PT = 794.05;
@@ -134,7 +151,7 @@ export const TRIM_H_PT = 794.05;
    own 3:4; the paper sizes centre the sheet with equal margins (the sheet
    keeps its aspect — a 3:4 sheet on A4 leaves a little top/bottom room). */
 export const PAGE_FORMATS = {
-  trim: { label: 'Sheet size (3:4)', w: TRIM_W_PT, h: TRIM_H_PT },
+  trim: { label: 'Sheet size', w: TRIM_W_PT, h: TRIM_H_PT },
   a4: { label: 'A4', w: 595.28, h: 841.89 },
   letter: { label: 'US Letter', w: 612, h: 792 },
   a3: { label: 'A3', w: 841.89, h: 1190.55 },
@@ -405,7 +422,6 @@ export const ELEMENTS = [
   { key: 'footnote', label: 'Footnote', page: 'front', kind: 'text' },
   { key: 'garland', label: 'Garland at the foot', page: 'front', kind: 'image', only: 'classic' },
   { key: 'appGarland', label: 'Flowers at the foot', page: 'front', kind: 'image', only: 'app' },
-  { key: 'pageno', label: 'Page number', page: 'front', kind: 'text' },
   { key: 'nightTitle', label: 'Night title', page: 'night', kind: 'text' },
   { key: 'nightLogo', label: 'Script logo', page: 'night', kind: 'image' },
   { key: 'nightList', label: 'Night list', page: 'night', kind: 'block' },
@@ -420,7 +436,7 @@ export const ELEMENTS = [
    footer lines and the Community Created Content badge. normalizeOptions
    drops them from a design saved before, so a design file stays tidy. */
 const RETIRED_LIST_KEYS = ['showFooter', 'footer1', 'footer2', 'showBadge', 'appFooter'];
-const RETIRED_ELEMENTS = ['nightFooter', 'nightBadge', 'jinxFooter', 'jinxBadge'];
+const RETIRED_ELEMENTS = ['nightFooter', 'nightBadge', 'jinxFooter', 'jinxBadge', 'pageno'];
 
 export const ELEMENT_BY_KEY = new Map(ELEMENTS.map((e) => [e.key, e]));
 
@@ -555,6 +571,7 @@ export const DEFAULT_EXPORT = {
 };
 
 export const DEFAULT_OPTIONS = {
+  pageRatio: 4 / 3, // every page's height / width (PAGE_SHAPES)
   sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view)
   app: { ...DEFAULT_APP, bg: { ...DEFAULT_APP.bg } },
   sortMode: 'script', // 'script' (as in the JSON) | 'official' | 'sao' | 'alpha'
@@ -635,12 +652,6 @@ export const DEFAULT_OPTIONS = {
   iconEffect: 'none', // none | grayscale | sepia | engraved
   normalizeIcons: true,
   hideTeams: { townsfolk: false, outsider: false, minion: false, demon: false, traveller: false, fabled: false, loric: false },
-  // long scripts: when auto-fit would have to shrink below minFit, the
-  // sheet continues on a second page instead
-  paginate: true,
-  minFit: 0.62,
-  repeatHeader: false, // title band on every page, not just the first
-  showPageNumbers: true,
   // header
   showHeader: true, // the whole title band (title/logo, author, skull, flourishes)
   showSkull: true,
@@ -761,13 +772,13 @@ export function seedBackTexts(title) {
   );
   // overlapping stack like the template (pitch ≈ 0.62 of the glyph size)
   let total = rows.reduce((n, r) => n + sizeOf(r) * 0.62, 0);
-  if (total > 1656 * 0.62) big *= (1656 * 0.62) / total;
+  if (total > SHEET_H * 0.62) big *= (SHEET_H * 0.62) / total;
   const heights = rows.map((r) => sizeOf(r) * 0.62);
   total = heights.reduce((a, b) => a + b, 0);
-  let y = 46 - ((total / 1656) * 100) / 2;
+  let y = 46 - ((total / SHEET_H) * 100) / 2;
   const stagger = [-2, 4, 2, -3, 3, -2, 2, 0];
   return rows.map((r, i) => {
-    const h = (heights[i] / 1656) * 100;
+    const h = (heights[i] / SHEET_H) * 100;
     y += h;
     return newTextElement({
       text: r.text,
@@ -912,8 +923,8 @@ export function garlandOval(src, widthPct, scale, dyEm, maxHEm) {
   const [, top, ratio] = c.oval;
   let h = widthPct * scale / SHEET.ratio * ratio;
   if (maxHEm) h = Math.min(h, maxHEm * scale);
-  const bottom = 100 + dyEm;
-  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, 100) };
+  const bottom = PAGE_EM + dyEm;
+  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, PAGE_EM) };
 }
 /* the footnote's top (em) for its lines to sit in the middle of the oval */
 export function footInOval(oval, text, lineEm) {
@@ -1709,6 +1720,8 @@ export function normalizeOptions(o) {
   }
   for (const k of RETIRED_LIST_KEYS) { delete out.night[k]; delete out.jinxPage[k]; }
   for (const k of RETIRED_ELEMENTS) delete out.el[k];
+  // the script sheet is always one page now: its multi-sheet settings went
+  for (const k of ['paginate', 'minFit', 'repeatHeader', 'showPageNumbers']) delete out[k];
   // 'Jinxes' was the stored default before the title named itself
   if (out.jinxPage.title === 'Jinxes') out.jinxPage.title = '';
   delete out.iconFrame; // the circle behind every icon, taken out at the owner's request

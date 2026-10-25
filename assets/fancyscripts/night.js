@@ -35,7 +35,7 @@
  */
 
 import {
-  NIGHT, NIGHT_RIBBON, FIT, SHEET_W, SHEET_H, U, PLACEHOLDER_ICON, STEP_ICONS,
+  NIGHT, NIGHT_RIBBON, FIT, SHEET_W, SHEET_H, U, PAGE_EM, PLACEHOLDER_ICON, STEP_ICONS, footEm,
   nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
 } from './script.js';
 import {
@@ -271,7 +271,7 @@ function geometry(spec) {
   if (spec.style === 'classic') {
     return {
       ribbon: false, showRibbon: false, edge: 0,
-      listTop: NIGHT.listTop, listBottom: NIGHT.listBottom,
+      listTop: NIGHT.listTop, listBottom: footEm(NIGHT.listBottom),
       x0: NIGHT.iconX, x1: 100 - NIGHT.textRight, mid: 50, colGap: NIGHT.colGap,
     };
   }
@@ -283,7 +283,7 @@ function geometry(spec) {
   const x1 = 100 - edge - G.textRight;
   return {
     ribbon: true, showRibbon, edge,
-    listTop: G.listTop, listBottom: G.listBottom,
+    listTop: G.listTop, listBottom: footEm(G.listBottom),
     x0, x1, mid: (x0 + x1) / 2, colGap: G.colGap,
   };
 }
@@ -375,7 +375,7 @@ function logoPlan(spec, options, geo, requestRender) {
   }
   if (!plan) return null;
   plan.x0 = 100 - right - plan.w;
-  plan.y0 = 100 - bottom - plan.h;
+  plan.y0 = PAGE_EM - bottom - plan.h;
   return plan;
 }
 
@@ -904,7 +904,7 @@ function ribbonNodes(spec, options, layout, pageIndex, ctx, mark, e) {
     // upright letters advance about an em less the letter spacing; a long
     // title shrinks to the ribbon rather than running off its foot
     const advance = 1 + G.titleSpacing;
-    const room = (100 - G.titleTop - 12) * U;
+    const room = (PAGE_EM - G.titleTop - 12) * U;
     const fitPx = room / Math.max(1, text.length * advance);
     const fs = clamp(fitPx, e(G.titleMin), e(G.titleSize)) * tT.scale;
     const onRibbon = geo.showRibbon;

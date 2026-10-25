@@ -19,7 +19,7 @@
  * the drag layer (drag.js) reads nothing else. Browser-only.
  */
 
-import { fontFamily, EL_DEFAULT, stickerLayer } from './script.js';
+import { fontFamily, EL_DEFAULT, stickerLayer, SHEET, SHEET_W, SHEET_H } from './script.js';
 import { el, img, px, clamp } from './util.js';
 
 export const ART = '/assets/fancyscripts/art/';
@@ -52,6 +52,29 @@ export function pageFrame(w, h, unit, className) {
   });
   sheet.className = className;
   return sheet;
+}
+
+/* Page art on a page longer than 3:4 (options.pageRatio). The art's top and
+   its foot keep their own size, at the top and the foot of the page, and
+   only the band between them (plain parchment) is stretched, so the frame
+   and the garland are never drawn taller than they are. `top` / `height`
+   are where the image sits on the 3:4 page, in % of that page's height;
+   `style` carries the rest (left, width, filter). At 3:4 it is the one
+   image it always was. */
+function bandedArt(src, top, height, style) {
+  const H0 = SHEET_W * SHEET.ratio;
+  const D = SHEET_H - H0;
+  if (D < 1) return [img(src, { position: 'absolute', ...style, top: top + '%', height: height + '%', objectFit: 'fill' })];
+  const t0 = (top / 100) * H0, h0 = (height / 100) * H0;
+  const A = 0.22 * H0, B = 0.74 * H0, s = (B + D - A) / (B - A);
+  const band = (winTop, winH, imgTop, imgH) => el('div', {
+    position: 'absolute', left: '0', top: px(winTop), width: '100%', height: px(winH), overflow: 'hidden',
+  }, img(src, { position: 'absolute', ...style, top: px(imgTop - winTop), height: px(imgH), objectFit: 'fill' }));
+  return [
+    band(0, A, t0, h0),
+    band(A, B + D - A, A + (t0 - A) * s, h0 * s),
+    band(B + D, SHEET_H - B - D, t0 + D, h0),
+  ];
 }
 
 /* the background layers for a page. `page` is 'front' (the baked sheet
@@ -93,10 +116,8 @@ export function renderBackground(bg, page, extra) {
     // title and the first step sit: the art starts a little above the page.
     // A night sheet has no garland either, so its art also runs past the
     // foot of the page, which carries the garland (from 89.25% down) off it
-    nodes.push(img(ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg'), {
-      position: 'absolute', left: '0', top: '-4%', width: '100%', height: page === 'applist' ? '118%' : '104%',
-      objectFit: 'fill', filter: f || undefined,
-    }));
+    nodes.push(...bandedArt(ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg'),
+      -4, page === 'applist' ? 118 : 104, { left: '0', width: '100%', filter: f || undefined }));
   } else if (page === 'list') {
     // the baked art's clean interior: the frame ends ~9% in on the left,
     // ~4% on the right, and the garland starts at 89.5% down — 150% shows
@@ -109,7 +130,7 @@ export function renderBackground(bg, page, extra) {
     // a garland picked in its place (or none at all) wants the same paper
     // with the painted one taken out
     const file = ART + (extra && extra.noGarland ? 'parchment-nogarland.jpg' : 'parchment.jpg');
-    nodes.push(img(file, { ...full, filter: f || undefined }));
+    nodes.push(...bandedArt(file, 0, 100, { left: '0', width: '100%', filter: f || undefined }));
     // a narrower ribbon: the paper's burnt edge and its gold band come in
     // with it. The art's left 14% is drawn into the left 14 x squeeze %,
     // so the band lands where the ribbon now ends; past that seam it is
@@ -117,7 +138,7 @@ export function renderBackground(bg, page, extra) {
     const sq = extra && Number(extra.squeezeLeft);
     if (sq && sq < 1) {
       const clipBox = el('div', { position: 'absolute', left: '0', top: '0', height: '100%', width: (14 * sq) + '%', overflow: 'hidden' });
-      clipBox.append(img(file, { position: 'absolute', left: '0', top: '0', height: '100%', width: (10000 / 14) + '%', filter: f || undefined }));
+      clipBox.append(...bandedArt(file, 0, 100, { left: '0', width: (10000 / 14) + '%', filter: f || undefined }));
       nodes.push(clipBox);
     }
   }

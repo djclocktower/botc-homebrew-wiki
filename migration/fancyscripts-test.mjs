@@ -174,5 +174,19 @@ check('stickers: old "behind" becomes the paper layer', layered.custom.map((st) 
 check('stickers: a new one starts in front', S.stickerLayer(S.newImageElement()), 'front');
 check('stickers: three layers, bottom to top', S.STICKER_LAYERS.map((l) => l[0]), ['back', 'mid', 'front']);
 
+// page shape: the em stays put, a longer page has more of them, and what
+// sits at the foot moves down with it
+{
+  const bmr = S.ART_CHOICES.garland.find((c) => c.oval).src;
+  const at34 = S.garlandOval(bmr, 88, 1, 0);
+  S.setPageRatio(2);
+  check('page shape: 1:2 is 1.5x the em of 3:4', [Math.round(S.PAGE_EM), S.SHEET_H], [150, 2484]);
+  check('page shape: the foot moves down by the extra', S.footEm(95), 145);
+  check('page shape: a garland oval stays on the foot', Math.round((S.garlandOval(bmr, 88, 1, 0).top - at34.top) * 100) / 100, 50);
+  S.setPageRatio(1);
+  check('page shape: never shorter than 3:4', [S.SHEET_H, S.footEm(95)], [1656, 95]);
+  check('page shape: old multi-sheet settings are dropped', ['paginate', 'minFit', 'repeatHeader'].map((k) => k in S.normalizeOptions({ paginate: true, minFit: 0.5, repeatHeader: true })), [false, false, false]);
+}
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

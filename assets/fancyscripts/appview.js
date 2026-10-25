@@ -32,7 +32,7 @@
  */
 
 import {
-  APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON,
+  APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
   groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
   breakRuns, fitNameLines,
 } from './script.js';
@@ -186,93 +186,28 @@ export function layoutAppSheet(script, options, requestRender) {
   };
 
   const hm = headerMetrics(script, options);
-  const pageHasHeader = (i) => options.showHeader !== false && (i === 0 || options.repeatHeader);
+  const pageHasHeader = () => options.showHeader !== false;
   const topFor = (i) => (pageHasHeader(i) ? hm.top : A.bareTop);
-  const availFor = (i) => A.contentBottom - topFor(i);
+  const availFor = (i) => footEm(A.contentBottom) - topFor(i);
   const gapEm = A.sectionGap;
 
-  const pack = (d, single) => {
-    const pages = [];
-    let page = { sections: [], used: 0, index: 0 };
-    const avail = () => availFor(page.index) / d;
-    const newPage = () => { pages.push(page); page = { sections: [], used: 0, index: pages.length }; };
-    const put = (m) => {
-      page.used += m.need + (page.sections.length ? gapEm : 0);
-      page.sections.push(m);
-    };
-    for (const g of groups) {
-      let chars = g.characters;
-      let cont = false;
-      while (chars.length) {
-        const gap = page.sections.length ? gapEm : 0;
-        const room = avail() - page.used - gap;
-        const whole = measureSection(g.team, chars, d, g.characters.length);
-        if (single || whole.need <= room + 0.001) { put({ ...whole, cont }); break; }
-        // split: the most characters that fit the room left
-        let n = 0;
-        if (room > avail() * 0.22 || page.sections.length === 0) {
-          for (let k = chars.length - 1; k >= 1; k--) {
-            if (measureSection(g.team, chars.slice(0, k), d, g.characters.length).need <= room + 0.001) { n = k; break; }
-          }
-        }
-        if (n === 0) {
-          if (page.sections.length === 0) n = 1; // a team taller than a page still makes progress
-          else { newPage(); continue; }
-        }
-        put({ ...measureSection(g.team, chars.slice(0, n), d, g.characters.length), cont });
-        chars = chars.slice(n);
-        cont = true;
-        newPage();
-      }
-    }
-    if (page.sections.length || !pages.length) pages.push(page);
-    return pages;
+  // every section on the one page: the script sheet is always one page
+  const pack = (d) => {
+    const page = { sections: [], used: 0, index: 0 };
+    groups.forEach((g, i) => {
+      const m = measureSection(g.team, g.characters, d, g.characters.length);
+      page.used += m.need + (i ? gapEm : 0);
+      page.sections.push({ ...m, cont: false });
+    });
+    return [page];
   };
 
   const totalNeedAt = (d) => sum(groups.map((g) => measureSection(g.team, g.characters, d, g.characters.length).need)) +
     Math.max(0, groups.length - 1) * gapEm;
 
   let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
-  let pages;
-  const minFit = clamp(Number(options.minFit) || 0.62, 0.3, 1);
-  if (options.fitToContent) {
-    const fit = solveFit((dd) => availFor(0) / Math.max(0.01, totalNeedAt(dd)), 0.42, FIT.growMax);
-    if (fit >= minFit || !options.paginate || !groups.length) {
-      d = fit;
-      pages = pack(d, true);
-    } else {
-      d = 1;
-      pages = pack(d, false);
-      // one sheet fewer, if a density still above minFit holds it
-      for (let iter = 0; iter < 4 && pages.length > 1; iter++) {
-        const n = pages.length - 1;
-        let room = 0;
-        for (let i = 0; i < n; i++) room += availFor(i);
-        let d2 = d;
-        for (let k = 0; k < 3; k++) d2 = clamp(room / (totalNeedAt(d2) + (n - 1) * gapEm * 0.5), minFit, 1);
-        let found = null;
-        for (let tries = 0; tries < 8 && d2 >= minFit - 1e-9; tries++, d2 -= 0.025) {
-          const p2 = pack(d2, false);
-          if (p2.length <= n) { found = { d: d2, pages: p2 }; break; }
-        }
-        if (!found) break;
-        d = found.d;
-        pages = found.pages;
-      }
-      // then fill the sheets it settled on evenly
-      const n = pages.length;
-      let room = 0;
-      for (let i = 0; i < n; i++) room += availFor(i);
-      let grown = d;
-      for (let k = 0; k < 3; k++) grown = clamp(room / (totalNeedAt(grown) + (n - 1) * gapEm * 0.5), d, FIT.growMax);
-      for (let tries = 0; tries < 10 && grown > d + 1e-9; tries++, grown -= 0.02) {
-        const p3 = pack(grown, false);
-        if (p3.length <= n) { d = grown; pages = p3; break; }
-      }
-    }
-  } else {
-    pages = pack(d, !options.paginate);
-  }
+  if (options.fitToContent && groups.length) d = solveFit((dd) => availFor(0) / Math.max(0.01, totalNeedAt(dd)), 0.3, FIT.growMax);
+  const pages = pack(d);
 
   const ed = (em) => em * U * d;
 
@@ -619,7 +554,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
     const foot = el('div', {
       position: 'absolute',
       left: (A.footnoteCX + (oval ? gT.dx : 0) + fT.dx) + '%',
-      top: px(e(fT.dy + (oval ? footInOval(oval, custom, A.footnoteLine) : A.footnoteTop))),
+      top: px(e(fT.dy + (oval ? footInOval(oval, custom, A.footnoteLine) : footEm(A.footnoteTop)))),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',
@@ -635,19 +570,6 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
     sheet.append(mark(foot, 'el:footnote'));
   }
 
-  const pT = elGet(options, 'pageno');
-  if (layout.pages.length > 1 && options.showPageNumbers && !pT.hidden) {
-    sheet.append(mark(el('div', {
-      position: 'absolute',
-      right: (7.5 - pT.dx) + '%', // clear of the parchment's dark right edge
-      top: px(e(96.2 + pT.dy)),
-      fontFamily: fonts.text,
-      fontSize: px(e(1.05) * pT.scale),
-      color: a.footnoteColor || '#8b786b',
-      opacity: String(pT.opacity),
-      whiteSpace: 'nowrap',
-    }, (pageIndex + 1) + ' / ' + layout.pages.length), 'el:pageno'));
-  }
 
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
@@ -732,7 +654,7 @@ export function layoutAppList(spec, options, requestRender) {
   // the logo after the list
   const logoOn = !elGet(options, spec.elPrefix + 'Logo').hidden && cfg.showLogo !== false;
   const logoEm = logoOn ? A.logoGap + A.logoMaxH : 0;
-  const availEm = A.listBottom - listTop - logoEm;
+  const availEm = footEm(A.listBottom) - listTop - logoEm;
 
   const colUnits = spec.columns.map((c) => {
     const units = [];
