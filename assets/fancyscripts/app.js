@@ -1306,6 +1306,9 @@ function buildTitleCard() {
   makeToggle(tc, 'Bootlegger rules in the top right', bindPath('bootRulesTop'));
   makeSelect(tc, 'Icon beside the rules', [['bootlegger', 'Bootlegger'], ['djinn', 'Djinn'], ['none', 'No icon']],
     bindPath('bootRulesIcon'));
+  if (cardPaths) cardPaths.add('el.bootRules');
+  makeSlider(tc, 'Rules size', 0.5, 2, 0.05, pct,
+    { get: () => elGet(options, 'bootRules').scale, set: (v) => elSet(options, 'bootRules', { scale: v }) }, { reset: 1 });
   makeFont(tc, 'Rules font', bindPath('bootRulesFont'));
   makeColor(makeRow(tc, 'fs-colors'), 'Rules colour', bindPath('bootRulesColor'));
   makeHint(tc, 'Rules from the script, in the right flourish’s place. Move the title left for more room.');

@@ -899,10 +899,12 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       // and between one rule and the next, fading out at the ends
       const gold = 'rgba(138, 106, 52, 0.75)';
       if (iconSrc) {
-        box.append(img(iconSrc, {
+        const iconEl = img(iconSrc, {
           flex: '0 0 auto', width: px(e(4.2 * brT.scale)), maxHeight: '100%', objectFit: 'contain',
           filter: iconFilter(options.iconEffect, options.iconShadow, e),
-        }, ''));
+        }, '');
+        iconEl.dataset.fsBootIcon = String(e(4.2 * brT.scale));
+        box.append(iconEl);
       }
       const text = el('div', {
         flex: '1 1 auto', minWidth: '0', fontFamily: fontFamily(options.bootRulesFont || 'dumbledor2'),
@@ -1302,7 +1304,9 @@ function titleLeftEdge(options, skullEl, isImg) {
 }
 
 /* the Bootlegger rules box: starts a little right of the title, and its
-   type shrinks until every rule fits the box */
+   type shrinks until every rule fits the box. The icon shrinks with it, so
+   a large size on a long set of rules keeps the two in proportion rather
+   than growing the icon into the text's room. */
 function fitBootRules(sheet, box, tbox) {
   const sr = sheet.getBoundingClientRect();
   if (tbox && sr.width) {
@@ -1315,10 +1319,17 @@ function fitBootRules(sheet, box, tbox) {
   }
   const text = box.querySelector('[data-fs-boot-text]');
   if (!text) return;
-  let fs = Number(text.dataset.fsBootText);
-  text.style.fontSize = px(fs);
-  for (let i = 0; i < 40 && text.scrollHeight > box.clientHeight + 0.5 && fs > 3; i++) {
-    fs *= 0.94;
-    text.style.fontSize = px(fs);
+  const icon = box.querySelector('[data-fs-boot-icon]');
+  const fs0 = Number(text.dataset.fsBootText);
+  const iw0 = icon ? Number(icon.dataset.fsBootIcon) : 0;
+  let k = 1;
+  const size = () => {
+    text.style.fontSize = px(fs0 * k);
+    if (icon) icon.style.width = px(iw0 * Math.max(k, 0.45));
+  };
+  size();
+  for (let i = 0; i < 40 && text.scrollHeight > box.clientHeight + 0.5 && fs0 * k > 3; i++) {
+    k *= 0.94;
+    size();
   }
 }

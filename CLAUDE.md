@@ -4487,7 +4487,10 @@ an icon beside them: `bootRulesIcon` is `bootlegger`, `djinn` or `none`
 the Token Tool prints character names in (`bootRulesFont`, with a colour of
 their own, `bootRulesColor`), beside a gold hairline the height of the text
 and with a faded gold rule between one rule and the next; the icon takes the
-sheet's own icon shadow. The box runs from the top of the band to the
+sheet's own icon shadow. **Rules size** in the Title card is the element's
+scale (`el.bootRules.scale`, 50% to 200%); the fit shrinks the icon with the
+text, so a size too big for the rules just settles at the largest that fits.
+The box runs from the top of the band to the
 right column's first row; `fitTitle()` → `fitBootRules()` sets its left edge
 just past the title and shrinks its type until every rule fits, so it is
 right in an export too. It is an element (`el.bootRules`), so it can be
