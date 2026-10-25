@@ -567,6 +567,32 @@
       changed();
     };
     byId('fc-reset').addEventListener('click', ctrl.reset);
+    // Put back a state saved earlier (the /search page keeps it in the
+    // history entry, so Back and a reload find the filters as they were).
+    // Only keys a blank state has, of the same kind; the caller redraws.
+    ctrl.restore = function (saved) {
+      var st = ctrl.state = blankState(cfg);
+      Object.keys(st).forEach(function (k) {
+        if (saved && saved[k] != null && typeof saved[k] === typeof st[k]) st[k] = saved[k];
+      });
+      [['data-team', 'Teams'], ['data-tag', 'Tags'], ['data-source', 'Sources']].forEach(function (p) {
+        bar.querySelectorAll('[' + p[0] + ']').forEach(function (b) {
+          var v = b.getAttribute(p[0]);
+          b.classList.toggle('active', st['include' + p[1]].indexOf(v) !== -1);
+          b.classList.toggle('active-exclude', st['exclude' + p[1]].indexOf(v) !== -1);
+        });
+      });
+      if (partialBtn) partialBtn.classList.toggle('active', st.hidePartial);
+      if (curataBtn) curataBtn.classList.toggle('active', st.curataOnly);
+      if (favBtn) favBtn.classList.toggle('active', st.favOnly);
+      if (crSearch) crSearch.value = st.creatorQuery;
+      renderCreatorChips();
+      sortSel.value = st.sort;
+      dirSel.value = st.dir;
+      dirSel.disabled = st.sort === 'relevance';
+      groupSel.value = st.group;
+      updateToggle();
+    };
 
     ctrl.activeCount = function () {
       var st = ctrl.state;
