@@ -592,7 +592,6 @@
       var want = sh ? sh[t[0]] : 0;
       var tools = '<span class="sbx-team-tools">' +
         '<button type="button" data-team-act="sao" data-team="' + esc(t[0]) + '" title="Arrange the ' + esc(t[1]) + ' into Steven Approved Order">SAO</button>' +
-        '<button type="button" data-team-act="az" data-team="' + esc(t[0]) + '" title="Arrange the ' + esc(t[1]) + ' A to Z">A&ndash;Z</button>' +
         '<button type="button" data-team-act="reroll" data-team="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again">' + ico('dice') + '</button>' +
         '<button type="button" data-team-act="clear" data-team="' + esc(t[0]) + '" title="Take every ' + esc(t[1]) + ' off the script">' + ico('close') + '</button>' +
         '</span>';
@@ -628,11 +627,10 @@
     }
     var members = rosterChars().filter(function (c) { return c.team === team; });
     if (members.length < 2) return;
-    if (act === 'sao' && window.saoCompare) members.sort(window.saoCompare);
-    else if (act === 'az') members.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-    else return;
+    if (act !== 'sao' || !window.saoCompare) return;
+    members.sort(window.saoCompare);
     setTeamOrder(team, members.map(function (c) { return c.slug; }));
-    toast(label + ' arranged ' + (act === 'sao' ? 'into Steven Approved Order' : 'A to Z') + '.');
+    toast(label + ' arranged into Steven Approved Order.');
   }
 
   // ══════════════════════════════════════════════════════════════════════

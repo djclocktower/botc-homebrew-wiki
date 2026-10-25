@@ -1645,7 +1645,7 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   currently showing — filter to a creator or a collection and take the set
   in one click (a confirm above thirty).
 - **Team tools** on each roster heading (hover, always-on for touch): SAO
-  and A–Z arrange that one team (writing `order`, and switching the view's
+  arranges that one team (writing `order`, and switching the view's
   display order back to "as arranged" so the result can be seen), the die
   draws the team again, ✕ takes the team off — locks survive both.
 - **The empty roster** offers the three ways in: open the panel, a random
