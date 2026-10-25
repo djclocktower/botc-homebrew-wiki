@@ -1166,7 +1166,8 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
     listWrap.append(col);
   });
   sheet.append(listWrap);
-  if (ctx.forExport) sheet.append(watermark(50, PAGE_EM - 1.9));
+  // under the logo at the foot (the ribbon style), else in the corner
+  if (ctx.forExport) sheet.append(layout.logo ? watermark(layout.logo.right, 0.2, fonts.name, 1.3) : watermark(3.4, 0.7, fonts.name));
 
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;

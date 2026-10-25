@@ -32,7 +32,7 @@
  */
 
 import {
-  APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, PAGE_EM, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
+  APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
   groupByTeam, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
   breakRuns, fitNameLines,
 } from './script.js';
@@ -545,22 +545,16 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   // "*Not the first night", in the garland's oval
   const fT = elGet(options, 'footnote');
   const hasNightStar = script.characters.some((c) => c.ability.includes('night*'));
-  const gT0 = elGet(options, 'appGarland');
-  const oval0 = isLastPage && !gT0.hidden && garlandOval(gT0.src, A.garlandW, gT0.scale, gT0.dy, A.garlandH);
-  let footEnd = null; // where the footnote's last line ends, for the watermark under it
   if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) && !fT.hidden &&
       (isLastPage || options.footnoteEveryPage)) {
     const custom = (options.footnoteText || '').trim();
     // a garland from the pack: centred in its oval, wherever it is moved
     const gT = elGet(options, 'appGarland');
     const oval = isLastPage && !gT.hidden && garlandOval(gT.src, A.garlandW, gT.scale, gT.dy, A.garlandH);
-    const footX = A.footnoteCX + (oval ? gT.dx : 0) + fT.dx;
-    const footY = fT.dy + (oval ? footInOval(oval, custom, A.footnoteLine) : footEm(A.footnoteTop));
-    footEnd = { x: footX, y: footY + (custom ? custom.split('\n').length : 2) * A.footnoteLine * fT.scale };
     const foot = el('div', {
       position: 'absolute',
-      left: footX + '%',
-      top: px(e(footY)),
+      left: (A.footnoteCX + (oval ? gT.dx : 0) + fT.dx) + '%',
+      top: px(e(fT.dy + (oval ? footInOval(oval, custom, A.footnoteLine) : footEm(A.footnoteTop)))),
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',
@@ -575,12 +569,9 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
     lines.forEach((ln) => foot.append(el('div', null, ln)));
     sheet.append(mark(foot, 'el:footnote'));
   }
-  if (ctx.forExport) {
-    sheet.append(footEnd ? watermark(footEnd.x, footEnd.y + 0.1, false, 0.95, 0.05)
-      : watermark(A.footnoteCX + (oval0 ? gT0.dx : 0), oval0 ? (oval0.top + oval0.bottom) / 2 - 0.5 : footEm(A.footnoteTop) + 1, false, 0.95, 0.05));
-  }
 
 
+  if (ctx.forExport) sheet.append(watermark(3.4, 0.7, fonts.name));
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
 }
@@ -1022,7 +1013,7 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
     }
   }
 
-  if (ctx.forExport) sheet.append(watermark(50, PAGE_EM - 1.9));
+  if (ctx.forExport) sheet.append(watermark(3.4, 0.7, fonts.name));
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
   return sheet;
 }
