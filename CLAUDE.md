@@ -3391,6 +3391,20 @@ If Dead, never On Death. On the tagged pages most sure-cue hits that
 disagree with the stored tags are tags the taggers missed; 1,194 of the 1,475
 untagged pages get at least one tag from the sure cues alone.
 
+**The tag definitions are the owner's** (settled 2026-10, tag by tag): the
+descriptions in tags.js say what each tag means on this wiki, and the cues
+follow them. The rulings that decide cues: a tag the owner called word-based
+(Safe, Execution, Nominations, Votes, Win/Loss Condition, Death, Public,
+"false" for False Info, "true info", "start knowing") is a sure cue on the
+word alone; Information is only this character's own player learning, and
+anybody else learning about it is Ping, which is never public; Single-Kill
+and Multi-Kill are any team and include once-per-game kills, but never "a
+player might die"; Timer is only a win or loss tied to a set day or night;
+Safety Net is only about the game's win or loss, never a personal backup;
+On Death covers any death the ability cares about; Quiet is an evil character
+nobody notices (Poisoner) and Hidden an Outsider that hides or does not know
+it is one (Sweetheart, Drunk). Change a description and its cue together.
+
 **`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
 suggestions") scores it against random pages people already tagged (`model:
 'phrases'` scores the wording cues alone, costing nothing), or shows

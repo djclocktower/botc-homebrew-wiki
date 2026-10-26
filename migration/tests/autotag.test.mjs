@@ -24,7 +24,15 @@ test('autotag: wording cues, sure and hinted', () => {
   const d = cueTags({ team: 'demon', ability: 'Each night*, choose a player: they die. Once 3 players die this way, choose 2 players: they die.' });
   assert.ok(!d.sure.includes('Single-Kill'));
   assert.ok(cueTags({ team: 'demon', ability: 'Each night*, choose a player: they die.' }).sure.includes('Single-Kill'));
-  assert.ok(!cueTags({ team: 'townsfolk', ability: 'Each night*, choose a player: they die.' }).sure.includes('Single-Kill'));
+  // Any team, and a once-per-game kill counts; "might die" never does.
+  assert.ok(cueTags({ team: 'townsfolk', ability: 'Once per game, choose a player: they die.' }).sure.includes('Single-Kill'));
+  assert.ok(!cueTags({ team: 'demon', ability: 'Each night*, a player might die.' }).sure.includes('Single-Kill'));
+  // The owner's rulings: "false" is always False Info, a win on a set day is Timer, someone else learning is Ping.
+  assert.ok(cueTags({ ability: 'You learn 2 players, 1 is false.' }).sure.includes('False Info'));
+  assert.ok(cueTags({ ability: 'If you are alive, evil wins after day 4.' }).sure.includes('Timer'));
+  assert.ok(!cueTags({ ability: 'On night 3, choose a player.' }).sure.includes('Timer'));
+  const p = cueTags({ ability: 'Each night, choose a player: they learn the Perfumer is in play.' });
+  assert.ok(!p.sure.includes('Information') && p.hint.some(h => h.tag === 'Ping'));
   // "even if you die" keeps working after death; it is not an on-death trigger.
   const e = cueTags({ ability: 'Your neighbour is drunk, even if you die.' });
   assert.ok(e.sure.includes('Even If Dead') && !e.sure.includes('On Death'));

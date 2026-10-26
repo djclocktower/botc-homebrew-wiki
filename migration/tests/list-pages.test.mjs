@@ -87,7 +87,9 @@ test('list pages: team and tag pages honour ?t=, end with the add card, and fall
 
   const death = await (await f.request('/tag?t=DEATH')).text();
   assert.match(death, /<h1 id="hero-title">Death<\/h1>/);
-  assert.match(death, /<p id="hero-desc">Kills players, or cares about players dying\.<\/p>/);
+  // The description is whatever tags.js says (the owner rewrites them), escaped into the hero.
+  const deathDesc = require('../../assets/tags.js').describeTag('Death');
+  assert.ok(death.includes('<p id="hero-desc">' + deathDesc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>'));
   assert.equal((death.match(/class="char-card" href=/g) || []).length, 21);
   assert.doesNotMatch(death, /Secret Draft/);
 
