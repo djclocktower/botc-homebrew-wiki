@@ -234,7 +234,7 @@ export function renderBack(script, options, requestRender, ui) {
   (back.texts || []).forEach((t, i) => {
     root.append(renderTextElement(keepOnPage(t), t.locked ? '' : 'back:' + i, selected === 'back:' + i));
   });
-  if (ui && ui.forExport) root.append(watermark(3.4, 0.7, fontFamily(options.fontName || 'goudy')));
+  if (ui && ui.forExport) root.append(watermark(3.4, 0.7));
   for (const n of renderStickers(ui && ui.stickers, selected, 'front')) root.append(n);
 
   return root;

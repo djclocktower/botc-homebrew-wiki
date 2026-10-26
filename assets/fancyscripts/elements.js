@@ -38,16 +38,16 @@ export function resolveSrc(v) {
 
 /* ── the watermark ─────────────────────────────────────────────────────
    "botchomebrew.wiki" on every exported page, never in the preview: white
-   in the page's character-name font, its bottom right corner `right` % in
-   from the page's right edge and `bottomEm` up from its foot. */
+   in Dumbledor 2 (the owner's pick) on every page, its bottom right corner
+   `right` % in from the page's right edge and `bottomEm` up from its foot. */
 export const WATERMARK = 'botchomebrew.wiki';
-export function watermark(right, bottomEm, font, sizeEm = 1.5) {
+export function watermark(right, bottomEm, sizeEm = 1.5) {
   return el('div', {
     position: 'absolute',
     right: right + '%',
     bottom: px(bottomEm * U),
-    fontFamily: font,
-    fontWeight: '700',
+    fontFamily: fontFamily('dumbledor2'),
+    fontWeight: '400',
     fontSize: px(sizeEm * U),
     lineHeight: '1',
     whiteSpace: 'nowrap',

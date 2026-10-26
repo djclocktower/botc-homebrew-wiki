@@ -4522,7 +4522,8 @@ suggests both. The app view has neither.
 Every EXPORTED page says "botchomebrew.wiki" (`watermark()` in
 elements.js); the preview never does. Each renderer adds it only when
 `ctx.forExport`, so it is in the PNGs, the share JPEG, Copy and the PDF
-alike. White with a dark halo, in that page's character-name font, in the
+alike. White with a dark halo, in Dumbledor 2 on every page (the owner's
+pick, 2026-10; it used to follow each page's name font), in the
 bottom right corner (on a script sheet tucked as far right and down as the
 burnt edge allows, `watermark(1.2, 0.5, …)`, which keeps it off the
 garland; the owner wants it IN the corner, not raised); on a ribbon-style night or jinx page it sits under

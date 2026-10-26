@@ -1179,7 +1179,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
 
 
   // tucked into the corner, as far right and down as the burnt edge allows
-  if (ctx.forExport) sheet.append(watermark(1.2, 0.5, fonts.name));
+  if (ctx.forExport) sheet.append(watermark(1.2, 0.5));
 
   // the rest of the stickers last, over everything
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
