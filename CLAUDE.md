@@ -5133,17 +5133,18 @@ keeps `content-visibility: auto`.
    are placed by the token's centre (`GEN_ANCHOR_X`), not by the leaves'
    extent, so an odd count does not slide sideways. 13+ draws 12; the old
    loose fallback fan bunched into a clump that poked out of the token. And
-   `_true_circle()` trims `frame_bare.png` to an exact circle on load (the
-   old official file had a flat patch on its left edge that printed as a nub
-   on every token).
-   **`frame_bare.png` is the wiki's own background, not the official one**
-   (2026-10, the owner's call): made with OpenArt in the official style
-   (aged parchment, sepia rim, a faint tone-on-tone medallion of its own),
-   fitted to the same circle `_true_circle()` uses (centre 466.2, 463.34,
-   radius 437 on a 905×902 canvas) and tone-matched to the old file, so
-   text, leaves and the "Upload background" option all land as before. A
-   replacement must keep that circle, or `gen.py` (which uses the file raw)
-   and `deco.py` disagree about where the token is.
+   `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
+   file has a flat patch on its left edge that printed as a nub on every
+   token.
+   **Only the centre of `frame_bare.png` is new** (2026-10, the owner's
+   call): the paper, shading and rim are the official token's own pixels,
+   and the faint medallion in the middle was replaced with a rose window
+   ringed by thistles and oak leaves, so the token looks official without
+   being one. It was made by having OpenArt edit the official file and then
+   pasting only the centre back (within radius ~310px of the token centre,
+   blended out by ~370px). The owner rejected a background made entirely
+   from scratch because its edge shading was wrong, so any later redesign
+   should keep the official rim.
    The stock **first-night sprig** is redrawn on load too (`_stand_out()`):
    stronger colour and a 0.5px dark ink line, because its olive and orange
    vanished into the brown rim, and grown by `FN_GROW` (1.2) from the rim,
