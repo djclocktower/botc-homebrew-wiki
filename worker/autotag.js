@@ -67,7 +67,7 @@ export const CUES = [
   ['Grim Peeker', SURE, /\bgrimoire\b|\bthe grim\b/i],
   ['Grim Peeker', HINT, /\breminder tokens?\b|\blearn (every|all|each)\b[^.]{0,25}\bcharacters?\b/i],
   ['Hidden', HINT, /\bhid(e|es|den|ing)\b|\bcovert|\bthinks? (you are|you're|they are) (a|an|the) |\b(don'?t|do not|does ?n[o']t) (know|learn) (you|they|that)\b|\bnot on the sheet\b|\bif (the demon|evil|minions?|a minion|an evil player) (guesses|learns|finds|kills) you\b/i, ['outsider']],
-  ['Information', SURE, /\byou (may |might |also )?(privately |secretly |publicly )?learn\b|\byou (know|are told|are shown)\b|\byou start knowing\b|^(each|on your|once per|at) [^:.]*,? learn\b/i],
+  ['Information', SURE, /\byou (may |might |also )?(privately |secretly |publicly )?learn\b|\byou (know|are told|are shown)\b|\byou start knowing\b|^(each|on your|once per|at) [^:.]*,? learn\b|\b(choos|pick|select|guess)\w*\b[^.:]{0,60}?(&|\band\b|,|:) ?(privately |secretly )?learn(ing|s)?\b/i],
   ['Information', HINT, /\b(tells|shows) you\b|\byou (are told|are shown|see|know)\b|(^|[.:,] ?)learn\b/i],
   ['Loud', HINT, /\bannounce|\bdeclar|\beveryone (learns|knows|is told|hears|sees)|\ball (players )?(learn|know)\b|\bthe (whole )?(town|group) (learns|is told|knows)|\bpublicly (learn|told|revealed|announced)|\bout loud\b|\baloud\b/i],
   ['Madness', SURE, /\bmad(ness)?\b/i],

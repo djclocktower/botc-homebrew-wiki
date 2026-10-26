@@ -85,3 +85,10 @@ test('Magic is not read off "the Storyteller may" alone', () => {
   assert.ok(!hints({ team: 'townsfolk', ability: 'Once per game, at night, the storyteller may prompt a good player making a bad choice to choose differently.' }).includes('Magic'));
   assert.ok(hints({ team: 'townsfolk', ability: 'The Storyteller can break the game rules.' }).includes('Magic'));
 });
+
+test('choosing and then learning is Information; someone else learning is not', () => {
+  const sure = c => cueTags(c).sure;
+  assert.ok(sure({ team: 'minion', ability: 'You start by choosing 3 characters & learning which are in play. Each night, choose 1: you poison them & might register as they would.' }).includes('Information'));
+  assert.ok(sure({ team: 'townsfolk', ability: 'Each night, choose a player: learn their alignment.' }).includes('Information'));
+  assert.ok(!sure({ team: 'minion', ability: 'Once per game, at night, choose a Minion: they lose their ability & learn you.' }).includes('Information'));
+});
