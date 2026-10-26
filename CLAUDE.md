@@ -3973,10 +3973,10 @@ somebody over their objection. Three rules:
 - The grant is still stored, so an admin's decision is not lost — and
   `/api/admin/curata` and the dashboard's page list both report the opt-out,
   or an admin who granted the mark and saw nothing change would just re-grant
-  it. The control is `#curataOptOut` in **edit.html only**, drawn only for a
-  page that actually has the mark, and `/api/page` returns `curataFrom` so it
-  can say which collection lent it. It warns first when taking the mark off
-  would drop an unfinished page back into Partial. If you add
+  it. The control is `#curataOptOut` in **edit.html only**, a bare "Disable
+  Curata" tick (the owner asked for no explanatory text), drawn only for a
+  page that actually has the mark — `/api/page`'s `curataFrom` counts mark
+  lent by a collection. If you add
 a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `ALMANAC_TEXT_FIELDS` in `classify.js` too, or pages using it stay Partial.
 
