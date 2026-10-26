@@ -374,7 +374,7 @@ import { homeData } from './home-data.js';
 import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
-import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags } from './autotag.js';
+import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags } from './autotag.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
@@ -14457,9 +14457,6 @@ const app = {
          nothing: the answer goes back to the tag picker, where the person
          decides. Counted per account because every call costs neurons. */
       if (path === '/api/suggest-tags') {
-        if (!sess.isAdmin && await rateLimited(env, request, 'autotag', 40, 3600, { sess })) {
-          return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
-        }
         const b = await request.json().catch(() => ({}));
         const ability = String(b.ability || '').trim();
         if (!ability) return jsonResponse({ error: 'Write the ability first: the suggestions are read off it.' }, { status: 400 });
@@ -14467,6 +14464,12 @@ const app = {
           slug: String(b.slug || ''), name: String(b.name || ''), team: String(b.team || ''), ability,
           lede: String(b.lede || ''), summaryBullets: Array.isArray(b.summaryBullets) ? b.summaryBullets.slice(0, 8).map(String) : []
         };
+        // quick: the wording rules alone, so the button can tick those at once
+        // while the model is still answering. No model, no feed read, no limit.
+        if (b.quick) return jsonResponse({ ok: true, tags: cueTags(char).sure });
+        if (!sess.isAdmin && await rateLimited(env, request, 'autotag', 40, 3600, { sess })) {
+          return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
+        }
         try {
           const rows = JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid'));
           return jsonResponse({ ok: true, tags: await suggestTags(env, char, rows) });

@@ -3390,7 +3390,13 @@ binding in wrangler.toml, and filters the answer back to the tag list. The
 button ticks what is new and outlines it (`.tag-pick-btn.suggested`); it never
 unticks and never saves, so a person always decides. `Joke` is never
 suggested. Login required, 40 an hour per account (`autotag` bucket),
-admins exempt. About 25 neurons a call.
+admins exempt. About 25 neurons a call. **The model's thinking is off**
+(`chat_template_kwargs: {enable_thinking: false}`, 300 tokens): it was most
+of the wait, for an answer that is one short list; a model name ending in
+`:think` turns it back on, which is how the dashboard scorer compares the
+two. The button sends a second request beside the real one, `quick: true`,
+which answers with the sure cues alone (no model, no feed read, no rate
+limit), so those tick at once and the model's tags follow.
 
 **Wording cues** (`CUES` in autotag.js) are the other half: phrases that
 mean a tag because of how the game is written (`[+1 Outsider]` is Outsider

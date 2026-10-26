@@ -100,6 +100,15 @@ test('autotag: /api/suggest-tags needs a login and an ability, and answers from 
   assert.deepEqual((await r.json()).tags, ['Poison', 'Protection']);
   assert.match(seen.messages[1].content, /Pois \(minion\)/);
   assert.match(seen.messages[1].content, /Already certain from its wording \(do not repeat\): Poison/);
+  // Thinking is off and the answer short: that is most of the wait.
+  assert.deepEqual(seen.chat_template_kwargs, { enable_thinking: false });
+  assert.equal(seen.max_tokens, 300);
+
+  // quick: the wording rules alone, without asking the model.
+  seen = null;
+  r = await f.request('/api/suggest-tags', post(1, { quick: true, name: 'X', ability: 'Each night, choose a player: they are poisoned.' }));
+  assert.deepEqual((await r.json()).tags, ['Poison']);
+  assert.equal(seen, null);
 });
 
 test('Magic is not read off "the Storyteller may" alone', () => {

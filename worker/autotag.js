@@ -228,7 +228,12 @@ export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL) {
   if (model !== 'phrases') {
     try {
       if (!env.AI) throw Object.assign(new Error('Tag suggestions are not switched on yet.'), { public: true });
-      const out = await env.AI.run(model, { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: 1500 });
+      // Thinking off: it is most of the wait, for an answer that is one short
+      // list. "model:think" turns it back on, so the scorer can compare.
+      const think = /:think$/.test(model), name = model.replace(/:think$/, '');
+      const opts = { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: think ? 1500 : 300 };
+      if (/gemma-4/.test(name)) opts.chat_template_kwargs = { enable_thinking: think };
+      const out = await env.AI.run(name, opts);
       const text = typeof out === 'string' ? out
         : out && (out.response ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content));
       picked = parseTags(typeof text === 'string' ? text : JSON.stringify(text || ''));
