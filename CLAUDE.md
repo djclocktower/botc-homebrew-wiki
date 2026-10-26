@@ -3404,9 +3404,10 @@ of the wait, for an answer that is one short list; a model name ending in
 `:think` turns it back on, which is how the dashboard scorer compares the
 two. `temperature: 0`, so the same character gets the same answer on every
 press and a change in the scores is a real change; the answer still moves
-as the examples (and the answer key) change. The button sends a second request beside the real one, `quick: true`,
-which answers with the sure cues alone (no model, no feed read, no rate
-limit), so those tick at once and the model's tags follow.
+as the examples (and the answer key) change. Everything ticks at once when the answer comes (the owner's call: the
+keyword tags used to tick first, with the model's following). `quick: true`
+(the sure cues alone: no model, no feed read, no rate limit) is asked only
+when the full answer fails, so a writer still gets the surest tags.
 
 **Wording cues** (`CUES` in autotag.js) are the other half: phrases that
 mean a tag because of how the game is written (`[+1 Outsider]` is Outsider
