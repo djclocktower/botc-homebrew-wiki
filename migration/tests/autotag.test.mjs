@@ -31,6 +31,9 @@ test('autotag: wording cues, sure and hinted', () => {
   assert.ok(cueTags({ ability: 'You learn 2 players, 1 is false.' }).sure.includes('False Info'));
   assert.ok(cueTags({ ability: 'If you are alive, evil wins after day 4.' }).sure.includes('Timer'));
   assert.ok(!cueTags({ ability: 'On night 3, choose a player.' }).sure.includes('Timer'));
+  assert.ok(cueTags({ ability: 'Each day, you may privately learn a statement.' }).sure.includes('Information'));
+  assert.ok(cueTags({ ability: 'You start by choosing 2 characters: you know how many are in play.' }).sure.includes('Information'));
+  assert.ok(cueTags({ ability: 'Twice per game, choose 2 players: they swap characters.' }).sure.includes('Character Change'));
   const p = cueTags({ ability: 'Each night, choose a player: they learn the Perfumer is in play.' });
   assert.ok(!p.sure.includes('Information') && p.hint.some(h => h.tag === 'Ping'));
   // "even if you die" keeps working after death; it is not an on-death trigger.
