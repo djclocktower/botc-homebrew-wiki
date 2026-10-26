@@ -2261,7 +2261,7 @@
         '</strong></a> <span class="note">' + esc(d.team) + '</span><p>' + esc(d.ability) + '</p>' +
         (d.error ? '<p class="note">The AI did not answer (' + esc(d.error) + '), so only the wording rules are shown.</p>' : '') +
         '<div class="tck-tags">' + (shown.map(tckChip).join('') || '<span class="note">No tags suggested and none on the page.</span>') + '</div>' +
-        '<details><summary class="note">Add a tag it missed</summary><div class="tck-tags">' + rest.map(tckChip).join('') + '</div></details>' +
+        '<p class="note" style="margin:.8em 0 0">Every other tag (tap to add one it missed):</p><div class="tck-tags">' + rest.map(tckChip).join('') + '</div>' +
         '<div class="act-filters"><button type="button" class="small-btn" id="tck-save">Save and next</button>' +
         '<button type="button" class="small-btn alt" id="tck-skip">Skip</button>' +
         (tckLast ? '<button type="button" class="small-btn alt" id="tck-undo">Undo last save (' + esc(tckLast.name) + ')</button>' : '') +
