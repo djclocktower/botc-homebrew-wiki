@@ -220,3 +220,13 @@ test('autotag: check tags by hand, then score against the answers', async t => {
   const undone = await (await f.request('/api/admin/tag-check', post(1, { action: 'undo', slug: 'a' }))).json();
   assert.equal(undone.checked, 0);
 });
+
+test('autotag: Win/Loss Condition is a keyword, but losing an ability is not', () => {
+  const wl = a => cueTags({ ability: a }).sure.includes('Win/Loss Condition');
+  assert.ok(wl('If you are executed, evil wins.'));
+  assert.ok(wl('All Actors jointly reverse the victory conditions.'));
+  assert.ok(wl('If you nominate & execute a player, ending the game, the Demon becomes your alignment.'));
+  assert.ok(wl('You join the losing team.'));
+  assert.ok(!wl('If just 3 players live, you lose this ability.'));
+  assert.ok(!wl('Dead players who vote with you do not lose their vote tokens.'));
+});

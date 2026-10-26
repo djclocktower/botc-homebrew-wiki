@@ -119,7 +119,9 @@ export const CUES = [
   ['True Info', SURE, /\btrue info|\btrue information\b/i],
   ['True Info', HINT, /\btrue\b|\bcorrect\b|\baccurate/i],
   ['Votes', SURE, /\bvot(e|es|ed|ing|er|ers)\b/i],
-  ['Win/Loss Condition', SURE, /\b(wins?|loses?|lose)\b(?! (their|its|your|an?|the|this|that) (abilit|vote|token|ghost))|\bgame ends\b/i],
+  // A keyword (the owner's ruling): any win or lose wording, except losing
+  // an ability, a vote or a token, which is not about the game's outcome.
+  ['Win/Loss Condition', SURE, /\b(wins?|winning|winners?|loses?|losing|losers?|victory)\b(?! (their|its|your|an?|the|this|that|his|her|all) (abilit|vote|token|ghost))|\bgame ends\b|\bend(s|ing)? the game\b/i],
   ['You Start Knowing', SURE, /\bstarts? (the game )?knowing\b/i],
 ];
 
