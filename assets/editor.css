@@ -152,6 +152,11 @@ html.textedit-on .te-live-hit {
   border-radius: 3px;
   cursor: text;
 }
+html.textedit-on .te-live-editing {
+  outline: 2px solid rgba(122,45,47,.9);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
 
 .te-live-bar {
   position: fixed; z-index: 9999;
@@ -175,6 +180,12 @@ html.textedit-on .te-live-hit {
 .te-live-bar .te-live-title { font-weight: 700; letter-spacing: .04em; }
 .te-live-bar .te-live-note { opacity: .72; }
 .te-live-bar .te-live-link { color: #e8c98a; text-decoration: underline; }
+.te-live-bar .te-live-undo {
+  font-family: inherit; font-size: .78rem;
+  color: #1d140e; background: #e8c98a;
+  border: 1px solid #b38f4a; border-radius: 999px;
+  padding: 4px 12px; cursor: pointer;
+}
 .te-live-bar .te-live-off {
   font-family: inherit; font-size: .78rem;
   color: #f2e6cc; background: #7a2d2f;
@@ -185,7 +196,9 @@ html.textedit-on .te-live-hit {
 
 .te-live-pop {
   position: fixed; z-index: 10000;
-  width: min(440px, calc(100vw - 24px));
+  width: min(520px, calc(100vw - 24px));
+  max-height: calc(100vh - 20px); overflow-y: auto;
+  box-sizing: border-box;
   padding: 14px;
   background-color: var(--parch);
   background-image: url('parchment.webp');
@@ -200,6 +213,10 @@ html.textedit-on .te-live-hit {
   display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
   margin-bottom: 8px;
 }
+.te-live-pop-head .te-live-x {
+  margin-left: auto; padding: 4px; line-height: 0;
+  background: none; border: 0; color: var(--maroon); cursor: pointer;
+}
 .te-live-pop-head strong { font-family: 'Dumbledor2', serif; color: var(--maroon); letter-spacing: .04em; }
 .te-live-scope {
   font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
@@ -209,9 +226,25 @@ html.textedit-on .te-live-hit {
   width: 100%; box-sizing: border-box;
   font-family: ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
   font-size: .9rem; line-height: 1.5;
-  padding: 9px; min-height: 74px; resize: vertical;
+  padding: 9px; min-height: 42px; resize: vertical; overflow-y: auto;
   border: 1px solid var(--parch-frame); border-radius: 5px;
   background: rgba(255,255,255,.62); color: var(--ink);
+}
+.te-live-fields { display: flex; flex-direction: column; gap: 10px; }
+.te-live-field-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.te-live-kind { font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.te-live-orig {
+  margin-left: auto; padding: 0;
+  font: inherit; font-size: .74rem; color: var(--maroon);
+  background: none; border: 0; text-decoration: underline; cursor: pointer;
+}
+.te-live-fixed {
+  margin: 0; padding: 4px 9px;
+  font-size: .82rem; font-style: italic; opacity: .62;
+  border-left: 2px solid rgba(122,45,47,.3);
 }
 .te-live-hint { font-size: .76rem; opacity: .78; margin: 7px 0 9px; }
 .te-live-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

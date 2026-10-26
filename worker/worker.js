@@ -220,7 +220,7 @@
  *   POST /api/admin/announce  -> set/clear the site-wide announcement banner
  *   GET  /api/admin/site-text -> every saved system-text override, with who
  *                                changed it and when (/text-editor)
- *   POST /api/admin/site-text -> rewrite one of the site's own strings, or
+ *   POST /api/admin/site-text -> rewrite or remove one of the site's own strings, or
  *                                revert it to whatever the source file says
  *   GET  /api/admin/orphans   -> R2 images no page references any more
  *   POST /api/admin/purge-images -> delete selected orphaned images
@@ -16789,8 +16789,12 @@ const app = {
         if (scope !== '*' && !/^\/[\w./-]*$/.test(scope)) {
           return jsonResponse({ error: 'Bad scope.' }, { status: 400 });
         }
-        const replacement = String(b.replacement == null ? '' : b.replacement).slice(0, SITE_TEXT_MAX);
-        const revert = b.action === 'revert' || !replacement.trim() || replacement === original;
+        // {action:'remove'} stores an empty replacement: the wording is taken
+        // off the page. An empty box with any other action is still a revert,
+        // so a cleared field can never delete wording by accident.
+        const remove = b.action === 'remove';
+        const replacement = remove ? '' : String(b.replacement == null ? '' : b.replacement).slice(0, SITE_TEXT_MAX);
+        const revert = b.action === 'revert' || (!remove && !replacement.trim()) || replacement === original;
 
         if (revert) {
           await env.DB.prepare('DELETE FROM site_text WHERE scope=? AND original=?')
