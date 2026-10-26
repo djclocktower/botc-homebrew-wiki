@@ -158,7 +158,8 @@ export function pickExamples(char, rows, k = EXAMPLES) {
   const ranked = tagged.map((r, i) => {
     let score = 0;
     mine.forEach(w => { if (sets[i].has(w)) score += Math.log(1 + tagged.length / df.get(w)); });
-    return [score, r];
+    // A page an admin checked by hand is the surest example of all.
+    return [r.checked ? score * 1.5 : score, r];
   }).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0]);
   const off = ranked.filter(x => x[1].official).slice(0, Math.min(OFFICIAL_EXAMPLES, k));
   const rest = ranked.filter(x => !x[1].official).slice(0, k - off.length);
@@ -169,6 +170,7 @@ export function pickExamples(char, rows, k = EXAMPLES) {
    Storm Is Coming) counts as an official example, with the official tags
    added to its own. "Limited uses" only means Once Per Game when it says once. */
 function officialPage(r) {
+  if (r.checked) return r;
   const extra = OFFICIAL_WIKI_TAGS[r.slug];
   if (!extra || !Object.hasOwn(OFFICIAL_WIKI_TAGS, r.slug)) return r;
   const add = splitTags(extra).filter(t => t !== 'Once Per Game' || /\bonce\b/i.test(r.ability || ''));
@@ -179,6 +181,8 @@ function officialPage(r) {
    cues say, so the examples follow the owner's wording rulings (Death on any
    death, Setup on any [bracket]) even where its taggers missed one. */
 export function exampleTags(r) {
+  // Checked by hand: those ARE its tags, and the cues were already overruled.
+  if (r.checked) return splitTags(r.tags).filter(t => BY_LOWER.has(t.toLowerCase()));
   return [...new Set([...splitTags(r.tags), ...cueTags(r).sure])].filter(t => BY_LOWER.has(t.toLowerCase()));
 }
 
@@ -186,7 +190,7 @@ const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
 export function buildMessages(char, examples) {
   const list = SUGGESTABLE.map(t => '- ' + t + ': ' + Tags.describeTag(t)).join('\n');
-  const ex = examples.map(r => 'Character: ' + clip(r.name, 80) + ' (' + r.team + (r.official ? ', official' : '') + ')\nAbility: ' +
+  const ex = examples.map(r => 'Character: ' + clip(r.name, 80) + ' (' + r.team + (r.checked ? ', checked' : r.official ? ', official' : '') + ')\nAbility: ' +
     clip(r.ability, 400) + '\nTags: ' + exampleTags(r).join(', ')).join('\n\n');
   const cues = cueTags(char);
   const cueLine = (cues.sure.length ? '\nAlready certain from its wording (do not repeat): ' + cues.sure.join(', ') + '.' : '') +
@@ -200,7 +204,7 @@ export function buildMessages(char, examples) {
       'that clearly apply to the character\'s ability. Most characters have 2 to 5 tags.\n\n' + list +
       '\n\nAnswer with JSON only, like {"tags": ["Information", "Neighbor"]}.' },
     { role: 'user', content:
-      (ex ? 'Characters already tagged (an official one\'s tags are the most reliable):\n\n' + ex + '\n\nNow this one:\n' : '') + 'Character: ' + clip(char.name, 80) +
+      (ex ? 'Characters already tagged (tags marked checked or official are the most reliable):\n\n' + ex + '\n\nNow this one:\n' : '') + 'Character: ' + clip(char.name, 80) +
       ' (' + clip(char.team, 20) + ')\nAbility: ' + clip(char.ability, 600) +
       (extra ? '\nAbout it: ' + clip(extra, 900) : '') + cueLine + '\nTags:' }
   ];
@@ -242,4 +246,12 @@ export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL) {
     }
   }
   return [...new Set([...sure, ...picked])];
+}
+
+/* The admins' answer key (the dashboard's "Check tags"): slug -> the tags a
+   person confirmed. Those rows take the checked tags in place of their own,
+   which makes them the examples the model is shown first. */
+export function applyChecks(rows, checks) {
+  if (!checks || !checks.size) return rows;
+  return rows.map(r => checks.has(r.slug) ? { ...r, tags: checks.get(r.slug).join(', '), checked: true } : r);
 }

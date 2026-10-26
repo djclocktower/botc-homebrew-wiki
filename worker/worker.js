@@ -155,7 +155,10 @@
  *   POST /api/suggest-tags    -> tag suggestions for the editor's tag picker
  *                                (Workers AI, worker/autotag.js); writes nothing
  *   POST /api/admin/autotag-eval -> admin: score those suggestions against
- *                                pages people already tagged
+ *                                pages people already tagged, or against the
+ *                                pages an admin checked (checked:true)
+ *   POST /api/admin/tag-check -> admin: next character to check by hand, or
+ *                                save/undo one answer (the tag answer key)
  *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
  *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
@@ -374,7 +377,8 @@ import { homeData } from './home-data.js';
 import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
-import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags } from './autotag.js';
+import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags, applyChecks } from './autotag.js';
+import Tags from '../assets/tags.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
@@ -2264,6 +2268,44 @@ async function ensureFavoritesTable(env) {
   _favoritesReady = true;
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* The tag answer key: one row per character an admin checked on the
+   dashboard ("Check tags"). `tags` is what the admin confirmed; `stored` and
+   `suggested` are what the page and the suggester said at the time, kept so
+   both can be scored against the answer later. */
+let _tagChecksReady = false;
+async function ensureTagChecksTable(env) {
+  if (_tagChecksReady) return;
+  if (await schemaHas(env, { tables: { tag_checks: [] } })) { _tagChecksReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS tag_checks (
+       slug      TEXT PRIMARY KEY,
+       tags      TEXT NOT NULL,
+       stored    TEXT NOT NULL DEFAULT '[]',
+       suggested TEXT NOT NULL DEFAULT '[]',
+       user_id   INTEGER,
+       ts        TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _tagChecksReady = true;
+}
+// ponytail: a minute's memo per isolate; a save clears it here, other
+// isolates see it within the minute. Fine for examples, which are a nudge.
+let _tagChecks = null, _tagChecksAt = 0;
+async function loadTagChecks(env, fresh) {
+  if (!fresh && _tagChecks && Date.now() - _tagChecksAt < 60000) return _tagChecks;
+  let rows = [];
+  try { rows = (await env.DB.prepare('SELECT slug, tags, stored, suggested FROM tag_checks').all()).results || []; }
+  catch (e) { if (!isMissingSchema(e)) throw e; }
+  const parse = v => { try { const a = JSON.parse(v); return Array.isArray(a) ? a.map(String) : []; } catch { return []; } };
+  _tagChecks = new Map(rows.map(r => [r.slug, parse(r.tags)]));
+  _tagChecks.rows = rows.map(r => ({ slug: r.slug, tags: parse(r.tags), stored: parse(r.stored), suggested: parse(r.suggested) }));
+  _tagChecksAt = Date.now();
+  return _tagChecks;
+}
+// Any list of tag names, reduced to the canonical spelling of known tags.
+const KNOWN_TAG_BY_LOWER = new Map(Tags.KNOWN_TAGS.map(t => [t.toLowerCase(), t]));
+const tagList = v => [...new Set((Array.isArray(v) ? v : []).map(t => KNOWN_TAG_BY_LOWER.get(String(t).trim().toLowerCase())).filter(Boolean))];
 
 /* The page a favorite names, resolved the way every other route resolves that
    type: a character by identity or address (resolveCharacterPath), a script by
@@ -14471,7 +14513,7 @@ const app = {
           return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
         }
         try {
-          const rows = JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid'));
+          const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), await loadTagChecks(env).catch(() => null));
           return jsonResponse({ ok: true, tags: await suggestTags(env, char, rows) });
         } catch (e) {
           if (!(e && e.public)) console.error('suggest-tags', e && e.stack || e);
@@ -16145,8 +16187,13 @@ const app = {
         const b = await request.json().catch(() => ({}));
         const n = Math.max(1, Math.min(50, Number(b.n) || 20));
         const model = String(b.model || AUTOTAG_MODEL);
-        const rows = JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid'));
-        const pool = rows.filter(r => r.ability && !!splitTags(r.tags).length === !b.untagged);
+        const checks = await loadTagChecks(env, true);
+        const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), checks);
+        // checked: the pages an admin checked by hand, scored against those
+        // answers rather than against the tags the page happened to carry.
+        const pool = b.checked ? rows.filter(r => r.ability && r.checked)
+          : rows.filter(r => r.ability && !!splitTags(r.tags).length === !b.untagged);
+        if (b.checked && !pool.length) return jsonResponse({ error: 'No pages checked yet. Use Check tags first.' }, { status: 400 });
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const sample = pool.slice(0, n);
         const pct = x => isFinite(x) ? Math.round(x * 100) : null;
@@ -16187,11 +16234,58 @@ const app = {
               got: runs.map(run => (run.results.find(x => x.slug === r.slug) || {}).got || []) })) });
         }
         const run = await score(model);
+        // How the tags the pages carried did against the same answers.
+        let oldTags = null;
+        if (b.checked) {
+          let tp = 0, fp = 0, fn = 0;
+          for (const c of checks.rows) {
+            if (!sample.some(r => r.slug === c.slug)) continue;
+            const gold = c.tags.filter(t => SUGGESTABLE.includes(t)), had = c.stored.filter(t => SUGGESTABLE.includes(t));
+            tp += had.filter(t => gold.includes(t)).length; fp += had.filter(t => !gold.includes(t)).length; fn += gold.filter(t => !had.includes(t)).length;
+          }
+          oldTags = { precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)) };
+        }
         return jsonResponse({
-          ok: true, model, n: run.n, untagged: !!b.untagged,
+          ok: true, model, n: run.n, untagged: !!b.untagged, checked: !!b.checked, oldTags,
           precision: run.precision, recall: run.recall, seconds: run.seconds,
           perTag: run.perTag, results: run.results
         });
+      }
+
+      // ---- admin: check the suggester's tags by hand (the answer key) ----
+      // next: a random published character nobody has checked, with its
+      // tags and the suggester's. save: what the admin confirmed. Nothing is
+      // written to the page; the answers are the test Score can run on and
+      // the examples the suggester is shown first.
+      if (path === '/api/admin/tag-check') {
+        const b = await request.json().catch(() => ({}));
+        await ensureTagChecksTable(env);
+        if (b.action === 'save') {
+          const slug = String(b.slug || '');
+          const row = slug && await env.DB.prepare("SELECT slug FROM characters WHERE slug=? AND status='published'").bind(slug).first();
+          if (!row) return jsonResponse({ error: 'No such page' }, { status: 404 });
+          await env.DB.prepare(
+            `INSERT INTO tag_checks (slug, tags, stored, suggested, user_id) VALUES (?,?,?,?,?)
+             ON CONFLICT(slug) DO UPDATE SET tags=excluded.tags, stored=excluded.stored, suggested=excluded.suggested, user_id=excluded.user_id, ts=datetime('now')`
+          ).bind(slug, JSON.stringify(tagList(b.tags)), JSON.stringify(tagList(b.stored)), JSON.stringify(tagList(b.suggested)), sess.userId).run();
+          _tagChecks = null;
+          return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        if (b.action === 'undo') {
+          await env.DB.prepare('DELETE FROM tag_checks WHERE slug=?').bind(String(b.slug || '')).run();
+          _tagChecks = null;
+          return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        const checks = await loadTagChecks(env, true);
+        const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), checks);
+        const pool = rows.filter(r => r.ability && !r.checked && String(b.skip || '') !== r.slug);
+        if (!pool.length) return jsonResponse({ ok: true, done: true, checked: checks.size });
+        const r = pool[Math.floor(Math.random() * pool.length)];
+        let suggested = [], error = '';
+        try { suggested = await suggestTags(env, r, rows, String(b.model || AUTOTAG_MODEL)); } catch (e) { error = String(e && e.message || e); }
+        return jsonResponse({ ok: true, checked: checks.size, error,
+          slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
+          stored: tagList(splitTags(r.tags)), suggested });
       }
 
       // ---- admin: grant Curata to everything one account owns ----

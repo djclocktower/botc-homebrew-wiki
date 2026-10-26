@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './worker-fixture.mjs';
-import { parseTags, pickExamples, cueTags, exampleTags, buildMessages } from '../../worker/autotag.js';
+import { parseTags, pickExamples, cueTags, exampleTags, buildMessages, applyChecks } from '../../worker/autotag.js';
 
 const post = (id, body) => ({
   method: 'POST',
@@ -175,4 +175,48 @@ test('autotag: an ability with nothing to choose, wake for or learn is Passive',
   assert.ok(cueTags({ ability: 'If you die, 1 alive neighbor might die tonight.' }).sure.includes('Passive'));
   assert.ok(!cueTags({ ability: 'Players who are mad that they want to live or die (you start by choosing which) might be executed.' }).sure.includes('Passive'));
   assert.ok(!cueTags({ ability: 'Each night, choose a player: they are poisoned.' }).sure.includes('Passive'));
+});
+
+test('autotag: a page checked by hand is the first example, with exactly its checked tags', () => {
+  const rows = [
+    { slug: 'a', name: 'A', team: 'townsfolk', ability: 'Each night, choose a player: they are safe from the Demon.', tags: 'Protection, Death' },
+    { slug: 'b', name: 'B', team: 'townsfolk', ability: 'Each night, choose a player: they are safe from the Demon tonight.', tags: 'Protection' }
+  ];
+  const checked = applyChecks(rows, new Map([['a', ['Protection', 'Safe']]]));
+  assert.equal(checked[0].tags, 'Protection, Safe');
+  assert.ok(checked[0].checked && !checked[1].checked);
+  const ex = pickExamples({ slug: 'me', name: 'Me', ability: 'Each night, choose a player: they are safe.' }, checked);
+  assert.equal(ex[0].slug, 'a');
+  assert.deepEqual(exampleTags(ex[0]), ['Protection', 'Safe']);
+  assert.ok(buildMessages({ name: 'Me', team: 'townsfolk', ability: 'x' }, ex)[1].content.includes('(townsfolk, checked)'));
+});
+
+test('autotag: check tags by hand, then score against the answers', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(1,'user-1','',1)").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1', isAdmin: true });
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(2,'user-2','',0)").run();
+  f.state.sessions.set('sess:user-2', { userId: 2, username: 'user-2', isAdmin: false });
+  f.insert('characters', 'a', { slug: 'a', name: 'A', team: 'townsfolk', art: 'art/x.png', ability: 'Each night*, choose a player: they are safe from the Demon.', tags: 'Protection, Death' });
+  f.db.prepare("UPDATE characters SET tags='Protection, Death' WHERE slug='a'").run();
+  f.env.AI = { async run() { return { response: '{"tags":["Protection","Poison"]}' }; } };
+  assert.equal((await f.request('/api/admin/tag-check', post(2, { action: 'next' }))).status, 403);
+  const next = await (await f.request('/api/admin/tag-check', post(1, { action: 'next' }))).json();
+  assert.equal(next.slug, 'a');
+  assert.deepEqual(next.stored, ['Protection', 'Death']);
+  assert.ok(next.suggested.includes('Poison'));
+  const saved = await (await f.request('/api/admin/tag-check', post(1, { action: 'save', slug: 'a', tags: ['protection', 'Safe', 'Made Up'], stored: next.stored, suggested: next.suggested }))).json();
+  assert.equal(saved.checked, 1);
+  assert.deepEqual(JSON.parse(f.db.prepare("SELECT tags FROM tag_checks WHERE slug='a'").get().tags), ['Protection', 'Safe']);
+  assert.equal(f.db.prepare("SELECT tags FROM characters WHERE slug='a'").get().tags, 'Protection, Death', 'the page is not touched');
+  assert.ok((await (await f.request('/api/admin/tag-check', post(1, { action: 'next' }))).json()).done);
+  const d = await (await f.request('/api/admin/autotag-eval', post(1, { n: 5, checked: true }))).json();
+  assert.deepEqual(d.results[0].gold, ['Protection', 'Safe']);
+  const got = d.results[0].got;
+  assert.ok(got.includes('Poison'));
+  assert.equal(d.precision, Math.round(100 * got.filter(x => ['Protection', 'Safe'].includes(x)).length / got.length));
+  assert.deepEqual(d.oldTags, { precision: 50, recall: 50 });
+  const undone = await (await f.request('/api/admin/tag-check', post(1, { action: 'undo', slug: 'a' }))).json();
+  assert.equal(undone.checked, 0);
 });

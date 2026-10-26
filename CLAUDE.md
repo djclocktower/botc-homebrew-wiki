@@ -198,8 +198,9 @@ worker/list-pages.js   The first screen of /all-characters, /team and /tag,
                        char-filters.js (see the architecture notes). Returns
                        null for anything it cannot draw exactly; the route
                        then serves the static page.
-worker/autotag.js      Tag suggestions through Workers AI (env.AI). See
-                       "Tag suggestions" below.
+worker/autotag.js      Tag suggestions through Workers AI (env.AI), and the
+                       admins' answer key (tag_checks). See "Tag suggestions"
+                       below.
 worker/official-tags.js  The official characters with tags, for the tag
                        suggester's examples. Generated, never hand-edited:
                        `NODE_USE_ENV_PROXY=1 node migration/make-official-tags.mjs`
@@ -1273,6 +1274,8 @@ collection they belong to, author, owner_id, JSON `data`, status — see the
 section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
 a renamed page used to live at — for characters `to_slug` is the page's
 **identity**, never another address, see "Character identity vs address" below),
+`tag_checks` (the tag suggester's answer key, one row per character an
+admin checked by hand — see "Tag suggestions"),
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
@@ -3443,10 +3446,28 @@ what it would say about untagged ones, writing nothing. `compare: true`
 box empty, the model in use with `:think`) — and returns each run's
 precision, recall and seconds per page, plus every page's three answers, so
 a change of model or of thinking is measured on one sample rather than two
-random ones. Read its numbers with
+random ones. `checked: true` (the "Test on the pages checked by hand" tick) samples
+from the answer key below instead, scores against it, and also reports how
+the tags those pages already carried did against the same answers
+(`oldTags`). Read its numbers with
 care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
 pages with `[setup]` text lacked Setup), so an "extra" tag is often right.
 A bulk "tag every untagged page" run is deliberately not built yet.
+
+**The answer key: "Check tags"** (dashboard card, `POST /api/admin/tag-check`
+`{action: 'next' | 'save' | 'undo'}`). `next` picks a random published
+character nobody has checked and runs the suggester on it; the card ticks
+the union of what the AI said and what the page has, the admin unticks the
+wrong ones and adds what was missed, and `save` stores the result in the
+lazily created `tag_checks` table (`slug` PK, `tags`, plus the page's
+`stored` tags and the `suggested` ones at that moment). **Nothing is written
+to the page.** Checked rows then do two jobs: they are the test the scorer
+can run on (above), and `applyChecks()` swaps their tags in for the page's
+own wherever the suggester picks examples, marked `checked` so they score
+1.5x in `pickExamples()`, are shown as "(team, checked)" and are given
+exactly the checked tags, without the sure cues on top (the admin already
+overruled those). `loadTagChecks()` memoises the table for a minute per
+isolate; a save clears it in its own isolate.
 
 **Training on existing tags was measured and not built (2026-10).** A
 per-tag classifier trained on the wiki's tagged pages, scored on pages it
