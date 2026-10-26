@@ -82,9 +82,10 @@ import numpy as _np
 _DCX, _DCY, _R = 467, 464, 437
 
 def _true_circle(im, cx=466.2, cy=463.34, r=437.0):
-    """The token background as an exact circle. frame_bare.png is a hair off
-    round, with a flat patch on its left edge that read as a nub on every
-    printed token. Its own centre and radius (fitted to its edge, in pixel
+    """The token background as an exact circle. The old official
+    frame_bare.png was a hair off round, with a flat patch on its left edge
+    that read as a nub on every printed token; the wiki's own file is drawn
+    to this exact circle, so a replacement must keep it. Its own centre and radius (fitted to its edge, in pixel
     coordinates) set the circle; the edge is anti-aliased, and the few pixels
     inside it that the art left see-through take their colour from just
     inside, so nothing dark shows at the rim."""
