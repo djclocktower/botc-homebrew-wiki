@@ -3428,6 +3428,16 @@ nobody notices (Poisoner) and Hidden an Outsider that hides or does not know
 it is one (Sweetheart, Drunk); Passive is no choice and no waking, an
 ability that fires by itself included, so it is a sure cue on the absence of
 any choose / pick / guess / visit / learn / wake / each night / once wording.
+Word rules the owner approved from a data pass (2026-10): Magic on making
+a wish (never "as you wish"), Think on "thinks" / "think you're" (but "the
+Storyteller thinks / believes" is Subjective Info, with "advice"),
+Resurrection on rise / reborn / regurgitated / "is raised" (never a raised
+hand), Loud on "all players learn / know" and "announce", Nonconformist on
+"unlisted", Setup on the word "setup", Votes on "majority", Protection on
+"protect" only (not "safe from"), Demonsbane on "if the Demon kills you" and
+"if you die at night" (not "even if you die at night"), Ping on "a good /
+evil player learns / knows", Multi-Kill on "choose 2 players: they die",
+Character Change on "becomes a/an …" with any subject.
 Change a description and its cue together.
 
 **The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by

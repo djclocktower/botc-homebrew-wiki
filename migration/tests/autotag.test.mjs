@@ -230,3 +230,31 @@ test('autotag: Win/Loss Condition is a keyword, but losing an ability is not', (
   assert.ok(!wl('If just 3 players live, you lose this ability.'));
   assert.ok(!wl('Dead players who vote with you do not lose their vote tokens.'));
 });
+
+test('autotag: the keywords the owner approved', () => {
+  const has = (a, t) => cueTags({ ability: a }).sure.includes(t);
+  assert.ok(has('Each day, you may publicly make a wish.', 'Magic'));
+  assert.ok(!has('give out as many vats of sake as you wish', 'Magic'));
+  assert.ok(has("You think you're a Townsfolk.", 'Think'));
+  assert.ok(has('1 Townsfolk thinks they are an Outsider.', 'Think'));
+  assert.ok(!has('learn the player the Storyteller thinks is the best kill', 'Think'));
+  assert.ok(has('learn the player the Storyteller thinks is the best kill', 'Subjective Info'));
+  assert.ok(has('the Storyteller believes evil is winning', 'Subjective Info'));
+  assert.ok(has('Dead evil players might rise.', 'Resurrection'));
+  assert.ok(has("Each night*, today's executee is raised.", 'Resurrection'));
+  assert.ok(!has('Players who raise their hand at night turn evil.', 'Resurrection'));
+  assert.ok(has('Each night, become the alignment of the player you nominated.', 'Alignment Change'));
+  assert.ok(has('Each night*, choose 2 players: they die.', 'Multi-Kill'));
+  assert.ok(has('Each night, you may choose a player: all players learn their character.', 'Loud'));
+  assert.ok(has('You have an unlisted Minion ability.', 'Nonconformist'));
+  assert.ok(has('Setup modifications might happen at any time.', 'Setup'));
+  assert.ok(has('If a majority of players agree, they are executed.', 'Votes'));
+  assert.ok(has('When you learn that you died, publicly choose a player.', 'On Death'));
+  assert.ok(has('Each night, choose a player to protect.', 'Protection'));
+  assert.ok(!has('They are safe from evil until dusk.', 'Protection'));
+  assert.ok(has('If you die at night, learn 1 evil player.', 'Demonsbane'));
+  assert.ok(!has('Outsiders are drunk, even if you die at night.', 'Demonsbane'));
+  assert.ok(has('If you die today or tonight, a player becomes a Lab Rat.', 'Character Change'));
+  assert.ok(!has('You become a good player.', 'Character Change'));
+  assert.ok(has('If you are executed, a good player learns this.', 'Ping'));
+});
