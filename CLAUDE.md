@@ -242,6 +242,12 @@ assets/
   site.js              Shared topbar behavior: search preview, mobile nav,
                        script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
+                       It also keeps the reader's place on Back or a reload:
+                       the scroll goes into the history entry (botcY) on
+                       pagehide and is put back once a page that draws its
+                       list late is tall enough. A page that keeps its own
+                       place (all-characters, /search: filters too) sets
+                       history.scrollRestoration = 'manual' and is skipped.
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
                        change it here and every page's top bar and hamburger
                        follow, because no page hardcodes it.
