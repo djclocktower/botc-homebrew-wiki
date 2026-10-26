@@ -1011,10 +1011,10 @@
         </p>
         <div class="act-filters">
           <input type="number" id="atg-n" value="20" min="1" max="50" style="width:5em" aria-label="How many pages">
-          <input type="text" id="atg-model" placeholder="model (optional; phrases = wording only; end with :think to let it reason first)" style="flex:1;min-width:10em">
+          <input type="text" id="atg-model" placeholder="model to try (optional; phrases = wording only; end with :think to let it reason first)" style="flex:1;min-width:10em">
           <button type="button" class="small-btn" id="atg-score">Score</button>
           <button type="button" class="small-btn alt" id="atg-untagged">Try untagged</button>
-          <button type="button" class="small-btn alt" id="atg-compare">Compare thinking</button>
+          <button type="button" class="small-btn alt" id="atg-compare">Compare</button>
         </div>
         <div id="atg-list"></div>
       </section>
@@ -2174,7 +2174,8 @@
         .catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try fewer pages.</p>'; })
         .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
     }
-    // The same pages three ways: wording rules alone, the AI, the AI thinking first.
+    // The same pages three ways: wording rules alone, the current AI, and the
+    // model named in the box (or, none named, the current AI thinking first).
     function compareAutotag() {
       var btns = [$('atg-score'), $('atg-untagged'), $('atg-compare')];
       btns.forEach(function(b){ b.disabled = true; });
@@ -2184,12 +2185,13 @@
         .then(function(r){ return r.json(); })
         .then(function(d){
           if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
-          var names = ['Wording rules only', 'AI', 'AI, thinking first'];
+          var names = d.runs.map(function(r, i){ return i === 0 ? 'Wording rules only' : i === 1 ? 'AI now in use' :
+            /:think$/.test(r.model) ? 'AI now in use, thinking first' : esc(r.model.replace(/^@cf\//, '')); });
           var html = '<table class="atg-cmp"><tr><th></th><th>Right</th><th>Found</th><th>Seconds each</th></tr>' +
             d.runs.map(function(r, i){ return '<tr><th>' + names[i] + '</th><td>' + r.precision + '%</td><td>' + r.recall + '%</td><td>' +
               r.seconds + (r.errors ? ' <span class="note">(' + r.errors + ' failed)</span>' : '') + '</td></tr>'; }).join('') + '</table>' +
             '<p class="note">Right: of the tags suggested, how many were on the page. Found: of the tags on the page, how many were suggested. ' +
-            d.n + ' pages. Below, only the pages where thinking changed the answer.</p>';
+            d.n + ' pages, the same ones for all three. Below, only the pages where the two AI rows disagree.</p>';
           var chip = function(list, gold){ return list.length ? list.map(function(t){
             return '<span class="' + (gold.indexOf(t) !== -1 ? 'atg-r' : 'atg-x') + '">' + esc(t) + '</span>'; }).join(', ') : '<em>nothing</em>'; };
           var differ = d.results.filter(function(r){ return r.got[1].slice().sort().join() !== r.got[2].slice().sort().join(); });
@@ -2197,9 +2199,9 @@
             html += '<div class="row"><div><a href="/edit?c=' + encodeURIComponent(r.slug) + '" target="_blank"><strong>' + esc(r.name) +
               '</strong></a> <span class="note">' + esc(r.team) + '</span><br><span class="note">' + esc(String(r.ability).slice(0, 200)) + '</span><br>' +
               'On the page: ' + (r.gold.map(esc).join(', ') || '<em>nothing</em>') + '<br>' +
-              'AI: ' + chip(r.got[1], r.gold) + '<br>Thinking: ' + chip(r.got[2], r.gold) + '</div></div>';
+              names[1] + ': ' + chip(r.got[1], r.gold) + '<br>' + names[2] + ': ' + chip(r.got[2], r.gold) + '</div></div>';
           });
-          if (!differ.length) html += '<p class="note">Thinking gave the same tags on every page.</p>';
+          if (!differ.length) html += '<p class="note">The two AI rows gave the same tags on every page.</p>';
           $('atg-count').textContent = 'compared on ' + d.n;
           $('atg-list').innerHTML = html;
         })

@@ -156,6 +156,21 @@ test('autotag: the eval compares the same pages with and without thinking', asyn
   assert.ok(d.results.every(x => x.got.length === 3));
 });
 
+test('autotag: the eval compares the model in use with a typed one', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(1,'user-1','',1)").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1', isAdmin: true });
+  f.insert('characters', 'a', { slug: 'a', name: 'A', team: 'townsfolk', art: 'art/x.png', ability: 'Each night*, choose a player: they are safe from the Demon.', tags: 'Protection' });
+  f.db.prepare("UPDATE characters SET tags='Protection' WHERE slug='a'").run();
+  const asked = [];
+  f.env.AI = { async run(model) { asked.push(model); return { response: '{"tags":["Protection"]}' }; } };
+  const r = await f.request('/api/admin/autotag-eval', post(1, { n: 1, compare: true, model: '@cf/meta/other' }));
+  const d = await r.json();
+  assert.deepEqual(d.runs.map(x => x.model), ['phrases', '@cf/google/gemma-4-26b-a4b-it', '@cf/meta/other']);
+  assert.deepEqual(asked, ['@cf/google/gemma-4-26b-a4b-it', '@cf/meta/other']);
+});
+
 test('autotag: an ability with nothing to choose, wake for or learn is Passive', () => {
   assert.ok(cueTags({ ability: 'If you die, 1 alive neighbor might die tonight.' }).sure.includes('Passive'));
   assert.ok(!cueTags({ ability: 'Players who are mad that they want to live or die (you start by choosing which) might be executed.' }).sure.includes('Passive'));

@@ -3438,10 +3438,11 @@ word rules being right where the stored tags are not.
 suggestions") scores it against random pages people already tagged (`model:
 'phrases'` scores the wording cues alone, costing nothing), or shows
 what it would say about untagged ones, writing nothing. `compare: true`
-(the card's "Compare thinking" button) runs the SAME pages three ways —
-`phrases`, the model, the model with `:think` — and returns each run's
+(the card's "Compare" button) runs the SAME pages three ways —
+`phrases`, the model in use, and the model typed in the box (or, with the
+box empty, the model in use with `:think`) — and returns each run's
 precision, recall and seconds per page, plus every page's three answers, so
-the cost of switching thinking off is measured on one sample rather than two
+a change of model or of thinking is measured on one sample rather than two
 random ones. Read its numbers with
 care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
 pages with `[setup]` text lacked Setup), so an "extra" tag is often right.

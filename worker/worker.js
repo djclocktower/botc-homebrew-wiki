@@ -16172,13 +16172,14 @@ const app = {
           return { model: m, n: results.length, precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)),
             seconds: Math.round(ms / Math.max(1, results.length) / 100) / 10, errors: results.filter(r => r.error).length, perTag, results };
         };
-        // compare: the SAME pages through the wording rules alone, the model,
-        // and the model allowed to think first, so the difference is the
-        // method and not which pages the shuffle happened to pick.
+        // compare: the SAME pages through the wording rules alone, the
+        // current model, and either the model named in the box or (none
+        // named) the current model allowed to think first, so the difference
+        // is the method and not which pages the shuffle happened to pick.
         if (b.compare) {
-          const base = model.replace(/:think$/, '');
+          const other = b.model ? model : AUTOTAG_MODEL + ':think';
           const runs = [];
-          for (const m of ['phrases', base, base + ':think']) runs.push(await score(m));
+          for (const m of ['phrases', AUTOTAG_MODEL, other]) runs.push(await score(m));
           return jsonResponse({ ok: true, compare: true, n: sample.length,
             runs: runs.map(r => ({ model: r.model, precision: r.precision, recall: r.recall, seconds: r.seconds, errors: r.errors })),
             results: sample.map(r => ({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
