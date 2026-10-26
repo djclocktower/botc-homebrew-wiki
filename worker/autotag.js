@@ -275,7 +275,9 @@ export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL, meter)
       // Thinking off: it is most of the wait, for an answer that is one short
       // list. "model:think" turns it back on, so the scorer can compare.
       const think = /:think$/.test(model), name = model.replace(/:think$/, '');
-      const opts = { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: aiMaxTokens(model) };
+      // temperature 0: the same character gets the same answer every press,
+      // so a change in the dashboard's scores is a real change, not chance.
+      const opts = { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: aiMaxTokens(model), temperature: 0 };
       if (/gemma-4/.test(name)) opts.chat_template_kwargs = { enable_thinking: think };
       let out;
       try { out = await env.AI.run(name, opts); }

@@ -68,7 +68,8 @@
     }).catch(function () {});
     ask(false).then(function (d) {
       return quick.then(function () {
-        if (d.error) { note.textContent = said() || d.error; return; }
+        // The wording-rule tags may already be ticked: say the AI part did not run.
+        if (d.error) { note.textContent = said() ? said() + ' Only the wording rules were used this time. ' + d.error : d.error; return; }
         tick(d.tags);
         note.textContent = (said() || ((d.tags || []).length ? 'Nothing to add: every suggestion is already ticked.' : 'No suggestions for this one.')) +
           (d.capped ? ' (The AI has reached its daily limit, so only the wording rules were used.)' : '');

@@ -103,6 +103,7 @@ test('autotag: /api/suggest-tags needs a login and an ability, and answers from 
   // Thinking is off and the answer short: that is most of the wait.
   assert.deepEqual(seen.chat_template_kwargs, { enable_thinking: false });
   assert.equal(seen.max_tokens, 300);
+  assert.equal(seen.temperature, 0, "the same character gets the same answer every press");
 
   // quick: the wording rules alone, without asking the model.
   seen = null;
