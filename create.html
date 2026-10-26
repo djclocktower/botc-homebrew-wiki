@@ -1444,6 +1444,9 @@
             entry.almanacAlt.art   = 'art/' + slug + '-alm.png';
             entry.almanacAlt.image = ART_BASE + slug + '-alm.png';
           }
+          // What Suggest tags offered, so the Worker can record what was kept.
+          var tagLog = window.tagSuggestLog && window.tagSuggestLog();
+          if (tagLog) entry._tagSuggest = tagLog;
           return fetch('/api/character', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1566,6 +1569,7 @@
     });
   </script>
 
+  <script src="assets/tag-suggest.js"></script>
   <script src="assets/rules.js"></script>
   <script src="assets/rules-gate.js"></script>
   <script src="assets/site.js"></script>

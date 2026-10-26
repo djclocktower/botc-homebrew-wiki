@@ -356,6 +356,12 @@
       border: 1px solid rgba(236,225,200,.3); border-radius: 0;
     }
   }
+.atg-r { color: #2f6b3a; font-weight: 700; } .atg-x { color: #234f74; } .atg-m { color: #8a2f2f; }
+.tck-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: .5em 0; }
+.tck-btn { font: inherit; font-size: .85rem; padding: .35em .7em; border-radius: 999px; border: 1px solid #b09070; background: #f7f0e1; color: #3a2a1a; cursor: pointer; }
+.tck-btn.on { background: var(--maroon, #6b1f1f); color: #f3ead4; border-color: var(--maroon, #6b1f1f); }
+.tck-btn .tck-src { font-size: .7rem; opacity: .8; margin-left: .35em; }
+.atg-cmp { border-collapse: collapse; margin: .4em 0; } .atg-cmp th, .atg-cmp td { padding: .25em .7em; text-align: left; border-bottom: 1px solid rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
@@ -1001,6 +1007,32 @@
         </div>
         <div id="f2a-list"></div>
         <div class="toast" id="f2a-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Tag suggestions <span class="count-pill" id="atg-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          How good is the editors' "Suggest tags" button? <strong>Score</strong> runs it on random pages people already tagged and compares; <strong>Try untagged</strong> shows what it would say about pages with no tags. Nothing is saved either way. The existing tags are not complete, so an "extra" tag is sometimes the suggestion being right.
+        </p>
+        <div class="act-filters">
+          <input type="number" id="atg-n" value="20" min="1" max="50" style="width:5em" aria-label="How many pages">
+          <input type="text" id="atg-model" placeholder="model to try (optional; phrases = wording only; end with :think to let it reason first)" style="flex:1;min-width:10em">
+          <button type="button" class="small-btn" id="atg-score">Score</button>
+          <button type="button" class="small-btn alt" id="atg-untagged">Try untagged</button>
+          <button type="button" class="small-btn alt" id="atg-compare">Compare</button>
+          <button type="button" class="small-btn alt" id="atg-feedback">What writers did</button>
+          <label class="note" style="display:flex;align-items:center;gap:.35em"><input type="checkbox" id="atg-checked"> Test on the pages checked by hand</label>
+        </div>
+        <div id="atg-list"></div>
+      </section>
+      <section class="panel">
+        <h3>Check tags <span class="count-pill" id="tck-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          One character at a time: the tags the AI suggests and the tags on the page are ticked. Untick the wrong ones, tick any it missed, then <strong>Save</strong>. The page itself is not changed. What you save becomes the answer key: the test "Test on the pages checked by hand" runs on, and the examples the AI is shown first.
+        </p>
+        <div class="act-filters">
+          <button type="button" class="small-btn" id="tck-next">Next character</button>
+        </div>
+        <div id="tck-box"></div>
       </section>
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
@@ -2123,6 +2155,159 @@
         loadActivity(true);
       });
     });
+
+    /* ---- tag suggestions: scored against existing tags ---- */
+    function runAutotag(untagged) {
+      var btns = [$('atg-score'), $('atg-untagged')];
+      btns.forEach(function(b){ b.disabled = true; });
+      $('atg-list').innerHTML = '<p class="note">Asking the model about each page… this takes a little while.</p>';
+      fetch('/api/admin/autotag-eval', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n: Number($('atg-n').value) || 20, model: $('atg-model').value.trim() || undefined, untagged: untagged, checked: $('atg-checked').checked || undefined }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+          $('atg-count').textContent = untagged ? d.n + ' tried' : d.precision + '% right, ' + d.recall + '% found';
+          var html = '<p class="note">' + esc(d.model) + (untagged ? '' : ': of the tags it suggested, <strong>' + d.precision +
+            '%</strong> were on the page; of the tags on the pages, it found <strong>' + d.recall + '%</strong>.') + '</p>';
+          if (!untagged) {
+            var worst = Object.keys(d.perTag).map(function(t){ var x = d.perTag[t]; return [t, x.fp + x.fn, x]; })
+              .sort(function(a, b){ return b[1] - a[1]; }).slice(0, 8);
+            if (d.oldTags) html += '<p class="note">For comparison, the tags those pages already had: <strong>' + d.oldTags.precision +
+              '%</strong> right, <strong>' + d.oldTags.recall + '%</strong> found.</p>';
+            if (worst.length) html += '<p class="note">Most often wrong: ' + worst.map(function(w){
+              return esc(w[0]) + ' (' + w[2].fp + ' extra, ' + w[2].fn + ' missed)'; }).join(', ') + '</p>';
+          }
+          d.results.forEach(function(r){
+            var chip = function(list, cls){ return list.map(function(t){ return '<span class="' + cls + '">' + esc(t) + '</span>'; }).join(', '); };
+            html += '<div class="row"><div><a href="/edit?c=' + encodeURIComponent(r.slug) + '" target="_blank"><strong>' + esc(r.name) +
+              '</strong></a> <span class="note">' + esc(r.team) + '</span><br><span class="note">' + esc(String(r.ability).slice(0, 200)) + '</span><br>' +
+              (r.error ? '<span class="note">Failed: ' + esc(r.error) + '</span>' :
+               untagged ? 'Would suggest: ' + (chip(r.extra, 'atg-x') || '<em>nothing</em>') :
+               (r.right.length ? 'Right: ' + chip(r.right, 'atg-r') + '<br>' : '') +
+               (r.extra.length ? 'Extra: ' + chip(r.extra, 'atg-x') + '<br>' : '') +
+               (r.missed.length ? 'Missed: ' + chip(r.missed, 'atg-m') : '')) + '</div></div>';
+          });
+          $('atg-list').innerHTML = html;
+        })
+        .catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try fewer pages.</p>'; })
+        .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
+    }
+    // The same pages three ways: wording rules alone, the current AI, and the
+    // model named in the box (or, none named, the current AI thinking first).
+    function compareAutotag() {
+      var btns = [$('atg-score'), $('atg-untagged'), $('atg-compare')];
+      btns.forEach(function(b){ b.disabled = true; });
+      $('atg-list').innerHTML = '<p class="note">Running the same pages three ways… thinking is slow, so this can take a few minutes.</p>';
+      fetch('/api/admin/autotag-eval', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n: Number($('atg-n').value) || 20, model: $('atg-model').value.trim() || undefined, compare: true, checked: $('atg-checked').checked || undefined }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+          var names = d.runs.map(function(r, i){ return i === 0 ? 'Wording rules only' : i === 1 ? 'AI now in use' :
+            /:think$/.test(r.model) ? 'AI now in use, thinking first' : esc(r.model.replace(/^@cf\//, '')); });
+          var html = '<table class="atg-cmp"><tr><th></th><th>Right</th><th>Found</th><th>Seconds each</th></tr>' +
+            d.runs.map(function(r, i){ return '<tr><th>' + names[i] + '</th><td>' + r.precision + '%</td><td>' + r.recall + '%</td><td>' +
+              r.seconds + (r.errors ? ' <span class="note">(' + r.errors + ' failed)</span>' : '') + '</td></tr>'; }).join('') + '</table>' +
+            '<p class="note">Right: of the tags suggested, how many were on the page. Found: of the tags on the page, how many were suggested. ' +
+            d.n + ' pages, the same ones for all three. Below, only the pages where the two AI rows disagree.</p>';
+          var chip = function(list, gold){ return list.length ? list.map(function(t){
+            return '<span class="' + (gold.indexOf(t) !== -1 ? 'atg-r' : 'atg-x') + '">' + esc(t) + '</span>'; }).join(', ') : '<em>nothing</em>'; };
+          var differ = d.results.filter(function(r){ return r.got[1].slice().sort().join() !== r.got[2].slice().sort().join(); });
+          differ.forEach(function(r){
+            html += '<div class="row"><div><a href="/edit?c=' + encodeURIComponent(r.slug) + '" target="_blank"><strong>' + esc(r.name) +
+              '</strong></a> <span class="note">' + esc(r.team) + '</span><br><span class="note">' + esc(String(r.ability).slice(0, 200)) + '</span><br>' +
+              'On the page: ' + (r.gold.map(esc).join(', ') || '<em>nothing</em>') + '<br>' +
+              names[1] + ': ' + chip(r.got[1], r.gold) + '<br>' + names[2] + ': ' + chip(r.got[2], r.gold) + '</div></div>';
+          });
+          if (!differ.length) html += '<p class="note">The two AI rows gave the same tags on every page.</p>';
+          $('atg-count').textContent = 'compared on ' + d.n;
+          $('atg-list').innerHTML = html;
+        })
+        .catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try fewer pages.</p>'; })
+        .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
+    }
+    $('atg-compare').addEventListener('click', compareAutotag);
+    // Every save that followed a "Suggest tags" press: per tag, what the
+    // button added and the writer kept or took off, and what they added
+    // that it never offered.
+    $('atg-feedback').addEventListener('click', function(){
+      var b = $('atg-feedback'); b.disabled = true;
+      $('atg-list').innerHTML = '<p class="note">Loading…</p>';
+      fetch('/api/admin/tag-check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'feedback' }) }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+        var tags = Object.keys(d.perTag).map(function(t){ var x = d.perTag[t]; x.tag = t; return x; })
+          .sort(function(a, b){ return (b.removed + b.addedByHand) - (a.removed + a.addedByHand); });
+        $('atg-count').textContent = d.saves + ' saves';
+        $('atg-list').innerHTML = !d.saves ? '<p class="note">Nobody has saved a page after pressing Suggest tags yet.</p>' :
+          '<p class="note">' + d.saves + ' saves after a Suggest tags press. Kept / Removed: tags the button added. Added by hand: tags the writer picked that it never offered. Worst first.</p>' +
+          '<table class="atg-cmp"><tr><th>Tag</th><th>Kept</th><th>Removed</th><th>Added by hand</th></tr>' +
+          tags.map(function(x){ return '<tr><th>' + esc(x.tag) + '</th><td>' + x.kept + (x.offered ? ' <span class="note">(' + Math.round(100 * x.kept / x.offered) + '%)</span>' : '') +
+            '</td><td>' + x.removed + '</td><td>' + x.addedByHand + '</td></tr>'; }).join('') + '</table>';
+      }).catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try again.</p>'; })
+        .then(function(){ b.disabled = false; });
+    });
+
+    /* ---- Check tags: the answer key, one character at a time ---- */
+    var tck = null, tckLast = null;
+    function tckPost(body) {
+      return fetch('/api/admin/tag-check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) }).then(function(r){ return r.json(); });
+    }
+    function tckCount(n) { $('tck-count').textContent = n + ' checked'; }
+    function tckNext(skip) {
+      $('tck-next').disabled = true;
+      $('tck-box').innerHTML = '<p class="note">Asking the AI about a random character…</p>';
+      tckPost({ action: 'next', skip: skip || undefined }).then(function(d){
+        if (d.error && !d.slug) { $('tck-box').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+        tckCount(d.checked);
+        if (d.done) { tck = null; $('tck-box').innerHTML = '<p class="note">Every character has been checked.</p>'; return; }
+        tck = d;
+        tck.on = {};
+        d.suggested.concat(d.stored).forEach(function(t){ tck.on[t] = true; });
+        tckDraw();
+      }).catch(function(){ $('tck-box').innerHTML = '<p class="note">Failed. Try again.</p>'; })
+        .then(function(){ $('tck-next').disabled = false; });
+    }
+    function tckChip(t) {
+      var src = [tck.suggested.indexOf(t) !== -1 ? 'AI' : '', tck.stored.indexOf(t) !== -1 ? 'page' : ''].filter(Boolean).join(' + ');
+      return '<button type="button" class="tck-btn' + (tck.on[t] ? ' on' : '') + '" data-tag="' + esc(t) + '" aria-pressed="' + !!tck.on[t] + '">' +
+        esc(t) + (src ? '<span class="tck-src">' + src + '</span>' : '') + '</button>';
+    }
+    function tckDraw() {
+      var d = tck, shown = [];
+      d.suggested.concat(d.stored).forEach(function(t){ if (shown.indexOf(t) === -1) shown.push(t); });
+      var rest = (window.KNOWN_TAGS || []).filter(function(t){ return shown.indexOf(t) === -1; });
+      $('tck-box').innerHTML = '<div class="row"><div><a href="/' + esc(d.page || ('c/' + d.slug)) + '" target="_blank"><strong>' + esc(d.name) +
+        '</strong></a> <span class="note">' + esc(d.team) + '</span><p>' + esc(d.ability) + '</p>' +
+        (d.error ? '<p class="note">The AI did not answer (' + esc(d.error) + '), so only the wording rules are shown.</p>' : '') +
+        '<div class="tck-tags">' + (shown.map(tckChip).join('') || '<span class="note">No tags suggested and none on the page.</span>') + '</div>' +
+        '<p class="note" style="margin:.8em 0 0">Every other tag (tap to add one it missed):</p><div class="tck-tags">' + rest.map(tckChip).join('') + '</div>' +
+        '<div class="act-filters"><button type="button" class="small-btn" id="tck-save">Save and next</button>' +
+        '<button type="button" class="small-btn alt" id="tck-skip">Skip</button>' +
+        (tckLast ? '<button type="button" class="small-btn alt" id="tck-undo">Undo last save (' + esc(tckLast.name) + ')</button>' : '') +
+        '</div></div></div>';
+    }
+    $('tck-box').addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b || !tck) return;
+      if (b.dataset.tag) { var t = b.dataset.tag; tck.on[t] = !tck.on[t]; b.classList.toggle('on', tck.on[t]); b.setAttribute('aria-pressed', tck.on[t]); return; }
+      if (b.id === 'tck-skip') return tckNext(tck.slug);
+      if (b.id === 'tck-undo') {
+        b.disabled = true;
+        return tckPost({ action: 'undo', slug: tckLast.slug }).then(function(d){ tckCount(d.checked); tckLast = null; tckDraw(); });
+      }
+      if (b.id === 'tck-save') {
+        b.disabled = true;
+        var tags = Object.keys(tck.on).filter(function(t){ return tck.on[t]; });
+        tckPost({ action: 'save', slug: tck.slug, tags: tags, stored: tck.stored, suggested: tck.suggested }).then(function(d){
+          if (d.error) { b.disabled = false; alert(d.error); return; }
+          tckLast = { slug: tck.slug, name: tck.name }; tckCount(d.checked); tckNext();
+        }).catch(function(){ b.disabled = false; alert('Could not save. Try again.'); });
+      }
+    });
+    $('tck-next').addEventListener('click', function(){ tckNext(); });
+    $('atg-score').addEventListener('click', function(){ runAutotag(false); });
+    $('atg-untagged').addEventListener('click', function(){ runAutotag(true); });
 
     /* ---- jinxes pointing at nothing, and pairs written twice ---- */
     $('jxh-scan').addEventListener('click', function(){

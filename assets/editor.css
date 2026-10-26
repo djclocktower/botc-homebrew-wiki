@@ -108,6 +108,27 @@
 }
 .tag-pick-btn:hover { background: #ece3d2; border-color: #b09070; }
 .tag-pick-btn.selected { background: var(--maroon); color: #f3ead4; border-color: var(--maroon); }
+/* Ticked by "Suggest tags" (tag-suggest.js) and not touched since: a dashed
+   ring so the writer can see what to check before saving. */
+.tag-pick-btn.suggested { outline: 2px dashed #234f74; outline-offset: 2px; }
+/* "Suggest tags": a strip joined to the top of the tag box, the button in
+   the chips' own type with the maroon of a picked tag. */
+.tag-suggest {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0;
+  padding: 7px 10px; background: #f3ead4; border: 1px solid #d9cba6; border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+.tag-suggest + .tag-picker, html.create-redesign .tag-suggest + .tag-picker { border-top-left-radius: 0; border-top-right-radius: 0; }
+.tag-suggest-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .76rem; letter-spacing: .03em;
+  padding: 5px 11px; border: 1px solid var(--maroon); border-radius: 5px;
+  background: #fffdf8; color: var(--maroon); cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tag-suggest-btn:hover:not(:disabled) { background: var(--maroon); color: #f3ead4; }
+.tag-suggest-btn:disabled { opacity: .6; cursor: default; }
+.tag-suggest-note { font-family: 'Libre Franklin',sans-serif; font-size: .78rem; font-style: italic; color: #6b5640; }
 
 /* ─── The formatting callout in the two character editors ────────
    create.html and edit.html are the same form, so this is written once here

@@ -77,3 +77,7 @@ bucket_name = "botc-wiki-art"
 # 06:00 UTC daily.
 [triggers]
 crons = ["0 6 * * *"]
+
+# ---- Workers AI (tag suggestions, worker/autotag.js) ----
+[ai]
+binding = "AI"

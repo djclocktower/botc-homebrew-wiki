@@ -198,6 +198,14 @@ worker/list-pages.js   The first screen of /all-characters, /team and /tag,
                        char-filters.js (see the architecture notes). Returns
                        null for anything it cannot draw exactly; the route
                        then serves the static page.
+worker/autotag.js      Tag suggestions through Workers AI (env.AI), and the
+                       admins' answer key (tag_checks). See "Tag suggestions"
+                       below.
+worker/official-tags.js  The official characters with tags, for the tag
+                       suggester's examples. Generated, never hand-edited:
+                       `NODE_USE_ENV_PROXY=1 node migration/make-official-tags.mjs`
+                       (reads the Chinese official wiki's ability categories
+                       and assets/roles.json; its header says how they map).
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
@@ -1266,6 +1274,9 @@ collection they belong to, author, owner_id, JSON `data`, status — see the
 section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
 a renamed page used to live at — for characters `to_slug` is the page's
 **identity**, never another address, see "Character identity vs address" below),
+`tag_checks` (the tag suggester's answer key, one row per character an
+admin checked by hand) and `tag_feedback` (what writers kept, removed and
+added after pressing Suggest tags) — see "Tag suggestions",
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
@@ -3362,6 +3373,170 @@ set's custom pages, which were meant for that set's own mechanics.
   set's Pages section and the set's sharing choice stops reaching it. Logs
   `to-article` (in `FEED_CHANGING_ACTIONS`). There is no way back, and an
   owner still cannot move a page: the parent is frozen for everyone else.
+
+## Tag suggestions (Workers AI)
+
+The editors' **Suggest tags** button (`assets/tag-suggest.js`, loaded by
+create.html and edit.html) asks **`POST /api/suggest-tags`**, which hands
+`worker/autotag.js` the name, team, ability, lede and summary. It builds a
+prompt from tags.js's list and descriptions plus the 8 tagged characters
+whose abilities share the most rare words with this one: published wiki
+pages (read off the cached grid feed, no query) and, for up to 3 of the 8,
+official characters (`worker/official-tags.js`, tagged from the official
+Chinese wiki's ability categories, which the owner ranks as the most reliable
+source). The 44 Chinese-edition characters this wiki has pages for (Temple
+Fair and The Storm Is Coming, under Festival of Lanterns) count as official
+examples too: `OFFICIAL_WIKI_TAGS` adds their category tags to the page's own
+when one is shown, and writes nothing to the page. Every example is shown with its own tags plus the sure cues it
+trips (`exampleTags()`), so the examples follow the owner's wording rulings
+where their taggers missed one. It runs `AUTOTAG_MODEL` through the `[ai]`
+binding in wrangler.toml, and filters the answer back to the tag list. The
+button ticks what is new and outlines it (`.tag-pick-btn.suggested`); it never
+unticks and never saves, so a person always decides. **Nothing a writer
+sees says "AI"** (the owner's call, as for Icon Forge): the button is
+"Suggest tags from the ability", a strip joined to the top of the tag box
+(`.tag-suggest` in editor.css), and when only the wording cues ran the note
+says only the surest tags were ticked. The admin dashboard still says AI.
+`Joke` is never suggested. Login required, 40 an hour per account (`autotag` bucket),
+admins exempt. About 25 neurons a call. **The model's thinking is off**
+(`chat_template_kwargs: {enable_thinking: false}`, 300 tokens): it was most
+of the wait, for an answer that is one short list; a model name ending in
+`:think` turns it back on, which is how the dashboard scorer compares the
+two. `temperature: 0`, so the same character gets the same answer on every
+press and a change in the scores is a real change; the answer still moves
+as the examples (and the answer key) change. The button sends a second request beside the real one, `quick: true`,
+which answers with the sure cues alone (no model, no feed read, no rate
+limit), so those tick at once and the model's tags follow.
+
+**Wording cues** (`CUES` in autotag.js) are the other half: phrases that
+mean a tag because of how the game is written (`[+1 Outsider]` is Outsider
+Modification, `(once)` is Once Per Game, "gain ... ability" is Ability Gain),
+each measured against the tagged pages. `sure` cues are added whatever the
+model says, and are the whole answer when the model is off or fails, so the
+button still works without the binding. `hint` cues go into the prompt with
+the words they matched, for the model to keep or drop. Single-Kill stops
+being sure when a Multi-Kill phrase is present, and "even if you die" is Even
+If Dead, never On Death. On the tagged pages most sure-cue hits that
+disagree with the stored tags are tags the taggers missed; 1,194 of the 1,475
+untagged pages get at least one tag from the sure cues alone.
+
+**The tag definitions are the owner's** (settled 2026-10, tag by tag): the
+descriptions in tags.js say what each tag means on this wiki, and the cues
+follow them. The rulings that decide cues: a tag the owner called word-based
+(Safe, Execution, Nominations, Votes, Win/Loss Condition, Death, Public,
+Reverse, "false" for False Info, "true info", "start knowing") is a sure cue on the
+word alone; Information is only this character's own player learning, and
+anybody else learning about it is Ping, which is never public; Single-Kill
+and Multi-Kill are any team and include once-per-game kills, but never "a
+player might die"; Timer is only a win or loss tied to a set day or night;
+Safety Net is only about the game's win or loss, never a personal backup;
+On Death covers any death the ability cares about; Quiet is an evil character
+nobody notices (Poisoner) and Hidden an Outsider that hides or does not know
+it is one (Sweetheart, Drunk); Passive is no choice and no waking, an
+ability that fires by itself included, so it is a sure cue on the absence of
+any choose / pick / guess / visit / learn / wake / each night / once wording.
+Word rules the owner approved from a data pass (2026-10): Magic on making
+a wish (never "as you wish"), Think on "thinks" / "think you're" (but "the
+Storyteller thinks / believes" is Subjective Info, with "advice"),
+Resurrection on rise / reborn / regurgitated / "is raised" (never a raised
+hand), Loud on "all players learn / know" and "announce", Nonconformist on
+"unlisted", Setup on the word "setup", Votes on "majority", Protection on
+"protect" only (not "safe from"), Demonsbane on "if the Demon kills you" and
+"if you die at night" (not "even if you die at night"), Ping on "a good /
+evil player learns / knows", Multi-Kill on "choose 2 players: they die",
+Character Change on "becomes a/an …" with any subject. A second pass added:
+Duplication on a "[+0 to +2 Legionary]" bracket (never a team) and "same
+character", Execution Survival on executed-but-lives wording, Social on
+speak / talk / whisper / silence / hand signals / sing / wink / clap / hug /
+point at, Multi-Kill on "2 players die", "both die", "all die", Binary Info
+on "learn their alignment", Safety Net on "a Minion becomes the Demon" and
+"if the Demon dies", Execution Failure on "executions fail", Day Deaths on
+"dies at dusk / immediately", Death Modification on "registers as alive /
+dead", Subjective Info on clue / hint / "learn something", Confirmation on
+"learn you are the …", Hidden (Outsiders) on "you think / don't know you
+are", Nonconformist on breaking the rules or a new / extra rule, and Ping on
+Minions / the Demon / good or evil players learning or knowing (never "all
+players", which is Loud). Quiet on "secretly" was turned down.
+Change a description and its cue together.
+
+**The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by
+the owner (2026-10, 20 pages each): the wording cues alone 60% right / 44%
+found; Gemma 56% / 70% in under a second; Gemma thinking 60% / 45% at 30 s a
+page (it ran out of room before answering, leaving only the cues); Llama 3.3
+70B 57% / 63%, at several times the price. Many "extras" are the owner's
+word rules being right where the stored tags are not.
+
+**`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
+suggestions") scores it against random pages people already tagged (`model:
+'phrases'` scores the wording cues alone, costing nothing), or shows
+what it would say about untagged ones, writing nothing. `compare: true`
+(the card's "Compare" button) runs the SAME pages three ways —
+`phrases`, the model in use, and the model typed in the box (or, with the
+box empty, the model in use with `:think`) — and returns each run's
+precision, recall and seconds per page, plus every page's three answers, so
+a change of model or of thinking is measured on one sample rather than two
+random ones. `checked: true` (the "Test on the pages checked by hand" tick) samples
+from the answer key below instead, scores against it, and also reports how
+the tags those pages already carried did against the same answers
+(`oldTags`). Read its numbers with
+care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
+pages with `[setup]` text lacked Setup), so an "extra" tag is often right.
+A bulk "tag every untagged page" run is deliberately not built yet.
+
+**The answer key: "Check tags"** (dashboard card, `POST /api/admin/tag-check`
+`{action: 'next' | 'save' | 'undo'}`). `next` picks a random published
+character nobody has checked and runs the suggester on it; the card ticks
+the union of what the AI said and what the page has, the admin unticks the
+wrong ones and adds what was missed, and `save` stores the result in the
+lazily created `tag_checks` table (`slug` PK, `tags`, plus the page's
+`stored` tags and the `suggested` ones at that moment). **Nothing is written
+to the page.** Checked rows then do two jobs: they are the test the scorer
+can run on (above), and `applyChecks()` swaps their tags in for the page's
+own wherever the suggester picks examples, marked `checked` so they score
+1.5x in `pickExamples()`, are shown as "(team, checked)" and are given
+exactly the checked tags, without the sure cues on top (the admin already
+overruled those). `loadTagChecks()` memoises the table for a minute per
+isolate; a save clears it in its own isolate.
+
+**A hard daily ceiling on the AI: $25 a UTC day (`AI_DAILY_DOLLARS`, the
+owner's number).** The Workers Paid plan has no spending cap: past the
+10,000 free neurons a day it simply bills, so the wiki caps itself. Every
+call's real token use (`out.usage`, or the most it could have been when the
+answer carries none) is priced from `AI_PRICES` in autotag.js, Cloudflare's
+published $/M-token rates, and added to a `rate_limits` counter (key
+`ai:spend:YYYY-MM-DD`, millionths of a dollar). A model missing from
+`AI_PRICES` is charged as an expensive one, so add a model's row before
+switching to it. Once the day's spend reaches the ceiling,
+`suggestWithinBudget()` answers with the wording rules alone (`capped:
+true`, and the button says so), and a dashboard Score or Compare whose
+worst case (`aiCallCeiling()`) would not fit what is left is refused up
+front with a 429. Admins are not exempt. It FAILS CLOSED, unlike the other
+limiters: a counter that cannot be read refuses the AI.
+
+**What writers did with it: `tag_feedback`.** `tag-suggest.js` keeps what
+the button offered and what was ticked before the first press, and both
+editors post it with the save as `_tagSuggest` (read once, then cleared;
+edit.html also drops it from its baseline so a second save cannot carry it
+again). `/api/character` takes it off the page before anything is stored
+and, after the save, writes one row to the lazily created `tag_feedback`
+table (`slug`, `user_id`, `suggested`, `before`, `saved`). The dashboard's
+"What writers did" button (`/api/admin/tag-check {action: 'feedback'}`)
+counts per tag what the button added and the writer kept or removed, and
+what they added that it never offered. A press nobody saves after leaves no
+row.
+
+**Training on existing tags was measured and not built (2026-10).** A
+per-tag classifier trained on the wiki's tagged pages, scored on pages it
+had not seen, lifted the share of existing tags found from 50% to 62% with
+the cues, while the share of its picks matching an existing tag fell from
+68% to 60%. Adding Lady Mist's Constellation spreadsheet (795 characters,
+its own tag names) or the official tags moved neither number: the sources
+agree on only about half the tags of the characters they share, so each
+teaches its own taggers' habits. The fix is an answer key in the owner's own
+definitions first. Scored against the official tags, the sure cues are right
+78% of the time and find 63% of them (Death aside, which the cues give to
+any death by the owner's ruling and the official category reserves for
+extra deaths).
 
 ## System text (`/text-editor`)
 

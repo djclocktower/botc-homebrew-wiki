@@ -152,6 +152,13 @@
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
  *                                (or admin) just one of the two characters
+ *   POST /api/suggest-tags    -> tag suggestions for the editor's tag picker
+ *                                (Workers AI, worker/autotag.js); writes nothing
+ *   POST /api/admin/autotag-eval -> admin: score those suggestions against
+ *                                pages people already tagged, or against the
+ *                                pages an admin checked (checked:true)
+ *   POST /api/admin/tag-check -> admin: next character to check by hand, or
+ *                                save/undo one answer (the tag answer key)
  *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
  *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
@@ -370,6 +377,8 @@ import { homeData } from './home-data.js';
 import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
+import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags, applyChecks, aiPrice, aiMaxTokens } from './autotag.js';
+import Tags from '../assets/tags.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
@@ -2259,6 +2268,117 @@ async function ensureFavoritesTable(env) {
   _favoritesReady = true;
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* The tag answer key: one row per character an admin checked on the
+   dashboard ("Check tags"). `tags` is what the admin confirmed; `stored` and
+   `suggested` are what the page and the suggester said at the time, kept so
+   both can be scored against the answer later. */
+let _tagChecksReady = false;
+async function ensureTagChecksTable(env) {
+  if (_tagChecksReady) return;
+  if (await schemaHas(env, { tables: { tag_checks: [] } })) { _tagChecksReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS tag_checks (
+       slug      TEXT PRIMARY KEY,
+       tags      TEXT NOT NULL,
+       stored    TEXT NOT NULL DEFAULT '[]',
+       suggested TEXT NOT NULL DEFAULT '[]',
+       user_id   INTEGER,
+       ts        TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _tagChecksReady = true;
+}
+// ponytail: a minute's memo per isolate; a save clears it here, other
+// isolates see it within the minute. Fine for examples, which are a nudge.
+let _tagChecks = null, _tagChecksAt = 0;
+async function loadTagChecks(env, fresh) {
+  if (!fresh && _tagChecks && Date.now() - _tagChecksAt < 60000) return _tagChecks;
+  let rows = [];
+  try { rows = (await env.DB.prepare('SELECT slug, tags, stored, suggested FROM tag_checks').all()).results || []; }
+  catch (e) { if (!isMissingSchema(e)) throw e; }
+  const parse = v => { try { const a = JSON.parse(v); return Array.isArray(a) ? a.map(String) : []; } catch { return []; } };
+  _tagChecks = new Map(rows.map(r => [r.slug, parse(r.tags)]));
+  _tagChecks.rows = rows.map(r => ({ slug: r.slug, tags: parse(r.tags), stored: parse(r.stored), suggested: parse(r.suggested) }));
+  _tagChecksAt = Date.now();
+  return _tagChecks;
+}
+/* A hard daily ceiling on Workers AI spending: $25 a UTC day (the owner's
+   number), the same day Cloudflare's allowance resets on. Workers Paid has
+   no cap of its own: past the free 10,000 neurons it simply bills. Every
+   call's real token use is priced from AI_PRICES (autotag.js) and added to a
+   counter in rate_limits, in millionths of a dollar. Once the day's spend
+   reaches the ceiling, the suggester gives the wording rules alone. If the
+   counter cannot be read the AI is refused, never allowed: this one guards
+   money, so it fails closed. A burst of calls already in flight when the
+   ceiling is reached can pass it by a few of them, a fraction of a cent. */
+const AI_DAILY_DOLLARS = 25;
+const AI_MICRO = 1e6;
+const aiDayKey = () => 'ai:spend:' + new Date().toISOString().slice(0, 10);
+async function aiSpentToday(env) {
+  const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=?').bind(aiDayKey()).first();
+  return row ? (Number(row.n) || 0) / AI_MICRO : 0;
+}
+async function aiCanSpend(env) {
+  try { await ensureRateTable(env); return (await aiSpentToday(env)) < AI_DAILY_DOLLARS; }
+  catch (e) { console.error('[ai-budget] counter unavailable, refusing the AI:', (e && e.message) || e); return false; }
+}
+async function aiCharge(env, model, usage) {
+  const [pin, pout] = aiPrice(model);
+  const dollars = ((Number(usage.prompt_tokens) || 0) * pin + (Number(usage.completion_tokens) || 0) * pout) / 1e6;
+  const micro = Math.max(1, Math.ceil(dollars * AI_MICRO));
+  try {
+    await env.DB.prepare(
+      `INSERT INTO rate_limits (key, n, expires) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET n = rate_limits.n + excluded.n`
+    ).bind(aiDayKey(), micro, Math.floor(Date.now() / 1000) + 2 * 86400).run();
+  } catch (e) { console.error('[ai-budget] could not record spend:', (e && e.message) || e); }
+}
+// What one call could cost at most: a 4,000-token prompt and the full reply.
+const aiCallCeiling = model => model === 'phrases' ? 0 : (4000 * aiPrice(model)[0] + aiMaxTokens(model) * aiPrice(model)[1]) / 1e6;
+// suggestTags inside the ceiling: over it, the wording rules alone.
+async function suggestWithinBudget(env, char, rows, model = AUTOTAG_MODEL) {
+  if (model === 'phrases' || !(await aiCanSpend(env))) {
+    return { tags: await suggestTags(env, char, rows, 'phrases'), capped: model !== 'phrases' };
+  }
+  const charges = [];
+  try {
+    return { tags: await suggestTags(env, char, rows, model, (m, u) => charges.push(aiCharge(env, m, u))), capped: false };
+  } finally { await Promise.all(charges); }
+}
+
+/* What writers did with "Suggest tags": one row per save that followed a
+   press. `suggested` is everything the suggester said, `before` what was
+   ticked before the first press, `saved` what the page was saved with, so
+   kept / removed / added by hand can all be counted. */
+let _tagFeedbackReady = false;
+async function ensureTagFeedbackTable(env) {
+  if (_tagFeedbackReady) return;
+  if (await schemaHas(env, { tables: { tag_feedback: [] } })) { _tagFeedbackReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS tag_feedback (
+       id        INTEGER PRIMARY KEY AUTOINCREMENT,
+       slug      TEXT NOT NULL,
+       user_id   INTEGER,
+       suggested TEXT NOT NULL,
+       before    TEXT NOT NULL,
+       saved     TEXT NOT NULL,
+       ts        TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _tagFeedbackReady = true;
+}
+async function recordTagFeedback(env, sess, slug, log, saved) {
+  const suggested = tagList(log && log.suggested);
+  if (!suggested.length) return;
+  await ensureTagFeedbackTable(env);
+  await env.DB.prepare('INSERT INTO tag_feedback (slug, user_id, suggested, before, saved) VALUES (?,?,?,?,?)')
+    .bind(String(slug), sess.userId, JSON.stringify(suggested), JSON.stringify(tagList(log.before)), JSON.stringify(tagList(saved))).run();
+}
+
+// Any list of tag names, reduced to the canonical spelling of known tags.
+const KNOWN_TAG_BY_LOWER = new Map(Tags.KNOWN_TAGS.map(t => [t.toLowerCase(), t]));
+const tagList = v => [...new Set((Array.isArray(v) ? v : []).map(t => KNOWN_TAG_BY_LOWER.get(String(t).trim().toLowerCase())).filter(Boolean))];
 
 /* The page a favorite names, resolved the way every other route resolves that
    type: a character by identity or address (resolveCharacterPath), a script by
@@ -14057,6 +14177,10 @@ const app = {
         let c = await request.json();
         if (!c || typeof c !== 'object' || !c.slug || !c.team)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        // What "Suggest tags" offered before this save (tag-suggest.js). Never
+        // stored on the page: recorded beside it once the save has gone through.
+        const tagLog = c._tagSuggest;
+        delete c._tagSuggest;
         /* A DRAFT may be saved with no name, no ability and no icon: somebody
            half-way through an idea should be able to put it away and come back
            to it. Publishing still needs all three (Classify.missingForPublish
@@ -14356,6 +14480,7 @@ const app = {
         const { address, movedFrom } = await refreshCharAddress(
           env, c.slug, c, existing ? existing.owner_id : sess.userId, existing);
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        if (tagLog) ctx.waitUntil(recordTagFeedback(env, sess, c.slug, tagLog, splitTags(c.tags)).catch(e => console.error('tag-feedback', e)));
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
             fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
@@ -14445,6 +14570,34 @@ const app = {
             .bind(sess.userId, b.type, target.slug).run();
         }
         return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
+      }
+
+      /* ---------- TAG SUGGESTIONS (worker/autotag.js) ----------
+         The editors' "Suggest tags" button. Reads nothing private and writes
+         nothing: the answer goes back to the tag picker, where the person
+         decides. Counted per account because every call costs neurons. */
+      if (path === '/api/suggest-tags') {
+        const b = await request.json().catch(() => ({}));
+        const ability = String(b.ability || '').trim();
+        if (!ability) return jsonResponse({ error: 'Write the ability first: the suggestions are read off it.' }, { status: 400 });
+        const char = {
+          slug: String(b.slug || ''), name: String(b.name || ''), team: String(b.team || ''), ability,
+          lede: String(b.lede || ''), summaryBullets: Array.isArray(b.summaryBullets) ? b.summaryBullets.slice(0, 8).map(String) : []
+        };
+        // quick: the wording rules alone, so the button can tick those at once
+        // while the model is still answering. No model, no feed read, no limit.
+        if (b.quick) return jsonResponse({ ok: true, tags: cueTags(char).sure });
+        if (!sess.isAdmin && await rateLimited(env, request, 'autotag', 40, 3600, { sess })) {
+          return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
+        }
+        try {
+          const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), await loadTagChecks(env).catch(() => null));
+          const { tags, capped } = await suggestWithinBudget(env, char, rows);
+          return jsonResponse({ ok: true, tags, capped });
+        } catch (e) {
+          if (!(e && e.public)) console.error('suggest-tags', e && e.stack || e);
+          return jsonResponse({ error: e && e.public ? e.message : 'No suggestions right now. Try again in a minute.' }, { status: 503 });
+        }
       }
 
       if (path === '/api/jinx') {
@@ -16100,6 +16253,152 @@ const app = {
         await logActivity(env, sess, 'create', 'wikipage', null,
           made + ' rules page(s) converted from characters');
         return jsonResponse({ ok: true, made, skipped, parent: parent.name });
+      }
+
+      // ---- admin: how good are the tag suggestions? ----
+      // Runs the suggester on `n` random published pages people already
+      // tagged (their own row left out of the examples) and scores it
+      // against those tags; or, with untagged:true, on pages with none, to
+      // read what it would say. Writes nothing. `model` swaps the model for
+      // a comparison. Existing tags are incomplete (108 of 342 pages with
+      // [setup] text lack Setup), so "extra" is not always wrong.
+      if (path === '/api/admin/autotag-eval') {
+        const b = await request.json().catch(() => ({}));
+        const n = Math.max(1, Math.min(50, Number(b.n) || 20));
+        const model = String(b.model || AUTOTAG_MODEL);
+        const checks = await loadTagChecks(env, true);
+        const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), checks);
+        // checked: the pages an admin checked by hand, scored against those
+        // answers rather than against the tags the page happened to carry.
+        const pool = b.checked ? rows.filter(r => r.ability && r.checked)
+          : rows.filter(r => r.ability && !!splitTags(r.tags).length === !b.untagged);
+        if (b.checked && !pool.length) return jsonResponse({ error: 'No pages checked yet. Use Check tags first.' }, { status: 400 });
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const sample = pool.slice(0, n);
+        // A run that would not fit in what is left of today's AI ceiling is
+        // refused up front, rather than half-run with the rest marked failed.
+        const runModels = b.compare ? ['phrases', AUTOTAG_MODEL, b.model ? model : AUTOTAG_MODEL + ':think'] : [model];
+        const needed = sample.length * runModels.reduce((t, m) => t + aiCallCeiling(m), 0);
+        let spent;
+        try { await ensureRateTable(env); spent = await aiSpentToday(env); } catch { spent = AI_DAILY_DOLLARS; }
+        const left = AI_DAILY_DOLLARS - spent;
+        if (needed > left) {
+          return jsonResponse({ error: 'That run could cost up to $' + needed.toFixed(2) + ' and $' + Math.max(0, left).toFixed(2) +
+            ' of today\'s $' + AI_DAILY_DOLLARS + ' AI limit is left. Try fewer pages, or tomorrow (it resets at midnight UTC).' }, { status: 429 });
+        }
+        const pct = x => isFinite(x) ? Math.round(x * 100) : null;
+        const score = async m => {
+          const results = [], perTag = {};
+          let tp = 0, fp = 0, fn = 0, ms = 0;
+          // Five at a time: fast enough, and well inside the subrequest cap.
+          for (let i = 0; i < sample.length; i += 5) {
+            await Promise.all(sample.slice(i, i + 5).map(async r => {
+              const gold = splitTags(r.tags).filter(t => SUGGESTABLE.includes(t));
+              let got = [], error = '';
+              const t0 = Date.now();
+              try {
+                const res = await suggestWithinBudget(env, r, rows, m);
+                if (res.capped) error = "today's AI limit is used up"; else got = res.tags;
+              } catch (e) { error = String(e && e.message || e); }
+              ms += Date.now() - t0;
+              const right = got.filter(t => gold.includes(t)), extra = got.filter(t => !gold.includes(t)), missed = gold.filter(t => !got.includes(t));
+              if (!b.untagged && !error) {
+                tp += right.length; fp += extra.length; fn += missed.length;
+                for (const [list, k] of [[right, 'tp'], [extra, 'fp'], [missed, 'fn']]) for (const t of list) (perTag[t] = perTag[t] || { tp: 0, fp: 0, fn: 0 })[k]++;
+              }
+              results.push({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability, gold, got, right, extra, missed, error });
+            }));
+          }
+          return { model: m, n: results.length, precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)),
+            seconds: Math.round(ms / Math.max(1, results.length) / 100) / 10, errors: results.filter(r => r.error).length, perTag, results };
+        };
+        // compare: the SAME pages through the wording rules alone, the
+        // current model, and either the model named in the box or (none
+        // named) the current model allowed to think first, so the difference
+        // is the method and not which pages the shuffle happened to pick.
+        if (b.compare) {
+          const other = b.model ? model : AUTOTAG_MODEL + ':think';
+          const runs = [];
+          for (const m of ['phrases', AUTOTAG_MODEL, other]) runs.push(await score(m));
+          return jsonResponse({ ok: true, compare: true, n: sample.length,
+            runs: runs.map(r => ({ model: r.model, precision: r.precision, recall: r.recall, seconds: r.seconds, errors: r.errors })),
+            results: sample.map(r => ({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
+              gold: splitTags(r.tags).filter(t => SUGGESTABLE.includes(t)),
+              got: runs.map(run => (run.results.find(x => x.slug === r.slug) || {}).got || []) })) });
+        }
+        const run = await score(model);
+        // How the tags the pages carried did against the same answers.
+        let oldTags = null;
+        if (b.checked) {
+          let tp = 0, fp = 0, fn = 0;
+          for (const c of checks.rows) {
+            if (!sample.some(r => r.slug === c.slug)) continue;
+            const gold = c.tags.filter(t => SUGGESTABLE.includes(t)), had = c.stored.filter(t => SUGGESTABLE.includes(t));
+            tp += had.filter(t => gold.includes(t)).length; fp += had.filter(t => !gold.includes(t)).length; fn += gold.filter(t => !had.includes(t)).length;
+          }
+          oldTags = { precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)) };
+        }
+        return jsonResponse({
+          ok: true, model, n: run.n, untagged: !!b.untagged, checked: !!b.checked, oldTags,
+          precision: run.precision, recall: run.recall, seconds: run.seconds,
+          perTag: run.perTag, results: run.results
+        });
+      }
+
+      // ---- admin: check the suggester's tags by hand (the answer key) ----
+      // next: a random published character nobody has checked, with its
+      // tags and the suggester's. save: what the admin confirmed. Nothing is
+      // written to the page; the answers are the test Score can run on and
+      // the examples the suggester is shown first.
+      if (path === '/api/admin/tag-check') {
+        const b = await request.json().catch(() => ({}));
+        await ensureTagChecksTable(env);
+        if (b.action === 'save') {
+          const slug = String(b.slug || '');
+          const row = slug && await env.DB.prepare("SELECT slug FROM characters WHERE slug=? AND status='published'").bind(slug).first();
+          if (!row) return jsonResponse({ error: 'No such page' }, { status: 404 });
+          await env.DB.prepare(
+            `INSERT INTO tag_checks (slug, tags, stored, suggested, user_id) VALUES (?,?,?,?,?)
+             ON CONFLICT(slug) DO UPDATE SET tags=excluded.tags, stored=excluded.stored, suggested=excluded.suggested, user_id=excluded.user_id, ts=datetime('now')`
+          ).bind(slug, JSON.stringify(tagList(b.tags)), JSON.stringify(tagList(b.stored)), JSON.stringify(tagList(b.suggested)), sess.userId).run();
+          _tagChecks = null;
+          return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        // What writers did with the button's suggestions, per tag: offered
+        // and new to the page, then kept or removed; and tags writers added
+        // that it never offered.
+        if (b.action === 'feedback') {
+          await ensureTagFeedbackTable(env);
+          const rows = (await env.DB.prepare('SELECT suggested, before, saved FROM tag_feedback ORDER BY id DESC LIMIT 5000').all()).results || [];
+          const parse = v => { try { return JSON.parse(v) || []; } catch { return []; } };
+          const per = {};
+          const at = t => (per[t] = per[t] || { offered: 0, kept: 0, removed: 0, addedByHand: 0 });
+          for (const r of rows) {
+            const sug = parse(r.suggested), had = parse(r.before), saved = parse(r.saved);
+            for (const t of sug) if (!had.includes(t)) { at(t).offered++; saved.includes(t) ? at(t).kept++ : at(t).removed++; }
+            for (const t of saved) if (!had.includes(t) && !sug.includes(t)) at(t).addedByHand++;
+          }
+          return jsonResponse({ ok: true, saves: rows.length, perTag: per });
+        }
+        if (b.action === 'undo') {
+          await env.DB.prepare('DELETE FROM tag_checks WHERE slug=?').bind(String(b.slug || '')).run();
+          _tagChecks = null;
+          return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        const checks = await loadTagChecks(env, true);
+        const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), checks);
+        const pool = rows.filter(r => r.ability && !r.checked && String(b.skip || '') !== r.slug);
+        if (!pool.length) return jsonResponse({ ok: true, done: true, checked: checks.size });
+        const r = pool[Math.floor(Math.random() * pool.length)];
+        let suggested = [], error = '';
+        try {
+          const res = await suggestWithinBudget(env, r, rows, String(b.model || AUTOTAG_MODEL));
+          suggested = res.tags;
+          if (res.capped) error = "today's AI limit is used up, so these are the wording rules alone";
+        } catch (e) { error = String(e && e.message || e); }
+        return jsonResponse({ ok: true, checked: checks.size, error,
+          slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
+          stored: tagList(splitTags(r.tags)), suggested });
       }
 
       // ---- admin: grant Curata to everything one account owns ----
