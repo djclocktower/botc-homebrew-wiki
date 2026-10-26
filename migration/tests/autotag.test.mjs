@@ -79,3 +79,9 @@ test('autotag: /api/suggest-tags needs a login and an ability, and answers from 
   assert.match(seen.messages[1].content, /Pois \(minion\)/);
   assert.match(seen.messages[1].content, /Already certain from its wording \(do not repeat\): Poison/);
 });
+
+test('Magic is not read off "the Storyteller may" alone', () => {
+  const hints = c => cueTags(c).hint.map(h => h.tag);
+  assert.ok(!hints({ team: 'townsfolk', ability: 'Once per game, at night, the storyteller may prompt a good player making a bad choice to choose differently.' }).includes('Magic'));
+  assert.ok(hints({ team: 'townsfolk', ability: 'The Storyteller can break the game rules.' }).includes('Magic'));
+});

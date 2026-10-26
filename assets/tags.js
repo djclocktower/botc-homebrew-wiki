@@ -29,7 +29,7 @@
     'Joke': ';P',
     'Loud': 'Something everyone in the town knows about, like the Fearmonger.',
     'Madness': 'Creates madness, or interacts with mad players.',
-    'Magic': 'Can cause almost anything to happen, or leaves the result up to the Storyteller, like the Atheist.',
+    'Magic': 'Can cause almost anything to happen, or lets the Storyteller break the rules, like the Atheist.',
     'Misregistration': 'Can register as another character, team, or alignment.',
     'Multi-Kill': 'Can kill more than one player in a night. A killer that only sometimes kills two is Multi-Kill, not Single-Kill.',
     'Neighbor': 'Cares about the players sitting next to someone.',

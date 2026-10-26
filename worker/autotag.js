@@ -71,7 +71,9 @@ export const CUES = [
   ['Information', HINT, /\b(tells|shows) you\b|\byou (are told|are shown|see|know)\b|(^|[.:,] ?)learn\b/i],
   ['Loud', HINT, /\bannounce|\bdeclar|\beveryone (learns|knows|is told|hears|sees)|\ball (players )?(learn|know)\b|\bthe (whole )?(town|group) (learns|is told|knows)|\bpublicly (learn|told|revealed|announced)|\bout loud\b|\baloud\b/i],
   ['Madness', SURE, /\bmad(ness)?\b/i],
-  ['Magic', HINT, /\banything\b|\bany (effect|ability)\b|\bspells?\b|\bcurses?\b|\bwish(es)?\b|\bforge\b|\binvoke\b|\bstoryteller (offers|may|can|decides|chooses)\b|\bsomething (good|bad) happens\b|\barbitrary\b/i],
+  // Not "the Storyteller may" or "arbitrary": on tagged pages those are mostly
+  // a prompt, a tie-break or random info, and Magic on few of them.
+  ['Magic', HINT, /\bspells?\b|\bcurses?\b|\bwish(es)?\b|\binvoke\b|\bstoryteller (offers|(will|can|may|might) break)\b|\bsomething (good|bad) happens\b/i],
   ['Misregistration', SURE, /\bregister(s|ed|ing)?\b|\bregistration\b/i],
   ['Misregistration', HINT, /\b(might )?(show|appear)s? as\b|\bappears? to be\b/i],
   ['Multi-Kill', HINT, /\bchoose (2|3|two|three|up to (\d|two|three)|any number of|\d+) (living |alive )?players?\b[^.]{0,30}\b(die|dies|kill)|\b(they both|they all|both|all of them) die\b|\bkills? (2|3|two|three|\d+) players\b|\banother player (also )?dies\b|\b(choose|kill) (an )?additional\b/i],
