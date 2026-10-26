@@ -64,22 +64,21 @@
     var said = function () {
       return added.length ? 'Ticked ' + added.length + ': ' + added.join(', ') + '.' : '';
     };
-    // The wording rules answer at once; the model's judgement follows.
-    var quick = ask(true).then(function (d) {
-      if (d.error) return;
-      tick(d.tags);
-      if (added.length) note.textContent = said() + ' Looking for more…';
-    }).catch(function () {});
-    ask(false).then(function (d) {
-      return quick.then(function () {
-        // The surest tags may already be ticked: say the rest did not come.
-        if (d.error) { note.textContent = said() ? said() + ' Only the surest tags were ticked this time. ' + d.error : d.error; return; }
-        tick(d.tags);
-        note.textContent = (said() || ((d.tags || []).length ? 'Nothing to add: every suggestion is already ticked.' : 'No suggestions for this one.')) +
-          (d.capped ? ' (Only the surest tags are suggested for the rest of today.)' : '');
+    // One answer, everything ticked together (the owner's call: no keyword
+    // tags first and the rest after). Only when the full answer fails does
+    // the quick one, the wording rules alone, stand in for it.
+    var fallback = function (why) {
+      return ask(true).then(function (q) { if (!q.error) tick(q.tags); }).catch(function () {}).then(function () {
+        note.textContent = said() ? said() + ' Only the surest tags were ticked this time. ' + why : why;
       });
+    };
+    ask(false).then(function (d) {
+      if (d.error) return fallback(d.error);
+      tick(d.tags);
+      note.textContent = (said() || ((d.tags || []).length ? 'Nothing to add: every suggestion is already ticked.' : 'No suggestions for this one.')) +
+        (d.capped ? ' (Only the surest tags are suggested for the rest of today.)' : '');
     }).catch(function () {
-      return quick.then(function () { note.textContent = said() || 'No suggestions right now. Try again in a minute.'; });
+      return fallback('No suggestions right now. Try again in a minute.');
     }).then(function () { btn.disabled = false; label.textContent = LABEL; });
   });
   // Touching a chip by hand settles it: the outline only marks what is untouched.
