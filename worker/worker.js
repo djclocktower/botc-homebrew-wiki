@@ -2337,14 +2337,24 @@ async function aiCharge(env, model, usage) {
 // What one call could cost at most: a 4,000-token prompt and the full reply.
 const aiCallCeiling = model => model === 'phrases' ? 0 : (4000 * aiPrice(model)[0] + aiMaxTokens(model) * aiPrice(model)[1]) / 1e6;
 // suggestTags inside the ceiling: over it, the wording rules alone.
-async function suggestWithinBudget(env, char, rows, model = AUTOTAG_MODEL) {
-  if (model === 'phrases' || !(await aiCanSpend(env))) {
+// opts.allowed: an aiCanSpend() already under way. opts.ctx: record the cost
+// after the answer has gone back, rather than in front of it.
+async function suggestWithinBudget(env, char, rows, model = AUTOTAG_MODEL, opts = {}) {
+  if (model === 'phrases' || !(await (opts.allowed || aiCanSpend(env)))) {
     return { tags: await suggestTags(env, char, rows, 'phrases'), capped: model !== 'phrases' };
   }
   const charges = [];
   try {
     return { tags: await suggestTags(env, char, rows, model, (m, u) => charges.push(aiCharge(env, m, u))), capped: false };
-  } finally { await Promise.all(charges); }
+  } finally {
+    if (opts.ctx) opts.ctx.waitUntil(Promise.all(charges)); else await Promise.all(charges);
+  }
+}
+// The grid feed parsed once per isolate per version of it, not once a press.
+let _gridParsed = { body: null, rows: null };
+function gridRows(body) {
+  if (_gridParsed.body !== body) _gridParsed = { body, rows: JSON.parse(body) };
+  return _gridParsed.rows;
 }
 
 /* What writers did with "Suggest tags": one row per save that followed a
@@ -14587,12 +14597,20 @@ const app = {
         // quick: the wording rules alone, so the button can tick those at once
         // while the model is still answering. No model, no feed read, no limit.
         if (b.quick) return jsonResponse({ ok: true, tags: cueTags(char).sure });
-        if (!sess.isAdmin && await rateLimited(env, request, 'autotag', 40, 3600, { sess })) {
+        // Everything before the model call goes out at once (the hourly
+        // limit, the examples, the answer key, the day's spend): one after
+        // another they were a visible part of the wait.
+        const limited = sess.isAdmin ? false : rateLimited(env, request, 'autotag', 40, 3600, { sess });
+        const feed = cachedFeedBody(env, ctx, 'characters', 'grid');
+        const checks = loadTagChecks(env).catch(() => null);
+        const allowed = aiCanSpend(env);
+        feed.catch(() => {});
+        if (await limited) {
           return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
         }
         try {
-          const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), await loadTagChecks(env).catch(() => null));
-          const { tags, capped } = await suggestWithinBudget(env, char, rows);
+          const rows = applyChecks(gridRows(await feed), await checks);
+          const { tags, capped } = await suggestWithinBudget(env, char, rows, AUTOTAG_MODEL, { allowed, ctx });
           return jsonResponse({ ok: true, tags, capped });
         } catch (e) {
           if (!(e && e.public)) console.error('suggest-tags', e && e.stack || e);
