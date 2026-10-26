@@ -94,7 +94,7 @@ export const CUES = [
   ['Once Per Game', SURE, /\bonce,? per game\b|\bonly once\b|\bonce during the game\b|\(once\b/i],
   ['Outsider Modification', SURE, /\[[^\]]*\d[^\]]*\boutsiders?\b|\[[^\]]*\b(no|extra|fewer|more|all) outsiders?\b/i],
   // Nothing to choose, wake for, guess, visit or learn: always on.
-  ['Passive', HINT, t => !/\b(choose|chooses|chosen|pick|picks|guess|guesses|may|visit|ask|nominat\w*|public\w*|claim\w*|wakes?|each (night|day)|once|learn\w*|start knowing)\b/i.test(t)],
+  ['Passive', SURE, t => !/\b(choos\w*|chosen|pick\w*|guess\w*|may|visit\w*|ask|nominat\w*|public\w*|claim\w*|wakes?|each (night|day)|once|learn\w*|start knowing)\b/i.test(t)],
   ['Ping', HINT, /(?<!public\w* [^.]{0,30})\b(they|a (good |evil )?player|that player|the demon|minions?|evil players?|good players?|townsfolk|outsiders?) (also |each )?(learns?|knows?|is told|are told|start knowing)\b|\bknow each other\b|\bknows? you are\b/i],
   ['Poison', SURE, /\bpoison/i],
   ['Protection', HINT, /\bprotect|\bsafe from (death|dying|the demon)|\b(can ?no?t|can't|won'?t|do(es)? ?n[o']t) die\b/i],

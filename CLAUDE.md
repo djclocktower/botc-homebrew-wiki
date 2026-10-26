@@ -3422,7 +3422,17 @@ player might die"; Timer is only a win or loss tied to a set day or night;
 Safety Net is only about the game's win or loss, never a personal backup;
 On Death covers any death the ability cares about; Quiet is an evil character
 nobody notices (Poisoner) and Hidden an Outsider that hides or does not know
-it is one (Sweetheart, Drunk). Change a description and its cue together.
+it is one (Sweetheart, Drunk); Passive is no choice and no waking, an
+ability that fires by itself included, so it is a sure cue on the absence of
+any choose / pick / guess / visit / learn / wake / each night / once wording.
+Change a description and its cue together.
+
+**The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by
+the owner (2026-10, 20 pages each): the wording cues alone 60% right / 44%
+found; Gemma 56% / 70% in under a second; Gemma thinking 60% / 45% at 30 s a
+page (it ran out of room before answering, leaving only the cues); Llama 3.3
+70B 57% / 63%, at several times the price. Many "extras" are the owner's
+word rules being right where the stored tags are not.
 
 **`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
 suggestions") scores it against random pages people already tagged (`model:

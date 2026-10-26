@@ -155,3 +155,9 @@ test('autotag: the eval compares the same pages with and without thinking', asyn
   assert.deepEqual(asked.sort(), [false, false, false, true, true, true]);
   assert.ok(d.results.every(x => x.got.length === 3));
 });
+
+test('autotag: an ability with nothing to choose, wake for or learn is Passive', () => {
+  assert.ok(cueTags({ ability: 'If you die, 1 alive neighbor might die tonight.' }).sure.includes('Passive'));
+  assert.ok(!cueTags({ ability: 'Players who are mad that they want to live or die (you start by choosing which) might be executed.' }).sure.includes('Passive'));
+  assert.ok(!cueTags({ ability: 'Each night, choose a player: they are poisoned.' }).sure.includes('Passive'));
+});
