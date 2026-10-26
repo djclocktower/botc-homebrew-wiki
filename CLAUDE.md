@@ -3392,8 +3392,12 @@ trips (`exampleTags()`), so the examples follow the owner's wording rulings
 where their taggers missed one. It runs `AUTOTAG_MODEL` through the `[ai]`
 binding in wrangler.toml, and filters the answer back to the tag list. The
 button ticks what is new and outlines it (`.tag-pick-btn.suggested`); it never
-unticks and never saves, so a person always decides. `Joke` is never
-suggested. Login required, 40 an hour per account (`autotag` bucket),
+unticks and never saves, so a person always decides. **Nothing a writer
+sees says "AI"** (the owner's call, as for Icon Forge): the button is
+"Suggest tags from the ability", a strip joined to the top of the tag box
+(`.tag-suggest` in editor.css), and when only the wording cues ran the note
+says only the surest tags were ticked. The admin dashboard still says AI.
+`Joke` is never suggested. Login required, 40 an hour per account (`autotag` bucket),
 admins exempt. About 25 neurons a call. **The model's thinking is off**
 (`chat_template_kwargs: {enable_thinking: false}`, 300 tokens): it was most
 of the wait, for an answer that is one short list; a model name ending in
