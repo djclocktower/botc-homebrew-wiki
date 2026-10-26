@@ -315,12 +315,27 @@ test('autotag: past the daily AI ceiling the button gives the wording rules alon
   const ask = () => f.request('/api/suggest-tags', post(1, { name: 'X', team: 'townsfolk', ability: 'You start knowing 1 drunk player.' })).then(r => r.json());
   const first = await ask();
   assert.ok(first.tags.includes('Poison') && !first.capped && asked === 1);
-  const key = 'ai:day:' + new Date().toISOString().slice(0, 10);
-  f.db.prepare('UPDATE rate_limits SET n = 300 WHERE key = ?').run(key);
+  // The first call was charged from its usage (none given here: the most it could have cost).
+  const key = 'ai:spend:' + new Date().toISOString().slice(0, 10);
+  const charged = f.db.prepare('SELECT n FROM rate_limits WHERE key = ?').get(key).n;
+  assert.ok(charged > 0 && charged < 2000, 'a Gemma call is a fraction of a cent: ' + charged + ' millionths');
+  f.db.prepare('UPDATE rate_limits SET n = 25000000 WHERE key = ?').run(key);
   const second = await ask();
   assert.ok(second.capped && asked === 1, 'no AI call past the ceiling');
   assert.ok(second.tags.includes('Drunkenness') && !second.tags.includes('Poison'));
   const ev = await f.request('/api/admin/autotag-eval', post(1, { n: 5 }));
   assert.equal(ev.status, 429, 'a run that does not fit is refused up front');
   assert.equal((await f.request('/api/admin/autotag-eval', post(1, { n: 5, model: 'phrases' }))).status, 200, 'the wording rules cost nothing');
+});
+
+test('autotag: each AI call is charged its real token cost', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(1,'user-1','',0)").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1', isAdmin: false });
+  f.env.AI = { async run() { return { response: '{"tags":["Poison"]}', usage: { prompt_tokens: 1000, completion_tokens: 100 } }; } };
+  await f.request('/api/suggest-tags', post(1, { name: 'X', team: 'townsfolk', ability: 'Each night, choose a player.' }));
+  const key = 'ai:spend:' + new Date().toISOString().slice(0, 10);
+  // Gemma: 1,000 x $0.10/M + 100 x $0.30/M = $0.00013
+  assert.equal(f.db.prepare('SELECT n FROM rate_limits WHERE key = ?').get(key).n, 130);
 });

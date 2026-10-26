@@ -252,7 +252,21 @@ export function parseTags(text) {
 /* The model's answer plus the sure cues. With no model to ask (the binding
    is off, it failed, or the scorer asked for model 'phrases') the sure cues
    are the answer on their own, so the button still helps. */
-export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL) {
+// $ per million tokens [input, output], from Cloudflare's Workers AI price
+// list. A model not listed is charged as if it were an expensive one, so a
+// typo in the dashboard's model box can never be the cheap path.
+export const AI_PRICES = {
+  '@cf/google/gemma-4-26b-a4b-it': [0.10, 0.30],
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': [0.293, 2.253],
+  '@cf/meta/llama-3.1-70b-instruct-fp8-fast': [0.293, 2.253],
+};
+const UNLISTED_PRICE = [1.5, 5];
+export const aiPrice = model => AI_PRICES[String(model).replace(/:think$/, '')] || UNLISTED_PRICE;
+export const aiMaxTokens = model => /:think$/.test(model) ? 1500 : 300;
+
+// meter(model, {prompt_tokens, completion_tokens}) is told what each call
+// used; the Worker turns it into dollars for its daily ceiling.
+export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL, meter) {
   const sure = cueTags(char).sure;
   let picked = [];
   if (model !== 'phrases') {
@@ -261,9 +275,17 @@ export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL) {
       // Thinking off: it is most of the wait, for an answer that is one short
       // list. "model:think" turns it back on, so the scorer can compare.
       const think = /:think$/.test(model), name = model.replace(/:think$/, '');
-      const opts = { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: think ? 1500 : 300 };
+      const opts = { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: aiMaxTokens(model) };
       if (/gemma-4/.test(name)) opts.chat_template_kwargs = { enable_thinking: think };
-      const out = await env.AI.run(name, opts);
+      let out;
+      try { out = await env.AI.run(name, opts); }
+      finally {
+        // No usage on the answer (or no answer): charge the most it could
+        // have been, a token per 3 characters of prompt and the full reply.
+        const u = out && out.usage;
+        if (meter) meter(model, u && u.prompt_tokens != null ? u
+          : { prompt_tokens: Math.ceil(JSON.stringify(opts.messages).length / 3), completion_tokens: opts.max_tokens });
+      }
       const text = typeof out === 'string' ? out
         : out && (out.response ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content));
       picked = parseTags(typeof text === 'string' ? text : JSON.stringify(text || ''));

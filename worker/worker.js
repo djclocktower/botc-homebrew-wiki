@@ -377,7 +377,7 @@ import { homeData } from './home-data.js';
 import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
-import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags, applyChecks } from './autotag.js';
+import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags, applyChecks, aiPrice, aiMaxTokens } from './autotag.js';
 import Tags from '../assets/tags.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
@@ -2303,43 +2303,48 @@ async function loadTagChecks(env, fresh) {
   _tagChecksAt = Date.now();
   return _tagChecks;
 }
-/* A hard daily ceiling on Workers AI, so a busy day (or a long Compare)
-   cannot run up a bill. Counted in "units" per UTC day, the same day
-   Cloudflare's free allowance resets on: a normal suggestion is 1, the model
-   thinking first 6, any other model 4 (bigger models cost several times
-   more). 300 units is about 7,500 neurons at ~25 a call, inside the 10,000
-   free a day. Past it the suggester gives the wording rules alone. If the
+/* A hard daily ceiling on Workers AI spending: $25 a UTC day (the owner's
+   number), the same day Cloudflare's allowance resets on. Workers Paid has
+   no cap of its own: past the free 10,000 neurons it simply bills. Every
+   call's real token use is priced from AI_PRICES (autotag.js) and added to a
+   counter in rate_limits, in millionths of a dollar. Once the day's spend
+   reaches the ceiling, the suggester gives the wording rules alone. If the
    counter cannot be read the AI is refused, never allowed: this one guards
-   money, so it fails closed.
-   ponytail: weights are estimates from the dashboard, not the real neuron
-   count; read out.usage per call if the estimate ever drifts badly. */
-const AI_DAILY_UNITS = 300;
-const aiUnits = model => model === 'phrases' ? 0 : /:think$/.test(model) ? 6 : model === AUTOTAG_MODEL ? 1 : 4;
-const aiDayKey = () => 'ai:day:' + new Date().toISOString().slice(0, 10);
-async function aiSpend(env, units) {
-  if (!units) return true;
+   money, so it fails closed. A burst of calls already in flight when the
+   ceiling is reached can pass it by a few of them, a fraction of a cent. */
+const AI_DAILY_DOLLARS = 25;
+const AI_MICRO = 1e6;
+const aiDayKey = () => 'ai:spend:' + new Date().toISOString().slice(0, 10);
+async function aiSpentToday(env) {
+  const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=?').bind(aiDayKey()).first();
+  return row ? (Number(row.n) || 0) / AI_MICRO : 0;
+}
+async function aiCanSpend(env) {
+  try { await ensureRateTable(env); return (await aiSpentToday(env)) < AI_DAILY_DOLLARS; }
+  catch (e) { console.error('[ai-budget] counter unavailable, refusing the AI:', (e && e.message) || e); return false; }
+}
+async function aiCharge(env, model, usage) {
+  const [pin, pout] = aiPrice(model);
+  const dollars = ((Number(usage.prompt_tokens) || 0) * pin + (Number(usage.completion_tokens) || 0) * pout) / 1e6;
+  const micro = Math.max(1, Math.ceil(dollars * AI_MICRO));
   try {
-    await ensureRateTable(env);
-    const row = await env.DB.prepare(
+    await env.DB.prepare(
       `INSERT INTO rate_limits (key, n, expires) VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET n = rate_limits.n + excluded.n RETURNING n`
-    ).bind(aiDayKey(), units, Math.floor(Date.now() / 1000) + 2 * 86400).first();
-    return !!row && row.n <= AI_DAILY_UNITS;
-  } catch (e) {
-    console.error('[ai-budget] counter unavailable, refusing the AI:', (e && e.message) || e);
-    return false;
-  }
+       ON CONFLICT(key) DO UPDATE SET n = rate_limits.n + excluded.n`
+    ).bind(aiDayKey(), micro, Math.floor(Date.now() / 1000) + 2 * 86400).run();
+  } catch (e) { console.error('[ai-budget] could not record spend:', (e && e.message) || e); }
 }
-async function aiUsedToday(env) {
-  try {
-    const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=?').bind(aiDayKey()).first();
-    return row ? Math.min(Number(row.n) || 0, AI_DAILY_UNITS) : 0;
-  } catch { return 0; }
-}
+// What one call could cost at most: a 4,000-token prompt and the full reply.
+const aiCallCeiling = model => model === 'phrases' ? 0 : (4000 * aiPrice(model)[0] + aiMaxTokens(model) * aiPrice(model)[1]) / 1e6;
 // suggestTags inside the ceiling: over it, the wording rules alone.
 async function suggestWithinBudget(env, char, rows, model = AUTOTAG_MODEL) {
-  if (await aiSpend(env, aiUnits(model))) return { tags: await suggestTags(env, char, rows, model), capped: false };
-  return { tags: await suggestTags(env, char, rows, 'phrases'), capped: true };
+  if (model === 'phrases' || !(await aiCanSpend(env))) {
+    return { tags: await suggestTags(env, char, rows, 'phrases'), capped: model !== 'phrases' };
+  }
+  const charges = [];
+  try {
+    return { tags: await suggestTags(env, char, rows, model, (m, u) => charges.push(aiCharge(env, m, u))), capped: false };
+  } finally { await Promise.all(charges); }
 }
 
 /* What writers did with "Suggest tags": one row per save that followed a
@@ -16273,11 +16278,13 @@ const app = {
         // A run that would not fit in what is left of today's AI ceiling is
         // refused up front, rather than half-run with the rest marked failed.
         const runModels = b.compare ? ['phrases', AUTOTAG_MODEL, b.model ? model : AUTOTAG_MODEL + ':think'] : [model];
-        const needed = sample.length * runModels.reduce((t, m) => t + aiUnits(m), 0);
-        const left = AI_DAILY_UNITS - await aiUsedToday(env);
+        const needed = sample.length * runModels.reduce((t, m) => t + aiCallCeiling(m), 0);
+        let spent;
+        try { await ensureRateTable(env); spent = await aiSpentToday(env); } catch { spent = AI_DAILY_DOLLARS; }
+        const left = AI_DAILY_DOLLARS - spent;
         if (needed > left) {
-          return jsonResponse({ error: 'That run needs about ' + needed + ' of today\'s ' + AI_DAILY_UNITS + ' AI units and ' +
-            Math.max(0, left) + ' are left. Try fewer pages, or tomorrow (it resets at midnight UTC).' }, { status: 429 });
+          return jsonResponse({ error: 'That run could cost up to $' + needed.toFixed(2) + ' and $' + Math.max(0, left).toFixed(2) +
+            ' of today\'s $' + AI_DAILY_DOLLARS + ' AI limit is left. Try fewer pages, or tomorrow (it resets at midnight UTC).' }, { status: 429 });
         }
         const pct = x => isFinite(x) ? Math.round(x * 100) : null;
         const score = async m => {

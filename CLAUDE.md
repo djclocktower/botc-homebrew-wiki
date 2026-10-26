@@ -3492,17 +3492,20 @@ exactly the checked tags, without the sure cues on top (the admin already
 overruled those). `loadTagChecks()` memoises the table for a minute per
 isolate; a save clears it in its own isolate.
 
-**A hard daily ceiling on the AI (`AI_DAILY_UNITS`, 300).** The Workers
-Paid plan has no spending cap: past the 10,000 free neurons a day it simply
-bills, so the wiki caps itself. `aiSpend()` counts units per UTC day in
-`rate_limits` (key `ai:day:YYYY-MM-DD`): a normal suggestion 1, `:think` 6,
-any other model 4. Past the ceiling `suggestWithinBudget()` answers with the
-wording rules alone (`capped: true`, and the button says so); a dashboard
-Score or Compare that would not fit what is left is refused up front with a
-429. Admins are not exempt, since their test runs are the biggest spend. It
-FAILS CLOSED, unlike the other limiters: a counter that cannot be read
-refuses the AI. 300 units is about 7,500 neurons, inside the free allowance;
-raising it is the one constant.
+**A hard daily ceiling on the AI: $25 a UTC day (`AI_DAILY_DOLLARS`, the
+owner's number).** The Workers Paid plan has no spending cap: past the
+10,000 free neurons a day it simply bills, so the wiki caps itself. Every
+call's real token use (`out.usage`, or the most it could have been when the
+answer carries none) is priced from `AI_PRICES` in autotag.js, Cloudflare's
+published $/M-token rates, and added to a `rate_limits` counter (key
+`ai:spend:YYYY-MM-DD`, millionths of a dollar). A model missing from
+`AI_PRICES` is charged as an expensive one, so add a model's row before
+switching to it. Once the day's spend reaches the ceiling,
+`suggestWithinBudget()` answers with the wording rules alone (`capped:
+true`, and the button says so), and a dashboard Score or Compare whose
+worst case (`aiCallCeiling()`) would not fit what is left is refused up
+front with a 429. Admins are not exempt. It FAILS CLOSED, unlike the other
+limiters: a counter that cannot be read refuses the AI.
 
 **What writers did with it: `tag_feedback`.** `tag-suggest.js` keeps what
 the button offered and what was ticked before the first press, and both
