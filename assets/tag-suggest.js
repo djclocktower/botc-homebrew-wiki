@@ -3,7 +3,10 @@
    as, ticks the ones not already picked and outlines them, so the writer
    sees exactly what was added and can untick it before saving. Never
    unticks anything, never saves. Needs window.setTagPickerValue, which
-   both editors' tag picker defines. */
+   both editors' tag picker defines.
+   window.tagSuggestLog() hands the save what was offered (every tag the
+   suggester said) and what was ticked before the first press, so the Worker
+   can record what the writer kept, removed and added. */
 (function () {
   var picker = document.getElementById('tag-picker');
   if (!picker || !window.setTagPickerValue) return;
@@ -14,10 +17,20 @@
   row.innerHTML = '<button type="button" class="btn btn-blue btn-sm">Suggest tags</button> <span class="hint"></span>';
   picker.parentNode.insertBefore(row, picker);
   var btn = row.querySelector('button'), note = row.querySelector('.hint');
+  var offered = [], before = null;
+  var tagsNow = function () { return val('tags').split(',').map(function (s) { return s.trim(); }).filter(Boolean); };
+  // Read once per save, then cleared, so a second save does not count twice.
+  window.tagSuggestLog = function () {
+    if (before === null) return null;
+    var log = { suggested: offered.slice(), before: before.slice() };
+    offered = []; before = null;
+    return log;
+  };
 
   btn.addEventListener('click', function () {
     if (!val('ability')) { note.textContent = 'Write the ability first: the suggestions are read off it.'; return; }
     btn.disabled = true; note.textContent = 'Reading the ability…';
+    if (before === null) before = tagsNow();
     var char = {
       name: val('name'), team: val('team'), ability: val('ability'), lede: val('lede'),
       summaryBullets: val('bullets').split('\n').map(function (s) { return s.trim(); }).filter(Boolean)
@@ -31,6 +44,7 @@
     // Every tag this press has ticked, across both answers.
     var added = [];
     var tick = function (tags) {
+      (tags || []).forEach(function (t) { if (offered.indexOf(t) === -1) offered.push(t); });
       var have = val('tags').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
       var lower = have.map(function (s) { return s.toLowerCase(); });
       var fresh = (tags || []).filter(function (t) { return lower.indexOf(t.toLowerCase()) === -1; });
@@ -44,7 +58,7 @@
       document.getElementById('ability').dispatchEvent(new Event('input'));
     };
     var said = function () {
-      return added.length ? 'Ticked ' + added.length + ': ' + added.join(', ') + '. Outlined, so you can check them; untick any that are wrong before saving.' : '';
+      return added.length ? 'Ticked ' + added.length + ': ' + added.join(', ') + '.' : '';
     };
     // The wording rules answer at once; the model's judgement follows.
     var quick = ask(true).then(function (d) {

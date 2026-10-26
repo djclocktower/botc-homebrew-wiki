@@ -283,3 +283,22 @@ test('autotag: the second round of keywords the owner approved', () => {
   assert.ok(has('The Demon learns who you are.', 'Ping'));
   assert.ok(!has('All players learn their character.', 'Ping'));
 });
+
+test('autotag: a save after Suggest tags records what was kept, removed and added', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(1,'user-1','',1)").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1', isAdmin: true });
+  const r = await f.request('/api/character', post(1, { slug: 'zed', name: 'Zed', team: 'townsfolk', ability: 'Each night, learn a number.',
+    tags: 'Information, Neighbor', status: 'draft',
+    _tagSuggest: { suggested: ['Information', 'Poison', 'Made Up'], before: [] } }));
+  assert.equal(r.status, 200);
+  const data = JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='zed'").get().data);
+  assert.equal(data._tagSuggest, undefined, 'never stored on the page');
+  const d = await (await f.request('/api/admin/tag-check', post(1, { action: 'feedback' }))).json();
+  assert.equal(d.saves, 1);
+  assert.deepEqual(d.perTag.Information, { offered: 1, kept: 1, removed: 0, addedByHand: 0 });
+  assert.deepEqual(d.perTag.Poison, { offered: 1, kept: 0, removed: 1, addedByHand: 0 });
+  assert.equal(d.perTag.Neighbor.addedByHand, 1);
+  assert.equal(d.perTag['Made Up'], undefined);
+});

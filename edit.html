@@ -2013,6 +2013,9 @@
         }
         posted = entry;
         // Write to D1 via the Worker (instant; requires login + ownership)
+        // What Suggest tags offered, so the Worker can record what was kept.
+        var tagLog = window.tagSuggestLog && window.tagSuggestLog();
+        if (tagLog) entry._tagSuggest = tagLog;
         return fetch('/api/character', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2061,7 +2064,7 @@
         // plus a thumbnail and display copy of each), unchanged. The row as
         // posted becomes the baseline, so the next save still carries the
         // art paths this one wrote.
-        if (posted) { delete posted.baseUpdatedAt; originalEntry = posted; }
+        if (posted) { delete posted.baseUpdatedAt; delete posted._tagSuggest; originalEntry = posted; }
         // The icon just uploaded is the stored one now, not a pending upload.
         if (almAltUI && posted) almAltUI.set(posted.almanacAlt);
         artChanged = false;

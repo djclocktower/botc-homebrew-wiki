@@ -2303,6 +2303,35 @@ async function loadTagChecks(env, fresh) {
   _tagChecksAt = Date.now();
   return _tagChecks;
 }
+/* What writers did with "Suggest tags": one row per save that followed a
+   press. `suggested` is everything the suggester said, `before` what was
+   ticked before the first press, `saved` what the page was saved with, so
+   kept / removed / added by hand can all be counted. */
+let _tagFeedbackReady = false;
+async function ensureTagFeedbackTable(env) {
+  if (_tagFeedbackReady) return;
+  if (await schemaHas(env, { tables: { tag_feedback: [] } })) { _tagFeedbackReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS tag_feedback (
+       id        INTEGER PRIMARY KEY AUTOINCREMENT,
+       slug      TEXT NOT NULL,
+       user_id   INTEGER,
+       suggested TEXT NOT NULL,
+       before    TEXT NOT NULL,
+       saved     TEXT NOT NULL,
+       ts        TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _tagFeedbackReady = true;
+}
+async function recordTagFeedback(env, sess, slug, log, saved) {
+  const suggested = tagList(log && log.suggested);
+  if (!suggested.length) return;
+  await ensureTagFeedbackTable(env);
+  await env.DB.prepare('INSERT INTO tag_feedback (slug, user_id, suggested, before, saved) VALUES (?,?,?,?,?)')
+    .bind(String(slug), sess.userId, JSON.stringify(suggested), JSON.stringify(tagList(log.before)), JSON.stringify(tagList(saved))).run();
+}
+
 // Any list of tag names, reduced to the canonical spelling of known tags.
 const KNOWN_TAG_BY_LOWER = new Map(Tags.KNOWN_TAGS.map(t => [t.toLowerCase(), t]));
 const tagList = v => [...new Set((Array.isArray(v) ? v : []).map(t => KNOWN_TAG_BY_LOWER.get(String(t).trim().toLowerCase())).filter(Boolean))];
@@ -14104,6 +14133,10 @@ const app = {
         let c = await request.json();
         if (!c || typeof c !== 'object' || !c.slug || !c.team)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        // What "Suggest tags" offered before this save (tag-suggest.js). Never
+        // stored on the page: recorded beside it once the save has gone through.
+        const tagLog = c._tagSuggest;
+        delete c._tagSuggest;
         /* A DRAFT may be saved with no name, no ability and no icon: somebody
            half-way through an idea should be able to put it away and come back
            to it. Publishing still needs all three (Classify.missingForPublish
@@ -14403,6 +14436,7 @@ const app = {
         const { address, movedFrom } = await refreshCharAddress(
           env, c.slug, c, existing ? existing.owner_id : sess.userId, existing);
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        if (tagLog) ctx.waitUntil(recordTagFeedback(env, sess, c.slug, tagLog, splitTags(c.tags)).catch(e => console.error('tag-feedback', e)));
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
             fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
@@ -16270,6 +16304,22 @@ const app = {
           ).bind(slug, JSON.stringify(tagList(b.tags)), JSON.stringify(tagList(b.stored)), JSON.stringify(tagList(b.suggested)), sess.userId).run();
           _tagChecks = null;
           return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        // What writers did with the button's suggestions, per tag: offered
+        // and new to the page, then kept or removed; and tags writers added
+        // that it never offered.
+        if (b.action === 'feedback') {
+          await ensureTagFeedbackTable(env);
+          const rows = (await env.DB.prepare('SELECT suggested, before, saved FROM tag_feedback ORDER BY id DESC LIMIT 5000').all()).results || [];
+          const parse = v => { try { return JSON.parse(v) || []; } catch { return []; } };
+          const per = {};
+          const at = t => (per[t] = per[t] || { offered: 0, kept: 0, removed: 0, addedByHand: 0 });
+          for (const r of rows) {
+            const sug = parse(r.suggested), had = parse(r.before), saved = parse(r.saved);
+            for (const t of sug) if (!had.includes(t)) { at(t).offered++; saved.includes(t) ? at(t).kept++ : at(t).removed++; }
+            for (const t of saved) if (!had.includes(t) && !sug.includes(t)) at(t).addedByHand++;
+          }
+          return jsonResponse({ ok: true, saves: rows.length, perTag: per });
         }
         if (b.action === 'undo') {
           await env.DB.prepare('DELETE FROM tag_checks WHERE slug=?').bind(String(b.slug || '')).run();

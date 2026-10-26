@@ -1275,7 +1275,8 @@ section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URL
 a renamed page used to live at — for characters `to_slug` is the page's
 **identity**, never another address, see "Character identity vs address" below),
 `tag_checks` (the tag suggester's answer key, one row per character an
-admin checked by hand — see "Tag suggestions"),
+admin checked by hand) and `tag_feedback` (what writers kept, removed and
+added after pressing Suggest tags) — see "Tag suggestions",
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
@@ -3490,6 +3491,18 @@ own wherever the suggester picks examples, marked `checked` so they score
 exactly the checked tags, without the sure cues on top (the admin already
 overruled those). `loadTagChecks()` memoises the table for a minute per
 isolate; a save clears it in its own isolate.
+
+**What writers did with it: `tag_feedback`.** `tag-suggest.js` keeps what
+the button offered and what was ticked before the first press, and both
+editors post it with the save as `_tagSuggest` (read once, then cleared;
+edit.html also drops it from its baseline so a second save cannot carry it
+again). `/api/character` takes it off the page before anything is stored
+and, after the save, writes one row to the lazily created `tag_feedback`
+table (`slug`, `user_id`, `suggested`, `before`, `saved`). The dashboard's
+"What writers did" button (`/api/admin/tag-check {action: 'feedback'}`)
+counts per tag what the button added and the writer kept or removed, and
+what they added that it never offered. A press nobody saves after leaves no
+row.
 
 **Training on existing tags was measured and not built (2026-10).** A
 per-tag classifier trained on the wiki's tagged pages, scored on pages it

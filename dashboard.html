@@ -1019,6 +1019,7 @@
           <button type="button" class="small-btn" id="atg-score">Score</button>
           <button type="button" class="small-btn alt" id="atg-untagged">Try untagged</button>
           <button type="button" class="small-btn alt" id="atg-compare">Compare</button>
+          <button type="button" class="small-btn alt" id="atg-feedback">What writers did</button>
           <label class="note" style="display:flex;align-items:center;gap:.35em"><input type="checkbox" id="atg-checked"> Test on the pages checked by hand</label>
         </div>
         <div id="atg-list"></div>
@@ -2226,6 +2227,26 @@
         .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
     }
     $('atg-compare').addEventListener('click', compareAutotag);
+    // Every save that followed a "Suggest tags" press: per tag, what the
+    // button added and the writer kept or took off, and what they added
+    // that it never offered.
+    $('atg-feedback').addEventListener('click', function(){
+      var b = $('atg-feedback'); b.disabled = true;
+      $('atg-list').innerHTML = '<p class="note">Loading…</p>';
+      fetch('/api/admin/tag-check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'feedback' }) }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+        var tags = Object.keys(d.perTag).map(function(t){ var x = d.perTag[t]; x.tag = t; return x; })
+          .sort(function(a, b){ return (b.removed + b.addedByHand) - (a.removed + a.addedByHand); });
+        $('atg-count').textContent = d.saves + ' saves';
+        $('atg-list').innerHTML = !d.saves ? '<p class="note">Nobody has saved a page after pressing Suggest tags yet.</p>' :
+          '<p class="note">' + d.saves + ' saves after a Suggest tags press. Kept / Removed: tags the button added. Added by hand: tags the writer picked that it never offered. Worst first.</p>' +
+          '<table class="atg-cmp"><tr><th>Tag</th><th>Kept</th><th>Removed</th><th>Added by hand</th></tr>' +
+          tags.map(function(x){ return '<tr><th>' + esc(x.tag) + '</th><td>' + x.kept + (x.offered ? ' <span class="note">(' + Math.round(100 * x.kept / x.offered) + '%)</span>' : '') +
+            '</td><td>' + x.removed + '</td><td>' + x.addedByHand + '</td></tr>'; }).join('') + '</table>';
+      }).catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try again.</p>'; })
+        .then(function(){ b.disabled = false; });
+    });
 
     /* ---- Check tags: the answer key, one character at a time ---- */
     var tck = null, tckLast = null;
