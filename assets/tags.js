@@ -45,7 +45,7 @@
     'Public': 'The player does something in front of everyone, like the Gossip.',
     'Quiet': 'An evil character whose work nobody notices, like the Poisoner.',
     'Resurrection': 'Brings a dead player back to life. Never dying in the first place is Death Modification.',
-    'Reverse': 'Reverses an effect, a rule, or another character’s ability.',
+    'Reverse': 'Reverses an effect, a rule, or another character’s ability. Any ability that says “reverse” or “reversed” counts.',
     'Safe': 'Makes a player safe. The word “safe” appears in the ability.',
     'Safety Net': 'Stops the game being won or lost too early, like the Scarlet Woman taking over when the Demon dies.',
     'Setup': 'Changes the game during setup (square-bracket setup text).',

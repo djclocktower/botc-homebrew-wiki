@@ -91,7 +91,9 @@ export const CUES = [
   ['Public', SURE, /\bpublic(ly)?\b|\bin front of everyone\b|\bout loud\b|\baloud\b/i],
   ['Quiet', HINT, /\bsecret|\bcovert|\bno one (else )?(learns|knows)|\bnobody (learns|knows)|\bunaware|\bwithout (anyone|them|the player) (knowing|learning)|\bpoison|\bdrunk/i, EVIL],
   ['Resurrection', SURE, /\bresurrect|\bback to life|\breviv(e|es|ed)\b|\b(becomes?|is|are) alive again\b|\bno longer dead\b|\breturns? to life/i],
-  ['Reverse', HINT, /\brevers|\bopposite\b|\binvert|\bundo(es|ne)?\b/i],
+  // The owner's ruling: the word itself is the tag.
+  ['Reverse', SURE, /\brevers/i],
+  ['Reverse', HINT, /\bopposite\b|\binvert|\bundo(es|ne)?\b/i],
   ['Safe', SURE, /\bsafe\b/i],
   ['Safety Net', HINT, /\b(5|five) or more (players|non-travellers|alive)\b|\bif (the|a) demon (dies|would die|is executed)\b|\bif (there is no|no) demon\b|\b(evil|good) would (win|lose)\b|\bgame would end\b|\bbecomes? the (new )?demon\b/i],
   ['Setup', SURE, /\[[^\]]+\]/],

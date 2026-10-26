@@ -3395,7 +3395,7 @@ untagged pages get at least one tag from the sure cues alone.
 descriptions in tags.js say what each tag means on this wiki, and the cues
 follow them. The rulings that decide cues: a tag the owner called word-based
 (Safe, Execution, Nominations, Votes, Win/Loss Condition, Death, Public,
-"false" for False Info, "true info", "start knowing") is a sure cue on the
+Reverse, "false" for False Info, "true info", "start knowing") is a sure cue on the
 word alone; Information is only this character's own player learning, and
 anybody else learning about it is Ping, which is never public; Single-Kill
 and Multi-Kill are any team and include once-per-game kills, but never "a
