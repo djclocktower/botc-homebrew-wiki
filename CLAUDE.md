@@ -3379,8 +3379,21 @@ unticks and never saves, so a person always decides. `Joke` is never
 suggested. Login required, 40 an hour per account (`autotag` bucket),
 admins exempt. About 25 neurons a call.
 
+**Wording cues** (`CUES` in autotag.js) are the other half: phrases that
+mean a tag because of how the game is written (`[+1 Outsider]` is Outsider
+Modification, `(once)` is Once Per Game, "gain ... ability" is Ability Gain),
+each measured against the tagged pages. `sure` cues are added whatever the
+model says, and are the whole answer when the model is off or fails, so the
+button still works without the binding. `hint` cues go into the prompt with
+the words they matched, for the model to keep or drop. Single-Kill stops
+being sure when a Multi-Kill phrase is present, and "even if you die" is Even
+If Dead, never On Death. On the tagged pages most sure-cue hits that
+disagree with the stored tags are tags the taggers missed; 1,194 of the 1,475
+untagged pages get at least one tag from the sure cues alone.
+
 **`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
-suggestions") scores it against random pages people already tagged, or shows
+suggestions") scores it against random pages people already tagged (`model:
+'phrases'` scores the wording cues alone, costing nothing), or shows
 what it would say about untagged ones, writing nothing. Read its numbers with
 care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
 pages with `[setup]` text lacked Setup), so an "extra" tag is often right.

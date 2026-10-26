@@ -27,6 +27,104 @@ const BY_LOWER = new Map(SUGGESTABLE.map(t => [t.toLowerCase(), t]));
 
 const EXAMPLES = 8;
 
+/* Phrases that mean a tag, worked out from how the game's mechanics are
+   written ("[+1 Outsider]" is Outsider Modification, "(once)" is Once Per
+   Game). Each was measured against the 1,871 tagged pages; nearly every hit
+   on a page WITHOUT the tag was a tag its taggers missed, not a wrong cue.
+   SURE cues are added to the suggestion whatever the model says: they are
+   the tag's own definition written out. HINT cues are handed to the model
+   with the words they matched, to keep or drop. A tag with no phrase here
+   (Joke) is judgement only. [tag, level, test, teams?]; test is a RegExp or
+   (ability, char) => bool; teams limits a cue to those teams. */
+const SURE = 'sure', HINT = 'hint', EVIL = ['demon', 'minion'];
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const CUES = [
+  ['Ability Gain', SURE, /\b(re)?gains?\b[^.]{0,40}\babilit/i],
+  ['Ability Gain', HINT, /\bha(s|ve) (the|their|that|its|an?|another|every)\b[^.]{0,30}\babilit|\bas if (you|they) (were|are)\b|\buses? (their|that|its|this) abilit/i],
+  ['Alignment Change', SURE, /\b(becomes?|turns?|is now|are now|switch(es)? to|changes? to) (good|evil)\b|\b(chang|swap|switch|flip)\w*[^.]{0,20}\balignments?\b|\balignments?[^.]{0,15}\b(chang|swap|flip|switch)/i],
+  ['Binary Info', HINT, /\b(learns?|told|nods?|shakes?)\b[^.]{0,25}\b(if|whether)\b|\byes or no\b|\byes\/no\b|\btrue or false\b/i],
+  ['Character Change', HINT, /\b(becomes?|turns? into)\b(?! (good|evil|drunk|poisoned|mad|safe|dead|sober|healthy|alive|immune))|\bchange\w* (their|your|a player'?s?|that player'?s?) character|\bswap\w*[^.]{0,20}\bcharacters?\b|\bnew character\b/i],
+  ['Confirmation', HINT, /\bconfirm|\bprov(e|es|en)\b|\b(knows?|learns?) (that )?you are (the|good|not)\b|\ball (players )?know (who )?you\b|\beveryone knows\b|\bpublicly\b[^.]{0,40}\b(is|are) (good|evil)\b/i],
+  ['Consult', SURE, /\b(visit|ask|tell|inform|consult|speak (to|with)|talk (to|with)) the storyteller\b|\bprivately (ask|visit|tell|speak|talk)/i],
+  ['Day Deaths', HINT, /\b(during the day|by day|today|at dusk|immediately)\b[^.]{0,40}\b(dies?|die|killed)\b|\b(dies?|die|killed)\b[^.]{0,30}\b(during the day|today|immediately|at dusk|at any time)\b|\bmay choose to die\b/i],
+  ['Death', HINT, /\bdies?\b|\bdied\b|\bdeaths?\b|\bkill/i],
+  ['Death Modification', HINT, /\b(do(es)? ?n[o']t|can ?no?t|can't|cannot|won'?t|never|might not) die\b|\b(dies?|die) instead\b|\binstead\b[^.]{0,20}\b(dies?|die)\b|\bsurviv|\bregisters? as (alive|dead)\b|\b(you|they) live\b|\btargeted instead\b|\bwould (die|be killed)\b/i],
+  ['Demonsbane', HINT, /\bif (the|a) demon (kills|attacks|chooses|targets) you|\bif you (die|are killed) (at night|by the demon|tonight)|\bkilled by (the|a) demon\b/i],
+  ['Drunkenness', SURE, /\bdrunk/i],
+  // Copies of itself: "[+0 to +2 Legionary]" on the Legionary, "other Hydras".
+  ['Duplication', HINT, (t, c) => (String(c.name || '').length > 2 &&
+    new RegExp('\\[[^\\]]*[+±][^\\]]*\\b' + reEsc(c.name) + '|\\b(other|another|all|every) ' + reEsc(c.name) + 's?\\b', 'i').test(t)) ||
+    /\bcop(y|ies) of (you|yourself|itself|this character)\b|\bmore than one of you\b/i.test(t)],
+  ['Even If Dead', SURE, /\beven (if|when|while|though) (you'?re |you are |you'?ve |you have |you |they )?(dead|die|died)\b|\bwhile (you are |you'?re )?dead\b/i],
+  ['Execution', SURE, /\bexecut/i],
+  ['Execution Failure', HINT, /\bexecutions? (fails?|is cancelled)|\b(nobody|no one) is executed|\bno execution|\b(can'?t|cannot|can not) be executed/i],
+  ['Execution Survival', HINT, /\b(do(es)? ?n[o']t|would(n'?t| not)|cannot|can'?t|won'?t|might not) die\b[^.]{0,40}\bexecut|\bexecut\w*[^.]{0,40}\b(do(es)? ?n[o']t|not|n't|might not) die\b|\bsurviv\w*[^.]{0,20}execution|\bexecut\w*[^.]{0,30}\b(you|they) live\b/i],
+  ['Extra Evil', SURE, /\[[^\]]*[+]\s*\d+\s*(evil )?(minion|demon)s?\b/i],
+  ['Extra Evil', HINT, /\b(an? )?(extra|additional|another) (evil|minion|demon)\b|\b(becomes?|turns?|made) evil\b|\bevil (townsfolk|outsider|traveller)\b/i],
+  ['False Info', SURE, /\bfalse info|\bfalse information\b|\bmisinformation\b/i],
+  ['False Info', HINT, /\bfalse\b|\bmight be (wrong|incorrect)|\bincorrect\b|\bwrong\b/i],
+  ['Grim Peeker', SURE, /\bgrimoire\b|\bthe grim\b/i],
+  ['Grim Peeker', HINT, /\breminder tokens?\b|\blearn (every|all|each)\b[^.]{0,25}\bcharacters?\b/i],
+  ['Hidden', HINT, /\bhid(e|es|den|ing)\b|\bcovert|\bblank tokens?\b|\bnot on the sheet\b|\b(don'?t|do not|does ?n[o']t) (know|learn) (their|they|that they)\b|\bwithout (knowing|being told)\b/i],
+  ['Information', SURE, /\byou (may |might )?learn\b|\bstarts? (the game )?knowing\b/i],
+  ['Information', HINT, /\blearns?\b|\b(tells|shows) you\b|\bshown\b|\bis told\b|\bfinds? out\b|\byou know\b/i],
+  ['Loud', HINT, /\bannounce|\bdeclar|\beveryone (learns|knows|is told|hears|sees)|\ball (players )?(learn|know)\b|\bthe (whole )?(town|group) (learns|is told|knows)|\bpublicly (learn|told|revealed|announced)|\bout loud\b|\baloud\b/i],
+  ['Madness', SURE, /\bmad(ness)?\b/i],
+  ['Magic', HINT, /\banything\b|\bany (effect|ability)\b|\bspells?\b|\bcurses?\b|\bwish(es)?\b|\bforge\b|\binvoke\b|\bstoryteller offers\b|\bsomething (good|bad) happens\b/i],
+  ['Misregistration', SURE, /\bregister(s|ed|ing)?\b|\bregistration\b/i],
+  ['Misregistration', HINT, /\b(might )?(show|appear)s? as\b|\bappears? to be\b/i],
+  ['Multi-Kill', HINT, /\bchoose (2|3|two|three|up to (\d|two|three)|any number of|\d+) (living |alive )?players?\b[^.]{0,30}\b(die|dies|kill)|\b(they both|they all|both|all of them) die\b|\bkills? (2|3|two|three|\d+) players\b|\banother player (also )?dies\b|\b(choose|kill) (an )?additional\b/i, EVIL],
+  ['Neighbor', SURE, /\bneighbou?r/i],
+  ['Neighbor', HINT, /\bnext to\b|\bsat beside\b|\badjacent\b|\b(anti-?|counter-?)?clockwise\b|\bto your (left|right)\b|\bseated\b/i],
+  ['Nominations', SURE, /\bnominat/i],
+  ['Nonconformist', HINT, /\bthe rules?\b|\banything goes\b|\bnot on the sheet\b|\bno demon\b|\bmore than one demon|\bgame (continues|does not end|doesn'?t end)\b|\bstoryteller (dies|is executed|can be executed|may break)\b/i],
+  ['On Death', SURE, /(?<!even )\b(if|when|after|once) you die\b|(?<!even )\b(if|when) you are (executed|killed)\b|\bupon (your )?death\b|\b(if|when) (the|a) demon kills you\b/i],
+  ['Once Per Game', SURE, /\bonce,? per game\b|\bonly once\b|\bonce during the game\b|\(once\b/i],
+  ['Outsider Modification', SURE, /\[[^\]]*\d[^\]]*\boutsiders?\b|\[[^\]]*\b(no|extra|fewer|more|all) outsiders?\b/i],
+  // Nothing to choose, wake for, guess, visit or learn: always on.
+  ['Passive', HINT, t => !/\b(choose|chooses|chosen|pick|picks|guess|guesses|may|visit|ask|nominat\w*|public\w*|claim\w*|wakes?|each (night|day)|once|learn\w*|start knowing)\b/i.test(t)],
+  ['Ping', HINT, /\b(learns?|knows?|is told|are told)\b[^.]{0,40}\b(is|are) in play\b|\b(the demon|minions|evil|a (good|evil) player|players) (learns?|knows?|start knowing) (you|who you are|that you)\b|\bknow each other\b|\bknows? you are\b/i],
+  ['Poison', SURE, /\bpoison/i],
+  ['Protection', HINT, /\bprotect|\bsafe from\b|\bimmune\b|\b(can ?no?t|can't|won'?t|do(es)? ?n[o']t) die\b/i],
+  ['Public', HINT, /\bpublic(ly)?\b|\bin front of everyone\b|\bout loud\b|\baloud\b/i],
+  ['Quiet', HINT, /\bsecret|\bcovert|\bno one (else )?(learns|knows)|\bnobody (learns|knows)|\bunaware|\bwithout (anyone|them|the player) (knowing|learning)/i],
+  ['Resurrection', SURE, /\bresurrect|\bback to life|\breviv(e|es|ed)\b|\b(becomes?|is|are) alive again\b|\bno longer dead\b|\breturns? to life/i],
+  ['Reverse', HINT, /\brevers|\bopposite\b|\binvert|\bundo(es|ne)?\b/i],
+  ['Safe', SURE, /\bsafe\b/i],
+  ['Safety Net', HINT, /\b(5|five) or more (players|non-travellers|alive)\b|\bif (the|a) demon (dies|would die|is executed)\b|\bif (there is no|no) demon\b|\b(evil|good) would (win|lose)\b|\bwould (win|lose)\b|\bgame would end\b/i],
+  ['Setup', SURE, /\[[^\]]+\]/],
+  ['Single-Kill', SURE, /\beach night\*?,?\s*(you may )?choose a (living |alive )?player[:,]? they die\b/i, EVIL],
+  ['Single-Kill', HINT, /\bchoose a (living |alive )?player[:,]? they die\b|\ba player dies\b/i, EVIL],
+  ['Sober & Healthy', SURE, /\bsober\b|\bhealthy\b/i],
+  ['Social', HINT, /\b(talk|speak|whisper|silen|mute|conversation|wink|clap|sing|hug|hand signal|eye contact|point at|discuss|agree|gender)\w*/i],
+  ['Subjective Info', HINT, /\bstoryteller('s)? (choice|discretion|decides|judge|thinks|opinion)|\b(most|least|best) (beneficial|helpful|interesting|important|suspicious|likely|responsible)\b|\bhelped (your team )?the most\b|\bhints?\b|\bclues?\b|\badvice\b|\briddle|\brelated to\b/i],
+  ['Think', HINT, /\bthinks?\b|\bbelieves?\b/i],
+  ['Timer', HINT, /\btimer|\bminutes?\b|\bseconds\b|\bcount ?down|\bafter (\d+|two|three|four|five|x) (days|nights)\b|\bafter (day|night) (\d|two|three|four|five|x)\b|\b(by|on|until|before) (the )?(end of )?(day|night) (\d|two|three|four|five|x)\b|\bon (your |the )?(\d+(st|nd|rd|th)|third|fourth|fifth) (day|night)\b|\bdays? remain/i],
+  ['True Info', SURE, /\btrue info|\btrue information\b/i],
+  ['True Info', HINT, /\btrue\b|\bcorrect\b|\baccurate/i],
+  ['Votes', SURE, /\bvot(e|es|ed|ing|er|ers)\b/i],
+  ['Win/Loss Condition', SURE, /\b(wins?|loses?|lose)\b(?! (their|its|your|an?|the|this|that) (abilit|vote|token|ghost))|\bgame ends\b/i],
+  ['You Start Knowing', SURE, /\bstarts? (the game )?knowing\b/i],
+];
+
+/* Which cues this character's ability trips: {sure: [tag], hint: [{tag, words}]}.
+   A sure tag is never also a hint, and a kill that escalates or doubles is
+   Multi-Kill, so it does not also count as a sure Single-Kill. */
+export function cueTags(char) {
+  const text = String(char.ability || ''), team = String(char.team || '').toLowerCase();
+  const sure = new Set(), hint = new Map();
+  for (const [tag, level, test, teams] of CUES) {
+    if (teams && !teams.includes(team)) continue;
+    if (typeof test === 'function') { if (test(text, char)) (level === SURE ? sure.add(tag) : hint.set(tag, hint.get(tag) || '')); continue; }
+    const m = text.match(test);
+    if (!m) continue;
+    if (level === SURE) sure.add(tag); else if (!hint.get(tag)) hint.set(tag, m[0]);
+  }
+  if (hint.has('Multi-Kill') && sure.delete('Single-Kill')) hint.set('Single-Kill', hint.get('Single-Kill') || '');
+  for (const t of sure) hint.delete(t);
+  return { sure: [...sure], hint: [...hint].map(([tag, words]) => ({ tag, words })) };
+}
+
 export const splitTags = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
 const words = s => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ')
   .split(/\s+/).filter(w => w.length > 2));
@@ -53,6 +151,10 @@ export function buildMessages(char, examples) {
   const list = SUGGESTABLE.map(t => '- ' + t + ': ' + Tags.describeTag(t)).join('\n');
   const ex = examples.map(r => 'Character: ' + clip(r.name, 80) + ' (' + r.team + ')\nAbility: ' +
     clip(r.ability, 400) + '\nTags: ' + splitTags(r.tags).filter(t => BY_LOWER.has(t.toLowerCase())).join(', ')).join('\n\n');
+  const cues = cueTags(char);
+  const cueLine = (cues.sure.length ? '\nAlready certain from its wording (do not repeat): ' + cues.sure.join(', ') + '.' : '') +
+    (cues.hint.length ? '\nWording that may point to a tag (keep one only if it really applies): ' +
+      cues.hint.map(h => h.tag + (h.words ? ' ("' + clip(h.words, 40) + '")' : '')).join(', ') + '.' : '');
   const extra = [char.lede, ...(Array.isArray(char.summaryBullets) ? char.summaryBullets : [])]
     .map(s => clip(s, 300)).filter(Boolean).join(' ');
   return [
@@ -63,7 +165,7 @@ export function buildMessages(char, examples) {
     { role: 'user', content:
       (ex ? 'Characters already tagged on the wiki:\n\n' + ex + '\n\nNow this one:\n' : '') + 'Character: ' + clip(char.name, 80) +
       ' (' + clip(char.team, 20) + ')\nAbility: ' + clip(char.ability, 600) +
-      (extra ? '\nAbout it: ' + clip(extra, 900) : '') + '\nTags:' }
+      (extra ? '\nAbout it: ' + clip(extra, 900) : '') + cueLine + '\nTags:' }
   ];
 }
 
@@ -80,10 +182,22 @@ export function parseTags(text) {
   return [...new Set(picked.map(t => BY_LOWER.get(String(t).trim().toLowerCase())).filter(Boolean))];
 }
 
+/* The model's answer plus the sure cues. With no model to ask (the binding
+   is off, it failed, or the scorer asked for model 'phrases') the sure cues
+   are the answer on their own, so the button still helps. */
 export async function suggestTags(env, char, rows, model = AUTOTAG_MODEL) {
-  if (!env.AI) throw Object.assign(new Error('Tag suggestions are not switched on yet.'), { public: true });
-  const out = await env.AI.run(model, { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: 1500 });
-  const text = typeof out === 'string' ? out
-    : out && (out.response ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content));
-  return parseTags(typeof text === 'string' ? text : JSON.stringify(text || ''));
+  const sure = cueTags(char).sure;
+  let picked = [];
+  if (model !== 'phrases') {
+    try {
+      if (!env.AI) throw Object.assign(new Error('Tag suggestions are not switched on yet.'), { public: true });
+      const out = await env.AI.run(model, { messages: buildMessages(char, pickExamples(char, rows)), max_tokens: 1500 });
+      const text = typeof out === 'string' ? out
+        : out && (out.response ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content));
+      picked = parseTags(typeof text === 'string' ? text : JSON.stringify(text || ''));
+    } catch (e) {
+      if (!sure.length) throw e;
+    }
+  }
+  return [...new Set([...sure, ...picked])];
 }
