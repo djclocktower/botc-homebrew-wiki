@@ -458,8 +458,19 @@
    back as soon as the page is tall enough to hold it. Anything the reader
    does first (a scroll, a tap, a key) wins, and it gives up after ten
    seconds. A page that keeps its own place (all-characters, /search) sets
-   history.scrollRestoration to 'manual' and this leaves it alone. */
+   history.scrollRestoration to 'manual' and this leaves it alone.
+   The homepage is the exception the other way: Back to it always opens at
+   the top (the owner's call), so it turns the browser's own restore off too,
+   and a back/forward-cache restore, which keeps the old scroll, goes to the
+   top as well. */
 (function () {
+  if (/^\/(index(\.html)?)?$/.test(location.pathname)) {
+    try { history.scrollRestoration = 'manual'; } catch (e) {}
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted && !location.hash) window.scrollTo(0, 0);
+    });
+    return;
+  }
   var KEY = 'botcY';
   function own() { try { return history.scrollRestoration === 'manual'; } catch (e) { return true; } }
   function save() {
