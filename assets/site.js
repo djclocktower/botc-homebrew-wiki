@@ -35,9 +35,7 @@
   var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, TEMPLATE: 1 };
   var OBS = { childList: true, subtree: true, characterData: true };
   var rules = [];
-  var undoRules = [];     // reverses what is already on the page; one pass only
   var allItems = [];      // the map as it stands
-  var appliedItems = [];  // the map the page currently reflects
   var minLen = 0;
   var observer = null;
 
@@ -83,10 +81,7 @@
 
   function rewrite(text) {
     if (!text || text.length < minLen) return text;
-    // Undo first, then the current wording. The undo pass puts back what the
-    // source file says before the new rules go on, so an override that was
-    // deleted or rewritten does not leave the old words sitting on the page.
-    return pass(pass(text, undoRules), rules);
+    return pass(text, rules);
   }
 
   /* Every occurrence of `from` that sits on word edges. The same test the
@@ -151,20 +146,23 @@
     return false;
   }
   var needles = needlesFor([]);
-  function rebuildNeedles() { needles = needlesFor(rules.concat(undoRules)); }
+  function rebuildNeedles() { needles = needlesFor(rules); }
   function mayMatch(text) { return textMayMatch(needles, text); }
 
-  /* What we last wrote into a node, per rule set. A node the observer hands
-     back unchanged (a card moved by a re-sort) is not rewritten twice — which
-     would otherwise apply an override whose new wording contains the old one
-     a second time. Reset whenever the rules change, so Undo and a re-edit
-     still repaint everything (applyAll never consults it). */
-  var written = null, writtenAttrs = null;
-  function resetWritten() {
-    written = typeof WeakMap === 'function' ? new WeakMap() : null;
-    writtenAttrs = typeof WeakMap === 'function' ? new WeakMap() : null;
-  }
-  resetWritten();
+  /* What every rewritten node SAID before we touched it. A change of rules
+     (a save, an Undo, a second edit of the same words) starts again from that
+     source text instead of trying to reverse the old wording by text — which
+     could not undo an edit that only deleted words, and applied an edit whose
+     new wording contains the old one a second time. A node the page itself
+     has since changed (its text is no longer what we wrote) is taken as new
+     source. `gen` moves with the rules, so the observer can skip a node it
+     already did under the current set (a card moved by a re-sort).
+     `touched` holds the rewritten nodes so a rules change can reach the ones
+     no longer matching any rule; it only ever holds nodes we rewrote. */
+  var gen = 0;
+  var srcText = typeof WeakMap === 'function' ? new WeakMap() : null;
+  var srcAttrs = typeof WeakMap === 'function' ? new WeakMap() : null;
+  var touched = [];
 
   function patchAttrs(root, anyOptOut, skipSeen) {
     if (!root || !root.querySelectorAll) return;
@@ -173,34 +171,70 @@
     for (var i = 0; i < list.length; i++) {
       var el = list[i];
       if (insideSkipped(el, anyOptOut)) continue;
-      var seen = writtenAttrs && writtenAttrs.get(el);
       for (var a = 0; a < ATTRS.length; a++) {
-        var name = ATTRS[a];
-        if (!el.hasAttribute(name)) continue;
-        var v = el.getAttribute(name);
-        if (skipSeen && seen && seen[name] === v) continue;
-        if (!mayMatch(v)) continue;
-        var out = rewrite(v);
-        if (out !== v) {
-          el.setAttribute(name, out);
-          if (writtenAttrs) {
-            if (!seen) { seen = {}; writtenAttrs.set(el, seen); }
-            seen[name] = out;
-          }
-        }
+        if (el.hasAttribute(ATTRS[a])) patchAttr(el, ATTRS[a], skipSeen);
       }
+    }
+  }
+
+  function patchAttr(el, name, skipSeen) {
+    var v = el.getAttribute(name);
+    var recs = srcAttrs && srcAttrs.get(el);
+    var rec = recs && recs[name];
+    if (rec && rec.out === v && skipSeen && rec.gen === gen) return;
+    var from = (rec && rec.out === v) ? rec.from : v;
+    if (!rec && !mayMatch(from)) return;
+    var out = rewrite(from);
+    if (out !== v) el.setAttribute(name, out);
+    if (!srcAttrs) return;
+    if (out !== from) {
+      if (!recs) { recs = {}; srcAttrs.set(el, recs); touched.push(el); }
+      recs[name] = { from: from, out: out, gen: gen };
+    } else if (recs) {
+      delete recs[name];
+      if (!Object.keys(recs).length) srcAttrs['delete'](el);
     }
   }
 
   function patchText(node, skipSeen) {
     var v = node.nodeValue;
-    if (!v) return;
-    if (skipSeen && written && written.get(node) === v) return;
-    var out = rewrite(v);
-    if (out !== v) {
-      node.nodeValue = out;
-      if (written) written.set(node, out);
+    var rec = srcText && srcText.get(node);
+    if (!v && !rec) return;
+    if (rec && rec.out === v && skipSeen && rec.gen === gen) return;
+    var from = (rec && rec.out === v) ? rec.from : v;
+    var out = rewrite(from);
+    if (out !== v) node.nodeValue = out;
+    if (!srcText) return;
+    if (out !== from) {
+      if (!rec) touched.push(node);
+      srcText.set(node, { from: from, out: out, gen: gen });
+    } else if (rec) srcText['delete'](node);
+  }
+
+  /* What a text node said before any override touched it: live mode matches
+     the catalogue against this, so an edited (or emptied) piece of wording is
+     still recognised as the source string it came from. */
+  function sourceOf(node) {
+    var rec = srcText && node && srcText.get(node);
+    return (rec && rec.out === node.nodeValue) ? rec.from : (node ? node.nodeValue : '');
+  }
+
+  /* Put every node we rewrote under the old rules through the new ones. */
+  function redoTouched() {
+    var keep = [];
+    for (var i = 0; i < touched.length; i++) {
+      var n = touched[i];
+      if (!connected(n)) continue;
+      if (n.nodeType === 3) {
+        patchText(n, false);
+        if (srcText.get(n)) keep.push(n);
+      } else {
+        var names = Object.keys(srcAttrs.get(n) || {});
+        for (var j = 0; j < names.length; j++) patchAttr(n, names[j], false);
+        if (srcAttrs.get(n)) keep.push(n);
+      }
     }
+    touched = keep;
   }
 
   var OPT_OUT = '[data-no-text-override],[contenteditable]';
@@ -293,12 +327,19 @@
     patchAttrs(root, anyOptOut, skipSeen);
   }
 
+  var titleRec = null;
   function applyAll() {
-    if (!rules.length && !undoRules.length) return;
+    if (!rules.length && !touched.length && !titleRec) return;
     if (observer) observer.disconnect();
-    walk(document.body || document.documentElement, anyOptOutNow(), false);
-    var t = rewrite(document.title);
-    if (t !== document.title) document.title = t;
+    gen++;
+    var anyOptOut = anyOptOutNow();
+    redoTouched();
+    walk(document.body || document.documentElement, anyOptOut, true);
+    var cur = document.title;
+    var from = (titleRec && titleRec.out === cur) ? titleRec.from : cur;
+    var t = rewrite(from);
+    if (t !== cur) document.title = t;
+    titleRec = t !== from ? { from: from, out: t } : null;
     if (observer && document.body) { observer.takeRecords(); observer.observe(document.body, OBS); }
   }
 
@@ -348,47 +389,27 @@
     observer.observe(document.body, OBS);
   }
 
+  // An empty replacement is allowed: it is wording that was removed.
   function usable(it) {
-    return it && it.o && typeof it.r === 'string' && it.r && it.o !== it.r && inScope(it.s);
+    return it && it.o && typeof it.r === 'string' && it.o !== it.r && inScope(it.s);
   }
   var bylen = function (a, b) { return b.o.length - a.o.length; };
 
   function setItems(items) {
     allItems = items || [];
-
-    // Everything already painted onto this page, backwards. Rebuilt on every
-    // change, because "undo" and "change it again" both need the source
-    // wording back before the new wording can go on.
-    // An edit that only DELETES words (". Every page credits…" -> ".") cannot
-    // be undone by text: its new wording is inside the old, so the undo rule
-    // would match every "." on the page and paste the sentence after each.
-    undoRules = appliedItems.filter(usable)
-      .filter(function (it) { return it.o.indexOf(it.r) < 0; })
-      .map(function (it) { return { o: it.r, r: it.o, s: it.s }; })
-      .sort(bylen).map(compile);
-
     // Longest first, so an override of a whole sentence wins over one of a
     // phrase inside it.
     rules = allItems.filter(usable).sort(bylen).map(compile);
-
-    var all = rules.concat(undoRules);
-    minLen = all.length ? Math.min.apply(null, all.map(function (r) {
+    minLen = rules.length ? Math.min.apply(null, rules.map(function (r) {
       // a rule with a {placeholder} can match something shorter than itself
       return r.re ? 1 : r.from.length;
     })) : 0;
     rebuildNeedles();
-    resetWritten();
   }
 
   function run() {
-    if (!rules.length && !undoRules.length) return;
     applyAll();
-    startObserver();
-    // The page now reflects the current map, and the undo pass is spent —
-    // content rendered from here on only needs the forward rules.
-    appliedItems = allItems.slice();
-    undoRules = [];
-    rebuildNeedles();
+    if (rules.length) startObserver();
   }
 
   /* One request for everything site.js needs from the server on a page load:
@@ -444,6 +465,7 @@
     // text-live.js asks this too, so live mode never offers somebody's
     // writing even where a catalogued phrase happens to sit inside it.
     skip: optedOut,
+    sourceOf: sourceOf,
     // The pure pieces, for migration/tests (not an API for pages).
     internals: { compile: compile, needlesFor: needlesFor, textMayMatch: textMayMatch, rootsOf: rootsOf }
   };

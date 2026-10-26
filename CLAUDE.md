@@ -3510,13 +3510,26 @@ knows instantly what is editable. Two things keep it honest:
   Anything the guard turns away is still in the list on /text-editor, where
   the source file is shown beside it.
 
+**A double-click opens the whole BOX, not one text node.** Overrides live on
+text nodes, so a paragraph with a link in it is three catalogue strings (the
+words before, the link, the words after); the editor finds the nearest
+element that is not laid out inline and shows one field per piece, so the
+paragraph is rewritten in one go and the link keeps working. Pieces are
+matched on what the page said BEFORE any override: site.js remembers each
+rewritten node's source text (`SiteText.sourceOf()`) and re-applies a new
+rule set from it, which is also what makes an edit that only deletes words,
+and its Undo, repaint correctly (the old text-based undo pass could not).
+**Emptying a field removes the wording**: it posts `action: 'remove'`, which
+stores an empty replacement; an empty box with any other action is still a
+revert, so /text-editor asks before it sends one. The bar offers Undo for
+ten seconds after a save.
+
 A click on an editable link or button is held ~320 ms and replayed if no
 second click follows, so double-click can reach a nav label without the first
 click navigating away. Anything NOT editable is never intercepted, so ordinary
-browsing keeps its normal speed. `SiteText.setItems()` also builds **undo
-rules** (replacement → original) from what the page currently shows, so
-pressing Undo — or editing the same words twice — repaints instead of leaving
-the old wording behind.
+browsing keeps its normal speed. Because site.js re-applies every rule
+change from each node's remembered source text, pressing Undo — or editing
+the same words twice — repaints instead of leaving the old wording behind.
 
 Two rules worth knowing before changing any of this:
 
