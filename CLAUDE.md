@@ -3427,7 +3427,12 @@ it is one (Sweetheart, Drunk). Change a description and its cue together.
 **`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
 suggestions") scores it against random pages people already tagged (`model:
 'phrases'` scores the wording cues alone, costing nothing), or shows
-what it would say about untagged ones, writing nothing. Read its numbers with
+what it would say about untagged ones, writing nothing. `compare: true`
+(the card's "Compare thinking" button) runs the SAME pages three ways —
+`phrases`, the model, the model with `:think` — and returns each run's
+precision, recall and seconds per page, plus every page's three answers, so
+the cost of switching thinking off is measured on one sample rather than two
+random ones. Read its numbers with
 care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
 pages with `[setup]` text lacked Setup), so an "extra" tag is often right.
 A bulk "tag every untagged page" run is deliberately not built yet.

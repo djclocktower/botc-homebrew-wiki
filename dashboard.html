@@ -357,6 +357,7 @@
     }
   }
 .atg-r { color: #2f6b3a; font-weight: 700; } .atg-x { color: #234f74; } .atg-m { color: #8a2f2f; }
+.atg-cmp { border-collapse: collapse; margin: .4em 0; } .atg-cmp th, .atg-cmp td { padding: .25em .7em; text-align: left; border-bottom: 1px solid rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
@@ -1013,6 +1014,7 @@
           <input type="text" id="atg-model" placeholder="model (optional; phrases = wording only; end with :think to let it reason first)" style="flex:1;min-width:10em">
           <button type="button" class="small-btn" id="atg-score">Score</button>
           <button type="button" class="small-btn alt" id="atg-untagged">Try untagged</button>
+          <button type="button" class="small-btn alt" id="atg-compare">Compare thinking</button>
         </div>
         <div id="atg-list"></div>
       </section>
@@ -2172,6 +2174,39 @@
         .catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try fewer pages.</p>'; })
         .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
     }
+    // The same pages three ways: wording rules alone, the AI, the AI thinking first.
+    function compareAutotag() {
+      var btns = [$('atg-score'), $('atg-untagged'), $('atg-compare')];
+      btns.forEach(function(b){ b.disabled = true; });
+      $('atg-list').innerHTML = '<p class="note">Running the same pages three ways… thinking is slow, so this can take a few minutes.</p>';
+      fetch('/api/admin/autotag-eval', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n: Number($('atg-n').value) || 20, model: $('atg-model').value.trim() || undefined, compare: true }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+          var names = ['Wording rules only', 'AI', 'AI, thinking first'];
+          var html = '<table class="atg-cmp"><tr><th></th><th>Right</th><th>Found</th><th>Seconds each</th></tr>' +
+            d.runs.map(function(r, i){ return '<tr><th>' + names[i] + '</th><td>' + r.precision + '%</td><td>' + r.recall + '%</td><td>' +
+              r.seconds + (r.errors ? ' <span class="note">(' + r.errors + ' failed)</span>' : '') + '</td></tr>'; }).join('') + '</table>' +
+            '<p class="note">Right: of the tags suggested, how many were on the page. Found: of the tags on the page, how many were suggested. ' +
+            d.n + ' pages. Below, only the pages where thinking changed the answer.</p>';
+          var chip = function(list, gold){ return list.length ? list.map(function(t){
+            return '<span class="' + (gold.indexOf(t) !== -1 ? 'atg-r' : 'atg-x') + '">' + esc(t) + '</span>'; }).join(', ') : '<em>nothing</em>'; };
+          var differ = d.results.filter(function(r){ return r.got[1].slice().sort().join() !== r.got[2].slice().sort().join(); });
+          differ.forEach(function(r){
+            html += '<div class="row"><div><a href="/edit?c=' + encodeURIComponent(r.slug) + '" target="_blank"><strong>' + esc(r.name) +
+              '</strong></a> <span class="note">' + esc(r.team) + '</span><br><span class="note">' + esc(String(r.ability).slice(0, 200)) + '</span><br>' +
+              'On the page: ' + (r.gold.map(esc).join(', ') || '<em>nothing</em>') + '<br>' +
+              'AI: ' + chip(r.got[1], r.gold) + '<br>Thinking: ' + chip(r.got[2], r.gold) + '</div></div>';
+          });
+          if (!differ.length) html += '<p class="note">Thinking gave the same tags on every page.</p>';
+          $('atg-count').textContent = 'compared on ' + d.n;
+          $('atg-list').innerHTML = html;
+        })
+        .catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try fewer pages.</p>'; })
+        .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
+    }
+    $('atg-compare').addEventListener('click', compareAutotag);
     $('atg-score').addEventListener('click', function(){ runAutotag(false); });
     $('atg-untagged').addEventListener('click', function(){ runAutotag(true); });
 

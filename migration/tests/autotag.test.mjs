@@ -132,3 +132,26 @@ test('autotag: a Chinese-edition page counts as an official example, with its of
   assert.ok(ex && ex.official, 'an untagged page still serves, through its official tags');
   assert.ok(exampleTags(ex).includes('Neighbor'));
 });
+
+test('autotag: the eval compares the same pages with and without thinking', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(1,'user-1','',1)").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1', isAdmin: true });
+  for (const s of ['a', 'b', 'c']) {
+    f.insert('characters', s, { slug: s, name: s.toUpperCase(), team: 'townsfolk', art: 'art/x.png', ability: 'Each night*, choose a player: they are safe from the Demon.', tags: 'Protection' });
+    f.db.prepare("UPDATE characters SET tags='Protection' WHERE slug=?").run(s);
+  }
+  const asked = [];
+  f.env.AI = { async run(model, input) {
+    asked.push(input.chat_template_kwargs.enable_thinking);
+    return { response: input.chat_template_kwargs.enable_thinking ? '{"tags":["Protection"]}' : '{"tags":["Quiet"]}' };
+  } };
+  const r = await f.request('/api/admin/autotag-eval', post(1, { n: 3, compare: true }));
+  const d = await r.json();
+  assert.equal(d.n, 3);
+  assert.deepEqual(d.runs.map(x => x.model), ['phrases', '@cf/google/gemma-4-26b-a4b-it', '@cf/google/gemma-4-26b-a4b-it:think']);
+  assert.deepEqual(d.runs.map(x => x.recall), [0, 0, 100]);
+  assert.deepEqual(asked.sort(), [false, false, false, true, true, true]);
+  assert.ok(d.results.every(x => x.got.length === 3));
+});

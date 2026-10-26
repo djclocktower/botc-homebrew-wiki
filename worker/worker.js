@@ -16149,28 +16149,47 @@ const app = {
         const pool = rows.filter(r => r.ability && !!splitTags(r.tags).length === !b.untagged);
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const sample = pool.slice(0, n);
-        const results = [];
-        const perTag = {};
-        let tp = 0, fp = 0, fn = 0;
-        // Five at a time: fast enough, and well inside the subrequest cap.
-        for (let i = 0; i < sample.length; i += 5) {
-          await Promise.all(sample.slice(i, i + 5).map(async r => {
-            const gold = splitTags(r.tags).filter(t => SUGGESTABLE.includes(t));
-            let got = [], error = '';
-            try { got = await suggestTags(env, r, rows, model); } catch (e) { error = String(e && e.message || e); }
-            const right = got.filter(t => gold.includes(t)), extra = got.filter(t => !gold.includes(t)), missed = gold.filter(t => !got.includes(t));
-            if (!b.untagged && !error) {
-              tp += right.length; fp += extra.length; fn += missed.length;
-              for (const [list, k] of [[right, 'tp'], [extra, 'fp'], [missed, 'fn']]) for (const t of list) (perTag[t] = perTag[t] || { tp: 0, fp: 0, fn: 0 })[k]++;
-            }
-            results.push({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability, gold, right, extra, missed, error });
-          }));
-        }
         const pct = x => isFinite(x) ? Math.round(x * 100) : null;
+        const score = async m => {
+          const results = [], perTag = {};
+          let tp = 0, fp = 0, fn = 0, ms = 0;
+          // Five at a time: fast enough, and well inside the subrequest cap.
+          for (let i = 0; i < sample.length; i += 5) {
+            await Promise.all(sample.slice(i, i + 5).map(async r => {
+              const gold = splitTags(r.tags).filter(t => SUGGESTABLE.includes(t));
+              let got = [], error = '';
+              const t0 = Date.now();
+              try { got = await suggestTags(env, r, rows, m); } catch (e) { error = String(e && e.message || e); }
+              ms += Date.now() - t0;
+              const right = got.filter(t => gold.includes(t)), extra = got.filter(t => !gold.includes(t)), missed = gold.filter(t => !got.includes(t));
+              if (!b.untagged && !error) {
+                tp += right.length; fp += extra.length; fn += missed.length;
+                for (const [list, k] of [[right, 'tp'], [extra, 'fp'], [missed, 'fn']]) for (const t of list) (perTag[t] = perTag[t] || { tp: 0, fp: 0, fn: 0 })[k]++;
+              }
+              results.push({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability, gold, got, right, extra, missed, error });
+            }));
+          }
+          return { model: m, n: results.length, precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)),
+            seconds: Math.round(ms / Math.max(1, results.length) / 100) / 10, errors: results.filter(r => r.error).length, perTag, results };
+        };
+        // compare: the SAME pages through the wording rules alone, the model,
+        // and the model allowed to think first, so the difference is the
+        // method and not which pages the shuffle happened to pick.
+        if (b.compare) {
+          const base = model.replace(/:think$/, '');
+          const runs = [];
+          for (const m of ['phrases', base, base + ':think']) runs.push(await score(m));
+          return jsonResponse({ ok: true, compare: true, n: sample.length,
+            runs: runs.map(r => ({ model: r.model, precision: r.precision, recall: r.recall, seconds: r.seconds, errors: r.errors })),
+            results: sample.map(r => ({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
+              gold: splitTags(r.tags).filter(t => SUGGESTABLE.includes(t)),
+              got: runs.map(run => (run.results.find(x => x.slug === r.slug) || {}).got || []) })) });
+        }
+        const run = await score(model);
         return jsonResponse({
-          ok: true, model, n: results.length, untagged: !!b.untagged,
-          precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)),
-          perTag, results
+          ok: true, model, n: run.n, untagged: !!b.untagged,
+          precision: run.precision, recall: run.recall, seconds: run.seconds,
+          perTag: run.perTag, results: run.results
         });
       }
 
