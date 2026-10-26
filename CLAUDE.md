@@ -3380,7 +3380,10 @@ whose abilities share the most rare words with this one: published wiki
 pages (read off the cached grid feed, no query) and, for up to 3 of the 8,
 official characters (`worker/official-tags.js`, tagged from the official
 Chinese wiki's ability categories, which the owner ranks as the most reliable
-source). Every example is shown with its own tags plus the sure cues it
+source). The 44 Chinese-edition characters this wiki has pages for (Temple
+Fair and The Storm Is Coming, under Festival of Lanterns) count as official
+examples too: `OFFICIAL_WIKI_TAGS` adds their category tags to the page's own
+when one is shown, and writes nothing to the page. Every example is shown with its own tags plus the sure cues it
 trips (`exampleTags()`), so the examples follow the owner's wording rulings
 where their taggers missed one. It runs `AUTOTAG_MODEL` through the `[ai]`
 binding in wrangler.toml, and filters the answer back to the tag list. The

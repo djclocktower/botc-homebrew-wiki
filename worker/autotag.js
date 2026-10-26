@@ -15,7 +15,7 @@
    They come from the grid feed the Worker already caches, so finding them
    costs no query. */
 import Tags from '../assets/tags.js';
-import { OFFICIAL_TAGGED } from './official-tags.js';
+import { OFFICIAL_TAGGED, OFFICIAL_WIKI_TAGS } from './official-tags.js';
 
 // Cheapest capable model on Workers AI that the free plan also allows
 // (~25 neurons a call, so the 10,000 free a day is ~400 suggestions).
@@ -150,7 +150,8 @@ const words = s => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, 
    embeddings + Vectorize if it ever shows up in a profile. */
 export function pickExamples(char, rows, k = EXAMPLES) {
   const same = r => (char.slug && r.slug === char.slug) || (char.name && String(r.name || '').toLowerCase() === String(char.name).toLowerCase());
-  const tagged = rows.filter(r => r.ability && splitTags(r.tags).length && !same(r)).concat(OFFICIAL_ROWS.filter(r => !same(r)));
+  const tagged = rows.map(officialPage).filter(r => r.ability && splitTags(r.tags).length && !same(r))
+    .concat(OFFICIAL_ROWS.filter(r => !same(r)));
   const df = new Map();
   const sets = tagged.map(r => { const s = words(r.ability); s.forEach(w => df.set(w, (df.get(w) || 0) + 1)); return s; });
   const mine = words(char.ability);
@@ -162,6 +163,16 @@ export function pickExamples(char, rows, k = EXAMPLES) {
   const off = ranked.filter(x => x[1].official).slice(0, Math.min(OFFICIAL_EXAMPLES, k));
   const rest = ranked.filter(x => !x[1].official).slice(0, k - off.length);
   return [...off, ...rest].sort((a, b) => b[0] - a[0]).map(x => x[1]);
+}
+
+/* A wiki page that is a Chinese-edition official character (Temple Fair, The
+   Storm Is Coming) counts as an official example, with the official tags
+   added to its own. "Limited uses" only means Once Per Game when it says once. */
+function officialPage(r) {
+  const extra = OFFICIAL_WIKI_TAGS[r.slug];
+  if (!extra || !Object.hasOwn(OFFICIAL_WIKI_TAGS, r.slug)) return r;
+  const add = splitTags(extra).filter(t => t !== 'Once Per Game' || /\bonce\b/i.test(r.ability || ''));
+  return { ...r, tags: [...new Set([...splitTags(r.tags), ...add])].join(', '), official: true };
 }
 
 /* An example's tags as the model is shown them: its own, plus what the sure

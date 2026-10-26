@@ -114,3 +114,12 @@ test('choosing and then learning is Information; someone else learning is not', 
   assert.ok(sure({ team: 'townsfolk', ability: 'Each night, choose a player: learn their alignment.' }).includes('Information'));
   assert.ok(!sure({ team: 'minion', ability: 'Once per game, at night, choose a Minion: they lose their ability & learn you.' }).includes('Information'));
 });
+
+test('autotag: a Chinese-edition page counts as an official example, with its official tags added', () => {
+  const abbot = { slug: 'abbot', name: 'Abbot', team: 'townsfolk', tags: '',
+    ability: 'Each night, the 1st time an evil ability begins affecting one of your alive neighbors, it fails: you learn when this happens.' };
+  const me = { slug: 'me', name: 'Me', ability: 'Each night, the 1st time an ability affects your alive neighbors, it fails.' };
+  const ex = pickExamples(me, [abbot]).find(r => r.slug === 'abbot');
+  assert.ok(ex && ex.official, 'an untagged page still serves, through its official tags');
+  assert.ok(exampleTags(ex).includes('Neighbor'));
+});
