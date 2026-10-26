@@ -445,9 +445,7 @@
       </fieldset>
 
       <div class="fld" id="curata-fld" style="display:none">
-        <label>Curata</label>
-        <p class="sub" id="curata-note" style="margin:0 0 8px"></p>
-        <label class="curata-check"><input type="checkbox" id="curataOptOut"> Don’t show the Curata mark on this page</label>
+        <label class="curata-check"><input type="checkbox" id="curataOptOut"> Disable Curata</label>
       </div>
 
       <fieldset>
@@ -1601,30 +1599,12 @@
        control is only drawn for a page that HAS the mark, and only for the
        owner — offering "turn off the wreath" on a page with no wreath would
        be a setting for nothing, and a guest editor cannot save it anyway.
-
-       Where the mark came from matters to the wording: most of it is lent by
-       a Curata collection rather than granted page by page, so a creator
-       looking for the star on their own page would find nothing to explain
-       it. `curataFrom` is the collection's name, straight from /api/page. */
+       `curataFrom` (from /api/page) counts mark lent by a collection. */
     function syncCurataBox(entry, curataFrom, isOwner) {
       var fld = $('curata-fld');
       var has = !!entry.curata || curataFrom !== null;
       if (!fld || !isOwner || !has) { if (fld) fld.style.display = 'none'; return; }
       fld.style.display = '';
-      var where = entry.curata
-        ? 'The admins marked this page as Curata.'
-        : ('This page is Curata because it is in ' +
-           (curataFrom ? '\u201c' + esc(curataFrom) + '\u201d' : 'a Curata collection') + '.');
-      // The honest cost, said before the box is ticked rather than found
-      // afterwards: the mark also lifts an unfinished page out of Partial.
-      var cost = window.Classify && window.Classify.isIncomplete(entry)
-        ? ' This page is still missing ' +
-          window.Classify.listPhrase(window.Classify.missingBits(entry)) +
-          ', so without the mark it becomes Partial: never picked as the Featured or Random Character, and hidden from readers who choose to hide Partial pages.'
-        : '';
-      $('curata-note').innerHTML = where +
-        ' It adds a laurel wreath and shows the page more often on the homepage. ' +
-        'Tick the box to hide the mark on this page only.' + cost;
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);
