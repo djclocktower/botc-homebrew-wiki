@@ -70,7 +70,8 @@
       return quick.then(function () {
         if (d.error) { note.textContent = said() || d.error; return; }
         tick(d.tags);
-        note.textContent = said() || ((d.tags || []).length ? 'Nothing to add: every suggestion is already ticked.' : 'No suggestions for this one.');
+        note.textContent = (said() || ((d.tags || []).length ? 'Nothing to add: every suggestion is already ticked.' : 'No suggestions for this one.')) +
+          (d.capped ? ' (The AI has reached its daily limit, so only the wording rules were used.)' : '');
       });
     }).catch(function () {
       return quick.then(function () { note.textContent = said() || 'No suggestions right now. Try again in a minute.'; });

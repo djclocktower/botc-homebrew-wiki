@@ -2303,6 +2303,45 @@ async function loadTagChecks(env, fresh) {
   _tagChecksAt = Date.now();
   return _tagChecks;
 }
+/* A hard daily ceiling on Workers AI, so a busy day (or a long Compare)
+   cannot run up a bill. Counted in "units" per UTC day, the same day
+   Cloudflare's free allowance resets on: a normal suggestion is 1, the model
+   thinking first 6, any other model 4 (bigger models cost several times
+   more). 300 units is about 7,500 neurons at ~25 a call, inside the 10,000
+   free a day. Past it the suggester gives the wording rules alone. If the
+   counter cannot be read the AI is refused, never allowed: this one guards
+   money, so it fails closed.
+   ponytail: weights are estimates from the dashboard, not the real neuron
+   count; read out.usage per call if the estimate ever drifts badly. */
+const AI_DAILY_UNITS = 300;
+const aiUnits = model => model === 'phrases' ? 0 : /:think$/.test(model) ? 6 : model === AUTOTAG_MODEL ? 1 : 4;
+const aiDayKey = () => 'ai:day:' + new Date().toISOString().slice(0, 10);
+async function aiSpend(env, units) {
+  if (!units) return true;
+  try {
+    await ensureRateTable(env);
+    const row = await env.DB.prepare(
+      `INSERT INTO rate_limits (key, n, expires) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET n = rate_limits.n + excluded.n RETURNING n`
+    ).bind(aiDayKey(), units, Math.floor(Date.now() / 1000) + 2 * 86400).first();
+    return !!row && row.n <= AI_DAILY_UNITS;
+  } catch (e) {
+    console.error('[ai-budget] counter unavailable, refusing the AI:', (e && e.message) || e);
+    return false;
+  }
+}
+async function aiUsedToday(env) {
+  try {
+    const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=?').bind(aiDayKey()).first();
+    return row ? Math.min(Number(row.n) || 0, AI_DAILY_UNITS) : 0;
+  } catch { return 0; }
+}
+// suggestTags inside the ceiling: over it, the wording rules alone.
+async function suggestWithinBudget(env, char, rows, model = AUTOTAG_MODEL) {
+  if (await aiSpend(env, aiUnits(model))) return { tags: await suggestTags(env, char, rows, model), capped: false };
+  return { tags: await suggestTags(env, char, rows, 'phrases'), capped: true };
+}
+
 /* What writers did with "Suggest tags": one row per save that followed a
    press. `suggested` is everything the suggester said, `before` what was
    ticked before the first press, `saved` what the page was saved with, so
@@ -14548,7 +14587,8 @@ const app = {
         }
         try {
           const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), await loadTagChecks(env).catch(() => null));
-          return jsonResponse({ ok: true, tags: await suggestTags(env, char, rows) });
+          const { tags, capped } = await suggestWithinBudget(env, char, rows);
+          return jsonResponse({ ok: true, tags, capped });
         } catch (e) {
           if (!(e && e.public)) console.error('suggest-tags', e && e.stack || e);
           return jsonResponse({ error: e && e.public ? e.message : 'No suggestions right now. Try again in a minute.' }, { status: 503 });
@@ -16230,6 +16270,15 @@ const app = {
         if (b.checked && !pool.length) return jsonResponse({ error: 'No pages checked yet. Use Check tags first.' }, { status: 400 });
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const sample = pool.slice(0, n);
+        // A run that would not fit in what is left of today's AI ceiling is
+        // refused up front, rather than half-run with the rest marked failed.
+        const runModels = b.compare ? ['phrases', AUTOTAG_MODEL, b.model ? model : AUTOTAG_MODEL + ':think'] : [model];
+        const needed = sample.length * runModels.reduce((t, m) => t + aiUnits(m), 0);
+        const left = AI_DAILY_UNITS - await aiUsedToday(env);
+        if (needed > left) {
+          return jsonResponse({ error: 'That run needs about ' + needed + ' of today\'s ' + AI_DAILY_UNITS + ' AI units and ' +
+            Math.max(0, left) + ' are left. Try fewer pages, or tomorrow (it resets at midnight UTC).' }, { status: 429 });
+        }
         const pct = x => isFinite(x) ? Math.round(x * 100) : null;
         const score = async m => {
           const results = [], perTag = {};
@@ -16240,7 +16289,10 @@ const app = {
               const gold = splitTags(r.tags).filter(t => SUGGESTABLE.includes(t));
               let got = [], error = '';
               const t0 = Date.now();
-              try { got = await suggestTags(env, r, rows, m); } catch (e) { error = String(e && e.message || e); }
+              try {
+                const res = await suggestWithinBudget(env, r, rows, m);
+                if (res.capped) error = "today's AI limit is used up"; else got = res.tags;
+              } catch (e) { error = String(e && e.message || e); }
               ms += Date.now() - t0;
               const right = got.filter(t => gold.includes(t)), extra = got.filter(t => !gold.includes(t)), missed = gold.filter(t => !got.includes(t));
               if (!b.untagged && !error) {
@@ -16332,7 +16384,11 @@ const app = {
         if (!pool.length) return jsonResponse({ ok: true, done: true, checked: checks.size });
         const r = pool[Math.floor(Math.random() * pool.length)];
         let suggested = [], error = '';
-        try { suggested = await suggestTags(env, r, rows, String(b.model || AUTOTAG_MODEL)); } catch (e) { error = String(e && e.message || e); }
+        try {
+          const res = await suggestWithinBudget(env, r, rows, String(b.model || AUTOTAG_MODEL));
+          suggested = res.tags;
+          if (res.capped) error = "today's AI limit is used up, so these are the wording rules alone";
+        } catch (e) { error = String(e && e.message || e); }
         return jsonResponse({ ok: true, checked: checks.size, error,
           slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
           stored: tagList(splitTags(r.tags)), suggested });

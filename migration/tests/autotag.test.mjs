@@ -302,3 +302,25 @@ test('autotag: a save after Suggest tags records what was kept, removed and adde
   assert.equal(d.perTag.Neighbor.addedByHand, 1);
   assert.equal(d.perTag['Made Up'], undefined);
 });
+
+test('autotag: past the daily AI ceiling the button gives the wording rules alone', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(1,'user-1','',1)").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1', isAdmin: true });
+  f.insert('characters', 'a', { slug: 'a', name: 'A', team: 'townsfolk', art: 'art/x.png', ability: 'Each night, choose a player: they are poisoned.', tags: 'Poison' });
+  f.db.prepare("UPDATE characters SET tags='Poison' WHERE slug='a'").run();
+  let asked = 0;
+  f.env.AI = { async run() { asked++; return { response: '{"tags":["Poison"]}' }; } };
+  const ask = () => f.request('/api/suggest-tags', post(1, { name: 'X', team: 'townsfolk', ability: 'You start knowing 1 drunk player.' })).then(r => r.json());
+  const first = await ask();
+  assert.ok(first.tags.includes('Poison') && !first.capped && asked === 1);
+  const key = 'ai:day:' + new Date().toISOString().slice(0, 10);
+  f.db.prepare('UPDATE rate_limits SET n = 300 WHERE key = ?').run(key);
+  const second = await ask();
+  assert.ok(second.capped && asked === 1, 'no AI call past the ceiling');
+  assert.ok(second.tags.includes('Drunkenness') && !second.tags.includes('Poison'));
+  const ev = await f.request('/api/admin/autotag-eval', post(1, { n: 5 }));
+  assert.equal(ev.status, 429, 'a run that does not fit is refused up front');
+  assert.equal((await f.request('/api/admin/autotag-eval', post(1, { n: 5, model: 'phrases' }))).status, 200, 'the wording rules cost nothing');
+});

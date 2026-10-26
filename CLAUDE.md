@@ -3492,6 +3492,18 @@ exactly the checked tags, without the sure cues on top (the admin already
 overruled those). `loadTagChecks()` memoises the table for a minute per
 isolate; a save clears it in its own isolate.
 
+**A hard daily ceiling on the AI (`AI_DAILY_UNITS`, 300).** The Workers
+Paid plan has no spending cap: past the 10,000 free neurons a day it simply
+bills, so the wiki caps itself. `aiSpend()` counts units per UTC day in
+`rate_limits` (key `ai:day:YYYY-MM-DD`): a normal suggestion 1, `:think` 6,
+any other model 4. Past the ceiling `suggestWithinBudget()` answers with the
+wording rules alone (`capped: true`, and the button says so); a dashboard
+Score or Compare that would not fit what is left is refused up front with a
+429. Admins are not exempt, since their test runs are the biggest spend. It
+FAILS CLOSED, unlike the other limiters: a counter that cannot be read
+refuses the AI. 300 units is about 7,500 neurons, inside the free allowance;
+raising it is the one constant.
+
 **What writers did with it: `tag_feedback`.** `tag-suggest.js` keeps what
 the button offered and what was ticked before the first press, and both
 editors post it with the save as `_tagSuggest` (read once, then cleared;
