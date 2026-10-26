@@ -3437,7 +3437,19 @@ hand), Loud on "all players learn / know" and "announce", Nonconformist on
 "protect" only (not "safe from"), Demonsbane on "if the Demon kills you" and
 "if you die at night" (not "even if you die at night"), Ping on "a good /
 evil player learns / knows", Multi-Kill on "choose 2 players: they die",
-Character Change on "becomes a/an …" with any subject.
+Character Change on "becomes a/an …" with any subject. A second pass added:
+Duplication on a "[+0 to +2 Legionary]" bracket (never a team) and "same
+character", Execution Survival on executed-but-lives wording, Social on
+speak / talk / whisper / silence / hand signals / sing / wink / clap / hug /
+point at, Multi-Kill on "2 players die", "both die", "all die", Binary Info
+on "learn their alignment", Safety Net on "a Minion becomes the Demon" and
+"if the Demon dies", Execution Failure on "executions fail", Day Deaths on
+"dies at dusk / immediately", Death Modification on "registers as alive /
+dead", Subjective Info on clue / hint / "learn something", Confirmation on
+"learn you are the …", Hidden (Outsiders) on "you think / don't know you
+are", Nonconformist on breaking the rules or a new / extra rule, and Ping on
+Minions / the Demon / good or evil players learning or knowing (never "all
+players", which is Loud). Quiet on "secretly" was turned down.
 Change a description and its cue together.
 
 **The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by

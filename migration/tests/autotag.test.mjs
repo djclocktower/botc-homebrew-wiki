@@ -18,7 +18,7 @@ test('autotag: only listed tags survive, Joke never does', () => {
 test('autotag: wording cues, sure and hinted', () => {
   const c = cueTags({ name: 'Legionary', team: 'townsfolk', ability: 'Each night, you learn how many evil players are sat clockwise to the next Legionary. Once per game, you may visit the Storyteller. [+0 to +2 Legionary]' });
   for (const t of ['Information', 'Once Per Game', 'Consult', 'Setup']) assert.ok(c.sure.includes(t), t);
-  assert.ok(c.hint.some(h => h.tag === 'Duplication'));
+  assert.ok(c.sure.includes('Duplication'));
   assert.ok(c.hint.some(h => h.tag === 'Neighbor' && /clockwise/i.test(h.words)));
   // An escalating demon is Multi-Kill, so its "choose a player: they die" is no longer sure Single-Kill.
   const d = cueTags({ team: 'demon', ability: 'Each night*, choose a player: they die. Once 3 players die this way, choose 2 players: they die.' });
@@ -257,4 +257,29 @@ test('autotag: the keywords the owner approved', () => {
   assert.ok(has('If you die today or tonight, a player becomes a Lab Rat.', 'Character Change'));
   assert.ok(!has('You become a good player.', 'Character Change'));
   assert.ok(has('If you are executed, a good player learns this.', 'Ping'));
+});
+
+test('autotag: the second round of keywords the owner approved', () => {
+  const has = (a, t, team) => cueTags({ ability: a, team }).sure.includes(t);
+  assert.ok(has('Each night, you learn. [+0 to +2 Legionary]', 'Duplication'));
+  assert.ok(!has('Each night, you learn. [+0 to +2 Outsiders]', 'Duplication'));
+  assert.ok(has('Choose a player: if executed, they don\'t die.', 'Execution Survival'));
+  assert.ok(has('Players may not speak to each other.', 'Social'));
+  assert.ok(has('If everyone sings it together, they are sober.', 'Social'));
+  assert.ok(!has('Choose a single player.', 'Social'));
+  assert.ok(has('Choose a player: if they are evil, choose another player: both die.', 'Multi-Kill'));
+  assert.ok(has('Each night, choose a player: you learn their alignment.', 'Binary Info'));
+  assert.ok(has('If the Demon dies, a Minion becomes the Demon.', 'Safety Net'));
+  assert.ok(has('Executions fail if only evil voted.', 'Execution Failure'));
+  assert.ok(has('If they nominate another player tomorrow, that player dies at dusk.', 'Day Deaths'));
+  assert.ok(!has('You cannot die at dusk.', 'Day Deaths'));
+  assert.ok(has('If your neighbors die, they register as alive.', 'Death Modification'));
+  assert.ok(has('Visit the Storyteller to learn a cryptic hint.', 'Subjective Info'));
+  assert.ok(has('If they guess correctly, they learn you are the Rockstar.', 'Confirmation'));
+  assert.ok(has('You think you are a Townsfolk.', 'Hidden', 'outsider'));
+  assert.ok(!has('You think you are a Townsfolk.', 'Hidden', 'minion'));
+  assert.ok(has('When you die, they may declare a new rule.', 'Nonconformist'));
+  assert.ok(has('Minions know an Official is in play.', 'Ping'));
+  assert.ok(has('The Demon learns who you are.', 'Ping'));
+  assert.ok(!has('All players learn their character.', 'Ping'));
 });
