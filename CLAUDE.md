@@ -200,6 +200,11 @@ worker/list-pages.js   The first screen of /all-characters, /team and /tag,
                        then serves the static page.
 worker/autotag.js      Tag suggestions through Workers AI (env.AI). See
                        "Tag suggestions" below.
+worker/official-tags.js  The official characters with tags, for the tag
+                       suggester's examples. Generated, never hand-edited:
+                       `NODE_USE_ENV_PROXY=1 node migration/make-official-tags.mjs`
+                       (reads the Chinese official wiki's ability categories
+                       and assets/roles.json; its header says how they map).
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
@@ -3370,9 +3375,14 @@ set's custom pages, which were meant for that set's own mechanics.
 The editors' **Suggest tags** button (`assets/tag-suggest.js`, loaded by
 create.html and edit.html) asks **`POST /api/suggest-tags`**, which hands
 `worker/autotag.js` the name, team, ability, lede and summary. It builds a
-prompt from tags.js's list and descriptions plus the 8 tagged published
-characters whose abilities share the most rare words with this one (read off
-the cached grid feed, no query), runs `AUTOTAG_MODEL` through the `[ai]`
+prompt from tags.js's list and descriptions plus the 8 tagged characters
+whose abilities share the most rare words with this one: published wiki
+pages (read off the cached grid feed, no query) and, for up to 3 of the 8,
+official characters (`worker/official-tags.js`, tagged from the official
+Chinese wiki's ability categories, which the owner ranks as the most reliable
+source). Every example is shown with its own tags plus the sure cues it
+trips (`exampleTags()`), so the examples follow the owner's wording rulings
+where their taggers missed one. It runs `AUTOTAG_MODEL` through the `[ai]`
 binding in wrangler.toml, and filters the answer back to the tag list. The
 button ticks what is new and outlines it (`.tag-pick-btn.suggested`); it never
 unticks and never saves, so a person always decides. `Joke` is never
@@ -3412,6 +3422,19 @@ what it would say about untagged ones, writing nothing. Read its numbers with
 care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
 pages with `[setup]` text lacked Setup), so an "extra" tag is often right.
 A bulk "tag every untagged page" run is deliberately not built yet.
+
+**Training on existing tags was measured and not built (2026-10).** A
+per-tag classifier trained on the wiki's tagged pages, scored on pages it
+had not seen, lifted the share of existing tags found from 50% to 62% with
+the cues, while the share of its picks matching an existing tag fell from
+68% to 60%. Adding Lady Mist's Constellation spreadsheet (795 characters,
+its own tag names) or the official tags moved neither number: the sources
+agree on only about half the tags of the characters they share, so each
+teaches its own taggers' habits. The fix is an answer key in the owner's own
+definitions first. Scored against the official tags, the sure cues are right
+78% of the time and find 63% of them (Death aside, which the cues give to
+any death by the owner's ruling and the official category reserves for
+extra deaths).
 
 ## System text (`/text-editor`)
 

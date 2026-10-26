@@ -15,6 +15,7 @@
    They come from the grid feed the Worker already caches, so finding them
    costs no query. */
 import Tags from '../assets/tags.js';
+import { OFFICIAL_TAGGED } from './official-tags.js';
 
 // Cheapest capable model on Workers AI that the free plan also allows
 // (~25 neurons a call, so the 10,000 free a day is ~400 suggestions).
@@ -26,6 +27,11 @@ export const SUGGESTABLE = Tags.KNOWN_TAGS.filter(t => !NEVER.has(t));
 const BY_LOWER = new Map(SUGGESTABLE.map(t => [t.toLowerCase(), t]));
 
 const EXAMPLES = 8;
+// Of those, up to this many are official characters (worker/official-tags.js,
+// from the official Chinese wiki's categories): the owner's highest-priority
+// source, and most homebrew is written as a variation on one of them.
+const OFFICIAL_EXAMPLES = 3;
+const OFFICIAL_ROWS = OFFICIAL_TAGGED.map(r => ({ ...r, official: true }));
 
 /* Phrases that mean a tag, worked out from how the game's mechanics are
    written ("[+1 Outsider]" is Outsider Modification, "(once)" is Once Per
@@ -44,6 +50,8 @@ export const CUES = [
   ['Alignment Change', SURE, /\b(becomes?|turns?|is now|are now|switch(es)? to|changes? to) (good|evil)\b|\b(chang|swap|switch|flip)\w*[^.]{0,20}\balignments?\b|\balignments?[^.]{0,15}\b(chang|swap|flip|switch)/i],
   ['Binary Info', HINT, /\b(learns?|told|nods?|shakes?)\b[^.]{0,25}\b(if|whether)\b|\byes or no\b|\byes\/no\b|\btrue or false\b/i],
   ['Character Change', SURE, /\bswap\w*[^.]{0,20}\bcharacters?\b|\bchange\w* (their|your|a player'?s?|that player'?s?) character\b/i],
+  // "You become the Imp", not "you become the alignment of a neighbour".
+  ['Character Change', SURE, /\b(you|they|that player|the player|a player|an? (evil|good) player|a minion|a townsfolk|an outsider) (might |may |also |then )?(becomes?|turns? into) (the|a|an|that|their|your|this|any|one|another|not-in-play|in-play)\b(?! (good|evil|drunk|poisoned|mad|safe|dead|alive|immune|sober|healthy|alignment|allignment|opposite alignment)\b)(?! \w+ alignment)/i],
   ['Character Change', HINT, /\b(becomes?|turns? into)\b(?! (good|evil|drunk|poisoned|mad|safe|dead|sober|healthy|alive|immune))|\bchange\w* (their|your|a player'?s?|that player'?s?) character|\bswap\w*[^.]{0,20}\bcharacters?\b|\bnew character\b/i],
   ['Confirmation', HINT, /\bconfirm|\bprov(e|es|en)\b|\b(knows?|learns?) (that )?you are (the|good|not)\b|\ball (players )?know (who )?you\b|\beveryone knows\b|\bpublicly\b[^.]{0,40}\b(is|are) (good|evil)\b/i],
   ['Consult', SURE, /\b(visit|ask|tell|inform|consult|speak (to|with)|talk (to|with)) the storyteller\b|\bprivately (ask|visit|tell|speak|talk)/i],
@@ -104,6 +112,7 @@ export const CUES = [
   ['Sober & Healthy', SURE, /\bsober\b|\bhealthy\b/i],
   ['Social', HINT, /\b(talk|speak|whisper|silen|mute|conversation|wink|clap|sing|hug|hand signal|eye contact|point at|discuss|agree|gender)\w*/i],
   ['Subjective Info', HINT, /\bstoryteller('s)? (choice|discretion|decides|judge|thinks|opinion)|\b(most|least|best) (beneficial|helpful|interesting|important|suspicious|likely|responsible)\b|\bhelped (your team )?the most\b|\bhints?\b|\bclues?\b|\badvice\b|\briddle|\brelated to\b/i],
+  ['Think', SURE, /\b(you|they|he|she) (think|thinks|believe|believes) (you|they|he|she|it) (are|is|were)\b|\bthinks? (they are|it is|you are|he is|she is)\b/i],
   ['Think', HINT, /\bthinks?\b|\bbelieves?\b/i],
   ['Timer', SURE, t => String(t).split(/[.!?]\s/).some(x => /\b(wins?|loses?)\b/i.test(x) &&
     /\b(after|on|by|before|until|at) (the end of )?(day|night|dusk|dawn) (\d+|two|three|four|five|six|x)\b|\b(after|by|on|in) (\d+|two|three|four|five|six|x) (days|nights)\b|\b(\d+(st|nd|rd|th)|third|fourth|fifth|sixth|final) (day|night)\b/i.test(x))],
@@ -140,24 +149,34 @@ const words = s => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, 
    ponytail: a linear scan of ~2,000 rows per call, a few ms; move to
    embeddings + Vectorize if it ever shows up in a profile. */
 export function pickExamples(char, rows, k = EXAMPLES) {
-  const tagged = rows.filter(r => r.ability && splitTags(r.tags).length &&
-    r.slug !== char.slug && String(r.name || '').toLowerCase() !== String(char.name || '').toLowerCase());
+  const same = r => (char.slug && r.slug === char.slug) || (char.name && String(r.name || '').toLowerCase() === String(char.name).toLowerCase());
+  const tagged = rows.filter(r => r.ability && splitTags(r.tags).length && !same(r)).concat(OFFICIAL_ROWS.filter(r => !same(r)));
   const df = new Map();
   const sets = tagged.map(r => { const s = words(r.ability); s.forEach(w => df.set(w, (df.get(w) || 0) + 1)); return s; });
   const mine = words(char.ability);
-  return tagged.map((r, i) => {
+  const ranked = tagged.map((r, i) => {
     let score = 0;
     mine.forEach(w => { if (sets[i].has(w)) score += Math.log(1 + tagged.length / df.get(w)); });
     return [score, r];
-  }).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0]).slice(0, k).map(x => x[1]);
+  }).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0]);
+  const off = ranked.filter(x => x[1].official).slice(0, Math.min(OFFICIAL_EXAMPLES, k));
+  const rest = ranked.filter(x => !x[1].official).slice(0, k - off.length);
+  return [...off, ...rest].sort((a, b) => b[0] - a[0]).map(x => x[1]);
+}
+
+/* An example's tags as the model is shown them: its own, plus what the sure
+   cues say, so the examples follow the owner's wording rulings (Death on any
+   death, Setup on any [bracket]) even where its taggers missed one. */
+export function exampleTags(r) {
+  return [...new Set([...splitTags(r.tags), ...cueTags(r).sure])].filter(t => BY_LOWER.has(t.toLowerCase()));
 }
 
 const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
 export function buildMessages(char, examples) {
   const list = SUGGESTABLE.map(t => '- ' + t + ': ' + Tags.describeTag(t)).join('\n');
-  const ex = examples.map(r => 'Character: ' + clip(r.name, 80) + ' (' + r.team + ')\nAbility: ' +
-    clip(r.ability, 400) + '\nTags: ' + splitTags(r.tags).filter(t => BY_LOWER.has(t.toLowerCase())).join(', ')).join('\n\n');
+  const ex = examples.map(r => 'Character: ' + clip(r.name, 80) + ' (' + r.team + (r.official ? ', official' : '') + ')\nAbility: ' +
+    clip(r.ability, 400) + '\nTags: ' + exampleTags(r).join(', ')).join('\n\n');
   const cues = cueTags(char);
   const cueLine = (cues.sure.length ? '\nAlready certain from its wording (do not repeat): ' + cues.sure.join(', ') + '.' : '') +
     (cues.hint.length ? '\nWording that may point to a tag (keep one only if it really applies): ' +
@@ -170,7 +189,7 @@ export function buildMessages(char, examples) {
       'that clearly apply to the character\'s ability. Most characters have 2 to 5 tags.\n\n' + list +
       '\n\nAnswer with JSON only, like {"tags": ["Information", "Neighbor"]}.' },
     { role: 'user', content:
-      (ex ? 'Characters already tagged on the wiki:\n\n' + ex + '\n\nNow this one:\n' : '') + 'Character: ' + clip(char.name, 80) +
+      (ex ? 'Characters already tagged (an official one\'s tags are the most reliable):\n\n' + ex + '\n\nNow this one:\n' : '') + 'Character: ' + clip(char.name, 80) +
       ' (' + clip(char.team, 20) + ')\nAbility: ' + clip(char.ability, 600) +
       (extra ? '\nAbout it: ' + clip(extra, 900) : '') + cueLine + '\nTags:' }
   ];

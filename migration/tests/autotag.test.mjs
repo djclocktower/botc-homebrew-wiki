@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './worker-fixture.mjs';
-import { parseTags, pickExamples, cueTags } from '../../worker/autotag.js';
+import { parseTags, pickExamples, cueTags, exampleTags, buildMessages } from '../../worker/autotag.js';
 
 const post = (id, body) => ({
   method: 'POST',
@@ -50,7 +50,29 @@ test('autotag: examples are similar tagged pages, never the page itself', () => 
     { slug: 'b', name: 'B', ability: 'You start knowing a number.', tags: 'Information' },
     { slug: 'c', name: 'C', ability: 'Each night, poisoned players die.', tags: '' }
   ];
-  assert.deepEqual(pickExamples(rows[0], rows).map(r => r.slug), ['a']);
+  assert.deepEqual(pickExamples(rows[0], rows).filter(r => !r.official).map(r => r.slug), ['a']);
+});
+
+test('autotag: up to 3 official characters join the examples, tagged by the official categories', () => {
+  const me = { name: 'Abbot', team: 'townsfolk', ability: 'Each night*, choose a player (not yourself): they are safe from the Demon tonight.' };
+  const ex = pickExamples(me, []);
+  assert.ok(ex.length > 0 && ex.length <= 3 && ex.every(r => r.official));
+  const monk = ex.find(r => r.id === 'monk');
+  assert.ok(monk && exampleTags(monk).includes('Protection'));
+  // A page named like an official character never gets that character as its own example.
+  assert.ok(!pickExamples({ name: 'Monk', ability: me.ability }, []).some(r => r.id === 'monk'));
+  assert.match(buildMessages(me, ex)[1].content, /Monk \(townsfolk, official\)/);
+});
+
+test('autotag: examples are shown with the sure cues their taggers missed', () => {
+  assert.deepEqual(exampleTags({ ability: 'Each night*, choose a player: they die. [+1 Outsider]', tags: 'Single-Kill' }).sort(),
+    ['Death', 'Outsider Modification', 'Setup', 'Single-Kill']);
+});
+
+test('autotag: "you think you are" is Think, "you become the Imp" is Character Change, becoming an alignment is not', () => {
+  assert.ok(cueTags({ ability: 'You do not know you are the Drunk. You think you are a Townsfolk character, but you are not.' }).sure.includes('Think'));
+  assert.ok(cueTags({ ability: 'If there are 5 or more players alive & the Demon dies, you become the Demon.' }).sure.includes('Character Change'));
+  assert.ok(!cueTags({ ability: 'Each night, you become the alignment of an alive neighbor.' }).sure.includes('Character Change'));
 });
 
 test('autotag: /api/suggest-tags needs a login and an ability, and answers from the model', async t => {
