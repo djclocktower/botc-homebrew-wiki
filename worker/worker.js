@@ -152,6 +152,10 @@
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
  *                                (or admin) just one of the two characters
+ *   POST /api/suggest-tags    -> tag suggestions for the editor's tag picker
+ *                                (Workers AI, worker/autotag.js); writes nothing
+ *   POST /api/admin/autotag-eval -> admin: score those suggestions against
+ *                                pages people already tagged
  *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
  *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
@@ -370,6 +374,7 @@ import { homeData } from './home-data.js';
 import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
+import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags } from './autotag.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
@@ -14447,6 +14452,30 @@ const app = {
         return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
       }
 
+      /* ---------- TAG SUGGESTIONS (worker/autotag.js) ----------
+         The editors' "Suggest tags" button. Reads nothing private and writes
+         nothing: the answer goes back to the tag picker, where the person
+         decides. Counted per account because every call costs neurons. */
+      if (path === '/api/suggest-tags') {
+        if (!sess.isAdmin && await rateLimited(env, request, 'autotag', 40, 3600, { sess })) {
+          return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
+        }
+        const b = await request.json().catch(() => ({}));
+        const ability = String(b.ability || '').trim();
+        if (!ability) return jsonResponse({ error: 'Write the ability first: the suggestions are read off it.' }, { status: 400 });
+        const char = {
+          slug: String(b.slug || ''), name: String(b.name || ''), team: String(b.team || ''), ability,
+          lede: String(b.lede || ''), summaryBullets: Array.isArray(b.summaryBullets) ? b.summaryBullets.slice(0, 8).map(String) : []
+        };
+        try {
+          const rows = JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid'));
+          return jsonResponse({ ok: true, tags: await suggestTags(env, char, rows) });
+        } catch (e) {
+          if (!(e && e.public)) console.error('suggest-tags', e && e.stack || e);
+          return jsonResponse({ error: e && e.public ? e.message : 'No suggestions right now. Try again in a minute.' }, { status: 503 });
+        }
+      }
+
       if (path === '/api/jinx') {
         {
           const limited = await writeLimited(env, request, sess, 'character');
@@ -16100,6 +16129,46 @@ const app = {
         await logActivity(env, sess, 'create', 'wikipage', null,
           made + ' rules page(s) converted from characters');
         return jsonResponse({ ok: true, made, skipped, parent: parent.name });
+      }
+
+      // ---- admin: how good are the tag suggestions? ----
+      // Runs the suggester on `n` random published pages people already
+      // tagged (their own row left out of the examples) and scores it
+      // against those tags; or, with untagged:true, on pages with none, to
+      // read what it would say. Writes nothing. `model` swaps the model for
+      // a comparison. Existing tags are incomplete (108 of 342 pages with
+      // [setup] text lack Setup), so "extra" is not always wrong.
+      if (path === '/api/admin/autotag-eval') {
+        const b = await request.json().catch(() => ({}));
+        const n = Math.max(1, Math.min(50, Number(b.n) || 20));
+        const model = String(b.model || AUTOTAG_MODEL);
+        const rows = JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid'));
+        const pool = rows.filter(r => r.ability && !!splitTags(r.tags).length === !b.untagged);
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const sample = pool.slice(0, n);
+        const results = [];
+        const perTag = {};
+        let tp = 0, fp = 0, fn = 0;
+        // Five at a time: fast enough, and well inside the subrequest cap.
+        for (let i = 0; i < sample.length; i += 5) {
+          await Promise.all(sample.slice(i, i + 5).map(async r => {
+            const gold = splitTags(r.tags).filter(t => SUGGESTABLE.includes(t));
+            let got = [], error = '';
+            try { got = await suggestTags(env, r, rows, model); } catch (e) { error = String(e && e.message || e); }
+            const right = got.filter(t => gold.includes(t)), extra = got.filter(t => !gold.includes(t)), missed = gold.filter(t => !got.includes(t));
+            if (!b.untagged && !error) {
+              tp += right.length; fp += extra.length; fn += missed.length;
+              for (const [list, k] of [[right, 'tp'], [extra, 'fp'], [missed, 'fn']]) for (const t of list) (perTag[t] = perTag[t] || { tp: 0, fp: 0, fn: 0 })[k]++;
+            }
+            results.push({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability, gold, right, extra, missed, error });
+          }));
+        }
+        const pct = x => isFinite(x) ? Math.round(x * 100) : null;
+        return jsonResponse({
+          ok: true, model, n: results.length, untagged: !!b.untagged,
+          precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)),
+          perTag, results
+        });
       }
 
       // ---- admin: grant Curata to everything one account owns ----

@@ -356,6 +356,7 @@
       border: 1px solid rgba(236,225,200,.3); border-radius: 0;
     }
   }
+.atg-r { color: #2f6b3a; font-weight: 700; } .atg-x { color: #234f74; } .atg-m { color: #8a2f2f; }
 </style>
 </head>
 <body>
@@ -1001,6 +1002,19 @@
         </div>
         <div id="f2a-list"></div>
         <div class="toast" id="f2a-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Tag suggestions <span class="count-pill" id="atg-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          How good is the editors' "Suggest tags" button? <strong>Score</strong> runs it on random pages people already tagged and compares; <strong>Try untagged</strong> shows what it would say about pages with no tags. Nothing is saved either way. The existing tags are not complete, so an "extra" tag is sometimes the suggestion being right.
+        </p>
+        <div class="act-filters">
+          <input type="number" id="atg-n" value="20" min="1" max="50" style="width:5em" aria-label="How many pages">
+          <input type="text" id="atg-model" placeholder="model (optional)" style="flex:1;min-width:10em">
+          <button type="button" class="small-btn" id="atg-score">Score</button>
+          <button type="button" class="small-btn alt" id="atg-untagged">Try untagged</button>
+        </div>
+        <div id="atg-list"></div>
       </section>
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
@@ -2123,6 +2137,43 @@
         loadActivity(true);
       });
     });
+
+    /* ---- tag suggestions: scored against existing tags ---- */
+    function runAutotag(untagged) {
+      var btns = [$('atg-score'), $('atg-untagged')];
+      btns.forEach(function(b){ b.disabled = true; });
+      $('atg-list').innerHTML = '<p class="note">Asking the model about each page… this takes a little while.</p>';
+      fetch('/api/admin/autotag-eval', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n: Number($('atg-n').value) || 20, model: $('atg-model').value.trim() || undefined, untagged: untagged }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.error) { $('atg-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+          $('atg-count').textContent = untagged ? d.n + ' tried' : d.precision + '% right, ' + d.recall + '% found';
+          var html = '<p class="note">' + esc(d.model) + (untagged ? '' : ': of the tags it suggested, <strong>' + d.precision +
+            '%</strong> were on the page; of the tags on the pages, it found <strong>' + d.recall + '%</strong>.') + '</p>';
+          if (!untagged) {
+            var worst = Object.keys(d.perTag).map(function(t){ var x = d.perTag[t]; return [t, x.fp + x.fn, x]; })
+              .sort(function(a, b){ return b[1] - a[1]; }).slice(0, 8);
+            if (worst.length) html += '<p class="note">Most often wrong: ' + worst.map(function(w){
+              return esc(w[0]) + ' (' + w[2].fp + ' extra, ' + w[2].fn + ' missed)'; }).join(', ') + '</p>';
+          }
+          d.results.forEach(function(r){
+            var chip = function(list, cls){ return list.map(function(t){ return '<span class="' + cls + '">' + esc(t) + '</span>'; }).join(', '); };
+            html += '<div class="row"><div><a href="/edit?c=' + encodeURIComponent(r.slug) + '" target="_blank"><strong>' + esc(r.name) +
+              '</strong></a> <span class="note">' + esc(r.team) + '</span><br><span class="note">' + esc(String(r.ability).slice(0, 200)) + '</span><br>' +
+              (r.error ? '<span class="note">Failed: ' + esc(r.error) + '</span>' :
+               untagged ? 'Would suggest: ' + (chip(r.extra, 'atg-x') || '<em>nothing</em>') :
+               (r.right.length ? 'Right: ' + chip(r.right, 'atg-r') + '<br>' : '') +
+               (r.extra.length ? 'Extra: ' + chip(r.extra, 'atg-x') + '<br>' : '') +
+               (r.missed.length ? 'Missed: ' + chip(r.missed, 'atg-m') : '')) + '</div></div>';
+          });
+          $('atg-list').innerHTML = html;
+        })
+        .catch(function(){ $('atg-list').innerHTML = '<p class="note">Failed. Try fewer pages.</p>'; })
+        .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
+    }
+    $('atg-score').addEventListener('click', function(){ runAutotag(false); });
+    $('atg-untagged').addEventListener('click', function(){ runAutotag(true); });
 
     /* ---- jinxes pointing at nothing, and pairs written twice ---- */
     $('jxh-scan').addEventListener('click', function(){

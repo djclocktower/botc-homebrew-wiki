@@ -108,6 +108,10 @@
 }
 .tag-pick-btn:hover { background: #ece3d2; border-color: #b09070; }
 .tag-pick-btn.selected { background: var(--maroon); color: #f3ead4; border-color: var(--maroon); }
+/* Ticked by "Suggest tags" (tag-suggest.js) and not touched since: a dashed
+   ring so the writer can see what to check before saving. */
+.tag-pick-btn.suggested { outline: 2px dashed #234f74; outline-offset: 2px; }
+.tag-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; }
 
 /* ─── The formatting callout in the two character editors ────────
    create.html and edit.html are the same form, so this is written once here

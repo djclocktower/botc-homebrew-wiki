@@ -198,6 +198,8 @@ worker/list-pages.js   The first screen of /all-characters, /team and /tag,
                        char-filters.js (see the architecture notes). Returns
                        null for anything it cannot draw exactly; the route
                        then serves the static page.
+worker/autotag.js      Tag suggestions through Workers AI (env.AI). See
+                       "Tag suggestions" below.
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
@@ -3362,6 +3364,27 @@ set's custom pages, which were meant for that set's own mechanics.
   set's Pages section and the set's sharing choice stops reaching it. Logs
   `to-article` (in `FEED_CHANGING_ACTIONS`). There is no way back, and an
   owner still cannot move a page: the parent is frozen for everyone else.
+
+## Tag suggestions (Workers AI)
+
+The editors' **Suggest tags** button (`assets/tag-suggest.js`, loaded by
+create.html and edit.html) asks **`POST /api/suggest-tags`**, which hands
+`worker/autotag.js` the name, team, ability, lede and summary. It builds a
+prompt from tags.js's list and descriptions plus the 8 tagged published
+characters whose abilities share the most rare words with this one (read off
+the cached grid feed, no query), runs `AUTOTAG_MODEL` through the `[ai]`
+binding in wrangler.toml, and filters the answer back to the tag list. The
+button ticks what is new and outlines it (`.tag-pick-btn.suggested`); it never
+unticks and never saves, so a person always decides. `Joke` is never
+suggested. Login required, 40 an hour per account (`autotag` bucket),
+admins exempt. About 25 neurons a call.
+
+**`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
+suggestions") scores it against random pages people already tagged, or shows
+what it would say about untagged ones, writing nothing. Read its numbers with
+care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
+pages with `[setup]` text lacked Setup), so an "extra" tag is often right.
+A bulk "tag every untagged page" run is deliberately not built yet.
 
 ## System text (`/text-editor`)
 
