@@ -3801,6 +3801,11 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   `{username, glyph, show?}` assigns or changes it; a glyph somebody else
   holds (an account or a name on the legacy list) is a 409 naming them
   unless `move: true`. Dashboard → Users → "Creator marks".
+- **Banned marks**: `settings.banned_marks` (`[{g, k, at}]`, matched on
+  `markKey`). `POST /api/admin/banned-marks {glyph, on}` bans one (taking it
+  off whoever holds it) or lifts the ban; `GET` lists them. The registry
+  skips a banned glyph, the legacy list's included, and both mark saves
+  refuse it. Same dashboard card, under the list.
 - **Creator marks on names**: a script's `creatorMarks: true` (the Script
   Builder's tick and publish-script's "In the Official App" panel, both on
   `botc_script_meta`) puts each homebrew character's creators' marks after its

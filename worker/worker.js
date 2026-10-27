@@ -36,6 +36,7 @@
  *   POST /api/account/mark    -> claim/change/give up your creator mark
  *   GET  /api/creator-marks   -> every creator mark (public registry)
  *   POST /api/admin/creator-mark -> assign/move/clear an account's mark
+ *   GET/POST /api/admin/banned-marks -> symbols nobody may hold as a mark
  *                                   ({username, glyph?, show?, move?})
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
@@ -6675,7 +6676,8 @@ async function buildMarkRegistry(env, flags = {}) {
     `SELECT username, display_name, lower(discord_username) AS dh, lower(username) AS uh FROM users
       WHERE COALESCE(banned, 0) = 0 AND (lower(discord_username) IN (${ph}) OR lower(username) IN (${ph}))`
   ).bind(...handles, ...handles).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; });
-  const [rows, users] = await Promise.all([marks, linked]);
+  const banned = bannedMarks(env).then(l => new Set(l.map(e => e.k)), () => { flags.degraded = true; return new Set(); });
+  const [rows, users, bannedKeys] = await Promise.all([marks, linked, banned]);
   const byHandle = new Map();
   for (const u of users) if (u.dh) byHandle.set(u.dh, u);
   // A wiki username beats somebody else's Discord handle of the same spelling.
@@ -6685,6 +6687,7 @@ async function buildMarkRegistry(env, flags = {}) {
   const covered = new Set();
   const marked = new Set();
   for (const r of rows) {
+    if (bannedKeys.has(r.glyph_key)) continue;
     marked.add(usernameKey(r.username));
     let names = [];
     try { names = JSON.parse(r.names || '[]'); } catch { names = []; }
@@ -6700,7 +6703,7 @@ async function buildMarkRegistry(env, flags = {}) {
   for (const name of Object.keys(Creators.CREATOR_SYMBOLS)) {
     const g = Creators.CREATOR_SYMBOLS[name];
     const k = Creators.markKey(g);
-    if (taken.has(k) || covered.has(normCreator(name))) continue;
+    if (taken.has(k) || bannedKeys.has(k) || covered.has(normCreator(name))) continue;
     const h = Creators.LEGACY_ACCOUNTS[name];
     const u = h && byHandle.get(h.toLowerCase());
     // An account that chose a mark of its own released this one.
@@ -6712,6 +6715,20 @@ async function buildMarkRegistry(env, flags = {}) {
   }
   return out;
 }
+// Glyphs nobody may hold as a mark: one settings row, [{g, k, at}],
+// matched on markKey() so ♣ and ♣︎ are one ban. Banning takes the glyph off
+// whoever holds it (POST /api/admin/banned-marks), the registry skips it
+// (legacy list included), and both mark saves refuse it. Deliberately
+// uncaught: a failed read must reject, never read as "nothing banned".
+const BANNED_MARKS_KEY = 'banned_marks';
+async function bannedMarks(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(BANNED_MARKS_KEY).first();
+  let list;
+  try { list = JSON.parse((r && r.value) || '[]'); } catch { list = []; }
+  return (Array.isArray(list) ? list : []).filter(e => e && typeof e.k === 'string' && e.k);
+}
+const BANNED_MARK_ERROR = 'That symbol is not allowed as a mark. Pick another.';
+
 // One account's mark, written or replaced. Throws on the UNIQUE glyph_key
 // when another account holds it; callers turn that into a 409.
 function upsertMark(env, userId, glyph, key, show, names) {
@@ -12091,6 +12108,10 @@ const app = {
       return jsonResponse(out);
     }
 
+    if (method === 'GET' && path === '/api/admin/banned-marks') {
+      return jsonResponse({ banned: await bannedMarks(env) });
+    }
+
     // ---------- ADMIN DASHBOARD (read, admin only) ----------
     if (method === 'GET' && path === '/api/admin/dashboard') {
       const sess = await adminSession(env, request);
@@ -13438,10 +13459,11 @@ const app = {
         // Free unless some OTHER owner holds it: an account mark, or a legacy
         // glyph whose name is not this account's. A registry that could not
         // be read is no answer, so this fails closed.
-        const [reg, creators] = await Promise.all([
-          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null)
+        const [reg, creators, banned] = await Promise.all([
+          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null), bannedMarks(env).catch(() => null)
         ]);
-        if (reg.degraded || !creators) return jsonResponse({ error: 'Could not check whether that mark is free. Please try again.' }, { status: 503 });
+        if (reg.degraded || !creators || !banned) return jsonResponse({ error: 'Could not check whether that mark is free. Please try again.' }, { status: 503 });
+        if (banned.some(e => e.k === key)) return jsonResponse({ error: BANNED_MARK_ERROR }, { status: 400 });
         const names = markNamesFor(creators, me.username, me.display_name);
         const holder = reg.list.find(m => m.k === key);
         const mine = holder && (holder.u
@@ -15329,10 +15351,11 @@ const app = {
         const bad = Creators.markProblem(glyph);
         if (bad) return jsonResponse({ error: bad }, { status: 400 });
         const key = Creators.markKey(glyph);
-        const [reg, creators] = await Promise.all([
-          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null)
+        const [reg, creators, banned] = await Promise.all([
+          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null), bannedMarks(env).catch(() => null)
         ]);
-        if (reg.degraded || !creators) return jsonResponse({ error: 'Could not check who holds that mark. Please try again.' }, { status: 503 });
+        if (reg.degraded || !creators || !banned) return jsonResponse({ error: 'Could not check who holds that mark. Please try again.' }, { status: 503 });
+        if (banned.some(e => e.k === key)) return jsonResponse({ error: 'That symbol is banned. Unban it first.' }, { status: 400 });
         const holder = reg.list.find(m => m.k === key);
         const other = holder && !(holder.u && usernameKey(holder.u) === usernameKey(u.username));
         if (other && !b.move) {
@@ -15358,6 +15381,39 @@ const app = {
         const from = other ? Creators.markOwner(holder) : (moved && moved.meta && moved.meta.changes ? 'a suspended account' : '');
         await logActivity(env, sess, 'admin-creator-mark', 'user', u.username, glyph + (from ? ' (from ' + from + ')' : ''));
         return jsonResponse({ ok: true, glyph, from: from || null, replaced: cur && cur.glyph !== glyph ? cur.glyph : null });
+      }
+
+      // An admin banning a mark: {glyph} bans it (and takes it off whoever
+      // holds it), {glyph, on: false} lifts the ban. The fresh list comes back.
+      if (path === '/api/admin/banned-marks') {
+        const b = await request.json().catch(() => ({}));
+        const glyph = String(b.glyph == null ? '' : b.glyph).normalize('NFC').trim();
+        const key = Creators.markKey(glyph);
+        if (!key || Array.from(key).length > 8) return jsonResponse({ error: 'Enter the symbol to ban.' }, { status: 400 });
+        const on = b.on !== false;
+        let list = await bannedMarks(env);
+        const had = list.some(e => e.k === key);
+        let takenFrom = [];
+        if (on) {
+          if (!had) list.unshift({ g: glyph, k: key, at: new Date().toISOString() });
+          await ensureMarksTable(env);
+          takenFrom = ((await env.DB.prepare(
+            'SELECT u.username FROM creator_marks m JOIN users u ON u.id = m.user_id WHERE m.glyph_key=?'
+          ).bind(key).all()).results || []).map(r => r.username);
+          await env.DB.prepare('DELETE FROM creator_marks WHERE glyph_key=?').bind(key).run();
+        } else {
+          list = list.filter(e => e.k !== key);
+        }
+        await env.DB.prepare(
+          `INSERT INTO settings (key,value) VALUES (?,?)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+        ).bind(BANNED_MARKS_KEY, JSON.stringify(list)).run();
+        if (on !== had || takenFrom.length) {
+          await bumpContentVersion(env, 'mark');
+          await logActivity(env, sess, on ? 'ban-mark' : 'unban-mark', 'user', takenFrom[0] || '',
+            glyph + (takenFrom.length ? ' (taken from @' + takenFrom.join(', @') + ')' : ''));
+        }
+        return jsonResponse({ ok: true, banned: list, takenFrom });
       }
 
       // ---- admin: link a creator name to an account (or unlink it) ----

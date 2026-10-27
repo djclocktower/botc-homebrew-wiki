@@ -526,6 +526,16 @@
         </div>
         <div class="toast" id="cm-toast"></div>
         <div id="cm-list" style="margin-top:10px"></div>
+        <h4 style="margin:16px 0 6px">Banned marks <span class="count-pill" id="bm-count"></span></h4>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Symbols nobody may use as a mark. Banning one also takes it off whoever has it now.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="bm-glyph" placeholder="symbol to ban" style="max-width:9em">
+          <button type="button" class="small-btn" id="bm-ban">Ban</button>
+        </div>
+        <div class="toast" id="bm-toast"></div>
+        <div id="bm-list" style="margin-top:10px"></div>
       </section>
       <section class="panel">
         <h3>Recent sign-ups <span class="count-pill" id="signup-count"></span></h3>
@@ -2686,6 +2696,39 @@
       sendMark({ username: user }, this);
     });
     loadMarks();
+
+    /* Banned marks (GET/POST /api/admin/banned-marks). */
+    function drawBanned(list){
+      $('bm-count').textContent = list.length;
+      $('bm-list').innerHTML = list.length ? '<ul class="feed">' + list.map(function(e){
+        return '<li style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em;min-width:1.5em;text-align:center">' +
+          esc(e.g) + '</span><span style="flex:1;opacity:.7">' + esc(String(e.at || '').slice(0, 10)) + '</span>' +
+          '<button type="button" class="small-btn alt" data-bm-unban="' + esc(e.g) + '">Unban</button></li>';
+      }).join('') + '</ul>' : '<p class="note">Nothing banned.</p>';
+    }
+    function sendBan(body, btn){
+      btn.disabled = true;
+      postJSON('/api/admin/banned-marks', body).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('bm-toast', false, d.error || 'Failed.'); return; }
+        drawBanned(d.banned || []);
+        setToast('bm-toast', true, body.on === false ? body.glyph + ' can be used again.'
+          : body.glyph + ' is banned' + (d.takenFrom && d.takenFrom.length ? ' and was taken off @' + d.takenFrom.join(', @') : '') + '.');
+        loadMarks();
+      });
+    }
+    $('bm-ban').addEventListener('click', function(){
+      var g = $('bm-glyph').value.trim();
+      if (!g) { setToast('bm-toast', false, 'Which symbol?'); return; }
+      if (!confirm('Ban ' + g + '? Anyone using it as their mark loses it.')) return;
+      sendBan({ glyph: g }, this);
+    });
+    $('bm-list').addEventListener('click', function(e){
+      var b = e.target.closest('[data-bm-unban]');
+      if (b) sendBan({ glyph: b.getAttribute('data-bm-unban'), on: false }, b);
+    });
+    getJSON('/api/admin/banned-marks').then(function(d){ drawBanned((d && d.banned) || []); });
 
     $('dp-go').addEventListener('click', function(){
       var slug = $('dp-slug').value.trim();
