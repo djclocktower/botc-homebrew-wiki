@@ -1090,44 +1090,6 @@
     return { byKey: byKey, byName: byName };
   }
 
-  /* Where a jinx entry will land — for the tools that WRITE one rather than
-     draw it, which is both importers. Drawing a jinx can afford to just pick
-     the best candidate; an import is the moment somebody can still fix it, and
-     a jinx stored by a name three pages share is a coin toss nobody is told
-     about. So this answers with its working:
-
-       picked      the page it will resolve to, or null for none here
-       candidates  EVERY page of that name, so a caller can say who else it
-                   could have been
-       guessed     true when the pick was made on the bare name while more
-                   than one page answers to it — i.e. it came down to
-                   whichever was registered first
-
-     `guessed` is deliberately false when the id or the host's own set settled
-     it (see jinxLookupKeys): those are evidence, not a coin toss. */
-  function jinxTargetCheck(j, host, index) {
-    var out = { name: '', picked: null, candidates: [], guessed: false, official: false };
-    if (!j || !index) return out;
-    out.name = jinxDisplayName(j);
-    // The picker writes the target outright; there is nothing to guess.
-    if (j.slug) { out.picked = index.byKey[normJinxId(j.slug)] || null; return out; }
-    // An official character beats every page here (resolveJinxTarget step 2),
-    // so a jinx with one is settled however many pages share the name. This
-    // needs setOfficialNames() to have been called — without it every jinx
-    // with an official character looks homebrew, which is a warning on almost
-    // every import.
-    out.official = !!jinxOfficialId(j);
-    if (out.official) return out;
-    var keys = jinxLookupKeys(j, host), hit = '';
-    for (var i = 0; i < keys.length && !out.picked; i++) {
-      if (index.byKey[keys[i]]) { out.picked = index.byKey[keys[i]]; hit = keys[i]; }
-    }
-    var nameKey = normJinxId(out.name);
-    out.candidates = (nameKey && index.byName[nameKey]) || [];
-    out.guessed = out.candidates.length > 1 && hit === nameKey;
-    return out;
-  }
-
   function findScriptJinxes(chars) {
     var byId = Object.create(null);
     chars.forEach(function (c) {
@@ -1644,7 +1606,6 @@
     window.jinxQualKeys = jinxQualKeys;
     window.jinxLookupKeys = jinxLookupKeys;
     window.jinxCharIndex = jinxCharIndex;
-    window.jinxTargetCheck = jinxTargetCheck;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setOfficialNames = setOfficialNames;
     window.setWikiChars = setWikiChars;
@@ -1679,7 +1640,7 @@
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       jinxExportId: jinxExportId,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
-      jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
+      jinxCharIndex: jinxCharIndex,
       charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,

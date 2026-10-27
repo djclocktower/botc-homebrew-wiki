@@ -559,7 +559,7 @@ export function normKey(s) {
 
 const TEAM_ALIAS = {
   townsfolk: 'townsfolk', outsider: 'outsider', minion: 'minion', demon: 'demon',
-  traveller: 'traveller', traveler: 'traveller', fabled: 'fabled', loric: 'loric'
+  traveller: 'traveller', traveler: 'traveller', fabled: 'fabled', loric: 'loric', other: 'other'
 };
 function normTeam(t) {
   return TEAM_ALIAS[String(t || '').toLowerCase().trim()] || '';
@@ -637,7 +637,8 @@ export function buildBundle(scriptJson, almanac, source, official) {
       };
       continue;
     }
-    const id = String(row.id || '');
+    // A hand-written JSON may leave the id off; the name stands in for it.
+    const id = String(row.id || row.name || '');
     if (!id || seen.has(id)) continue;
     seen.add(id);
     const page = alm.entries[id] || matchAlmanacEntry(alm, row) || {};
@@ -688,6 +689,11 @@ export function buildBundle(scriptJson, almanac, source, official) {
       remindersGlobal: strList(row.remindersGlobal),
       setup: !!row.setup,
       special: Array.isArray(row.special) ? row.special : [],
+      // The official schema's own jinx list ({id, reason}); Bloodstar's pair
+      // entries are read into `jinxes` below. The importer reads both.
+      jinxes: Array.isArray(row.jinxes) ? row.jinxes : [],
+      // The entry as written, for the importer's "keep the file's JSON".
+      raw: row,
       official: match ? { id: off ? off.id : '', slug: off ? off.slug : '', match } : null,
       // Lengths, not the arrays: an empty almanac page parses to [] for each
       // list, and [] is truthy, so every matched page used to read "yes".
