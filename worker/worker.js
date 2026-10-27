@@ -126,7 +126,9 @@
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
  *
- *   -- importing a Bloodstar project (/bloodstar) --
+ *   -- importing (/mass-upload) --
+ *   POST /api/bloodstar       -> the same bundle from a script JSON in the body
+ *                                ({script}), for a file or a paste.
  *   GET  /api/bloodstar       -> read a project on Bloodstar: fetches its
  *                                script.json AND its almanac.html and returns
  *                                one normalized bundle (meta, characters with
@@ -10753,7 +10755,7 @@ const app = {
         customUrls('script'), customUrls('wikipage')
       ]);
       const staticPages = ['', 'recent', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
-        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
+        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload',
         'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
@@ -10982,6 +10984,34 @@ const app = {
        Login required, and the host is pinned to Bloodstar: this is the Worker
        fetching a URL a stranger typed, and the only safe version of that is
        one that can only ever reach Bloodstar. */
+    /* POST is the importer's other source: a script JSON the person pasted or
+       picked, read through the same buildBundle() so a file and a Bloodstar
+       project arrive at /mass-upload in one shape, with one official test.
+       Nothing is fetched for it. */
+    if (method === 'POST' && path === '/api/bloodstar') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
+      const Bloodstar = await loadBloodstar();
+      let scriptJson = null;
+      try {
+        const bytes = await Bloodstar.readCapped(request, Bloodstar.BLOODSTAR_FILE_MAX);
+        if (!bytes) return jsonResponse({ error: 'That file is too large to be a script.' }, { status: 413 });
+        scriptJson = JSON.parse(new TextDecoder().decode(bytes)).script;
+      } catch {
+        return jsonResponse({ error: 'Could not read that JSON.' }, { status: 400 });
+      }
+      // One character on its own, not wrapped in a list.
+      if (scriptJson && !Array.isArray(scriptJson) && typeof scriptJson === 'object') scriptJson = [scriptJson];
+      if (!Array.isArray(scriptJson)) {
+        return jsonResponse({ error: 'That is not a script or a list of characters.' }, { status: 422 });
+      }
+      const official = await loadOfficialRoles(env, url.origin);
+      if (!official.length) {
+        return jsonResponse({ error: "The official character list couldn't be loaded just now. Please try again in a moment." }, { status: 503 });
+      }
+      return jsonResponse(Bloodstar.buildBundle(scriptJson, null, {}, official));
+    }
+
     if (method === 'GET' && path === '/api/bloodstar') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
@@ -11123,14 +11153,18 @@ const app = {
         ? (await identityParked(env, base).catch(() => false)) ||
           (await artSlotClash(env, base).catch(() => false))
         : !!(await lookupRedirect(env, type, base)) || !!(await rowByCustomUrl(env, type, base))));
-      if (!row && !parked) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
+      // Identities an importer has claimed in this run but not saved yet: the
+      // Worker cannot see them, so the importer names them and they count as
+      // taken. Two characters of one name in one file get two pages.
+      const avoid = new Set(String(url.searchParams.get('avoid') || '').split(',').slice(0, 400).filter(Boolean));
+      if (!row && !parked && !avoid.has(base)) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
       // `mine` says a save on this URL would update that page rather than
       // collide with it — which is what the create page wants, and what a
       // rename must still avoid (it would move a page onto a live one).
       // A deleted page is never "mine": the save refuses to write over one
       // (only an admin's restore brings it back), so an importer told it was
       // aimed every re-import of that name at a page it could not save.
-      const mine = !!row && row.status !== 'deleted' && canEditRow(sess, row);
+      const mine = !!row && !avoid.has(base) && row.status !== 'deleted' && canEditRow(sess, row);
       // Find the first free variant either way.
       let used;
       if (type === 'collection') {
@@ -11181,6 +11215,7 @@ const app = {
         for (const r of results || []) used.add(String(r.from_slug));
       } catch { /* nothing has ever been renamed */ }
       used.add(base);
+      for (const s of avoid) used.add(s);
       // Disambiguation ladder, in order:
       //   witcher
       //   witcher-{collection or script}   <- the character's own "appears in"
