@@ -35,10 +35,9 @@
     if (!val('ability')) { note.textContent = 'Write the ability first: the suggestions are read off it.'; return; }
     btn.disabled = true; label.textContent = 'Suggesting…'; note.textContent = '';
     if (before === null) before = tagsNow();
-    var char = {
-      name: val('name'), team: val('team'), ability: val('ability'), lede: val('lede'),
-      summaryBullets: val('bullets').split('\n').map(function (s) { return s.trim(); }).filter(Boolean)
-    };
+    // The ability only (the owner's call): almanac prose discusses drunk,
+    // poisoned, sober and healthy as rules notes, which read as tags.
+    var char = { name: val('name'), team: val('team'), ability: val('ability') };
     var ask = function (quick) {
       return fetch('/api/suggest-tags', {
         method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },

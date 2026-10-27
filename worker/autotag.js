@@ -222,8 +222,6 @@ export function buildMessages(char, examples) {
   const cueLine = (cues.sure.length ? '\nAlready certain from its wording (do not repeat): ' + cues.sure.join(', ') + '.' : '') +
     (cues.hint.length ? '\nWording that may point to a tag (keep one only if it really applies): ' +
       cues.hint.map(h => h.tag + (h.words ? ' ("' + clip(h.words, 40) + '")' : '')).join(', ') + '.' : '');
-  const extra = [char.lede, ...(Array.isArray(char.summaryBullets) ? char.summaryBullets : [])]
-    .map(s => clip(s, 300)).filter(Boolean).join(' ');
   return [
     { role: 'system', content:
       'You tag homebrew characters for a Blood on the Clocktower wiki. Choose only tags from this list ' +
@@ -231,8 +229,7 @@ export function buildMessages(char, examples) {
       '\n\nAnswer with JSON only, like {"tags": ["Information", "Neighbor"]}.' },
     { role: 'user', content:
       (ex ? 'Characters already tagged (tags marked checked or official are the most reliable):\n\n' + ex + '\n\nNow this one:\n' : '') + 'Character: ' + clip(char.name, 80) +
-      ' (' + clip(char.team, 20) + ')\nAbility: ' + clip(char.ability, 600) +
-      (extra ? '\nAbout it: ' + clip(extra, 900) : '') + cueLine + '\nTags:' }
+      ' (' + clip(char.team, 20) + ')\nAbility: ' + clip(char.ability, 600) + cueLine + '\nTags:' }
   ];
 }
 

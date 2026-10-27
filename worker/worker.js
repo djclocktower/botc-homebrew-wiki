@@ -14613,8 +14613,7 @@ const app = {
         const ability = String(b.ability || '').trim();
         if (!ability) return jsonResponse({ error: 'Write the ability first: the suggestions are read off it.' }, { status: 400 });
         const char = {
-          slug: String(b.slug || ''), name: String(b.name || ''), team: String(b.team || ''), ability,
-          lede: String(b.lede || ''), summaryBullets: Array.isArray(b.summaryBullets) ? b.summaryBullets.slice(0, 8).map(String) : []
+          slug: String(b.slug || ''), name: String(b.name || ''), team: String(b.team || ''), ability
         };
         // quick: the wording rules alone, so the button can tick those at once
         // while the model is still answering. No model, no feed read, no limit.
