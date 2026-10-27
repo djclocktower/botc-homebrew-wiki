@@ -340,3 +340,9 @@ test('autotag: each AI call is charged its real token cost', async t => {
   // Gemma: 1,000 x $0.10/M + 100 x $0.30/M = $0.00013
   assert.equal(f.db.prepare('SELECT n FROM rate_limits WHERE key = ?').get(key).n, 130);
 });
+
+test('autotag: the model is shown the ability and nothing of the almanac', () => {
+  const m = buildMessages({ name: 'Scout', team: 'townsfolk', ability: 'Each day, you may publicly choose a player.',
+    lede: 'A lede', summaryBullets: ['If the Scout is drunk or poisoned but is sober & healthy later...'] }, []);
+  assert.ok(!/sober|A lede|About it/i.test(m[1].content));
+});

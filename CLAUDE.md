@@ -3378,7 +3378,10 @@ set's custom pages, which were meant for that set's own mechanics.
 
 The editors' **Suggest tags** button (`assets/tag-suggest.js`, loaded by
 create.html and edit.html) asks **`POST /api/suggest-tags`**, which hands
-`worker/autotag.js` the name, team, ability, lede and summary. It builds a
+`worker/autotag.js` the name, team and ability, **and nothing else** (the
+owner's call: the lede and summary bullets went too, after Scout's rules
+note "sober & healthy when their ability triggers" was read as the Sober &
+Healthy tag; the scorer only ever measured the ability alone anyway). It builds a
 prompt from tags.js's list and descriptions plus the 8 tagged characters
 whose abilities share the most rare words with this one: published wiki
 pages (read off the cached grid feed, no query) and, for up to 3 of the 8,
