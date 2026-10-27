@@ -5136,15 +5136,17 @@ keeps `content-visibility: auto`.
    `_true_circle()` trims `frame_bare.png` to an exact circle on load — the
    file has a flat patch on its left edge that printed as a nub on every
    token.
-   **Only the centre of `frame_bare.png` is new** (2026-10, the owner's
-   call): the paper, shading and rim are the official token's own pixels,
-   and the faint medallion in the middle was replaced with a rose window
-   ringed by thistles and oak leaves, so the token looks official without
-   being one. It was made by having OpenArt edit the official file and then
-   pasting only the centre back (within radius ~310px of the token centre,
-   blended out by ~370px). The owner rejected a background made entirely
-   from scratch because its edge shading was wrong, so any later redesign
-   should keep the official rim.
+   **The inside of `frame_bare.png` is the script sheet's parchment**
+   (2026-10, the owner's call): the rim, its shading and scrollwork are the
+   official token's own pixels, and inside it sits the parchment and faint
+   hexagram from `assets/script-studio/template/bg-parchment.jpg`, so the
+   token looks official without being one. The hexagram runs off that
+   sheet's right edge, so the centre is the sheet's left half and its mirror
+   image (the axis is x=1142). It is recoloured to the official paper's tone
+   and darkened by the official vignette, then blended out into the rim
+   between radius ~300 and ~420px of the token centre. The owner rejected a
+   background made entirely from scratch because its edge shading was wrong,
+   so any later redesign should keep the official rim.
    The stock **first-night sprig** is redrawn on load too (`_stand_out()`):
    stronger colour and a 0.5px dark ink line, because its olive and orange
    vanished into the brown rim, and grown by `FN_GROW` (1.2) from the rim,
