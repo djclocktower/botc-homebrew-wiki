@@ -138,3 +138,29 @@ test('admin creator marks: assign, refuse a held glyph, move it, clear', async t
   assert.ok(!(await marks()).some(m => m.u === 'user-1'));
   assert.equal((await (await adm({ username: 'user-1' })).json()).removed, false);
 });
+
+test('banned marks: banning takes the glyph off its holder and refuses it after', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.db.prepare("INSERT INTO users(id,username,password_hash,is_admin) VALUES(9,'boss','',1)").run();
+  f.state.sessions.set('sess:user-9', { userId: 9, username: 'boss', isAdmin: true });
+  f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(1,'user-1','')").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1' });
+  const ban = (id, body) => f.request('/api/admin/banned-marks', post(id, body));
+  const marks = async () => (await (await f.request('/api/creator-marks')).json()).marks;
+
+  assert.equal((await f.request('/api/account/mark', post(1, { glyph: '✶' }))).status, 200);
+  assert.equal((await ban(1, { glyph: '✶' })).status, 403);
+  const d = await (await ban(9, { glyph: '✶︎' })).json();   // the variation-selector twin is the same mark
+  assert.deepEqual(d.takenFrom, ['user-1']);
+  assert.ok(!(await marks()).some(m => m.g === '✶'));
+  assert.equal((await f.request('/api/account/mark', post(1, { glyph: '✶' }))).status, 400);
+  assert.equal((await f.request('/api/admin/creator-mark', post(9, { username: 'user-1', glyph: '✶' }))).status, 400);
+  // A legacy glyph disappears from the registry too.
+  await ban(9, { glyph: '∇' });
+  assert.ok(!(await marks()).some(m => m.g === '∇'));
+  assert.equal((await (await f.request('/api/admin/banned-marks', member(9))).json()).banned.length, 2);
+  // Lifting the ban frees it.
+  await ban(9, { glyph: '✶', on: false });
+  assert.equal((await f.request('/api/account/mark', post(1, { glyph: '✶' }))).status, 200);
+});
