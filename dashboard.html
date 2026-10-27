@@ -1115,9 +1115,22 @@
       var d = new Date(String(s).replace(' ', 'T') + 'Z');
       return isNaN(d.getTime()) ? null : d;
     }
+    // The times are the server's clock and "now" is this device's. A device
+    // running behind put every recent row in the future, and a negative age
+    // read as "just now", so the gap is measured off each response's Date
+    // header and taken out.
+    var clockSkew = 0;
+    var plainFetch = window.fetch;
+    window.fetch = function(){
+      return plainFetch.apply(this, arguments).then(function(r){
+        var t = Date.parse(r.headers.get('Date') || '');
+        if (t) clockSkew = t - Date.now();
+        return r;
+      });
+    };
     function relTime(s){
       var d = parseTs(s); if (!d) return '';
-      var secs = Math.round((Date.now() - d.getTime()) / 1000);
+      var secs = Math.round((Date.now() + clockSkew - d.getTime()) / 1000);
       if (secs < 45) return 'just now';
       var mins = Math.round(secs/60); if (mins < 60) return mins + (mins===1?' min ago':' mins ago');
       var hrs = Math.round(mins/60);  if (hrs < 24) return hrs + (hrs===1?' hr ago':' hrs ago');
