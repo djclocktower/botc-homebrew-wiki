@@ -10648,10 +10648,11 @@ const app = {
     if (method === 'GET' && path === '/api/account/mark') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
-      const [me, reg, creators] = await Promise.all([
+      const [me, reg, creators, banned] = await Promise.all([
         env.DB.prepare('SELECT username, display_name FROM users WHERE id=?').bind(sess.userId).first(),
         cachedMarkRegistry(env, ctx),
-        creatorsListParsed(env, ctx).catch(() => null)
+        creatorsListParsed(env, ctx).catch(() => null),
+        bannedMarks(env).catch(() => [])
       ]);
       if (!me) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
       const names = creators ? markNamesFor(creators, me.username, me.display_name) : [];
@@ -10659,7 +10660,10 @@ const app = {
       const legacy = reg.list
         .filter(m => m.legacy && (m.u ? usernameKey(m.u) === usernameKey(me.username) : m.n.some(n => names.includes(normCreator(n)))))
         .map(m => ({ g: m.g, k: m.k, name: m.d }));
-      return jsonResponse({ mark, legacy, names });
+      // Banned glyphs, so the editor says so instead of "Available" (the
+      // registry skips them, so they read as nobody's). The save refuses them
+      // regardless.
+      return jsonResponse({ mark, legacy, names, banned: banned.map(e => e.k) });
     }
 
     // Every creator mark: what the browser-side renderers draw beside a name
