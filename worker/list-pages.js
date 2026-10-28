@@ -23,6 +23,8 @@ import Classify from '../assets/classify.js';
 import CardActions from '../assets/card-actions.js';
 import Creators from '../assets/creators.js';
 import Tags from '../assets/tags.js';
+import OFFICIAL_TAGS from '../assets/official-tags.js';
+import OfficialRoles from '../assets/official-roles.js';
 
 CharFilters.init({ Classify, CardActions, splitCreators: Creators.splitCreators });
 
@@ -78,9 +80,11 @@ const PANEL_RE = /<main class="home-panel list-panel" id="panel">[\s\S]*?<\/main
 const PRELOAD_RE = /<link rel="preload" href="(?:characters|collections|scripts)\.json[^"]*" as="fetch" crossorigin="anonymous">\s*/g;
 
 /* The page itself. `data` = {chars, collections, scripts} (grid and browse
-   feed rows). Null when there is nothing the server should draw. */
+   feed rows), plus `officials` (OfficialRoles.buildOfficialRoles() rows),
+   which every list shows first, as the browser does. Null when there is
+   nothing the server should draw. */
 export function renderListPage(kind, template, data, query) {
-  const chars = data.chars || [];
+  const chars = OfficialRoles.cards(data.officials, OFFICIAL_TAGS).concat(data.chars || []);
   let html = template.replace(PRELOAD_RE, '');
   if (kind === 'all') {
     const colls = (data.collections || []).map(c => ({ id: c.id, slug: c.slug, displayName: c.displayName || c.slug,
@@ -154,16 +158,21 @@ export async function serveListPage(h, env, ctx, request, url) {
       '&o=' + encodeURIComponent(url.origin) + '&r=' + LIST_RENDER_V + '-' + h.renderV;
     const hit = await h.edgeCacheGet(key);
     if (hit !== null) return h.htmlPage(hit);
-    const [tpl, gridBody, collBody, scriptBody] = await Promise.all([
+    const [tpl, gridBody, collBody, scriptBody, officials] = await Promise.all([
       template(env, url.origin, kind),
       h.cachedFeedBody(env, ctx, 'characters', 'grid'),
       kind === 'all' ? h.cachedFeedBody(env, ctx, 'collections', 'browse') : null,
-      kind === 'all' ? h.cachedFeedBody(env, ctx, 'scripts', 'browse') : null
+      kind === 'all' ? h.cachedFeedBody(env, ctx, 'scripts', 'browse') : null,
+      h.officialRoles(env, url.origin)
     ]);
+    // Without the official cards this would not be the browser's first
+    // screen, and it would adopt the wrong cards.
+    if (!officials.length) return null;
     const html = renderListPage(kind, tpl, {
       chars: parseOnce(gridBody),
       collections: collBody ? JSON.parse(collBody) : [],
-      scripts: scriptBody ? JSON.parse(scriptBody) : []
+      scripts: scriptBody ? JSON.parse(scriptBody) : [],
+      officials
     }, query);
     if (!html) return null;
     h.edgeCachePut(ctx, key, html, h.cacheControl, 'text/html; charset=utf-8');

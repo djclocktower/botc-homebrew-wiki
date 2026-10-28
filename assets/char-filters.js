@@ -66,7 +66,7 @@
     ['traveller', 'Traveller'], ['fabled', 'Fabled'],
     ['loric', 'Loric'], ['other', 'Other']
   ];
-  var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
+  var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script'], ['official', 'Official']];
   var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
   // The direction each sort starts in when it is picked.
   var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc' };
@@ -97,6 +97,7 @@
     (scripts || []).forEach(function (s) { (s.characters || []).forEach(function (sl) { inScript[norm(sl)] = true; }); });
     var colls = (collections || []).filter(function (c) { return !c.standalone; });
     return function (c) {
+      if (c.official) return 'official';
       for (var i = 0; i < colls.length; i++) if (inCollection(c, colls[i])) return 'collection';
       if (inScript[norm(c.slug)]) return 'script';
       return null;
@@ -112,6 +113,7 @@
   // yet), versioned by the row's `v` so it caches for a year. Same order as
   // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
   function thumb(c) {
+    if (c.official) return 'assets/icons-sm/' + norm(c.id) + '.webp';
     var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
     if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
     if (c.art) return 'assets/' + c.art + ver;
@@ -125,7 +127,8 @@
   function card(c, mark) {
     var m = mark || esc;
     var typeClass = GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '';
-    return '<a class="char-card" href="' + esc(c.page) + '">' +
+    // An official character has no page here: it opens the official wiki.
+    return '<a class="char-card" href="' + esc(c.page) + '"' + (c.official ? ' target="_blank" rel="noopener"' : '') + '>' +
       // The icon, and under it the Favorites / Add to Script quick actions
       // (assets/card-actions.js fills the slot).
       '<span class="card-side">' +

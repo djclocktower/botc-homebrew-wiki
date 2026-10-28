@@ -87,7 +87,9 @@
     var SSR = PANEL.getAttribute('data-ssr') === '1';
 
     function load(clicked) {
-      BotcData.json('characters.json?fields=grid').then(function(list) {
+      // The official characters of this team come first, as on All Characters.
+      Promise.all([BotcData.json('characters.json?fields=grid'), BotcData.officials()]).then(function(r) {
+        var list = r[1].concat(r[0]);
         if (!team || !TEAM_LABEL[team]) {
           PANEL.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Unknown team. <a href="all-characters" style="color:#7fb2e6">Back to all characters</a>.</p>';
           return;

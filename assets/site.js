@@ -1009,6 +1009,7 @@
     // (thumb/{file}.webp, versioned by the row's `v` so it caches for a
     // year), then `image` (a string or the first of a list), then the favicon.
     function charThumb(c) {
+      if (c.official) return ROOT + 'assets/icons-sm/' + String(c.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') + '.webp';
       var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
       if (c.art && /^art\/[^/]+$/.test(c.art)) return ROOT + 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
       if (c.art) return assetSrc(c.art) + ver;
@@ -1043,11 +1044,12 @@
       switch (item.type) {
         case 'character':
           subClass = GOOD[d.team] ? ' good' : d.team === 'other' ? ' other' : '';
-          return '<a class="search-result" href="' + esc(item.href) + '" role="option">' +
+          return '<a class="search-result" href="' + esc(item.href) + '" role="option"' + (d.official ? ' target="_blank" rel="noopener"' : '') + '>' +
             '<span class="card-side">' + thumbHTML(charThumb(d)) +
             (window.CardActions ? window.CardActions.slotHTML(d) : '') + '</span>' +
             '<div class="search-result-info">' +
-            '<span class="search-result-name">' + name + '</span>' +
+            '<span class="search-result-name">' + name +
+              (d.official ? ' <span class="page-class page-class-official">Official</span>' : '') + '</span>' +
             '<span class="search-result-type' + subClass + '">' + esc(TEAM_LABEL[d.team] || d.team || '') + '</span>' +
             '<span class="search-result-ability">' + mark(clip(d.ability, 90)) + '</span>' +
             '</div></a>';

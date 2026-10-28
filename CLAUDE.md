@@ -179,6 +179,24 @@ Key dynamic behavior:
   served, which still draws everything in the browser. Team and tag cards
   are char-filters.js's card, so they carry the Curata wreath / Partial
   label All Characters always had.
+  **The 181 official characters are listed beside the homebrew ones** on
+  All Characters, /team, /tag (and /tags' counts), /search, the top-bar
+  search and /favorites: `OfficialRoles.cards()` over
+  `buildOfficialRoles(roles.json)`, always first in the list, loaded in the
+  browser by `BotcData.officials()`, with the tags in
+  `assets/official-tags.js` (settled by hand from the suggester's wording
+  cues, the Chinese wiki and Lady Mist's spreadsheet; edit freely). Icon
+  from `icons-sm/`, "View Character" opening the official wiki in a new tab,
+  an "Official" box on the name (`classifyCharacter()` answers 'official',
+  never Partial), the heart and Add to Script like any card, credited to The
+  Pandemonium Institute, and a Source chip "Official". `/api/favorite`
+  saves an `off-{id}` slug against the roster (no row), and a saved
+  script's official characters count in `characterSlugs`. The server's
+  first screens draw them too (`h.officialRoles`); if roles.json will not
+  load it serves the static page rather than a first screen the browser
+  would not match. A `?collection=` view leaves them out. They are NOT in
+  the grid feed itself, on purpose: the homepage counts, Recently Added,
+  Featured, /random and the tag suggester all read it.
 - **Site search**: the top-bar box on every page previews the best matches of
   every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
   results with a tab per kind and the All Characters filter. Both run the same
@@ -378,8 +396,9 @@ assets/
                        card, beside the creator's name; on Recently Added,
                        side by side under the team name (see "Favorites").
                        Browser + Worker: slotHTML(c) prints an EMPTY
-                       <span class="cq" data-cq-slug> (nothing for a draft, an
-                       official character or a row with no slug), which the
+                       <span class="cq" data-cq-slug> (nothing for a draft or
+                       a row with no slug; an official 'off-' one gets one),
+                       which the
                        renderers wrap with the icon in a .card-side column;
                        render-page.js gets it through PageRender.
                        setCardActions() in worker.js. The browser half fills

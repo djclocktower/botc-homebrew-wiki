@@ -18,7 +18,7 @@
      CardActions.slotHTML(c)  -> '<span class="cq" data-cq-slug="…"></span>',
                                  an EMPTY slot, or '' for anything that
                                  cannot be saved or scripted here (no slug, a
-                                 draft, an official character). Pure string;
+                                 draft). Pure string;
                                  render-page.js calls it on the server too
                                  (PageRender.setCardActions in worker.js).
      CardActions.glyph(name)  -> the 'script' / 'token' outline glyphs, the
@@ -66,9 +66,11 @@
 
   /* The empty slot a renderer puts under a card's icon. A draft cannot be
      saved (favorites are published pages only) and is not what a script is
-     built from; an official character has no page here to save. */
+     built from. An official character ('off-{id}') is saved and scripted
+     like any other: /api/favorite knows the official roster, and the Script
+     Builder reads 'off-' slugs. */
   function slotHTML(c) {
-    if (!c || !c.slug || c.official || c.status === 'draft' || /^off-/.test(String(c.slug))) return '';
+    if (!c || !c.slug || c.status === 'draft') return '';
     return '<span class="cq" data-cq-slug="' + esc(c.slug) + '"></span>';
   }
 

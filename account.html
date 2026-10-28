@@ -1074,7 +1074,9 @@
             var note = gone ? ' <span class="row-date">(deleted)</span>'
                      : r.status !== 'published' ? ' <span class="row-date">(not public right now)</span>'
                      : (x.type !== 'character' && r.count != null ? ' <span class="row-date">· ' + r.count + ' character' + (r.count === 1 ? '' : 's') + '</span>' : '');
-            var label = gone ? esc(r.name || r.slug) : '<a href="' + view + '">' + esc(r.name || r.slug) + '</a>';
+            // An official character's page is the official wiki.
+            if (r.official) view = esc(r.page);
+            var label = gone ? esc(r.name || r.slug) : '<a href="' + view + '"' + (r.official ? ' target="_blank" rel="noopener"' : '') + '>' + esc(r.name || r.slug) + '</a>';
             return '<tr><td><span class="row-name">' + label + '</span>' + note + '</td>' +
               '<td class="row-type">' + esc(x.type) + '</td>' +
               '<td class="row-date">' + fmtDate(r.savedAt) + '</td>' +

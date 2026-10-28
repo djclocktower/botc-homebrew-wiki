@@ -63,7 +63,7 @@
 
   <div class="home-hero">
     <h1 id="hero-title">All Characters</h1>
-    <p id="hero-subtitle">Every fan-made character in the wiki, grouped by team.</p>
+    <p id="hero-subtitle">Every fan-made character in the wiki, plus the official ones, grouped by team.</p>
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
@@ -384,7 +384,13 @@
     // collection), so it is mounted when those are in too. They are small
     // and usually land first.
     function load(clicked) {
-      var charsP = BotcData.json('characters.json?fields=grid');
+      // The official characters come first (the oldest, for "Date added"),
+      // except on a ?collection= view, which is about homebrew sets. A
+      // roles.json that fails to load costs them and nothing else.
+      var charsP = Promise.all([
+        BotcData.json('characters.json?fields=grid'),
+        COLLECTION_PARAM ? [] : BotcData.officials()
+      ]).then(function (r) { return r[1].concat(r[0]); });
       var setsP = Promise.all([
         BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
         BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
