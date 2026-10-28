@@ -102,3 +102,26 @@ test('importer: re-importing a set updates it rather than making a second', asyn
   const merged = I.mergeSetPage({ slug: 'Set', data: { id: 'set', include: ['hand'], order: ['hand'] } }, coll);
   assert.deepEqual(plain(merged.include), ['hand', 'a']); assert.equal(merged.id, 'set'); assert.equal(merged.slug, 'Set');
 });
+
+test('importer: where the almanac text goes is the person\'s choice', async () => {
+  const I = await load();
+  const e = { name: 'X', team: 'townsfolk', ability: 'a', flavour: '"Hush."', overview: ['One.', 'Two.'], tips: ['Tip.'], howToRun: ['Run.'] };
+  let c = I.character(e, {});
+  assert.equal(c.quote, 'Hush.'); assert.equal(c.lede, 'One.'); assert.deepEqual(plain(c.summaryBullets), ['Two.']);
+  assert.deepEqual(plain(c.tips), ['Tip.']); assert.equal(c.callout, '');
+  c = I.character(e, { flavour: 'lede', overview: 'howto', tips: 'callout' });
+  assert.equal(c.quote, ''); assert.equal(c.lede, 'Hush.'); assert.deepEqual(plain(c.howToRun), ['One.', 'Two.', 'Run.']);
+  assert.deepEqual(plain(c.tips), []); assert.equal(c.callout, 'Tip.');
+  c = I.character(e, { flavour: 'skip', overview: 'skip', tips: 'skip' });
+  assert.equal(c.quote, ''); assert.equal(c.lede, ''); assert.deepEqual(plain(c.summaryBullets), []);
+  const bundle = { meta: { name: 'S' }, script: [{ id: '_meta', name: 'S' }, 'spy'],
+    prose: { synopsis: { plain: 'Syn.' }, overview: { plain: 'Ov.' }, changelog: { plain: 'v2', wiki: 'v2' } }, characters: [] };
+  let p = I.setPage(bundle, { destination: 'script', synopsis: 'description', projectOverview: 'synopsis', changelog: 'box', keepJson: true }, 's', [], {});
+  assert.equal(p.description, 'Syn.'); assert.equal(p.synopsis, 'Ov.'); assert.equal(p.customBoxes[0].title, 'Changelog');
+  assert.deepEqual(JSON.parse(p.customJson), bundle.script);
+  assert.equal(I.changelogPage(bundle, { changelog: 'box' }, 'script', 's'), null);
+  assert.ok(I.changelogPage(bundle, {}, 'script', 's'));
+  p = I.setPage(bundle, { destination: 'script' }, 's', [], {});
+  assert.equal(p.customJson, undefined);
+  assert.equal(I.mergeSetPage({ slug: 's', data: { name: 'S' } }, { customJson: '[]' }).customJson, '[]');
+});

@@ -715,6 +715,8 @@ export function buildBundle(scriptJson, almanac, source, official) {
 
   return {
     source: source || {},
+    // The file as read, for the importer's "use this file as the page's JSON".
+    script: rows,
     meta,
     background: alm.background || meta.background || '',
     prose: alm.prose || {},

@@ -172,6 +172,17 @@
 .sb-jinx-row:last-child { border-bottom:none; }
 .sb-jinx-pair { font-weight:600; color:var(--maroon); font-size:.92rem; }
 .sb-jinx-text { font-size:.86rem; color:var(--ink); font-style:italic; }
+
+/* ─── The import dialog: real choices, not OK/Cancel ─── */
+.sb-dlg { border:2px solid var(--parch-frame); border-radius:10px; background:var(--parch);
+  color:var(--ink); padding:18px 20px; max-width:min(440px, calc(100vw - 32px)); box-sizing:border-box; }
+.sb-dlg::backdrop { background:rgba(20,6,16,.6); }
+.sb-dlg h3 { font-family:'Dumbledor2',serif; color:var(--maroon); margin:0 0 8px; font-size:1.2rem; }
+.sb-dlg p { margin:0 0 10px; font-size:.9rem; }
+.sb-dlg label { display:flex; gap:8px; align-items:flex-start; margin:8px 0; font-size:.92rem; cursor:pointer; }
+.sb-dlg label input { margin-top:3px; flex:none; }
+.sb-dlg .hint { display:block; font-size:.78rem; color:#6b5d49; }
+.sb-dlg-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -841,63 +852,135 @@
       renderAll();
     });
 
-    // ── Import a script JSON (matches character ids back to slugs) ──
-    function idToSlug() {
-      var map = {};
+    // ── Import a script JSON (matches each entry back to a page) ──
+    /* A script entry names its character by id, and 166 names on this wiki
+       belong to more than one page (there are five Phantoms), so the id alone
+       used to land on whichever page was registered last. Now:
+         - a bare id ("spy") is how the schema names an OFFICIAL character, so
+           the official one wins it;
+         - an object entry carries its ability, so among the pages that answer
+           to its id or name, the one with the same ability wins, then one in
+           the set the file is named after, then the official character if the
+           ability is the official one;
+         - an exact jsonId or identity is preferred among the pages left, but
+           never over the ability: the export writes the bare name as the id,
+           which is also whichever page happened to get the bare identity. */
+    var norm = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+    function importIndex() {
+      var byKey = {}, exact = {}, off = {};
+      var add = function (m, k, c) { if (k) (m[k] = m[k] || []).push(c); };
       allChars.forEach(function (c) {
-        var id = (window.slugId ? window.slugId(c.name) : (c.name||'').toLowerCase().replace(/[^a-z0-9]/g,''));
-        map[id] = c.slug;
-        if (c.jsonId) map[String(c.jsonId).toLowerCase().replace(/[^a-z0-9]/g,'')] = c.slug;
-        map[(c.slug||'').replace(/-/g,'')] = c.slug;
+        add(byKey, norm(c.name), c);
+        if (c.jsonId) add(exact, norm(c.jsonId), c);
+        add(exact, norm(c.slug), c);
       });
-      // Official roles: match by their bare id and by name (homebrew wins — added
-      // first — so a homebrew char sharing an official name isn't shadowed).
       officialChars.forEach(function (c) {
-        var id = c.slug.replace(/^off-/, '');
-        if (!(id in map)) map[id] = c.slug;
-        var byName = slugify(c.name);
-        if (!(byName in map)) map[byName] = c.slug;
+        off[c.slug.replace(/^off-/, '')] = c;
+        if (!off[norm(c.name)]) off[norm(c.name)] = c;
       });
-      return map;
+      return { byKey: byKey, exact: exact, off: off };
     }
+    function matchEntry(entry, ix, setName) {
+      var abilityKey = window.OfficialRoles ? window.OfficialRoles.abilityKey : norm;
+      if (typeof entry === 'string') {
+        var k = norm(entry), o = ix.off[k];
+        if (o) return o.slug;
+        var hit = (ix.exact[k] || ix.byKey[k] || [])[0];
+        return hit ? hit.slug : '';
+      }
+      var key = norm(entry.id), nameKey = norm(entry.name);
+      var ab = entry.ability ? abilityKey(entry.ability) : '';
+      var exact = ix.exact[key] || [];
+      var cands = [];
+      exact.concat(ix.byKey[key] || [], ix.byKey[nameKey] || []).forEach(function (c) {
+        if (cands.indexOf(c) === -1) cands.push(c);
+      });
+      var same = ab ? cands.filter(function (c) { return abilityKey(c.ability) === ab; }) : [];
+      var official = ix.off[key] || ix.off[nameKey];
+      if (official && !same.length && (!ab || abilityKey(official.ability) === ab)) return official.slug;
+      var pool = same.length ? same : cands;
+      var inSet = setName ? pool.filter(function (c) { return norm(c.appearsIn) === norm(setName); }) : [];
+      var hit = pool.filter(function (c) { return exact.indexOf(c) !== -1; });
+      var pick = inSet[0] || hit[0] || pool[0];
+      return pick ? pick.slug : '';
+    }
+
+    /* One dialog for the two questions an import asks. It used to be two
+       confirm() boxes where Cancel meant "add to existing" and "let the wiki
+       build it": the button that reads as "stop" did something instead. */
+    function importChoices(hasScript) {
+      return new Promise(function (resolve) {
+        var d = document.createElement('dialog');
+        d.className = 'sb-dlg';
+        d.innerHTML = '<h3>Import this script</h3>' +
+          (hasScript
+            ? '<label><input type="radio" name="sb-imp" value="replace" checked><span>Replace my current script</span></label>' +
+              '<label><input type="radio" name="sb-imp" value="add"><span>Add these characters to my current script</span></label>'
+            : '') +
+          '<label id="sb-imp-json-row"><input type="checkbox" id="sb-imp-json"><span>Use this file as the script\'s JSON' +
+            '<span class="hint">When you publish, the script page\'s JSON is exactly this file. Leave it off and the wiki builds the JSON from the characters.</span></span></label>' +
+          '<div class="sb-dlg-btns"><button type="button" class="sb-btn sb-btn-clear" data-v="cancel">Cancel</button>' +
+          '<button type="button" class="sb-btn sb-btn-export" data-v="ok">Import</button></div>';
+        document.body.appendChild(d);
+        var sync = function () {
+          var add = d.querySelector('input[value=add]');
+          d.querySelector('#sb-imp-json-row').hidden = !!(add && add.checked);
+        };
+        d.addEventListener('change', sync);
+        var done = function (v) {
+          var add = d.querySelector('input[value=add]');
+          var out = v === 'ok' ? { add: !!(add && add.checked), keepJson: d.querySelector('#sb-imp-json').checked } : null;
+          d.close(); d.remove(); resolve(out);
+        };
+        d.addEventListener('click', function (e) {
+          var b = e.target.closest('button[data-v]');
+          if (b) done(b.getAttribute('data-v'));
+        });
+        d.addEventListener('cancel', function (e) { e.preventDefault(); done('cancel'); });
+        d.showModal();
+      });
+    }
+
     function importScript(text) {
       var data;
       try { data = JSON.parse(text); } catch (e) { alert('That file is not valid JSON.'); return; }
       if (!Array.isArray(data)) { alert('That isn\'t a script JSON file.'); return; }
-      var map = idToSlug();
+      var ix = importIndex();
+      var metaRow = data.filter(function (e) { return e && e.id === '_meta'; })[0];
+      var setName = metaRow && metaRow.name;
       var slugs = [], missing = [];
       data.forEach(function (entry) {
         var id = (typeof entry === 'string') ? entry : (entry && entry.id);
         if (!id || id === '_meta') return;
-        var key = String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
         // Our own credits Fabled: rebuilt on every export, so importing a
         // script this builder wrote must not report it as unrecognised.
-        if (key === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
-        var slug = map[key];
+        if (norm(id) === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
+        var slug = matchEntry(entry, ix, setName);
         if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
         else { missing.push((entry && entry.name) || id); }
       });
       if (!slugs.length) { alert('No characters from this script were found in the wiki.'); return; }
-      var addTo = getScript().length && !confirm('Replace your current script?\n\nOK = replace, Cancel = add to existing.');
-      var finalList = addTo ? getScript().slice() : [];
-      slugs.forEach(function (s) { if (finalList.indexOf(s) === -1) finalList.push(s); });
-      setScript(finalList);
-      // A new script (not an add-on) may keep the file itself as its JSON:
-      // publish-script.html's Custom JSON box, which the published page's JSON
-      // box and download then give instead of the wiki-built one.
-      if (!addTo) {
-        var m = getMeta();
-        if (confirm('Keep this file as the script\'s JSON?\n\nOK = when you publish, the script page\'s JSON is exactly this file. Cancel = the wiki builds it from the characters.')) m.customJson = text;
-        else delete m.customJson;
-        setMeta(m);
-      }
-      renderAll();
-      if (window.updateScriptBadge) window.updateScriptBadge();
-      var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
-      var msg = 'Imported ' + slugs.length + ' character' + (slugs.length===1?'':'s') +
-        (offCount ? ' (' + offCount + ' official)' : '') + '.';
-      if (missing.length) msg += '\n\nNot recognised (' + missing.length + '): ' + missing.slice(0,10).join(', ') + (missing.length>10?'…':'');
-      alert(msg);
+      importChoices(getScript().length > 0).then(function (choice) {
+        if (!choice) return;
+        var finalList = choice.add ? getScript().slice() : [];
+        slugs.forEach(function (s) { if (finalList.indexOf(s) === -1) finalList.push(s); });
+        setScript(finalList);
+        // A new script (not an add-on) may keep the file itself as its JSON:
+        // publish-script.html's Custom JSON box, which the published page's
+        // JSON box and download then give instead of the wiki-built one.
+        if (!choice.add) {
+          var m = getMeta();
+          if (choice.keepJson) m.customJson = text; else delete m.customJson;
+          setMeta(m);
+        }
+        renderAll();
+        if (window.updateScriptBadge) window.updateScriptBadge();
+        var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
+        var msg = 'Imported ' + slugs.length + ' character' + (slugs.length===1?'':'s') +
+          (offCount ? ' (' + offCount + ' official)' : '') + '.';
+        if (missing.length) msg += '\n\nNot recognised (' + missing.length + '): ' + missing.slice(0,10).join(', ') + (missing.length>10?'…':'');
+        alert(msg);
+      });
     }
     document.getElementById('sb-import').addEventListener('click', function () {
       document.getElementById('sb-import-file').click();

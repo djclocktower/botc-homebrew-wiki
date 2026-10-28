@@ -95,12 +95,26 @@
     });
   }
 
-  /* What the source says about one character, as wiki fields. The almanac's
-     overview opens with the lede and the rest is the summary; an attribution
-     that credits the art fills "Icon by", any other becomes a Credit box. */
+  /* What the source says about one character, as wiki fields. Where the
+     almanac's sections go is the person's choice (defaults in brackets):
+       opts.flavour   [quote] | lede | skip
+       opts.overview  [lede-bullets] | bullets | howto | skip
+       opts.tips      [tips] | callout | skip
+     An attribution that credits the art fills "Icon by", any other becomes a
+     Credit box. */
   function character(e, opts, tags) {
     opts = opts || {};
     var overview = clean(e.overview);
+    var lede = '', bullets = [], howExtra = [];
+    var ov = opts.overview || 'lede-bullets';
+    if (ov === 'lede-bullets') { lede = overview[0] || ''; bullets = overview.slice(1); }
+    else if (ov === 'bullets') bullets = overview;
+    else if (ov === 'howto') howExtra = overview;
+    var flavour = String(e.flavour || '').trim().replace(/^["'“]|["'”]$/g, '');
+    var quote = '';
+    if (!opts.flavour || opts.flavour === 'quote') quote = flavour;
+    else if (opts.flavour === 'lede' && flavour) lede = flavour;
+    var tipMode = opts.tips || 'tips';
     var iconBy = '', boxes = [];
     if (e.attribution) {
       if (ART_CREDIT.test(e.attribution)) iconBy = e.attribution;
@@ -110,12 +124,13 @@
       name: String(e.name || ''),
       team: TEAMS.indexOf(e.team) === -1 ? 'townsfolk' : e.team,
       ability: String(e.ability || ''),
-      quote: String(e.flavour || '').trim().replace(/^["'“]|["'”]$/g, ''),
-      lede: overview[0] || '',
-      summaryBullets: overview.slice(1),
-      howToRun: clean(e.howToRun),
+      quote: quote,
+      lede: lede,
+      summaryBullets: bullets,
+      howToRun: howExtra.concat(clean(e.howToRun)),
       examples: clean(e.examples),
-      tips: clean(e.tips),
+      tips: tipMode === 'tips' ? clean(e.tips) : [],
+      callout: tipMode === 'callout' ? clean(e.tips).join(' ') : '',
       iconBy: iconBy,
       customBoxes: boxes,
       edition: String(e.edition || ''),
@@ -131,7 +146,7 @@
       tags: (tags || []).join(', ')
     };
     if (opts.keepJson && e.raw) {
-      c.customJson = JSON.stringify([opts.meta || { id: '_meta', name: '' }, e.raw], null, 2);
+      c.customJson = JSON.stringify([opts.meta || { id: '_meta', name: '' }, e.raw]);
     }
     return c;
   }
@@ -274,7 +289,13 @@
 
   /* The script or collection page. extra: {logo, background, nightOrder,
      jinxEdits}. A collection is a shelf: include[] and order[], no night
-     order or jinx list. */
+     order or jinx list. Where the project's prose goes is the person's choice:
+       opts.synopsis         [synopsis] | description | skip
+       opts.projectOverview  [gameplay] | synopsis | description | skip
+       opts.changelog        [wikipage] | box | skip
+     With opts.keepJson the uploaded file itself is the page's JSON, unless it
+     is over the Worker's 100 KB cap (PAGE_JSON_MAX in worker.js). */
+  var PAGE_JSON_MAX = 100000;
   function setPage(bundle, opts, slug, rosterSlugs, extra) {
     extra = extra || {};
     var meta = bundle.meta || {};
@@ -284,8 +305,20 @@
       author: opts.creator || meta.author || '',
       status: opts.status === 'published' ? 'published' : 'draft'
     };
-    if (prose.synopsis && prose.synopsis.plain) page.synopsis = prose.synopsis.plain;
-    if (prose.overview && prose.overview.plain) page.gameplay = prose.overview.plain;
+    var put = function (where, text) {
+      if (!text || where === 'skip') return;
+      page[where] = page[where] ? page[where] + '\n\n' + text : text;
+    };
+    put(opts.synopsis || 'synopsis', prose.synopsis && prose.synopsis.plain);
+    put(opts.projectOverview || 'gameplay', prose.overview && prose.overview.plain);
+    if (page.description) page.description = page.description.slice(0, 2000);
+    if (opts.changelog === 'box' && prose.changelog && prose.changelog.plain) {
+      page.customBoxes = [{ title: 'Changelog', content: prose.changelog.wiki || prose.changelog.plain }];
+    }
+    if (opts.keepJson && Array.isArray(bundle.script)) {
+      var json = JSON.stringify(bundle.script);
+      if (json.length <= PAGE_JSON_MAX) page.customJson = json;
+    }
     if (extra.logo) page.logo = extra.logo;
     if (extra.background) page.theme = { background: extra.background };
     if (opts.publicEdit) page.publicEdit = opts.publicEdit;
@@ -311,14 +344,14 @@
   function mergeSetPage(page, fresh) {
     var d = page && page.data && typeof page.data === 'object' ? page.data : {};
     var out = Object.assign({}, d, { slug: page.slug });
-    ['characters', 'nightOrder', 'jinxEdits', 'bootlegger', 'almanac', 'hideTitle'].forEach(function (k) {
+    ['characters', 'nightOrder', 'jinxEdits', 'bootlegger', 'almanac', 'hideTitle', 'customJson'].forEach(function (k) {
       if (Object.prototype.hasOwnProperty.call(fresh, k)) out[k] = fresh[k];
     });
     if (fresh.include) {
       out.include = addTagList(clean(d.include), fresh.include);
       out.order = addTagList(clean(d.order), fresh.include);
     }
-    ['synopsis', 'gameplay', 'logo', 'author'].forEach(function (k) {
+    ['synopsis', 'gameplay', 'description', 'logo', 'author', 'customBoxes'].forEach(function (k) {
       if (empty(out[k]) && !empty(fresh[k])) out[k] = fresh[k];
     });
     if (fresh.theme && fresh.theme.background && !(out.theme && out.theme.background)) {
@@ -332,7 +365,7 @@
   // The changelog, as a /p/ page under the new script or collection.
   function changelogPage(bundle, opts, parentType, parentSlug) {
     var cl = bundle.prose && bundle.prose.changelog;
-    if (!cl || !cl.wiki) return null;
+    if (!cl || !cl.wiki || (opts.changelog && opts.changelog !== 'wikipage')) return null;
     var meta = bundle.meta || {};
     return {
       title: meta.name ? meta.name + ' Changelog' : 'Changelog',

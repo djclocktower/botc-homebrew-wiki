@@ -165,12 +165,12 @@
         </div>
         <div class="row2">
           <div class="fld">
-            <label for="o-status">New pages are</label>
-            <select id="o-status">
-              <option value="draft">Drafts (only you can see them)</option>
-              <option value="published">Published</option>
+            <label for="o-icons">Character icons</label>
+            <select id="o-icons">
+              <option value="copy">Copy them onto the wiki (recommended)</option>
+              <option value="link">Link to the pictures in the source</option>
             </select>
-            <span class="hint">Pages you already have keep their own state.</span>
+            <span class="hint">Sets every character; change single ones in the table below.</span>
           </div>
           <div class="fld">
             <label for="o-edit">Who can edit new pages</label>
@@ -184,8 +184,66 @@
             </select>
           </div>
         </div>
+        <label class="mu-check"><input type="checkbox" id="o-publish"><span>Publish new pages straight away<span class="hint">Off: new pages are drafts only you can see. Pages you already have keep their own state either way.</span></span></label>
         <label class="mu-check"><input type="checkbox" id="o-replaceart"><span>Replace the icons on pages I already have<span class="hint">Otherwise a page keeps its icons and only empty slots are filled.</span></span></label>
-        <label class="mu-check"><input type="checkbox" id="o-keepjson"><span>Keep the JSON from the source<span class="hint">Each page's JSON box shows the character exactly as written there. Change it later under Advanced Options.</span></span></label>
+        <label class="mu-check"><input type="checkbox" id="o-keepjson"><span>Use the uploaded JSON as the pages' JSON<span class="hint">Each character page, and the script or collection page, shows the JSON exactly as it is in the source instead of the JSON the wiki builds. Change it later under Advanced Options (characters) or the Custom JSON box (script or collection).</span></span></label>
+      </div>
+
+      <!-- where the almanac text goes; rows only for what the source has -->
+      <div class="formcard" id="alm-card" hidden>
+        <h2>Where the text goes</h2>
+        <div class="row2">
+          <div class="fld" data-has="flavour">
+            <label for="a-flavour">Flavour text</label>
+            <select id="a-flavour">
+              <option value="quote">The quote under the title</option>
+              <option value="lede">The flavour line above the summary</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+          <div class="fld" data-has="overview">
+            <label for="a-overview">The Overview section</label>
+            <select id="a-overview">
+              <option value="lede-bullets">First paragraph as the flavour line, the rest as the summary</option>
+              <option value="bullets">All of it as the summary</option>
+              <option value="howto">All of it as How to Run</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+          <div class="fld" data-has="tips">
+            <label for="a-tips">Storyteller tips</label>
+            <select id="a-tips">
+              <option value="tips">Tips &amp; Tricks</option>
+              <option value="callout">The callout box under How to Run</option>
+              <option value="skip">Leave them out</option>
+            </select>
+          </div>
+          <div class="fld" data-has="synopsis" data-set>
+            <label for="a-synopsis">Project synopsis</label>
+            <select id="a-synopsis">
+              <option value="synopsis">The Synopsis section</option>
+              <option value="description">The short description under the title</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+          <div class="fld" data-has="poverview" data-set>
+            <label for="a-poverview">Project overview</label>
+            <select id="a-poverview">
+              <option value="gameplay">The Gameplay section</option>
+              <option value="synopsis">The Synopsis section</option>
+              <option value="description">The short description under the title</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+          <div class="fld" data-has="changelog" data-set>
+            <label for="a-changelog">Changelog</label>
+            <select id="a-changelog">
+              <option value="wikipage">Its own wiki page under the script or collection</option>
+              <option value="box">A Changelog box on the page</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- 3. the characters -->
@@ -196,6 +254,7 @@
           <select id="t-pick" aria-label="Tag"><option value="">Tag characters&hellip;</option></select>
           <button type="button" class="btn btn-ghost" id="t-all">Give to all</button>
           <button type="button" class="btn btn-ghost" id="t-none">Take from all</button>
+          <button type="button" class="btn btn-blue" id="t-auto">Suggest tags for every character</button>
         </div>
         <p class="hint" id="t-hint" style="margin:0 0 10px">Characters with no tags are Partial. Pick a tag, then tap it on each character it fits.</p>
         <div id="c-jinx"></div>
@@ -313,9 +372,32 @@
       $('o-creator').value = m.author || (me && (me.displayName || me.username)) || '';
       $('o-appears').value = m.name || '';
       $('o-dest').value = m.name && bundle.source && bundle.source.base ? 'script' : 'characters';
+      $('o-icons').value = 'copy';
       syncSet();
+      syncAlmanac();
       draw();
     }
+
+    /* "Where the text goes": a row only for something the source actually
+       has, and the project's own prose only when there is a set page. */
+    function syncAlmanac() {
+      var chars = bundle.characters || [], prose = bundle.prose || {};
+      var any = function (k) { return chars.some(function (c) { return c[k] && c[k].length; }); };
+      var has = { flavour: any('flavour'), overview: any('overview'), tips: any('tips'),
+        synopsis: !!prose.synopsis, poverview: !!prose.overview, changelog: !!prose.changelog };
+      var setPage = $('o-dest').value !== 'characters', shown = 0;
+      Array.prototype.forEach.call($('alm-card').querySelectorAll('[data-has]'), function (f) {
+        var on = has[f.getAttribute('data-has')] && (setPage || !f.hasAttribute('data-set'));
+        f.hidden = !on;
+        if (on) shown++;
+      });
+      $('alm-card').hidden = !shown;
+    }
+    $('o-icons').addEventListener('change', function () {
+      var link = $('o-icons').value === 'link';
+      rows.forEach(function (r) { if (!r.done) r.linkArt = link; });
+      draw();
+    });
 
     /* A set page of yours with the same name is offered first: importing a
        script twice updates it rather than making a second one. */
@@ -336,17 +418,24 @@
       if (setDone) sel.value = setDone;
       $('o-settarget-fld').hidden = false;
     }
-    $('o-dest').addEventListener('change', function () { setDone = ''; syncSet(); draw(); });
+    $('o-dest').addEventListener('change', function () { setDone = ''; syncSet(); syncAlmanac(); draw(); });
 
     /* ── the table ── */
     function rowTags(r) { return tags[r.id] || []; }
     function becomes(r) {
       if (r.kind === 'official') return 'Official character<span class="mu-note">stays on the roster, no page</span>';
       if (r.done) return r.kind === 'update' ? 'Updated your page' : 'New page';
-      if (!r.target) return 'New page';
-      return '<select data-act="target" data-id="' + esc(r.id) + '">' +
-        '<option value="' + esc(r.target) + '"' + (r.kind === 'update' ? ' selected' : '') + '>Update my page</option>' +
-        '<option value=""' + (r.kind === 'new' ? ' selected' : '') + '>New page</option></select>';
+      var what = !r.target ? 'New page'
+        : '<select data-act="target" data-id="' + esc(r.id) + '">' +
+          '<option value="' + esc(r.target) + '"' + (r.kind === 'update' ? ' selected' : '') + '>Update my page</option>' +
+          '<option value=""' + (r.kind === 'new' ? ' selected' : '') + '>New page</option></select>';
+      // Which way the icon goes, for a character the source gives one.
+      if (r.entry.image) {
+        what += '<br><select data-act="icon" data-id="' + esc(r.id) + '" aria-label="Icon for ' + esc(r.name) + '" style="margin-top:4px">' +
+          '<option value="copy"' + (r.linkArt ? '' : ' selected') + '>Copy the icon</option>' +
+          '<option value="link"' + (r.linkArt ? ' selected' : '') + '>Link the icon</option></select>';
+      }
+      return what;
     }
     function draw() {
       var pick = $('t-pick').value;
@@ -378,6 +467,7 @@
       var act = e.target.getAttribute('data-act');
       if (act === 'inc') r.include = e.target.checked;
       if (act === 'target') { r.kind = e.target.value ? 'update' : 'new'; r.slug = ''; }
+      if (act === 'icon') r.linkArt = e.target.value === 'link';
       draw();
     });
     $('rows').addEventListener('click', function (e) {
@@ -400,6 +490,50 @@
       draw();
     }
     $('t-all').addEventListener('click', function () { tagAll(true); });
+
+    /* Suggest tags for every character being made into a page: the editors'
+       Suggest tags button (POST /api/suggest-tags), once per character, three
+       at a time. What it suggests is ADDED to the row's tags, so nothing
+       already picked is lost, and everything stays changeable before Import.
+       The suggester allows 40 an hour per account; past that (or if it
+       fails) a character gets the wording rules alone (quick), which have no
+       limit. */
+    $('t-auto').addEventListener('click', function () {
+      var todo = rows.filter(function (r) {
+        return r.include && r.kind !== 'official' && !r.done && String(r.entry.ability || '').trim();
+      });
+      if (!todo.length) return;
+      var btn = $('t-auto'), done = 0, quickOnly = false;
+      btn.disabled = true;
+      var ask = function (r, quick) {
+        var body = { name: r.name, team: r.team, ability: r.entry.ability };
+        if (quick) body.quick = true;
+        return fetch('/api/suggest-tags', { method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (res) { return res.json().then(function (j) {
+            if (!res.ok || !j.ok) { if (res.status === 429) quickOnly = true; throw new Error(j.error || 'failed'); }
+            return j.tags || [];
+          }); });
+      };
+      var one = function (r) {
+        return (quickOnly ? ask(r, true) : ask(r, false).catch(function () { return ask(r, true); }))
+          .then(function (got) {
+            var have = rowTags(r);
+            got.forEach(function (t) { if (have.indexOf(t) === -1) have.push(t); });
+            tags[r.id] = have;
+          }, function () {})
+          .then(function () { done++; $('t-hint').textContent = 'Suggesting tags: ' + done + ' of ' + todo.length + '…'; });
+      };
+      var queue = todo.slice();
+      var worker = function () { var r = queue.shift(); return r ? one(r).then(worker) : null; };
+      Promise.all([worker(), worker(), worker()]).then(function () {
+        btn.disabled = false;
+        $('t-hint').textContent = 'Suggested tags were added to ' + todo.length + ' character' + (todo.length === 1 ? '' : 's') +
+          (quickOnly ? ' (some from the wording rules only: the hourly limit for full suggestions was reached)' : '') +
+          '. Check them below and take off any that do not fit.';
+        draw();
+      });
+    });
     $('t-none').addEventListener('click', function () { tagAll(false); });
 
     function drawJinx() {
@@ -529,6 +663,7 @@
         SLOTS.forEach(function (s) {
           var src = r.entry[s[4]];
           if (!plan[s[0]] || !src) return;
+          if (r.linkArt) { art[s[2]] = ''; art[s[3]] = src; return; }
           job = job.then(function () {
             rowSay(r, 'work', 'copying art&hellip;');
             var key = 'art/' + slug + s[1] + '.png';
@@ -600,11 +735,19 @@
         destination: $('o-dest').value,
         creator: $('o-creator').value.trim(),
         appearsIn: $('o-appears').value.trim(),
-        status: $('o-status').value,
+        status: $('o-publish').checked ? 'published' : 'draft',
+        flavour: $('a-flavour').value,
+        overview: $('a-overview').value,
+        tips: $('a-tips').value,
+        synopsis: $('a-synopsis').value,
+        projectOverview: $('a-poverview').value,
+        changelog: $('a-changelog').value,
         publicEdit: $('o-edit').value,
         replaceArt: $('o-replaceart').checked,
         keepJson: $('o-keepjson').checked,
-        meta: { id: '_meta', name: (bundle.meta || {}).name || '', author: (bundle.meta || {}).author || '' }
+        // The source's own _meta, so a kept character JSON reads as written.
+        meta: (bundle.script || []).filter(function (e) { return e && e.id === '_meta'; })[0] ||
+          { id: '_meta', name: (bundle.meta || {}).name || '', author: (bundle.meta || {}).author || '' }
       };
       var todo = rows.filter(function (r) { return r.include && r.kind !== 'official'; });
       if (!todo.length && opts.destination === 'characters') { say('run', 'err', 'Nothing is ticked to import.'); return; }
@@ -662,6 +805,9 @@
         if (jx && jx.dropped.length) msg += '<br>' + jx.dropped.length + ' jinx' + (jx.dropped.length === 1 ? '' : 'es') + ' had nowhere to go: ' + esc(jx.dropped.join('; ')) + '.';
         if (failed) msg += '<br>' + failed + ' failed. See the table; press Import again to retry them.';
         if (opts.status === 'draft') msg += '<br>New pages are drafts, in <a href="/drafts">Your Drafts</a>.';
+        if (setKey && opts.keepJson && JSON.stringify(bundle.script || []).length > 100000) {
+          msg += '<br>The source is over 100 KB, too big to keep as the ' + opts.destination + ' page\'s JSON, so the wiki builds that one.';
+        }
         say('run', failed ? 'err' : 'ok', msg);
         syncSet();
       }).catch(function (e) {

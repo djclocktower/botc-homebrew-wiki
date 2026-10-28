@@ -969,6 +969,14 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        skip the id, so a round-trip neither reports it missing,
                        nor turns it into a character page, nor prints a token
                        for it.
+                       Import matches each entry with matchEntry(): a bare id
+                       is an official character; an object entry is matched
+                       by ABILITY among the pages answering to its id or name
+                       (there are five Phantoms, and the export writes the
+                       bare name as the id), then the set the file is named
+                       after. Its questions (replace or add, keep the file as
+                       the script's JSON) are one in-page dialog with real
+                       buttons, never confirm(): Cancel there cancels.
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description (only name and author are
                        required — the description is optional, and on
@@ -3110,13 +3118,28 @@ a third host is one row of that map.
   page reads it back to standardize. Anything else that cannot be read stays
   linked where it is. Thumbnails, display copies and logo sizes follow through
   `ArtThumb.uploadFromUrl()`.
-- **The almanac mapping is fixed** (no per-section options any more): flavour
-  is the quote; the overview's first paragraph is the lede and the rest the
-  summary; Examples, How to Run and tips map to their own fields; an
-  attribution crediting art fills "Icon by", any other becomes a Credit box;
-  synopsis and overview go to the set page's Synopsis and Gameplay.
+- **Where the text goes** is a card of selects, one row per thing the source
+  actually has (`syncAlmanac()`): flavour (quote / flavour line / skip), the
+  Overview (lede + summary / summary / How to Run / skip), tips (Tips /
+  callout / skip), and, with a set page, the project's synopsis, overview and
+  changelog (wiki page / box / skip). `Importer.character()` and
+  `setPage()` read them; the defaults are the old Bloodstar importer's.
+  Examples and How to Run always map to their own fields; an attribution
+  crediting art fills "Icon by", any other becomes a Credit box.
+- **Icons: copy or link.** "Character icons" sets every row, and each row
+  with a picture has its own Copy / Link select. A linked icon stores the
+  source's URL in the slot (`image*`) and clears the slot's `art*` path, so it
+  wins on a page being updated.
+- **"Publish new pages straight away"** is a tick, off by default (drafts).
+- **"Use the uploaded JSON as the pages' JSON"** keeps each character's entry
+  as its `customJson` AND the whole file (`bundle.script`) as the script or
+  collection page's, unless the file is over the 100 KB `PAGE_JSON_MAX`, which
+  the finish message says.
 - **Tags** are per character: pick a tag, tap it on each character it fits,
-  or give it to all.
+  or give it to all. "Suggest tags for every character" runs the editors'
+  `/api/suggest-tags` per page (three at a time) and ADDS what it suggests;
+  past the suggester's 40-an-hour limit, or on a failure, a character gets
+  the wording rules alone (`quick`), which have no limit.
 
 `migration/scp-fragmented-veil/build.mjs` is a one-off from before this and
 still requires the deleted `assets/bloodstar.js`; it is history, not a tool.
