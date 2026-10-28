@@ -9327,7 +9327,7 @@ async function ssrRoute(env, ctx, request, url, build, prefetch) {
 // What worker/list-pages.js borrows: the same version keys, feed bodies and
 // edge cache as the SSR pages, and the same no-store HTML response.
 const LIST_HELPERS = {
-  contentVersion, cachedFeedBody, edgeCacheGet, edgeCachePut,
+  contentVersion, cachedFeedBody, edgeCacheGet, edgeCachePut, officialRoles: loadOfficialRoles,
   htmlPage: html => htmlPage(html), cacheControl: SSR_EDGE_CACHE_CONTROL, renderV: SSR_RENDER_V
 };
 

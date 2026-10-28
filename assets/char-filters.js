@@ -66,7 +66,7 @@
     ['traveller', 'Traveller'], ['fabled', 'Fabled'],
     ['loric', 'Loric'], ['other', 'Other']
   ];
-  var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
+  var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script'], ['official', 'Official']];
   var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
   // The direction each sort starts in when it is picked.
   var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc' };
@@ -97,6 +97,7 @@
     (scripts || []).forEach(function (s) { (s.characters || []).forEach(function (sl) { inScript[norm(sl)] = true; }); });
     var colls = (collections || []).filter(function (c) { return !c.standalone; });
     return function (c) {
+      if (c.official) return 'official';
       for (var i = 0; i < colls.length; i++) if (inCollection(c, colls[i])) return 'collection';
       if (inScript[norm(c.slug)]) return 'script';
       return null;
@@ -112,6 +113,7 @@
   // yet), versioned by the row's `v` so it caches for a year. Same order as
   // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
   function thumb(c) {
+    if (c.official) return 'assets/icons-sm/' + norm(c.id) + '.webp';
     var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
     if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
     if (c.art) return 'assets/' + c.art + ver;
@@ -125,7 +127,8 @@
   function card(c, mark) {
     var m = mark || esc;
     var typeClass = GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '';
-    return '<a class="char-card" href="' + esc(c.page) + '">' +
+    // An official character has no page here: it opens the official wiki.
+    return '<a class="char-card" href="' + esc(c.page) + '"' + (c.official ? ' target="_blank" rel="noopener"' : '') + '>' +
       // The icon, and under it the Favorites / Add to Script quick actions
       // (assets/card-actions.js fills the slot).
       '<span class="card-side">' +
@@ -136,8 +139,22 @@
         dep('classBadgeHTML')(dep('classifyCharacter')(c), { from: c.curataFrom }) + '</div>' +
       '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
       '<div class="char-card-ability">' + m(c.ability || '') + '</div>' +
-      '<span class="char-card-link">View Character →</span>' +
+      (c.official
+        ? '<span class="char-card-link">Official Almanac <span class="ico ico-external" aria-hidden="true"></span></span>'
+        : '<span class="char-card-link">View Character →</span>') +
       '</div></a>';
+  }
+
+  /* The official characters as All Characters lists them: the rows
+     OfficialRoles.buildOfficialRoles() makes (its `page` is the official
+     wiki), with their tags from assets/official-tags.js. Stamped Standard so
+     a card with no almanac here is never called Partial. */
+  function officialCards(built, tags) {
+    return (built || []).map(function (r) {
+      return { slug: r.slug, official: true, id: r.id, name: r.name, team: r.team, ability: r.ability,
+        image: r.image, page: r.page, tags: (tags && tags[r.id]) || '',
+        creator: 'The Pandemonium Institute', classification: 'standard' };
+    });
   }
 
   /* What a mount() is configured with, worked out once: the Sort options in
@@ -810,7 +827,7 @@
     // Shared with the Worker's first-screen render (worker/list-pages.js).
     init: init, config: config, blankState: blankState, applyState: applyState,
     barModel: barModel, barHTML: barHTML, creatorListHTML: creatorListHTML,
-    batchedHTML: batchedHTML, layoutSig: layoutSig, singleGrid: singleGrid, loadMoreLabel: loadMoreLabel,
+    officialCards: officialCards, batchedHTML: batchedHTML, layoutSig: layoutSig, singleGrid: singleGrid, loadMoreLabel: loadMoreLabel,
     wireToggle: wireToggle, splitTags: splitTags, titleCase: titleCase
   };
   if (typeof window !== 'undefined') window.CharFilters = api;

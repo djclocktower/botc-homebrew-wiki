@@ -32,7 +32,11 @@ function seed(f) {
 test('list pages: the first screen of cards is in the HTML, drawn exactly as the browser draws it', async t => {
   const f = await fixture(); t.after(() => f.finish()); seed(f);
   const CF = browserCF();
-  const grid = await (await f.request('/characters.json?fields=grid')).json();
+  const feed = await (await f.request('/characters.json?fields=grid')).json();
+  // The official characters lead the list, as the browser puts them.
+  const roles = JSON.parse(await read('assets/roles.json'));
+  const grid = CF.officialCards(require('../../assets/official-roles.js').buildOfficialRoles(roles),
+    require('../../assets/official-tags.js')).concat(feed);
   const res = await f.request('/all-characters');
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('Cache-Control'), 'no-store');
@@ -43,15 +47,23 @@ test('list pages: the first screen of cards is in the HTML, drawn exactly as the
   const sorted = grid.filter(c => c.team === 'townsfolk').sort((a, b) => a.name.localeCompare(b.name));
   for (const c of sorted.slice(0, 48)) assert.ok(html.includes(CF.card(c)), 'card for ' + c.name);
   assert.ok(!html.includes(CF.card(sorted[48])), 'the 49th card waits for the browser');
-  assert.match(html, /data-total="60"/);
-  assert.match(html, /<div class="card-spacer" aria-hidden="true"><\/div><button type="button" class="card-load-more">Show more \(12 remaining\)<\/button>/);
+  const nTown = sorted.length, nDemon = grid.filter(c => c.team === 'demon').length;
+  assert.match(html, new RegExp('data-total="' + nTown + '"'));
+  assert.ok(html.includes('<div class="card-spacer" aria-hidden="true"></div><button type="button" class="card-load-more">Show more (' + (nTown - 48) + ' remaining)</button>'));
   // Other teams: a heading and a button, drawn on approach.
-  assert.match(html, /id="demon"[\s\S]*?<button type="button" class="card-load-more">Show 1 characters<\/button>/);
+  assert.match(html, new RegExp('id="demon"[\\s\\S]*?<button type="button" class="card-load-more">Show ' + nDemon + ' characters</button>'));
+  // An official card: its small icon, its tags, and a link out to the official wiki.
+  const acrobat = grid.find(c => c.id === 'acrobat');
+  assert.match(acrobat.tags, /Drunkenness/);
+  assert.ok(html.includes(CF.card(acrobat)));
+  assert.match(CF.card(acrobat), /href="https:\/\/wiki\.bloodontheclocktower\.com\/Acrobat" target="_blank" rel="noopener"[\s\S]*assets\/icons-sm\/acrobat\.webp[\s\S]*Official Almanac/);
+  assert.doesNotMatch(CF.card(acrobat), /Partial|data-cq-slug/);
+  assert.match(html, /data-source="official"/);
   // The filter box is there, greyed out until the list arrives, and the count.
   assert.match(html, /<div id="filter-bar" class="filter-bar cf-loading" aria-busy="true"><div class="filter-group">/);
   assert.match(html, /data-tag="Death"/);
   assert.match(html, /data-source="collection"/);
-  assert.match(html, /<p id="filter-count" class="filter-count">61 characters<span class="cf-loading-note">/);
+  assert.ok(html.includes('<p id="filter-count" class="filter-count">' + grid.length + ' characters<span class="cf-loading-note">'));
   assert.match(html, /<button type="button" id="filter-toggle" class="filter-toggle" aria-expanded/);
   // The feeds are no longer preloaded: the cards are here already.
   assert.doesNotMatch(html, /rel="preload" href="characters\.json/);

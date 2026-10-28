@@ -63,7 +63,7 @@
 
   <div class="home-hero">
     <h1 id="hero-title">All Characters</h1>
-    <p id="hero-subtitle">Every fan-made character in the wiki, grouped by team.</p>
+    <p id="hero-subtitle">Every fan-made character in the wiki, plus the official ones, grouped by team.</p>
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
@@ -95,6 +95,8 @@
   <script src="assets/favorites.js"></script>
   <script src="assets/card-actions.js"></script>
   <script src="assets/char-filters.js"></script>
+  <script src="assets/official-roles.js"></script>
+  <script src="assets/official-tags.js"></script>
   <script>
     var TEAMS = [
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
@@ -384,7 +386,15 @@
     // collection), so it is mounted when those are in too. They are small
     // and usually land first.
     function load(clicked) {
-      var charsP = BotcData.json('characters.json?fields=grid');
+      // The official characters come first (the oldest, for "Date added"),
+      // except on a ?collection= view, which is about homebrew sets. A
+      // roles.json that fails to load costs them and nothing else.
+      var charsP = Promise.all([
+        BotcData.json('characters.json?fields=grid'),
+        COLLECTION_PARAM ? [] : BotcData.json('assets/roles.json').catch(function () { return []; })
+      ]).then(function (r) {
+        return CF.officialCards(OfficialRoles.buildOfficialRoles(r[1]), window.OFFICIAL_TAGS).concat(r[0]);
+      });
       var setsP = Promise.all([
         BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
         BotcData.json('scripts.json?fields=browse').catch(function(){return[];})

@@ -179,6 +179,17 @@ Key dynamic behavior:
   served, which still draws everything in the browser. Team and tag cards
   are char-filters.js's card, so they carry the Curata wreath / Partial
   label All Characters always had.
+  **All Characters also lists the 181 official characters** (not /team,
+  /tag or /search): `CharFilters.officialCards()` over
+  `OfficialRoles.buildOfficialRoles(roles.json)`, first in the list, with
+  the tags in `assets/official-tags.js` (settled by hand from the
+  suggester's wording cues, the Chinese wiki and Lady Mist's spreadsheet;
+  edit freely). Icon from `icons-sm/`, ability, a link out to the official
+  wiki in a new tab, no quick actions, stamped Standard so never Partial,
+  credited to The Pandemonium Institute, and a Source chip "Official". The
+  server draws them too (`h.officialRoles`); if roles.json will not load it
+  serves the static page rather than a first screen the browser would not
+  match. A `?collection=` view leaves them out.
 - **Site search**: the top-bar box on every page previews the best matches of
   every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
   results with a tab per kind and the All Characters filter. Both run the same
