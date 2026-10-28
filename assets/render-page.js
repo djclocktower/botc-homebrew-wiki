@@ -975,9 +975,12 @@
             (c.curataFrom
               ? 'Curata: part of the ' + esc(c.curataFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
-            '" aria-label="Curata"></span>' : '');
+            '" aria-label="Curata"></span>' : '') +
+        // An official character (OfficialRoles.cards(), on /favorites) opens
+        // the official almanac.
+        (c.official ? '<span class="page-class page-class-official" title="An official character. Opens the official almanac.">Official</span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
-        '" href="' + esc(charHref(c, root)) + '"' +
+        '" href="' + esc(charHref(c, root)) + '"' + offsite(c) +
         // The identity, for the Favorites chip in card-filters.js: a saved
         // character is keyed on it, never on the address the link goes to.
         ' data-slug="' + esc(c.slug || '') + '"' +

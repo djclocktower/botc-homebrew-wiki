@@ -35,8 +35,8 @@ test('list pages: the first screen of cards is in the HTML, drawn exactly as the
   const feed = await (await f.request('/characters.json?fields=grid')).json();
   // The official characters lead the list, as the browser puts them.
   const roles = JSON.parse(await read('assets/roles.json'));
-  const grid = CF.officialCards(require('../../assets/official-roles.js').buildOfficialRoles(roles),
-    require('../../assets/official-tags.js')).concat(feed);
+  const OR = require('../../assets/official-roles.js');
+  const grid = OR.cards(OR.buildOfficialRoles(roles), require('../../assets/official-tags.js')).concat(feed);
   const res = await f.request('/all-characters');
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('Cache-Control'), 'no-store');
@@ -56,8 +56,9 @@ test('list pages: the first screen of cards is in the HTML, drawn exactly as the
   const acrobat = grid.find(c => c.id === 'acrobat');
   assert.match(acrobat.tags, /Drunkenness/);
   assert.ok(html.includes(CF.card(acrobat)));
-  assert.match(CF.card(acrobat), /href="https:\/\/wiki\.bloodontheclocktower\.com\/Acrobat" target="_blank" rel="noopener"[\s\S]*assets\/icons-sm\/acrobat\.webp[\s\S]*Official Almanac/);
-  assert.doesNotMatch(CF.card(acrobat), /Partial|data-cq-slug/);
+  // The Official box beside the name, the quick actions, and View Character.
+  assert.match(CF.card(acrobat), /href="https:\/\/wiki\.bloodontheclocktower\.com\/Acrobat" target="_blank" rel="noopener"[\s\S]*assets\/icons-sm\/acrobat\.webp[\s\S]*data-cq-slug="off-acrobat"[\s\S]*Acrobat<span class="page-class page-class-official"[^>]*>Official<\/span>[\s\S]*View Character/);
+  assert.doesNotMatch(CF.card(acrobat), /Partial/);
   assert.match(html, /data-source="official"/);
   // The filter box is there, greyed out until the list arrives, and the count.
   assert.match(html, /<div id="filter-bar" class="filter-bar cf-loading" aria-busy="true"><div class="filter-group">/);
@@ -90,19 +91,24 @@ test('list pages: team and tag pages honour ?t=, end with the add card, and fall
   // All of them fit, so the "+ Add a Demon" card closes the grid and the button is hidden.
   assert.match(demon, /\+ Add a Demon<\/a><\/div><div class="card-spacer" aria-hidden="true"><\/div><button type="button" class="card-load-more" hidden>/);
 
+  const OT = require('../../assets/official-tags.js');
+  const officials = JSON.parse(await read('assets/roles.json'));
+  const nOffTown = officials.filter(r => r.team === 'townsfolk').length;
   const town = await (await f.request('/team?t=townsfolk')).text();
   assert.equal((town.match(/class="char-card" href=/g) || []).length, 48);
   assert.doesNotMatch(town, /Add a Townsfolk/);   // only after the last card
-  assert.match(town, /Show more \(12 remaining\)/);
-  // Feed order, as the page always drew it.
-  assert.ok(town.indexOf('Town 00') < town.indexOf('Town 01'));
+  assert.ok(town.includes('Show more (' + (nOffTown + 60 - 48) + ' remaining)'));
+  // The official townsfolk first, in roles.json order, then the feed.
+  assert.match(town, /href="https:\/\/wiki\.bloodontheclocktower\.com\/Acrobat"/);
+  assert.doesNotMatch(town, /Town 00/);
 
   const death = await (await f.request('/tag?t=DEATH')).text();
   assert.match(death, /<h1 id="hero-title">Death<\/h1>/);
   // The description is whatever tags.js says (the owner rewrites them), escaped into the hero.
   const deathDesc = require('../../assets/tags.js').describeTag('Death');
   assert.ok(death.includes('<p id="hero-desc">' + deathDesc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>'));
-  assert.equal((death.match(/class="char-card" href=/g) || []).length, 21);
+  const nOffDeath = Object.values(OT).filter(t => t.split(', ').includes('Death')).length;
+  assert.equal((death.match(/class="char-card" href=/g) || []).length, Math.min(48, 21 + nOffDeath));
   assert.doesNotMatch(death, /Secret Draft/);
 
   // What the server cannot draw is the static page, as before.

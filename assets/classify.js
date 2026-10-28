@@ -227,7 +227,7 @@
      from a collection is applied after the row was classified, so a row can
      be stamped 'partial' and still be Curata by the time a reader sees it. */
   function isPartial(d) {
-    if (!d || isCurata(d)) return false;
+    if (!d || d.official || isCurata(d)) return false;
     var stamp = stampedClass(d);
     if (stamp) return stamp === 'partial';
     return isIncomplete(d);
@@ -235,6 +235,7 @@
 
   /* 'curata' | 'partial' | 'standard' for a character. */
   function classifyCharacter(d) {
+    if (d && d.official) return 'official';
     if (isCurata(d)) return 'curata';
     if (isPartial(d)) return 'partial';
     return 'standard';
@@ -303,6 +304,11 @@
     if (cls === 'partial') {
       return '<span class="page-class page-class-partial" title="' +
         DESCRIPTIONS.partial.replace(/"/g, '&quot;') + '">' + LABELS.partial + '</span>';
+    }
+    // An official character (official-roles.js cards()): the same box,
+    // saying where the card goes.
+    if (cls === 'official') {
+      return '<span class="page-class page-class-official" title="An official character. Opens the official almanac.">Official</span>';
     }
     return '';
   }

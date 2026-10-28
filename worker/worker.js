@@ -381,6 +381,7 @@ import { LIST_PAGES, serveListPage } from './list-pages.js';
 import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags, applyChecks, aiPrice, aiMaxTokens } from './autotag.js';
 import Tags from '../assets/tags.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
+import OFFICIAL_TAGS from '../assets/official-tags.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
 
@@ -2396,9 +2397,15 @@ const tagList = v => [...new Set((Array.isArray(v) ? v : []).map(t => KNOWN_TAG_
    slug, a collection by PK slug or kebab id (findCollectionRow). Returns
    {slug, key, name, status} — `slug` is what the table stores and `key` is
    what a URL wants (a collection's id) — or null. */
-async function favoriteTarget(env, type, key) {
+async function favoriteTarget(env, type, key, origin) {
   key = String(key || '').trim();
   if (!FAVORITE_TYPES.includes(type) || !key || key.length > 180) return null;
+  // An official character ('off-{id}', listed on All Characters) is saved by
+  // its roster slug; there is no row, and it is always public.
+  if (type === 'character' && key.startsWith('off-')) {
+    const r = (await loadOfficialRoles(env, origin)).find(x => x.slug === key);
+    return r ? { slug: r.slug, key: r.slug, name: r.name, status: 'published' } : null;
+  }
   if (type === 'character') {
     const hit = await resolveCharacterPath(env, key);
     if (!hit) return null;
@@ -2428,7 +2435,7 @@ async function favoriteTarget(env, type, key) {
    does) but is reported with its status — 'deleted' for a page that was
    deleted or no longer exists at all, named only by the key that was saved.
    Every row is listed, or a bookmark nobody can see could never be removed. */
-async function favoritesPayload(env, userId, expand) {
+async function favoritesPayload(env, userId, expand, origin) {
   await ensureFavoritesTable(env);
   const { results } = await env.DB.prepare(
     'SELECT entity_type, slug, ts FROM favorites WHERE user_id=? ORDER BY ts DESC'
@@ -2464,10 +2471,13 @@ async function favoritesPayload(env, userId, expand) {
   const savedAt = {};
   for (const r of rows) savedAt[r.entity_type + ':' + r.slug] = r.ts;
   if (lists.characters.length) await ensureUrlSlugColumn(env);
-  const [chars, scripts] = await Promise.all([
-    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%)", lists.characters),
-    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%)", lists.scripts)
+  const ownSlugs = lists.characters.filter(s => !s.startsWith('off-'));
+  const [chars, scripts, officials] = await Promise.all([
+    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%)", ownSlugs),
+    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%)", lists.scripts),
+    ownSlugs.length < lists.characters.length || lists.scripts.length ? loadOfficialRoles(env, origin) : []
   ]);
+  const officialBySlug = new Map(officials.map(r => [r.slug, r]));
   const bySlug = list => Object.fromEntries(list.map(r => [r.slug, r]));
   const charMap = bySlug(chars), scriptMap = bySlug(scripts), collMap = bySlug(colls);
 
@@ -2483,6 +2493,12 @@ async function favoritesPayload(env, userId, expand) {
     return true;
   };
   for (const slug of lists.characters) {
+    const o = officialBySlug.get(slug);
+    if (o) {
+      items.characters.push({ slug, key: slug, page: o.page, official: true, name: o.name, team: o.team,
+        status: 'published', savedAt: savedAt['character:' + slug] });
+      continue;
+    }
     const r = charMap[slug]; if (gone('characters', 'character', slug, r)) continue;
     items.characters.push({ slug, key: slug, page: charAddress(r), name: r.name || slug, team: r.team || '',
       status: r.status, savedAt: savedAt['character:' + slug] });
@@ -2490,7 +2506,12 @@ async function favoritesPayload(env, userId, expand) {
   for (const slug of lists.scripts) {
     const r = scriptMap[slug]; if (gone('scripts', 'script', slug, r)) continue;
     const roster = await rosterCharacterSlugs(env, 'script', r, cache);
-    if (r.status === 'published') roster.forEach(s => via.add(s));
+    if (r.status === 'published') {
+      roster.forEach(s => via.add(s));
+      // The roster above is this wiki's pages; the script's official
+      // characters are listed on All Characters too, so they count here.
+      (parseData(r).characters || []).forEach(s => { if (officialBySlug.has(s)) via.add(s); });
+    }
     items.scripts.push({ slug, key: slug, name: r.name || slug, status: r.status, count: roster.length,
       savedAt: savedAt['script:' + slug] });
   }
@@ -7030,9 +7051,11 @@ const _summaryPending = new Map();
 function titleCaseTag(s) {
   return String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, m => m.toUpperCase());
 }
+// The official characters' tags count too: they are listed on the tag pages
+// (assets/official-tags.js; a deploy rolls the summary through BUILD_ID).
 function tagCounts(chars) {
   const tags = {};
-  for (const c of chars) {
+  for (const c of [...chars, ...Object.values(OFFICIAL_TAGS).map(tags => ({ tags }))]) {
     for (const raw of String((c && c.tags) || '').split(',')) {
       if (!raw.trim()) continue;
       const key = titleCaseTag(raw);
@@ -7109,11 +7132,11 @@ async function recentMembersHTML(env) {
 async function cachedSummary(env, ctx, request, name) {
   const spec = SUMMARIES[name];
   const version = await contentVersion(env, spec.deps);
-  const etag = `W/"${name}-v${version}-f${SUMMARY_FORMAT_V}"`;
+  const etag = `W/"${name}-v${version}-f${SUMMARY_FORMAT_V}-${BUILD_ID}"`;
   if (request && request.headers.get('If-None-Match') === etag) return { etag };
   const memo = _summaryCache.get(name);
   if (memo && memo.version === version) return { etag, body: memo.body };
-  const key = `https://feed.internal/summary/${name}.json?v=${version}&f=${SUMMARY_FORMAT_V}`;
+  const key = `https://feed.internal/summary/${name}.json?v=${version}&f=${SUMMARY_FORMAT_V}&b=${BUILD_ID}`;
   if (!_summaryPending.has(key)) {
     _summaryPending.set(key, (async () => {
       let body = await edgeCacheGet(key);
@@ -12035,7 +12058,7 @@ const app = {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       const expand = url.searchParams.get('expand') === '1';
-      return jsonResponse(await favoritesPayload(env, sess.userId, expand));
+      return jsonResponse(await favoritesPayload(env, sess.userId, expand, url.origin));
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
@@ -14579,7 +14602,7 @@ const app = {
         }
         const b = await request.json().catch(() => null);
         if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
-        const target = await favoriteTarget(env, b.type, b.slug);
+        const target = await favoriteTarget(env, b.type, b.slug, url.origin);
         await ensureFavoritesTable(env);
         const on = b.on !== false && b.on !== 0 && b.on !== 'false';
         if (!target || target.status !== 'published') {

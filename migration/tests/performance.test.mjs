@@ -185,15 +185,16 @@ test('search warms on touch/keyboard focus and cached searches have no 150ms del
   let requests = 0;
   const f = await searchFixture(async path => { requests++; return ok(path.startsWith('characters') ? [{ name: 'Sculptor', page: 'c/set/sculptor' }] : []); });
   f.dispatch('input', 'focus');
-  // The three browse feeds and the search index, once each.
-  assert.equal(requests, 4);
+  // The three browse feeds, the search index and roles.json (the official
+  // characters), once each.
+  assert.equal(requests, 5);
   await flush();
   f.input.value = 'Sculptor';
   f.dispatch('input', 'input');
   assert.equal(f.drop.hidden, false);
   assert.match(f.drop.innerHTML, /Sculptor/);
   assert.match(f.drop.innerHTML, /href="search\?q=Sculptor"/);
-  assert.equal(requests, 4);
+  assert.equal(requests, 5);
 });
 
 test('Enter in the top-bar box opens the results page, or hands the query to it', async () => {
@@ -254,7 +255,7 @@ test('only the latest query paints after a shared request finishes', async () =>
   gate.resolve(); await flush();
   assert.match(f.drop.innerHTML, /Oracle/);
   assert.doesNotMatch(f.drop.innerHTML, /Sculptor/);
-  assert.equal(requests, 4);
+  assert.equal(requests, 5);
 });
 
 test('the actual mobile field warms data and closing the menu cancels pending results', async () => {
@@ -263,7 +264,7 @@ test('the actual mobile field warms data and closing the menu cancels pending re
   const f = await searchFixture(async () => { requests++; await gate.promise; return ok([]); });
   f.mobile.value = 'Oracle';
   f.dispatch('mobile', 'focus');
-  assert.equal(requests, 4);
+  assert.equal(requests, 5);
   assert.equal(f.input.value, 'Oracle');
   f.dispatch('menu', 'click');
   gate.resolve(); await flush();

@@ -193,7 +193,9 @@
         // The cards are the public feed. If it fails, the list above it still
         // stands; the card sections say so instead of the page turning into
         // a log-in prompt.
-        return BotcData.json('characters.json?fields=grid').catch(function () {
+        // The official characters a reader saved are not in the feed.
+        return Promise.all([BotcData.json('characters.json?fields=grid'), BotcData.officials()])
+          .then(function (r) { return r[1].concat(r[0]); }).catch(function () {
           $('other-favs').insertAdjacentHTML('beforeend',
             '<p class="fav-section-note">The character cards could not be loaded just now. <a href="favorites" style="color:#9fc4ee">Try again</a></p>');
           return null;

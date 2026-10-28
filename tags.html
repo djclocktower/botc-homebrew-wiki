@@ -79,7 +79,8 @@
     var KNOWN_TAGS = window.KNOWN_TAGS || [];
 
     // Counted on the server (GET /api/tag-counts, one entry per title-cased
-    // tag, published characters, Partial included) — the same count this page
+    // tag, published characters, Partial included, plus the official
+    // characters the tag pages list) — the same count this page
     // used to make itself from the whole character feed.
     BotcData.json('api/tag-counts')
       .then(function(res) {

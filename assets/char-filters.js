@@ -139,22 +139,8 @@
         dep('classBadgeHTML')(dep('classifyCharacter')(c), { from: c.curataFrom }) + '</div>' +
       '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
       '<div class="char-card-ability">' + m(c.ability || '') + '</div>' +
-      (c.official
-        ? '<span class="char-card-link">Official Almanac <span class="ico ico-external" aria-hidden="true"></span></span>'
-        : '<span class="char-card-link">View Character →</span>') +
+      '<span class="char-card-link">View Character →</span>' +
       '</div></a>';
-  }
-
-  /* The official characters as All Characters lists them: the rows
-     OfficialRoles.buildOfficialRoles() makes (its `page` is the official
-     wiki), with their tags from assets/official-tags.js. Stamped Standard so
-     a card with no almanac here is never called Partial. */
-  function officialCards(built, tags) {
-    return (built || []).map(function (r) {
-      return { slug: r.slug, official: true, id: r.id, name: r.name, team: r.team, ability: r.ability,
-        image: r.image, page: r.page, tags: (tags && tags[r.id]) || '',
-        creator: 'The Pandemonium Institute', classification: 'standard' };
-    });
   }
 
   /* What a mount() is configured with, worked out once: the Sort options in
@@ -827,7 +813,7 @@
     // Shared with the Worker's first-screen render (worker/list-pages.js).
     init: init, config: config, blankState: blankState, applyState: applyState,
     barModel: barModel, barHTML: barHTML, creatorListHTML: creatorListHTML,
-    officialCards: officialCards, batchedHTML: batchedHTML, layoutSig: layoutSig, singleGrid: singleGrid, loadMoreLabel: loadMoreLabel,
+    batchedHTML: batchedHTML, layoutSig: layoutSig, singleGrid: singleGrid, loadMoreLabel: loadMoreLabel,
     wireToggle: wireToggle, splitTags: splitTags, titleCase: titleCase
   };
   if (typeof window !== 'undefined') window.CharFilters = api;
