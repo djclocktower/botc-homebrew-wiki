@@ -1128,7 +1128,13 @@
     return out;
   }
 
-  function findScriptJinxes(chars) {
+  /* Who a jinx on a script's roster is with: the roster entry it lands on,
+     or null when it is with nobody on the script. One rule for the page's
+     jinx list (findScriptJinxes) and the export (buildPageExport in
+     render-page.js), which has to write the id that entry exports under —
+     an import's `esper_the_bootleggers_anthology` names the Esper exporting
+     as `esper`, and the app matches the two by id. */
+  function scriptJinxResolver(chars) {
     var byId = Object.create(null);
     chars.forEach(function (c) {
       [slugId(c.name), normJinxId(c.jsonId), (c.slug || '').replace(/-/g, '')]
@@ -1140,22 +1146,29 @@
     chars.forEach(function (c) {
       jinxQualKeys(c).forEach(function (id) { if (!byId[id]) byId[id] = c; });
     });
+    return function (j, c) {
+      // An entry written by the jinx picker names its target outright; the
+      // older ones have to be matched by id or by name.
+      var target = j.slug && byId[normJinxId(j.slug)];
+      if (target) return target;
+      // One naming an official character pairs only with that official
+      // character's roster entry ('off-{id}'), never a homebrew namesake.
+      // Not on the roster as an entry: officialJinxesOnScript in
+      // render-page.js draws it from the bare name instead.
+      var offId = jinxOfficialId(j);
+      if (offId) return byId['off' + offId] || null;
+      var ks = jinxLookupKeys(j, c);
+      for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
+      return target || null;
+    };
+  }
+
+  function findScriptJinxes(chars) {
+    var resolve = scriptJinxResolver(chars);
     var out = [], seen = Object.create(null);
     chars.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
-        // An entry written by the jinx picker names its target outright; the
-        // older ones have to be matched by id or by name.
-        var target = j.slug && byId[normJinxId(j.slug)];
-        // One naming an official character pairs only with that official
-        // character's roster entry ('off-{id}'), never a homebrew namesake.
-        // Not on the roster as an entry: officialJinxesOnScript in
-        // render-page.js draws it from the bare name instead.
-        var offId = !target && jinxOfficialId(j);
-        if (offId && !(target = byId['off' + offId])) return;
-        if (!target) {
-          var ks = jinxLookupKeys(j, c);
-          for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
-        }
+        var target = resolve(j, c);
         if (!target || target === c) return;
         var text = j.text || j.reason || '';
         var key = [c.slug || c.name, target.slug || target.name].sort().join('|') + '|' + text;
@@ -1637,6 +1650,7 @@
     window.isTraveller = isTraveller;
     window.ART_ABS = ART_ABS;
     window.findScriptJinxes = findScriptJinxes;
+    window.scriptJinxResolver = scriptJinxResolver;
     window.resolveJinxTarget = resolveJinxTarget;
     window.resolveRelatedTarget = resolveRelatedTarget;
     window.normJinxId = normJinxId;
@@ -1675,7 +1689,7 @@
       officialIconSmall: officialIconSmall,
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
-      findScriptJinxes: findScriptJinxes,
+      findScriptJinxes: findScriptJinxes, scriptJinxResolver: scriptJinxResolver,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       jinxExportId: jinxExportId,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,

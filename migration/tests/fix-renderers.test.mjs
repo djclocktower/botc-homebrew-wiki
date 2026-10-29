@@ -236,6 +236,20 @@ test('the Night Order box carries dusk, minion info, demon info and dawn', () =>
   } finally { PageRender.setNightMeta(null); }
 });
 
+test('a script export writes a jinx with another homebrew character under that character\'s exported id', () => {
+  // A Bloodstar import stores `{name}_{set}`; the Esper itself exports as
+  // `esper`, and the official app pairs the two by id.
+  const esper = { slug: 'esper', name: 'Esper', team: 'minion', ability: 'x',
+    page: 'c/the-bootlegger-s-anthology/esper' };
+  const vis = { slug: 'visionary-tba', name: 'Visionary', team: 'minion', ability: 'y',
+    page: 'c/the-bootlegger-s-anthology/visionary',
+    jinxes: [{ id: 'esper_the_bootleggers_anthology', name: 'Esper', text: 'Only 1.' },
+             { id: 'elsewhere_not_here', text: 'Untouched.' }] };
+  const out = JSON.parse(PageRender.buildPageExport('S', '', '', [esper, vis], {}));
+  const v = out.find(e => e.id === 'visionary');
+  assert.deepEqual(v.jinxes.map(j => j.id), ['esper', 'elsewhere_not_here']);
+});
+
 test('a kept JSON (customJson) replaces the built one on script and collection pages, and stays off the feeds', async t => {
   const f = await fixture();
   t.after(() => f.finish());

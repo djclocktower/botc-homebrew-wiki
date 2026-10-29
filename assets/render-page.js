@@ -1367,12 +1367,10 @@
     var add = Array.isArray(edits.add) ? edits.add : [];
     if (!off.length && !add.length) return null;
 
-    var bySlug = Object.create(null), byId = Object.create(null);
-    (entries || []).forEach(function (c) {
-      bySlug[c.slug] = c;
-      byId[exportId(c)] = c;
-      byId[String(c.slug || '').replace(/-/g, '')] = c;
-    });
+    var bySlug = Object.create(null);
+    (entries || []).forEach(function (c) { bySlug[c.slug] = c; });
+    var resolver = dep('scriptJinxResolver');
+    var resolve = resolver ? resolver(entries || []) : function () { return null; };
     var touched = Object.create(null);
     off.forEach(function (k) {
       String(k).split('|').forEach(function (s) { if (bySlug[s]) touched[s] = 1; });
@@ -1387,8 +1385,7 @@
       // stay exactly as written: they are part of the character, and this
       // script has no business editing them out of it.
       var kept = (c.jinxes || []).filter(function (j) {
-        var idKey = String(j.id || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        return !byId[idKey];
+        return !resolve(j, c);
       }).map(function (j) {
         // The same id the character's own export would write for this jinx
         // (render.js jinxExportId), so the two cannot disagree.
@@ -1511,6 +1508,8 @@
     if (boot.length) meta.bootlegger = boot;
 
     var jinxMap = jinxExportMap(entries, sc.jinxEdits);
+    var resolver = dep('scriptJinxResolver');
+    var resolve = resolver && resolver(entries);
     var arr = [meta];
     entries.forEach(function (c) {
       var own = jinxMap && jinxMap[c.slug];
@@ -1518,6 +1517,15 @@
       if (!buildSchema) return;
       var src = c;
       if (own) { src = {}; for (var k in c) src[k] = c[k]; src.jinxes = own.list; }
+      else if (resolve && c.jinxes && c.jinxes.length) {
+        // A jinx with another homebrew character on this script goes out
+        // under the id THAT character exports as, or the app cannot pair them.
+        src = {}; for (var k2 in c) src[k2] = c[k2];
+        src.jinxes = c.jinxes.map(function (j) {
+          var t = resolve(j, c);
+          return (t && t !== c && !t.official) ? { id: exportId(t), text: j.text || j.reason || '' } : j;
+        });
+      }
       var o = buildSchema(src);
       // The script asked for its creators' marks on the names: the official
       // app prints names as text, so this is the mark's glyph.
