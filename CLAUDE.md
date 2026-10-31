@@ -970,8 +970,10 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        nor turns it into a character page, nor prints a token
                        for it.
                        Import matches each entry with matchEntry(): a bare id
-                       is an official character; an object entry is matched
-                       by ABILITY among the pages answering to its id or name
+                       is an official character, and so is an object entry
+                       carrying the official ability (a page here with that
+                       same ability is a copy of it); any other object entry
+                       is matched by ABILITY among the pages answering to its id or name
                        (there are five Phantoms, and the export writes the
                        bare name as the id), then the set the file is named
                        after. Its questions (replace or add, keep the file as
@@ -2020,6 +2022,15 @@ go through `inlineText()` as before.
 The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
 `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom
 sidebar boxes.
+
+**Tables**: a How to Run paragraph or a custom-box paragraph that is nothing
+but `| a | b |` rows (two or more) is drawn as the wiki's table
+(`Render.paraHTML()` over `WikiRender.tableHTML()`, cells in links mode), and
+so is such a paragraph in a script or collection's synopsis, gameplay and
+strategy (`prose()` in render-page.js). Asked for to show how a character
+changes the character counts. Everything else stays a paragraph, so no
+existing page changes. The Snapshot poster does not draw tables yet: it
+shows the raw `|` rows.
 
 **`callout` is a LIST** — the How-to-Run notes, one box each, drawn after the
 How to Run paragraphs. It was a single string for years and thousands of rows

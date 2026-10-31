@@ -895,9 +895,12 @@
       exact.concat(ix.byKey[key] || [], ix.byKey[nameKey] || []).forEach(function (c) {
         if (cands.indexOf(c) === -1) cands.push(c);
       });
-      var same = ab ? cands.filter(function (c) { return abilityKey(c.ability) === ab; }) : [];
       var official = ix.off[key] || ix.off[nameKey];
-      if (official && !same.length && (!ab || abilityKey(official.ability) === ab)) return official.slug;
+      // The official ability is the official character, whatever page here
+      // shares its name: a page with the very same ability is a copy of it.
+      if (official && ab && abilityKey(official.ability) === ab) return official.slug;
+      var same = ab ? cands.filter(function (c) { return abilityKey(c.ability) === ab; }) : [];
+      if (official && !same.length && !ab) return official.slug;
       var pool = same.length ? same : cands;
       var inSet = setName ? pool.filter(function (c) { return norm(c.appearsIn) === norm(setName); }) : [];
       var hit = pool.filter(function (c) { return exact.indexOf(c) !== -1; });

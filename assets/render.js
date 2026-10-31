@@ -265,6 +265,15 @@
       ? W.inlineFormat(str, { linkRoot: R(), marks: 'links' })
       : tok(str);
   }
+  /* One paragraph of almanac prose, or a table when it is nothing but table
+     rows (WikiRender.tableHTML, cells in the same links-only mode). */
+  function paraHTML(p, br) {
+    var W = engine();
+    var t = W && W.tableHTML ? W.tableHTML(p, { linkRoot: R(), marks: 'links' }) : '';
+    if (t) return t;
+    var h = inlineLinks(p);
+    return '<p>' + (br ? h.replace(/\n/g, '<br>') : h) + '</p>';
+  }
   /* The marks taken back out, for the two places this text leaves the page as
      plain prose: the official-schema JSON box (the app renders no markup) and
      the meta description the Worker puts in the page head. */
@@ -1280,7 +1289,7 @@
     var callouts = (Array.isArray(d.callout) ? d.callout : [d.callout])
       .filter(function (x) { return typeof x === 'string' && x.trim(); });
 
-    var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
+    var howColBody = paras.map(function (p) { return paraHTML(p); }).join('') +
       callouts.map(function (c) { return '<div class="callout">' + inlineLinks(c) + '</div>'; }).join('');
     var howCol = howColBody ? sech('sec-howtorun', 'How to Run') + howColBody : '';
 
@@ -1542,7 +1551,7 @@
       if (!title && !content.trim()) return '';
       var body = content.split(/\n{2,}/).map(function (p) {
         p = trimEnd(p);
-        return p.trim() ? '<p>' + inlineLinks(p).replace(/\n/g, '<br>') + '</p>' : '';
+        return p.trim() ? paraHTML(p, true) : '';
       }).join('');
       return '<div class="card custom-box">' +
         (title ? '<h2 class="info-h custom-box-h">' + esc(title) + '</h2>' : '') +
@@ -1577,6 +1586,7 @@
 
   if (typeof window !== 'undefined') {
     window.renderCharacter = renderCharacter;
+    window.paraHTML = paraHTML;
     window.initCharacterRender = init;
     window.fitCharTitle = fitCharTitle;
     window.renderJsonBox = renderJsonBox;
@@ -1625,6 +1635,7 @@
     module.exports = {
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
+      paraHTML: paraHTML,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,

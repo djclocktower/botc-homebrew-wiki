@@ -546,6 +546,18 @@
     return html;
   }
 
+  /* A paragraph that is nothing but table rows (2+ lines, each starting and
+     ending with '|'), as a table; '' otherwise. For the prose fields that are
+     not rendered as a whole body (character pages, a script's synopsis), so a
+     character count table can go there too. opts as inlineFormat's: a
+     character page passes marks: 'links', so a cell follows its rules. */
+  function tableHTML(text, opts) {
+    var lines = String(text || '').split('\n').map(function (l) { return l.trim(); })
+      .filter(function (l) { return l; });
+    if (lines.length < 2 || !lines.every(function (l) { return /^\|.*\|$/.test(l); })) return '';
+    return tableBlock(lines, opts || {});
+  }
+
   function imageBlock(line, opts) {
     var m = line.match(new RegExp('^!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)\\s*$'));
     if (!m) return null;
@@ -892,7 +904,7 @@
     setReminderTokens: setReminderTokens, linkKey: normName,
     esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
     inlineFormat: inlineFormat, plainText: plainText,
-    renderBody: renderBody, tocHTML: tocHTML,
+    renderBody: renderBody, tocHTML: tocHTML, tableHTML: tableHTML,
     autoSummary: autoSummary, formatDate: formatDate,
     renderBoxes: renderBoxes, renderInfobox: renderInfobox,
     renderWikiPage: renderWikiPage, renderPageLinks: renderPageLinks,
