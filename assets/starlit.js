@@ -1,21 +1,11 @@
-/* assets/starlit.js — the Starlit Gallery (/starlit).
+/* assets/starlit.js: the Starlit Gallery (/starlit). See "The Starlit
+ * Gallery" in CLAUDE.md.
  *
- * Character icons drawn by Harry & Co. & Bendan. Each icon is two layers: a
- * BLACK one, filled here with the texture the reader picks, over a WHITE one,
- * filled with parchment, with a drop shadow under both. compose() is the whole
- * of the drawing; the Worker only keeps the files and the list (/api/starlit,
- * "The Starlit Gallery" in CLAUDE.md).
- *
- * The layers are only ever used as masks, so the colours inside the files do
- * not matter. The figure (both layers together) is fitted to the wiki's icon
- * standard, ART_FILL of the frame (assets/art-normalize.js), and the texture
- * spans the whole frame, which is how the official icons are cut from their
- * sheets.
- *
- * ?icon={id} opens one icon. ?pick=1 is the gallery opened inside a character
- * editor (assets/starlit-picker.js): "Use this icon" hands the PNG back.
- *
- * Browser only.
+ * An icon is a BLACK layer, filled with the picked texture, over a WHITE one,
+ * filled with parchment, with a drop shadow under both. The layers are only
+ * masks. compose() does all the drawing; the Worker only stores files.
+ * ?icon={id} opens one icon; ?pick=1 is the gallery inside a character
+ * editor (assets/starlit-picker.js). Browser only.
  */
 (function () {
   'use strict';
@@ -339,9 +329,9 @@
       .then(function () { btn.disabled = false; });
   });
 
-  /* Icon Forge takes artwork, not layers: the two are flattened, plain black
-     over plain white, and left in localStorage for iconforge?from=starlit to
-     pick up (assets/iconforge/app.js), with the texture to open on. */
+  /* Icon Forge takes one picture: the layers are flattened, plain black over
+     plain white, and left in localStorage for iconforge?from=starlit
+     (assets/iconforge/app.js), with the texture to open on. */
   $('sg-forge').addEventListener('click', function () {
     if (!current) return;
     var icon = current;
@@ -416,7 +406,7 @@
         gallery.textures.sort(byName);
         rebuildTextures(); drawTeam();
         $('sg-t-name').value = ''; $('sg-t-file').value = '';
-        say('sg-t-msg', 'Added. It is in the texture picker now.');
+        say('sg-t-msg', 'Added to the texture picker.');
       })
       .catch(function (e) { say('sg-t-msg', e.message, true); })
       .then(function () { btn.disabled = false; });
@@ -443,7 +433,7 @@
       drawTeam();
       var who = gallery.uploaders.map(function (u) { return '@' + u.username; }).join(', ');
       say('sg-up-msg', (who ? 'Saved. ' + who + (gallery.uploaders.length === 1 ? ' can' : ' can all') + ' upload.' : 'Saved. Only admins can upload.') +
-        (r.unknown && r.unknown.length ? ' No account called ' + r.unknown.join(', ') + ', so nobody was added for that.' : ''),
+        (r.unknown && r.unknown.length ? ' No account is called ' + r.unknown.join(', ') + '.' : ''),
         !!(r.unknown && r.unknown.length));
     }).catch(function (e) { say('sg-up-msg', e.message, true); })
       .then(function () { btn.disabled = false; });

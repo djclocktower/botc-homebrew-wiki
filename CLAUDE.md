@@ -101,7 +101,7 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page),
   **message images** (`/api/attachment` — one image for a comment or a modmail
   message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
-  **the Starlit Gallery** (`/api/starlit`, `/api/admin/starlit-uploaders` —
+  **the Starlit Gallery** (`/api/starlit` and `/api/admin/starlit-uploaders`;
   see that section),
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
@@ -912,14 +912,12 @@ assets/
                        Subfolders textures/ minipaint/ vendor/ are the
                        sealed payload — see the section below, and
                        migration/icon-forge-guide.md for the engine reference.
-  starlit.js           The Starlit Gallery page (/starlit): grid, search,
-                       keywords, Random icon, the icon window (texture picker,
-                       Texture/Whites/Blacks/Shadow, Download PNG, Open in
-                       Icon Forge) and the gallery team's forms. compose() is
-                       the whole drawing. See "The Starlit Gallery".
+  starlit.js           The Starlit Gallery page (/starlit): browsing, the icon
+                       window and the team's forms. compose() draws an icon.
+                       See "The Starlit Gallery".
   starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
-                       the gallery in an iframe over the form; the picked PNG
-                       is put into the art file input and a change fired.
+                       the gallery in an iframe; the picked PNG goes into the
+                       art file input with a change event.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
@@ -3783,54 +3781,47 @@ uploaded — except for the one opt-in save described below.
   in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
-- **Starlit Gallery hand-offs** (see the next section): `?from=starlit` loads
-  the icon the gallery left in localStorage (`botc_starlit_forge`, read once)
-  with the forge's own border and hole filling off, and the gallery's own
-  textures are appended to the picker from `/api/starlit?textures=1`.
+- **Starlit Gallery** (next section): `?from=starlit` opens the icon the
+  gallery left in localStorage (`botc_starlit_forge`, read once) with the
+  forge's border and hole filling off; the gallery's textures are added to
+  the picker from `/api/starlit?textures=1`.
 
 ## The Starlit Gallery (`/starlit`)
 
-Character icons drawn by **Harry & Co. & Bendan** (their wiki credit name),
-hosted here after the platform they lived on broke. The credit is the point:
-the hero names them with their mark and links their creator page, every icon
-says who drew it (`artist`, default theirs), and an icon put onto a character
-from the editor fills its "Icon by" with the artist and a link back.
+Character icons by **Harry & Co. & Bendan**, hosted here after the platform
+they were on broke. Credit them: the hero names them with their mark and
+links their creator page, every icon shows its `artist` (theirs by default),
+and an icon put on a character from the editor fills its "Icon by".
 
-- **An icon is two layers**: a BLACK one, filled with the texture the reader
-  picks, over a WHITE one, filled with parchment, with a drop shadow under
-  both. That is how the original gallery drew them. The layers are only masks
-  (`source-in`), so the colours in the files do not matter. `compose()` in
-  `assets/starlit.js` is the whole drawing: the figure (both layers) is fitted
-  to `ART_FILL` of the frame (art-normalize.js, through `artTrimBox`) and the
-  texture spans the whole frame, as the official icons are cut from their
-  sheets. Texture, Whites, Blacks and Shadow are the reader's switches; the
-  preview is an `<img>` of the PNG so a phone can long-press it.
-- **Textures** are Icon Forge's sheets under Icon Forge's ids (Good `blue`,
-  Evil `red`, …), the gallery's own (`starlit_textures`, offered to Icon Forge
-  too as `starlit-{id}`), and "Your own", a file from the reader's device that
-  never leaves it. Each icon has a default texture (`tex`), which its grid
-  thumbnail is drawn in.
-- **Storage**: `starlit_icons` and `starlit_textures` (lazy), files in R2 under
-  `starlit/`. Keys are minted by `/api/starlit` (`starlit/{random}-black.png`
-  etc.), never sent by the client, and `starlit/` is not in `R2_PREFIXES`, so
-  `/api/upload` cannot reach it. A replaced layer is a new key and the old file
-  is deleted. Layers are PNG/WebP (the browser re-encodes them to PNG, at most
-  1200px), textures PNG/JPEG/WebP; the bytes are sniffed like every upload.
-- **Who can upload**: admins, and the accounts in `settings`
-  `starlit_uploaders` (`[{id, username}]`, resolved by `sanitizeEditors()`, id
-  is the authority), set by an admin in the gallery's own team panel. Every
-  team member can add, change and delete any icon or texture. There is no
-  public submission and no mass upload, on purpose: vetting for copyright and
-  AI is the team's job, and a two-layer upload does not batch well.
-- Gallery writes log `starlit-*` actions, which are **not** in
-  `FEED_CHANGING_ACTIONS`: nothing else on the wiki reads the gallery, so it
-  must not roll the feed caches. `/api/starlit` is in the wiki-lock list.
-- **Hand-offs**: "Open in Icon Forge" flattens the layers (plain black over
-  plain white) into localStorage and opens `iconforge?from=starlit`; in the
-  editors, "Browse the Starlit Gallery" (`assets/starlit-picker.js`) opens
-  `/starlit?pick=1` in an iframe, whose "Use this icon" posts the PNG back.
-  `?icon={id}` opens one icon. Not built: a Token Tool hand-off (an icon gets
-  there through the character it is used on) and public submissions.
+- **An icon is two layers**, as the original gallery drew them: the BLACK one
+  takes the reader's texture, the WHITE one (the outline) takes parchment, and
+  a drop shadow goes under both. The layers are only masks (`source-in`).
+  `compose()` in `assets/starlit.js` does all the drawing: the figure is
+  fitted to `ART_FILL` of the frame (`artTrimBox`) and the texture spans the
+  whole frame, as official icons are cut from their sheets. The preview is an
+  `<img>` so a phone can long-press it.
+- **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`, …),
+  the gallery's own (`starlit_textures`, also in Icon Forge as
+  `starlit-{id}`), and "Your own", a local file that is never uploaded. An
+  icon's `tex` is the texture it opens in and its thumbnail is drawn in.
+- **Storage**: lazy tables `starlit_icons` and `starlit_textures`; files in R2
+  under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
+  `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new
+  key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
+  the browser, 1200px at most), textures PNG/JPEG/WebP, bytes sniffed.
+- **Who can upload**: admins and the accounts in `settings` `starlit_uploaders`
+  (`[{id, username}]` via `sanitizeEditors()`), set by an admin in the
+  gallery's team panel. Any of them can change or delete anything there. No
+  public submissions and no mass upload, on purpose: vetting for copyright and
+  AI is the team's job, and two-layer uploads do not batch well.
+- `starlit-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
+  reads the gallery, so it must not roll the feed caches). `/api/starlit` is in
+  the wiki-lock list.
+- **Hand-offs**: "Open in Icon Forge" leaves the flattened icon in
+  localStorage for `iconforge?from=starlit`; the editors' "Browse the Starlit
+  Gallery" (`assets/starlit-picker.js`) opens `/starlit?pick=1` in an iframe
+  and "Use this icon" posts the PNG back. `?icon={id}` opens one icon. Not
+  built: a Token Tool hand-off (an icon reaches it through its character).
 
 ## Creator marks (a creator's own symbol)
 
@@ -3877,12 +3868,11 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   the page degraded. Browser pages call `CreatorSymbols.load()`
   (`/api/creator-marks`); comments and the search index carry `markHTML`
   drawn by the Worker.
-- **Drawn as text**: `markHTML()` puts U+FE0E (text presentation) after every
-  pictographic code point that has no variation selector, so a mark such as
-  Harry & Co. & Bendan's Gemini sign (U+264A) is drawn as a glyph in the
-  wiki's colours instead of a phone's coloured emoji. The stored glyph is
-  unchanged (`markKey()` drops selectors), and so is the export
-  (`nameWithMarks()`).
+- **Drawn as text**: `markHTML()` adds U+FE0E after any pictographic code
+  point without a variation selector, so a mark like Harry & Co. & Bendan's
+  Gemini sign (U+264A) draws in the wiki's colours, where a phone would paint
+  a coloured emoji. The stored glyph and the export (`nameWithMarks()`) are
+  unchanged.
 - **Routes**: `GET /api/creator-marks` (public), `GET/POST /api/account/mark`
   (own mark; POST `{glyph, show}` or `{remove:true}`),
   `POST /api/admin/creator-mark` — `{username}` clears an account's mark,

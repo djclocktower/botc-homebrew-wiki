@@ -742,10 +742,9 @@ function addTexButton(t) {
 }
 COLOR_TEXTURES.forEach(addTexButton);
 
-/* The Starlit Gallery's own textures (/starlit), after the official sheets.
-   Pushed onto COLOR_TEXTURES, which is what loadTexturesFor() looks ids up
-   in. Resolves once they are in, so a texture the gallery handed over can be
-   picked. */
+/* The Starlit Gallery's own textures, after the official ones. Pushed onto
+   COLOR_TEXTURES, where loadTexturesFor() looks ids up; resolves once they
+   are in. */
 const starlitTextures = fetch('/api/starlit?textures=1', { credentials: 'same-origin' })
   .then((r) => (r.ok ? r.json() : { textures: [] }))
   .then((d) => {
@@ -1029,11 +1028,10 @@ pickTexture(colorTexId);
 syncControls();
 sizeStage();
 
-/* "Open in Icon Forge" on the Starlit Gallery leaves the icon's two layers,
-   flattened plain black over plain white, in localStorage and sends the
-   reader to iconforge?from=starlit. Read once and removed. The white layer
-   IS the icon's outline, so the forge's own border and hole filling start
-   off, and the gallery's texture is picked when the forge has it. */
+/* The Starlit Gallery's "Open in Icon Forge": the icon, flattened black over
+   white, waits in localStorage for iconforge?from=starlit and is read once.
+   Its white layer is the outline, so the forge's own border and hole filling
+   start off. */
 if (new URLSearchParams(location.search).get('from') === 'starlit') {
   let handoff = null;
   try {

@@ -6,7 +6,7 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Starlit Gallery — BOTC HomeBrew Wiki</title>
-<meta name="description" content="The Starlit Gallery: character icons drawn by Harry &amp; Co. &amp; Bendan. Pick a texture, switch the whites, blacks and shadow on or off, and download a PNG.">
+<meta name="description" content="Character icons by Harry &amp; Co. &amp; Bendan. Pick a texture, turn the whites, blacks and shadow on or off, and download a PNG.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Starlit Gallery">
 <meta property="og:description" content="Character icons by Harry &amp; Co. &amp; Bendan, in any texture, ready to download.">
@@ -229,8 +229,8 @@ html.sg-pick .home-panel { padding-top: 14px; }
       <h2 class="type-header">About the Gallery</h2>
       <div class="type-rule"></div>
       <div class="about-card">
-        <p>The Starlit Gallery is a collection of character icons drawn by <a href="author?a=Harry%20%26%20Co.%20%26%20Bendan">Harry &amp; Co. &amp; Bendan</a> for Blood on the Clocktower homebrew. Each icon is drawn in two layers, black and white: the black is filled with the texture you pick, the white becomes the parchment outline, and a shadow is dropped under both.</p>
-        <p>Pick an icon to choose its texture, switch the texture, whites, blacks and shadow on or off, then download it as a PNG or open it in <a href="iconforge">Icon Forge</a> to keep working on it. In the <a href="create">character editor</a>, <b>Browse the Starlit Gallery</b> puts one straight onto your character and credits the artist.</p>
+        <p>These icons are drawn by <a href="author?a=Harry%20%26%20Co.%20%26%20Bendan">Harry &amp; Co. &amp; Bendan</a> for Blood on the Clocktower homebrew. Each one has two layers: the black takes the texture you pick, the white becomes the parchment outline, and a shadow goes under both.</p>
+        <p>Pick an icon to change its texture or switch parts of it off, then download it as a PNG or open it in <a href="iconforge">Icon Forge</a>. In the <a href="create">character editor</a>, <b>Browse the Starlit Gallery</b> puts an icon on your character and credits the artist.</p>
         <p>Every icon belongs to the artist credited on it. If you use one, credit the artist and the Starlit Gallery.</p>
         <p class="about-disclaimer">Fan-made. Not affiliated with The Pandemonium Institute.</p>
       </div>
@@ -241,11 +241,11 @@ html.sg-pick .home-panel { padding-top: 14px; }
       <div class="type-rule"></div>
       <div class="about-card">
         <h3>Icons</h3>
-        <p>Add an icon from its two layers. To change or remove one, open it and use the buttons at the bottom.</p>
+        <p>Add an icon from its two layers. To change or delete one, open it.</p>
         <p><button type="button" class="sg-btn sg-btn-green" id="sg-add">Add an icon</button></p>
 
         <h3>Textures</h3>
-        <p>The gallery's own textures, offered beside the official ones here and in Icon Forge.</p>
+        <p>Listed beside the official textures, here and in Icon Forge.</p>
         <ul class="sg-tex-list" id="sg-tex-list" data-user-content></ul>
         <div class="sg-row">
           <label>Name <input type="text" id="sg-t-name" maxlength="40" placeholder="Starlit"></label>
@@ -316,7 +316,7 @@ html.sg-pick .home-panel { padding-top: 14px; }
       <h2 class="sg-title" id="sg-f-title">Add an icon</h2>
       <label class="sg-f">Name <input type="text" id="sg-f-name" maxlength="60" required></label>
       <label class="sg-f">Keywords <input type="text" id="sg-f-tags" maxlength="600" placeholder="knight, sword, armour">
-        <span class="sg-hint">Separated by commas. Search finds icons by these.</span></label>
+        <span class="sg-hint">Separated by commas. The search uses them.</span></label>
       <label class="sg-f">Artist <input type="text" id="sg-f-artist" maxlength="80" placeholder="Harry &amp; Co. &amp; Bendan">
         <span class="sg-hint">Shown on the icon, and credited on any character it goes onto.</span></label>
       <div class="sg-f-layers">

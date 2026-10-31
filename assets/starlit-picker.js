@@ -1,15 +1,9 @@
-/* assets/starlit-picker.js — "Browse the Starlit Gallery" in the character
- * editors (create.html and edit.html, which are the same form).
- *
- * Any button carrying data-starlit-into="{id of a file input}" opens the
- * gallery (/starlit?pick=1) over the page. The icon picked there comes back as
- * a PNG, is put into that file input and a change event is fired, so the
- * editor takes it exactly as if it had been picked from the device:
- * standardized, previewed, uploaded on save. It also fills the "Icon by" box,
- * when that is empty or holds an earlier pick, with the artist and a link
- * back to the icon, so the credit goes onto the character page with the art.
- *
- * Browser only.
+/* assets/starlit-picker.js: "Browse the Starlit Gallery" in create.html and
+ * edit.html. A button with data-starlit-into="{file input id}" opens
+ * /starlit?pick=1 over the page; the picked PNG goes into that input with a
+ * change event, so the editor treats it like a file from the device. An empty
+ * "Icon by" box (or one holding an earlier pick) gets the artist and a link
+ * back. Browser only.
  */
 (function () {
   'use strict';

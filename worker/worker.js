@@ -595,10 +595,10 @@ const THUMB_PREFIX = 'thumb/';
    icon plain enough to land under it costs only the original picture. */
 const THUMB_MIN_BYTES = 512;
 // avatars/, attachments/ and starlit/ are servable from R2 but NOT uploadable
-// through the generic /api/upload — profile pictures only go through
-// /api/account/avatar, which pins the key to the logged-in user's own slot,
+// through the generic /api/upload. Profile pictures only go through
+// /api/account/avatar, which pins the key to the logged-in user's own slot;
 // conversation images only through /api/attachment, and the Starlit Gallery's
-// files only through /api/starlit; those two NAME the key themselves (see
+// files only through /api/starlit, both of which NAME the key themselves (see
 // ATTACH_PREFIX and STARLIT_PREFIX).
 const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'starlit/']);
 
@@ -2281,15 +2281,11 @@ async function ensureFavoritesTable(env) {
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
 
 /* ---- the Starlit Gallery (/starlit) ----
-   Character icons drawn by Harry & Co. & Bendan, each kept as two layers: a
-   BLACK one (the figure, which the gallery fills with a colour texture) over
-   a WHITE one (the outline, filled with parchment), plus a small textured
-   thumbnail for the grid. The browser does all the drawing (assets/starlit.js);
-   this only keeps the files and the list. Only an admin and the accounts an
-   admin names (settings `starlit_uploaders`) may add, change or remove
-   anything. Keys are minted here, never by the client — like ATTACH_PREFIX —
-   so /api/upload cannot write into starlit/ at all. See "The Starlit Gallery"
-   in CLAUDE.md. */
+   Icons by Harry & Co. & Bendan, stored as a black layer, a white layer and a
+   grid thumbnail; the browser does the drawing (assets/starlit.js). Admins
+   and the accounts in settings `starlit_uploaders` may change it. Keys are
+   minted here (as for ATTACH_PREFIX), so /api/upload cannot write into
+   starlit/. See "The Starlit Gallery" in CLAUDE.md. */
 const STARLIT_PREFIX = 'starlit/';
 const STARLIT_UPLOADERS_KEY = 'starlit_uploaders';
 const STARLIT_IMAGE_BYTES = 4 * 1024 * 1024;   // a layer or a texture, before base64
@@ -9686,10 +9682,9 @@ const app = {
     }
 
     // ---------- THE STARLIT GALLERY ----------
-    // Every icon and texture, A to Z. ?textures=1 is just the textures (Icon
-    // Forge lists them in its picker). `canUpload` tells the page whether to
-    // show the gallery team's controls; an admin also gets who is on the team.
-    // Uncached: it is one small table, read when somebody opens the gallery.
+    // Every icon and texture, A to Z (?textures=1: textures only, for Icon
+    // Forge), plus canUpload for the team's controls; admins also get the
+    // team. Uncached: one small table, read when the gallery is opened.
     if (method === 'GET' && path === '/api/starlit') {
       const texOnly = url.searchParams.get('textures') === '1';
       let icons = [], textures = [];
@@ -13946,11 +13941,10 @@ const app = {
            delete          {id}
            texture         {name, image}
            delete-texture  {id}
-         The gallery team only (canUploadStarlit). Every file gets a fresh key,
-         so a replaced layer is a new URL and nothing cached can show the old
-         one; the old file is deleted once the row points elsewhere. The log
-         actions are deliberately not in FEED_CHANGING_ACTIONS: nothing on the
-         rest of the wiki reads the gallery, so it must not roll its caches. */
+         The gallery team only. Every file gets a fresh key, so a replaced
+         layer is a new URL; the old file is deleted. The starlit-* log
+         actions stay out of FEED_CHANGING_ACTIONS: nothing else reads the
+         gallery, so it must not roll the feed caches. */
       if (path === '/api/starlit') {
         if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (!await canUploadStarlit(env, sess)) {
@@ -17390,9 +17384,8 @@ const app = {
 
       // ---- admin: who may upload to the Starlit Gallery ----
       // {names: ['harry', '@bendan']}: the whole list, replacing the old one.
-      // Resolved like a page's approved editors (sanitizeEditors), so the id
-      // is the authority and a name nobody answers to comes back as unknown
-      // rather than becoming a permission.
+      // Resolved like a page's approved editors (sanitizeEditors): the id is
+      // the authority, and a name no account has comes back in `unknown`.
       if (path === '/api/admin/starlit-uploaders') {
         const b = await request.json().catch(() => ({}));
         const names = (Array.isArray(b.names) ? b.names : []).map(n => String(n || '').trim().replace(/^@+/, ''));
