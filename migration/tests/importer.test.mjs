@@ -65,7 +65,7 @@ test('importer: Bloodstar pairs, two official ends become the script\'s own rule
   const j = I.jinxes(bundle, rows, 'script', {});
   assert.deepEqual(plain(j.scriptAdds), [{ a: 'off-spy', b: 'off-imp', text: 'both' }]);
   assert.deepEqual(plain(j.byOwner.aye), [{ name: 'Warden', text: 'loose', id: 'warden' }]);
-  assert.deepEqual(plain(j.byName), ['Aye / Warden']);
+  assert.deepEqual(plain(j.byName), ['Aye / Warden (no page here by that name)']);
   assert.deepEqual(plain(I.jinxes(bundle, rows, 'collection', {}).dropped), ['Spy / Imp']);
 });
 
@@ -124,4 +124,47 @@ test('importer: where the almanac text goes is the person\'s choice', async () =
   p = I.setPage(bundle, { destination: 'script' }, 's', [], {});
   assert.equal(p.customJson, undefined);
   assert.equal(I.mergeSetPage({ slug: 's', data: { name: 'S' } }, { customJson: '[]' }).customJson, '[]');
+});
+
+test('importer: a character already on the wiki is pointed at, not copied', async () => {
+  const I = await load();
+  const bundle = buildBundle([
+    { id: '_meta', name: 'Necro', firstNight: ['dusk', 'godfather', 'observer_x', 'dawn'], otherNight: ['dusk', 'merc', 'observer_x', 'chupa', 'dawn'] },
+    { id: 'merc', name: 'Mercenary', team: 'townsfolk', ability: 'Once per game, publicly choose a Minion character: they die tonight.', otherNight: 58 },
+    { id: 'observer_x', name: 'Observer', team: 'demon', ability: 'Each night*, choose a player: they die.', otherNightReminder: 'Wake &amp; kill. :reminder: :reminder:' },
+    { id: 'chupa', name: 'Chupacabra', team: 'minion', ability: 'Each night*, you may kill.', otherNight: 60,
+      jinxes: [{ id: 'matsuraid_hbl', reason: 'M.' }, { id: 'wolf_x', reason: 'W.' }] },
+    { id: 'fetch_x', name: 'Fetch', team: 'townsfolk', ability: 'Fetch rule.', jinxes: [{ id: 'leviathan', reason: 'L.' }] },
+    'godfather'
+  ], null, {}, [{ id: 'godfather', name: 'Godfather', team: 'minion', ability: 'G.' }]);
+  const wiki = I.wikiIndex([
+    { slug: 'mercenary', name: 'Mercenary', creator: "Ma'ayan", ability: 'once per game publicly choose a minion character: they die tonight' },
+    { slug: 'fetch', name: 'Fetch', ability: 'Fetch rule.' },
+    { slug: 'matsuraid', name: 'Matsuraid', ability: 'x' },
+    { slug: 'wolf-a', name: 'Wolf', ability: 'a' }, { slug: 'wolf-b', name: 'Wolf', ability: 'b' }
+  ]);
+  const rows = I.plan(bundle, {}, wiki);
+  assert.deepEqual(rows.map(r => [r.name, r.kind, r.target]), [
+    ['Mercenary', 'existing', 'mercenary'], ['Observer', 'new', ''], ['Chupacabra', 'new', ''],
+    ['Fetch', 'existing', 'fetch'], ['Godfather', 'official', '']]);
+  assert.match(rows[0].note, /Ma'ayan/);
+  // An export's HTML entities and the app's token marks are not a sentence.
+  assert.equal(rows[1].entry.otherNightReminder, 'Wake & kill.');
+  rows[1].slug = 'observer'; rows[2].slug = 'chupacabra';
+  assert.deepEqual(plain(I.roster(rows, 'script')), ['mercenary', 'observer', 'chupacabra', 'fetch', 'off-godfather']);
+  const j = I.jinxes(bundle, rows, 'script', { leviathan: 'Leviathan' }, wiki);
+  // One page answers to Matsuraid: pointed at it. Two answer to Wolf: by name, warned.
+  assert.deepEqual(plain(j.byOwner.chupacabra), [
+    { name: 'Matsuraid', text: 'M.', slug: 'matsuraid' }, { name: 'Wolf', text: 'W.', id: 'wolf_x' }]);
+  assert.deepEqual(plain(j.byName), ['Chupacabra / wolf_x (2 pages have that name)']);
+  // Fetch is already here and carries its own jinxes: nothing to write, nothing dropped.
+  assert.deepEqual(plain(j.dropped), []); assert.deepEqual(plain(j.scriptAdds), []);
+  const n = I.metaNight(bundle, rows, { dusk: { firstNight: 0, otherNight: 0 }, dawn: { firstNight: 9999, otherNight: 9999 }, godfather: { firstNight: 38 } });
+  assert.deepEqual(plain(n.nightOrder), {
+    first: ['@dusk', 'off-godfather', 'observer', '@dawn'],
+    other: ['@dusk', 'mercenary', 'observer', 'chupacabra', '@dawn'] });
+  // Listed but unnumbered: placed after the last number before it, never towards dawn's 9999.
+  assert.equal(n.positions.observer_x.firstNight, 38.01);
+  assert.equal(n.positions.observer_x.otherNight, 59);
+  assert.equal(n.positions.chupa, undefined);
 });

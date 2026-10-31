@@ -3095,6 +3095,27 @@ a third host is one row of that map.
   source has one, almanac prose only into empty fields, ADDS the tags, and
   keeps everything else: art slots (unless "Replace the icons" is ticked), the
   token, sharing, publish state. A page that cannot be read is not written.
+- **A character already on the wiki under somebody else is pointed at, not
+  copied.** Same name AND same ability (`Importer.abilityKey`, the
+  `OfficialRoles.abilityKey` fold) as a published page here: the row is
+  `existing` ("Use the page already here", switchable to "Make my own copy"),
+  the roster gets that page, and no page, art or tags are written. A script
+  JSON is often half other people's characters (Necrovitality was 12 of 20),
+  and copying them made a second page of each credited to the importer's
+  Creator box. The page reads the grid feed for it (`Importer.wikiIndex`). A
+  jinx between such a page and a character with no page of its own is left
+  to the page that is already here; one with a character outside the file is
+  pointed at its page when exactly one page has that name (an export's id,
+  `matsuraid_hblreleased`, is read as the name before the underscore).
+- **A script JSON's own night order** (`_meta.firstNight` / `otherNight`, ids
+  with dusk / minioninfo / demoninfo / dawn) becomes the script's arranged
+  `nightOrder` (`Importer.metaNight`), ahead of an almanac's. A character it
+  lists that has no number of its own is given one between its listed
+  neighbours (never towards dawn's 9999), because only a number above 0 puts
+  a character on a night list at all: the Necrovitality Observer, Katana and
+  Necromancer would otherwise wake on no night. Night reminders lose HTML
+  entities and `:reminder:` marks on the way in (`cleanNightReminder`, as
+  official-roles.js does for the official ones).
 - **A new page asks `/api/slug-check` with `avoid=`** (the identities this run
   has claimed), so same-named characters in one file get separate pages.
 - **The set page.** "Make a page for the set" offers a script or collection;

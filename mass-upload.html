@@ -291,7 +291,7 @@
     }
     function say(id, cls, html) { var el = $(id); el.className = 'msg ' + cls; el.innerHTML = html; }
 
-    var me = null, account = null, officialNames = {};
+    var me = null, account = null, officialNames = {}, wiki = {}, nightKnown = {};
     var bundle = null, rows = [];
     var tags = {};          // row id -> [tag]
     var setDone = '';       // the set page this sitting already made or updated
@@ -308,6 +308,13 @@
         if (r && r.name) { officialNames[I.key(r.id)] = r.name; officialNames[I.key(r.name)] = r.name; }
       });
     }).catch(function () {});
+    // Official night positions and the dusk/minion info/demon info/dawn steps,
+    // for numbering a character the source lists in its night order but gives
+    // no number (Importer.metaNight).
+    fetch('assets/night-order.json').then(function (r) { return r.json(); }).then(function (n) {
+      (n.characters || []).forEach(function (c) { nightKnown[I.key(c.name)] = c; });
+      (n.meta || []).forEach(function (m) { nightKnown[I.key(m.id)] = m; });
+    }).catch(function () {});
 
     (window.KNOWN_TAGS || []).forEach(function (t) {
       $('t-pick').insertAdjacentHTML('beforeend', '<option>' + esc(t) + '</option>');
@@ -323,10 +330,15 @@
           if (!r.ok || j.error) throw new Error(j.error || 'Could not read that.');
           return j;
         }); }),
-        fetch('/api/account', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        fetch('/api/account', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        // The wiki's published pages: a character already here is pointed at,
+        // not copied, and a jinx with one is pointed at its page.
+        (window.BotcData ? BotcData.json('characters.json?fields=grid') : fetch('characters.json?fields=grid').then(function (r) { return r.json(); }))
+          .catch(function () { return []; })
       ]).then(function (res) {
-        bundle = res[0]; account = res[1];
-        rows = I.plan(bundle, I.ownIndex(account && account.characters));
+        bundle = res[0]; account = res[1]; wiki = I.wikiIndex(res[2]);
+        rows = I.plan(bundle, I.ownIndex(account && account.characters), wiki);
+        rows.forEach(function (r) { r.base = r.kind; });
         if (!rows.length) throw new Error('No characters found in that.');
         tags = {}; setDone = '';
         showFound();
@@ -427,8 +439,14 @@
       if (r.done) return r.kind === 'update' ? 'Updated your page' : 'New page';
       var what = !r.target ? 'New page'
         : '<select data-act="target" data-id="' + esc(r.id) + '">' +
-          '<option value="' + esc(r.target) + '"' + (r.kind === 'update' ? ' selected' : '') + '>Update my page</option>' +
-          '<option value=""' + (r.kind === 'new' ? ' selected' : '') + '>New page</option></select>';
+          '<option value="' + r.base + '"' + (r.kind !== 'new' ? ' selected' : '') + '>' +
+            (r.base === 'update' ? 'Update my page' : 'Use the page already here') + '</option>' +
+          '<option value="new"' + (r.kind === 'new' ? ' selected' : '') + '>' +
+            (r.base === 'update' ? 'New page' : 'Make my own copy') + '</option></select>';
+      if (r.kind === 'existing') {
+        var at = '/c/' + String(((wiki[I.key(r.name)] || []).filter(function (c) { return c.slug === r.target; })[0] || {}).page || r.target).replace(/^\/?(c\/)?/, '');
+        return what + '<span class="mu-note"><a href="' + esc(at) + '" target="_blank">see the page</a>; nothing is copied</span>';
+      }
       // Which way the icon goes, for a character the source gives one.
       if (r.entry.image) {
         what += '<br><select data-act="icon" data-id="' + esc(r.id) + '" aria-label="Icon for ' + esc(r.name) + '" style="margin-top:4px">' +
@@ -440,7 +458,7 @@
     function draw() {
       var pick = $('t-pick').value;
       $('rows').innerHTML = rows.map(function (r, i) {
-        var t = rowTags(r), pagey = r.kind !== 'official';
+        var t = rowTags(r), pagey = r.kind === 'new' || r.kind === 'update';
         return '<tr id="row-' + i + '" class="' + (r.include ? '' : 'off') + '">' +
           '<td class="c"><input type="checkbox" data-act="inc" data-id="' + esc(r.id) + '"' + (r.include ? ' checked' : '') +
             (r.done ? ' disabled' : '') + ' aria-label="Import ' + esc(r.name) + '"></td>' +
@@ -451,14 +469,16 @@
             ? '<span class="mu-tags' + (t.length ? '' : ' none') + '">' + esc(t.length ? t.join(', ') : 'none') + '</span>' +
               (pick ? '<br><button type="button" class="mu-tog' + (t.indexOf(pick) >= 0 ? ' on' : '') + '" data-act="tag" data-id="' + esc(r.id) + '">' + esc(pick) + '</button>' : '')
             : '&mdash;') + '</td>' +
-          '<td class="mu-state mu-state-' + (r.state || 'wait') + '">' + (r.stateHtml || (pagey ? (r.include ? 'waiting' : 'left out') : '&mdash;')) + '</td></tr>';
+          '<td class="mu-state mu-state-' + (r.state || 'wait') + '">' + (r.stateHtml || (!r.include ? 'left out' : pagey ? 'waiting' : 'on the roster')) + '</td></tr>';
       }).join('');
-      var pages = rows.filter(function (r) { return r.include && r.kind !== 'official'; });
+      var pages = rows.filter(function (r) { return r.include && (r.kind === 'new' || r.kind === 'update'); });
       var upd = pages.filter(function (r) { return r.kind === 'update'; }).length;
+      var here = rows.filter(function (r) { return r.include && r.kind === 'existing'; }).length;
       var untagged = pages.filter(function (r) { return !rowTags(r).length; }).length;
-      $('c-summary').innerHTML = pages.length + ' page' + (pages.length === 1 ? '' : 's') +
+      $('c-summary').innerHTML = pages.length + ' page' + (pages.length === 1 ? '' : 's') + ' to write' +
         (upd ? ' (' + upd + ' updating pages you already have)' : '') +
-        (untagged ? ', ' + untagged + ' still untagged' : '') + '.';
+        (untagged ? ', ' + untagged + ' still untagged' : '') +
+        (here ? '. ' + here + ' already on the wiki under other creators: the script uses those pages' : '') + '.';
       drawJinx();
     }
     function byId(id) { for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) return rows[i]; return null; }
@@ -466,7 +486,7 @@
       var r = byId(e.target.getAttribute('data-id') || ''); if (!r) return;
       var act = e.target.getAttribute('data-act');
       if (act === 'inc') r.include = e.target.checked;
-      if (act === 'target') { r.kind = e.target.value ? 'update' : 'new'; r.slug = ''; }
+      if (act === 'target') { r.kind = e.target.value; r.slug = ''; }
       if (act === 'icon') r.linkArt = e.target.value === 'link';
       draw();
     });
@@ -482,7 +502,7 @@
     function tagAll(on) {
       var t = $('t-pick').value; if (!t) { alert('Pick a tag first.'); return; }
       rows.forEach(function (r) {
-        if (r.kind === 'official' || !r.include) return;
+        if (!(r.kind === 'new' || r.kind === 'update') || !r.include) return;
         var list = rowTags(r).filter(function (x) { return x !== t; });
         if (on) list.push(t);
         tags[r.id] = list;
@@ -500,7 +520,7 @@
        limit. */
     $('t-auto').addEventListener('click', function () {
       var todo = rows.filter(function (r) {
-        return r.include && r.kind !== 'official' && !r.done && String(r.entry.ability || '').trim();
+        return r.include && (r.kind === 'new' || r.kind === 'update') && !r.done && String(r.entry.ability || '').trim();
       });
       if (!todo.length) return;
       var btn = $('t-auto'), done = 0, quickOnly = false;
@@ -539,10 +559,10 @@
     function drawJinx() {
       var j = I.jinxes(bundle, rows.map(function (r) {
         return Object.assign({}, r, { slug: r.slug || 'pending-' + r.id });
-      }), $('o-dest').value, officialNames);
+      }), $('o-dest').value, officialNames, wiki);
       var bits = [];
       if (j.byName.length) bits.push('<li>' + j.byName.length + ' jinx' + (j.byName.length === 1 ? ' names' : 'es name') +
-        ' a character not being imported, so it is matched by name and may land on another page of that name: ' +
+        ' a character that is not in this file and has no single page here, so it is stored by name only: ' +
         esc(j.byName.slice(0, 8).join('; ')) + (j.byName.length > 8 ? '; and more' : '') + '.</li>');
       if (j.dropped.length) bits.push('<li>' + j.dropped.length + ' jinx' + (j.dropped.length === 1 ? '' : 'es') +
         ' cannot be stored because neither character gets a page here: ' + esc(j.dropped.slice(0, 8).join('; ')) + '.</li>');
@@ -656,6 +676,8 @@
       var type = 'character', slug = r.slug, update = r.kind === 'update';
       var c = I.character(r.entry, opts, rowTags(r));
       c.jinxes = jinxList;
+      // A night position the source listed it at but gave no number for.
+      Object.assign(c, opts.night.positions[r.id] || {});
       var first = update ? loadPage(type, slug) : Promise.resolve(null);
       return first.then(function (page) {
         var plan = I.artPlan(page, opts.replaceArt), wrote = false, art = {};
@@ -690,7 +712,7 @@
       var target = $('o-settarget').value;
       var roster = I.roster(rows, dest);
       var extra = {
-        nightOrder: dest === 'script' ? I.nightOrder(bundle, rows) : null,
+        nightOrder: dest === 'script' ? (opts.night.nightOrder || I.nightOrder(bundle, rows)) : null,
         jinxEdits: jx.scriptAdds.length ? { add: jx.scriptAdds } : null
       };
       var meta = bundle.meta || {};
@@ -749,7 +771,7 @@
         meta: (bundle.script || []).filter(function (e) { return e && e.id === '_meta'; })[0] ||
           { id: '_meta', name: (bundle.meta || {}).name || '', author: (bundle.meta || {}).author || '' }
       };
-      var todo = rows.filter(function (r) { return r.include && r.kind !== 'official'; });
+      var todo = rows.filter(function (r) { return r.include && (r.kind === 'new' || r.kind === 'update'); });
       if (!todo.length && opts.destination === 'characters') { say('run', 'err', 'Nothing is ticked to import.'); return; }
       running = true;
       $('go').disabled = $('read-url').disabled = $('read-json').disabled = true;
@@ -769,7 +791,8 @@
       });
       say('run', 'work', 'Working&hellip; leave this page open.');
       settle.then(function () {
-        var jx = I.jinxes(bundle, rows, opts.destination, officialNames);
+        var jx = I.jinxes(bundle, rows, opts.destination, officialNames, wiki);
+        opts.night = I.metaNight(bundle, rows, nightKnown);
         var chain = Promise.resolve();
         todo.forEach(function (r, n) {
           chain = chain.then(function () {

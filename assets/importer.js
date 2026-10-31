@@ -14,6 +14,10 @@
      (merge(): mechanics from the source, everything else the page's), unless
      the person switches the row to "New page". Shown in the table before
      anything is written, never decided silently.
+   - A character already on the wiki under somebody else (same name AND same
+     ability) is not copied: the script points at that page. A script full of
+     other people's characters would otherwise make a second page of each,
+     credited to whoever is importing.
    - Everything else is a new page.
    - A jinx is written onto whichever end gets a page here; two official
      ends become the script's own rule (jinxEdits.add). */
@@ -35,6 +39,11 @@
   var FILL_EMPTY = ['lede', 'summaryBullets', 'howToRun', 'callout', 'examples',
     'tips', 'iconBy', 'customBoxes'];
 
+  // The ability as words, the same fold as OfficialRoles.abilityKey: "&" is
+  // "and", punctuation and case are noise, numbers are not.
+  function abilityKey(s) {
+    return String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  }
   function key(s) {
     return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9]/g, '');
@@ -75,9 +84,22 @@
     return out;
   }
 
-  /* One row per character in the source. `kind` is official | update | new;
-     `include` is the tick in the table; `target` the page an update lands on. */
-  function plan(bundle, own) {
+  /* The wiki's own pages by name (the grid feed's rows), for spotting a
+     character that is already here and for naming a jinx's other end. */
+  function wikiIndex(list) {
+    var out = {};
+    (Array.isArray(list) ? list : []).forEach(function (c) {
+      var k = c && key(c.name);
+      if (k && c.slug) (out[k] = out[k] || []).push(c);
+    });
+    return out;
+  }
+
+  /* One row per character in the source. `kind` is official | update |
+     existing | new; `include` is the tick in the table; `target` the page an
+     update lands on, or the page an existing character points at. `wiki` is
+     wikiIndex() of the published pages. */
+  function plan(bundle, own, wiki) {
     var used = {};
     return (bundle.characters || []).filter(function (e) {
       return key(e.id) !== CREDITS_ID;
@@ -90,6 +112,16 @@
       var mine = (own && own[key(e.name)]) || [];
       for (var i = 0; i < mine.length; i++) {
         if (!used[mine[i]]) { row.kind = 'update'; row.target = mine[i]; used[mine[i]] = 1; break; }
+      }
+      if (row.kind === 'new' && wiki && row.include) {
+        var ab = abilityKey(e.ability);
+        var same = (wiki[key(e.name)] || []).filter(function (c) {
+          return !used[c.slug] && abilityKey(c.ability) === ab;
+        });
+        if (same.length) {
+          row.kind = 'existing'; row.target = same[0].slug; used[same[0].slug] = 1;
+          row.note = 'already on the wiki' + (same[0].creator ? ' by ' + same[0].creator : '');
+        }
       }
       return row;
     });
@@ -194,9 +226,15 @@
     };
   }
 
-  // A row that gets a page here, and its identity once settled.
+  // A row this import writes a page for, and its identity once settled.
   function pageSlug(row) {
-    return row && row.include && row.kind !== 'official' ? (row.slug || '') : '';
+    return row && row.include && (row.kind === 'new' || row.kind === 'update') ? (row.slug || '') : '';
+  }
+  // Any page on this wiki a row stands for: one this import writes, or one
+  // already here that the import only points at.
+  function wikiSlug(row) {
+    if (row && row.include && row.kind === 'existing') return row.target;
+    return pageSlug(row);
   }
   // What a row puts on a script roster: its page, or off-{id} for an official.
   function rosterSlug(row) {
@@ -205,7 +243,7 @@
       var o = row.entry.official || {};
       return o.slug || (o.id ? 'off-' + key(o.id) : '');
     }
-    return pageSlug(row);
+    return wikiSlug(row);
   }
   function roster(rows, destination) {
     return rows.map(rosterSlug).filter(function (s) {
@@ -219,12 +257,24 @@
      official roster, so a jinx with an official character outside the source
      is named properly.
 
+     `wiki` is wikiIndex(): a jinx with a character outside the source is
+     pointed at its page when exactly one page here has that name.
+
      -> {byOwner: {identity: [jinx]}, scriptAdds: [{a, b, text}],
          dropped: [label], byName: [label]} — byName are jinxes whose other end
-     is neither in the source nor official: stored by name, which more than one
-     page may answer to. */
-  function jinxes(bundle, rows, destination, officialNames) {
+     is neither in the source, official, nor one page here: stored by name,
+     which more than one page (or none) may answer to. A jinx between a page
+     that is already here and a character with no page of its own is left to
+     the page that is already here. */
+  // "matsuraid_hblreleased" -> "Matsuraid": an export's id is the name plus
+  // the project it came from.
+  function refName(ref) {
+    var n = String(ref || '').replace(/_.*$/, '').replace(/[-_]+/g, ' ').trim();
+    return n ? n.charAt(0).toUpperCase() + n.slice(1) : String(ref || '');
+  }
+  function jinxes(bundle, rows, destination, officialNames, wiki) {
     officialNames = officialNames || {};
+    wiki = wiki || {};
     var out = { byOwner: {}, scriptAdds: [], dropped: [], byName: [] };
     var index = {};
     rows.forEach(function (r) {
@@ -250,21 +300,77 @@
       var aPage = pageSlug(p.a), bPage = pageSlug(p.b);
       if (aPage || bPage) {
         var other = aPage ? p.b : p.a, ref = aPage ? p.bRef : p.aRef;
-        var jx = { name: other ? other.name : (officialNames[key(ref)] || ref), text: p.text };
+        var official = officialNames[key(ref)];
+        var jx = { name: other ? other.name : (official || refName(ref)), text: p.text };
         var oid = String(ref || '').toLowerCase();
-        if (pageSlug(other)) jx.slug = pageSlug(other);
+        var here = !other && !official ? (wiki[key(jx.name)] || []) : [];
+        if (wikiSlug(other)) jx.slug = wikiSlug(other);
         else if (other && other.kind === 'official' && other.entry.official) jx.id = other.entry.official.id;
+        else if (here.length === 1) jx.slug = here[0].slug;
         else if (/^[a-z0-9_-]{1,80}$/.test(oid)) jx.id = oid;
-        if (!jx.slug && !(other && other.kind === 'official') &&
-            !officialNames[key(other ? other.name : ref)]) out.byName.push(label);
+        if (!jx.slug && !(other && other.kind === 'official') && !official) {
+          out.byName.push(label + (here.length ? ' (' + here.length + ' pages have that name)' : ' (no page here by that name)'));
+        }
         var owner = aPage || bPage;
         (out.byOwner[owner] = out.byOwner[owner] || []).push(jx);
         return;
       }
+      // Already here: the page that is already here carries its own jinxes.
+      if ((p.a && p.a.kind === 'existing') || (p.b && p.b.kind === 'existing')) return;
       var a = rosterSlug(p.a), b = rosterSlug(p.b);
       if (a && b && destination === 'script') out.scriptAdds.push({ a: a, b: b, text: p.text });
       else out.dropped.push(label);
     });
+    return out;
+  }
+
+  /* A script JSON's own night order: _meta.firstNight / otherNight, lists of
+     ids with dusk, minioninfo, demoninfo and dawn among them. It becomes the
+     script's arranged nightOrder (the steps as '@dusk' and so on), and it
+     settles a second thing: a character listed there that carries no number
+     of its own does wake, so the wiki needs a number for it, or it drops out
+     of every night order (only a number above 0 puts a character on one). It
+     gets one between its listed neighbours' numbers. `known` is {key: {
+     firstNight, otherNight}} for the official characters and the steps
+     (assets/night-order.json).
+     -> {nightOrder: {first, other} | null, positions: {rowId: {firstNight?,
+         otherNight?}}} */
+  var STEPS = { dusk: 1, minioninfo: 1, demoninfo: 1, dawn: 1 };
+  function metaNight(bundle, rows, known) {
+    known = known || {};
+    var meta = (bundle.script || []).filter(function (e) { return e && e.id === '_meta'; })[0] || {};
+    var index = {};
+    rows.forEach(function (r) {
+      [r.id, r.name].forEach(function (k) { k = key(k); if (k && !index[k]) index[k] = r; });
+    });
+    var out = { nightOrder: null, positions: {} }, order = {};
+    [['first', 'firstNight'], ['other', 'otherNight']].forEach(function (p) {
+      var list = Array.isArray(meta[p[1]]) ? meta[p[1]] : [];
+      var items = [];
+      list.forEach(function (id) {
+        var k = key(id);
+        if (STEPS[k]) { items.push({ slug: '@' + k, n: (known[k] || {})[p[1]] }); return; }
+        var r = index[k], slug = rosterSlug(r);
+        if (!slug) return;
+        var n = Number(r.entry[p[1]]) || (known[key(r.name)] || {})[p[1]] || 0;
+        items.push({ slug: slug, n: n, row: r.kind === 'new' || r.kind === 'update' ? r : null });
+      });
+      if (!items.length) return;
+      order[p[0]] = items.map(function (it) { return it.slug; });
+      // Missing numbers: spread between the neighbours that have one.
+      items.forEach(function (it, i) {
+        if (!it.row || it.n > 0) return;
+        var lo = 0, hi = null, before = 0, after = 0;
+        for (var a = i - 1; a >= 0; a--) { before++; if (items[a].n > 0) { lo = items[a].n; break; } }
+        for (var b = i + 1; b < items.length; b++) { after++; if (items[b].n > 0) { hi = items[b].n; break; } }
+        // Dawn is 9999, a marker rather than a position: spreading towards it
+        // would number a character in the thousands.
+        var n = hi != null && hi > lo && hi < 9999 ? lo + (hi - lo) * before / (before + after) : lo + 0.01 * before;
+        it.n = Math.round(Math.max(n, 0.01) * 10000) / 10000;
+        (out.positions[it.row.id] = out.positions[it.row.id] || {})[p[1]] = it.n;
+      });
+    });
+    if (order.first || order.other) out.nightOrder = order;
     return out;
   }
 
@@ -377,9 +483,10 @@
 
   var api = {
     TEAMS: TEAMS, MECHANICS: MECHANICS, IF_PRESENT: IF_PRESENT, FILL_EMPTY: FILL_EMPTY,
-    key: key, ownIndex: ownIndex, plan: plan, character: character, merge: merge,
+    key: key, abilityKey: abilityKey, ownIndex: ownIndex, wikiIndex: wikiIndex, plan: plan,
+    character: character, merge: merge,
     artPlan: artPlan, rosterSlug: rosterSlug, roster: roster, jinxes: jinxes,
-    nightOrder: nightOrder, setPage: setPage, mergeSetPage: mergeSetPage,
+    nightOrder: nightOrder, metaNight: metaNight, setPage: setPage, mergeSetPage: mergeSetPage,
     changelogPage: changelogPage
   };
   root.Importer = api;

@@ -781,7 +781,10 @@ function strList(v) {
    that is a bare link, or an all-caps notice carrying one, is not a night
    instruction and would print on 40 wiki pages as if it were. */
 function cleanNightReminder(s) {
-  const text = String(s || '').trim();
+  // An export carries HTML entities ("wake evil players &amp; show…") and the
+  // app's ':reminder:' token marks, which mean nothing in a sentence; the
+  // official characters lose theirs the same way (official-roles.js).
+  const text = decodeEntities(String(s || '')).replace(/:reminder:/g, '').replace(/\s{2,}/g, ' ').trim();
   if (!text) return '';
   if (/https?:\/\//i.test(text) && /THIS IS NOT|^\s*https?:\/\//i.test(text)) return '';
   return text;
