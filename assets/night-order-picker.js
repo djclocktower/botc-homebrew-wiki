@@ -210,12 +210,9 @@
       var v = parseFloat(p.field.value);
       if (!DATA || !(v > 0) || v === Math.floor(v)) return showResult(null);
       var base = Math.floor(v);
-      // Two can share a position (Tor and Minion Info are both 19): name both.
-      var hits = DATA.filter(function (c) { return pos(c, key) === base && (c[key] > 0 || c[key] === -1); });
-      var match = hits.length > 1
-        ? { name: hits.map(function (c) { return c.name; }).join(' / '), step: true }
-        : hits[0] || null;
-      if (match && hits.length > 1) match[key] = base;
+      var match = null;
+      for (var i = 0; i < DATA.length; i++)
+        if (pos(DATA[i], key) === base && (DATA[i][key] > 0 || DATA[i][key] === -1)) { match = DATA[i]; break; }
       showResult(match, p.field.value);
     };
 

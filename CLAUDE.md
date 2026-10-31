@@ -1624,7 +1624,7 @@ exported none):
 The night is not only characters: dusk opens it, dawn closes it, and the first
 night has the minion and demon info steps in the middle. Those live in
 `assets/night-order.json` under `meta`, positioned from their neighbours on the
-official sheet (minion info between the Magician and the Snitch, demon info
+official sheet (minion info after Tor, between the Magician and the Snitch, demon info
 between the Summoner and the King). Whoever loads that file hands them to
 `PageRender.setNightMeta()`; **without them the sequences are not written at
 all**, rather than publish a night order those steps are missing from.
