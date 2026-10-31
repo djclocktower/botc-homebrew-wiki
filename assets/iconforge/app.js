@@ -707,7 +707,7 @@ $('if-stage-inner').addEventListener('pointerdown', (e) => {
 $('if-fills-clear').addEventListener('click', () => setOpts({ bucketFills: [] }));
 
 /* ── texture picker ─────────────────────────────────────────────── */
-COLOR_TEXTURES.forEach((t) => {
+function addTexButton(t) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'if-tex';
@@ -739,7 +739,23 @@ COLOR_TEXTURES.forEach((t) => {
   b.appendChild(cap);
   b.addEventListener('click', () => pickTexture(t.id));
   $('if-textures').appendChild(b);
-});
+}
+COLOR_TEXTURES.forEach(addTexButton);
+
+/* The Starlit Gallery's own textures (/starlit), after the official sheets.
+   Pushed onto COLOR_TEXTURES, which is what loadTexturesFor() looks ids up
+   in. Resolves once they are in, so a texture the gallery handed over can be
+   picked. */
+const starlitTextures = fetch('/api/starlit?textures=1', { credentials: 'same-origin' })
+  .then((r) => (r.ok ? r.json() : { textures: [] }))
+  .then((d) => {
+    (d.textures || []).forEach((t) => {
+      const def = { id: 'starlit-' + t.id, label: t.name, sub: 'Starlit Gallery', file: t.image + '?v=' + t.v };
+      COLOR_TEXTURES.push(def);
+      addTexButton(def);
+    });
+  })
+  .catch(() => {});
 
 function pickTexture(id) {
   colorTexId = id;
@@ -1012,3 +1028,29 @@ $('if-save').addEventListener('click', async () => {
 pickTexture(colorTexId);
 syncControls();
 sizeStage();
+
+/* "Open in Icon Forge" on the Starlit Gallery leaves the icon's two layers,
+   flattened plain black over plain white, in localStorage and sends the
+   reader to iconforge?from=starlit. Read once and removed. The white layer
+   IS the icon's outline, so the forge's own border and hole filling start
+   off, and the gallery's texture is picked when the forge has it. */
+if (new URLSearchParams(location.search).get('from') === 'starlit') {
+  let handoff = null;
+  try {
+    handoff = JSON.parse(localStorage.getItem('botc_starlit_forge') || 'null');
+    localStorage.removeItem('botc_starlit_forge');
+  } catch (e) { /* nothing handed over */ }
+  if (handoff && typeof handoff.png === 'string' && handoff.png.startsWith('data:image/png')) {
+    fetch(handoff.png)
+      .then((r) => r.blob())
+      .then((blob) => onFile(new File([blob], String(handoff.name || 'Starlit icon') + '.png', { type: 'image/png' })))
+      .then(() => {
+        setOpts({ borderWidth: 0, fillHoles: false, innerDetails: false });
+        return starlitTextures;
+      })
+      .then(() => {
+        if (handoff.tex && COLOR_TEXTURES.some((t) => t.id === handoff.tex)) pickTexture(handoff.tex);
+      })
+      .catch(() => toast('The icon from the Starlit Gallery could not be opened.', 'err'));
+  }
+}

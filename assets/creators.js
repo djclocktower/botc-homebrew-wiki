@@ -234,6 +234,16 @@
     if (m.u && String(m.u).toLowerCase() !== String(who).toLowerCase()) who += ' (@' + m.u + ')';
     return who;
   }
+  /* A pictographic glyph (the Gemini sign U+264A, the skull U+2620 …) is one
+     a phone paints as a coloured emoji, which clashes with the wiki's look, so where
+     a mark is DRAWN each one asks for its plain text form (U+FE0E). One that
+     already carries a variation selector stays as its owner typed it, and the
+     stored glyph is untouched (markKey ignores selectors). Built with
+     new RegExp so an engine without \p{...} keeps the marks as typed rather
+     than failing to load this file. */
+  var PICTOGRAPH = null;
+  try { PICTOGRAPH = new RegExp('(\\p{Extended_Pictographic})(?![\\uFE0E\\uFE0F])', 'gu'); } catch (e) { /* as typed */ }
+  function textGlyph(g) { return PICTOGRAPH ? String(g).replace(PICTOGRAPH, '$1\uFE0E') : String(g); }
   /* A mark as markup. The tooltip is CSS (data-tip, .creator-mark in
      styles.css) so it shows at once on hover and on a tap (tabindex makes a
      tap focus it); aria-label says the same to a screen reader. */
@@ -244,7 +254,7 @@
     var cls = 'creator-mark' + (opts.cls ? ' ' + opts.cls : '');
     var a = ' data-tip="' + esc(tip) + '" role="img" aria-label="' + esc(tip) + '"' +
       (opts.noFocus ? '' : ' tabindex="0"');
-    return '<span class="' + cls + '"' + a + '>' + esc(m.g) + '</span>';
+    return '<span class="' + cls + '"' + a + '>' + esc(textGlyph(m.g)) + '</span>';
   }
   function markHTMLFor(name, opts) { return markHTML(creatorMark(name), opts); }
 

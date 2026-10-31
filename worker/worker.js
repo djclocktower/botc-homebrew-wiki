@@ -126,6 +126,14 @@
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
  *
+ *   -- the Starlit Gallery (/starlit) --
+ *   GET  /api/starlit         -> every icon and texture (?textures=1: just the
+ *                                textures, for Icon Forge), + canUpload
+ *   POST /api/starlit         -> the gallery team only: {action: save | delete
+ *                                | texture | delete-texture}. Keys are minted
+ *                                here, like /api/attachment
+ *   POST /api/admin/starlit-uploaders -> admin: {names} who may upload
+ *
  *   -- importing a Bloodstar project (/bloodstar) --
  *   GET  /api/bloodstar       -> read a project on Bloodstar: fetches its
  *                                script.json AND its almanac.html and returns
@@ -586,12 +594,13 @@ const THUMB_PREFIX = 'thumb/';
    and the blank one is 172 bytes, so anywhere in that gap is safe, and an
    icon plain enough to land under it costs only the original picture. */
 const THUMB_MIN_BYTES = 512;
-// avatars/ and attachments/ are servable from R2 but NOT uploadable through
-// the generic /api/upload — profile pictures only go through
+// avatars/, attachments/ and starlit/ are servable from R2 but NOT uploadable
+// through the generic /api/upload — profile pictures only go through
 // /api/account/avatar, which pins the key to the logged-in user's own slot,
-// and conversation images only through /api/attachment, which NAMES the key
-// itself (see ATTACH_PREFIX below).
-const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/']);
+// conversation images only through /api/attachment, and the Starlit Gallery's
+// files only through /api/starlit; those two NAME the key themselves (see
+// ATTACH_PREFIX and STARLIT_PREFIX).
+const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'starlit/']);
 
 /* ---- conversation images (comments + modmail) ----
    Every other R2 prefix names the PAGE an image belongs to, so who may write
@@ -2270,6 +2279,116 @@ async function ensureFavoritesTable(env) {
   _favoritesReady = true;
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* ---- the Starlit Gallery (/starlit) ----
+   Character icons drawn by Harry & Co. & Bendan, each kept as two layers: a
+   BLACK one (the figure, which the gallery fills with a colour texture) over
+   a WHITE one (the outline, filled with parchment), plus a small textured
+   thumbnail for the grid. The browser does all the drawing (assets/starlit.js);
+   this only keeps the files and the list. Only an admin and the accounts an
+   admin names (settings `starlit_uploaders`) may add, change or remove
+   anything. Keys are minted here, never by the client — like ATTACH_PREFIX —
+   so /api/upload cannot write into starlit/ at all. See "The Starlit Gallery"
+   in CLAUDE.md. */
+const STARLIT_PREFIX = 'starlit/';
+const STARLIT_UPLOADERS_KEY = 'starlit_uploaders';
+const STARLIT_IMAGE_BYTES = 4 * 1024 * 1024;   // a layer or a texture, before base64
+const STARLIT_THUMB_BYTES = 400 * 1024;
+const STARLIT_TAGS_MAX = 20;
+let _starlitReady = false;
+async function ensureStarlitTables(env) {
+  if (_starlitReady) return;
+  if (await schemaHas(env, { tables: { starlit_icons: [], starlit_textures: [] } })) { _starlitReady = true; return; }
+  // `tex` is the texture the icon is shown in by default (a built-in id such
+  // as 'red', or 'starlit-{n}' for one of the gallery's own).
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS starlit_icons (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       name        TEXT NOT NULL,
+       tags        TEXT NOT NULL DEFAULT '[]',
+       artist      TEXT NOT NULL DEFAULT '',
+       tex         TEXT NOT NULL DEFAULT '',
+       black       TEXT NOT NULL,
+       white       TEXT NOT NULL,
+       thumb       TEXT NOT NULL,
+       uploader_id INTEGER,
+       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS starlit_textures (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       name        TEXT NOT NULL,
+       image       TEXT NOT NULL,
+       uploader_id INTEGER,
+       created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _starlitReady = true;
+}
+async function starlitUploaders(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
+    .bind(STARLIT_UPLOADERS_KEY).first().catch(() => null);
+  let list;
+  try { list = JSON.parse((r && r.value) || '[]'); } catch { list = []; }
+  return (Array.isArray(list) ? list : []).filter(e => e && e.id != null);
+}
+async function canUploadStarlit(env, sess) {
+  if (!sess) return false;
+  if (sess.isAdmin) return true;
+  return (await starlitUploaders(env)).some(e => Number(e.id) === Number(sess.userId));
+}
+// One image off the wire: a data: URL whose declared type is one of `types`
+// and whose bytes really are that type, under `max` bytes. The same rules
+// /api/upload holds (an SVG is never on the list).
+function starlitImage(data, types, max) {
+  let s = String(data || ''), declared = '';
+  if (s.startsWith('data:')) {
+    declared = s.slice(5, s.indexOf(';')).toLowerCase().split(';')[0].trim();
+    s = s.slice(s.indexOf(',') + 1);
+  }
+  const kind = UPLOAD_CONTENT_TYPES[declared];
+  if (!kind || !types.includes(kind.type)) {
+    return { error: 'Images here must be ' + types.map(t => t.split('/')[1].toUpperCase()).join(' or ') + '.' };
+  }
+  let bytes;
+  try { bytes = base64ToBytes(s); } catch { return { error: 'That image could not be read.' }; }
+  if (!bytes.length) return { error: 'That image is empty.' };
+  if (bytes.length > max) return { error: 'That image is too large (' + Math.round(max / 1024) + ' KB max).' };
+  if (sniffImageType(bytes) !== kind.type) return { error: 'That file is not the kind of image it says it is.' };
+  return { bytes, type: kind.type, ext: kind.exts[0] };
+}
+async function putStarlitImage(env, sess, label, img) {
+  const key = STARLIT_PREFIX + randomToken().slice(0, 20) + '-' + label + '.' + img.ext;
+  await env.ART.put(key, img.bytes, {
+    httpMetadata: { contentType: img.type },
+    customMetadata: { owner: String(sess.userId) }
+  });
+  return key;
+}
+function starlitTags(v) {
+  const list = Array.isArray(v) ? v : String(v || '').split(',');
+  const out = [];
+  for (const raw of list) {
+    const t = String(raw || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (t && !out.includes(t)) out.push(t);
+    if (out.length >= STARLIT_TAGS_MAX) break;
+  }
+  return out;
+}
+function starlitIconOut(r) {
+  let tags;
+  try { tags = JSON.parse(r.tags || '[]'); } catch { tags = []; }
+  return {
+    id: r.id, name: r.name, tags: Array.isArray(tags) ? tags : [], artist: r.artist || '', tex: r.tex || '',
+    black: '/assets/' + r.black, white: '/assets/' + r.white, thumb: '/assets/' + r.thumb,
+    v: rowVersion(r.updated_at)
+  };
+}
+function starlitTextureOut(r) {
+  return { id: r.id, name: r.name, image: '/assets/' + r.image, v: rowVersion(r.created_at) };
+}
 
 /* The tag answer key: one row per character an admin checked on the
    dashboard ("Check tags"). `tags` is what the admin confirmed; `stored` and
@@ -9566,6 +9685,35 @@ const app = {
       return new Response(await cachedFeaturedBody(env, ctx, limit, cards, version), { headers });
     }
 
+    // ---------- THE STARLIT GALLERY ----------
+    // Every icon and texture, A to Z. ?textures=1 is just the textures (Icon
+    // Forge lists them in its picker). `canUpload` tells the page whether to
+    // show the gallery team's controls; an admin also gets who is on the team.
+    // Uncached: it is one small table, read when somebody opens the gallery.
+    if (method === 'GET' && path === '/api/starlit') {
+      const texOnly = url.searchParams.get('textures') === '1';
+      let icons = [], textures = [];
+      try {
+        textures = ((await env.DB.prepare('SELECT * FROM starlit_textures ORDER BY name COLLATE NOCASE, id').all()).results || [])
+          .map(starlitTextureOut);
+        if (!texOnly) {
+          icons = ((await env.DB.prepare('SELECT * FROM starlit_icons ORDER BY name COLLATE NOCASE, id').all()).results || [])
+            .map(starlitIconOut);
+        }
+      } catch (e) {
+        // Nothing uploaded yet: the tables are made by the first upload.
+        if (!isMissingSchema(e)) throw e;
+      }
+      if (texOnly) return jsonResponse({ textures });
+      const sess = await getSession(env, request);
+      const out = { icons, textures, canUpload: await canUploadStarlit(env, sess) };
+      if (sess && sess.isAdmin) {
+        out.isAdmin = true;
+        out.uploaders = (await starlitUploaders(env)).map(e => ({ username: e.username }));
+      }
+      return jsonResponse(out);
+    }
+
     // One article as JSON. Public for published articles; the admin editor
     // uses it to load drafts too.
     if (method === 'GET' && path === '/api/news/item') {
@@ -10777,7 +10925,7 @@ const app = {
       ]);
       const staticPages = ['', 'recent', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
-        'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
+        'steven-approved-order', 'rules', 'news', 'jinxes', 'articles', 'starlit'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -13310,7 +13458,7 @@ const app = {
       // /api/attachment does not: modmail uses it too, and the comment it
       // would belong to is refused here anyway.
       const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx',
-        '/api/page-rollback', '/api/suggest', '/api/suggestion'].includes(path);
+        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/starlit'].includes(path);
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -13789,6 +13937,115 @@ const app = {
         });
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
         return jsonResponse({ ok: true, path: '/assets/' + key });
+      }
+
+      /* ---- the Starlit Gallery: {action, ...} ----
+           save            {id?, name, tags, artist, tex, black?, white?, thumb?}
+                           a new icon needs all three images; an edit sends
+                           only the ones it replaces
+           delete          {id}
+           texture         {name, image}
+           delete-texture  {id}
+         The gallery team only (canUploadStarlit). Every file gets a fresh key,
+         so a replaced layer is a new URL and nothing cached can show the old
+         one; the old file is deleted once the row points elsewhere. The log
+         actions are deliberately not in FEED_CHANGING_ACTIONS: nothing on the
+         rest of the wiki reads the gallery, so it must not roll its caches. */
+      if (path === '/api/starlit') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
+        if (!await canUploadStarlit(env, sess)) {
+          return jsonResponse({ error: 'Only the Starlit Gallery team can change the gallery.' }, { status: 403 });
+        }
+        const b = await request.json().catch(() => ({}));
+        await ensureStarlitTables(env);
+        const id = Math.round(Number(b.id)) || 0;
+        const dropFiles = keys => env.ART.delete(keys.filter(Boolean)).catch(() => {});
+
+        if (b.action === 'save') {
+          const name = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+          if (!name) return jsonResponse({ error: 'Give the icon a name.' }, { status: 400 });
+          const row = id ? await env.DB.prepare('SELECT * FROM starlit_icons WHERE id=?').bind(id).first() : null;
+          if (id && !row) return jsonResponse({ error: 'That icon is not in the gallery any more.' }, { status: 404 });
+          const imgs = {};
+          for (const [field, types, max] of [
+            ['black', ['image/png', 'image/webp'], STARLIT_IMAGE_BYTES],
+            ['white', ['image/png', 'image/webp'], STARLIT_IMAGE_BYTES],
+            ['thumb', ['image/webp', 'image/png'], STARLIT_THUMB_BYTES]
+          ]) {
+            if (!b[field]) {
+              if (!row) return jsonResponse({ error: 'A new icon needs its black layer, its white layer and a preview.' }, { status: 400 });
+              continue;
+            }
+            const img = starlitImage(b[field], types, max);
+            if (img.error) return jsonResponse({ error: img.error }, { status: 400 });
+            imgs[field] = img;
+          }
+          if (Object.keys(imgs).length) {
+            const limited = await writeLimited(env, request, sess, 'upload');
+            if (limited) return limited;
+          }
+          const keys = {};
+          for (const [field, img] of Object.entries(imgs)) keys[field] = await putStarlitImage(env, sess, field, img);
+          const fields = {
+            name, tags: JSON.stringify(starlitTags(b.tags)),
+            artist: String(b.artist || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+            tex: String(b.tex || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40)
+          };
+          let saved;
+          if (row) {
+            const set = { ...fields, ...keys };
+            await env.DB.prepare(
+              `UPDATE starlit_icons SET ${Object.keys(set).map(k => k + '=?').join(', ')}, updated_at=datetime('now') WHERE id=?`
+            ).bind(...Object.values(set), id).run();
+            await dropFiles(Object.keys(keys).map(k => row[k]));
+            saved = await env.DB.prepare('SELECT * FROM starlit_icons WHERE id=?').bind(id).first();
+          } else {
+            const r = await env.DB.prepare(
+              `INSERT INTO starlit_icons (name, tags, artist, tex, black, white, thumb, uploader_id)
+               VALUES (?,?,?,?,?,?,?,?)`
+            ).bind(fields.name, fields.tags, fields.artist, fields.tex, keys.black, keys.white, keys.thumb, sess.userId).run();
+            saved = await env.DB.prepare('SELECT * FROM starlit_icons WHERE id=?')
+              .bind(r && r.meta && r.meta.last_row_id).first();
+          }
+          await logActivity(env, sess, row ? 'starlit-edit' : 'starlit-add', 'starlit', String(saved.id), saved.name);
+          return jsonResponse({ ok: true, icon: starlitIconOut(saved) });
+        }
+
+        if (b.action === 'delete') {
+          const row = await env.DB.prepare('SELECT * FROM starlit_icons WHERE id=?').bind(id).first();
+          if (!row) return jsonResponse({ ok: true });
+          await env.DB.prepare('DELETE FROM starlit_icons WHERE id=?').bind(id).run();
+          await dropFiles([row.black, row.white, row.thumb]);
+          await logActivity(env, sess, 'starlit-delete', 'starlit', String(id), row.name);
+          return jsonResponse({ ok: true });
+        }
+
+        if (b.action === 'texture') {
+          const name = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+          if (!name) return jsonResponse({ error: 'Give the texture a name.' }, { status: 400 });
+          const img = starlitImage(b.image, ['image/png', 'image/jpeg', 'image/webp'], STARLIT_IMAGE_BYTES);
+          if (img.error) return jsonResponse({ error: img.error }, { status: 400 });
+          const limited = await writeLimited(env, request, sess, 'upload');
+          if (limited) return limited;
+          const key = await putStarlitImage(env, sess, 'texture', img);
+          const r = await env.DB.prepare('INSERT INTO starlit_textures (name, image, uploader_id) VALUES (?,?,?)')
+            .bind(name, key, sess.userId).run();
+          const saved = await env.DB.prepare('SELECT * FROM starlit_textures WHERE id=?')
+            .bind(r && r.meta && r.meta.last_row_id).first();
+          await logActivity(env, sess, 'starlit-texture', 'starlit', 'texture-' + saved.id, name);
+          return jsonResponse({ ok: true, texture: starlitTextureOut(saved) });
+        }
+
+        if (b.action === 'delete-texture') {
+          const row = await env.DB.prepare('SELECT * FROM starlit_textures WHERE id=?').bind(id).first();
+          if (!row) return jsonResponse({ ok: true });
+          await env.DB.prepare('DELETE FROM starlit_textures WHERE id=?').bind(id).run();
+          await dropFiles([row.image]);
+          await logActivity(env, sess, 'starlit-texture-delete', 'starlit', 'texture-' + id, row.name);
+          return jsonResponse({ ok: true });
+        }
+
+        return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
       }
 
       /* ---- copy one image from Bloodstar straight into R2 ----
@@ -17129,6 +17386,23 @@ const app = {
           ok: true, slug, featured: on,
           articles: (await featuredArticles(env, FEATURED_ARTICLES_MAX, { all: true })).articles
         });
+      }
+
+      // ---- admin: who may upload to the Starlit Gallery ----
+      // {names: ['harry', '@bendan']}: the whole list, replacing the old one.
+      // Resolved like a page's approved editors (sanitizeEditors), so the id
+      // is the authority and a name nobody answers to comes back as unknown
+      // rather than becoming a permission.
+      if (path === '/api/admin/starlit-uploaders') {
+        const b = await request.json().catch(() => ({}));
+        const names = (Array.isArray(b.names) ? b.names : []).map(n => String(n || '').trim().replace(/^@+/, ''));
+        const { list, unknown } = await sanitizeEditors(env, names, null);
+        await env.DB.prepare(
+          `INSERT INTO settings (key,value) VALUES (?,?)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+        ).bind(STARLIT_UPLOADERS_KEY, JSON.stringify(list)).run();
+        await logActivity(env, sess, 'starlit-uploaders', 'starlit', null, list.map(e => '@' + e.username).join(', '));
+        return jsonResponse({ ok: true, uploaders: list.map(e => ({ username: e.username })), unknown });
       }
 
       // ---- admin: make a set's custom page a standalone article ----

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script>if (/[?&]pick=1(&|$)/.test(location.search)) document.documentElement.classList.add('sg-pick');</script>
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starlit Gallery — BOTC HomeBrew Wiki</title>
+<meta name="description" content="The Starlit Gallery: character icons drawn by Harry &amp; Co. &amp; Bendan. Pick a texture, switch the whites, blacks and shadow on or off, and download a PNG.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Starlit Gallery">
+<meta property="og:description" content="Character icons by Harry &amp; Co. &amp; Bendan, in any texture, ready to download.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* ─── Starlit Gallery ─────────────────────────────────────────────
+   Page-local. Shared colours come from styles.css. The grid shows each
+   icon's stored thumbnail; the window that opens on a tap draws the icon
+   live from its two layers (assets/starlit.js). */
+[hidden] { display: none !important; }
+
+.sg-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 20px); }
+.sg-hero-mark { width: clamp(44px, 7vw, 72px); height: auto; color: var(--parch); filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); flex-shrink: 0; }
+.home-hero .sg-hero-row h1 { margin: 0; }
+.sg-by { margin-top: 12px !important; }
+.sg-by a { color: var(--parch); text-decoration: none; border-bottom: 1px solid rgba(236,225,200,.4); }
+.sg-by a:hover { border-bottom-color: var(--parch); }
+.sg-by .creator-mark { color: var(--parch); }
+
+/* Search, tags, random. */
+.sg-bar {
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  padding: 12px 14px; margin-bottom: 14px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.sg-search {
+  flex: 1 1 220px; min-width: 0;
+  font: inherit; font-size: 1rem; color: var(--maroon);
+  background: #fffdf8; border: 1px solid var(--parch-frame); padding: 8px 10px;
+}
+.sg-tags { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.sg-tags:empty { display: none; }
+.sg-chip {
+  font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .03em; cursor: pointer;
+  background: #fffdf8; color: var(--maroon); border: 1px solid var(--parch-frame); padding: 4px 10px;
+}
+.sg-chip:hover { background: rgba(91,31,33,.08); }
+.sg-chip[aria-pressed=true] { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.sg-chip small { opacity: .65; margin-left: 4px; }
+.sg-btn {
+  font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .03em; font-size: .88rem;
+  cursor: pointer; border: none; padding: 9px 14px; color: #f3ead4;
+  background: linear-gradient(180deg, #8a3526, var(--maroon));
+  display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+}
+.sg-btn:hover { filter: brightness(1.1); }
+.sg-btn:disabled { opacity: .45; cursor: default; filter: none; }
+.sg-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+.sg-btn-blue { background: linear-gradient(180deg, #2f6fb8, #1d4a80); }
+.sg-btn-green { background: linear-gradient(180deg, #2f7d3e, #1c5429); }
+.sg-btn-quiet { background: linear-gradient(180deg, #6b573d, #4a3c2a); }
+.sg-count { font-family: 'Roboto', sans-serif; font-size: .82rem; letter-spacing: .04em; color: rgba(236,225,200,.7); margin: 0 0 14px; }
+
+/* The grid. */
+.sg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
+.sg-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--card); border: 3px solid var(--parch-frame); padding: 10px 8px 9px;
+  cursor: pointer; font: inherit; color: var(--maroon); text-align: center;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.sg-tile:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(40,12,30,.4); }
+.sg-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+.sg-tile span {
+  font-family: 'Dumbledor2', serif; font-size: .98rem; letter-spacing: .03em; line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.sg-empty { color: rgba(236,225,200,.75); font-size: 1rem; padding: 20px 0; }
+
+/* Windows: the icon, and the gallery team's form. */
+.sg-modal {
+  position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-start; justify-content: center;
+  padding: 24px 14px; background: rgba(16,6,20,.82); overflow-y: auto; overscroll-behavior: contain;
+}
+.sg-card {
+  position: relative; width: 100%; max-width: 920px; margin: auto 0;
+  background-color: var(--parch); background-image: url('assets/parchment.webp'); background-size: cover;
+  border: 2px solid var(--parch-frame); color: var(--ink); padding: 18px 20px 20px;
+}
+.sg-card-narrow { max-width: 560px; }
+.sg-x {
+  position: absolute; top: 8px; right: 8px; width: 38px; height: 38px; padding: 9px;
+  background: none; border: 0; cursor: pointer; color: var(--maroon);
+}
+.sg-x svg { width: 100%; height: 100%; display: block; }
+.sg-title { font-family: 'Dumbledor2', serif; font-size: 1.5rem; letter-spacing: .04em; color: var(--maroon); margin: 0 40px 4px 0; overflow-wrap: anywhere; }
+.sg-d-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 330px); gap: 22px; align-items: start; }
+@media (max-width: 760px) { .sg-d-layout { grid-template-columns: minmax(0, 1fr); } }
+.sg-stage {
+  position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #4a2548, #1a0820 75%); border: 2px solid var(--parch-frame);
+}
+.sg-stage img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sg-stage-hint { font-size: .8rem; color: rgba(0,0,0,.6); margin: 6px 0 0; }
+.sg-credit { font-size: .95rem; margin: 0 0 10px; }
+.sg-credit a { color: var(--good-name); }
+.sg-d-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.sg-label {
+  display: block; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .74rem;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--maroon); margin: 0 0 6px;
+}
+.sg-texs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0 0 14px; }
+.sg-tex { padding: 0; cursor: pointer; overflow: hidden; background: none; border: 1px solid var(--parch-frame); font: inherit; text-align: left; }
+.sg-tex:hover { border-color: #8a7457; }
+.sg-tex[aria-pressed=true] { border-color: var(--maroon); box-shadow: 0 0 0 2px rgba(183,156,111,.75); }
+.sg-tex img, .sg-tex i { display: block; width: 100%; height: 32px; object-fit: cover; background: #e8dfc8; }
+.sg-tex b {
+  display: block; background: #3a1420; padding: 3px 6px 4px;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .7rem; letter-spacing: .03em; color: var(--parch);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sg-tex-own i { display: flex; align-items: center; justify-content: center; color: var(--maroon); font-size: 1.4rem; font-family: 'Roboto', sans-serif; }
+.sg-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 0 0 16px; }
+.sg-toggles label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: .95rem; color: var(--maroon); }
+.sg-toggles input { width: 18px; height: 18px; margin: 0; accent-color: var(--maroon); }
+.sg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.sg-actions .sg-btn { flex: 1 1 auto; justify-content: center; }
+.sg-size { font: inherit; font-size: .9rem; color: var(--maroon); background: #fffdf8; border: 1px solid var(--parch-frame); padding: 7px 8px; }
+.sg-manage { border-top: 1px solid rgba(180,160,120,.55); padding-top: 12px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+.sg-msg { font-size: .9rem; margin: 8px 0 0; color: var(--maroon); }
+.sg-msg.err { color: var(--evil); }
+.sg-msg:empty { display: none; }
+
+/* The gallery team's form. */
+.sg-form label.sg-f { display: block; margin: 0 0 12px; }
+.sg-form input[type=text], .sg-form select, .sg-team input[type=text] {
+  display: block; width: 100%; font: inherit; font-size: .98rem; color: var(--maroon);
+  background: #fffdf8; border: 1px solid var(--parch-frame); padding: 7px 9px; margin-top: 4px;
+}
+.sg-form input[type=file], .sg-team input[type=file] { display: block; margin-top: 4px; font-size: .9rem; max-width: 100%; }
+.sg-hint { display: block; font-size: .84rem; line-height: 1.45; color: rgba(0,0,0,.62); margin: 2px 0 0; }
+.sg-f-layers { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 14px; align-items: start; }
+@media (max-width: 480px) { .sg-f-layers { grid-template-columns: minmax(0, 1fr); } }
+.sg-f-preview { width: 150px; height: 150px; display: block; background: radial-gradient(circle at 50% 40%, #4a2548, #1a0820 75%); border: 2px solid var(--parch-frame); }
+
+/* The team panel under the grid. */
+.sg-team h3 { font-family: 'Dumbledor2', serif; font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon); margin: 18px 0 8px; }
+.sg-team h3:first-child { margin-top: 0; }
+.sg-tex-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
+.sg-tex-list li { display: flex; align-items: center; gap: 10px; padding: 0; margin: 0; }
+.sg-tex-list li::before { content: none; }
+.sg-tex-list img { width: 46px; height: 30px; flex-shrink: 0; object-fit: cover; border: 1px solid var(--parch-frame); }
+.sg-tex-list span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sg-link-btn { background: none; border: 0; padding: 2px 4px; cursor: pointer; font: inherit; font-size: .85rem; color: var(--evil); text-decoration: underline; }
+.sg-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; }
+.sg-row > .sg-btn { align-self: flex-end; }
+.sg-row > label { flex: 1 1 180px; min-width: 0; }
+
+/* Picking an icon for a character page: the gallery opens inside the editor
+   (assets/starlit-picker.js), so everything but the gallery itself goes. */
+html.sg-pick .topbar, html.sg-pick .nav-dropdown, html.sg-pick .site-announcement,
+html.sg-pick .home-hero, html.sg-pick .foot, html.sg-pick .sg-not-pick { display: none !important; }
+html.sg-pick body::before { background: var(--purple-deep); }
+html.sg-pick .home-panel { padding-top: 14px; }
+.sg-pick-head { color: var(--parch); font-family: 'Dumbledor2', serif; font-size: 1.3rem; letter-spacing: .04em; margin: 0 0 12px; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <div class="sg-hero-row">
+      <svg class="sg-hero-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5c.7 4.6 2.9 6.8 7.5 7.5-4.6.7-6.8 2.9-7.5 7.5-.7-4.6-2.9-6.8-7.5-7.5 4.6-.7 6.8-2.9 7.5-7.5Z"/><path d="M19 15.5c.3 1.9 1.1 2.7 3 3-1.9.3-2.7 1.1-3 3-.3-1.9-1.1-2.7-3-3 1.9-.3 2.7-1.1 3-3Z"/><path d="M5 2c.2 1.3.8 1.8 2 2-1.2.2-1.8.7-2 2-.2-1.3-.8-1.8-2-2 1.2-.2 1.8-.7 2-2Z"/></svg>
+      <h1>Starlit Gallery</h1>
+    </div>
+    <p class="sg-by">Character icons by <a href="author?a=Harry%20%26%20Co.%20%26%20Bendan" id="sg-by-link">Harry &amp; Co. &amp; Bendan</a></p>
+  </div>
+
+  <main class="home-panel" id="content">
+    <p class="sg-pick-head" id="sg-pick-head" hidden>Pick an icon from the Starlit Gallery</p>
+
+    <div class="sg-bar">
+      <input class="sg-search" id="sg-search" type="search" placeholder="Search icons by name or keyword…" autocomplete="off" enterkeyhint="search" aria-label="Search the Starlit Gallery">
+      <button type="button" class="sg-btn" id="sg-random" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
+        Random icon
+      </button>
+      <div class="sg-tags" id="sg-tags" role="group" aria-label="Keywords" data-user-content></div>
+    </div>
+    <p class="sg-count" id="sg-count">Loading the gallery…</p>
+    <div class="sg-grid" id="sg-grid" data-user-content></div>
+
+    <section class="landing-section sg-not-pick" style="margin-top:44px">
+      <h2 class="type-header">About the Gallery</h2>
+      <div class="type-rule"></div>
+      <div class="about-card">
+        <p>The Starlit Gallery is a collection of character icons drawn by <a href="author?a=Harry%20%26%20Co.%20%26%20Bendan">Harry &amp; Co. &amp; Bendan</a> for Blood on the Clocktower homebrew. Each icon is drawn in two layers, black and white: the black is filled with the texture you pick, the white becomes the parchment outline, and a shadow is dropped under both.</p>
+        <p>Pick an icon to choose its texture, switch the texture, whites, blacks and shadow on or off, then download it as a PNG or open it in <a href="iconforge">Icon Forge</a> to keep working on it. In the <a href="create">character editor</a>, <b>Browse the Starlit Gallery</b> puts one straight onto your character and credits the artist.</p>
+        <p>Every icon belongs to the artist credited on it. If you use one, credit the artist and the Starlit Gallery.</p>
+        <p class="about-disclaimer">Fan-made. Not affiliated with The Pandemonium Institute.</p>
+      </div>
+    </section>
+
+    <section class="landing-section sg-not-pick sg-team" id="sg-team" hidden>
+      <h2 class="type-header">For the Gallery Team</h2>
+      <div class="type-rule"></div>
+      <div class="about-card">
+        <h3>Icons</h3>
+        <p>Add an icon from its two layers. To change or remove one, open it and use the buttons at the bottom.</p>
+        <p><button type="button" class="sg-btn sg-btn-green" id="sg-add">Add an icon</button></p>
+
+        <h3>Textures</h3>
+        <p>The gallery's own textures, offered beside the official ones here and in Icon Forge.</p>
+        <ul class="sg-tex-list" id="sg-tex-list" data-user-content></ul>
+        <div class="sg-row">
+          <label>Name <input type="text" id="sg-t-name" maxlength="40" placeholder="Starlit"></label>
+          <label>Image <input type="file" id="sg-t-file" accept="image/png,image/jpeg,image/webp"></label>
+          <button type="button" class="sg-btn sg-btn-green" id="sg-t-add">Add texture</button>
+        </div>
+        <p class="sg-msg" id="sg-t-msg"></p>
+
+        <div id="sg-admin" hidden>
+          <h3>Who can upload</h3>
+          <p>Admins always can. Anyone named here can add, change and remove icons and textures.</p>
+          <div class="sg-row">
+            <label>Usernames, separated by commas <input type="text" id="sg-up-names" autocomplete="off" spellcheck="false"></label>
+            <button type="button" class="sg-btn" id="sg-up-save">Save</button>
+          </div>
+          <p class="sg-msg" id="sg-up-msg"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- One icon, drawn live from its layers. -->
+  <div class="sg-modal" id="sg-detail" hidden role="dialog" aria-modal="true" aria-labelledby="sg-d-name">
+    <div class="sg-card">
+      <button type="button" class="sg-x" id="sg-d-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <h2 class="sg-title" id="sg-d-name" data-user-content></h2>
+      <p class="sg-credit" id="sg-d-credit" data-user-content></p>
+      <div class="sg-d-layout">
+        <div>
+          <div class="sg-stage" id="sg-stage"><img id="sg-d-img" alt=""></div>
+          <p class="sg-stage-hint">Long-press or right-click the icon to copy it.</p>
+        </div>
+        <div>
+          <div class="sg-d-tags" id="sg-d-tags" data-user-content></div>
+          <span class="sg-label">Texture</span>
+          <div class="sg-texs" id="sg-texs" data-user-content></div>
+          <input type="file" id="sg-own-tex" accept="image/png,image/jpeg,image/webp" hidden>
+          <span class="sg-label">Show</span>
+          <div class="sg-toggles">
+            <label><input type="checkbox" id="sg-o-texture" checked> Texture</label>
+            <label><input type="checkbox" id="sg-o-whites" checked> Whites</label>
+            <label><input type="checkbox" id="sg-o-blacks" checked> Blacks</label>
+            <label><input type="checkbox" id="sg-o-shadow" checked> Shadow</label>
+          </div>
+          <div class="sg-actions">
+            <button type="button" class="sg-btn sg-btn-green" id="sg-use" hidden>Use this icon</button>
+            <select class="sg-size" id="sg-size" aria-label="Size of the PNG">
+              <option value="591">591 px</option>
+              <option value="1182">1182 px</option>
+            </select>
+            <button type="button" class="sg-btn sg-btn-green" id="sg-download">Download PNG</button>
+            <button type="button" class="sg-btn sg-btn-blue sg-not-pick" id="sg-forge">Open in Icon Forge</button>
+          </div>
+          <p class="sg-msg" id="sg-d-msg"></p>
+          <div class="sg-manage sg-not-pick" id="sg-manage" hidden>
+            <button type="button" class="sg-btn sg-btn-quiet" id="sg-edit">Edit this icon</button>
+            <button type="button" class="sg-btn" id="sg-delete">Delete it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The gallery team's form: a new icon, or changes to one. -->
+  <div class="sg-modal" id="sg-form-modal" hidden role="dialog" aria-modal="true" aria-labelledby="sg-f-title">
+    <form class="sg-card sg-card-narrow sg-form" id="sg-form">
+      <button type="button" class="sg-x" id="sg-f-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <h2 class="sg-title" id="sg-f-title">Add an icon</h2>
+      <label class="sg-f">Name <input type="text" id="sg-f-name" maxlength="60" required></label>
+      <label class="sg-f">Keywords <input type="text" id="sg-f-tags" maxlength="600" placeholder="knight, sword, armour">
+        <span class="sg-hint">Separated by commas. Search finds icons by these.</span></label>
+      <label class="sg-f">Artist <input type="text" id="sg-f-artist" maxlength="80" placeholder="Harry &amp; Co. &amp; Bendan">
+        <span class="sg-hint">Shown on the icon, and credited on any character it goes onto.</span></label>
+      <div class="sg-f-layers">
+        <div>
+          <label class="sg-f">Black layer <input type="file" id="sg-f-black" accept="image/png,image/webp">
+            <span class="sg-hint">The part that gets the texture.</span></label>
+          <label class="sg-f">White layer <input type="file" id="sg-f-white" accept="image/png,image/webp">
+            <span class="sg-hint">The outline under it. PNGs with a transparent background, the same size as the black layer.</span></label>
+          <label class="sg-f">Shown in <select id="sg-f-tex"></select>
+            <span class="sg-hint">The texture the icon opens in, and its picture in the grid.</span></label>
+        </div>
+        <canvas class="sg-f-preview" id="sg-f-preview" width="300" height="300" aria-label="Preview"></canvas>
+      </div>
+      <div class="sg-actions" style="margin-top:6px">
+        <button type="button" class="sg-btn sg-btn-quiet" id="sg-f-cancel">Cancel</button>
+        <button type="submit" class="sg-btn sg-btn-green" id="sg-f-save">Save</button>
+      </div>
+      <p class="sg-msg" id="sg-f-msg"></p>
+    </form>
+  </div>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/creators.js"></script>
+  <script src="assets/art-normalize.js"></script>
+  <script src="assets/starlit.js"></script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
