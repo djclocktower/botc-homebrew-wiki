@@ -2459,6 +2459,11 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
   padding: 6px 10px;
 }
+/* "Tag [all of / any of / only one of]": the choice sits in the label. */
+.filter-select.filter-tagmode {
+  font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: none;
+  padding: 1px 4px; margin-left: 4px; vertical-align: baseline;
+}
 .filter-reset {
   font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .04em;
   cursor: pointer; background: none; border: none; color: var(--good-name);

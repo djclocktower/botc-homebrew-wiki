@@ -35,15 +35,42 @@
 
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion', demon: 'Demon',
-    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other'
+    traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric', other: 'Other',
+    step: 'Night step'
   };
 
+  /* The steps of the night that are not characters (night-order.json's
+     `meta`), so a page can act right after dusk or minion info, or last of
+     all. Dawn closes the night (9999), so "after" it means nothing: it is
+     offered as "just before dawn" instead, at 9998. */
+  var STEP_NAME = { dusk: 'Dusk', minioninfo: 'Minion Info', demoninfo: 'Demon Info', dawn: 'Dawn' };
+  function steps(meta) {
+    return (meta || []).filter(function (m) { return STEP_NAME[m.id]; }).map(function (m) {
+      var s = { name: STEP_NAME[m.id], team: 'step', step: true };
+      ['firstNight', 'otherNight'].forEach(function (k) {
+        if (typeof m[k] !== 'number') return;
+        // Dusk is 0, which reads as "does not wake": -1 keeps it in the list
+        // and the pick still lands on 0.xxxx, after dusk and before everyone.
+        s[k] = m.id === 'dawn' ? 9998 : m.id === 'dusk' ? -1 : m[k];
+      });
+      if (m.id === 'dawn') s.before = true;
+      return s;
+    });
+  }
+  function pos(c, key) { return Math.max(0, c[key]); }
+
   /* The character's own name, with a leading "the" trimmed so the sentence
-     doesn't read "I want the The Cartographer to act…". */
-  function whoHTML() {
+     doesn't read "I want the The Cartographer to act…". Drawn once and then
+     updated through its text nodes' data: rewriting the sentence's markup on
+     every keystroke in the Name box made Chrome's Ctrl+Z there undo one
+     letter at a time. */
+  var SENTENCE = 'I want <span class="no-the"></span><b>this character</b> to act directly after&hellip;';
+  function paintWho(sentence) {
     var n = nameField ? nameField.value.trim().replace(/^the\s+/i, '') : '';
-    return n ? 'I want the <b>' + esc(n) + '</b> to act directly after&hellip;'
-             : 'I want <b>this character</b> to act directly after&hellip;';
+    var the = sentence.querySelector('.no-the'), who = sentence.querySelector('b');
+    if (!the.firstChild) the.appendChild(document.createTextNode(''));
+    if (the.firstChild.data !== (n ? 'the ' : '')) the.firstChild.data = n ? 'the ' : '';
+    if (who.firstChild.data !== (n || 'this character')) who.firstChild.data = n || 'this character';
   }
 
   /* Four digits, never 0000: a .0000 fraction would land the page exactly on
@@ -77,7 +104,7 @@
       '<div class="no-combo">' +
         '<input type="text" class="no-search" autocomplete="off" spellcheck="false"' +
         ' role="combobox" aria-expanded="false" aria-autocomplete="list"' +
-        ' aria-controls="' + listId + '" placeholder="Search official characters&hellip;">' +
+        ' aria-controls="' + listId + '" placeholder="Search official characters, dusk, minion or demon info&hellip;">' +
         '<div class="no-drop" id="' + listId + '" role="listbox" hidden></div>' +
       '</div>' +
       '<p class="no-result" hidden></p>';
@@ -118,7 +145,7 @@
       if (!DATA) return;
       var q = p.search.value.trim().toLowerCase();
       var hits = DATA
-        .filter(function (c) { return c[key] > 0 && (!q || c.name.toLowerCase().indexOf(q) !== -1); })
+        .filter(function (c) { return (c[key] > 0 || c[key] === -1) && (!q || c.name.toLowerCase().indexOf(q) !== -1); })
         .sort(function (a, b) { return a[key] - b[key]; });
 
       p.rows = [];
@@ -135,9 +162,9 @@
         el.tabIndex = -1; // reachable by arrow key, not by Tab
         el.setAttribute('role', 'option');
         el.innerHTML =
-          '<span class="no-opt-name">' + esc(c.name) + '</span>' +
+          '<span class="no-opt-name">' + esc(c.before ? 'Just before ' + c.name : c.name) + '</span>' +
           '<span class="no-opt-meta">' + esc(TEAM_LABEL[c.team] || c.team || '') +
-          ' &middot; ' + c[key] + '</span>';
+          ' &middot; ' + pos(c, key) + '</span>';
         el.addEventListener('mousedown', function (e) { e.preventDefault(); pick(c); });
         p.drop.appendChild(el);
         p.rows.push({ el: el, c: c });
@@ -149,7 +176,7 @@
 
     /* ---- choosing one ---- */
     function pick(c) {
-      var value = c[key] + '.' + fraction();
+      var value = pos(c, key) + '.' + fraction();
       p.field.value = value;
       p.field.dispatchEvent(new Event('input', { bubbles: true }));
       p.field.dispatchEvent(new Event('change', { bubbles: true }));
@@ -161,7 +188,9 @@
     function showResult(c, value) {
       if (!c) { p.result.hidden = true; p.result.innerHTML = ''; return; }
       p.result.innerHTML =
-        'Acts directly after the <b>' + esc(c.name) + '</b> (' + c[key] + '), so its ' +
+        (c.before ? 'Acts last, just before <b>' + esc(c.name) + '</b>'
+                  : 'Acts directly after ' + (c.step ? '' : 'the ') + '<b>' + esc(c.name) + '</b> (' + pos(c, key) + ')') +
+        ', so its ' +
         'night order is <b>' + esc(value) + '</b>. ' +
         '<button type="button" class="no-clear">clear</button>';
       p.result.hidden = false;
@@ -181,9 +210,12 @@
       var v = parseFloat(p.field.value);
       if (!DATA || !(v > 0) || v === Math.floor(v)) return showResult(null);
       var base = Math.floor(v);
-      var match = null;
-      for (var i = 0; i < DATA.length; i++)
-        if (DATA[i][key] === base) { match = DATA[i]; break; }
+      // Two can share a position (Tor and Minion Info are both 19): name both.
+      var hits = DATA.filter(function (c) { return pos(c, key) === base && (c[key] > 0 || c[key] === -1); });
+      var match = hits.length > 1
+        ? { name: hits.map(function (c) { return c.name; }).join(' / '), step: true }
+        : hits[0] || null;
+      if (match && hits.length > 1) match[key] = base;
       showResult(match, p.field.value);
     };
 
@@ -210,9 +242,9 @@
     .filter(Boolean);
   if (!pickers.length) return;
 
+  pickers.forEach(function (p) { p.sentence.innerHTML = SENTENCE; });
   function paintSentence() {
-    var html = whoHTML();
-    pickers.forEach(function (p) { p.sentence.innerHTML = html; });
+    pickers.forEach(function (p) { paintWho(p.sentence); });
   }
   paintSentence();
   if (nameField) nameField.addEventListener('input', paintSentence);
@@ -225,7 +257,7 @@
   fetch(new URL('assets/night-order.json', document.baseURI).href)
     .then(function (r) { return r.json(); })
     .then(function (d) {
-      DATA = (d && d.characters) || [];
+      DATA = ((d && d.characters) || []).concat(steps(d && d.meta));
       pickers.forEach(function (p) { p.sync(); });
     })
     .catch(function () {
