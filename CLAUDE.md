@@ -4357,43 +4357,34 @@ open. Two-factor login is not built yet.
 ## Changing a username, and deleting an account
 
 - **`POST /api/account/username`**: once every `RENAME_EVERY_DAYS` (30),
-  stamped in a lazily ALTERed `users.username_changed_at`. Same handle rules
-  as signup (`usernameProblem()`). The old handle gets a `redirects` row
-  (`entity_type 'user'`, `from_slug` = its `usernameKey`, `to_slug` = the
+  stamped in a lazily ALTERed `users.username_changed_at`; same rules as
+  signup (`usernameProblem()`). The old handle gets a `redirects` row
+  (`entity_type 'user'`, `from_slug` its `usernameKey`, `to_slug` the
   account id): `/u/{old}` 302s to the new name, and `usernameTaken()` treats
-  the name as **parked** (`parkedFor()`) so nobody else can take it and the
-  links to it. The account itself may take it back. Admin `creator_alias:`
-  rows naming the old handle are rewritten, and a legacy creator mark linked
-  by username (`LEGACY_ACCOUNTS`) is claimed into `creator_marks` first, or
-  the rename would lose it. Everything else is keyed on the account id;
-  `sanitizeEditors()` resolves a stored `{id, username}` pair **by id only**,
-  so a renamed editor stays on the list and a deleted one drops off rather
-  than passing to whoever registers the name next.
+  the name as parked (`parkedFor()`) for everyone but that account.
+  `creator_alias:` rows naming the old handle are rewritten, and a legacy
+  mark linked by username (`LEGACY_ACCOUNTS`) is claimed into
+  `creator_marks` first. Everything else is keyed on the account id;
+  `sanitizeEditors()` resolves a stored `{id, username}` pair by id only.
 - **`POST /api/account/delete {password | confirm, keepPages}`**: the
-  account page's "Delete My Account" button and its confirmation `<dialog>`
-  (password, or the typed username for a Discord-only account). Admins are
-  refused (demote first). **`accountBackup()` writes one JSON file to R2
-  under `account-backups/` BEFORE anything is touched, and a failed backup
-  deletes nothing.** It holds the user row minus the password hash, every
-  character/script/collection/wiki page it owned, its comments, mark and
-  favorites, and the comments and history of the wiki pages about to go.
-  Not DMs: admins may only read a reported conversation. The prefix is
-  outside `backups/` (nightly, 30-day expiry) and is never served.
-  Then: every page loses its owner (`owner_id NULL`). Without `keepPages`
-  characters/scripts/collections are soft-deleted (`_deleted.account: 1`,
-  so they also show in Deleted Content), wiki pages are removed like an
-  ordinary wiki-page delete, and the account's comments are `removed` (their
-  replies `hidden`). Favorites, mark, blocks and alias rows go; the handle
-  stays parked; `activity_log.user_id` is nulled (it is a foreign key, and D1
-  enforces them) and the users row is deleted. Ids are AUTOINCREMENT, so a
-  later account can never inherit it.
+  account page's confirmation `<dialog>` (password, or the typed username
+  for a Discord-only account). Admins are refused. `accountBackup()` writes
+  one JSON file to R2 under `account-backups/` first (never served, never
+  expired), and a failed backup deletes nothing. It holds the user row minus
+  the password hash, every page it owned, its comments, mark and favorites,
+  and the comments and history of wiki pages about to go. Not DMs: admins
+  only read reported conversations. Then every page loses its owner; without
+  `keepPages`, characters/scripts/collections are soft-deleted, wiki pages
+  removed, and comments `removed` (replies `hidden`). Favorites, mark,
+  blocks and alias rows go, the handle stays parked, `activity_log.user_id`
+  is nulled (a foreign key D1 enforces), and the users row is deleted. Ids
+  are AUTOINCREMENT, so none is reused.
 - **Restoring**: Dashboard -> Content -> "Deleted accounts".
-  `GET /api/admin/account-backups` lists the files, `?key=` shows one with
-  each page's current state, `POST /api/admin/restore-account {key, type?,
-  slug?, username?}` writes pages back through `upsertBackupRow()` (shared
-  with the nightly-backup restore) as published/draft, owned by `username`
-  or nobody. A slug that is live on the wiki again is skipped. Restoring
-  everything also brings the comments back; a wiki page brings its own.
+  `GET /api/admin/account-backups[?key=]` lists the files or shows one;
+  `POST /api/admin/restore-account {key, type?, slug?, username?}` writes
+  pages back through `upsertBackupRow()` (shared with the nightly restore),
+  owned by `username` or nobody. A slug live again is skipped. Restoring
+  everything brings the comments back; a wiki page brings its own.
 
 ## Rate limiting (and why the counters are not in KV)
 

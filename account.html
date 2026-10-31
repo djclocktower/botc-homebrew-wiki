@@ -459,7 +459,7 @@
               <label for="s-username">Username</label>
               <input id="s-username" maxlength="20" autocomplete="username" spellcheck="false" autocapitalize="off">
             </div>
-            <p class="set-hint" id="username-hint">You can change your username once every 30 days. Links to your old creator page will still work.</p>
+            <p class="set-hint" id="username-hint">You can change it once every 30 days. Old links to your page keep working.</p>
             <button class="btn" id="save-username">Change Username</button>
             <div class="inline-msg" id="username-msg"></div>
           </section>
@@ -505,16 +505,16 @@
 
           <section>
             <h4>Delete Account</h4>
-            <p class="acct-body" style="font-size:.88rem;margin:0 0 10px">Permanently delete your account. You will be asked to confirm, and you can choose to leave your characters and pages on the wiki.</p>
+            <p class="acct-body" style="font-size:.88rem;margin:0 0 10px">Delete your account for good. You can choose to keep your pages on the wiki.</p>
             <button class="btn danger" id="delete-account-btn" type="button">Delete My Account</button>
           </section>
         </div>
         <dialog id="del-dialog" aria-labelledby="del-title">
           <h4 id="del-title">Delete your account?</h4>
-          <p>This deletes your account and logs you out everywhere. It cannot be undone from your side.</p>
+          <p>You will be logged out everywhere, and you cannot undo this yourself.</p>
           <label class="del-keep"><input type="checkbox" id="del-keep">
-            <span>Keep my characters, scripts, collections, pages and comments on the wiki. They stay up, credited as they are now, but no longer belong to an account.</span></label>
-          <p id="del-what">Unless you tick the box, your characters, scripts, collections, pages and comments are taken down. The admins keep a backup and can restore them if you ask.</p>
+            <span>Keep my characters, scripts, collections, pages and comments on the wiki. They stay up and credited, with no owner.</span></label>
+          <p id="del-what">Unticked, they are all taken down. The admins keep a backup and can restore them if you ask.</p>
           <div class="set-field" id="del-pw-field">
             <label for="del-pw">Your password</label>
             <input type="password" id="del-pw" autocomplete="current-password">
@@ -823,8 +823,8 @@
       // settings prefill
       $('s-username').value = p.username || '';
       if (p.usernameNextChange) {
-        $('username-hint').textContent = 'You changed your username recently. You can change it again on ' +
-          fmtDate(p.usernameNextChange) + '. Links to your old creator page still work.';
+        $('username-hint').textContent = 'You can change it again on ' + fmtDate(p.usernameNextChange) +
+          '. Old links to your page keep working.';
         $('save-username').disabled = true;
       }
       $('del-pw-field').style.display = p.hasPassword ? '' : 'none';
@@ -1487,8 +1487,8 @@
     $('del-cancel').addEventListener('click', function(){ $('del-dialog').close(); });
     $('del-keep').addEventListener('change', function(){
       $('del-what').textContent = this.checked
-        ? 'Your pages and comments stay on the wiki. Your profile, favorites and creator mark are deleted.'
-        : 'Unless you tick the box, your characters, scripts, collections, pages and comments are taken down. The admins keep a backup and can restore them if you ask.';
+        ? 'Your pages and comments stay up. Your profile, favorites and creator mark are deleted.'
+        : 'Unticked, they are all taken down. The admins keep a backup and can restore them if you ask.';
     });
     $('del-confirm').addEventListener('click', function(){
       var btn = this;

@@ -562,7 +562,7 @@
       <section class="panel" id="acct-backups-panel">
         <h3>Deleted accounts</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
-          When a member deletes their account, everything it owned is backed up first and kept for good. <strong>Open</strong> a backup to see its pages and put any of them back. Restored pages have no owner unless you type a username; a page that is live on the wiki again under the same address is left alone.
+          Every deleted account is backed up first, and the backup is kept for good. Open one to see its pages and restore any of them. Restored pages have no owner unless you type a username. A page that is live again at the same address is skipped.
         </p>
         <button type="button" class="del-btn del-restore" id="ab-load">Load backups</button>
         <div id="ab-list" style="margin-top:10px"></div>
@@ -3479,7 +3479,7 @@
         var u = d.user || {};
         det.innerHTML = '<p class="note" style="font-style:normal">Account #' + esc(u.id) + (u.email ? ', ' + esc(u.email) : '') +
           (u.createdAt ? ', joined ' + esc(absTime(u.createdAt)) : '') + '. ' + d.comments + ' comment' + (d.comments === 1 ? '' : 's') + ' in the backup.</p>' +
-          '<div class="act-filters"><input type="text" class="ab-owner" placeholder="give them to username (optional)">' +
+          '<div class="act-filters"><input type="text" class="ab-owner" placeholder="owner's username (optional)">' +
           '<button type="button" class="del-btn del-restore ab-all">Restore everything</button>' +
           '<span class="del-status ab-all-status"></span></div>' +
           (d.items.length ? d.items.map(function(it){
@@ -3502,7 +3502,7 @@
       if (!item) return;
       if (t.classList.contains('ab-open')) abOpen(item);
       else if (t.classList.contains('ab-all')) {
-        if (!confirm('Restore every page in this backup that is not live on the wiki, and the comments?')) return;
+        if (!confirm('Restore every page and comment in this backup? Pages that are live again are skipped.')) return;
         abRestore(item, {}, item.querySelector('.ab-all-status'));
       } else if (t.classList.contains('ab-one')) {
         var row = t.closest('.del-row');

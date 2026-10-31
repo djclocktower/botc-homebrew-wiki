@@ -1091,8 +1091,7 @@ async function ensureAuthColumns(env) {
   _authColsReady = true;
 }
 
-// users.username_changed_at: when the handle last changed, for the
-// once-every-30-days rule. Added lazily like every other users column.
+// users.username_changed_at, for the once-every-30-days rule. Added lazily.
 const RENAME_EVERY_DAYS = 30;
 let _renameColReady = false;
 async function ensureRenameColumn(env) {
@@ -1161,9 +1160,8 @@ async function readAccountBackup(env, key) {
   if (!obj) return null;
   try { const d = await obj.json(); return d && typeof d === 'object' ? d : null; } catch { return null; }
 }
-// Rows from a backup put back as they were, ids included. A row whose id is
-// in use again is skipped. Column names come from our own backup file and
-// are checked anyway, since they go into the SQL.
+// Backup rows put back as they were, ids included (a taken id is skipped).
+// Column names go into the SQL, so they are checked even though we wrote them.
 async function reinsertRows(env, table, rows) {
   for (const r of rows) {
     const cols = Object.keys(r).filter(k => /^[a-z_]+$/.test(k));
@@ -1179,13 +1177,11 @@ async function backupTargetRow(env, type, slug) {
 }
 
 // ---- the backup a deleted account leaves behind ----
-// One JSON file in R2 per deletion, outside backups/ (whose nightly files
-// expire after 30 days), so an admin can restore from it at any time. Holds
-// the account row (minus the password hash), every page it owned, its
-// comments and marks, and, for wiki pages that are about to be removed, the
-// other comments and history on them. Direct messages are left out on
-// purpose: admins may only read a conversation somebody reported. Throws
-// when anything cannot be read or written, so the caller deletes nothing.
+// One JSON file in R2 per deletion, kept for good (outside backups/, which
+// expires after 30 days): the account row minus the password hash, every page
+// it owned, its comments and mark, and the comments and history of wiki pages
+// about to be removed. Not DMs: admins may only read reported conversations.
+// Throws on any failure, so the caller deletes nothing.
 const ACCOUNT_BACKUP_PREFIX = 'account-backups/';
 async function accountBackup(env, u, keepPages) {
   const rows = async (sql, ...binds) => {
@@ -4149,9 +4145,8 @@ async function sanitizeEditors(env, v, ownerId) {
   for (const raw of v.slice(0, PAGE_EDITORS_MAX * 2)) {
     const name = typeof raw === 'string' ? raw
       : (raw && typeof raw === 'object' ? String(raw.username || '') : '');
-    // A pair is resolved by its id alone, so an editor who has since renamed
-    // stays on the list under their new name, and one whose account was
-    // deleted drops off rather than passing to whoever takes the name next.
+    // A pair is resolved by id alone: a renamed editor stays on the list, and
+    // a deleted one drops off instead of passing to the next owner of the name.
     const id = raw && typeof raw === 'object' ? parseInt(raw.id, 10) : NaN;
     if (!name.trim() && !(id > 0)) continue;
     const u = id > 0
@@ -13584,9 +13579,8 @@ const app = {
       }
 
       // ---- change your username: {username}, once every RENAME_EVERY_DAYS ----
-      // The old /u/ address forwards to the new one and stays parked for this
-      // account (parkedFor). Pages, comments, editor lists and favorites are
-      // keyed on the account id, so nothing else has to move.
+      // The old /u/ address forwards and stays parked for this account
+      // (parkedFor). Everything else is keyed on the account id.
       if (path === '/api/account/username') {
         if (await rateLimited(env, request, 'rename', 10, 3600, { sess })) {
           return tooManyResponse('Too many tries. Wait a while and try again.', 3600);
@@ -13611,9 +13605,8 @@ const app = {
         }
         const TAKEN = 'That username is taken or too close to an existing one. Try adding something to it.';
         if (await usernameTaken(env, username, sess.userId)) return jsonResponse({ error: TAKEN }, { status: 409 });
-        // A legacy creator mark is linked to its holder by username
-        // (Creators.LEGACY_ACCOUNTS), so a holder with no mark of their own
-        // claims it now, or renaming would quietly lose it.
+        // A legacy mark is linked by username (Creators.LEGACY_ACCOUNTS), so a
+        // holder with no mark of their own claims it now or loses it.
         let legacy = null;
         try {
           const reg = await cachedMarkRegistry(env, ctx);
@@ -13657,17 +13650,15 @@ const app = {
       }
 
       // ---- delete your own account: {password | confirm, keepPages} ----
-      // Everything the account owns is written to R2 first (accountBackup);
-      // if that fails nothing is deleted. keepPages leaves the characters,
-      // scripts, collections, wiki pages and comments up with no owner; without
-      // it they are soft-deleted (wiki pages, which have no trash, are removed
-      // after the backup holds them). Either way an admin can bring them back
-      // from Dashboard -> Deleted accounts at any time.
+      // Backed up to R2 first (accountBackup); if that fails nothing is
+      // deleted. keepPages leaves every page and comment up with no owner;
+      // otherwise they are soft-deleted (wiki pages, which have no trash, are
+      // removed). Admins restore from Dashboard -> Deleted accounts.
       if (path === '/api/account/delete') {
         if (await rateLimited(env, request, 'acctdelete', 5, 3600, { sess })) {
           return tooManyResponse('Too many tries. Wait a while and try again.', 3600);
         }
-        if (!env.ART) return jsonResponse({ error: 'Account deletion is unavailable right now. Please try again later.' }, { status: 503 });
+        if (!env.ART) return jsonResponse({ error: 'Account deletion is unavailable right now. Try again later.' }, { status: 503 });
         const b = await request.json().catch(() => ({}));
         const u = await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(sess.userId).first();
         if (u.is_admin) {
@@ -13685,7 +13676,7 @@ const app = {
         try { backupKey = await accountBackup(env, u, keepPages); }
         catch (e) {
           console.error('[account delete] backup failed:', (e && e.message) || e);
-          return jsonResponse({ error: 'Could not back up your account, so nothing was deleted. Please try again later.' }, { status: 503 });
+          return jsonResponse({ error: 'Could not back up your account, so nothing was deleted. Try again later.' }, { status: 503 });
         }
         const id = u.id;
         const run = (sql, ...binds) => env.DB.prepare(sql).bind(...binds).run().catch(e => { if (!isMissingSchema(e)) throw e; });
@@ -13736,8 +13727,8 @@ const app = {
             if (usernameKey(r.value) === usernameKey(u.username)) await run('DELETE FROM settings WHERE key=?', r.key);
           }
         } catch { /* no aliases */ }
-        // The handle stays parked (its old ones already are), so nobody can
-        // take the name and with it every link to this creator.
+        // The handle stays parked, like its old ones, so nobody can take it
+        // and every link to this creator.
         await ensureRedirectsTable(env);
         await run(`INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('user', ?, ?)
                    ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`, usernameKey(u.username), String(id));
@@ -17714,12 +17705,10 @@ const app = {
       }
 
       // ---- admin: restore a deleted account's content from its backup ----
-      // Body: {key, type?, slug?, username?}. One page (type + slug) or all of
-      // them. A page the wiki has live under that slug now is left alone and
-      // reported; the rest are written back as they were (published or
-      // draft), owned by `username` when given, else by nobody (the account
-      // is gone; assign an owner later as usual). Restoring everything also
-      // puts the account's removed comments back.
+      // Body: {key, type?, slug?, username?}. One page (type + slug) or all.
+      // A slug that is live again is skipped and reported; the rest go back
+      // as published or draft, owned by `username` or by nobody. Restoring
+      // everything also brings back the account's removed comments.
       if (path === '/api/admin/restore-account') {
         if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
         const b = await request.json().catch(() => ({}));
@@ -17749,7 +17738,7 @@ const app = {
           }
         }
         if (one && !restored.length && !skipped.length) return jsonResponse({ error: 'That page is not in this backup.' }, { status: 404 });
-        // A removed wiki page took its comments and history with it; they come back with it.
+        // A removed wiki page's comments and history come back with it.
         const wikiBack = new Set(restored.filter(r => r.type === 'wikipage').map(r => r.slug));
         if (wikiBack.size) {
           await reinsertRows(env, 'comments', (bk.pageComments || []).filter(c => wikiBack.has(c.slug)));
