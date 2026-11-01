@@ -1307,9 +1307,11 @@
           // If the check itself fails, carry on and let the save decide: the
           // Worker never lets anyone write over a page that isn't theirs.
           if (!j || j.error || !j.taken) return base;
-          // `mine` means this URL is one of your own pages, so saving updates
-          // it — which is what re-publishing from this tab should do.
-          if (j.mine) return base;
+          // Taken, even by one of your own pages, means a NEW page at the next
+          // free address. This page creates; it never saves over a page it did
+          // not load. Landing on `mine` replaced a whole existing page with a
+          // fresh form (a reopened tab after a crash wiped an almanac that
+          // way). Re-saves from this tab go through savedSlug instead.
           return j.suggestion || base;
         });
     }
