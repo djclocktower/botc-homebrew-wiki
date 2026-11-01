@@ -50,9 +50,7 @@ run_worker_first = [
   "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*",
   "/assets/avatars/*", "/assets/pages/*", "/assets/news/*",
   # Images posted on comments and modmail messages (see ATTACH_PREFIX).
-  "/assets/attachments/*",
-  # The Starlit Gallery's icon layers and textures (see STARLIT_PREFIX).
-  "/assets/starlit/*"
+  "/assets/attachments/*"
 ]
 
 # ---- D1 database (the source of truth) ----

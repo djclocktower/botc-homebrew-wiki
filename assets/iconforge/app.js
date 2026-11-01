@@ -707,7 +707,7 @@ $('if-stage-inner').addEventListener('pointerdown', (e) => {
 $('if-fills-clear').addEventListener('click', () => setOpts({ bucketFills: [] }));
 
 /* ── texture picker ─────────────────────────────────────────────── */
-function addTexButton(t) {
+COLOR_TEXTURES.forEach((t) => {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'if-tex';
@@ -739,22 +739,7 @@ function addTexButton(t) {
   b.appendChild(cap);
   b.addEventListener('click', () => pickTexture(t.id));
   $('if-textures').appendChild(b);
-}
-COLOR_TEXTURES.forEach(addTexButton);
-
-/* The Starlit Gallery's own textures, after the official ones. Pushed onto
-   COLOR_TEXTURES, where loadTexturesFor() looks ids up; resolves once they
-   are in. */
-const starlitTextures = fetch('/api/starlit?textures=1', { credentials: 'same-origin' })
-  .then((r) => (r.ok ? r.json() : { textures: [] }))
-  .then((d) => {
-    (d.textures || []).forEach((t) => {
-      const def = { id: 'starlit-' + t.id, label: t.name, sub: 'Starlit Gallery', file: t.image + '?v=' + t.v };
-      COLOR_TEXTURES.push(def);
-      addTexButton(def);
-    });
-  })
-  .catch(() => {});
+});
 
 function pickTexture(id) {
   colorTexId = id;
@@ -1027,28 +1012,3 @@ $('if-save').addEventListener('click', async () => {
 pickTexture(colorTexId);
 syncControls();
 sizeStage();
-
-/* The Starlit Gallery's "Open in Icon Forge": the icon, flattened black over
-   white, waits in localStorage for iconforge?from=starlit and is read once.
-   Its white layer is the outline, so the forge's own border and hole filling
-   start off. */
-if (new URLSearchParams(location.search).get('from') === 'starlit') {
-  let handoff = null;
-  try {
-    handoff = JSON.parse(localStorage.getItem('botc_starlit_forge') || 'null');
-    localStorage.removeItem('botc_starlit_forge');
-  } catch (e) { /* nothing handed over */ }
-  if (handoff && typeof handoff.png === 'string' && handoff.png.startsWith('data:image/png')) {
-    fetch(handoff.png)
-      .then((r) => r.blob())
-      .then((blob) => onFile(new File([blob], String(handoff.name || 'Starlit icon') + '.png', { type: 'image/png' })))
-      .then(() => {
-        setOpts({ borderWidth: 0, fillHoles: false, innerDetails: false });
-        return starlitTextures;
-      })
-      .then(() => {
-        if (handoff.tex && COLOR_TEXTURES.some((t) => t.id === handoff.tex)) pickTexture(handoff.tex);
-      })
-      .catch(() => toast('The icon from the Starlit Gallery could not be opened.', 'err'));
-  }
-}
