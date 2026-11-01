@@ -3802,7 +3802,9 @@ required but a shout-out is appreciated, and no commercial use.
   `compose()` in `assets/starlit.js` does all the drawing: the figure is
   fitted to `ART_FILL` of the frame (`artTrimBox`) and the texture spans the
   whole frame, as official icons are cut from their sheets. The preview is an
-  `<img>` so a phone can long-press it.
+  `<img>` so a phone can long-press it. The two layers must be the same size:
+  a layer exported trimmed to its drawing (Photoshop's "Export As" on one
+  layer) has lost its place on the canvas, so the form refuses the pair.
 - **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`, …),
   the gallery's own (`starlit_textures`, also in Icon Forge as
   `starlit-{id}`), and "Your own", a local file that is never uploaded. An

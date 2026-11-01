@@ -463,12 +463,17 @@
     if (!form.L) form.L = { black: form.black, white: form.white, box: figureBox(form.black, form.white) };
     return form.L;
   }
+  // A layer exported trimmed to its own drawing has lost where it sat on the
+  // canvas, and stretched over the other one the outline slips out of line.
+  var SIZES_DIFFER = 'The two layers are different sizes, so they will not line up. Export both at the full canvas size, not trimmed.';
+  function layersDiffer() {
+    return form.black.naturalWidth !== form.white.naturalWidth || form.black.naturalHeight !== form.white.naturalHeight;
+  }
   function formPreview() {
     var c = $('sg-f-preview'), x = c.getContext('2d');
     x.clearRect(0, 0, c.width, c.height);
     if (!form.black || !form.white) return Promise.resolve();
-    var bw = form.black.naturalWidth / form.black.naturalHeight, ww = form.white.naturalWidth / form.white.naturalHeight;
-    if (Math.abs(bw - ww) > 0.01) say('sg-f-msg', 'The two layers are different shapes, so the white one is stretched to fit the black. Export both from the same canvas.', true);
+    if (layersDiffer()) say('sg-f-msg', SIZES_DIFFER, true);
     var L = formLayers();
     return texturesFor($('sg-f-tex').value).then(function (t) {
       x.clearRect(0, 0, c.width, c.height);
@@ -543,6 +548,7 @@
       say('sg-f-msg', icon ? 'The layers are still loading. Try again in a moment.' : 'Pick both layers.', true);
       return;
     }
+    if (layersDiffer()) { say('sg-f-msg', SIZES_DIFFER, true); return; }
     if (form.blackData) body.black = form.blackData;
     if (form.whiteData) body.white = form.whiteData;
     var newLook = !icon || body.black || body.white || icon.tex !== body.tex;
