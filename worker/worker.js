@@ -2281,7 +2281,7 @@ async function ensureFavoritesTable(env) {
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
 
 /* ---- the Starlit Gallery (/starlit) ----
-   Icons by Harry & Co. & Bendan, stored as a black layer, a white layer and a
+   Icons by Harry & Co & Bendan, stored as a black layer, a white layer and a
    grid thumbnail; the browser does the drawing (assets/starlit.js). Admins
    and the accounts in settings `starlit_uploaders` may change it. Keys are
    minted here (as for ATTACH_PREFIX), so /api/upload cannot write into

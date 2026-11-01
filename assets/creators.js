@@ -48,7 +48,7 @@
     "Galexy": "⟁",
     "Geebs": "🜚",
     "Gobinator": "ꙮ",
-    "Harry & Co. & Bendan": "♊",
+    "Harry & Co & Bendan": "♊",
     "Haunted": "⍨",
     "Hyperswag": "◐",
     "Hystrex": "∇",

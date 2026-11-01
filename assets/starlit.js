@@ -16,7 +16,7 @@
   var TARGET = window.ART_TARGET || 591;
   var LAYER_MAX = 1200;       // longest side a layer is stored at
   var THUMB = 256;            // the grid's picture
-  var ARTISTS = 'Harry & Co. & Bendan';
+  var ARTISTS = 'Harry & Co & Bendan';
   var TEX = '/assets/iconforge/textures/';
   // Icon Forge's sheets, under Icon Forge's ids (assets/iconforge/textures.js),
   // so "Open in Icon Forge" can carry the choice across.

@@ -80,7 +80,7 @@ test('the team adds, edits and deletes an icon; files get minted keys and go whe
   assert.equal(objects.size, 0, 'nothing is stored for a refused upload');
 
   const made = await call('harry', {
-    action: 'save', name: '  Knight  of  Cups ', tags: 'Sword, armour ,sword,,', artist: 'Harry & Co. & Bendan',
+    action: 'save', name: '  Knight  of  Cups ', tags: 'Sword, armour ,sword,,', artist: 'Harry & Co & Bendan',
     tex: 'red', black: png(1), white: png(2), thumb: png(3), slug: 'ignored'
   });
   assert.equal(made.status, 200);
@@ -147,8 +147,8 @@ test('/api/upload cannot write into the gallery\'s folder', async t => {
 
 test('a pictographic creator mark is drawn in its text form, everything else as typed', async () => {
   const { default: Creators } = await import('../../assets/creators.js');
-  assert.match(Creators.markHTMLFor('Harry & Co. & Bendan'), />♊︎<\/span>$/);
-  assert.match(Creators.markHTMLFor('Hystrex'), />∇<\/span>$/);
+  assert.match(Creators.markHTMLFor('Harry & Co & Bendan'), />\u264A\uFE0E<\/span>$/);
+  assert.match(Creators.markHTMLFor('Hystrex'), />\u2207<\/span>$/);
   // One already carrying a selector keeps it, and only it.
-  assert.match(Creators.markHTMLFor('Pynstripe'), />♣︎<\/span>$/);
+  assert.match(Creators.markHTMLFor('Pynstripe'), />\u2663\uFE0E<\/span>$/);
 });

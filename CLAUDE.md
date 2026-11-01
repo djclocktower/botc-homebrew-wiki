@@ -3788,10 +3788,13 @@ uploaded — except for the one opt-in save described below.
 
 ## The Starlit Gallery (`/starlit`)
 
-Character icons by **Harry & Co. & Bendan**, hosted here after the platform
-they were on broke. Credit them: the hero names them with their mark and
-links their creator page, every icon shows its `artist` (theirs by default),
-and an icon put on a character from the editor fills its "Icon by".
+Character icons by **Harry & Co & Bendan** (wiki account `harryandco`; the
+makers of the Travel by the Starlight collection), hosted here after the
+platform they were on broke. Credit them: the hero names them with their mark
+and links their creator page, every icon shows its `artist` (theirs by
+default), and an icon put on a character from the editor fills its "Icon by".
+Their terms, from the gallery's own about page, are on /starlit: credit is not
+required but a shout-out is appreciated, and no commercial use.
 
 - **An icon is two layers**, as the original gallery drew them: the BLACK one
   takes the reader's texture, the WHITE one (the outline) takes parchment, and
@@ -3853,7 +3856,7 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   that mark to the account with that username (else that `discord_username`),
   setting `u` on the legacy entry, so it is drawn on their comments and is
   theirs to claim — live, so a handle links the day they sign up. Shared
-  marks (The Bazaar, Harry & Co. & Bendan) stay the name's.
+  marks (The Bazaar, Harry & Co & Bendan) stay the name's.
 - **The registry is two parallel queries** (`buildMarkRegistry()`), because the SSR read
   path must not grow: each row stores `names`, the credit names it is drawn
   beside (`markNamesFor()`: what the /creators list gives that account, plus
@@ -3869,7 +3872,7 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   (`/api/creator-marks`); comments and the search index carry `markHTML`
   drawn by the Worker.
 - **Drawn as text**: `markHTML()` adds U+FE0E after any pictographic code
-  point without a variation selector, so a mark like Harry & Co. & Bendan's
+  point without a variation selector, so a mark like Harry & Co & Bendan's
   Gemini sign (U+264A) draws in the wiki's colours, where a phone would paint
   a coloured emoji. The stored glyph and the export (`nameWithMarks()`) are
   unchanged.
