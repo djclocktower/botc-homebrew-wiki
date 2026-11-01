@@ -3814,6 +3814,11 @@ required but a shout-out is appreciated, and no commercial use.
   `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new
   key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
   the browser, 1200px at most), textures PNG/JPEG/WebP, bytes sniffed.
+  The one exception is the first icon, Goat Skull (from the team's own
+  template): its three files are committed under `assets/starlit/` and its
+  row was written to D1 by hand, so the preview could show an icon before
+  anyone had uploaded one. A file missing from R2 falls back to the committed
+  copy, as for `art/`.
 - **Who can upload**: admins and the accounts in `settings` `starlit_uploaders`
   (`[{id, username}]` via `sanitizeEditors()`), set by an admin in the
   gallery's team panel. Any of them can change or delete anything there. No
