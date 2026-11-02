@@ -601,7 +601,9 @@
         '<button type="button" class="sg-link-btn" data-del="' + t.id + '">Delete</button></li>';
     }).join('') : '<li>None yet.</li>';
     if (gallery.isAdmin) {
-      $('sg-up-names').value = gallery.uploaders.map(function (u) { return u.username; }).join(', ');
+      $('sg-up-list').innerHTML = gallery.uploaders.length ? gallery.uploaders.map(function (u) {
+        return '<li><span>@' + esc(u.username) + '</span><button type="button" class="sg-link-btn" data-unapprove="' + esc(u.username) + '">Remove</button></li>';
+      }).join('') : '<li>Nobody yet. Only admins can upload.</li>';
     }
   }
 
@@ -634,19 +636,34 @@
     }).catch(function (e2) { say('sg-t-msg', e2.message, true); });
   });
 
-  $('sg-up-save').addEventListener('click', function () {
-    var names = $('sg-up-names').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    var btn = this;
-    btn.disabled = true;
-    api({ names: names }, '/api/admin/starlit-uploaders').then(function (r) {
+  /* Approved Artists: the list as it stands, each with Remove, and a box that
+     only ADDS. It used to be one comma-separated box that replaced the whole
+     list, and saving it with one new name quietly took everyone else off. */
+  function saveUploaders(names, btn) {
+    if (btn) btn.disabled = true;
+    return api({ names: names }, '/api/admin/starlit-uploaders').then(function (r) {
       gallery.uploaders = r.uploaders || [];
       drawTeam();
-      var who = gallery.uploaders.map(function (u) { return '@' + u.username; }).join(', ');
-      say('sg-up-msg', (who ? 'Saved. ' + who + (gallery.uploaders.length === 1 ? ' can' : ' can all') + ' upload.' : 'Saved. Only admins can upload.') +
-        (r.unknown && r.unknown.length ? ' No account is called ' + r.unknown.join(', ') + '.' : ''),
+      say('sg-up-msg', r.unknown && r.unknown.length ? 'No account is called ' + r.unknown.join(', ') + '.' : 'Saved.',
         !!(r.unknown && r.unknown.length));
     }).catch(function (e) { say('sg-up-msg', e.message, true); })
-      .then(function () { btn.disabled = false; });
+      .then(function () { if (btn) btn.disabled = false; });
+  }
+  function uploaderNames() { return gallery.uploaders.map(function (u) { return u.username; }); }
+  $('sg-up-save').addEventListener('click', function () {
+    var add = $('sg-up-names').value.split(',').map(function (s) { return s.trim().replace(/^@+/, ''); }).filter(Boolean);
+    if (!add.length) { say('sg-up-msg', 'Type a username to add.', true); return; }
+    saveUploaders(uploaderNames().concat(add), this).then(function () { $('sg-up-names').value = ''; });
+  });
+  $('sg-up-names').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('sg-up-save').click(); }
+  });
+  $('sg-up-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-unapprove]');
+    if (!b) return;
+    var who = b.getAttribute('data-unapprove');
+    if (!confirm('Take @' + who + ' off Approved Artists? They will no longer be able to add or change icons.')) return;
+    saveUploaders(uploaderNames().filter(function (n) { return n !== who; }));
   });
 
   /* The form: a new icon, or changes to one. A picked layer is redrawn onto a

@@ -3880,7 +3880,9 @@ required but a shout-out is appreciated, and no commercial use.
   from R2 falls back to the committed copy, as for `art/`.
 - **Who can upload**: admins and the accounts in `settings` `starlit_uploaders`
   (`[{id, username}]` via `sanitizeEditors()`), set by an admin in the
-  gallery's team panel. Any of them can change or delete anything there. No
+  gallery's team panel: the list with a Remove per artist, and a box that
+  only ADDS. It was one comma-separated box that replaced the whole list,
+  and saving it with one new name twice took the other artist off. Any of them can change or delete anything there. No
   public submissions and no mass upload, on purpose: vetting for copyright and
   AI is the team's job, and two-layer uploads do not batch well.
 - `starlit-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
