@@ -3796,7 +3796,8 @@ uploaded — except for the one opt-in save described below.
 Character icons by **Harry & Co & Bendan** (wiki account `harryandco`; the
 makers of the Travel by the Starlight collection), hosted here after the
 platform they were on broke. Credit them: the hero names them with their mark
-and links their creator page, every icon shows its `artist` (theirs by
+and links each of them to their wiki profile (`/u/harryandco`, `/u/Bendan`),
+every icon shows its `artist` (theirs by
 default), and an icon put on a character from the editor fills its "Icon by".
 The page's text about the gallery is copied word for word from their
 Magma page (magma.com/s/starlit-gallery/profile/about), the owner's call:
