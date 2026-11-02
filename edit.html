@@ -96,6 +96,9 @@
     font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
     color:#5b4632; cursor:pointer; }
   .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+  /* "Icon by" / "Icon from": the label's own words are the choice. */
+  .fld label select.credit-word { width:auto; padding:2px 6px; font:inherit; color:inherit;
+    text-transform:uppercase; letter-spacing:.04em; }
   .fld .credit-unlink-hint { display:block; margin-top:4px;
     font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
     letter-spacing:0; font-weight:400; }
@@ -184,7 +187,7 @@
           <div class="sub" data-team-only="other" style="display:none;margin-top:4px">Not an official character type. Exported as Loric in script JSON. Rename the type under Advanced Options.</div>
         </div>
         <div class="fld">
-          <label for="creator">Creator</label>
+          <label for="creator">Creator <span class="hint">(more than one? separate the names with commas, so each gets their own creator page)</span></label>
           <input type="text" id="creator">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
           <span class="credit-unlink-hint">Tick this if you’re uploading someone else’s character. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
@@ -284,7 +287,7 @@
         <input type="text" id="translatedBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
       <div class="fld">
-        <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
+        <label for="iconBy"><select id="iconByLabel" class="credit-word" aria-label="How the icon credit reads"><option value="">Icon by</option><option value="from">Icon from</option></select> <span class="hint">(optional)</span></label>
         <input type="text" id="iconBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
       <div class="fld" id="typeName-fld" data-team-only="other" style="display:none">
@@ -806,6 +809,7 @@
         ipa: $('ipa').value.trim(),
         respelling: $('respelling').value.trim(),
         translatedBy: $('translatedBy').value.trim(), iconBy: $('iconBy').value.trim(),
+        iconByLabel: $('iconByLabel').value === 'from' ? 'from' : '',
         artScale: artScaleSetting(),
         edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value)||0,
@@ -857,7 +861,7 @@
     var deb;
     function schedule(){ clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
-     'quote','appears','tags','typeName','exportTeam','pronunciation','ipa','respelling','edition','firstNight','otherNight','fnReminder','onReminder',
+     'quote','appears','tags','typeName','exportTeam','pronunciation','ipa','respelling','translatedBy','iconBy','iconByLabel','edition','firstNight','otherNight','fnReminder','onReminder',
      'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson','hideSnapshot','hideCopyLink'].forEach(function(id){
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
@@ -1678,6 +1682,7 @@
       $('respelling').value      = entry.respelling || '';
       $('translatedBy').value    = entry.translatedBy || '';
       $('iconBy').value          = entry.iconBy || '';
+      $('iconByLabel').value     = entry.iconByLabel === 'from' ? 'from' : '';
       $('typeName').value        = entry.typeName || '';
       $('exportTeam').value      = entry.exportTeam || '';
       var sc = window.artScaleValue ? window.artScaleValue(entry.artScale) : 0;
@@ -1779,8 +1784,13 @@
       $('fighting-fld').style.display = (!isGood || strayFight) ? '' : 'none';
       $('bluffing-note').hidden = !strayBluff;
       $('fighting-note').hidden = !strayFight;
-      $('bluffing-label').textContent = name;
-      $('fighting-label').textContent = name;
+      // Through the text node (see the ability counter below): a textContent
+      // write here on every keystroke in Name broke Ctrl+Z in that box.
+      ['bluffing-label', 'fighting-label'].forEach(function (id) {
+        var el = $(id);
+        if (!el.firstChild) el.appendChild(document.createTextNode(''));
+        if (el.firstChild.data !== name) el.firstChild.data = name;
+      });
     }
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
@@ -1796,7 +1806,11 @@
       if (!ta || !ct) return;
       function update() {
         var n = ta.value.length;
-        ct.textContent = n + ' character' + (n === 1 ? '' : 's');
+        // The text node's data, never textContent: replacing a node in the
+        // page while somebody types makes Chrome's Ctrl+Z undo one letter
+        // at a time instead of the whole run.
+        if (!ct.firstChild) ct.appendChild(document.createTextNode(''));
+        ct.firstChild.data = n + ' character' + (n === 1 ? '' : 's');
         // Hand the current line to the Forge, so the checker opens on THIS
         // ability instead of an empty box.
         if (gf) {

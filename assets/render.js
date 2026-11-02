@@ -1437,7 +1437,7 @@
          whitelists the href, so nothing typed here can become raw HTML; with
          the engine absent it falls back to the plain escaped text. */
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd class="info-credit">' + inlineText(d.translatedBy.trim()) + '</dd>' : '') +
-      (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
+      (d.iconBy && d.iconBy.trim() ? '<dt>' + (d.iconByLabel === 'from' ? 'Icon from:' : 'Icon by:') + '</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>'; }
     var info = pair(infoFor(d), alt ? infoFor(altD) : '');
 

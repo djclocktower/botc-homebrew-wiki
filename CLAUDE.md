@@ -504,6 +504,14 @@ assets/
                        and both halves follow.
                        card-filters.js is the other filter box: it filters
                        cards already in the DOM (collection and creator pages).
+                       Tags combine by the "Tag [all of / any of / only
+                       one of]" select in the Tag label (`tagMode`, both
+                       filter boxes). **Official is a Status chip**, not a
+                       Source one, so it ORs with "Curata only": both on
+                       keeps Curata pages and official characters.
+                       Sort also offers **SAO** wherever sao.js is loaded
+                       (all-characters, /search; the Worker hands
+                       saoCompare to init()).
                        Sort is TWO boxes in both filter boxes: what (Name,
                        Date added, Ability length — plus Best match, Page
                        order, SAO where they apply) and an Order box,
@@ -792,7 +800,9 @@ assets/
                        the form, so a failed load leaves the plain form behind.
                        Both editors are the same form — change one, change both.
   night-order-picker.js  The "I want the X to act directly after…" search on the
-                       wake-priority fields. Picking an official character fills
+                       wake-priority fields. Offers night-order.json's
+                       `meta` steps too: Dusk (0.xxxx, first), Minion Info,
+                       Demon Info, and "Just before Dawn" (9998.xxxx). Picking an official character fills
                        the field with that character's night position plus a
                        random four-digit fraction (Poisoner is 33 → 33.5691), so
                        homebrew pages that chose the same anchor still sort
@@ -1624,7 +1634,7 @@ exported none):
 The night is not only characters: dusk opens it, dawn closes it, and the first
 night has the minion and demon info steps in the middle. Those live in
 `assets/night-order.json` under `meta`, positioned from their neighbours on the
-official sheet (minion info between the Magician and the Snitch, demon info
+official sheet (minion info after Tor, between the Magician and the Snitch, demon info
 between the Summoner and the King). Whoever loads that file hands them to
 `PageRender.setNightMeta()`; **without them the sequences are not written at
 all**, rather than publish a night order those steps are missing from.
@@ -2354,6 +2364,9 @@ Things worth knowing before touching any of it:
   An explicit picture handed to `renderCharacter()` (the editors' preview of
   a file just picked) replaces both; the `/c/` route passes the art's own
   address, which keeps the display copy.
+- **`iconByLabel: 'from'`** makes the info box's icon credit read "Icon
+  from:" instead of "Icon by:" (a select in the label of both editors'
+  Icon by field; the Snapshot poster follows). Nothing stored means "by".
 - **`artAlt`/`imageAlt`/`artAlt2`/`imageAlt2` stay in the card feed.** The
   Token Tool reads `characters.json?fields=card` and prints one token per
   version. `CARD_DROP_FIELDS` used to carry a misspelled `'altArt'` matching
@@ -4508,6 +4521,15 @@ seeded with whole collections whose characters all arrived unowned.
   one is a prefix of the other, so longest-first is always the most specific
   match and the list above can be reordered freely.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Never rewrite page markup on every keystroke in a text box.** Chrome
+  ends the box's undo step whenever script replaces nodes in the document
+  (`textContent`, `innerHTML`, even with the same text), so Ctrl+Z undid
+  one letter at a time in the character editors' Ability and Name boxes,
+  Grimoire Forge, the Custom CSS box and the collection editor. A live
+  counter or label updates its TEXT NODE's `.data` (a character-data
+  change does not end the undo step); anything bigger is redrawn when the
+  typing pauses (Grimoire Forge, the collection's match list, the CSS
+  warnings), flushed on blur. Attribute and class changes are harmless.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
   — so it runs past its panel, past the viewport, and widens the whole

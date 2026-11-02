@@ -2105,7 +2105,7 @@ const FIELD_LABELS = {
   special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
   related: 'related pages', almanacAlt: 'Alternate Almanac',
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
-  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
+  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit', iconByLabel: 'icon credit wording',
   edition: 'edition', publicEdit: 'who may edit',
   flavor: 'flavour text', attribution: 'credit', artScale: 'icon display size',
   token: 'printable token', tokenImage: 'printable token', tokenArt: 'token in the icon gallery',
@@ -6232,7 +6232,7 @@ const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
   'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink',
-  'almanacAlt'
+  'almanacAlt', 'iconByLabel'
 ]);
 
 // ---- the GRID feed: only what a card needs ----

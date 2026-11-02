@@ -59,7 +59,7 @@ test('list pages: the first screen of cards is in the HTML, drawn exactly as the
   // The Official box beside the name, the quick actions, and View Character.
   assert.match(CF.card(acrobat), /href="https:\/\/wiki\.bloodontheclocktower\.com\/Acrobat" target="_blank" rel="noopener"[\s\S]*assets\/icons-sm\/acrobat\.webp[\s\S]*data-cq-slug="off-acrobat"[\s\S]*Acrobat<span class="page-class page-class-official"[^>]*>Official<\/span>[\s\S]*View Character/);
   assert.doesNotMatch(CF.card(acrobat), /Partial/);
-  assert.match(html, /data-source="official"/);
+  assert.match(html, /id="fc-official"[^>]*>Official \(\d+\)/);
   // The filter box is there, greyed out until the list arrives, and the count.
   assert.match(html, /<div id="filter-bar" class="filter-bar cf-loading" aria-busy="true"><div class="filter-group">/);
   assert.match(html, /data-tag="Death"/);

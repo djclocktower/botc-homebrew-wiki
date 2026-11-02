@@ -506,14 +506,23 @@
     var res = window.CustomCSS ? window.CustomCSS.clean(text) : { css: '', warnings: [] };
     var st = document.getElementById('thx-css-style');
     if (!st) { st = document.createElement('style'); st.id = 'thx-css-style'; document.head.appendChild(st); }
-    st.textContent = res.css;
+    /* Text nodes' data, and the warnings only when they change: replacing
+       nodes on every keystroke in the box made Chrome's Ctrl+Z undo one
+       letter at a time. */
+    setData(st, res.css);
     var w = document.getElementById('thx-css-warn');
     if (w) {
-      w.hidden = !res.warnings.length;
-      w.innerHTML = res.warnings.map(function (m) { return '<li>' + escH(m) + '</li>'; }).join('');
+      var html = res.warnings.map(function (m) { return '<li>' + escH(m) + '</li>'; }).join('');
+      // Settled once the typing pauses: a half-typed rule is always wrong.
+      clearTimeout(w._t);
+      if (w._html !== html) w._t = setTimeout(function () { w._html = html; w.innerHTML = html; w.hidden = !res.warnings.length; }, 450);
     }
     var c = document.getElementById('thx-css-count');
-    if (c) c.textContent = text ? text.length + ' / ' + (PR().THEME_CSS_MAX || 30000) + ' characters' : '';
+    if (c) setData(c, text ? text.length + ' / ' + (PR().THEME_CSS_MAX || 30000) + ' characters' : '');
+  }
+  function setData(el, v) {
+    if (!el.firstChild) el.appendChild(document.createTextNode(''));
+    if (el.firstChild.data !== v) el.firstChild.data = v;
   }
 
   function primeMore(theme) {
