@@ -22,13 +22,20 @@
   }
 
   function list() {
-    return fetch('/api/account', { credentials: 'same-origin' }).then(function (r) {
-      if (r.status === 401) return null;
-      return json(r).then(function (acc) {
-        if (!acc || acc.error) throw new Error((acc && acc.error) || 'Your characters could not be loaded.');
-        return (acc.characters || []).map(function (c) {
-          return { slug: c.slug, name: c.name || 'Untitled character', status: c.status };
-        });
+    // BotcData.me() is the shared "who is reading": no request at all for a
+    // reader who is not signed in (see "Caching" in CLAUDE.md).
+    var who = window.BotcData && window.BotcData.me ? window.BotcData.me() : Promise.resolve({ loggedIn: true });
+    return who.then(function (me) {
+      if (!me || !me.loggedIn) return null;
+      return fetch('/api/account', { credentials: 'same-origin' }).then(account);
+    });
+  }
+  function account(r) {
+    if (r.status === 401) return null;
+    return json(r).then(function (acc) {
+      if (!acc || acc.error) throw new Error((acc && acc.error) || 'Your characters could not be loaded.');
+      return (acc.characters || []).map(function (c) {
+        return { slug: c.slug, name: c.name || 'Untitled character', status: c.status };
       });
     });
   }
