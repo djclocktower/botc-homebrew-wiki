@@ -17,17 +17,32 @@
   var LAYER_MAX = 1200;       // longest side a layer is stored at
   var THUMB = 256;            // the grid's picture
   var ARTISTS = 'Harry & Co & Bendan';
-  // The white layer (the outline) is always painted with the team's Outline
-  // sheet; the black layer takes whichever of the gallery's textures is picked.
-  var PARCHMENT = '/assets/starlit/texture-outline.webp';
+  // The team's texture sets, from their Photoshop templates: eight sheets
+  // each, and an Outline sheet that paints the white layer whichever of the
+  // set's sheets is on the black one. assets/starlit/tex/{set}-{kind}.webp,
+  // with a small -s copy for the picker.
+  var TEX_DIR = '/assets/starlit/tex/';
+  var SETS = [['default', 'Default'], ['vibrant', 'Vibrant'], ['treasure', 'Treasure Hunt'], ['starlit', 'Starlit']];
+  var KINDS = [['base', 'Base'], ['good', 'Good'], ['evil', 'Evil'], ['traveller', 'Traveller'],
+    ['traveller-good', 'Traveller Good'], ['traveller-evil', 'Traveller Evil'], ['fabled', 'Fabled'], ['loric', 'Loric']];
+  var BUILT_IN = [];
+  SETS.forEach(function (s) {
+    KINDS.forEach(function (k) {
+      var f = TEX_DIR + s[0] + '-' + k[0];
+      BUILT_IN.push({ id: s[0] + '-' + k[0], set: s[1], name: k[1], src: f + '.webp', thumb: f + '-s.webp',
+        outline: TEX_DIR + s[0] + '-outline.webp' });
+    });
+  });
+  // The outline for a texture that is not one of the sets'.
+  var PARCHMENT = TEX_DIR + 'default-outline.webp';
   var TOGGLES = ['texture', 'whites', 'blacks', 'shadow'];
 
   var gallery = { icons: [], textures: [], canUpload: false, isAdmin: false, uploaders: [] };
-  var textures = [];                 // the gallery's own, + the reader's
+  var textures = BUILT_IN.slice();   // + the gallery's own, + the reader's
   var own = null;                    // a texture picked from the reader's device
   var filter = { q: '', tag: '' };
   // An icon opens as it was uploaded: no texture until the reader picks one.
-  var view = { tex: '', texture: false, whites: true, blacks: true, shadow: true };
+  var view = { tex: 'default-base', texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
   var previewUrl = null, paintSeq = 0;
 
@@ -62,7 +77,7 @@
   }
   function texturesFor(id) {
     var t = texById(id) || textures[0];
-    return Promise.all([t ? loadImg(t.src) : null, loadImg(PARCHMENT)])
+    return Promise.all([loadImg(t.src), loadImg(t.outline || PARCHMENT)])
       .then(function (r) { return { fill: r[0], parch: r[1] }; });
   }
 
@@ -240,7 +255,7 @@
     if (!icon) return;
     current = icon;
     view.texture = false;
-    if (!texById(view.tex)) view.tex = textures[0] ? textures[0].id : '';
+    if (!texById(view.tex)) view.tex = textures[0].id;
     $('sg-d-name').textContent = icon.name;
     $('sg-d-credit').innerHTML = creditHTML(icon);
     $('sg-d-tags').innerHTML = icon.tags.map(function (t) {
@@ -270,16 +285,33 @@
   }
 
   function rebuildTextures() {
-    textures = gallery.textures.map(function (t) {
-      return { id: 'starlit-' + t.id, name: t.name, src: t.image + '?v=' + t.v };
-    }).concat(own ? [own] : []);
+    textures = BUILT_IN.concat(gallery.textures.map(function (t) {
+      var src = t.image + '?v=' + t.v;
+      return { id: 'starlit-' + t.id, set: 'More from the gallery', name: t.name, src: src, thumb: src };
+    }), own ? [own] : []);
+  }
+  /* The picker is a drop-down: closed, it shows the texture in use; open, it
+     shows every texture, grouped by set, each with its picture. */
+  function texTile(t) {
+    return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (view.texture && t.id === view.tex) + '" title="' + esc(t.name) + '">' +
+      '<img src="' + esc(t.thumb) + '" alt="" loading="lazy" decoding="async"><b>' + esc(t.name) + '</b></button>';
   }
   function drawTexs() {
-    $('sg-texs').innerHTML = textures.map(function (t) {
-      return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (view.texture && t.id === view.tex) + '" title="' + esc(t.name) + '">' +
-        '<img src="' + esc(t.src) + '" alt="" decoding="async"><b>' + esc(t.name) + '</b></button>';
+    var drop = $('sg-tex-drop'), t = view.texture ? texById(view.tex) : null, groups = [], by = {};
+    textures.forEach(function (x) {
+      if (!by[x.set]) { by[x.set] = []; groups.push(x.set); }
+      by[x.set].push(x);
+    });
+    $('sg-tex-now').innerHTML = t
+      ? '<img src="' + esc(t.thumb) + '" alt=""><span>' + esc(t.set === 'Yours' ? 'Your own' : t.set + ': ' + t.name) + '</span>'
+      : '<i aria-hidden="true"></i><span>None, as uploaded</span>';
+    $('sg-texs').innerHTML = groups.map(function (g) {
+      return '<p class="sg-drop-h">' + esc(g === 'Yours' ? 'Your own' : g) + '</p><div class="sg-texs">' +
+        by[g].filter(function (x) { return x.set !== 'Yours'; }).map(texTile).join('') +
+        (g === 'Yours' ? texTile(own) : '') + '</div>';
     }).join('') +
-      '<button type="button" class="sg-tex sg-tex-own" data-own="1" title="Use a texture from your device"><i aria-hidden="true">+</i><b>Your own</b></button>';
+      '<div class="sg-texs"><button type="button" class="sg-tex sg-tex-own" data-own="1" title="Use a texture from your device"><i aria-hidden="true">+</i><b>Your own</b></button></div>';
+    drop.classList.toggle('on', !!t);
   }
   $('sg-texs').addEventListener('click', function (e) {
     var b = e.target.closest('button');
@@ -287,7 +319,12 @@
     if (b.hasAttribute('data-own')) { $('sg-own-tex').click(); return; }
     view.tex = b.getAttribute('data-tex');
     view.texture = true; $('sg-o-texture').checked = true;
+    $('sg-tex-drop').open = false;
     drawTexs(); paint();
+  });
+  document.addEventListener('click', function (e) {
+    var drop = $('sg-tex-drop');
+    if (drop.open && !drop.contains(e.target)) drop.open = false;
   });
   // A texture from the reader's own device: used here and nowhere else.
   $('sg-own-tex').addEventListener('change', function () {
@@ -295,10 +332,12 @@
     this.value = '';
     if (!f) return;
     if (own) { URL.revokeObjectURL(own.src); delete images[own.src]; }
-    own = { id: 'own', name: 'Yours', src: URL.createObjectURL(f) };
+    var src = URL.createObjectURL(f);
+    own = { id: 'own', set: 'Yours', name: 'Yours', src: src, thumb: src };
     rebuildTextures();
     view.tex = 'own';
     view.texture = true; $('sg-o-texture').checked = true;
+    $('sg-tex-drop').open = false;
     drawTexs(); paint();
   });
   TOGGLES.forEach(function (k) {
@@ -334,11 +373,12 @@
      (assets/iconforge/app.js), with the texture to open on. */
   $('sg-forge').addEventListener('click', function () {
     if (!current) return;
-    var icon = current;
+    var icon = current, tex = view.texture && view.tex !== 'own' ? texById(view.tex) : null;
     render(icon, TARGET * 2, { tex: view.tex, texture: false, whites: view.whites, blacks: view.blacks, shadow: false })
       .then(function (c) {
         localStorage.setItem('botc_starlit_forge', JSON.stringify({
-          name: icon.name, png: c.toDataURL('image/png'), tex: view.texture && view.tex !== 'own' ? view.tex : ''
+          name: icon.name, png: c.toDataURL('image/png'),
+          tex: tex ? { id: tex.id, name: tex.set + ': ' + tex.name, file: tex.src } : null
         }));
         location.href = 'iconforge?from=starlit';
       })

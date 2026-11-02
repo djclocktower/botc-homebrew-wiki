@@ -114,7 +114,31 @@
   display: block; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .74rem;
   letter-spacing: .08em; text-transform: uppercase; color: var(--maroon); margin: 0 0 6px;
 }
-.sg-texs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0 0 14px; }
+.sg-drop { position: relative; margin: 0 0 14px; overflow: visible; }
+.sg-drop summary {
+  position: relative; display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none;
+  padding: 5px 34px 5px 5px; border: 1px solid var(--parch-frame); background: rgba(255,255,255,.35);
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .9rem; color: var(--maroon);
+}
+.sg-drop summary::-webkit-details-marker { display: none; }
+.sg-drop summary::after {
+  content: ''; position: absolute; right: 14px; top: 50%; width: 8px; height: 8px; margin-top: -6px;
+  border: solid var(--maroon); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.sg-drop[open] summary::after { margin-top: -2px; transform: rotate(-135deg); }
+.sg-drop summary img, .sg-drop summary i { width: 54px; height: 32px; flex-shrink: 0; object-fit: cover; border: 1px solid var(--parch-frame); }
+.sg-drop summary i { display: block; background: repeating-linear-gradient(45deg, #fff 0 6px, #e8dfc8 6px 12px); }
+.sg-drop summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-drop-panel {
+  max-height: min(380px, 60vh); overflow-y: auto; margin-top: 4px;
+  padding: 4px 10px 10px; background: var(--parch); border: 1px solid var(--parch-frame);
+}
+.sg-drop-h {
+  margin: 8px 0 5px; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .7rem;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--maroon);
+}
+.sg-texs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sg-drop-panel > .sg-texs:last-child { margin-top: 10px; }
 .sg-tex { padding: 0; cursor: pointer; overflow: hidden; background: none; border: 1px solid var(--parch-frame); font: inherit; text-align: left; }
 .sg-tex:hover { border-color: #8a7457; }
 .sg-tex[aria-pressed=true] { border-color: var(--maroon); box-shadow: 0 0 0 2px rgba(183,156,111,.75); }
@@ -290,7 +314,10 @@ html.sg-pick .home-panel { padding-top: 14px; }
         <div>
           <div class="sg-d-tags" id="sg-d-tags" data-user-content></div>
           <span class="sg-label">Texture</span>
-          <div class="sg-texs" id="sg-texs" data-user-content></div>
+          <details class="sg-drop" id="sg-tex-drop">
+            <summary id="sg-tex-now"></summary>
+            <div class="sg-drop-panel" id="sg-texs" data-user-content></div>
+          </details>
           <input type="file" id="sg-own-tex" accept="image/png,image/jpeg,image/webp" hidden>
           <span class="sg-label">Show</span>
           <div class="sg-toggles">

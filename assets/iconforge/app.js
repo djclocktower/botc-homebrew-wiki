@@ -1005,7 +1005,16 @@ if (new URLSearchParams(location.search).get('from') === 'starlit') {
         return starlitTextures;
       })
       .then(() => {
-        if (handoff.tex && COLOR_TEXTURES.some((t) => t.id === handoff.tex)) pickTexture(handoff.tex);
+        // The gallery's texture, as a file: its sets are not Icon Forge's.
+        const t = handoff.tex;
+        if (!t || typeof t.file !== 'string' || !t.file.startsWith('/assets/starlit/')) return;
+        const id = 'starlit-pick-' + String(t.id || '').replace(/[^a-z0-9-]/gi, '');
+        if (!COLOR_TEXTURES.some((x) => x.id === id)) {
+          const def = { id, label: String(t.name || 'Starlit').slice(0, 60), sub: 'Starlit Gallery', file: t.file };
+          COLOR_TEXTURES.push(def);
+          addTexButton(def);
+        }
+        pickTexture(id);
       })
       .catch(() => toast('The icon from the Starlit Gallery could not be opened.', 'err'));
   }

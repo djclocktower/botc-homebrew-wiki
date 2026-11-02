@@ -3816,15 +3816,20 @@ required but a shout-out is appreciated, and no commercial use.
   `<img>` so a phone can long-press it. The two layers must be the same size:
   a layer exported trimmed to its drawing (Photoshop's "Export As" on one
   layer) has lost its place on the canvas, so the form refuses the pair.
-- **Textures are the gallery's own and nothing else** (the owner's call,
-  2026-11: not Icon Forge's official sheets): the `starlit_textures` rows, in
-  id order, then "Your own", a local file that is never uploaded. They are
-  also in Icon Forge as `starlit-{id}`. The team's Photoshop template
-  (Default.psd) gave the first eight: Base, Good, Evil, Traveller (blue |
-  red), Traveller Good (blue | brown), Traveller Evil (brown | red), Fabled,
-  Loric, with the traveller splits baked into the sheets. Its Outline sheet
-  (`assets/starlit/texture-outline.webp`) is not a choice: it always paints
-  the white layer (`PARCHMENT`).
+- **Textures are the team's own and nothing else** (the owner's call,
+  2026-11: not Icon Forge's official sheets). Four sets from the team's
+  Photoshop templates (Default, Vibrant, Treasure Hunt, Starlit; `SETS` /
+  `KINDS` in starlit.js), eight sheets each: Base, Good, Evil, Traveller
+  (blue | red), Traveller Good (blue | brown), Traveller Evil (brown | red),
+  Fabled, Loric, the traveller splits baked in. Committed as
+  `assets/starlit/tex/{set}-{kind}.webp` plus a 160px `-s` copy for the
+  picker. Each set's Outline sheet paints the white layer whichever of its
+  sheets is picked; anything else uses Default's. Then the team's uploads
+  (`starlit_textures`, "More from the gallery", also in Icon Forge as
+  `starlit-{id}`) and "Your own", a local file that is never uploaded. The
+  picker is a drop-down (a `<details>`) showing the texture in use, open to
+  every texture grouped by set. "Open in Icon Forge" hands over the picked
+  sheet's file, which the forge adds to its list.
   **An icon opens as it was uploaded** (the owner's call): black lines, white
   outline, shadow, no texture (`AS_UPLOADED`), and its grid picture is drawn
   the same way. Picking a texture tile turns the texture on. The upload form
@@ -3836,9 +3841,9 @@ required but a shout-out is appreciated, and no commercial use.
   key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
   the browser, 1200px at most), textures PNG/JPEG/WebP, bytes sniffed.
   The one exception is what came from the team's own Photoshop template: the
-  first icon, Goat Skull, and the eight textures above. Their files are committed
-  under `assets/starlit/` and their rows were written to D1 by hand, so the
-  preview could show them before anyone had uploaded anything. A file missing
+  first icon, Goat Skull, whose files are committed under `assets/starlit/`
+  and whose row was written to D1 by hand, so the
+  preview could show it before anyone had uploaded anything. A file missing
   from R2 falls back to the committed copy, as for `art/`.
 - **Who can upload**: admins and the accounts in `settings` `starlit_uploaders`
   (`[{id, username}]` via `sanitizeEditors()`), set by an admin in the
