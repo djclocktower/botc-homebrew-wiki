@@ -19,6 +19,14 @@ render.js, or the gear and close buttons in char-snapshot.js); a phone paints
 an emoji, or a dingbat like ⚙, as a coloured picture that clashes with the
 wiki's look.
 
+**No rounded corners and no gradients in new UI.** Square edges, flat
+colours. They make a page look generic and machine-made. Leave existing
+styles alone unless asked.
+
+**Minimal text.** Use as few words as the job needs. Not every control needs
+a description; most need none. Don't spell out everything a feature does, and
+avoid LLM tropes in anything a reader sees.
+
 ## Architecture in one paragraph
 
 A **Cloudflare Worker** (`worker/worker.js`, config in `wrangler.toml`) serves
