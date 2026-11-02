@@ -614,7 +614,9 @@ assets/
                        {{townsfolk|…}}…{{loric|…}}) plus the
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
-                       paths — nothing a writer types can become raw HTML.
+                       paths — nothing a writer types can become raw HTML
+                       (typed HTML tags are rebuilt from a whitelist, see
+                       Gotcha 10).
                        inlineFormat(text, {marks:'links'}) is the restricted
                        subset character pages use — see "Formatting on a
                        character page"; plainText() is the same marks taken
@@ -5215,6 +5217,16 @@ keeps `content-visibility: auto`.
    first and whitelists hrefs (http/https/mailto/site-relative only) and image
    paths. Never switch any of them to `innerHTML` with raw text, and never add
    a mark that emits an attribute the writer controls.
+   **Typed HTML is the one exception, and it is rebuilt, never copied**
+   (`stashTags()`): a short list of inline tags (`HTML_TAGS`: b, i, u, s,
+   sub, sup, span, br …), only `style` and `title` kept, the style cut down
+   by `safeStyle()` to whitelisted properties with plain values (colour
+   functions only, no negatives, sizes capped by `STYLE_CAP`), and every tag
+   left open closed at the end of its line. Widening either list is a
+   security change: add its escape attempt to the tests first. The MediaWiki
+   marks (`'''bold'''`, `''italic''`, `[https://… label]`, `== Heading ==`)
+   live beside it; all of them except the heading work in links mode too,
+   and `plainText()` strips them.
    `site.js` loads `render-wiki.js` **before** `render-news.js` — the news
    renderer is a wrapper and formats nothing on its own.
 11. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the
