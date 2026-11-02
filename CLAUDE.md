@@ -3805,10 +3805,14 @@ required but a shout-out is appreciated, and no commercial use.
   `<img>` so a phone can long-press it. The two layers must be the same size:
   a layer exported trimmed to its drawing (Photoshop's "Export As" on one
   layer) has lost its place on the canvas, so the form refuses the pair.
-- **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`, …),
+- **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`, …,
+  Traveller II `traveller_split` — blue down the left, red down the right, as
+  Icon Forge splits it — and Monochrome `white`),
   the gallery's own (`starlit_textures`, also in Icon Forge as
   `starlit-{id}`), and "Your own", a local file that is never uploaded. An
-  icon's `tex` is the texture it opens in and its thumbnail is drawn in.
+  icon's `tex` is the texture it opens in and its thumbnail is drawn in;
+  with none we have, and in the upload form, it is the gallery texture named
+  Grey (the team's base, `DEFAULT_TEX_NAME`), else Good.
 - **Storage**: lazy tables `starlit_icons` and `starlit_textures`; files in R2
   under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
   `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new

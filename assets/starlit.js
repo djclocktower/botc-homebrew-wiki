@@ -24,9 +24,14 @@
     { id: 'blue', name: 'Good', src: TEX + 'blue.png' },
     { id: 'red', name: 'Evil', src: TEX + 'red.png' },
     { id: 'brown', name: 'Traveller', src: TEX + 'brown.png' },
+    { id: 'traveller_split', name: 'Traveller II', src: TEX + 'blue.png', src2: TEX + 'red.png' },
     { id: 'yellow_fibbin', name: 'Fabled', src: TEX + 'yellow_fibbin.png' },
-    { id: 'green_pope', name: 'Loric', src: TEX + 'green_pope.png' }
+    { id: 'green_pope', name: 'Loric', src: TEX + 'green_pope.png' },
+    { id: 'white', name: 'Monochrome', src: TEX + 'white.png' }
   ];
+  // What an icon opens in when it names no texture we have: the team's base
+  // grey (one of the gallery's own, so found by name), else Good.
+  var DEFAULT_TEX_NAME = 'Grey';
   var PARCHMENT = TEX + 'white.png';
   var TOGGLES = ['texture', 'whites', 'blacks', 'shadow'];
 
@@ -67,10 +72,24 @@
     for (var i = 0; i < textures.length; i++) if (textures[i].id === id) return textures[i];
     return null;
   }
+  function defaultTex() {
+    for (var i = 0; i < textures.length; i++) {
+      if (textures[i].id.indexOf('starlit-') === 0 && textures[i].name === DEFAULT_TEX_NAME) return textures[i].id;
+    }
+    return 'blue';
+  }
+  // Traveller II, as in Icon Forge: one sheet down the left, the other down
+  // the right. compose() centres the fill, so the split runs through the icon.
+  function splitFill(a, b) {
+    var w = a.naturalWidth, h = a.naturalHeight, c = canvas(w, h), x = c.getContext('2d');
+    x.drawImage(a, 0, 0, w, h);
+    x.drawImage(b, w / 2, 0, w / 2, h, w / 2, 0, w / 2, h);
+    return c;
+  }
   function texturesFor(id) {
-    var t = texById(id) || BUILT_IN[0];
-    return Promise.all([loadImg(t.src), loadImg(PARCHMENT)])
-      .then(function (r) { return { fill: r[0], parch: r[1] }; });
+    var t = texById(id) || texById(defaultTex()) || BUILT_IN[0];
+    return Promise.all([loadImg(t.src), loadImg(PARCHMENT), t.src2 ? loadImg(t.src2) : null])
+      .then(function (r) { return { fill: r[2] ? splitFill(r[0], r[2]) : r[0], parch: r[1] }; });
   }
 
   /* ── drawing ──────────────────────────────────────────────────── */
@@ -244,7 +263,7 @@
   function openIcon(icon) {
     if (!icon) return;
     current = icon;
-    view.tex = texById(icon.tex) ? icon.tex : 'blue';
+    view.tex = texById(icon.tex) ? icon.tex : defaultTex();
     $('sg-d-name').textContent = icon.name;
     $('sg-d-credit').innerHTML = creditHTML(icon);
     $('sg-d-tags').innerHTML = icon.tags.map(function (t) {
@@ -279,7 +298,8 @@
   function drawTexs() {
     $('sg-texs').innerHTML = textures.map(function (t) {
       return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (t.id === view.tex) + '" title="' + esc(t.name) + '">' +
-        '<img src="' + esc(t.src) + '" alt="" decoding="async"><b>' + esc(t.name) + '</b></button>';
+        (t.src2 ? '<span class="sg-tex-split"><img src="' + esc(t.src) + '" alt=""><img src="' + esc(t.src2) + '" alt=""></span>'
+          : '<img src="' + esc(t.src) + '" alt="" decoding="async">') + '<b>' + esc(t.name) + '</b></button>';
     }).join('') +
       '<button type="button" class="sg-tex sg-tex-own" data-own="1" title="Use a texture from your device"><i aria-hidden="true">+</i><b>Your own</b></button>';
   }
@@ -492,7 +512,7 @@
     $('sg-f-tex').innerHTML = textures.filter(function (t) { return t.id !== 'own'; }).map(function (t) {
       return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>';
     }).join('');
-    $('sg-f-tex').value = icon && texById(icon.tex) ? icon.tex : 'blue';
+    $('sg-f-tex').value = icon && texById(icon.tex) ? icon.tex : defaultTex();
     say('sg-f-msg', icon ? 'Pick a new layer only to replace it.' : '');
     show('sg-form-modal', true);
     formPreview();
