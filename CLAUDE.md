@@ -4337,8 +4337,9 @@ the damask **back cover**.
 Every element on every page can be moved, sized, turned, faded, hidden or
 replaced with an upload, and free text/image stickers go anywhere.
 Downloadable as a share JPEG, a print PNG, all pages as PNGs, or one PDF.
-Client-side only: no Worker route, no D1, nothing stored server-side (the
-autosave is localStorage; a design file is a download). The script sheet
+Client-side, except one route: a design can be saved with a script or
+collection (see "Saved with the script" below); otherwise the autosave is
+localStorage and a design file is a download. The script sheet
 comes in two styles, the printed sheet above and the **app view** (see
 below); the night sheets in three: the ribbon style (the default), the
 classic printed sheet and the app view.
@@ -4763,6 +4764,66 @@ ribbon and the skull (`titleLeftEdge()`), the author follows, and the left
 flourish is hidden (it would land on the ribbon). They are separate
 options, but rules beside a centred title get a narrow box, so the hint
 suggests both. The app view has neither.
+
+### Saved with the script (`/api/fancy-design`)
+
+A design can be saved WITH a published script or collection, so the page's
+"Fancy Sheet" button (`/fancyscripts?s=` / `?c=`) opens on its owner's
+design for every reader. One JSON file in R2, `fancy/{type}/{PK slug}.json`:
+the same object as "Save design file", minus the roster (that always comes
+from the page). Nothing in D1, no feed bump, no revision. The prefix is not in
+`R2_SERVE_PREFIXES`, so the route is the only door, and it answers a draft's
+design only to someone who can edit the draft.
+
+- **Who may save**: `canEditPage()` (owner, approved editors, admins), and
+  not a protected page's owner. The GET answers `canSave`; the tool shows
+  "Save design to this script" only then (`showWikiSave()`).
+- **Which design opens**: the saved one, unless this browser's autosave was
+  made from that same saved version (`serverAt` in the autosave, compared
+  with `savedAt`), so a reader's own edits survive a reload but the owner's
+  next save reaches them.
+- Capped at `FANCY_DESIGN_MAX` (8 MB: uploads ride inside). Purging the page
+  deletes the file, or a new page on the slug would open with it.
+
+### Three ticks from the comparison with botc.letshare.fun
+
+- **`colorKeywords`** (Layout card): good, evil and the team words in an
+  ability take the sheet's good and evil inks (`keywordParts()` in
+  script.js). Colour only, never weight, so the measured wraps stay true.
+  Both sheet styles; the app view carries the colour on its runs
+  (`breakRuns` keeps a run's `color`).
+- **`jinxText`** (Layout card): each jinx's rule printed in small italic under
+  the character that carries it, the partner's icon hanging in front
+  (`jinxNotes()`: each pair once, under the first in the list; `jinxNote()` /
+  `NOTE` in sheet.js). Measured in `rowHeightEm` exactly as drawn, so the
+  one-page fit still holds. The jinx page is untouched.
+- **`playerTable`** (Back cover card): the 5 to 15+ setup table
+  (`PLAYER_TABLE`) on the back cover, in `back.tableColor`. It is an element
+  (`el.backTable`), so it moves and sizes from the Elements card.
+
+### The PDF keeps its text (`exportOpts.pdfMode`)
+
+`'print'`, the default, draws every ticked page into a print-only holder
+(`#fs-print`, `@page` sized to the paper) and opens the browser's print
+window, whose "Save as PDF" keeps the text as text with the fonts embedded.
+`'image'` is the old JPEG-per-page download. Three things make the print one
+right: pages are scaled with `zoom`, not a transform (a transform leaves the
+full-size box in the layout and the print window shrinks every page to fit
+it); canvases are frozen into images (`frozenCanvases()`), because the
+preview takes its singleton canvases back after each page; and gradient
+lettering (`background-clip: text`, the swash title) is laid over with a
+picture of itself (`flattenClippedText()`), because the print path draws a
+hairline box round it.
+
+### The page frame
+
+The tool sits in the Script Builder's app frame (`html.sbx-page`, `.sbx`,
+`.sbx-side`, `.sbx-bar`, `.sbx-tabs`, `.sbx-scroll`, `.sbx-b` in styles.css):
+the settings are the side panel (a drawer under 900px, `#sbx-open`), the
+export buttons the bar (PNG, every page and the builder hand-off in its More
+menu), the pages the tabs with the zoom at the end of the strip. Everything
+page-local in fancyscripts.html is square and flat. Fit is measured against
+the preview pane (`#fs-scroll`).
 
 ### The watermark
 

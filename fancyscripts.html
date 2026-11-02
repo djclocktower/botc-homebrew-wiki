@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="redesign-on">
+<html lang="en" class="redesign-on sbx-page">
 <head>
 <meta charset="UTF-8">
 <script src="assets/data.js"></script>
@@ -39,218 +39,167 @@
 @font-face { font-family: 'OptimusPrinceps'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fonts/OptimusPrinceps.ttf') format('truetype'); }
 @font-face { font-family: 'OptimusPrincepsSemiBold'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fonts/OptimusPrincepsSemiBold.ttf') format('truetype'); }
 
-.fs-hero { padding-bottom: 10px; }
-.fs-credit {
-  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .07em;
-  text-transform: uppercase; color: rgba(236,225,200,.62); margin: 12px 0 0;
+/* The page sits in the Script Builder's app frame (styles.css: .sbx,
+   .sbx-side, .sbx-bar, .sbx-tabs, .sbx-scroll, .sbx-b): the settings are the
+   side panel (a drawer on a phone), the export buttons the bar, the pages
+   the tabs. What follows is only what is Fancy Scripts' own. Square edges,
+   flat colours, as the builder. */
+.fs-side-title {
+  flex: 1; min-width: 0; font-family: 'Dumbledor2', serif; font-size: 1.1rem;
+  letter-spacing: .03em; color: var(--maroon); padding: 2px 2px 0;
 }
+.fs-names { cursor: default; }
+.fs-b-go { background: var(--maroon); border-color: rgba(214,196,150,.55); }
+.fs-b-go:hover { background: #6d2628; }
+.sbx-b .sbi { width: 1.05em; height: 1.05em; }
+.sbx-b-icon { padding: 5px 7px; }
+.sbx-b:disabled { opacity: .45; cursor: default; }
 
-.fs-layout {
-  display: grid; grid-template-columns: 350px minmax(0, 1fr);
-  gap: 22px; align-items: start;
-}
-/* a select with a long option would otherwise set the column's width on a
-   phone and push the whole page sideways */
-.fs-layout > aside { min-width: 0; }
-@media (max-width: 940px) {
-  .fs-layout { grid-template-columns: 1fr; }
-  /* phone: the sheet first, the knobs after — the preview is the product */
-  .fs-preview-col { order: -1; }
-}
-
-/* control cards */
+/* the settings: one section per card, a header bar over its controls */
 .fs-card {
-  background-color: var(--parch);
-  background-image: url('assets/parchment.webp');
-  background-size: cover;
-  border: 2px solid var(--parch-frame);
-  padding: 14px 16px 12px;
-  margin-bottom: 14px;
-  color: var(--ink);
+  border: 1px solid var(--parch-frame); background: rgba(255,253,248,.55);
+  margin: 0 0 8px; padding: 0; color: var(--ink);
 }
-.fs-card h2 {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
-  font-size: 1.06rem; letter-spacing: .04em; color: var(--maroon);
-  margin: 0 0 10px;
+.fs-card > h2, .fs-card details > summary {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--maroon);
+  padding: 8px 10px; background: #fffdf8;
 }
-.fs-card details > summary {
-  font-family: 'Dumbledor2', serif; font-size: 1.06rem; letter-spacing: .04em;
-  color: var(--maroon); cursor: pointer; list-style: none; user-select: none;
-}
+.fs-card > h2 { border-bottom: 1px solid var(--parch-frame); }
+.fs-card details > summary { cursor: pointer; list-style: none; user-select: none; }
 .fs-card details > summary::-webkit-details-marker { display: none; }
-.fs-card details > summary::before { content: '▸ '; font-size: .8em; }
-.fs-card details[open] > summary::before { content: '▾ '; }
-.fs-card details[open] > summary { margin-bottom: 10px; }
-.fs-card details > summary .fs-sum-note {
-  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .06em;
-  text-transform: uppercase; color: rgba(91,31,33,.6); margin-left: 8px;
+.fs-card details > summary::after {
+  content: ''; margin-left: auto; width: 6px; height: 6px; flex: none;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg); transition: transform .15s;
 }
+.fs-card details[open] > summary::after { transform: translateY(1px) rotate(225deg); }
+.fs-card details[open] > summary { border-bottom: 1px solid var(--parch-frame); }
+.fs-card details > summary:hover { background: #fff; }
+.fs-card-body, .fs-card details > div { padding: 10px; }
+.fs-about { font-size: .8rem; line-height: 1.45; color: #6b5d49; margin: 4px 2px 10px; }
+.fs-about a { color: var(--good-name); }
 
 .fs-field, .fs-select {
   width: 100%; box-sizing: border-box;
-  border: 1px solid var(--parch-frame); border-radius: 4px;
-  background: rgba(255,252,240,.75); color: var(--ink);
-  font: inherit; font-size: .92rem; padding: 7px 9px;
+  border: 1px solid var(--parch-frame); border-radius: 0;
+  background: #fffdf8; color: var(--ink);
+  font: inherit; font-size: .9rem; padding: 6px 8px;
 }
-textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
+textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .86rem; }
 .fs-field:focus, .fs-select:focus { outline: 2px solid var(--maroon); outline-offset: 0; }
 .fs-field + .fs-field { margin-top: 8px; }
 .fs-lab {
   display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
-  font-size: .74rem; letter-spacing: .08em; text-transform: uppercase;
+  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
   color: var(--maroon); margin: 12px 0 5px;
 }
 .fs-lab:first-child { margin-top: 0; }
 .fs-row-between .fs-lab { margin: 8px 0; }
-.fs-hint { font-size: .8rem; line-height: 1.45; color: rgba(60,30,20,.78); margin: 8px 0 2px; }
+.fs-hint { font-size: .78rem; line-height: 1.45; color: #6b5d49; margin: 6px 0 2px; }
 
-.fs-btn {
-  display: inline-block; border: 1px solid var(--parch-frame); border-radius: 4px;
-  background: rgba(255,252,240,.75); color: var(--maroon);
-  font: inherit; font-size: .9rem; font-weight: 600;
-  padding: 7px 11px; cursor: pointer;
+.fs-btn, .fs-mini {
+  display: inline-block; border: 1px solid var(--parch-frame); border-radius: 0;
+  background: #fffdf8; color: var(--maroon); cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-size: .74rem; font-weight: 500;
+  letter-spacing: .04em; text-transform: uppercase; padding: 6px 9px;
 }
-.fs-btn:hover { background: rgba(255,252,240,.95); }
-.fs-btn:disabled { opacity: .55; cursor: default; }
-.fs-btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-/* art pickers and the decoration gallery: a picture over its name */
-.fs-art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.fs-mini { font-size: .7rem; padding: 3px 6px; line-height: 1; }
+.fs-btn:hover, .fs-mini:hover { background: rgba(91,31,33,.09); }
+.fs-btn:disabled { opacity: .5; cursor: default; }
+.fs-btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.fs-art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 5px; margin: 4px 0 8px; }
 .fs-art {
   display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
-  border: 1px solid var(--parch-frame); border-radius: 4px; background: rgba(255,252,240,.6);
+  border: 1px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
   padding: 4px; cursor: pointer; font: inherit; font-size: .7rem; line-height: 1.2; color: var(--maroon);
 }
 .fs-art img { width: 100%; height: 44px; object-fit: contain; }
 .fs-art img.fs-art-crop { object-fit: cover; object-position: 52% 100%; }
 .fs-art span { overflow-wrap: anywhere; text-align: center; }
-.fs-art:hover { background: rgba(255,252,240,.95); }
-.fs-art.on { border-color: var(--maroon); box-shadow: 0 0 0 1px var(--maroon); background: rgba(255,252,240,.95); }
-.fs-mini {
-  border: 1px solid var(--parch-frame); border-radius: 4px; background: rgba(255,252,240,.75);
-  color: var(--maroon); font: inherit; font-size: .8rem; line-height: 1; padding: 4px 7px; cursor: pointer;
-}
+.fs-art:hover { background: #fff; }
+.fs-art.on { border-color: var(--maroon); box-shadow: inset 0 0 0 1px var(--maroon); }
 .fs-linkish {
   background: none; border: none; padding: 0; margin-top: 8px;
-  font: inherit; font-size: .85rem; color: var(--good-name);
+  font: inherit; font-size: .84rem; color: var(--good-name);
   text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
 }
 #fs-paste-text {
   width: 100%; box-sizing: border-box; margin-top: 8px;
-  border: 1px solid var(--parch-frame); border-radius: 4px;
-  background: rgba(255,252,240,.75); color: var(--ink);
-  font-family: ui-monospace, monospace; font-size: .8rem;
-  padding: 7px 9px; min-height: 110px;
+  border: 1px solid var(--parch-frame); border-radius: 0; background: #fffdf8; color: var(--ink);
+  font-family: ui-monospace, monospace; font-size: .8rem; padding: 7px 9px; min-height: 110px;
 }
-#fs-paste-box .fs-btn { margin-top: 8px; }
+#fs-paste-box .fs-btn { margin-top: 6px; }
 
-.fs-note { margin: 10px 0 0; font-size: .88rem; padding: 8px 10px; border-radius: 4px;
-  border: 1px solid var(--parch-frame); background: rgba(255,252,240,.6); }
-.fs-note-err { border-color: var(--evil); color: var(--evil); background: rgba(115,29,31,.08); }
-.fs-note-ok { color: #3c5a2c; border-color: #3c5a2c; background: rgba(70,110,50,.08); }
-.fs-warnings { margin: 10px 0 0; font-size: .84rem; color: #6b4a17;
-  border: 1px solid #a8874a; background: rgba(168,135,74,.12);
-  border-radius: 4px; padding: 8px 10px; }
+.fs-note { margin: 10px 0 0; font-size: .86rem; padding: 7px 9px;
+  border: 1px solid var(--parch-frame); background: #fffdf8; }
+.fs-note-err { border-color: var(--evil); color: var(--evil); background: #fbeeea; }
+.fs-note-ok { color: #3c5a2c; border-color: #3c5a2c; background: #eef3e6; }
+.fs-warnings { margin: 10px 0 0; font-size: .82rem; color: #6b4a17;
+  border: 1px solid #a8874a; background: #f6eedb; padding: 7px 9px; }
 .fs-warnings p { margin: 2px 0; }
 
 /* generated controls */
 .fs-slider { margin-bottom: 9px; }
-.fs-slider-head { display: flex; justify-content: space-between; font-size: .84rem; margin-bottom: 1px; }
-.fs-slider-val { color: var(--maroon); font-weight: 600; white-space: nowrap; margin-left: 8px; }
+.fs-slider-head { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: 1px; }
+.fs-slider-val { color: var(--maroon); font-weight: 600; white-space: nowrap; margin-left: 8px; font-family: 'Oswald', sans-serif; font-size: .78rem; }
 .fs-slider input[type="range"] { width: 100%; accent-color: var(--maroon); }
-.fs-toggle {
-  display: flex; align-items: center; gap: 8px;
-  font-size: .86rem; margin: 6px 0; cursor: pointer;
-}
-.fs-toggle input { accent-color: var(--maroon); width: 16px; height: 16px; flex-shrink: 0; }
-.fs-color { display: flex; align-items: center; gap: 7px; font-size: .84rem; }
+.fs-toggle { display: flex; align-items: center; gap: 8px; font-size: .86rem; margin: 6px 0; cursor: pointer; }
+.fs-toggle input { accent-color: var(--maroon); width: 15px; height: 15px; flex-shrink: 0; margin: 0; }
+.fs-color { display: flex; align-items: center; gap: 7px; font-size: .82rem; }
 .fs-colors { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 4px 0 6px; }
 .fs-row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
 /* the hand-rolled colour picker (Android's native one is presets-only) */
 .fs-cp { position: relative; }
-.fs-cp-swatch {
-  width: 36px; height: 26px; border: 1px solid var(--parch-frame);
-  border-radius: 4px; padding: 0; cursor: pointer; display: block;
-}
+.fs-cp-swatch { width: 34px; height: 24px; border: 1px solid var(--parch-frame); border-radius: 0; padding: 0; cursor: pointer; display: block; }
 .fs-cp-pop {
-  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0;
-  width: 216px; padding: 10px;
-  background-color: var(--parch);
-  background-image: url('assets/parchment.webp');
-  background-size: cover;
-  border: 2px solid var(--parch-frame);
-  border-radius: 6px; box-shadow: 0 10px 26px rgba(20,8,16,.5);
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 216px; padding: 10px;
+  background: var(--parch); border: 2px solid var(--parch-frame); border-radius: 0;
+  box-shadow: 0 10px 26px rgba(20,8,16,.5);
 }
 .fs-cp-sv {
-  position: relative; width: 100%; height: 130px; border-radius: 4px;
-  border: 1px solid var(--parch-frame); cursor: crosshair;
-  touch-action: none;
-  background-image: linear-gradient(to top, #000, rgba(0,0,0,0)),
-                    linear-gradient(to right, #fff, rgba(255,255,255,0));
+  position: relative; width: 100%; height: 130px; border: 1px solid var(--parch-frame);
+  cursor: crosshair; touch-action: none;
+  background-image: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, rgba(255,255,255,0));
 }
 .fs-cp-dot {
-  position: absolute; width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6);
-  transform: translate(-50%, -50%); pointer-events: none;
+  position: absolute; width: 12px; height: 12px; border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6); transform: translate(-50%, -50%); pointer-events: none;
 }
 .fs-cp-hue {
-  width: 100%; margin: 10px 0 8px; height: 14px; border-radius: 7px;
-  -webkit-appearance: none; appearance: none;
-  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
-  outline: none;
+  width: 100%; margin: 10px 0 8px; height: 14px; -webkit-appearance: none; appearance: none;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); outline: none;
 }
-.fs-cp-hue::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--parch-frame); cursor: pointer;
-}
-.fs-cp-hue::-moz-range-thumb {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--parch-frame); cursor: pointer;
-}
+.fs-cp-hue::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 18px; background: #fff; border: 2px solid var(--parch-frame); cursor: pointer; }
+.fs-cp-hue::-moz-range-thumb { width: 10px; height: 16px; border-radius: 0; background: #fff; border: 2px solid var(--parch-frame); cursor: pointer; }
 .fs-cp-row { display: flex; gap: 8px; }
 .fs-cp-hex {
-  flex: 1; min-width: 0; box-sizing: border-box;
-  border: 1px solid var(--parch-frame); border-radius: 4px;
-  background: rgba(255,252,240,.75); color: var(--ink);
-  font-family: ui-monospace, monospace; font-size: .84rem; padding: 5px 7px;
+  flex: 1; min-width: 0; box-sizing: border-box; border: 1px solid var(--parch-frame); border-radius: 0;
+  background: #fffdf8; color: var(--ink); font-family: ui-monospace, monospace; font-size: .84rem; padding: 5px 7px;
 }
 .fs-cp-done {
-  border: 1px solid var(--parch-frame); border-radius: 4px;
-  background: rgba(255,252,240,.75); color: var(--maroon);
-  font: inherit; font-size: .84rem; font-weight: 600;
+  border: 1px solid var(--parch-frame); border-radius: 0; background: #fffdf8; color: var(--maroon);
+  font-family: 'Oswald', sans-serif; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em;
   padding: 5px 10px; cursor: pointer;
 }
 .fs-cp-recent { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .fs-cp-recent:empty { display: none; }
-.fs-cp-chip { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); padding: 0; cursor: pointer; }
+.fs-cp-chip { width: 20px; height: 20px; border: 1px solid rgba(0,0,0,.35); border-radius: 0; padding: 0; cursor: pointer; }
 
-/* preview column */
-.fs-preview-col { min-width: 0; position: sticky; top: 70px; }
-@media (max-width: 940px) { .fs-preview-col { position: static; } }
-.fs-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.fs-tab {
-  border: 1px solid rgba(236,225,200,.4); border-radius: 4px;
-  background: rgba(255,252,240,.1); color: rgba(236,225,200,.8);
-  font: inherit; font-size: .9rem; font-weight: 600;
-  padding: 6px 13px; cursor: pointer;
+.fs-card [hidden] { display: none !important; }
+
+/* the page tabs, with the zoom at the far end of the same strip */
+.fs-tabrow {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(214,196,150,.2); padding-right: clamp(9px, 2vw, 18px);
 }
-.fs-tab.on {
-  background-color: var(--parch);
-  background-image: url('assets/parchment.webp');
-  background-size: cover;
-  color: var(--maroon); border-color: var(--parch-frame);
-}
-.fs-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
-.fs-toolbar .fs-btn { font-size: .92rem; }
-.fs-toolbar .fs-btn-primary { background: var(--maroon); color: #f3e9d2; border-color: var(--maroon); }
-.fs-toolbar .fs-btn-primary:hover { background: #6d2628; }
-.fs-toolbar .fs-spacer { flex: 1; }
-.fs-toolgroup { display: inline-flex; gap: 4px; align-items: center; }
-.fs-toolgroup .fs-btn { padding: 6px 9px; }
-#fs-zoom-val { font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .05em; color: rgba(236,225,200,.75); min-width: 64px; text-align: center; }
-#fs-preview { min-width: 0; max-height: calc(100vh - 24px); overflow: auto; padding-bottom: 6px; }
-@media (max-width: 940px) { #fs-preview { max-height: none; overflow: visible; } }
+.fs-tabrow .sbx-tabs { flex: 1; min-width: 0; border-bottom: none; }
+.fs-zoombar { flex: none; display: flex; align-items: center; gap: 4px; }
+.fs-zoombar .sbx-b { padding: 3px 7px; font-size: .72rem; }
+#fs-zoom-val { font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .05em; color: rgba(236,225,200,.75); min-width: 60px; text-align: center; }
+#fs-preview { min-width: 0; }
 #fs-scale-box { margin: 0 auto; box-shadow: 0 12px 34px rgba(0,0,0,.5); position: relative; }
 #fs-sheet-wrap { transform-origin: top left; will-change: transform; }
 #fs-sheet-wrap [data-fs-drag] { cursor: grab; touch-action: none; }
@@ -258,13 +207,21 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
 /* a finger on a character row scrolls the page (the rows fill the sheet);
    rows are reordered by mouse, or by the Characters card on a phone */
 #fs-sheet-wrap [data-fs-drag^="crow:"], #fs-sheet-wrap [data-fs-drag^="nrow:"] { touch-action: pan-y; }
-.fs-preview-hint { font-size: .8rem; color: rgba(236,225,200,.62); text-align: center; margin: 8px 0 0; }
-#fs-sel-info { font-size: .8rem; color: rgba(236,225,200,.85); text-align: center; margin: 6px 0 0; min-height: 1.1em; }
-#fs-progress { font-size: .84rem; color: #f3e9d2; text-align: center; margin: 6px 0 0; background: rgba(91,31,33,.55); border-radius: 4px; padding: 5px 8px; }
+#fs-sel-info { font-size: .8rem; color: rgba(236,225,200,.85); text-align: center; margin: 8px 0 0; min-height: 1.1em; }
+#fs-progress { font-size: .84rem; color: #f3e9d2; text-align: center; margin: 6px auto 0; max-width: 520px; background: rgba(91,31,33,.75); padding: 5px 8px; }
 #fs-toast {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 90;
-  background: rgba(30,12,16,.92); color: #f3e9d2; border: 1px solid rgba(236,225,200,.35);
-  border-radius: 6px; padding: 8px 14px; font-size: .9rem; pointer-events: none;
+  background: rgba(30,12,16,.94); color: #f3e9d2; border: 1px solid rgba(236,225,200,.35);
+  padding: 8px 14px; font-size: .9rem; pointer-events: none; max-width: calc(100vw - 32px);
+}
+@media (max-width: 900px) {
+  /* a phone: the sheet is the page, the settings a drawer, and the bar's
+     words give way to its icons */
+  .sbx-bar .sbx-b-txt { display: none; }
+  .fs-tabrow { flex-wrap: wrap; padding: 0 0 6px; position: sticky; top: var(--sbx-top, 56px); z-index: 20; background: #1f0c25; }
+  .fs-tabrow .sbx-tabs { position: static; background: none; backdrop-filter: none; }
+  .fs-tabrow .sbx-tabs { flex-basis: 100%; }
+  .fs-zoombar { margin: 0 auto; }
 }
 </style>
 </head>
@@ -303,57 +260,61 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
     <a href="script">Script Builder</a>
   </nav>
 
-  <div class="home-hero fs-hero">
-    <h1>Fancy Scripts</h1>
-    <p>Turn a script into an official-style sheet, with night order sheets, a jinx page and a back cover. Pick a wiki script or load a JSON file, tap anything on the preview to change it, then download a PNG or PDF.</p>
-    <p class="fs-credit">In the style of the classic fancy script sheets</p>
-  </div>
+  <div class="sbx" id="sbx">
 
-  <main class="home-panel" id="content">
-    <div class="fs-layout">
-
-      <aside>
+      <aside class="sbx-side" id="sbx-side" aria-label="Settings">
+        <div class="sbx-side-head">
+          <span class="fs-side-title">Fancy Scripts</span>
+          <button type="button" class="sbx-icon sbx-close-mob" id="sbx-close" aria-label="Close settings"><i class="sbi-i" data-icon="close"></i></button>
+        </div>
+        <div class="sbx-side-scroll" id="fs-side-scroll">
         <section class="fs-card" data-fs-for="all">
           <h2>Script</h2>
-          <span class="fs-lab">From this wiki</span>
-          <select class="fs-select" id="fs-wiki-script" aria-label="Pick a published script">
-            <option value="">Pick a published script…</option>
-          </select>
-          <span class="fs-lab">Or bring your own</span>
-          <div class="fs-btn-row">
-            <button class="fs-btn" id="fs-upload-btn" type="button">Upload script .json</button>
-            <button class="fs-btn" id="fs-sample-tb" type="button">Trouble Brewing</button>
-            <button class="fs-btn" id="fs-sample-hh" type="button">Demo teensyville</button>
-            <button class="fs-btn" id="fs-sample-bi" type="button">Night order demo</button>
+          <div class="fs-card-body">
+            <span class="fs-lab">From this wiki</span>
+            <select class="fs-select" id="fs-wiki-script" aria-label="Pick a published script">
+              <option value="">Pick a published script…</option>
+            </select>
+            <span class="fs-lab">Or bring your own</span>
+            <div class="fs-btn-row">
+              <button class="fs-btn" id="fs-upload-btn" type="button">Upload JSON</button>
+              <button class="fs-btn" id="fs-sample-tb" type="button">Trouble Brewing</button>
+              <button class="fs-btn" id="fs-sample-hh" type="button">Demo teensyville</button>
+              <button class="fs-btn" id="fs-sample-bi" type="button">Night order demo</button>
+            </div>
+            <input type="file" id="fs-file" accept=".json,application/json" hidden>
+            <button class="fs-linkish" id="fs-paste-toggle" type="button">Paste JSON</button>
+            <div id="fs-paste-box" hidden>
+              <textarea id="fs-paste-text" spellcheck="false" placeholder='[{"id":"_meta","name":"My Script"}, "washerwoman", …]'></textarea>
+              <button class="fs-btn" id="fs-paste-load" type="button">Load pasted JSON</button>
+            </div>
+            <p class="fs-note" id="fs-note" hidden></p>
+            <div class="fs-warnings" id="fs-warnings" hidden></div>
+            <div id="fs-script-opts"></div>
+            <div class="fs-btn-row" id="fs-wiki-save" hidden>
+              <button class="fs-btn" id="fs-wiki-save-btn" type="button">Save design to this script</button>
+              <button class="fs-btn" id="fs-wiki-unsave-btn" type="button" hidden>Remove saved design</button>
+            </div>
           </div>
-          <input type="file" id="fs-file" accept=".json,application/json" hidden>
-          <button class="fs-linkish" id="fs-paste-toggle" type="button">…or paste JSON directly</button>
-          <div id="fs-paste-box" hidden>
-            <textarea id="fs-paste-text" spellcheck="false" placeholder='[{"id":"_meta","name":"My Script"}, "washerwoman", …]'></textarea>
-            <button class="fs-btn" id="fs-paste-load" type="button">Load pasted JSON</button>
-          </div>
-          <p class="fs-note" id="fs-note" hidden></p>
-          <div class="fs-warnings" id="fs-warnings" hidden></div>
-          <div id="fs-script-opts"></div>
         </section>
 
         <section class="fs-card" data-fs-for="all">
           <details open>
-            <summary>Pages, looks &amp; designs</summary>
+            <summary>Pages &amp; designs</summary>
             <div id="fs-pages-box"></div>
           </details>
         </section>
 
         <section class="fs-card" data-fs-for="all">
           <details open>
-            <summary>Elements on this page <span class="fs-sum-note">move · size · add</span></summary>
+            <summary>Elements on this page</summary>
             <div id="fs-elements-box"></div>
           </details>
         </section>
 
         <section class="fs-card" data-fs-for="front night" data-fs-style="app">
           <details open>
-            <summary>App view <span class="fs-sum-note">ribbon · fonts · art</span></summary>
+            <summary>App view</summary>
             <div id="fs-app-box"></div>
           </details>
         </section>
@@ -395,7 +356,7 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
 
         <section class="fs-card" data-fs-for="front night jinx">
           <details>
-            <summary>Characters <span class="fs-sum-note">hide · rename · icons</span></summary>
+            <summary>Characters</summary>
             <div id="fs-chars-box"></div>
           </details>
         </section>
@@ -428,57 +389,62 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
           </details>
         </section>
 
-        <section class="fs-card" data-fs-for="all">
-          <p style="margin:0; font-size:.84rem; line-height:1.5;">
-            Takes official script JSON: a <code>_meta</code> object plus official
-            character ids or full character objects. The
-            <a href="script">Script Builder</a> and every published script page
-            export this format. Official icons, reminders and night positions are
-            built in.
-          </p>
-        </section>
+        <p class="fs-about">
+          Official script JSON in: the <a href="script">Script Builder</a> and every
+          published script page export it.
+        </p>
+        </div>
       </aside>
 
-      <div class="fs-preview-col">
-        <div class="fs-tabs" id="fs-tabs" role="tablist"></div>
-        <div class="fs-toolbar">
-          <button class="fs-btn fs-btn-primary" id="fs-export-share" type="button">Share Image</button>
-          <button class="fs-btn" id="fs-export-copy" type="button" title="Copy the page as an image">Copy</button>
-          <button class="fs-btn" id="fs-export-png" type="button">Print PNG</button>
-          <button class="fs-btn" id="fs-export-all" type="button">All pages</button>
-          <button class="fs-btn" id="fs-export-pdf" type="button">Print PDF</button>
-          <button class="fs-btn" id="fs-to-builder" type="button" title="Edit the characters in the Script Builder">Script Builder</button>
-          <span class="fs-spacer"></span>
-          <span class="fs-toolgroup">
-            <button class="fs-btn" id="fs-undo" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-            <button class="fs-btn" id="fs-redo" type="button" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
-          </span>
-          <span class="fs-toolgroup">
-            <button class="fs-btn" id="fs-zoom-out" type="button" aria-label="Zoom out">−</button>
-            <span id="fs-zoom-val">fit</span>
-            <button class="fs-btn" id="fs-zoom-in" type="button" aria-label="Zoom in">+</button>
-            <button class="fs-btn" id="fs-zoom-fit" type="button" title="Whole page in view">Fit</button>
-            <button class="fs-btn" id="fs-zoom-width" type="button" title="Fill the width">Width</button>
-            <button class="fs-btn" id="fs-zoom-100" type="button">1:1</button>
-          </span>
-        </div>
-        <div id="fs-preview">
-          <div id="fs-scale-box">
-            <div id="fs-sheet-wrap"></div>
+      <main class="sbx-main" id="content">
+        <div class="sbx-bar">
+          <button type="button" class="sbx-b sbx-b-open" id="sbx-open"><i class="sbi-i" data-icon="menu"></i> Settings</button>
+          <span class="sbx-names fs-names"><span class="sbx-title" id="fs-bar-title">Fancy Scripts</span></span>
+          <div class="sbx-acts">
+            <button class="sbx-b sbx-b-icon" id="fs-undo" type="button" title="Undo (Ctrl+Z)" aria-label="Undo"><i class="sbi-i" data-icon="undo"></i></button>
+            <button class="sbx-b sbx-b-icon" id="fs-redo" type="button" title="Redo (Ctrl+Y)" aria-label="Redo"><i class="sbi-i" data-icon="redo"></i></button>
+            <button class="sbx-b fs-b-go" id="fs-export-share" type="button" title="Download this page as an image to share"><i class="sbi-i" data-icon="download"></i> Image</button>
+            <button class="sbx-b" id="fs-export-copy" type="button" title="Copy this page as an image" aria-label="Copy"><i class="sbi-i" data-icon="copy"></i> <span class="sbx-b-txt">Copy</span></button>
+            <button class="sbx-b" id="fs-export-pdf" type="button" title="Every ticked page as one PDF"><i class="sbi-i" data-icon="print"></i> PDF</button>
+            <div class="sbx-menu-wrap">
+              <button type="button" class="sbx-b" id="fs-more" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More"><i class="sbi-i" data-icon="more"></i> <span class="sbx-b-txt">More</span></button>
+              <div class="sbx-menu" id="fs-more-menu">
+                <button type="button" id="fs-export-png">Print PNG of this page</button>
+                <button type="button" id="fs-export-all">Every page as a PNG</button>
+                <hr class="sbx-menu-sep">
+                <button type="button" id="fs-to-builder">Open in the Script Builder</button>
+              </div>
+            </div>
           </div>
         </div>
-        <p id="fs-sel-info"></p>
-        <p id="fs-progress" hidden></p>
-        <p class="fs-preview-hint">Tap anything on the page to select it, then drag it. Ctrl+wheel or pinch to zoom.</p>
-      </div>
+        <div class="fs-tabrow">
+          <div class="sbx-tabs" id="fs-tabs" role="tablist"></div>
+          <div class="fs-zoombar">
+            <button class="sbx-b sbx-b-icon" id="fs-zoom-out" type="button" aria-label="Zoom out"><i class="sbi-i" data-icon="minus"></i></button>
+            <span id="fs-zoom-val">fit</span>
+            <button class="sbx-b sbx-b-icon" id="fs-zoom-in" type="button" aria-label="Zoom in"><i class="sbi-i" data-icon="plus"></i></button>
+            <button class="sbx-b" id="fs-zoom-fit" type="button" title="Whole page in view">Fit</button>
+            <button class="sbx-b" id="fs-zoom-width" type="button" title="Fill the width">Width</button>
+            <button class="sbx-b" id="fs-zoom-100" type="button">1:1</button>
+          </div>
+        </div>
+        <div class="sbx-scroll" id="fs-scroll">
+          <div id="fs-preview">
+            <div id="fs-scale-box">
+              <div id="fs-sheet-wrap"></div>
+            </div>
+          </div>
+          <p id="fs-sel-info"></p>
+          <p id="fs-progress" hidden></p>
+        </div>
+      </main>
 
-    </div>
-  </main>
-
-  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+  </div>
+  <div class="sbx-scrim" id="sbx-scrim"></div>
   <div id="fs-toast" hidden></div>
 
   <script src="assets/site.js"></script>
+  <script src="assets/ui-icons.js"></script>
   <script src="assets/sao.js"></script>
   <script type="module" src="assets/fancyscripts/app.js"></script>
 </body>

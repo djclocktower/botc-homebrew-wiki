@@ -435,6 +435,7 @@ export const ELEMENTS = [
   { key: 'jinxTitle', label: 'Jinx page title', page: 'jinx', kind: 'text' },
   { key: 'jinxLogo', label: 'Script logo', page: 'jinx', kind: 'image' },
   { key: 'jinxList', label: 'Jinx list', page: 'jinx', kind: 'block' },
+  { key: 'backTable', label: 'Player count table', page: 'back', kind: 'block' },
 ];
 
 /* what the night and jinx pages used to carry and no longer draw: the
@@ -572,6 +573,7 @@ export const DEFAULT_JINX = {
 
 export const DEFAULT_EXPORT = {
   pageSize: 'trim', // key of PAGE_FORMATS
+  pdfMode: 'print', // print (sharp text, through the print window) | image (a picture per page, downloaded)
   marginColor: '#ffffff', // paper showing around the sheet on A4/Letter
   printScale: 3, // pixelRatio of the print exports (3 = 3726 px wide)
   shareScale: 1.5,
@@ -594,6 +596,9 @@ export const DEFAULT_OPTIONS = {
   columnSplit: 'count',
   showJinxes: true,
   jinxIconSize: 1, // the partner icons beside a name
+  jinxText: false, // each jinx's rule printed under the character that carries it
+  colorKeywords: false, // good, evil and the team words in abilities take the team inks
+  playerTable: false, // the setup table (5 to 15 players) on the back cover
   showFootnote: true,
   footnoteText: '', // blank = "*Not the first night"
   titleOverride: '',
@@ -725,6 +730,7 @@ export const DEFAULT_BACK = {
   // to a couple of RGB steps and all but disappears — this is the way back.
   patStrength: 1,
   bgMode: 'pattern', // pattern | custom (an uploaded image) | plain
+  tableColor: '#e2cd96', // the player count table's ink
   bgSrc: '',
   texts: [],  // seeded from the script title by seedBackTexts()
 };
@@ -894,6 +900,56 @@ export function teamColor(options, team) {
   if (NEUTRAL_TEAMS.includes(team)) return options.neutralColor || '#7a5230';
   return options.goodColor;
 }
+
+/* Ability text split into runs for colouring: good, evil and the team
+   words. `side` is 'good', 'evil' or '' (plain). Whole words only, so
+   "Demonic" or "goodness" stay plain. */
+const KEYWORD_RE = /\b(good|evil|Good|Evil|Townsfolk|Outsiders?|Minions?|Demons?)\b/g;
+const GOOD_WORDS = /^(good|townsfolk|outsiders?)$/i;
+export function keywordParts(text) {
+  const s = String(text == null ? '' : text);
+  const out = [];
+  let last = 0, m;
+  KEYWORD_RE.lastIndex = 0;
+  while ((m = KEYWORD_RE.exec(s))) {
+    if (m.index > last) out.push({ s: s.slice(last, m.index), side: '' });
+    out.push({ s: m[0], side: GOOD_WORDS.test(m[0]) ? 'good' : 'evil' });
+    last = m.index + m[0].length;
+  }
+  if (last < s.length || !out.length) out.push({ s: s.slice(last), side: '' });
+  return out;
+}
+
+/* The jinx rules to print under the characters: each pair once, under the
+   first character in the list that carries it. Map of character id to its
+   jinxes ({id, name, icon, reason}), only those with a rule to print. */
+export function jinxNotes(chars) {
+  const seen = new Set();
+  const out = new Map();
+  for (const c of chars || []) {
+    for (const j of c.jinxIcons || []) {
+      if (!j || !String(j.reason || '').trim()) continue;
+      const key = [c.id, j.id].sort().join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!out.has(c.id)) out.set(c.id, []);
+      out.get(c.id).push(j);
+    }
+  }
+  return out;
+}
+
+/* The setup table on the back cover: Townsfolk, Outsiders, Minions and the
+   Demon for 5 to 15 players, as the official rules give it. */
+export const PLAYER_TABLE = {
+  players: ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15+'],
+  rows: [
+    ['townsfolk', 'Townsfolk', [3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9]],
+    ['outsider', 'Outsiders', [0, 1, 0, 1, 2, 0, 1, 2, 0, 1, 2]],
+    ['minion', 'Minions', [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3]],
+    ['demon', 'Demons', [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]],
+  ],
+};
 
 /* engraved, team-inked medallion for homebrew characters without art */
 export function placeholderIconFor(team) {
@@ -1652,7 +1708,7 @@ export function breakRuns(runs, maxW, measure, opts) {
     for (const p of String(r.s).split(/(\s+)/)) {
       if (!p) continue;
       if (/^\s+$/.test(p)) { pendingSpace = true; continue; }
-      push({ s: p, font: r.font, kind: r.kind || 'text', w: measure(p, r.font) });
+      push({ s: p, font: r.font, kind: r.kind || 'text', w: measure(p, r.font), ...(r.color ? { color: r.color } : {}) });
     }
   }
   if (line.items.length || !lines.length) lines.push(line);

@@ -37,9 +37,9 @@
  * Browser-only (canvas + DOM) — do not import from the Worker.
  */
 
-import { BACK_BASE, SHEET_W, SHEET_H, U, fontFamily } from './script.js';
-import { px, clamp, hexHsl, textInk } from './util.js';
-import { ART, pageFrame, renderTextElement, renderStickers, resolveSrc, markSelected, watermark } from './elements.js';
+import { BACK_BASE, SHEET_W, SHEET_H, U, fontFamily, footEm, elGet, PLAYER_TABLE } from './script.js';
+import { el, px, clamp, hexHsl, textInk } from './util.js';
+import { ART, pageFrame, renderTextElement, renderStickers, resolveSrc, markSelected, watermark, applyEl } from './elements.js';
 import { runPixelJob } from './jobs.js';
 
 /* working canvas: print resolution, the page's own shape (3:4 unless the
@@ -234,10 +234,58 @@ export function renderBack(script, options, requestRender, ui) {
   (back.texts || []).forEach((t, i) => {
     root.append(renderTextElement(keepOnPage(t), t.locked ? '' : 'back:' + i, selected === 'back:' + i));
   });
+  if (options.playerTable) root.append(playerTable(options, selected === 'el:backTable'));
   if (ui && ui.forExport) root.append(watermark(3.4, 0.7));
   for (const n of renderStickers(ui && ui.stickers, selected, 'front')) root.append(n);
 
   return root;
+}
+
+/* The setup table: players across the top, a row per team, in the cover's
+   gold. Square cells and hairlines, like the rest of the cover. Centred
+   under the title words; it moves and sizes like any element. */
+function playerTable(options, isSelected) {
+  const ink = options.back.tableColor || '#e2cd96';
+  const T = PLAYER_TABLE;
+  const cellW = 6.2; // % width per player column
+  const labelW = 16;
+  const rowH = 2.5 * U;
+  const halo = '0 0 0.15em rgba(10, 6, 2, 0.95), 0 0.05em 0.35em rgba(10, 6, 2, 0.7)';
+  const line = `1px solid ${ink}`;
+  const cell = (text, first, head) => el('div', {
+    width: (first ? labelW : cellW) + '%',
+    flex: 'none',
+    height: px(rowH),
+    lineHeight: px(rowH),
+    textAlign: first ? 'left' : 'center',
+    paddingLeft: first ? px(U * 0.8) : '0',
+    boxSizing: 'border-box',
+    borderLeft: first ? 'none' : line,
+    fontFamily: first || head ? fontFamily(options.fontLabel || 'dumbledor') : fontFamily('goudy'),
+    fontSize: px(U * (first ? 1.35 : head ? 1.45 : 1.6)),
+    fontWeight: '400',
+    whiteSpace: 'nowrap',
+  }, String(text));
+  const row = (cells, last) => el('div', { display: 'flex', borderBottom: last ? 'none' : line }, ...cells);
+  const head = row([cell('Players', true, true), ...T.players.map((n) => cell(n, false, true))]);
+  const body = T.rows.map(([, label, nums], i) => row([cell(label, true), ...nums.map((n) => cell(n, false))], i === T.rows.length - 1));
+  const width = labelW + cellW * T.players.length;
+  const node = el('div', {
+    position: 'absolute',
+    left: (50 - width / 2) + '%',
+    top: px(footEm(78.5) * U),
+    width: width + '%',
+    color: ink,
+    textShadow: halo,
+    border: line,
+    background: 'rgba(10, 6, 2, 0.28)',
+    zIndex: '1',
+    transformOrigin: 'center',
+  }, head, ...body);
+  node.dataset.fsDrag = 'el:backTable';
+  applyEl(node, elGet(options, 'backTable'), '', U, SHEET_W);
+  if (isSelected) markSelected(node);
+  return node;
 }
 
 /* A title word drawn with its swashes past the edge of the cover is pulled

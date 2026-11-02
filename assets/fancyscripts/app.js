@@ -248,6 +248,8 @@ function reparse() {
     parsed = parseScript(withBootlegger(rawJson, options.bootlegger), options.proxyIcons);
     note('');
     showWarnings(parsed.warnings);
+    const bt = $('fs-bar-title');
+    if (bt) bt.textContent = (parsed.meta && parsed.meta.name) || 'Fancy Scripts';
     return true;
   } catch (e) {
     note(e && e.message ? e.message : 'Could not parse that JSON.', 'err');
@@ -403,7 +405,7 @@ function placeGrips() {
     g.dataset.fsHandle = selectedId;
     Object.assign(g.style, {
       position: 'absolute', left: (x - size / 2) + 'px', top: (y - size / 2) + 'px',
-      width: size + 'px', height: size + 'px', boxSizing: 'border-box', borderRadius: '50%',
+      width: size + 'px', height: size + 'px', boxSizing: 'border-box',
       background: '#f3e9d2', border: (2 / s) + 'px solid #5b1f21', cursor: cur + '-resize', touchAction: 'none',
     });
     box.append(g);
@@ -417,7 +419,7 @@ function buildTabs() {
   for (const p of pages) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'fs-tab' + (pageKey(p) === currentKey ? ' on' : '');
+    b.className = 'sbx-tab' + (pageKey(p) === currentKey ? ' on' : '');
     b.textContent = p.label;
     b.setAttribute('role', 'tab');
     b.addEventListener('click', () => {
@@ -484,16 +486,11 @@ function fitPreview() {
   const outer = $('fs-scale-box');
   const wrap = $('fs-sheet-wrap');
   let fitScale = Math.min(1, (box.clientWidth - 12) / SHEET_W);
-  // on desktop the preview column is sticky and scrolls inside itself, so
-  // "fit" means the whole page in view once the column is stuck: the box
-  // then sits at the column's sticky top plus the tabs and toolbar above
-  // it. Measured that way (never from the box's current place on screen)
-  // so the answer is the same before and after the reader scrolls.
-  if (window.innerWidth > 940) {
-    const col = box.closest('.fs-preview-col');
-    const within = col ? box.getBoundingClientRect().top - col.getBoundingClientRect().top : 0;
-    const stuckTop = 70 + within;
-    const maxH = Math.max(320, window.innerHeight - stuckTop - 44);
+  // on a desktop the preview scrolls in its own pane (the builder's frame),
+  // so "fit" is the whole page in that pane under the zoom bar
+  const pane = $('fs-scroll');
+  if (window.innerWidth > 900 && pane) {
+    const maxH = Math.max(320, pane.clientHeight - (box.offsetTop - pane.offsetTop) - 52);
     fitScale = Math.min(fitScale, maxH / SHEET_H);
   }
   const scale = zoom === 'fit' ? fitScale : clamp(Number(zoom), 0.1, 3);
@@ -551,6 +548,7 @@ function loadJson(json, label, slug, keepDesign) {
   buildBackPanel();
   buildElementPanel();
   requestRender();
+  showWikiSave();
   if (label) note('Loaded ' + label + '.', 'ok');
 }
 
@@ -571,16 +569,62 @@ function loadFile(file) {
 /* a published script (type 'script', by slug) or collection (type
    'collection', by its kebab id) — both come through /api/page-json, the
    same export their Download JSON buttons save */
+/* The design saved with the wiki page that is open, if any: what the page's
+   "Fancy Sheet" button opens with, and what Save design writes. */
+let wikiSaved = { key: '', type: '', slug: '', canSave: false, at: '' };
+
 async function loadWikiScript(slug, keepDesign, type) {
   const t = type === 'collection' ? 'collection' : 'script';
   note('Loading ' + t + '…');
   try {
-    const r = await fetch('/api/page-json?type=' + t + '&slug=' + encodeURIComponent(slug));
+    const q = '?type=' + t + '&slug=' + encodeURIComponent(slug);
+    const [r, saved] = await Promise.all([
+      fetch('/api/page-json' + q),
+      fetch('/api/fancy-design' + q).then((x) => (x.ok ? x.json() : null)).catch(() => null),
+    ]);
     if (!r.ok) throw new Error('Could not load that ' + t + ' (HTTP ' + r.status + ').');
-    loadJson(await r.json(), 'the ' + t + ' from this wiki', (t === 'collection' ? 'c:' : '') + slug, keepDesign);
+    const json = await r.json();
+    const key = 'wiki:' + (t === 'collection' ? 'c:' : '') + slug;
+    wikiSaved = { key, type: t, slug, canSave: !!(saved && saved.canSave), at: (saved && saved.design && saved.savedAt) || '' };
+    // The page's saved design, unless this browser is already working on it
+    // (an autosave made from that same saved version).
+    const auto = readAutosave();
+    const mine = keepDesign && auto && auto.key === key && (auto.serverAt || '') === wikiSaved.at;
+    let fromSaved = false;
+    if (saved && saved.design && !mine) { applyDesignData(saved.design); keepDesign = true; fromSaved = true; }
+    loadJson(json, 'the ' + t + ' from this wiki', (t === 'collection' ? 'c:' : '') + slug, keepDesign);
+    if (fromSaved) { buildFontSelects(); note('Opened with the design saved to this ' + t + '.', 'ok'); }
+    showWikiSave();
+    return fromSaved;
   } catch (e) {
     note(e && e.message ? e.message : 'Could not load that ' + t + '.', 'err');
   }
+  showWikiSave();
+  return false;
+}
+
+function showWikiSave() {
+  const box = $('fs-wiki-save');
+  if (!box) return;
+  const on = wikiSaved.canSave && wikiSaved.key === scriptKey;
+  box.hidden = !on;
+  if (!on) return;
+  $('fs-wiki-save-btn').textContent = 'Save design to this ' + wikiSaved.type;
+  $('fs-wiki-unsave-btn').hidden = !wikiSaved.at;
+}
+
+async function saveToWiki(remove) {
+  const body = remove ? { type: wikiSaved.type, slug: wikiSaved.slug, remove: true }
+    : { type: wikiSaved.type, slug: wikiSaved.slug, design: designObject(false) };
+  const r = await fetch('/api/fancy-design', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(out.error || 'Could not save (HTTP ' + r.status + ').');
+  wikiSaved.at = remove ? '' : out.savedAt || '';
+  autosave();
+  showWikiSave();
+  toast(remove ? 'Saved design removed' : 'Saved. The ' + wikiSaved.type + '\'s Fancy Sheet button opens this design.');
 }
 
 /* the picker: every published script and collection on the wiki, by name */
@@ -631,6 +675,7 @@ function scheduleAutosave() {
 }
 function designObject(includeScript) {
   const o = { v: 2, app: 'fancyscripts', key: scriptKey, options, assets: Object.fromEntries(assets), fonts: Object.fromEntries(uploadedFonts) };
+  if (wikiSaved.key && wikiSaved.key === scriptKey) o.serverAt = wikiSaved.at;
   if (includeScript) { o.script = rawJson; o.sourceLabel = sourceLabel; }
   return o;
 }
@@ -1215,7 +1260,6 @@ function buildScriptOpts() {
   makeToggle(box, 'Bootlegger', bindPath('bootlegger'), {
     onChange: () => { reparse(); buildCharPanel(); requestRender(); },
   });
-  makeHint(box, 'The Fabled that says a script has homebrew characters or rules.');
 }
 
 function buildPagesCard() {
@@ -1224,7 +1268,6 @@ function buildPagesCard() {
   makeSelect(box, 'Script sheet style', styles, bindPath('sheetStyle'), { onChange: styleChanged });
   makeSelect(box, 'Night sheet style', [['ribbon', 'Ribbon (name beside a colour bar)'], ['classic', 'Printed sheet (name over the reminder)'], ['app', 'App view']],
     bindPath('night.style'), { onChange: styleChanged });
-  makeHint(box, 'App view copies the official app: one column, a red ribbon and a bar beside each ability.');
   makeToggle(box, 'First Night sheet', bindPath('night.first'));
   makeToggle(box, 'Other Nights sheet', bindPath('night.other'));
   makeToggle(box, 'Both nights on one page (two columns)', bindPath('night.combined'), {
@@ -1240,9 +1283,7 @@ function buildPagesCard() {
     },
     set: (v) => { options.pageRatio = PAGE_SHAPES[Number(v)][0]; },
   });
-  makeHint(box, 'Every page. A longer page gives the characters more room.');
   makeToggle(box, 'Back cover', { get: () => options.exportOpts.pages.back, set: (v) => { options.exportOpts.pages.back = v; options.includeBackCover = v; } });
-  makeHint(box, 'Ticked pages get a tab above the preview and a page in the PDF.');
 
   makeLabel(box, 'Look');
   const row = makeRow(box, 'fs-row-between');
@@ -1256,7 +1297,6 @@ function buildPagesCard() {
   row.append(sel);
   makeButton(row, 'Apply', () => applyPreset(sel.value));
   makeButton(row, 'Shuffle', shuffleColors);
-  makeHint(box, 'A look sets colours and backgrounds only. Shuffle picks a random colour family.');
 
   makeLabel(box, 'Design');
   const r2 = makeRow(box);
@@ -1272,7 +1312,7 @@ function buildPagesCard() {
     afterOptionsReplaced();
     buildFontSelects();
   });
-  makeHint(box, 'Autosaved in this browser. A design file holds the script, every setting and every upload.');
+  makeHint(box, 'Autosaved in this browser.');
 }
 
 /* a random colour family: one hue for the ribbon, title and back cover,
@@ -1324,7 +1364,7 @@ function buildTitleCard() {
     { get: () => elGet(options, 'bootRules').scale, set: (v) => elSet(options, 'bootRules', { scale: v }) }, { reset: 1 });
   makeFont(tc, 'Rules font', bindPath('bootRulesFont'));
   makeColor(makeRow(tc, 'fs-colors'), 'Rules colour', bindPath('bootRulesColor'));
-  makeHint(tc, 'Rules from the script, in the right flourish’s place. Move the title left for more room.');
+  makeHint(tc, 'The script’s Bootlegger rules, top right.');
   makeArtPicker(tc, 'Skull art', 'skull');
   makeArtPicker(tc, 'Section dividers', 'dividers');
   makeArtPicker(tc, 'Garland at the foot', 'garland');
@@ -1351,6 +1391,8 @@ function buildLayoutCard() {
     bindPath('columnSplit'));
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
+  makeToggle(box, 'Jinx rules under the characters', bindPath('jinxText'));
+  makeToggle(box, 'Colour good and evil words', bindPath('colorKeywords'));
   makeToggle(box, '“*Not the first night” footnote', bindPath('showFootnote'));
   makeToggle(box, 'Team labels', bindPath('showLabels'));
   const lc = styleGroup(box, 'front', 'classic');
@@ -1451,7 +1493,6 @@ function buildFontsCard() {
     toast('Font “' + fam + '” added to every font list');
     scheduleAutosave();
   });
-  makeHint(box, 'Uploaded fonts appear in every font menu and are embedded in the exports.');
   endCard(box);
 }
 
@@ -1502,7 +1543,7 @@ function buildNightCard() {
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
   const ord = makeRow(box);
   makeButton(ord, 'Reset the night order', () => { options.night.order = { first: null, other: null }; commit(); toast('Night order reset'); });
-  makeHint(box, 'Drag a step on the night sheet to reorder it. Reset puts the official order back.');
+  makeHint(box, 'Drag a step on the sheet to reorder it.');
   makeToggle(box, 'Number the steps', bindPath('night.numbered'));
   makeToggle(box, 'Script logo', bindPath('night.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('night.showName'));
@@ -1546,7 +1587,7 @@ function buildNightCard() {
   const nb = styleGroup(box, 'night', 'classic');
   makeLabel(nb, 'Background');
   bgControls(nb, 'night.bg', 'list');
-  makeHint(styleGroup(box, 'night', 'app'), 'The app view takes its ribbon, fonts and paper from the App view card.');
+  makeHint(styleGroup(box, 'night', 'app'), 'Ribbon, fonts and paper: App view card.');
   endCard(box);
 }
 
@@ -1558,7 +1599,7 @@ function buildAppCard() {
   makeSlider(box, 'Space between characters', 0.5, 3, 0.05, pct, bindPath('app.rowGap'), { reset: 1 });
   makeSlider(box, 'Move the ability toward the icons', -10, 6, 0.1, signed(1, '%'), bindPath('app.textShift'), { reset: 0 });
   makeToggle(box, 'Coloured bar beside the ability', bindPath('app.showBars'));
-  makeHint(box, 'More space makes the text smaller to fit. The bar switch is for every app page.');
+  makeHint(box, 'More space makes the text smaller.');
   makeLabel(box, 'Night sheet rows');
   makeSlider(box, 'Space between steps', 0.5, 3, 0.05, pct, bindPath('app.nightRowGap'), { reset: 1 });
   makeSlider(box, 'Move the reminder toward the icons', -10, 6, 0.1, signed(1, '%'), bindPath('app.nightTextShift'), { reset: 0 });
@@ -1575,7 +1616,6 @@ function buildAppCard() {
   makeColor(cc, 'Title', bindPath('app.titleColor'));
   makeColor(cc, 'Author', bindPath('app.authorColor'));
   makeColor(cc, 'Footnote', bindPath('app.footnoteColor'));
-  makeHint(box, 'Name colours are in the Colours card.');
   makeLabel(box, 'Fonts');
   makeFont(box, 'Names', bindPath('app.fontName'));
   makeFont(box, 'Ability and reminder text', bindPath('app.fontText'));
@@ -1597,7 +1637,6 @@ function buildAppCard() {
     for (const key of ['appGarland', 'nightDecorFirst', 'nightDecorOther']) elSet(options, key, { src: '' });
     commit();
   });
-  makeHint(box, 'The flowers go along the foot of the script sheet. Corner art goes top right on a night sheet.');
   makeLabel(box, 'Paper');
   bgControls(box, 'app.bg', 'front');
   endCard(box);
@@ -1611,7 +1650,6 @@ function buildJinxCard() {
   makeToggle(box, 'Ribbon down the right edge (ribbon style)', bindPath('jinxPage.ribbon'));
   makeToggle(box, 'Bootlegger rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
   makeToggle(box, 'Travellers, Fabled and Loric on this page', bindPath('jinxPage.extraTeams'));
-  makeHint(box, 'They leave the script sheet, which gives the other characters more room.');
   makeText(box, 'Bootlegger rules heading', bindPath('jinxPage.houseTitle'));
   makeText(box, 'Notes heading', bindPath('jinxPage.notesTitle'));
   makeText(box, 'Notes, printed under the jinxes (blank line = new paragraph)', bindPath('jinxPage.notes'), { multiline: true, rows: 4 });
@@ -1641,6 +1679,8 @@ function buildJinxCard() {
 function buildExportCard() {
   const box = $('fs-export-box');
   beginCard();
+  makeSelect(box, 'PDF', [['print', 'Sharp text, through the print window'], ['image', 'Pictures, downloads straight away']],
+    bindPath('exportOpts.pdfMode'));
   makeSelect(box, 'PDF page size', Object.entries(PAGE_FORMATS).map(([k, v]) => [k, v.label]), bindPath('exportOpts.pageSize'));
   const row = makeRow(box, 'fs-colors');
   makeColor(row, 'Paper around the sheet (A4 / Letter)', bindPath('exportOpts.marginColor'));
@@ -1655,7 +1695,6 @@ function buildExportCard() {
   makeToggle(box, 'Night order sheets', bindPath('exportOpts.pages.night'));
   makeToggle(box, 'Jinx page', bindPath('exportOpts.pages.jinx'));
   makeToggle(box, 'Back cover right after the script sheet (double-sided printing)', bindPath('exportOpts.duplex'));
-  makeHint(box, 'Share Image and Print PNG save the page on screen. All pages saves each page. Print PDF is every ticked page in order.');
   endCard(box);
 }
 
@@ -1668,6 +1707,7 @@ function selectableOnPage(p) {
   const list = [];
   if (p.kind === 'back') {
     (options.back.texts || []).forEach((t, i) => list.push({ id: 'back:' + i, label: 'Word: ' + (t.text || '…').slice(0, 16), kind: 'text' }));
+    if (options.playerTable) list.push({ id: 'el:backTable', label: 'Player count table', kind: 'block', el: ELEMENT_BY_KEY.get('backTable') });
   } else {
     const style = pageStyle(options, p.kind);
     for (const e of ELEMENTS) {
@@ -1753,13 +1793,13 @@ function buildElementPanel() {
   if (!it) {
     if (selectedId.startsWith('char:')) {
       const c = parsed.characters.find((x) => x.id === selectedId.slice(5));
-      makeHint(box, 'Icon of ' + (c ? c.name : 'a character') + '. Drag or use the arrow keys to nudge it. Size, art and colour are in the Characters card.');
+      makeHint(box, 'Icon of ' + (c ? c.name : 'a character') + '. Drag or use the arrow keys to nudge it.');
     } else if (selectedId.startsWith('crow:')) {
-      makeHint(box, 'A character row. Drag it up, down or across the columns to reorder the team.');
+      makeHint(box, 'Drag to reorder the team.');
     } else if (selectedId.startsWith('nrow:')) {
-      makeHint(box, 'A night-order step. Drag it up or down to reorder the night.');
+      makeHint(box, 'Drag to reorder the night.');
     } else {
-      makeHint(box, 'Tap anything on the preview to select it, then drag to move it. Arrow keys nudge (Shift for bigger steps). Delete removes a sticker.');
+      makeHint(box, 'Tap anything on the page to select it.');
     }
     return;
   }
@@ -2281,7 +2321,7 @@ function buildCharPanel() {
   makeButton(bulk, 'Show all', () => { for (const k of Object.keys(options.chars)) delete options.chars[k].hidden; commit(); buildCharPanel(); });
   makeButton(bulk, 'Clear all edits', () => { options.chars = {}; commit(); buildCharPanel(); });
   if (!c) {
-    makeHint(box, 'Pick a character to hide, rename or reorder it, or to change its ability, icon, colour, night positions or reminders.');
+    makeHint(box, 'Pick a character to change it.');
     return;
   }
   const ov = () => (options.chars[c.id] = options.chars[c.id] || {});
@@ -2362,6 +2402,8 @@ function buildBackPanel() {
     const up = makeRow(box);
     makeUpload(up, 'Upload background image', 'image/*', (url) => { options.back.bgSrc = addAsset(url); commit(); });
   }
+  track(makeToggle(box, 'Player count table', bindPath('playerTable'), { onChange: () => buildBackPanel() }));
+  if (options.playerTable) track(makeColor(makeRow(box, 'fs-colors'), 'Table colour', bindPath('back.tableColor')));
   const row = makeRow(box);
   row.style.marginTop = '10px';
   makeButton(row, 'Re-stack the title words', () => {
@@ -2369,7 +2411,6 @@ function buildBackPanel() {
     setSelected(options.back.texts.length ? 'back:0' : '');
     commit();
   });
-  makeHint(box, 'Each title word is an element. Tap one on the preview, or pick it in the Elements card.');
 }
 
 /* ── export ── */
@@ -2401,7 +2442,7 @@ function progress(text) {
 async function withExport(btn, fn) {
   if (exporting) return;
   exporting = true;
-  const old = btn.textContent;
+  const old = btn.innerHTML;
   btn.textContent = 'Exporting…';
   for (const id of EXPORT_BUTTONS) if ($(id)) $(id).disabled = true;
   try {
@@ -2411,7 +2452,7 @@ async function withExport(btn, fn) {
     note('Export failed. If the script uses off-site icon images, tick the proxy option and try again.', 'err');
   } finally {
     exporting = false;
-    btn.textContent = old;
+    btn.innerHTML = old;
     progress('');
     for (const id of EXPORT_BUTTONS) if ($(id)) $(id).disabled = false;
   }
@@ -2611,6 +2652,110 @@ async function exportAll() {
   }
 }
 
+/* The sharp PDF: every ticked page drawn as page markup into a print-only
+   holder and handed to the browser's print window, whose "Save as PDF"
+   keeps the text as text (and the fonts embedded) instead of a picture of
+   it. Canvases (the ribbon, the back cover) go in as images, because the
+   preview takes its singleton canvases back after each page. */
+function frozenCanvases(node) {
+  for (const c of [...node.querySelectorAll('canvas')]) {
+    let im;
+    try {
+      im = document.createElement('img');
+      im.src = c.toDataURL('image/png');
+    } catch {
+      im = document.createElement('canvas');
+      im.width = c.width; im.height = c.height;
+      im.getContext('2d').drawImage(c, 0, 0);
+    }
+    im.style.cssText = c.style.cssText;
+    c.replaceWith(im);
+  }
+}
+
+/* Gradient lettering (background-clip: text: the swash title, a gradient
+   sticker) prints with a hairline box round it in the PDF, so it goes in as
+   a picture of itself, laid over the same letters made transparent. An
+   inline span captures as nothing, so it is its block wrapper that is
+   captured, with the wrapper's other layers (the shadow) hidden meanwhile. */
+async function flattenClippedText(node) {
+  const spans = [...node.querySelectorAll('span')].filter((sp) => sp.style.backgroundClip === 'text');
+  if (!spans.length) return;
+  await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
+  for (const sp of spans) {
+    const wrap = sp.parentElement;
+    if (!wrap) continue;
+    const others = [...wrap.children].filter((c) => c !== sp);
+    const vis = others.map((c) => c.style.visibility);
+    others.forEach((c) => { c.style.visibility = 'hidden'; });
+    try {
+      const url = await window.htmlToImage.toPng(wrap, { pixelRatio: printScale(), cacheBust: false, includeQueryParams: true });
+      const im = document.createElement('img');
+      im.src = url;
+      im.alt = '';
+      Object.assign(im.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', zIndex: '2', pointerEvents: 'none' });
+      if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+      wrap.append(im);
+      sp.style.setProperty('-webkit-background-clip', 'border-box');
+      Object.assign(sp.style, { backgroundClip: 'border-box', background: 'none', color: 'transparent' });
+    } catch { /* leave it as it was: a hairline beats a missing title */ }
+    others.forEach((c, i) => { c.style.visibility = vis[i]; });
+  }
+}
+
+function clearPrint() {
+  const old = $('fs-print');
+  if (old) old.remove();
+  const css = $('fs-print-css');
+  if (css) css.remove();
+}
+
+async function exportPrint() {
+  let fmt = PAGE_FORMATS[options.exportOpts.pageSize] || PAGE_FORMATS.trim;
+  if (fmt === PAGE_FORMATS.trim) fmt = { w: fmt.w, h: (fmt.w * SHEET_H) / SHEET_W };
+  const list = exportPages();
+  if (!list.length) throw new Error('No pages ticked for the PDF.');
+  clearPrint();
+  const k = Math.min(fmt.w / SHEET_W, fmt.h / SHEET_H); // pt per sheet px
+  const x = (fmt.w - SHEET_W * k) / 2, y = (fmt.h - SHEET_H * k) / 2;
+  const root = document.createElement('div');
+  root.id = 'fs-print';
+  for (let i = 0; i < list.length; i++) {
+    progress('Laying out ' + list[i].label + ' (' + (i + 1) + ' of ' + list.length + ')…');
+    const node = await withPageNode(list[i], async (n) => { await flattenClippedText(n); frozenCanvases(n); n.remove(); return n; });
+    // zoom, not a transform: a transform leaves the full-size box in the
+    // layout, and the print window then shrinks every page to fit it
+    Object.assign(node.style, {
+      position: 'absolute', left: x + 'pt', top: y + 'pt', margin: '0', zoom: String((k * 4) / 3),
+    });
+    const leaf = document.createElement('div');
+    leaf.className = 'fs-print-page';
+    leaf.style.background = options.exportOpts.marginColor || '#ffffff';
+    leaf.append(node);
+    root.append(leaf);
+  }
+  const css = document.createElement('style');
+  css.id = 'fs-print-css';
+  css.textContent = `@page { size: ${fmt.w}pt ${fmt.h}pt; margin: 0; }
+#fs-print { display: none; }
+@media print {
+  html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
+  body > *:not(#fs-print) { display: none !important; }
+  body::before, body::after, html::before, html::after { display: none !important; }
+  #fs-print { display: block; }
+  #fs-print, #fs-print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .fs-print-page { position: relative; width: ${fmt.w}pt; height: ${fmt.h}pt; overflow: hidden; break-after: page; }
+  .fs-print-page:last-child { break-after: auto; }
+}`;
+  document.head.append(css);
+  document.body.append(root);
+  await waitImages(root);
+  await document.fonts.ready;
+  progress('');
+  window.addEventListener('afterprint', clearPrint, { once: true });
+  window.print();
+}
+
 async function exportPDF() {
   await loadScriptOnce('assets/fancyscripts/vendor/jspdf.umd.min.js', () => window.jspdf);
   let fmt = PAGE_FORMATS[options.exportOpts.pageSize] || PAGE_FORMATS.trim;
@@ -2694,6 +2839,15 @@ async function boot() {
       note('Pasted text is not valid JSON.', 'err');
     }
   });
+  const wikiSaveClick = (remove) => async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try { await saveToWiki(remove); } catch (err) { note(err.message, 'err'); } finally { btn.disabled = false; }
+  };
+  $('fs-wiki-save-btn').addEventListener('click', wikiSaveClick(false));
+  $('fs-wiki-unsave-btn').addEventListener('click', (e) => {
+    if (confirm('Remove the design saved to this ' + wikiSaved.type + '?')) wikiSaveClick(true)(e);
+  });
   $('fs-wiki-script').addEventListener('change', (e) => {
     const v = e.target.value;
     if (!v) return;
@@ -2722,7 +2876,8 @@ async function boot() {
     window.open('script?from=fancy', '_blank');
   });
   $('fs-export-png').addEventListener('click', (e) => withExport(e.currentTarget, exportPNG));
-  $('fs-export-pdf').addEventListener('click', (e) => withExport(e.currentTarget, exportPDF));
+  $('fs-export-pdf').addEventListener('click', (e) => withExport(e.currentTarget,
+    options.exportOpts.pdfMode === 'image' ? exportPDF : exportPrint));
   $('fs-export-all').addEventListener('click', (e) => withExport(e.currentTarget, exportAll));
   $('fs-export-copy').addEventListener('click', (e) => withExport(e.currentTarget, async () => {
     try { await copyImage(); } catch (err) { note((err && err.message) || 'Could not copy.', 'err'); }
@@ -2753,6 +2908,21 @@ async function boot() {
   $('fs-preview').addEventListener('touchend', () => { pinch = null; }, { passive: true });
 
   new ResizeObserver(fitPreview).observe($('fs-preview'));
+  if ($('fs-scroll')) new ResizeObserver(fitPreview).observe($('fs-scroll'));
+
+  // the settings drawer on a phone (the builder's: .sbx-side.on + the scrim)
+  const side = (on) => {
+    $('sbx-side').classList.toggle('on', on);
+    $('sbx-scrim').classList.toggle('on', on);
+    document.documentElement.classList.toggle('sbx-locked', on);
+  };
+  // the bar's More menu (the builder's .sbx-menu)
+  const menu = (on) => { $('fs-more-menu').classList.toggle('on', on); $('fs-more').setAttribute('aria-expanded', String(on)); };
+  $('fs-more').addEventListener('click', (e) => { e.stopPropagation(); menu(!$('fs-more-menu').classList.contains('on')); });
+  document.addEventListener('click', () => menu(false));
+  $('sbx-open').addEventListener('click', () => side(true));
+  $('sbx-close').addEventListener('click', () => side(false));
+  $('sbx-scrim').addEventListener('click', () => side(false));
   window.addEventListener('resize', fitPreview);
 
   // drop a file anywhere: a script or design JSON loads, an image becomes
@@ -2814,8 +2984,8 @@ async function boot() {
   } else if (wikiKey) {
     const same = !!(saved && saved.key === wikiKey);
     if (same) applyDesignData(saved);
-    await loadWikiScript(slug || coll, same, slug ? 'script' : 'collection');
-    if (same) { buildFontSelects(); toast('Your last design for this ' + (slug ? 'script' : 'collection') + ' is back'); }
+    const fromSaved = await loadWikiScript(slug || coll, same, slug ? 'script' : 'collection');
+    if (same && !fromSaved) { buildFontSelects(); toast('Your last design for this ' + (slug ? 'script' : 'collection') + ' is back'); }
   } else if (saved && saved.script) {
     applyDesignData(saved);
     loadJson(saved.script, saved.sourceLabel || 'your last session', saved.key && saved.key.startsWith('wiki:') ? saved.key.slice(5) : '', true);

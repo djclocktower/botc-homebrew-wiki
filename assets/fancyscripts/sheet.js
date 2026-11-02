@@ -35,6 +35,7 @@ import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, frontCharacters, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
+  keywordParts, jinxNotes,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
@@ -44,6 +45,16 @@ import {
   ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark,
 } from './elements.js';
 import { runPixelJob } from './jobs.js';
+
+/* A jinx rule printed under its character (options.jinxText): set smaller
+   and in italic, after a gap, with the partner's icon hanging in front.
+   Layout em, like SHEET. */
+const NOTE = { size: 0.86, gap: 0.3, icon: 1.1, indent: 1.45 };
+const noteLineEm = (options) => SHEET.abilityLine * (options.textSize || 1) * (options.abilityLine || 1) * NOTE.size;
+
+/* the keyword inks, when the option is on */
+const keywordInks = (options) => (options.colorKeywords
+  ? { good: teamColor(options, 'townsfolk'), evil: teamColor(options, 'demon') } : null);
 
 /* an icon <img> that falls back to the placeholder when its art 404s.
    Decoded synchronously: the preview rebuilds these nodes on every change
@@ -103,25 +114,29 @@ function authorCYEm(script, options) {
 }
 
 /* ability text with typographic punctuation and the ornamental asterisk of
-   the official sheets */
-function abilityNodes(text, bracketStyle) {
+   the official sheets. `kw` ({good, evil} inks) colours the keywords;
+   colour only, never weight, so the measured wraps stay true. */
+function abilityNodes(text, bracketStyle, kw) {
   const parts = smartTypography(text).split('*');
   const out = [];
+  const words = (s) => (kw
+    ? keywordParts(s).map((k) => (k.side ? el('span', { color: kw[k.side] }, k.s) : document.createTextNode(k.s)))
+    : [document.createTextNode(s)]);
   const bracketed = (s) => {
     // "[+2 Outsiders]" setup notes, styled apart from the rule when asked
-    if (!bracketStyle || bracketStyle === 'plain') return [document.createTextNode(s)];
+    if (!bracketStyle || bracketStyle === 'plain') return words(s);
     const nodes = [];
     const re = /\[[^\]\n]{1,60}\]/g;
     let last = 0, m;
     while ((m = re.exec(s))) {
-      if (m.index > last) nodes.push(document.createTextNode(s.slice(last, m.index)));
+      if (m.index > last) nodes.push(...words(s.slice(last, m.index)));
       const span = el('span', bracketStyle === 'italic' ? { fontStyle: 'italic' }
         : bracketStyle === 'bold' ? { fontWeight: '700' }
-          : { opacity: '0.72', fontStyle: 'italic' }, m[0]);
+          : { opacity: '0.72', fontStyle: 'italic' }, ...words(m[0]));
       nodes.push(span);
       last = m.index + m[0].length;
     }
-    if (last < s.length) nodes.push(document.createTextNode(s.slice(last)));
+    if (last < s.length) nodes.push(...words(s.slice(last)));
     return nodes;
   };
   parts.forEach((p, i) => {
@@ -326,7 +341,7 @@ function swashTitle(text, options, shadowDX, shadowDY) {
    goes by the second, because it belongs beside the NAME, not in the middle
    of the padding under it. Centring it in the drawn row let it sink away
    from its own name as the rows stretched. */
-function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul, mark, naturalEm) {
+function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul, mark, naturalEm, notes) {
   const { textSize, nameSize } = options;
   const colW = SHEET.textOffsetX + SHEET.textWidth * widthMul; // column width in % of sheet
   const textLeftPct = (SHEET.textOffsetX / colW) * 100;
@@ -411,9 +426,33 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     mixBlendMode: 'multiply',
     textAlign: options.abilityAlign === 'justify' ? 'justify' : 'left',
     whiteSpace: 'pre-line', // a line break typed in the ability is kept, as the printed sheets break them
-  }, ...abilityNodes(char.ability, options.bracketStyle)));
+  }, ...abilityNodes(char.ability, options.bracketStyle, keywordInks(options)),
+  ...((notes && notes.get(char.id)) || []).map((j) => jinxNote(j, options, ed))));
 
   return row;
+}
+
+/* one jinx rule under a character: the partner's icon, then the rule */
+function jinxNote(j, options, ed) {
+  const lineH = ed(noteLineEm(options));
+  const iconPx = lineH * NOTE.icon;
+  const fit = options.normalizeIcons ? iconFit(j.icon) : ICON_IDENTITY;
+  const icon = iconImg(drawIcon(j.icon), {
+    position: 'absolute', left: '0', top: px((lineH - iconPx) / 2),
+    width: px(iconPx), height: px(iconPx), objectFit: 'contain',
+    transform: inkTransform(fit), transformOrigin: 'center',
+  }, j.name);
+  icon.title = 'Jinxed with ' + j.name;
+  return el('div', {
+    position: 'relative',
+    display: 'block',
+    marginTop: px(ed(NOTE.gap)),
+    paddingLeft: px(lineH * NOTE.indent),
+    fontSize: px(ed(SHEET.abilitySize * (options.textSize || 1) * NOTE.size)),
+    lineHeight: px(lineH),
+    fontStyle: 'italic',
+    whiteSpace: 'normal',
+  }, icon, ...abilityNodes(j.reason, 'plain', keywordInks(options)));
 }
 
 /* the fonts every text role uses, resolved once per render */
@@ -486,6 +525,7 @@ export function layoutSheet(script, options, requestRender) {
   const gutterEm = ((SHEET.textOffsetX - 0.05) / 100) * (SHEET_W / U);
   const iconEmFor = (density) => Math.min(SHEET.rowIcon * iconSize, gutterEm / density);
   const lineMul = options.abilityLine || 1;
+  const notes = options.jinxText ? jinxNotes(script.characters) : null;
 
   const rowHeightEm = (char, density) => {
     /* A row is as tall as its icon or its text, whichever is taller. The
@@ -498,6 +538,13 @@ export function layoutSheet(script, options, requestRender) {
       const lines = wrappedLineCount(smartTypography(char.ability), `400 ${fontPx}px ${fonts.ability}`, maxTextW);
       // room under the last line, so the next name does not sit on it
       need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + 1.05);
+      for (const j of (notes && notes.get(char.id)) || []) {
+        // a jinx rule under the ability: measured exactly as jinxNote draws it
+        const nLine = noteLineEm(options);
+        const indentPx = nLine * NOTE.indent * U * density;
+        const nl = wrappedLineCount(smartTypography(j.reason), `italic 400 ${fontPx * NOTE.size}px ${fonts.ability}`, maxTextW - indentPx);
+        need += NOTE.gap + nl * nLine;
+      }
     }
     return need;
   };
@@ -644,7 +691,7 @@ export function layoutSheet(script, options, requestRender) {
     });
   });
 
-  return { pages, d, iconEm, layoutEven, fonts, groups, widthMul };
+  return { pages, d, iconEm, layoutEven, fonts, groups, widthMul, notes };
 }
 
 /* ── one page ─────────────────────────────────────────────────────────── */
@@ -1102,7 +1149,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     });
     left.forEach((c, i) => colL.append(
       characterEntry(c, options, leftHeights[i], iconEm, ed, e, fonts, widthMul, mark,
-        sec.leftNatural && sec.leftNatural[i]),
+        sec.leftNatural && sec.leftNatural[i], layout.notes),
     ));
     wrap.append(colL);
 
@@ -1119,7 +1166,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     });
     right.forEach((c, i) => colR.append(
       characterEntry(c, options, rightHeights[i], iconEm, ed, e, fonts, widthMul, mark,
-        sec.rightNatural && sec.rightNatural[i]),
+        sec.rightNatural && sec.rightNatural[i], layout.notes),
     ));
     wrap.append(colR);
 

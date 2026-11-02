@@ -129,6 +129,9 @@
  *   GET  /api/page-json       -> a script's or collection's export JSON as a
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
+ *   GET  /api/fancy-design    -> the Fancy Scripts design saved with a script or
+ *   POST /api/fancy-design       collection (?type=&slug=), and saving one: R2
+ *                                fancy/{type}/{slug}.json, editors of the page only
  *
  *   -- importing a Bloodstar project (/bloodstar) --
  *   GET  /api/bloodstar       -> read a project on Bloodstar: fetches its
@@ -8782,6 +8785,77 @@ async function charsBySlug(env, slugs) {
 
    Content-Disposition is what makes it save rather than display; the filename
    is the page's own slug, as the blob version named it. */
+/* ---- a Fancy Scripts design kept with its script or collection ----
+   One JSON file in R2 (fancy/{type}/{PK slug}.json): the same object as the
+   tool's "Save design file", without the roster, which comes from the page.
+   It is what /fancyscripts?s= and ?c= open with, so the "Fancy Sheet" button
+   on a page gives every reader its owner's design. Anyone who can see the
+   page can read it; whoever may edit the page (owner, approved editors,
+   admins; not a protected page's owner) can save it. The prefix is not in
+   R2_SERVE_PREFIXES, so a draft's design is only reachable through here. */
+const FANCY_DESIGN_MAX = 8 * 1024 * 1024;
+
+async function fancyDesignRow(env, type, slug) {
+  if (!slug) return null;
+  let row = await getEntityRow(env, type, slug);
+  if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+  return row && row.status !== 'deleted' ? row : null;
+}
+
+const fancyDesignKey = (type, slug) => 'fancy/' + type + '/' + slug + '.json';
+
+async function fancyDesignRoute(env, request, url, method) {
+  const sess = await getSession(env, request);
+  let body = null;
+  if (method === 'POST') {
+    if (!sess) return jsonResponse({ error: 'Log in to save a design to a page.' }, { status: 401 });
+    if (Number(request.headers.get('content-length') || 0) > FANCY_DESIGN_MAX) {
+      return jsonResponse({ error: 'That design is too large to save (8 MB at most). Smaller uploads help.' }, { status: 413 });
+    }
+    const text = await request.text();
+    if (text.length > FANCY_DESIGN_MAX) {
+      return jsonResponse({ error: 'That design is too large to save (8 MB at most). Smaller uploads help.' }, { status: 413 });
+    }
+    try { body = JSON.parse(text); } catch { return jsonResponse({ error: 'Bad request' }, { status: 400 }); }
+  }
+  const src = body || {};
+  const type = (src.type || url.searchParams.get('type')) === 'collection' ? 'collection' : 'script';
+  const row = await fancyDesignRow(env, type, String(src.slug || url.searchParams.get('slug') || ''));
+  const canSave = !!(sess && row && await canEditPage(env, sess, type, row) &&
+    (sess.isAdmin || !(await isProtected(env, type, row.slug))));
+  if (!row || ((row.status || 'published') !== 'published' && !canSave)) {
+    return jsonResponse({ error: 'Not found' }, { status: 404 });
+  }
+  const key = fancyDesignKey(type, row.slug);
+
+  if (method === 'GET') {
+    const obj = await env.ART.get(key).catch(() => null);
+    let design = null;
+    if (obj) { try { design = await obj.json(); } catch { design = null; } }
+    return jsonResponse({ design, savedAt: (obj && obj.customMetadata && obj.customMetadata.at) || '', canSave });
+  }
+
+  if (!canSave) return jsonResponse({ error: 'Only people who can edit this page can save its design.' }, { status: 403 });
+  const limited = await writeLimited(env, request, sess, type);
+  if (limited) return limited;
+  if (src.remove) {
+    await env.ART.delete(key);
+    return jsonResponse({ ok: true, removed: true });
+  }
+  const d = src.design;
+  if (!d || typeof d !== 'object' || Array.isArray(d) || d.app !== 'fancyscripts' || !d.options || typeof d.options !== 'object') {
+    return jsonResponse({ error: 'That is not a Fancy Scripts design.' }, { status: 400 });
+  }
+  delete d.script;
+  delete d.sourceLabel;
+  const at = new Date().toISOString();
+  await env.ART.put(key, JSON.stringify(d), {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: { owner: String(sess.userId), at },
+  });
+  return jsonResponse({ ok: true, savedAt: at });
+}
+
 async function pageJsonResponse(env, ctx, request, url) {
   const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
   const slug = String(url.searchParams.get('slug') || '');
@@ -11242,6 +11316,10 @@ const app = {
       return pageJsonResponse(env, ctx, request, url);
     }
 
+    if (path === '/api/fancy-design' && (method === 'GET' || method === 'POST')) {
+      return fancyDesignRoute(env, request, url, method);
+    }
+
     /* ---- read a Bloodstar project ----
        ?url= anything that points at a project on Bloodstar, on either of its
        hosts (BLOODSTAR_HOST_CANON in worker/bloodstar.js): the almanac, the
@@ -13621,7 +13699,7 @@ const app = {
       // /api/attachment does not: modmail uses it too, and the comment it
       // would belong to is refused here anyway.
       const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx',
-        '/api/page-rollback', '/api/suggest', '/api/suggestion'].includes(path);
+        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/fancy-design'].includes(path) && method !== 'GET';
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -15774,6 +15852,8 @@ const app = {
         // bookmarks pointing at it (a soft-deleted page keeps them, since it
         // can be restored), its comments, suggestions, views and protection.
         await dropPageRefs(env, type, row.slug);
+        // its Fancy Scripts design too, or a new page on the slug would open with it
+        if (type !== 'character') { try { await env.ART.delete(fancyDesignKey(type, row.slug)); } catch { /* a stray file must not fail the purge */ } }
         // A script's or collection's custom wiki pages went down with it when
         // it was deleted; purged, there is nothing for them to come back
         // with, and a new set taking the same slug would adopt them. So they

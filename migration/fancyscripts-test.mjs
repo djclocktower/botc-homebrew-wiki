@@ -188,5 +188,23 @@ check('stickers: three layers, bottom to top', S.STICKER_LAYERS.map((l) => l[0])
   check('page shape: old multi-sheet settings are dropped', ['paginate', 'minFit', 'repeatHeader'].map((k) => k in S.normalizeOptions({ paginate: true, minFit: 0.5, repeatHeader: true })), [false, false, false]);
 }
 
+// keyword colours: whole words, the good side and the evil side
+check('keywords: good and evil words', S.keywordParts('a good Townsfolk, an evil Minion or the Demons').filter((k) => k.side).map((k) => k.s + ':' + k.side),
+  ['good:good', 'Townsfolk:good', 'evil:evil', 'Minion:evil', 'Demons:evil']);
+check('keywords: never inside a word', S.keywordParts('goodness and Demonic').every((k) => !k.side), true);
+check('keywords: the text survives the split', S.keywordParts('If a good player dies.').map((k) => k.s).join(''), 'If a good player dies.');
+
+// jinx rules under the characters: each pair once, only with a rule to print
+{
+  const notes = S.jinxNotes([
+    { id: 'a', jinxIcons: [{ id: 'b', reason: 'Only one.' }, { id: 'c', reason: '' }] },
+    { id: 'b', jinxIcons: [{ id: 'a', reason: 'Only one, again.' }] },
+  ]);
+  check('jinx rules: a pair printed once, under the first', [...notes.keys()], ['a']);
+  check('jinx rules: an empty rule is left out', notes.get('a').map((j) => j.id), ['b']);
+}
+check('player table: 11 player counts, 4 rows', [S.PLAYER_TABLE.players.length, S.PLAYER_TABLE.rows.every((r) => r[2].length === 11)], [11, true]);
+check('player table: 7 players is 5/0/1/1', S.PLAYER_TABLE.rows.map((r) => r[2][2]), [5, 0, 1, 1]);
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

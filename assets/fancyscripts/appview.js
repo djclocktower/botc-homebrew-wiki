@@ -34,7 +34,7 @@
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
   groupByTeam, frontCharacters, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
-  breakRuns, fitNameLines,
+  breakRuns, fitNameLines, keywordParts, jinxNotes,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt, artAspectOf, shade,
@@ -174,10 +174,17 @@ export function layoutAppSheet(script, options, requestRender) {
   const nameFont = (d) => (s) => `${options.nameCase === 'smallcaps' ? 'small-caps ' : ''}700 ${(A.nameSize * nameSize * U * d * s).toFixed(2)}px ${fonts.name}`;
   const caseName = (s) => (options.nameCase === 'upper' ? s.toUpperCase() : s);
 
+  const kw = options.colorKeywords ? { good: teamColor(options, 'townsfolk'), evil: teamColor(options, 'demon') } : null;
+  const notes = options.jinxText ? jinxNotes(script.characters) : null;
+  // ability text as runs, the keywords carrying their ink when asked
+  const textRuns = (s, font) => (kw
+    ? keywordParts(smartTypography(s)).map((k) => ({ s: k.s, font, kind: 'text', ...(k.side ? { color: kw[k.side] } : {}) }))
+    : [{ s: smartTypography(s), font, kind: 'text' }]);
+
   const measureRow = (c, d) => {
     const textPx = A.textSize * textSize * U * d;
     const font = `400 ${textPx.toFixed(2)}px ${fonts.text}`;
-    const runs = [{ s: smartTypography(c.ability || ''), font, kind: 'text' }];
+    const runs = textRuns(c.ability || '', font);
     if (options.showJinxes && c.jinxIcons.length) {
       // the partners' icons close the ability, where the app lists them
       runs.push({ s: ' ', font, kind: 'text' });
@@ -185,6 +192,12 @@ export function layoutAppSheet(script, options, requestRender) {
       for (const j of c.jinxIcons) runs.push({ kind: 'icon', src: j.icon, name: j.name, reason: j.reason, w: jw, font });
     }
     const lines = breakRuns(runs, textW, textWidth, { baseFont: font });
+    for (const j of (notes && notes.get(c.id)) || []) {
+      // a jinx rule under the ability: smaller, italic, the partner's icon first
+      const nFont = `italic 400 ${(textPx * 0.86).toFixed(2)}px ${fonts.text}`;
+      const nRuns = [{ kind: 'icon', src: j.icon, name: j.name, w: textPx * 1.1, font: nFont }, ...textRuns(j.reason, nFont)];
+      for (const ln of breakRuns(nRuns, textW, textWidth, { baseFont: nFont })) lines.push({ ...ln, note: true });
+    }
     const nm = fitNameLines(caseName(smartTypography(c.name)), nameW, textWidth, nameFont(d));
     const textH = lines.length * lineEm;
     const nameH = nm.lines.length * nameLineEm(nm.scale);
@@ -412,7 +425,8 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
       height: px(ed(lineEm)),
       lineHeight: px(ed(lineEm)),
       fontFamily: fonts.text,
-      fontSize: px(textPx),
+      fontSize: px(ln.note ? textPx * 0.86 : textPx),
+      fontStyle: ln.note ? 'italic' : 'normal',
       color: a.inkColor || '#271d17',
     }, (it) => {
       if (it.kind === 'icon') {
@@ -424,7 +438,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
         ji.title = 'Jinxed: ' + it.name;
         return ji;
       }
-      return document.createTextNode(it.s);
+      return it.color ? el('span', { color: it.color }, it.s) : document.createTextNode(it.s);
     }));
   });
   return row;
