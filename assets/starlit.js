@@ -23,11 +23,15 @@
   var BUILT_IN = [
     { id: 'blue', name: 'Good', src: TEX + 'blue.png' },
     { id: 'red', name: 'Evil', src: TEX + 'red.png' },
-    { id: 'brown', name: 'Traveller', src: TEX + 'brown.png' },
-    { id: 'traveller_split', name: 'Traveller II', src: TEX + 'blue.png', src2: TEX + 'red.png' },
+    // The official traveller icons are split down the middle: unaligned is
+    // blue | red, good is blue | brown, evil is brown | red.
+    { id: 'traveller_split', name: 'Traveller', src: TEX + 'blue.png', src2: TEX + 'red.png' },
+    { id: 'traveller_good', name: 'Traveller Good', src: TEX + 'blue.png', src2: TEX + 'brown.png' },
+    { id: 'traveller_evil', name: 'Traveller Evil', src: TEX + 'brown.png', src2: TEX + 'red.png' },
     { id: 'yellow_fibbin', name: 'Fabled', src: TEX + 'yellow_fibbin.png' },
     { id: 'green_pope', name: 'Loric', src: TEX + 'green_pope.png' },
-    { id: 'white', name: 'Monochrome', src: TEX + 'white.png' }
+    { id: 'white', name: 'Monochrome', src: TEX + 'white.png' },
+    { id: 'brown', name: 'Brown', src: TEX + 'brown.png' }
   ];
 
   var PARCHMENT = TEX + 'white.png';
@@ -71,12 +75,12 @@
     for (var i = 0; i < textures.length; i++) if (textures[i].id === id) return textures[i];
     return null;
   }
-  // Traveller II, as in Icon Forge: one sheet down the left, the other down
-  // the right. compose() centres the fill, so the split runs through the icon.
+  // The traveller textures: one sheet down the left, the other down the
+  // right. compose() centres the fill, so the split runs through the icon.
   function splitFill(a, b) {
     var w = a.naturalWidth, h = a.naturalHeight, c = canvas(w, h), x = c.getContext('2d');
     x.drawImage(a, 0, 0, w, h);
-    x.drawImage(b, w / 2, 0, w / 2, h, w / 2, 0, w / 2, h);
+    x.drawImage(b, b.naturalWidth / 2, 0, b.naturalWidth / 2, b.naturalHeight, w / 2, 0, w / 2, h);
     return c;
   }
   function texturesFor(id) {

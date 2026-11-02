@@ -3816,9 +3816,12 @@ required but a shout-out is appreciated, and no commercial use.
   `<img>` so a phone can long-press it. The two layers must be the same size:
   a layer exported trimmed to its drawing (Photoshop's "Export As" on one
   layer) has lost its place on the canvas, so the form refuses the pair.
-- **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`, …,
-  Traveller II `traveller_split` — blue down the left, red down the right, as
-  Icon Forge splits it — and Monochrome `white`),
+- **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`,
+  Fabled, Loric, Monochrome `white`, and the plain `brown` sheet as "Brown"),
+  plus the three traveller splits the official icons use (Harry & Co's
+  correction): Traveller `traveller_split` blue | red, Traveller Good
+  `traveller_good` blue | brown, Traveller Evil `traveller_evil` brown | red.
+  Brown alone is NOT a traveller texture, it is the other half of one,
   the gallery's own (`starlit_textures`, also in Icon Forge as
   `starlit-{id}`), and "Your own", a local file that is never uploaded.
   **An icon opens as it was uploaded** (the owner's call): black lines, white
