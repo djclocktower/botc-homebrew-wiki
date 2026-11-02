@@ -41,7 +41,17 @@ async function setup(t) {
 
 test('an empty gallery reads as empty, and only the team can change it', async t => {
   const { f, call, feed } = await setup(t);
-  assert.deepEqual(await feed(), { icons: [], textures: [], canUpload: false });
+  const empty = await feed();
+  assert.deepEqual(empty.icons, []);
+  assert.deepEqual(empty.files, []);
+  assert.equal(empty.page, null);
+  assert.equal(empty.canUpload, false);
+  // The packs the page shipped with are seeded as rows, 9 sheets each.
+  assert.equal(empty.textures.length, 54);
+  assert.deepEqual([...new Set(empty.textures.map(x => x.pack))], ['Default', 'Vibrant', 'Treasure Hunt', 'Starlit', 'Glitchy', 'Official']);
+  assert.equal(empty.textures[0].image, '/assets/starlit/tex/default-base.webp');
+  assert.equal(empty.textures[0].thumb, '/assets/starlit/tex/default-base-s.webp');
+  assert.equal(empty.textures.find(x => x.pack === 'Official' && x.kind === 'base').name, 'Monochrome');
   assert.equal((await feed('stranger')).canUpload, false);
   const admin = await feed('admin');
   assert.equal(admin.canUpload, true);
@@ -122,21 +132,98 @@ test('the team adds, edits and deletes an icon; files get minted keys and go whe
   assert.deepEqual(log, ['starlit-uploaders', 'starlit-add', 'starlit-edit', 'starlit-delete']);
 });
 
-test('textures: added and removed by the team, listed on their own for Icon Forge', async t => {
+test('texture packs: a sheet is added or replaced by pack and kind; packs rename and delete', async t => {
   const { objects, call, feed, f } = await setup(t);
-  const tex = { action: 'texture', name: 'Starlit', image: png() };
+  const tex = { action: 'texture', pack: 'Moonlit', kind: 'evil', image: png(), thumb: png(4) };
   assert.equal((await call('harry', tex)).status, 403);
   const made = await call('admin', tex);
   assert.equal(made.status, 200);
   assert.match(made.body.texture.image, /^\/assets\/starlit\/[0-9a-f]{20}-texture\.png$/);
-  assert.equal((await call('admin', { action: 'texture', name: '', image: png() })).status, 400);
+  assert.match(made.body.texture.thumb, /-texture-s\.png$/);
+  assert.equal((await call('admin', { ...tex, pack: '' })).status, 400);
+  assert.equal((await call('admin', { ...tex, kind: 'purple' })).status, 400);
+  // The same pack and kind again replaces the sheet and drops its old files.
+  const again = await call('admin', { ...tex, image: png(5) });
+  assert.equal(again.body.texture.id, made.body.texture.id);
+  assert.equal(objects.size, 2);
   const only = await (await f.request('/api/starlit?textures=1')).json();
   assert.deepEqual(Object.keys(only), ['textures']);
-  assert.equal(only.textures[0].name, 'Starlit');
-  assert.equal((await feed()).textures.length, 1);
+  assert.equal(only.textures.at(-1).pack, 'Moonlit');
+
+  // Replacing a shipped sheet; deleting its pack leaves the repo's files alone.
+  await call('admin', { action: 'texture', pack: 'Default', kind: 'good', image: png(6) });
+  assert.equal((await feed()).textures.filter(x => x.pack === 'Default').length, 9);
+  assert.equal((await call('admin', { action: 'pack', from: 'Vibrant', to: 'Moonlit' })).status, 409);
+  assert.equal((await call('admin', { action: 'pack', from: 'Vibrant', to: 'Bright' })).status, 200);
+  assert.equal((await feed()).textures.filter(x => x.pack === 'Bright').length, 9);
+  await call('admin', { action: 'pack', from: 'Default', remove: true });
+  assert.equal((await feed()).textures.filter(x => x.pack === 'Default').length, 0);
+  assert.equal(objects.size, 2, 'the uploaded Default sheet went with its pack');
   await call('admin', { action: 'delete-texture', id: made.body.texture.id });
   assert.equal(objects.size, 0);
-  assert.deepEqual((await feed()).textures, []);
+});
+
+test('a keyword or an artist renamed across every icon', async t => {
+  const { call, feed } = await setup(t);
+  const add = (name, tags, artist) => call('admin', { action: 'save', name, tags, artist, black: png(), white: png(), thumb: png() });
+  await add('A', 'skull, bone', 'Harry & Co & Bendan');
+  await add('B', 'Skull', 'Bendan, Harry & Co & Bendan');
+  await add('C', 'tree', 'Someone');
+  const r = await call('admin', { action: 'rename', what: 'tag', from: 'SKULL', to: 'bone' });
+  assert.equal(r.body.changed, 2);
+  assert.deepEqual((await feed()).icons.map(i => i.tags), [['bone'], ['bone'], ['tree']]);
+  await call('admin', { action: 'rename', what: 'tag', from: 'tree', to: '' });
+  assert.deepEqual((await feed()).icons[2].tags, []);
+  const a = await call('admin', { action: 'rename', what: 'artist', from: 'harry & co & bendan', to: 'Harry & Co' });
+  assert.equal(a.body.changed, 2);
+  assert.deepEqual((await feed()).icons.map(i => i.artist), ['Harry & Co', 'Bendan, Harry & Co', 'Someone']);
+  assert.equal((await call('admin', { action: 'rename', what: 'artist', from: 'Someone', to: '' })).status, 400);
+});
+
+test('the page text and theme are the team\'s, cleaned on save', async t => {
+  const { call, feed } = await setup(t);
+  const saved = await call('admin', { action: 'page', page: {
+    intro: 'Hello [there](/u/harryandco)', about: '## Hi\n<script>x</script>',
+    theme: { accent: '#112233', background: 'starlit/page-bg.jpg', css: 'h1{color:red}', bogus: 1 }
+  } });
+  assert.equal(saved.status, 200);
+  const page = (await feed()).page;
+  assert.equal(page.intro, 'Hello [there](/u/harryandco)');
+  assert.equal(page.theme.accent, '#112233');
+  assert.equal(page.theme.background, 'starlit/page-bg.jpg');
+  assert.equal(page.theme.bogus, undefined);
+  // Somebody else's background slot is not this page's.
+  await call('admin', { action: 'page', page: { theme: { background: 'avatars/u1-bg.jpg' } } });
+  assert.equal((await feed()).page, null);
+  const bg = await call('admin', { action: 'page-image', kind: 'bg', data: png() });
+  assert.equal(bg.body.path, 'starlit/page-bg.png');
+  assert.equal((await call('admin', { action: 'page-image', kind: 'st', n: 99, data: png() })).status, 400);
+});
+
+test('downloads: any size up to the cap, typed by their bytes', async t => {
+  const { f, objects, call, feed } = await setup(t);
+  const up = (who, bytes, q) => f.request('/api/starlit-file?' + new URLSearchParams(q), {
+    method: 'POST', headers: { Cookie: 'botc_session=' + who, 'Content-Length': String(bytes.length) }, body: bytes
+  });
+  const psd = Buffer.concat([Buffer.from('8BPS'), Buffer.from([0, 1]), Buffer.alloc(5000, 3)]);
+  assert.equal((await up('harry', psd, { title: 'Templates' })).status, 403);
+  assert.equal((await up('admin', psd, { title: '' })).status, 400);
+  assert.equal((await up('admin', Buffer.from('<svg onload=alert(1)>'), { title: 'x', name: 'a.png' })).status, 400);
+  const res = await up('admin', psd, { title: 'Templates', note: 'For Photoshop', name: 'Icon template.psd' });
+  assert.equal(res.status, 200);
+  const file = (await res.json()).file;
+  assert.equal(file.name, 'Icon_template.psd');
+  assert.equal(file.type, 'image/vnd.adobe.photoshop');
+  assert.equal(file.size, psd.length);
+  const stored = objects.get(file.url.slice('/assets/'.length));
+  assert.ok(stored.body.equals(psd), 'the whole file is stored');
+  assert.match(stored.opts.httpMetadata.contentDisposition, /^attachment/);
+  assert.equal((await feed()).files[0].title, 'Templates');
+  await call('admin', { action: 'file', id: file.id, title: 'PSD templates', note: '' });
+  assert.equal((await feed()).files[0].title, 'PSD templates');
+  await call('admin', { action: 'delete-file', id: file.id });
+  assert.deepEqual((await feed()).files, []);
+  assert.equal(objects.size, 0);
 });
 
 test('/api/upload cannot write into the gallery\'s folder', async t => {

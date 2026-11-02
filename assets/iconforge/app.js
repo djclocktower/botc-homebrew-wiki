@@ -748,8 +748,13 @@ COLOR_TEXTURES.forEach(addTexButton);
 const starlitTextures = fetch('/api/starlit?textures=1', { credentials: 'same-origin' })
   .then((r) => (r.ok ? r.json() : { textures: [] }))
   .then((d) => {
+    // Each pack's sheets, but not its outline (that paints the whites) and
+    // not the Official pack's (those are the sheets this tool already has).
+    const KIND = { base: 'Base', good: 'Good', evil: 'Evil', traveller: 'Traveller', 'traveller-good': 'Traveller Good',
+      'traveller-evil': 'Traveller Evil', fabled: 'Fabled', loric: 'Loric' };
     (d.textures || []).forEach((t) => {
-      const def = { id: 'starlit-' + t.id, label: t.name, sub: 'Starlit Gallery', file: t.image + '?v=' + t.v };
+      if (!KIND[t.kind] || t.image.startsWith('/assets/starlit/tex/official-')) return;
+      const def = { id: 'starlit-' + t.id, label: t.pack + ': ' + (t.name || KIND[t.kind]), sub: 'Starlit Gallery', file: t.image + '?v=' + t.v };
       COLOR_TEXTURES.push(def);
       addTexButton(def);
     });

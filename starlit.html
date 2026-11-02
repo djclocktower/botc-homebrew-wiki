@@ -203,11 +203,11 @@
 
 /* The gallery team's form. */
 .sg-form label.sg-f { display: block; margin: 0 0 12px; }
-.sg-form input[type=text], .sg-form select, .sg-team input[type=text] {
+.sg-form input[type=text], .sg-form select, .sg-team input[type=text], #sg-dl-team input[type=text] {
   display: block; width: 100%; font: inherit; font-size: .98rem; color: var(--maroon);
   background: #fffdf8; border: 1px solid var(--parch-frame); padding: 7px 9px; margin-top: 4px;
 }
-.sg-form input[type=file], .sg-team input[type=file] { display: block; margin-top: 4px; font-size: .9rem; max-width: 100%; }
+.sg-form input[type=file], .sg-team input[type=file], #sg-dl-team input[type=file] { display: block; margin-top: 4px; font-size: .9rem; max-width: 100%; }
 .sg-paste { display: flex; gap: 6px; margin: -6px 0 12px; }
 .sg-form .sg-paste input[type=text], .sg-team .sg-paste input[type=text] { flex: 1; min-width: 0; margin-top: 0; font-size: .9rem; padding: 6px 8px; }
 .sg-paste .sg-btn { flex-shrink: 0; padding: 6px 12px; }
@@ -216,7 +216,7 @@
 .sg-f-preview { width: 150px; height: 150px; display: block; background: radial-gradient(circle at 50% 40%, #4a2548, #1a0820 75%); border: 2px solid var(--parch-frame); }
 
 /* The team panel under the grid. */
-.sg-team h3 { font-family: 'Dumbledor2', serif; font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon); margin: 18px 0 8px; }
+.sg-team h3, #sg-dl-team h3 { font-family: 'Dumbledor2', serif; font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon); margin: 18px 0 8px; }
 .sg-team h3:first-child { margin-top: 0; }
 .sg-tex-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
 .sg-tex-list li { display: flex; align-items: center; gap: 10px; padding: 0; margin: 0; }
@@ -228,6 +228,42 @@
 .sg-row > .sg-btn { align-self: flex-end; }
 .sg-row > label { flex: 1 1 180px; min-width: 0; }
 .sg-row > .sg-paste { flex: 1 1 220px; margin: 0; align-self: flex-end; }
+.sg-row select { display: block; width: 100%; font: inherit; padding: 6px; }
+.sg-hint { font-size: .85rem; color: #6b5d49; margin: 6px 0 0; }
+.sg-chips-h { font-family: 'Roboto', sans-serif; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #6b5d49; align-self: center; margin-right: 2px; }
+
+/* Texture packs in Settings: one card per pack, a tile per sheet. */
+.sg-pack { border: 1px solid var(--parch-frame); background: #fffdf8; padding: 10px; margin: 0 0 10px; }
+.sg-pack-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 8px; }
+.sg-pack-head b { font-size: 1.05rem; color: var(--maroon); margin-right: auto; overflow-wrap: anywhere; }
+.sg-pack-head .sg-link-btn { color: var(--maroon); }
+.sg-pack-sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+.sg-sheet { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .74rem; text-align: center; color: var(--maroon); }
+.sg-sheet > button:first-child { width: 64px; height: 64px; padding: 0; border: 1px solid var(--parch-frame); background: repeating-linear-gradient(45deg, #fff 0 6px, #efe6d0 6px 12px); cursor: pointer; display: grid; place-items: center; font-size: 1.4rem; color: #6b5d49; }
+.sg-sheet > button:first-child img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sg-sheet .sg-link-btn { font-size: .72rem; }
+
+/* Downloads: one row per title, a button per file. */
+.sg-dl-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.sg-dl-list li { padding: 0 0 12px; margin: 0; border-bottom: 1px solid rgba(180,160,120,.35); }
+.sg-dl-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.sg-dl-list li::before { content: none; }
+.sg-dl-list .sg-dl-t { font-weight: 700; color: var(--maroon); overflow-wrap: anywhere; }
+.sg-dl-list .sg-dl-n { font-size: .9rem; margin: 2px 0 0; overflow-wrap: anywhere; }
+.sg-dl-files { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 6px; }
+.sg-dl-files a.sg-btn, .sg-dl-files a.sg-btn:hover { color: #f3ead4; text-decoration: none; }
+.sg-dl-files small { opacity: .75; margin-left: 4px; }
+#sg-dl-team h3 { margin-top: 18px; }
+
+/* The page editor (Settings). The theme kit's own rows, as on the account page. */
+.sg-page-ed summary { cursor: pointer; font-weight: 600; color: var(--maroon); }
+.sg-page-ed textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: .95rem; padding: 8px; border: 1px solid var(--parch-frame); background: #fffdf8; resize: vertical; }
+.sg-page-ed .sg-f { margin-top: 12px; }
+.sg-page-ed .th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.sg-page-ed .th-row label { flex:1; font-weight:600; font-size:.82rem; margin:0; }
+.sg-page-ed .th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+.sg-page-ed .th-clear { font-size:.75rem; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+.sg-page-ed .th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
 
 /* Picking an icon for a character page: the gallery opens inside the editor
    (assets/starlit-picker.js), so everything but the gallery itself goes. */
@@ -288,15 +324,37 @@ html.sg-pick .home-panel { padding-top: 14px; }
         Random icon
       </button>
       <div class="sg-tags" id="sg-tags" role="group" aria-label="Keywords" data-user-content></div>
+      <div class="sg-tags" id="sg-artists" role="group" aria-label="Artists" hidden data-user-content></div>
     </div>
     <p class="sg-count" id="sg-count">Loading the gallery…</p>
     <div class="sg-grid" id="sg-grid" data-user-content></div>
 
+    <section class="landing-section sg-not-pick" id="sg-dl" hidden style="margin-top:44px">
+      <h2 class="type-header">Downloads</h2>
+      <div class="type-rule"></div>
+      <div class="about-card">
+        <ul class="sg-dl-list" id="sg-dl-list" data-user-content></ul>
+        <div id="sg-dl-team" hidden>
+          <h3>Add a download</h3>
+          <div class="sg-row">
+            <label>Title <input type="text" id="sg-dl-title" maxlength="80" placeholder="Texture sheets"></label>
+            <label>Note <input type="text" id="sg-dl-note" maxlength="300" placeholder="Optional"></label>
+            <label>File <input type="file" id="sg-dl-file"></label>
+            <button type="button" class="sg-btn sg-btn-green" id="sg-dl-add">Upload</button>
+          </div>
+          <p class="sg-hint">PNG, JPEG, WebP, GIF, PSD, ZIP or PDF, up to 95 MB. Files with the same title are listed together, so a PSD and its PNG sit side by side.</p>
+          <p class="sg-msg" id="sg-dl-msg"></p>
+        </div>
+      </div>
+    </section>
+
     <section class="landing-section sg-not-pick" style="margin-top:44px">
       <div class="type-rule"></div>
       <div class="about-card sg-about">
-        <!-- Copied word for word from the gallery's own page,
-             magma.com/s/starlit-gallery/profile/about. Do not rewrite it. -->
+        <!-- The gallery's own words, from magma.com/s/starlit-gallery/profile/about.
+             The team can change them in Settings (stored in settings
+             `starlit_page`); this copy is what shows until they do. -->
+        <div id="sg-about-text">
         <p><i>The endless void of the skies above stretches into the darkness far beyond mortal perception. Galaxies, vagabond planets, and unreachable alien life dwell beyond the lights that mark our known universe, shimmering with miracles humanity may never witness.</i></p>
         <p><i>Vibrant constellations line the ceilings in colors beyond perception. As gravity weaves, the planets waltz in a pure celestial dance of forces that will last far beyond the mortal race.</i></p>
         <p><i>Mother nature's firstborn children, the stars, blink past the shimmering veils of the night sky, waiting to be seen, known, and found.</i></p>
@@ -308,6 +366,7 @@ html.sg-pick .home-panel { padding-top: 14px; }
         <p>Notably, you <b>do not</b> need to credit us when you use* our resources - however, a shout-out would be appreciated, since it helps promote the collection.<br><i>*Please refrain from using our work for commercial products, though!</i></p>
         <p>So take a look, visitors, and experience the wonders of craft, of creativity, of human expression.</p>
         <p>Welcome once more to the... <b>Starlit Gallery.</b></p>
+        </div>
         <p class="about-disclaimer">Fan-made. Not affiliated with The Pandemonium Institute.</p>
       </div>
     </section>
@@ -320,15 +379,34 @@ html.sg-pick .home-panel { padding-top: 14px; }
         <p>Add an icon from its two layers. To change or delete one, open it.</p>
         <p><button type="button" class="sg-btn sg-btn-green" id="sg-add">Add an icon</button></p>
 
-        <h3>Textures</h3>
-        <p>Listed under "More from the gallery", here and in Icon Forge.</p>
-        <ul class="sg-tex-list" id="sg-tex-list" data-user-content></ul>
+        <h3>Texture packs</h3>
+        <p>Every pack is in the texture pickers, here and in Icon Forge. Tap a sheet to replace it. To add several at once, pick them together: each file goes to the sheet its name says (base, good, evil, traveller good, fabled, outline and so on).</p>
+        <div id="sg-packs" data-user-content></div>
         <div class="sg-row">
-          <label>Name <input type="text" id="sg-t-name" maxlength="40" placeholder="Starlit"></label>
-          <label>Image <input type="file" id="sg-t-file" accept="image/png,image/jpeg,image/webp"></label>
-          <button type="button" class="sg-btn sg-btn-green" id="sg-t-add">Add texture</button>
+          <label>New pack <input type="text" id="sg-p-name" maxlength="40" placeholder="Moonlit"></label>
+          <label>Its sheets <input type="file" id="sg-p-files" accept="image/png,image/jpeg,image/webp" multiple></label>
+          <button type="button" class="sg-btn sg-btn-green" id="sg-p-add">Upload pack</button>
         </div>
+        <input type="file" id="sg-p-one" accept="image/png,image/jpeg,image/webp" hidden>
+        <input type="file" id="sg-p-more" accept="image/png,image/jpeg,image/webp" multiple hidden>
         <p class="sg-msg" id="sg-t-msg"></p>
+
+        <h3>Rename a keyword or an artist</h3>
+        <p>Changes it on every icon at once. Leave "To" empty to take a keyword off every icon.</p>
+        <div class="sg-row">
+          <label>What <select id="sg-r-what"><option value="tag">Keyword</option><option value="artist">Artist</option></select></label>
+          <label>From <input type="text" id="sg-r-from" list="sg-r-list" autocomplete="off"></label>
+          <label>To <input type="text" id="sg-r-to" autocomplete="off"></label>
+          <button type="button" class="sg-btn" id="sg-r-go">Rename</button>
+        </div>
+        <datalist id="sg-r-list"></datalist>
+        <p class="sg-msg" id="sg-r-msg"></p>
+
+        <h3>The gallery page</h3>
+        <details class="sg-page-ed" id="sg-page-ed">
+          <summary>Change the page's text and look</summary>
+          <div id="sg-page-body"><p>Loading…</p></div>
+        </details>
 
         <div id="sg-admin" hidden>
           <h3>Approved Artists</h3>
@@ -414,6 +492,10 @@ html.sg-pick .home-panel { padding-top: 14px; }
         <div class="sg-tagpick-list" id="sg-f-tagpick-list" data-user-content></div>
       </div>
       <label class="sg-f">Artist <input type="text" id="sg-f-artist" maxlength="80" placeholder="Harry &amp; Co &amp; Bendan"></label>
+      <div class="sg-tagpick" id="sg-f-artistpick" hidden>
+        <span class="sg-label">Artists already in the gallery</span>
+        <div class="sg-tagpick-list" id="sg-f-artistpick-list" data-user-content></div>
+      </div>
       <div class="sg-f-layers">
         <div>
           <label class="sg-f">Black layer <input type="file" id="sg-f-black" accept="image/png,image/webp"></label>

@@ -3803,9 +3803,11 @@ creator pages that did not match), and an icon put on a character from the
 editor fills its "Icon by".
 The page's text about the gallery is copied word for word from their
 Magma page (magma.com/s/starlit-gallery/profile/about), the owner's call:
-never rewrite it; only its "How to Use" part, which is about Magma, is left
-out. The one exception is the owner's: the line under the title reads "a
-free to use icon collection". The title is the team's own lettering,
+never rewrite it in code; only its "How to Use" part, which is about Magma,
+is left out. The line under the title reads "a free to use icon collection"
+(the owner's wording). **The team can now change both themselves**, and the
+page's look: Settings → "The gallery page" (see the bullet below), so the
+static HTML is only what shows until they save something. The title is the team's own lettering,
 `assets/starlit-logo.webp`, not text. Their terms, from that page, are on /starlit: credit is not
 required but a shout-out is appreciated, and no commercial use.
 
@@ -3818,7 +3820,7 @@ required but a shout-out is appreciated, and no commercial use.
   `<img>` so a phone can long-press it. The two layers must be the same size:
   a layer exported trimmed to its drawing (Photoshop's "Export As" on one
   layer) has lost its place on the canvas, so the form refuses the pair.
-  Under each file box (both layers and the team's texture) sits a box
+  Under each layer's file box sits a box
   that takes a pasted image or an image link, plus a Paste button where
   the browser can read the clipboard (`pasteImageInto()`). What arrives is
   put INTO the file box (DataTransfer) and a change event fired, so the
@@ -3826,24 +3828,34 @@ required but a shout-out is appreciated, and no commercial use.
   so it works only from a site that allows it (CORS); otherwise the form
   says to save the image and pick it. Deliberately no server-side fetch: a
   Worker fetching any URL a member types is an open proxy.
-- **Textures are the team's own** (the owner's call,
-  2026-11), plus the wiki's own. Five sets from the team's Photoshop
-  templates (Default, Vibrant, Treasure Hunt, Starlit, Glitchy; `SETS` /
-  `KINDS` in starlit.js), and Official (Icon Forge's sheets, the halves
-  baked into files the same way, its base sheet called Monochrome); eight
-  sheets each: Base, Good, Evil, Traveller
-  (blue | red), Traveller Good (blue | brown), Traveller Evil (brown | red),
-  Fabled, Loric, the traveller splits baked in. Committed as
-  `assets/starlit/tex/{set}-{kind}.webp` plus a 160px `-s` copy for the
-  picker. Each set's Outline sheet paints the white layer whichever of its
-  sheets is picked; anything else uses Default's. Then the team's uploads
-  (`starlit_textures`, "More from the gallery", also in Icon Forge as
-  `starlit-{id}`) and "Your own", a local file that is never uploaded. The
-  picker is a drop-down (a `<details>`) showing the texture in use, open to
+- **Textures come in PACKS the team keeps** (the owner's call, 2026-11).
+  A pack is rows of `starlit_textures` sharing a `pack` name, one per `kind`
+  (`STARLIT_KINDS`: Base, Good, Evil, Traveller (blue | red), Traveller Good
+  (blue | brown), Traveller Evil (brown | red), Fabled, Loric, and Outline,
+  which paints the white layer whichever of the pack's sheets is picked), an
+  optional `name` label (Official's base is "Monochrome") and a 160px
+  `thumb`. The six the page shipped with (the team's Photoshop sets Default,
+  Vibrant, Treasure Hunt, Starlit, Glitchy, and Official, Icon Forge's sheets)
+  are committed files, `assets/starlit/tex/{set}-{kind}.webp` + `-s`, written
+  in as rows ONCE by whichever request's `ALTER … ADD COLUMN pack` succeeds
+  (`STARLIT_SEED_PACKS`; a second isolate's ALTER fails and seeds nothing),
+  served through the `starlit/` R2 fallback. So every pack is edited the
+  same way: Settings lists each pack with a tile per sheet (tap to add or
+  replace, Remove), Add several, Rename (409 on a name in use) and Delete
+  pack (which leaves the repo's files alone). "New pack" takes a name and
+  several files at once; `guessKind()` files each by its name (good, evil,
+  traveller good, outline…), else the first sheet the pack lacks. Sheets are
+  re-encoded to WebP (1182px max) in the browser. `POST /api/starlit`
+  `texture {pack, kind, image, thumb}` upserts by pack + kind; `pack {from,
+  to}` / `{from, remove}`. GET lists packs in order of their first row. Icon
+  Forge lists every pack's sheets as `starlit-{id}` "Pack: Sheet", leaving
+  out outlines and the Official pack (it has those already). "Your own" is
+  a local file that is never uploaded. The picker is a drop-down (a
+  `<details>`) showing the texture in use, open to
   every texture grouped by set. There are two, one per layer (`PICKERS`):
-  the blacks' (Plain black, then every texture) and the whites' (Match
-  blacks, which takes the blacks' set's Outline and is the default, Plain
-  white, each set's Outline, Your own). Match blacks with Plain black is
+  the blacks' (Plain black, then every pack's sheets) and the whites' (Match
+  blacks, which takes the blacks' pack's Outline and is the default, Plain
+  white, each pack's Outline, Your own). Match blacks with Plain black is
   plain white. Under each picker is the CUT
   (`view.bcut` / `view.wcut`, `{x, y, z}`): Icon Forge's placement pad,
   arrows round a dice for a random cut, a zoom slider (1-4) and Reset,
@@ -3870,8 +3882,35 @@ required but a shout-out is appreciated, and no commercial use.
   (`@media (hover: hover)`). The upload form lists
   every keyword already in the gallery under its Keywords box; a tap adds
   or removes one, so the team reuses keywords rather than inventing near
-  copies.
-- **Storage**: lazy tables `starlit_icons` and `starlit_textures`; files in R2
+  copies. Artists work the same way: a second chip row (`filter.artists`,
+  shown when there are two or more, one chip per comma-separated name,
+  `artistsOf()`), and the form's Artist box has its own chips.
+  **Renaming** a keyword or an artist across every icon is Settings →
+  "Rename a keyword or an artist" (`rename {what: 'tag' | 'artist', from,
+  to}`; an empty `to` takes a keyword off; artists match one name at a time).
+- **Downloads** (`#sg-dl`, shown once there is a file, or to the team):
+  files that are not icons, PSDs included. `POST /api/starlit-file?title=
+  &note=&name=` with the FILE AS THE BODY (base64 JSON would not carry tens
+  of MB), streamed into R2 (`starlit/files/{token}-{name}`) after reading
+  the first bytes: `starlitFileType()` takes PNG, JPEG, WebP, GIF, PSD/PSB,
+  ZIP and PDF by their magic bytes, never their name, and stores them with
+  `Content-Disposition: attachment`. 95 MB cap (Cloudflare's request limit
+  is 100). Table `starlit_files`; `file {id, title, note}` and
+  `delete-file {id}`. Files with the same title are one row, so a PSD sits
+  beside its PNG. The browser sends with XMLHttpRequest for a progress count.
+- **The page itself** is the team's: `settings` `starlit_page` = `{intro,
+  about, theme}` (`page {page}`; `page: null` puts the original back).
+  Intro and About are wiki text marks, drawn by render-wiki.js
+  (`inlineFormat` / `renderBody`), so nothing typed becomes HTML; the editor
+  opens on `DEFAULT_INTRO` / `DEFAULT_ABOUT`, the original text in marks,
+  and saving them unchanged stores nothing. The theme is the full theme kit
+  (theme-editor.js, `data-kind="page"`), cleaned by `sanitizeTheme(t,
+  'starlit/page')` and applied in the browser like a creator page's
+  (`applyTheme()`, custom CSS framing the hero and the gallery). Its
+  background and stickers are fixed slots `starlit/page-bg.*` and
+  `starlit/page-st{n}.*` (`page-image {kind, n, data}`). Readers load
+  render-wiki/render-page/custom-css only when something is stored.
+- **Storage**: lazy tables `starlit_icons`, `starlit_textures` and `starlit_files`; files in R2
   under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
   `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new
   key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
@@ -3889,8 +3928,8 @@ required but a shout-out is appreciated, and no commercial use.
   public submissions and no mass upload, on purpose: vetting for copyright and
   AI is the team's job, and two-layer uploads do not batch well.
 - `starlit-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
-  reads the gallery, so it must not roll the feed caches). `/api/starlit` is in
-  the wiki-lock list.
+  reads the gallery, so it must not roll the feed caches). `/api/starlit` and
+  `/api/starlit-file` are in the wiki-lock list.
 - **Hand-offs**: "Open in Icon Forge" leaves the flattened icon in
   localStorage for `iconforge?from=starlit`; the editors' "Browse the Starlit
   Gallery" (`assets/starlit-picker.js`) opens `/starlit?pick=1` in an iframe

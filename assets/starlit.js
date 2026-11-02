@@ -17,47 +17,33 @@
   var LAYER_MAX = 1200;       // longest side a layer is stored at
   var THUMB = 256;            // the grid's picture
   var ARTISTS = 'Harry & Co & Bendan';
-  // The team's texture sets, from their Photoshop templates: eight sheets
-  // each, and an Outline sheet that paints the white layer whichever of the
-  // set's sheets is on the black one. assets/starlit/tex/{set}-{kind}.webp,
-  // with a small -s copy for the picker.
-  var TEX_DIR = '/assets/starlit/tex/';
-  // Official is the wiki's own (Icon Forge's sheets, assets/iconforge/
-  // textures/), its traveller halves baked into files like the team's; its
-  // base sheet is the white one, so it goes by Icon Forge's name for it.
-  var SETS = [['default', 'Default'], ['vibrant', 'Vibrant'], ['treasure', 'Treasure Hunt'], ['starlit', 'Starlit'],
-    ['glitchy', 'Glitchy'], ['official', 'Official', { base: 'Monochrome' }]];
+  /* Textures come in PACKS, kept by the team in Settings (the ones the page
+     shipped with are the team's Photoshop sets, Default to Glitchy, and the
+     wiki's own Official set): eight sheets for the blacks and an Outline
+     sheet that paints the whites whichever of the pack's sheets is on.
+     Built from the server's list by rebuildTextures(). */
   var KINDS = [['base', 'Base'], ['good', 'Good'], ['evil', 'Evil'], ['traveller', 'Traveller'],
-    ['traveller-good', 'Traveller Good'], ['traveller-evil', 'Traveller Evil'], ['fabled', 'Fabled'], ['loric', 'Loric']];
-  var BUILT_IN = [];
-  SETS.forEach(function (s) {
-    KINDS.forEach(function (k) {
-      var f = TEX_DIR + s[0] + '-' + k[0];
-      BUILT_IN.push({ id: s[0] + '-' + k[0], set: s[1], name: (s[2] && s[2][k[0]]) || k[1], src: f + '.webp', thumb: f + '-s.webp',
-        outline: TEX_DIR + s[0] + '-outline.webp' });
-    });
-  });
-  // The outline for a texture that is not one of the sets'.
-  var PARCHMENT = TEX_DIR + 'default-outline.webp';
-  // The whites have a picker of their own: by default they follow the set
-  // of the blacks' texture, or the reader picks any set's Outline sheet.
-  var OUTLINES = SETS.map(function (s) {
-    return { id: 'w-' + s[0], set: 'Outlines', name: s[1], src: TEX_DIR + s[0] + '-outline.webp', thumb: TEX_DIR + s[0] + '-outline-s.webp' };
-  });
+    ['traveller-good', 'Traveller Good'], ['traveller-evil', 'Traveller Evil'], ['fabled', 'Fabled'], ['loric', 'Loric'],
+    ['outline', 'Outline']];
+  var KIND_LABEL = {};
+  KINDS.forEach(function (k) { KIND_LABEL[k[0]] = k[1]; });
+  // The whites for a texture with no pack outline (the reader's own).
+  var PARCHMENT = '/assets/starlit/tex/default-outline.webp';
+  var OUTLINES = [];
   var PLAIN_BLACK = { id: 'plain', set: '', name: 'Plain black', plain: '#000000' };
   var MATCH_WHITE = { id: '', set: '', name: 'Match blacks', match: true };
   var PLAIN_WHITE = { id: 'plain', set: '', name: 'Plain white', plain: '#ffffff' };
   var TOGGLES = ['texture', 'whites', 'blacks', 'shadow'];
 
-  var gallery = { icons: [], textures: [], canUpload: false, isAdmin: false, uploaders: [] };
-  var textures = BUILT_IN.slice();   // + the gallery's own, + the reader's
+  var gallery = { icons: [], textures: [], files: [], page: null, canUpload: false, isAdmin: false, uploaders: [] };
+  var textures = [];                 // every pack's sheets, + the reader's own
   var own = null;                    // a texture picked from the reader's device
   var ownWhite = null;               // the same, for the whites
   var ownFor = 'black';              // which picker the device file is for
   // tags: {keyword: 1 to require it, -1 to leave it out}.
-  var filter = { q: '', tags: Object.create(null) };
+  var filter = { q: '', tags: Object.create(null), artists: Object.create(null) };
   // An icon opens as it was uploaded: no texture until the reader picks one.
-  var view = { tex: 'default-base', wtex: '', bcut: { x: 0, y: 0, z: 1 }, wcut: { x: 0, y: 0, z: 1 }, texture: false, whites: true, blacks: true, shadow: true };
+  var view = { tex: '', wtex: '', bcut: { x: 0, y: 0, z: 1 }, wcut: { x: 0, y: 0, z: 1 }, texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
   var previewUrl = null, paintSeq = 0;
 
@@ -98,7 +84,7 @@
   // The blacks' fill and the whites' fill for a choice: a picture, or a
   // plain colour (compose() takes either).
   function texturesFor(o) {
-    var t = o.tex === 'plain' ? PLAIN_BLACK : texById(o.tex) || textures[0], w = whiteById(o.wtex || '');
+    var t = o.tex === 'plain' ? PLAIN_BLACK : texById(o.tex) || textures[0] || PLAIN_BLACK, w = whiteById(o.wtex || '');
     // Match blacks follows the blacks: plain black takes plain white.
     var white = w.match ? (t.plain ? '#ffffff' : t.outline || PARCHMENT) : w.plain || w.src;
     return Promise.all([t.plain ? t.plain : loadImg(t.src), white.charAt(0) === '#' ? white : loadImg(white)])
@@ -187,9 +173,19 @@
   /* Every ticked keyword must be on the icon and no crossed-out one may be;
      every typed word must be found, and a word typed with a minus in front
      (-skull) must not. */
+  // The artists an icon credits, one name each ("A, B" is two).
+  function artistsOf(icon) {
+    var who = icon.artist || ARTISTS;
+    return (window.splitCreators ? window.splitCreators(who) : who.split(','))
+      .map(function (n) { return String(n).trim(); }).filter(Boolean);
+  }
   function matches(icon) {
     for (var t in filter.tags) {
       if ((icon.tags.indexOf(t) >= 0) !== (filter.tags[t] > 0)) return false;
+    }
+    for (var a in filter.artists) {
+      var has = artistsOf(icon).some(function (n) { return fold(n) === fold(a); });
+      if (has !== (filter.artists[a] > 0)) return false;
     }
     var words = fold(filter.q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
@@ -218,40 +214,56 @@
       : list.length + ' of ' + n + ' icons';
     $('sg-random').disabled = !list.length;
   }
-  // Every keyword in the gallery, most used first.
-  function tagCounts() {
+  // Every keyword (or artist) in the gallery, most used first.
+  function countsOf(each) {
     var count = Object.create(null);
-    gallery.icons.forEach(function (ic) { ic.tags.forEach(function (t) { count[t] = (count[t] || 0) + 1; }); });
+    gallery.icons.forEach(function (ic) { each(ic).forEach(function (t) { count[t] = (count[t] || 0) + 1; }); });
     return Object.keys(count).sort(function (a, b) { return count[b] - count[a] || a.localeCompare(b); })
       .map(function (t) { return { tag: t, n: count[t] }; });
   }
-  /* The most used keywords as chips, plus any in use. A tap cycles a chip
-     through: show only icons with it, leave icons with it out, off. */
-  function drawTags() {
-    var all = tagCounts(), top = all.slice(0, 30), on = Object.keys(filter.tags);
+  function tagCounts() { return countsOf(function (ic) { return ic.tags; }); }
+  function artistCounts() { return countsOf(artistsOf); }
+  /* The most used keywords as chips, plus any in use; the artists likewise,
+     on a row of their own. A tap cycles a chip through: show only icons with
+     it, leave icons with it out, off. */
+  function chipsHTML(list, state, attr, what) {
+    var on = Object.keys(state);
     on.forEach(function (t) {
-      if (!top.some(function (x) { return x.tag === t; })) top.unshift({ tag: t, n: 0 });
+      if (!list.some(function (x) { return x.tag === t; })) list.unshift({ tag: t, n: 0 });
     });
-    $('sg-tags').innerHTML = top.map(function (x) {
-      var st = filter.tags[x.tag] || 0;
-      return '<button type="button" class="sg-chip" data-tag="' + esc(x.tag) + '" data-state="' + st + '" aria-pressed="' + (st !== 0) + '"' +
-        ' title="' + (st > 0 ? 'Only icons with this. Tap to leave them out instead.' : st < 0 ? 'Icons with this are left out. Tap to clear.' : 'Tap to show only icons with this.') + '">' +
+    return list.map(function (x) {
+      var st = state[x.tag] || 0;
+      return '<button type="button" class="sg-chip" ' + attr + '="' + esc(x.tag) + '" data-state="' + st + '" aria-pressed="' + (st !== 0) + '"' +
+        ' title="' + (st > 0 ? 'Only icons ' + what + '. Tap to leave them out instead.' : st < 0 ? 'Icons ' + what + ' are left out. Tap to clear.' : 'Tap to show only icons ' + what + '.') + '">' +
         esc(x.tag) + '<small>' + (x.n || '') + '</small></button>';
     }).join('') + (on.length ? '<button type="button" class="sg-chip sg-chip-clear" data-clear="1">Clear</button>' : '');
   }
-  function setTag(t) {
-    var st = filter.tags[t] || 0;
-    if (st > 0) filter.tags[t] = -1;
-    else if (st < 0) delete filter.tags[t];
-    else filter.tags[t] = 1;
+  function drawTags() {
+    $('sg-tags').innerHTML = chipsHTML(tagCounts().slice(0, 30), filter.tags, 'data-tag', 'with this');
+    var artists = artistCounts();
+    // One artist is nothing to choose between.
+    $('sg-artists').hidden = artists.length < 2 && !Object.keys(filter.artists).length;
+    $('sg-artists').innerHTML = '<span class="sg-chips-h">Artists</span>' + chipsHTML(artists, filter.artists, 'data-artist', 'by this artist');
+  }
+  function cycle(state, t) {
+    var st = state[t] || 0;
+    if (st > 0) state[t] = -1;
+    else if (st < 0) delete state[t];
+    else state[t] = 1;
     drawTags(); drawGrid();
   }
+  function setTag(t) { cycle(filter.tags, t); }
 
   $('sg-search').addEventListener('input', function () { filter.q = this.value; drawGrid(); });
   $('sg-tags').addEventListener('click', function (e) {
     if (e.target.closest('[data-clear]')) { filter.tags = Object.create(null); drawTags(); drawGrid(); return; }
     var b = e.target.closest('[data-tag]');
     if (b) setTag(b.getAttribute('data-tag'));
+  });
+  $('sg-artists').addEventListener('click', function (e) {
+    if (e.target.closest('[data-clear]')) { filter.artists = Object.create(null); drawTags(); drawGrid(); return; }
+    var b = e.target.closest('[data-artist]');
+    if (b) cycle(filter.artists, b.getAttribute('data-artist'));
   });
   $('sg-grid').addEventListener('click', function (e) {
     var b = e.target.closest('[data-id]');
@@ -310,7 +322,7 @@
     if (!icon) return;
     current = icon;
     view.texture = false;
-    if (!texById(view.tex)) view.tex = textures[0].id;
+    if (!texById(view.tex)) view.tex = textures[0] ? textures[0].id : 'plain';
     $('sg-d-name').textContent = icon.name;
     $('sg-d-credit').innerHTML = creditHTML(icon);
     $('sg-d-tags').innerHTML = icon.tags.map(function (t) {
@@ -339,11 +351,30 @@
     }).catch(function (e) { if (seq === paintSeq) say('sg-d-msg', e.message, true); });
   }
 
+  function kindOrder(k) { for (var i = 0; i < KINDS.length; i++) if (KINDS[i][0] === k) return i; return 99; }
+  // The server's list, pack by pack in its order, as the two pickers' entries.
+  function packsOf(list) {
+    var packs = [], by = {};
+    list.forEach(function (t) {
+      if (!by[t.pack]) { by[t.pack] = { name: t.pack, sheets: [] }; packs.push(by[t.pack]); }
+      by[t.pack].sheets.push(t);
+    });
+    packs.forEach(function (p) { p.sheets.sort(function (a, b) { return kindOrder(a.kind) - kindOrder(b.kind) || a.id - b.id; }); });
+    return packs;
+  }
   function rebuildTextures() {
-    textures = BUILT_IN.concat(gallery.textures.map(function (t) {
-      var src = t.image + '?v=' + t.v;
-      return { id: 'starlit-' + t.id, set: 'More from the gallery', name: t.name, src: src, thumb: src };
-    }), own ? [own] : []);
+    textures = []; OUTLINES = [];
+    packsOf(gallery.textures).forEach(function (p) {
+      var out = p.sheets.filter(function (t) { return t.kind === 'outline'; })[0];
+      var outSrc = out ? out.image + '?v=' + out.v : PARCHMENT;
+      if (out) OUTLINES.push({ id: 'w' + out.id, set: 'Outlines', name: p.name, src: outSrc, thumb: out.thumb + '?v=' + out.v });
+      p.sheets.forEach(function (t) {
+        if (t.kind === 'outline') return;
+        textures.push({ id: 't' + t.id, set: p.name, name: t.name || KIND_LABEL[t.kind] || t.kind,
+          src: t.image + '?v=' + t.v, thumb: t.thumb + '?v=' + t.v, outline: outSrc });
+      });
+    });
+    if (own) textures.push(own);
   }
   /* Two pickers, the blacks' texture and the whites', each a drop-down:
      closed, it shows the choice in use; open, every choice, grouped, each
@@ -598,10 +629,9 @@
   function drawTeam() {
     $('sg-team').hidden = !gallery.canUpload || PICK;
     $('sg-admin').hidden = !gallery.isAdmin;
-    $('sg-tex-list').innerHTML = gallery.textures.length ? gallery.textures.map(function (t) {
-      return '<li><img src="' + esc(t.image + '?v=' + t.v) + '" alt=""><span>' + esc(t.name) + '</span>' +
-        '<button type="button" class="sg-link-btn" data-del="' + t.id + '">Delete</button></li>';
-    }).join('') : '<li>None yet.</li>';
+    drawPacks();
+    drawDownloads();
+    drawRenameList();
     if (gallery.isAdmin) {
       $('sg-up-list').innerHTML = gallery.uploaders.length ? gallery.uploaders.map(function (u) {
         return '<li><span>@' + esc(u.username) + '</span><button type="button" class="sg-link-btn" data-unapprove="' + esc(u.username) + '">Remove</button></li>';
@@ -609,33 +639,247 @@
     }
   }
 
-  $('sg-t-add').addEventListener('click', function () {
-    var name = $('sg-t-name').value.trim(), file = $('sg-t-file').files[0], btn = this;
-    if (!name || !file) { say('sg-t-msg', 'Give the texture a name and pick its image.', true); return; }
-    if (file.size > 4 * 1024 * 1024) { say('sg-t-msg', 'That image is over 4 MB.', true); return; }
+  /* ── texture packs ───────────────────────────────────────────── */
+
+  function drawPacks() {
+    if (!gallery.canUpload) return;
+    var packs = packsOf(gallery.textures);
+    $('sg-packs').innerHTML = packs.length ? packs.map(function (p) {
+      var have = {};
+      p.sheets.forEach(function (t) { have[t.kind] = t; });
+      return '<div class="sg-pack" data-pack="' + esc(p.name) + '"><div class="sg-pack-head"><b>' + esc(p.name) + '</b>' +
+        '<button type="button" class="sg-link-btn" data-act="more">Add several</button>' +
+        '<button type="button" class="sg-link-btn" data-act="rename">Rename</button>' +
+        '<button type="button" class="sg-link-btn" data-act="drop">Delete pack</button></div>' +
+        '<div class="sg-pack-sheets">' + KINDS.map(function (k) {
+          var t = have[k[0]];
+          return '<div class="sg-sheet"><button type="button" data-act="put" data-kind="' + k[0] + '" title="' + (t ? 'Replace' : 'Add') + ' the ' + esc(k[1]) + ' sheet">' +
+            (t ? '<img src="' + esc(t.thumb + '?v=' + t.v) + '" alt="" loading="lazy">' : '+') + '</button>' +
+            '<span>' + esc((t && t.name) || k[1]) + '</span>' +
+            (t ? '<button type="button" class="sg-link-btn" data-act="remove" data-id="' + t.id + '">Remove</button>' : '') + '</div>';
+        }).join('') + '</div></div>';
+    }).join('') : '<p>No packs. Add one below.</p>';
+  }
+  /* Which sheet a file is, from its name (unless another file in this batch
+     already is), else the first sheet the pack does not have yet. */
+  function guessKind(name, taken, existing) {
+    var n = ' ' + String(name).toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[^a-z]+/g, ' ') + ' ';
+    var trav = /travel/.test(n), k = '';
+    if (/outline|white|parch/.test(n)) k = 'outline';
+    else if (trav && /good|blue/.test(n)) k = 'traveller-good';
+    else if (trav && /evil|red/.test(n)) k = 'traveller-evil';
+    else if (trav) k = 'traveller';
+    else if (/fabled/.test(n)) k = 'fabled';
+    else if (/loric/.test(n)) k = 'loric';
+    else if (/good|townsfolk|outsider/.test(n)) k = 'good';
+    else if (/evil|minion|demon/.test(n)) k = 'evil';
+    else if (/ base | black | mono/.test(n)) k = 'base';
+    if (k && !taken[k]) return k;
+    for (var i = 0; i < KINDS.length; i++) if (!taken[KINDS[i][0]] && !existing[KINDS[i][0]]) return KINDS[i][0];
+    return '';
+  }
+  // A sheet as the server stores it: WebP no wider than 1182px, plus a
+  // 160px square for the pickers.
+  function prepSheet(file) {
+    var url = URL.createObjectURL(file);
+    return imageFrom(url).then(function (im) {
+      URL.revokeObjectURL(url);
+      var w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 1182 / Math.max(w, h));
+      var c = canvas(Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k)));
+      var x = c.getContext('2d');
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(im, 0, 0, c.width, c.height);
+      var th = canvas(160), tx = th.getContext('2d');
+      tx.imageSmoothingQuality = 'high';
+      cover(tx, im, 160);
+      return { image: c.toDataURL('image/webp', 0.86), thumb: th.toDataURL('image/webp', 0.8) };
+    }, function () { URL.revokeObjectURL(url); throw new Error(file.name + ' could not be read as an image.'); });
+  }
+  function putSheet(t) {
+    gallery.textures = gallery.textures.filter(function (x) { return x.id !== t.id; }).concat([t])
+      .sort(function (a, b) { return a.id - b.id; });
+  }
+  // The server lists packs by their first sheet, so keep that order here.
+  function packOrder() {
+    var first = {};
+    gallery.textures.forEach(function (t) { if (!(t.pack in first) || t.id < first[t.pack]) first[t.pack] = t.id; });
+    gallery.textures.sort(function (a, b) { return first[a.pack] - first[b.pack] || a.id - b.id; });
+  }
+  /* Files into a pack, one after another; `kind` puts a single file on that
+     sheet, otherwise each goes where its name says. */
+  function uploadSheets(pack, files, kind) {
+    var taken = {}, existing = {}, jobs = [];
+    gallery.textures.forEach(function (t) { if (t.pack === pack) existing[t.kind] = true; });
+    Array.prototype.forEach.call(files, function (f) {
+      var k = kind || guessKind(f.name, taken, existing);
+      if (!k) return;
+      taken[k] = true;
+      jobs.push({ file: f, kind: k });
+    });
+    if (!jobs.length) { say('sg-t-msg', 'A pack has nine sheets and these files did not name one. Tap a sheet to replace it.', true); return Promise.resolve(); }
+    var done = 0;
+    return jobs.reduce(function (chain, j) {
+      return chain.then(function () {
+        say('sg-t-msg', 'Uploading ' + (done + 1) + ' of ' + jobs.length + '…');
+        if (j.file.size > 25 * 1024 * 1024) throw new Error(j.file.name + ' is over 25 MB.');
+        return prepSheet(j.file).then(function (img) {
+          return api({ action: 'texture', pack: pack, kind: j.kind, image: img.image, thumb: img.thumb });
+        }).then(function (r) { putSheet(r.texture); packOrder(); done++; });
+      });
+    }, Promise.resolve()).then(function () {
+      rebuildTextures(); drawPacks();
+      say('sg-t-msg', done === 1 ? 'Saved ' + KIND_LABEL[jobs[0].kind] + ' in ' + pack + '.'
+        : 'Saved ' + done + ' sheets in ' + pack + ': ' + jobs.map(function (j) { return j.file.name + ' as ' + KIND_LABEL[j.kind]; }).join(', ') + '.');
+    }).catch(function (e) {
+      rebuildTextures(); drawPacks();
+      say('sg-t-msg', e.message, true);
+    });
+  }
+  var packTarget = null;   // {pack, kind} for the hidden file boxes
+  $('sg-packs').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var pack = b.closest('[data-pack]').getAttribute('data-pack'), act = b.getAttribute('data-act');
+    if (act === 'put') { packTarget = { pack: pack, kind: b.getAttribute('data-kind') }; $('sg-p-one').click(); }
+    else if (act === 'more') { packTarget = { pack: pack }; $('sg-p-more').click(); }
+    else if (act === 'remove') {
+      var id = Number(b.getAttribute('data-id'));
+      if (!confirm('Remove this sheet from ' + pack + '?')) return;
+      api({ action: 'delete-texture', id: id }).then(function () {
+        gallery.textures = gallery.textures.filter(function (x) { return x.id !== id; });
+        rebuildTextures(); drawPacks(); say('sg-t-msg', 'Removed.');
+      }).catch(function (e2) { say('sg-t-msg', e2.message, true); });
+    } else if (act === 'rename') {
+      var to = (prompt('New name for ' + pack + ':', pack) || '').replace(/\s+/g, ' ').trim();
+      if (!to || to === pack) return;
+      api({ action: 'pack', from: pack, to: to }).then(function () {
+        gallery.textures.forEach(function (t) { if (t.pack === pack) t.pack = to; });
+        rebuildTextures(); drawPacks(); say('sg-t-msg', 'Renamed to ' + to + '.');
+      }).catch(function (e2) { say('sg-t-msg', e2.message, true); });
+    } else if (act === 'drop') {
+      if (!confirm('Delete the whole ' + pack + ' pack? Its sheets go from every picker.')) return;
+      api({ action: 'pack', from: pack, remove: true }).then(function () {
+        gallery.textures = gallery.textures.filter(function (x) { return x.pack !== pack; });
+        rebuildTextures(); drawPacks(); say('sg-t-msg', pack + ' deleted.');
+      }).catch(function (e2) { say('sg-t-msg', e2.message, true); });
+    }
+  });
+  ['sg-p-one', 'sg-p-more'].forEach(function (id) {
+    $(id).addEventListener('change', function () {
+      var files = Array.prototype.slice.call(this.files || []);
+      this.value = '';
+      if (files.length && packTarget) uploadSheets(packTarget.pack, files, packTarget.kind);
+    });
+  });
+  $('sg-p-add').addEventListener('click', function () {
+    var name = $('sg-p-name').value.replace(/\s+/g, ' ').trim(), files = $('sg-p-files').files, btn = this;
+    if (!name || !files.length) { say('sg-t-msg', 'Name the pack and pick its sheets.', true); return; }
+    if (gallery.textures.some(function (t) { return t.pack === name; }) &&
+        !confirm('There is already a pack called ' + name + '. Add these sheets to it?')) return;
     btn.disabled = true;
-    say('sg-t-msg', 'Uploading…');
-    readDataURL(file).then(function (data) { return api({ action: 'texture', name: name, image: data }); })
-      .then(function (r) {
-        gallery.textures.push(r.texture);
-        rebuildTextures(); drawTeam();
-        $('sg-t-name').value = ''; $('sg-t-file').value = '';
-        say('sg-t-msg', 'Added to the texture picker.');
-      })
-      .catch(function (e) { say('sg-t-msg', e.message, true); })
+    uploadSheets(name, files).then(function () {
+      $('sg-p-name').value = ''; $('sg-p-files').value = '';
+      btn.disabled = false;
+    });
+  });
+
+  /* ── keyword and artist renames ──────────────────────────────── */
+
+  function drawRenameList() {
+    if (!gallery.canUpload) return;
+    var list = $('sg-r-what').value === 'artist' ? artistCounts() : tagCounts();
+    $('sg-r-list').innerHTML = list.map(function (x) { return '<option value="' + esc(x.tag) + '">'; }).join('');
+  }
+  $('sg-r-what').addEventListener('change', drawRenameList);
+  $('sg-r-go').addEventListener('click', function () {
+    var what = $('sg-r-what').value, from = $('sg-r-from').value.trim(), to = $('sg-r-to').value.trim(), btn = this;
+    if (!from) { say('sg-r-msg', 'Type the ' + (what === 'artist' ? 'artist' : 'keyword') + ' to change.', true); return; }
+    if (!to && what === 'artist') { say('sg-r-msg', 'Type the artist\'s new name.', true); return; }
+    if (!to && !confirm('Take the keyword "' + from + '" off every icon?')) return;
+    btn.disabled = true;
+    api({ action: 'rename', what: what, from: from, to: to }).then(function (r) {
+      say('sg-r-msg', r.changed ? 'Changed on ' + r.changed + (r.changed === 1 ? ' icon.' : ' icons.') : 'No icon has "' + from + '".', !r.changed);
+      $('sg-r-from').value = ''; $('sg-r-to').value = '';
+      return load();
+    }).catch(function (e) { say('sg-r-msg', e.message, true); })
       .then(function () { btn.disabled = false; });
   });
-  $('sg-tex-list').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-del]');
-    if (!b) return;
-    var id = Number(b.getAttribute('data-del'));
-    var t = gallery.textures.filter(function (x) { return x.id === id; })[0];
-    if (!t || !confirm('Delete the texture "' + t.name + '"? Icons shown in it will open in Good instead.')) return;
-    api({ action: 'delete-texture', id: id }).then(function () {
-      gallery.textures = gallery.textures.filter(function (x) { return x.id !== id; });
-      rebuildTextures(); drawTeam();
-      say('sg-t-msg', 'Deleted.');
-    }).catch(function (e2) { say('sg-t-msg', e2.message, true); });
+
+  /* ── downloads ───────────────────────────────────────────────── */
+
+  function sizeText(n) {
+    return n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  }
+  // Files sharing a title are one row: a PSD beside its PNG.
+  function drawDownloads() {
+    var groups = [], by = {};
+    gallery.files.forEach(function (f) {
+      if (!by[f.title]) { by[f.title] = { title: f.title, note: '', files: [] }; groups.push(by[f.title]); }
+      by[f.title].files.push(f);
+      if (f.note) by[f.title].note = f.note;
+    });
+    var team = gallery.canUpload && !PICK;
+    $('sg-dl').hidden = !groups.length && !team;
+    $('sg-dl-team').hidden = !team;
+    $('sg-dl-list').innerHTML = groups.length ? groups.map(function (g) {
+      return '<li><div class="sg-dl-t">' + esc(g.title) + '</div>' + (g.note ? '<p class="sg-dl-n">' + esc(g.note) + '</p>' : '') +
+        '<div class="sg-dl-files">' + g.files.map(function (f) {
+          var ext = String(f.name.split('.').pop() || '').toUpperCase();
+          return '<a class="sg-btn" href="' + esc(f.url) + '" download="' + esc(f.name) + '">Download ' + esc(ext) + '<small>' + sizeText(f.size) + '</small></a>' +
+            (team ? '<button type="button" class="sg-link-btn" data-fdel="' + f.id + '">Delete ' + esc(ext) + '</button>' : '');
+        }).join('') + (team ? '<button type="button" class="sg-link-btn" data-fedit="' + esc(g.title) + '">Edit title and note</button>' : '') +
+        '</div></li>';
+    }).join('') : '<li>Nothing to download yet.</li>';
+  }
+  $('sg-dl-list').addEventListener('click', function (e) {
+    var del = e.target.closest('[data-fdel]'), ed = e.target.closest('[data-fedit]');
+    if (del) {
+      var id = Number(del.getAttribute('data-fdel'));
+      if (!confirm('Delete this file from Downloads?')) return;
+      api({ action: 'delete-file', id: id }).then(function () {
+        gallery.files = gallery.files.filter(function (f) { return f.id !== id; });
+        drawDownloads();
+      }).catch(function (e2) { say('sg-dl-msg', e2.message, true); });
+    } else if (ed) {
+      var old = ed.getAttribute('data-fedit');
+      var group = gallery.files.filter(function (f) { return f.title === old; });
+      var title = prompt('Title:', old);
+      if (title == null || !title.trim()) return;
+      var note = prompt('Note (optional):', (group.filter(function (f) { return f.note; })[0] || {}).note || '');
+      if (note == null) return;
+      Promise.all(group.map(function (f) {
+        return api({ action: 'file', id: f.id, title: title.trim(), note: note.trim() }).then(function () {
+          f.title = title.replace(/\s+/g, ' ').trim(); f.note = note.trim();
+        });
+      })).then(drawDownloads).catch(function (e2) { say('sg-dl-msg', e2.message, true); });
+    }
+  });
+  // The file goes as the request's whole body, with a progress count: a
+  // Photoshop file can be tens of MB on a phone's connection.
+  $('sg-dl-add').addEventListener('click', function () {
+    var title = $('sg-dl-title').value.trim(), file = $('sg-dl-file').files[0], btn = this;
+    if (!title || !file) { say('sg-dl-msg', 'Give it a title and pick the file.', true); return; }
+    if (file.size > 95 * 1024 * 1024) { say('sg-dl-msg', 'That file is over 95 MB.', true); return; }
+    var q = new URLSearchParams({ title: title, note: $('sg-dl-note').value.trim(), name: file.name });
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/starlit-file?' + q);
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable) say('sg-dl-msg', 'Uploading… ' + Math.round(e.loaded / e.total * 100) + '%');
+    };
+    xhr.onload = function () {
+      btn.disabled = false;
+      var j = {};
+      try { j = JSON.parse(xhr.responseText); } catch (e2) { /* not JSON */ }
+      if (xhr.status !== 200 || !j.file) { say('sg-dl-msg', j.error || 'The upload failed (' + xhr.status + ').', true); return; }
+      gallery.files.push(j.file);
+      drawDownloads();
+      $('sg-dl-file').value = '';
+      say('sg-dl-msg', 'Added to Downloads.');
+    };
+    xhr.onerror = function () { btn.disabled = false; say('sg-dl-msg', 'The upload stopped. Check your connection and try again.', true); };
+    btn.disabled = true;
+    say('sg-dl-msg', 'Uploading…');
+    xhr.send(file);
   });
 
   /* Approved Artists: the list as it stands, each with Remove, and a box that
@@ -716,6 +960,7 @@
     var last = '';
     try { last = localStorage.getItem('botc_starlit_artist') || ''; } catch (e) { /* none */ }
     $('sg-f-artist').value = icon ? icon.artist : last;
+    drawPick('artist');
     $('sg-f-black').value = ''; $('sg-f-white').value = '';
     Array.prototype.forEach.call($('sg-form').querySelectorAll('.sg-paste input'), function (f) { f.value = ''; });
     say('sg-f-msg', icon ? 'Pick a new layer only to replace it.' : '');
@@ -816,30 +1061,41 @@
   }
   pasteImageInto($('sg-f-black'), 'sg-f-msg');
   pasteImageInto($('sg-f-white'), 'sg-f-msg');
-  pasteImageInto($('sg-t-file'), 'sg-t-msg');
 
-  /* The keywords already in the gallery, under the form's Keywords box: a
-     tap adds one to the box, or takes it out if it is there. */
-  function formTags() {
-    return $('sg-f-tags').value.split(',').map(function (t) { return t.toLowerCase().replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+  /* The keywords already in the gallery under the form's Keywords box, and
+     the artists under its Artist box: a tap adds one to the box, or takes it
+     out if it is there. */
+  var PICKS = {
+    tag: { field: 'sg-f-tags', wrap: 'sg-f-tagpick', list: 'sg-f-tagpick-list', all: tagCounts,
+      norm: function (t) { return t.toLowerCase().replace(/\s+/g, ' ').trim(); } },
+    artist: { field: 'sg-f-artist', wrap: 'sg-f-artistpick', list: 'sg-f-artistpick-list', all: artistCounts,
+      norm: function (t) { return t.replace(/\s+/g, ' ').trim(); } }
+  };
+  function boxValues(P) {
+    return $(P.field).value.split(',').map(P.norm).filter(Boolean);
   }
-  function drawFormTags() {
-    var have = formTags(), all = tagCounts();
-    $('sg-f-tagpick').hidden = !all.length;
-    $('sg-f-tagpick-list').innerHTML = all.map(function (x) {
-      var on = have.indexOf(x.tag) >= 0;
-      return '<button type="button" class="sg-chip" data-tag="' + esc(x.tag) + '" aria-pressed="' + on + '">' + esc(x.tag) + '<small>' + x.n + '</small></button>';
+  function drawPick(which) {
+    var P = PICKS[which], have = boxValues(P).map(fold), all = P.all();
+    $(P.wrap).hidden = !all.length;
+    $(P.list).innerHTML = all.map(function (x) {
+      var on = have.indexOf(fold(x.tag)) >= 0;
+      return '<button type="button" class="sg-chip" data-pick="' + esc(x.tag) + '" aria-pressed="' + on + '">' + esc(x.tag) + '<small>' + x.n + '</small></button>';
     }).join('');
   }
-  $('sg-f-tagpick-list').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-tag]');
-    if (!b) return;
-    var t = b.getAttribute('data-tag'), have = formTags(), i = have.indexOf(t);
-    if (i >= 0) have.splice(i, 1); else have.push(t);
-    $('sg-f-tags').value = have.join(', ');
-    drawFormTags();
+  function drawFormTags() { drawPick('tag'); drawPick('artist'); }
+  Object.keys(PICKS).forEach(function (which) {
+    var P = PICKS[which];
+    $(P.list).addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pick]');
+      if (!b) return;
+      var t = b.getAttribute('data-pick'), have = boxValues(P);
+      var i = have.map(fold).indexOf(fold(t));
+      if (i >= 0) have.splice(i, 1); else have.push(t);
+      $(P.field).value = have.join(', ');
+      drawPick(which);
+    });
+    $(P.field).addEventListener('input', function () { drawPick(which); });
   });
-  $('sg-f-tags').addEventListener('input', drawFormTags);
 
   $('sg-add').addEventListener('click', function () { openForm(null); });
   $('sg-edit').addEventListener('click', function () {
@@ -889,6 +1145,214 @@
       .then(function () { btn.disabled = false; });
   });
 
+  /* ── the page itself: its words and its look ─────────────────── */
+  /* The line under the title and the About text are the team's, written in
+     the wiki's text marks and drawn by render-wiki.js (which escapes first,
+     so nothing typed becomes raw HTML); the theme kit is the one every other
+     page has (PageRender.sanitizeTheme, applied as on a creator page). Until
+     the team saves anything, the page's own HTML is what shows. The DEFAULT
+     texts are that HTML in marks, so the editor opens on what is there. */
+  var DEFAULT_INTRO = 'The Starlit Gallery is a free to use icon collection, developed by [@harryandco](/u/harryandco) and [@bendan07](/u/Bendan).';
+  var DEFAULT_ABOUT = [
+    '{{i|The endless void of the skies above stretches into the darkness far beyond mortal perception. Galaxies, vagabond planets, and unreachable alien life dwell beyond the lights that mark our known universe, shimmering with miracles humanity may never witness.}}',
+    '{{i|Vibrant constellations line the ceilings in colors beyond perception. As gravity weaves, the planets waltz in a pure celestial dance of forces that will last far beyond the mortal race.}}',
+    '{{i|Mother nature\'s firstborn children, the stars, blink past the shimmering veils of the night sky, waiting to be seen, known, and found.}}',
+    '{{i|This is the universe at its finest, its veil, its costume.}}',
+    '{{i|Welcome in, visitors, to the...}}',
+    '## Starlit Gallery',
+    '### Overview',
+    'Created by [@Harry & Co](/u/harryandco) and [@Bendan07](/u/Bendan), the creators of **Travel by the Starlight**, the Starlit Gallery contains **100 unique, hand-drawn, and black-and-white icons**, **5 texture variants,** and handful of **icon templates, a custom script logo, and a blank character token image** for you to use on your botc homebrew characters.',
+    'Notably, you **do not** need to credit us when you use* our resources - however, a shout-out would be appreciated, since it helps promote the collection.\n{{i|*Please refrain from using our work for commercial products, though!}}',
+    'So take a look, visitors, and experience the wonders of craft, of creativity, of human expression.',
+    'Welcome once more to the... **Starlit Gallery.**'
+  ].join('\n\n');
+  var ORIGINAL = { introHTML: document.querySelector('.sg-by').innerHTML, aboutHTML: $('sg-about-text').innerHTML };
+  var PAGE_BASE = 'starlit/page';
+
+  function drawHeroMark() {
+    if (!window.CreatorSymbols) return;
+    var by = document.querySelector('.sg-by'), old = by.querySelector('.creator-mark');
+    if (old) old.remove();
+    var m = window.CreatorSymbols.markHTMLFor(ARTISTS);
+    if (m) by.insertAdjacentHTML('beforeend', ' ' + m);
+  }
+  function drawPageText(page) {
+    var W = window.WikiRender;
+    document.querySelector('.sg-by').innerHTML = page && page.intro && W ? W.inlineFormat(page.intro) : ORIGINAL.introHTML;
+    $('sg-about-text').innerHTML = page && page.about && W ? W.renderBody(page.about) : ORIGINAL.aboutHTML;
+    drawHeroMark();
+  }
+  // What a theme added last time is taken off before the next is put on.
+  var themed = { cls: [], props: [] };
+  function applyTheme(theme) {
+    var PR = window.PageRender;
+    themed.cls.forEach(function (c) { document.body.classList.remove(c); });
+    themed.props.forEach(function (k) { document.body.style.removeProperty(k); });
+    themed = { cls: [], props: [] };
+    ['page-custom-css', 'page-moves'].forEach(function (id) { var o = $(id); if (o) o.remove(); });
+    var oldSt = document.querySelector('body > .pg-stickers'); if (oldSt) oldSt.remove();
+    var t = theme && PR && PR.sanitizeTheme ? PR.sanitizeTheme(theme, PAGE_BASE) : null;
+    if (!t) return;
+    var ta = PR.themeAttrs(t);
+    ta.cls.split(' ').forEach(function (c) {
+      if (c && !document.body.classList.contains(c)) { document.body.classList.add(c); themed.cls.push(c); }
+    });
+    ta.style.split(';').forEach(function (decl) {
+      var i = decl.indexOf(':');
+      if (i > 0) { document.body.style.setProperty(decl.slice(0, i), decl.slice(i + 1)); themed.props.push(decl.slice(0, i)); }
+    });
+    (ta.fonts || []).forEach(function (href) {
+      if (document.querySelector('link[href="' + href + '"]')) return;
+      var l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+    });
+    if (t.stickers && PR.stickersHTML) document.body.insertAdjacentHTML('beforeend', PR.stickersHTML(t.stickers));
+    if (ta.movesCss) {
+      var mv = document.createElement('style');
+      mv.id = 'page-moves'; mv.textContent = ta.movesCss;
+      document.head.appendChild(mv);
+    }
+    var css = t.css && window.CustomCSS ? window.CustomCSS.clean(t.css).css : '';
+    if (css) {
+      var st = document.createElement('style');
+      st.id = 'page-custom-css'; st.textContent = css;
+      document.head.appendChild(st);
+      // Custom CSS reaches the hero and the gallery, nothing round them.
+      var hero = document.querySelector('.home-hero'), main = $('content');
+      if (!hero.parentNode.classList.contains('ucss')) {
+        var frame = document.createElement('div'), inner = document.createElement('div');
+        frame.className = 'ucss-frame'; inner.className = 'ucss';
+        frame.appendChild(inner);
+        hero.parentNode.insertBefore(frame, hero);
+        inner.appendChild(hero); inner.appendChild(main);
+      }
+    }
+  }
+  function pageScripts(theme, editor) {
+    var B = window.BotcData, list = [B.script('render-wiki.js')];
+    if (theme || editor) list.push(B.script('render-page.js').then(function () {
+      return Promise.all([B.script('custom-css.js'), editor ? B.script('theme-editor.js') : null]);
+    }));
+    if (editor) list.push(B.style('editor.css'));
+    return Promise.all(list);
+  }
+  function showPage(page) {
+    if (!page) { drawPageText(null); applyTheme(null); return Promise.resolve(); }
+    return pageScripts(!!page.theme, false).then(function () {
+      drawPageText(page);
+      applyTheme(page.theme || null);
+    });
+  }
+
+  // The editor, built the first time Settings opens it.
+  var pe = null;
+  function peDraft() {
+    return { intro: $('sg-pe-intro').value.trim(), about: $('sg-pe-about').value.trim(), theme: pe.theme };
+  }
+  function pePreview() {
+    var d = peDraft();
+    drawPageText({ intro: d.intro, about: d.about });
+  }
+  function colorRow(k, label, val) {
+    return '<div class="th-row"><label for="th-' + k + '">' + label + '</label><span class="th-state" id="th-' + k + '-state">not set</span>' +
+      '<input type="color" id="th-' + k + '" data-k="' + k + '" value="' + val + '"><button type="button" class="th-clear" data-k="' + k + '">reset</button></div>';
+  }
+  function openPageEditor() {
+    if (pe) return;
+    pe = { theme: JSON.parse(JSON.stringify((gallery.page && gallery.page.theme) || {})) };
+    var page = gallery.page || {};
+    pageScripts(true, true).then(function () {
+      $('sg-page-body').innerHTML =
+        '<label class="sg-f">The line under the title<textarea id="sg-pe-intro" rows="3" maxlength="600"></textarea></label>' +
+        '<label class="sg-f">About the gallery<textarea id="sg-pe-about" rows="16" maxlength="12000"></textarea></label>' +
+        '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/harryandco), ## a heading, ### a smaller one, - a list. The page changes as you type; nothing is kept until you press Save.</p>' +
+        '<h4>Look</h4>' +
+        '<div class="sg-row"><span class="sg-label" style="flex-basis:100%">Page background</span>' +
+        '<img id="sg-pe-bg" alt="" style="display:none;width:120px;height:68px;object-fit:cover;border:1px solid #cdbfa0">' +
+        '<input type="file" id="sg-pe-bgfile" accept="image/png,image/jpeg,image/webp" hidden>' +
+        '<button type="button" class="sg-btn" id="sg-pe-bgup">Upload background</button>' +
+        '<button type="button" class="sg-link-btn" id="sg-pe-bgdel" hidden>Remove</button></div>' +
+        '<label class="sg-f">Heading font <select id="th-font"></select></label>' +
+        '<div class="sg-f">' + colorRow('accent', 'Accent', '#e8c66a') + colorRow('panel', 'Section boxes', '#f0e8d5') +
+        colorRow('text', 'Text', '#ece1c8') + colorRow('link', 'Links', '#7fb2e6') + '</div>' +
+        '<div id="th-more" data-kind="page"></div>' +
+        '<div class="sg-actions"><button type="button" class="sg-btn sg-btn-green" id="sg-pe-save">Save the page</button>' +
+        '<button type="button" class="sg-btn sg-btn-quiet" id="sg-pe-reset">Put back the original</button></div>' +
+        '<p class="sg-msg" id="sg-pe-msg"></p>';
+      $('sg-pe-intro').value = page.intro || DEFAULT_INTRO;
+      $('sg-pe-about').value = page.about || DEFAULT_ABOUT;
+      ['sg-pe-intro', 'sg-pe-about'].forEach(function (id) { $(id).addEventListener('input', pePreview); });
+      window.ThemeEditor.wire({
+        get: function () { return pe.theme; },
+        set: function (t) { pe.theme = t || {}; },
+        onChange: function (t) { applyTheme(t); },
+        stickerBase: function () { return PAGE_BASE; },
+        stickerMaxMB: 5,
+        stickerUpload: function (n, dataUrl) {
+          return api({ action: 'page-image', kind: 'st', n: n, data: dataUrl }).then(function (r) { return r.path; });
+        }
+      });
+      window.ThemeEditor.prime(pe.theme);
+      showBg();
+      $('sg-pe-bgup').addEventListener('click', function () { $('sg-pe-bgfile').click(); });
+      $('sg-pe-bgdel').addEventListener('click', function () {
+        delete pe.theme.background; window.ThemeEditor.prime(pe.theme); applyTheme(pe.theme); showBg();
+      });
+      $('sg-pe-bgfile').addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        if (!f) return;
+        say('sg-pe-msg', 'Uploading the background…');
+        var url = URL.createObjectURL(f);
+        imageFrom(url).then(function (im) {
+          URL.revokeObjectURL(url);
+          // Screen-sized, as a creator page's background is.
+          var k = Math.min(1, 2400 / Math.max(im.naturalWidth, 1));
+          var c = canvas(Math.max(1, Math.round(im.naturalWidth * k)), Math.max(1, Math.round(im.naturalHeight * k)));
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          return api({ action: 'page-image', kind: 'bg', data: c.toDataURL('image/jpeg', 0.85) });
+        }).then(function (r) {
+          pe.theme.background = r.path;
+          window.ThemeEditor.prime(pe.theme); applyTheme(pe.theme); showBg();
+          say('sg-pe-msg', 'Background uploaded. Save the page to keep it.');
+        }).catch(function (e) { say('sg-pe-msg', e.message || 'That image could not be used.', true); });
+      });
+      $('sg-pe-save').addEventListener('click', function () {
+        var btn = this, d = peDraft();
+        if (d.intro === DEFAULT_INTRO) d.intro = '';
+        if (d.about === DEFAULT_ABOUT) d.about = '';
+        btn.disabled = true;
+        api({ action: 'page', page: d }).then(function (r) {
+          gallery.page = r.page;
+          say('sg-pe-msg', 'Saved. Everyone sees it now.');
+        }).catch(function (e) { say('sg-pe-msg', e.message, true); })
+          .then(function () { btn.disabled = false; });
+      });
+      $('sg-pe-reset').addEventListener('click', function () {
+        if (!confirm('Put the page back as it was before the team changed it? Your text and look are cleared.')) return;
+        api({ action: 'page', page: null }).then(function () {
+          gallery.page = null;
+          pe.theme = {};
+          $('sg-pe-intro').value = DEFAULT_INTRO; $('sg-pe-about').value = DEFAULT_ABOUT;
+          window.ThemeEditor.prime(pe.theme);
+          showPage(null); showBg();
+          say('sg-pe-msg', 'The page is back to its original.');
+        }).catch(function (e) { say('sg-pe-msg', e.message, true); });
+      });
+    }).catch(function () {
+      pe = null;
+      $('sg-page-body').innerHTML = '<p class="sg-msg err">The editor could not be loaded. Close this and open it again.</p>';
+    });
+  }
+  function showBg() {
+    var bg = pe && pe.theme.background;
+    $('sg-pe-bg').style.display = bg ? '' : 'none';
+    if (bg) $('sg-pe-bg').src = '/assets/' + bg + '?v=' + Date.now();
+    $('sg-pe-bgdel').hidden = !bg;
+  }
+  $('sg-page-ed').addEventListener('toggle', function () { if (this.open) openPageEditor(); });
+
   /* ── start ────────────────────────────────────────────────────── */
 
   if (PICK) {
@@ -898,26 +1362,25 @@
     $('sg-size').hidden = true;
   }
   if (window.CreatorSymbols) {
-    var drawHeroMark = function () {
-      var old = document.querySelector('.sg-by .creator-mark');
-      if (old) old.remove();
-      var m = window.CreatorSymbols.markHTMLFor(ARTISTS);
-      if (m) $('sg-by-link').parentNode.insertAdjacentHTML('beforeend', ' ' + m);
-    };
     drawHeroMark();
     window.CreatorSymbols.load().then(drawHeroMark);
   }
 
-  fetch('/api/starlit', { credentials: 'same-origin' })
-    .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
-    .then(function (d) {
-      gallery = {
-        icons: d.icons || [], textures: d.textures || [], canUpload: !!d.canUpload,
-        isAdmin: !!d.isAdmin, uploaders: d.uploaders || []
-      };
-      rebuildTextures(); drawTags(); drawGrid(); drawTeam();
-      var want = new URLSearchParams(location.search).get('icon');
-      if (want) openIcon(byId(want));
-    })
-    .catch(function () { $('sg-count').textContent = 'The gallery could not be loaded. Refresh the page to try again.'; });
+  // The whole gallery, from the server; again after a rename changes icons.
+  function load() {
+    return fetch('/api/starlit', { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function (d) {
+        gallery = {
+          icons: d.icons || [], textures: d.textures || [], files: d.files || [], page: d.page || null,
+          canUpload: !!d.canUpload, isAdmin: !!d.isAdmin, uploaders: d.uploaders || []
+        };
+        rebuildTextures(); drawTags(); drawGrid(); drawTeam();
+      });
+  }
+  load().then(function () {
+    var want = new URLSearchParams(location.search).get('icon');
+    if (want) openIcon(byId(want));
+    if (gallery.page && !PICK) showPage(gallery.page).catch(function () { /* the page's own text stays */ });
+  }).catch(function () { $('sg-count').textContent = 'The gallery could not be loaded. Refresh the page to try again.'; });
 })();
