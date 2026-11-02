@@ -247,10 +247,11 @@
   .inline-msg { font-size: .85rem; margin-top: 8px; min-height: 1.1em; }
   .inline-msg.ok  { color: #2a6e2a; }
   .inline-msg.err { color: #9a2c2c; }
-  .btn.danger { background: linear-gradient(180deg,#9a2c2c,#6e1d1d); border-color: #5a1515; }
+  .btn.danger { background: #8a2626; border-color: #5a1515; border-radius: 0; }
+  .btn.danger:hover { background: #9a2c2c; }
   .set-hint { font-size: .82rem; color: #6b5a3e; margin: 6px 0 0; }
   /* The "are you sure" box for deleting an account: a native <dialog>. */
-  #del-dialog { max-width: 460px; width: calc(100% - 32px); border: 1px solid #4a1719; border-radius: 8px;
+  #del-dialog { max-width: 460px; width: calc(100% - 32px); border: 1px solid #4a1719; border-radius: 0;
     background: #f4ead2; color: #2b2116; padding: 20px; }
   #del-dialog::backdrop { background: rgba(0,0,0,.55); }
   #del-dialog h4 { font-family: 'Dumbledor2', serif; color: var(--maroon); margin: 0 0 10px; font-size: 1.15rem; }
