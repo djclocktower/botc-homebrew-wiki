@@ -3864,7 +3864,10 @@ required but a shout-out is appreciated, and no commercial use.
   or artist) and leaves out icons matching a word typed `-like-this`. The
   keyword chips (the 30 most used, plus any in use) cycle on a tap:
   required (maroon), left out (red, struck through), off, with Clear while
-  any is set (`filter.tags`, `{keyword: 1 | -1}`). The upload form lists
+  any is set (`filter.tags`, `{keyword: 1 | -1}`). Hovering a grid tile
+  shows its keywords over the picture ("No keywords" in red when it has
+  none), so the team can spot untagged icons; pointer devices only
+  (`@media (hover: hover)`). The upload form lists
   every keyword already in the gallery under its Keywords box; a tap adds
   or removes one, so the team reuses keywords rather than inventing near
   copies.

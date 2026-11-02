@@ -209,7 +209,9 @@
     $('sg-grid').innerHTML = list.map(function (ic) {
       return '<button type="button" class="sg-tile" data-id="' + ic.id + '">' +
         '<img src="' + esc(ic.thumb + '?v=' + ic.v) + '" alt="" loading="lazy" decoding="async">' +
-        '<span>' + esc(ic.name) + '</span></button>';
+        '<span class="sg-tile-name">' + esc(ic.name) + '</span>' +
+        (ic.tags.length ? '<span class="sg-tile-tags">' + esc(ic.tags.join(', ')) + '</span>'
+          : '<span class="sg-tile-tags none">No keywords</span>') + '</button>';
     }).join('');
     $('sg-count').textContent = !n ? 'No icons yet.'
       : list.length === n ? n + (n === 1 ? ' icon' : ' icons')
