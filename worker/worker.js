@@ -1498,18 +1498,26 @@ async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('pages/')) {
     await ensurePagesTable(env);
     const base = key.slice(6).replace(/\.[a-z0-9]+$/i, '');
-    // Longest matching slug wins: "my-page-header.png" belongs to the
-    // page "my-page", not to a page that happens to be called "my".
-    const row = await env.DB.prepare(
-      "SELECT slug, owner_id, parent_type, parent_slug FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
-    ).bind(base, base).first().catch(() => null);
-    // ...or an approved editor of its script/collection (wikiPageAccess).
-    const wikiOk = row && (canEditRow(sess, row) || !!(await wikiPageAccess(env, sess, row,
-      await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null))));
-    if (wikiOk) ownedSlot = true;
-    if (row && !wikiOk) {
+    // A key can name SEVERAL pages: pages/guide-header.png is the banner of
+    // "guide" and also the exact name of a page called "guide-header". Asking
+    // only the longest match let anyone who made "guide-header" (any member
+    // can write an article) write over guide's banner. So every page the key
+    // names is asked, as slotVerdict does for the other prefixes: none says
+    // yes, refused; all say yes, owned; a mix leaves it to the catch-all
+    // below, so nobody else's file can be replaced.
+    const { results: rows } = await env.DB.prepare(
+      "SELECT slug, owner_id, parent_type, parent_slug FROM pages WHERE slug=? OR ? LIKE slug || '-%'"
+    ).bind(base, base).all().catch(() => ({ results: [] }));
+    let yes = 0;
+    for (const row of rows || []) {
+      // The owner, or an approved editor of its script/collection (wikiPageAccess).
+      if (canEditRow(sess, row) || await wikiPageAccess(env, sess, row,
+        await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null))) yes++;
+    }
+    if (rows && rows.length && !yes) {
       return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
     }
+    if (rows && rows.length && yes === rows.length) ownedSlot = true;
   }
   // Character art follows art/{slug}.png, with the second and third icons
   // (a traveller's good and evil tokens) at art/{slug}-alt.png and

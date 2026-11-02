@@ -251,3 +251,24 @@ test('Bloodstar bundle: absolute images, a third icon, no false warnings, and an
   assert.equal(trav.hasAlmanac, false);
   assert.deepEqual(bundle.warnings, []);
 });
+
+test('a wiki page called "{slug}-header" cannot overwrite the banner of the page called {slug}', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); const art = bucket(f);
+  const page = (slug, owner) => f.db.prepare(
+    "INSERT INTO pages (slug, title, parent_type, parent_slug, owner_id, data, status) VALUES (?,?,'article','',?,'{}','published')"
+  ).run(slug, slug, owner);
+  await f.hooks.uploadSlotDenied(f.env, sess(1), 'pages/none.png'); // creates the table
+  page('guide', 1);
+  art.set('pages/guide-header.png', 'x', { owner: '1' });
+  const denied = (id, key) => f.hooks.uploadSlotDenied(f.env, sess(id), key);
+  assert.equal((await denied(2, 'pages/guide-header.png')).status, 403);
+  // Any member can make an article whose slug is the banner's base name…
+  page('guide-header', 2);
+  // …and its yes must not speak for guide's file.
+  assert.equal((await denied(2, 'pages/guide-header.png')).status, 403);
+  assert.equal((await denied(3, 'pages/guide-header.png')).status, 403);
+  // guide's owner still replaces their own banner; an unambiguous slot is untouched.
+  assert.equal(await denied(1, 'pages/guide-header.png'), null);
+  art.set('pages/guide-bg.png', 'x', { owner: '9' });
+  assert.equal(await denied(1, 'pages/guide-bg.png'), null);
+});
