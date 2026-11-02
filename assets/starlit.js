@@ -39,14 +39,24 @@
   });
   // The outline for a texture that is not one of the sets'.
   var PARCHMENT = TEX_DIR + 'default-outline.webp';
+  // The whites have a picker of their own: by default they follow the set
+  // of the blacks' texture, or the reader picks any set's Outline sheet.
+  var OUTLINES = SETS.map(function (s) {
+    return { id: 'w-' + s[0], set: 'Outlines', name: s[1], src: TEX_DIR + s[0] + '-outline.webp', thumb: TEX_DIR + s[0] + '-outline-s.webp' };
+  });
+  var PLAIN_BLACK = { id: 'plain', set: '', name: 'Plain black', plain: '#000000' };
+  var MATCH_WHITE = { id: '', set: '', name: 'Match blacks', match: true };
+  var PLAIN_WHITE = { id: 'plain', set: '', name: 'Plain white', plain: '#ffffff' };
   var TOGGLES = ['texture', 'whites', 'blacks', 'shadow'];
 
   var gallery = { icons: [], textures: [], canUpload: false, isAdmin: false, uploaders: [] };
   var textures = BUILT_IN.slice();   // + the gallery's own, + the reader's
   var own = null;                    // a texture picked from the reader's device
+  var ownWhite = null;               // the same, for the whites
+  var ownFor = 'black';              // which picker the device file is for
   var filter = { q: '', tag: '' };
   // An icon opens as it was uploaded: no texture until the reader picks one.
-  var view = { tex: 'default-base', texture: false, whites: true, blacks: true, shadow: true };
+  var view = { tex: 'default-base', wtex: '', texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
   var previewUrl = null, paintSeq = 0;
 
@@ -79,9 +89,17 @@
     for (var i = 0; i < textures.length; i++) if (textures[i].id === id) return textures[i];
     return null;
   }
-  function texturesFor(id) {
-    var t = texById(id) || textures[0];
-    return Promise.all([loadImg(t.src), loadImg(t.outline || PARCHMENT)])
+  function whiteById(id) {
+    var list = [MATCH_WHITE, PLAIN_WHITE].concat(OUTLINES, ownWhite ? [ownWhite] : []);
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return MATCH_WHITE;
+  }
+  // The blacks' fill and the whites' fill for a choice: a picture, or a
+  // plain colour (compose() takes either).
+  function texturesFor(o) {
+    var t = o.tex === 'plain' ? PLAIN_BLACK : texById(o.tex) || textures[0], w = whiteById(o.wtex || '');
+    var white = w.match ? (t.outline || PARCHMENT) : w.plain || w.src;
+    return Promise.all([t.plain ? t.plain : loadImg(t.src), white.charAt(0) === '#' ? white : loadImg(white)])
       .then(function (r) { return { fill: r[0], parch: r[1] }; });
   }
 
@@ -142,7 +160,7 @@
   var AS_UPLOADED = { texture: false, whites: true, blacks: true, shadow: true };
   function render(icon, size, opts) {
     opts = opts || view;
-    return Promise.all([layersOf(icon), texturesFor(opts.tex)]).then(function (r) {
+    return Promise.all([layersOf(icon), texturesFor(opts)]).then(function (r) {
       return compose(r[0], {
         texture: opts.texture, whites: opts.whites, blacks: opts.blacks, shadow: opts.shadow,
         fill: r[1].fill, parch: r[1].parch
@@ -229,7 +247,11 @@
     } catch (e) { /* the address just stays as it was */ }
   }
   ['sg-detail', 'sg-form-modal'].forEach(function (id) {
-    $(id).addEventListener('click', function (e) { if (e.target === this) closeWindow(id); });
+    // Only a press that starts AND ends on the backdrop closes the window, or
+    // dragging out past its edge (a selection, a slider) would.
+    var downOn = null;
+    $(id).addEventListener('pointerdown', function (e) { downOn = e.target; });
+    $(id).addEventListener('click', function (e) { if (e.target === this && downOn === this) closeWindow(id); });
   });
   function closeWindow(id) {
     show(id, false);
@@ -294,54 +316,76 @@
       return { id: 'starlit-' + t.id, set: 'More from the gallery', name: t.name, src: src, thumb: src };
     }), own ? [own] : []);
   }
-  /* The picker is a drop-down: closed, it shows the texture in use; open, it
-     shows every texture, grouped by set, each with its picture. */
-  function texTile(t) {
-    return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (view.texture && t.id === view.tex) + '" title="' + esc(t.name) + '">' +
-      '<img src="' + esc(t.thumb) + '" alt="" loading="lazy" decoding="async"><b>' + esc(t.name) + '</b></button>';
+  /* Two pickers, the blacks' texture and the whites', each a drop-down:
+     closed, it shows the choice in use; open, every choice, grouped, each
+     with its picture. Picking either turns the texture on. */
+  var PICKERS = {
+    black: { drop: 'sg-tex-drop', now: 'sg-tex-now', panel: 'sg-texs', key: 'tex',
+      list: function () { return [PLAIN_BLACK].concat(textures); },
+      find: function (id) { return id === 'plain' ? PLAIN_BLACK : texById(id); } },
+    white: { drop: 'sg-wtex-drop', now: 'sg-wtex-now', panel: 'sg-wtexs', key: 'wtex',
+      list: function () { return [MATCH_WHITE, PLAIN_WHITE].concat(OUTLINES, ownWhite ? [ownWhite] : []); },
+      find: whiteById }
+  };
+  function swatch(t) {
+    if (t.plain) return '<i class="sg-sw" style="background:' + t.plain + '" aria-hidden="true"></i>';
+    if (t.match) return '<i class="sg-sw sg-sw-match" aria-hidden="true"></i>';
+    return '<img src="' + esc(t.thumb) + '" alt="" loading="lazy" decoding="async">';
   }
-  function drawTexs() {
-    var drop = $('sg-tex-drop'), t = view.texture ? texById(view.tex) : null, groups = [], by = {};
-    textures.forEach(function (x) {
-      if (!by[x.set]) { by[x.set] = []; groups.push(x.set); }
-      by[x.set].push(x);
+  function label(t) {
+    if (t.set === 'Yours') return 'Your own';
+    if (t.set === 'Outlines') return t.name + ' outline';
+    return t.set ? t.set + ': ' + t.name : t.name;
+  }
+  function drawPicker(which) {
+    var P = PICKERS[which], sel = view[P.key], groups = [], by = {};
+    var t = view.texture ? P.find(sel) : null;
+    P.list().forEach(function (x) {
+      var g = x.set === 'Yours' ? 'Your own' : x.set;
+      if (!by[g]) { by[g] = []; groups.push(g); }
+      by[g].push(x);
     });
-    $('sg-tex-now').innerHTML = t
-      ? '<img src="' + esc(t.thumb) + '" alt=""><span>' + esc(t.set === 'Yours' ? 'Your own' : t.set + ': ' + t.name) + '</span>'
-      : '<i aria-hidden="true"></i><span>None, as uploaded</span>';
-    $('sg-texs').innerHTML = groups.map(function (g) {
-      return '<p class="sg-drop-h">' + esc(g === 'Yours' ? 'Your own' : g) + '</p><div class="sg-texs">' +
-        by[g].filter(function (x) { return x.set !== 'Yours'; }).map(texTile).join('') +
-        (g === 'Yours' ? texTile(own) : '') + '</div>';
+    $(P.now).innerHTML = t ? swatch(t) + '<span>' + esc(label(t)) + '</span>'
+      : '<i class="sg-sw sg-sw-none" aria-hidden="true"></i><span>None, as uploaded</span>';
+    $(P.panel).innerHTML = groups.map(function (g) {
+      return (g ? '<p class="sg-drop-h">' + esc(g) + '</p>' : '') + '<div class="sg-texs">' + by[g].map(function (x) {
+        return '<button type="button" class="sg-tex" data-tex="' + esc(x.id) + '" aria-pressed="' + (!!view.texture && x.id === sel) + '" title="' + esc(x.name) + '">' +
+          swatch(x) + '<b>' + esc(x.name) + '</b></button>';
+      }).join('') + '</div>';
     }).join('') +
       '<div class="sg-texs"><button type="button" class="sg-tex sg-tex-own" data-own="1" title="Use a texture from your device"><i aria-hidden="true">+</i><b>Your own</b></button></div>';
-    drop.classList.toggle('on', !!t);
   }
-  $('sg-texs').addEventListener('click', function (e) {
-    var b = e.target.closest('button');
-    if (!b) return;
-    if (b.hasAttribute('data-own')) { $('sg-own-tex').click(); return; }
-    view.tex = b.getAttribute('data-tex');
-    view.texture = true; $('sg-o-texture').checked = true;
-    $('sg-tex-drop').open = false;
-    drawTexs(); paint();
+  function drawTexs() { drawPicker('black'); drawPicker('white'); }
+  Object.keys(PICKERS).forEach(function (which) {
+    var P = PICKERS[which];
+    $(P.panel).addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      if (b.hasAttribute('data-own')) { ownFor = which; $('sg-own-tex').click(); return; }
+      view[P.key] = b.getAttribute('data-tex');
+      view.texture = true; $('sg-o-texture').checked = true;
+      $(P.drop).open = false;
+      drawTexs(); paint();
+    });
   });
   document.addEventListener('click', function (e) {
-    var drop = $('sg-tex-drop');
-    if (drop.open && !drop.contains(e.target)) drop.open = false;
+    Object.keys(PICKERS).forEach(function (which) {
+      var drop = $(PICKERS[which].drop);
+      if (drop.open && !drop.contains(e.target)) drop.open = false;
+    });
   });
   // A texture from the reader's own device: used here and nowhere else.
   $('sg-own-tex').addEventListener('change', function () {
     var f = this.files && this.files[0];
     this.value = '';
     if (!f) return;
-    if (own) { URL.revokeObjectURL(own.src); delete images[own.src]; }
-    var src = URL.createObjectURL(f);
-    own = { id: 'own', set: 'Yours', name: 'Yours', src: src, thumb: src };
-    rebuildTextures();
-    view.tex = 'own';
+    var src = URL.createObjectURL(f), mine = { id: 'own', set: 'Yours', name: 'Yours', src: src, thumb: src };
+    var old = ownFor === 'white' ? ownWhite : own;
+    if (old) { URL.revokeObjectURL(old.src); delete images[old.src]; }
+    if (ownFor === 'white') { ownWhite = mine; view.wtex = 'own'; }
+    else { own = mine; rebuildTextures(); view.tex = 'own'; }
     view.texture = true; $('sg-o-texture').checked = true;
-    $('sg-tex-drop').open = false;
+    $(PICKERS[ownFor].drop).open = false;
     drawTexs(); paint();
   });
   TOGGLES.forEach(function (k) {

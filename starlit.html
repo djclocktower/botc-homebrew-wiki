@@ -127,7 +127,8 @@
 }
 .sg-drop[open] summary::after { margin-top: -2px; transform: rotate(-135deg); }
 .sg-drop summary img, .sg-drop summary i { width: 54px; height: 32px; flex-shrink: 0; object-fit: cover; border: 1px solid var(--parch-frame); }
-.sg-drop summary i { display: block; background: repeating-linear-gradient(45deg, #fff 0 6px, #e8dfc8 6px 12px); }
+.sg-drop summary i { display: block; }
+.sg-drop .sg-sw-none, .sg-drop .sg-sw-match { background: repeating-linear-gradient(45deg, #fff 0 6px, #e8dfc8 6px 12px); }
 .sg-drop summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sg-drop-panel {
   max-height: min(380px, 60vh); overflow-y: auto; margin-top: 4px;
@@ -317,10 +318,15 @@ html.sg-pick .home-panel { padding-top: 14px; }
         </div>
         <div>
           <div class="sg-d-tags" id="sg-d-tags" data-user-content></div>
-          <span class="sg-label">Texture</span>
+          <span class="sg-label">Blacks texture</span>
           <details class="sg-drop" id="sg-tex-drop">
             <summary id="sg-tex-now"></summary>
             <div class="sg-drop-panel" id="sg-texs" data-user-content></div>
+          </details>
+          <span class="sg-label">Whites texture</span>
+          <details class="sg-drop" id="sg-wtex-drop">
+            <summary id="sg-wtex-now"></summary>
+            <div class="sg-drop-panel" id="sg-wtexs" data-user-content></div>
           </details>
           <input type="file" id="sg-own-tex" accept="image/png,image/jpeg,image/webp" hidden>
           <span class="sg-label">Show</span>
@@ -333,7 +339,8 @@ html.sg-pick .home-panel { padding-top: 14px; }
           <div class="sg-actions">
             <button type="button" class="sg-btn sg-btn-green" id="sg-use" hidden>Use this icon</button>
             <select class="sg-size" id="sg-size" aria-label="Size of the PNG">
-              <option value="591">591 px</option>
+              <option value="400">400 px</option>
+              <option value="591" selected>591 px</option>
               <option value="1182">1182 px</option>
             </select>
             <button type="button" class="sg-btn sg-btn-green" id="sg-download">Download PNG</button>

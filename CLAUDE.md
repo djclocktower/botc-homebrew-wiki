@@ -3838,7 +3838,13 @@ required but a shout-out is appreciated, and no commercial use.
   (`starlit_textures`, "More from the gallery", also in Icon Forge as
   `starlit-{id}`) and "Your own", a local file that is never uploaded. The
   picker is a drop-down (a `<details>`) showing the texture in use, open to
-  every texture grouped by set. "Open in Icon Forge" hands over the picked
+  every texture grouped by set. There are two, one per layer (`PICKERS`):
+  the blacks' (Plain black, then every texture) and the whites' (Match
+  blacks, which takes the blacks' set's Outline and is the default, Plain
+  white, each set's Outline, Your own). The window's sizes are 400 (what
+  tokens are printed at and the official app uses), 591 (the wiki's) and
+  1182. A window closes only on a press that starts AND ends on its
+  backdrop, so dragging out past its edge does not close it. "Open in Icon Forge" hands over the picked
   sheet's file, which the forge adds to its list.
   **An icon opens as it was uploaded** (the owner's call): black lines, white
   outline, shadow, no texture (`AS_UPLOADED`), and its grid picture is drawn
