@@ -866,7 +866,28 @@
       setText(input.value.slice(0, i.start) + i.suggest + input.value.slice(i.end));
     }
 
-    input.addEventListener('input', run);
+    /* Typing: the box keeps its size at once, everything else catches up
+       when the typing pauses. Redrawing the counts, findings and output on
+       every keystroke made Chrome's Ctrl+Z undo one letter at a time (it
+       ends the undo step whenever the page's markup changes). With the
+       highlights on, the marks have to follow the text, so that mode still
+       redraws per keystroke. Leaving the box or the page catches up first,
+       so a button never acts on a stale check. */
+    var typingTimer = null;
+    function flushTyping() {
+      if (typingTimer === null) return;
+      clearTimeout(typingTimer);
+      typingTimer = null;
+      run();
+    }
+    input.addEventListener('input', function () {
+      if (highlightBox.checked) { clearTimeout(typingTimer); typingTimer = null; run(); return; }
+      fitInput();
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(function () { typingTimer = null; run(); }, 450);
+    });
+    input.addEventListener('blur', flushTyping);
+    window.addEventListener('pagehide', flushTyping);
     $('gf-fix').addEventListener('click', function () {
       if (!bulkFixes().length) return;
       setText(suggested());

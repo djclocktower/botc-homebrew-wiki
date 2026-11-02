@@ -46,7 +46,9 @@ test('/api/tag-counts counts exactly what the tags page used to count from the g
   const grid = await (await f.request('/characters.json?fields=grid')).json();
   const expected = {};
   const titleCase = s => String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, m => m.toUpperCase());
-  grid.forEach(c => (c.tags || '').split(',').forEach(tag => {
+  // Plus the official characters, which the tag pages list too.
+  const official = Object.values(require('../../assets/official-tags.js')).map(tags => ({ tags }));
+  [...grid, ...official].forEach(c => (c.tags || '').split(',').forEach(tag => {
     if (!tag.trim()) return;
     expected[titleCase(tag)] = (expected[titleCase(tag)] || 0) + 1;
   }));
@@ -55,7 +57,7 @@ test('/api/tag-counts counts exactly what the tags page used to count from the g
   assert.match(res.headers.get('Cache-Control'), /private, max-age=0/);
   const body = await res.json();
   assert.deepEqual(body.tags, expected);
-  assert.deepEqual(body.tags, { Information: 1, Poison: 2, 'Win/Loss Condition': 1, 'Multi-Kill': 1 });
+  assert.ok(body.tags.Poison > 2 && body.tags.Information > 1);
   // A returning browser gets a 304; a character edit rolls the ETag.
   const etag = res.headers.get('ETag');
   assert.equal((await f.request('/api/tag-counts', { headers: { 'If-None-Match': etag } })).status, 304);
@@ -63,7 +65,7 @@ test('/api/tag-counts counts exactly what the tags page used to count from the g
   await f.hooks.logActivity(f.env, null, 'create', 'character', 'new-one', 'New One');
   const changed = await f.request('/api/tag-counts', { headers: { 'If-None-Match': etag } });
   assert.equal(changed.status, 200);
-  assert.equal((await changed.json()).tags.Setup, 1);
+  assert.equal((await changed.json()).tags.Setup, body.tags.Setup + 1);
 });
 
 test('/api/collection-tiles matches the collections page’s own counting and icon choice', async t => {
@@ -147,4 +149,30 @@ test('the sliced search index ranks every query exactly as the one-pass build di
   });
   assert.ok(slices > 5, 'built in ' + slices + ' slices');
   assert.deepEqual(rankingsOf(index), golden);
+});
+
+test('/api/recent draws the newest characters, script, collection and members', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  seed(f);
+  f.insert('scripts', 'old-script', { slug: 'old-script', name: 'Old Script', characters: ['sculptor'] });
+  f.insert('scripts', 'new-script', { slug: 'new-script', name: 'New Script', characters: ['sculptor', 'oracle'] });
+  f.db.prepare("INSERT INTO users(id,username,display_name,password_hash,created_at) VALUES(1,'first','First','','2026-01-02 00:00:00')").run();
+  f.db.prepare("INSERT INTO users(id,username,password_hash,created_at) VALUES(2,'second','','2026-10-24 00:00:00')").run();
+  await f.request('/api/recent');   // creates the lazy banned column
+  f.db.prepare("INSERT INTO users(id,username,password_hash,banned) VALUES(3,'banned-one','',1)").run();
+  const body = await (await f.request('/api/recent')).json();
+  // Newest first; drafts never; feed (go-live) order.
+  const names = [...body.characters.matchAll(/class="recent-name">([^<]*)</g)].map(m => m[1]);
+  assert.deepEqual(names, ['Baker', 'Oracle', 'Imp Two', 'Warden', 'Sculptor']);
+  assert.match(body.script, /New Script/);
+  assert.doesNotMatch(body.script, /Old Script/);
+  assert.match(body.script, /2 characters/);
+  // The empty collection is newer but has nobody in it yet.
+  assert.match(body.collection, /Odyssey/);
+  assert.ok(body.members.indexOf('@second') < body.members.indexOf('@first'));
+  assert.match(body.members, /Joined Jan 2, 2026/);
+  assert.doesNotMatch(body.members + body.characters, /banned-one|Secret Draft/);
+  const page = await read('recent.html');
+  assert.match(page, /BotcData\.json\('\/api\/recent'\)/);
+  assert.match(await read('index.html'), /href="recent"/);
 });

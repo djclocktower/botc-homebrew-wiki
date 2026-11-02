@@ -36,10 +36,15 @@
  *   POST /api/account/mark    -> claim/change/give up your creator mark
  *   GET  /api/creator-marks   -> every creator mark (public registry)
  *   POST /api/admin/creator-mark -> assign/move/clear an account's mark
+ *   GET/POST /api/admin/banned-marks -> symbols nobody may hold as a mark
  *                                   ({username, glyph?, show?, move?})
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
  *   POST /api/account/unlink-discord
+ *   POST /api/account/username -> change your username (once every 30 days)
+ *   POST /api/account/delete  -> delete your account (backed up to R2 first)
+ *   GET  /api/admin/account-backups[?key=] -> deleted accounts' backups
+ *   POST /api/admin/restore-account -> put a deleted account's pages back
  *   GET  /api/contact         -> your modmail conversations with the admins
  *   GET  /api/contact/thread  -> one of them in full (?id=), head + replies
  *   POST /api/contact         -> open one ({category, body, images[]})
@@ -152,6 +157,13 @@
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
  *                                (or admin) just one of the two characters
+ *   POST /api/suggest-tags    -> tag suggestions for the editor's tag picker
+ *                                (Workers AI, worker/autotag.js); writes nothing
+ *   POST /api/admin/autotag-eval -> admin: score those suggestions against
+ *                                pages people already tagged, or against the
+ *                                pages an admin checked (checked:true)
+ *   POST /api/admin/tag-check -> admin: next character to check by hand, or
+ *                                save/undo one answer (the tag answer key)
  *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
  *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
@@ -220,7 +232,7 @@
  *   POST /api/admin/announce  -> set/clear the site-wide announcement banner
  *   GET  /api/admin/site-text -> every saved system-text override, with who
  *                                changed it and when (/text-editor)
- *   POST /api/admin/site-text -> rewrite one of the site's own strings, or
+ *   POST /api/admin/site-text -> rewrite or remove one of the site's own strings, or
  *                                revert it to whatever the source file says
  *   GET  /api/admin/orphans   -> R2 images no page references any more
  *   POST /api/admin/purge-images -> delete selected orphaned images
@@ -367,10 +379,13 @@ function loadOdysseyCleanup() {
     import('../migration/odyssey-cleanup.js').then(m => m.default || m));
 }
 import { homeData } from './home-data.js';
-import { renderHomePage, homeRegions } from './home-page.js';
+import { renderHomePage, homeRegions, recentCardHTML, scriptTileHTML, collectionTileHTML, memberTileHTML } from './home-page.js';
 // The first screen of /all-characters, /team and /tag, drawn on the server.
 import { LIST_PAGES, serveListPage } from './list-pages.js';
+import { AUTOTAG_MODEL, SUGGESTABLE, splitTags, suggestTags, cueTags, applyChecks, aiPrice, aiMaxTokens } from './autotag.js';
+import Tags from '../assets/tags.js';
 import ASSET_MANIFEST, { BUILD_ID, RUNTIME_ASSETS } from './asset-manifest.js';
+import OFFICIAL_TAGS from '../assets/official-tags.js';
 // Argon2id, the password hash (see "Account security" in CLAUDE.md).
 import { argon2idRaw } from './argon2.js';
 
@@ -1074,6 +1089,126 @@ async function ensureAuthColumns(env) {
     catch { /* already there */ }
   }
   _authColsReady = true;
+}
+
+// users.username_changed_at, for the once-every-30-days rule. Added lazily.
+const RENAME_EVERY_DAYS = 30;
+let _renameColReady = false;
+async function ensureRenameColumn(env) {
+  if (_renameColReady) return;
+  if (!(await schemaHas(env, { tables: { users: ['username_changed_at'] } }))) {
+    try { await env.DB.prepare('ALTER TABLE users ADD COLUMN username_changed_at TEXT').run(); }
+    catch { /* already there */ }
+  }
+  _renameColReady = true;
+}
+// The time (ms) the next rename is allowed, or 0 when it is allowed now.
+function renameAllowedAt(changedAt) {
+  const last = changedAt ? Date.parse(String(changedAt).replace(' ', 'T') + 'Z') : NaN;
+  return last > 0 ? last + RENAME_EVERY_DAYS * 86400000 : 0;
+}
+
+// One page row from a backup (nightly or a deleted account's), written back
+// over whatever has that slug now. `row.owner_id` is used as given.
+async function upsertBackupRow(env, type, hit, status) {
+  if (type === 'character') {
+    await env.DB.prepare(
+      `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         name=excluded.name, team=excluded.team, creator=excluded.creator,
+         owner_id=excluded.owner_id, tags=excluded.tags, appears_in=excluded.appears_in,
+         data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.name, hit.team, hit.creator || null, hit.owner_id || null,
+           hit.tags || null, hit.appears_in || null, hit.data, status, hit.created_at || null).run();
+  } else if (type === 'collection') {
+    await env.DB.prepare(
+      `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         display_name=excluded.display_name, owner_id=excluded.owner_id,
+         data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.display_name || hit.slug, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
+  } else if (type === 'script') {
+    await env.DB.prepare(
+      `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         name=excluded.name, author=excluded.author, owner_id=excluded.owner_id,
+         data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.name || hit.slug, hit.author || null, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
+  } else if (type === 'wikipage') {
+    await ensurePagesTable(env);
+    await env.DB.prepare(
+      `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         title=excluded.title, parent_type=excluded.parent_type, parent_slug=excluded.parent_slug,
+         author=excluded.author, owner_id=excluded.owner_id, data=excluded.data,
+         status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.title || hit.slug, hit.parent_type, hit.parent_slug || '', hit.author || null,
+           hit.owner_id || null, hit.data, status, hit.created_at || null).run();
+  }
+}
+
+// Which of a backup's lists each page type lives in.
+const ACCOUNT_BACKUP_TYPES = ['character', 'script', 'collection', 'wikipage'];
+const ACCOUNT_BACKUP_FIELD = { character: 'characters', script: 'scripts', collection: 'collections', wikipage: 'pages' };
+async function readAccountBackup(env, key) {
+  if (!/^account-backups\/\d+-\d+\.json$/.test(key)) return null;
+  const obj = await env.ART.get(key);
+  if (!obj) return null;
+  try { const d = await obj.json(); return d && typeof d === 'object' ? d : null; } catch { return null; }
+}
+// Backup rows put back as they were, ids included (a taken id is skipped).
+// Column names go into the SQL, so they are checked even though we wrote them.
+async function reinsertRows(env, table, rows) {
+  for (const r of rows) {
+    const cols = Object.keys(r).filter(k => /^[a-z_]+$/.test(k));
+    if (!cols.length) continue;
+    await env.DB.prepare(`INSERT OR IGNORE INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`)
+      .bind(...cols.map(k => r[k])).run().catch(() => {});
+  }
+}
+// The row the wiki has under a backed-up slug now (or null).
+async function backupTargetRow(env, type, slug) {
+  if (type !== 'wikipage') return getEntityRow(env, type, slug);
+  return env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(slug).first().catch(() => null);
+}
+
+// ---- the backup a deleted account leaves behind ----
+// One JSON file in R2 per deletion, kept for good (outside backups/, which
+// expires after 30 days): the account row minus the password hash, every page
+// it owned, its comments and mark, and the comments and history of wiki pages
+// about to be removed. Not DMs: admins may only read reported conversations.
+// Throws on any failure, so the caller deletes nothing.
+const ACCOUNT_BACKUP_PREFIX = 'account-backups/';
+async function accountBackup(env, u, keepPages) {
+  const rows = async (sql, ...binds) => {
+    try { return (await env.DB.prepare(sql).bind(...binds).all()).results || []; }
+    catch (e) { if (isMissingSchema(e)) return []; throw e; }
+  };
+  const { password_hash, ...user } = u;
+  const onPages = `entity_type='wikipage' AND slug IN (SELECT slug FROM pages WHERE owner_id=?)`;
+  const data = {
+    at: new Date().toISOString(), keepPages, user,
+    characters: await rows('SELECT * FROM characters WHERE owner_id=?', u.id),
+    scripts: await rows('SELECT * FROM scripts WHERE owner_id=?', u.id),
+    collections: await rows('SELECT * FROM collections WHERE owner_id=?', u.id),
+    pages: await rows('SELECT * FROM pages WHERE owner_id=?', u.id),
+    comments: await rows('SELECT * FROM comments WHERE user_id=?', u.id),
+    pageComments: keepPages ? [] : await rows(`SELECT * FROM comments WHERE ${onPages}`, u.id),
+    pageRevisions: keepPages ? [] : await rows(`SELECT * FROM revisions WHERE ${onPages}`, u.id),
+    creatorMarks: await rows('SELECT * FROM creator_marks WHERE user_id=?', u.id),
+    favorites: await rows('SELECT * FROM favorites WHERE user_id=?', u.id)
+  };
+  const pages = data.characters.length + data.scripts.length + data.collections.length + data.pages.length;
+  const key = ACCOUNT_BACKUP_PREFIX + u.id + '-' + Date.now() + '.json';
+  await env.ART.put(key, JSON.stringify(data), {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: { username: String(u.username), pages: String(pages), keepPages: keepPages ? '1' : '0' }
+  });
+  return key;
 }
 
 // How long a half-finished Discord sign-in stays valid. Ten minutes used to be
@@ -1842,13 +1977,20 @@ function mixesScripts(name) {
   );
 }
 
-function validSignup(username, email, password) {
+// The handle rule, shared by signup and a rename.
+function usernameProblem(username) {
   if (!USERNAME_RE.test(username || '')) {
     return 'Username must be 3–20 characters: letters (accents welcome), numbers, hyphens or underscores.';
   }
   if (mixesScripts(username)) {
     return 'Username mixes letters from two different alphabets. Please use one alphabet.';
   }
+  return null;
+}
+
+function validSignup(username, email, password) {
+  const bad = usernameProblem(username);
+  if (bad) return bad;
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
     return 'Please enter a valid email address.';
   }
@@ -1988,8 +2130,22 @@ async function findUserByShownName(env, id) {
 // Is this handle taken — or close enough to an existing one to read as it?
 // Both questions are the same question once the key has the accents folded out
 // of it, which is the point of keying it that way.
-async function usernameTaken(env, name) {
-  return !!(await selectUserByName(env, 'id', name));
+async function usernameTaken(env, name, selfId) {
+  const u = await selectUserByName(env, 'id', name);
+  if (u && Number(u.id) !== Number(selfId)) return true;
+  const parked = await parkedFor(env, name);
+  return parked != null && parked !== Number(selfId);
+}
+
+/* A handle somebody renamed away from stays theirs: /u/{old} forwards to the
+   new name (a `redirects` row, entity_type 'user', keyed on usernameKey, to
+   the account id), and nobody else may take it, or every link posted to the
+   old name would land on a stranger. The account itself may take it back.
+   Deleting the account drops its rows, which frees the names. */
+async function parkedFor(env, name) {
+  const r = await env.DB.prepare("SELECT to_slug FROM redirects WHERE entity_type='user' AND from_slug=?")
+    .bind(usernameKey(name)).first().catch(() => null);
+  return r ? Number(r.to_slug) : null;
 }
 
 // ---- wiki lock (global freeze flag, stored in D1 settings) ----
@@ -2094,7 +2250,7 @@ const FIELD_LABELS = {
   special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
   related: 'related pages', almanacAlt: 'Alternate Almanac',
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
-  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
+  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit', iconByLabel: 'icon credit wording',
   edition: 'edition', publicEdit: 'who may edit',
   flavor: 'flavour text', attribution: 'credit', artScale: 'icon display size',
   token: 'printable token', tokenImage: 'printable token', tokenArt: 'token in the icon gallery',
@@ -2260,14 +2416,141 @@ async function ensureFavoritesTable(env) {
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
 
+/* The tag answer key: one row per character an admin checked on the
+   dashboard ("Check tags"). `tags` is what the admin confirmed; `stored` and
+   `suggested` are what the page and the suggester said at the time, kept so
+   both can be scored against the answer later. */
+let _tagChecksReady = false;
+async function ensureTagChecksTable(env) {
+  if (_tagChecksReady) return;
+  if (await schemaHas(env, { tables: { tag_checks: [] } })) { _tagChecksReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS tag_checks (
+       slug      TEXT PRIMARY KEY,
+       tags      TEXT NOT NULL,
+       stored    TEXT NOT NULL DEFAULT '[]',
+       suggested TEXT NOT NULL DEFAULT '[]',
+       user_id   INTEGER,
+       ts        TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _tagChecksReady = true;
+}
+// ponytail: a minute's memo per isolate; a save clears it here, other
+// isolates see it within the minute. Fine for examples, which are a nudge.
+let _tagChecks = null, _tagChecksAt = 0;
+async function loadTagChecks(env, fresh) {
+  if (!fresh && _tagChecks && Date.now() - _tagChecksAt < 60000) return _tagChecks;
+  let rows = [];
+  try { rows = (await env.DB.prepare('SELECT slug, tags, stored, suggested FROM tag_checks').all()).results || []; }
+  catch (e) { if (!isMissingSchema(e)) throw e; }
+  const parse = v => { try { const a = JSON.parse(v); return Array.isArray(a) ? a.map(String) : []; } catch { return []; } };
+  _tagChecks = new Map(rows.map(r => [r.slug, parse(r.tags)]));
+  _tagChecks.rows = rows.map(r => ({ slug: r.slug, tags: parse(r.tags), stored: parse(r.stored), suggested: parse(r.suggested) }));
+  _tagChecksAt = Date.now();
+  return _tagChecks;
+}
+/* A hard daily ceiling on Workers AI spending: $25 a UTC day (the owner's
+   number), the same day Cloudflare's allowance resets on. Workers Paid has
+   no cap of its own: past the free 10,000 neurons it simply bills. Every
+   call's real token use is priced from AI_PRICES (autotag.js) and added to a
+   counter in rate_limits, in millionths of a dollar. Once the day's spend
+   reaches the ceiling, the suggester gives the wording rules alone. If the
+   counter cannot be read the AI is refused, never allowed: this one guards
+   money, so it fails closed. A burst of calls already in flight when the
+   ceiling is reached can pass it by a few of them, a fraction of a cent. */
+const AI_DAILY_DOLLARS = 25;
+const AI_MICRO = 1e6;
+const aiDayKey = () => 'ai:spend:' + new Date().toISOString().slice(0, 10);
+async function aiSpentToday(env) {
+  const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=?').bind(aiDayKey()).first();
+  return row ? (Number(row.n) || 0) / AI_MICRO : 0;
+}
+async function aiCanSpend(env) {
+  try { await ensureRateTable(env); return (await aiSpentToday(env)) < AI_DAILY_DOLLARS; }
+  catch (e) { console.error('[ai-budget] counter unavailable, refusing the AI:', (e && e.message) || e); return false; }
+}
+async function aiCharge(env, model, usage) {
+  const [pin, pout] = aiPrice(model);
+  const dollars = ((Number(usage.prompt_tokens) || 0) * pin + (Number(usage.completion_tokens) || 0) * pout) / 1e6;
+  const micro = Math.max(1, Math.ceil(dollars * AI_MICRO));
+  try {
+    await env.DB.prepare(
+      `INSERT INTO rate_limits (key, n, expires) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET n = rate_limits.n + excluded.n`
+    ).bind(aiDayKey(), micro, Math.floor(Date.now() / 1000) + 2 * 86400).run();
+  } catch (e) { console.error('[ai-budget] could not record spend:', (e && e.message) || e); }
+}
+// What one call could cost at most: a 4,000-token prompt and the full reply.
+const aiCallCeiling = model => model === 'phrases' ? 0 : (4000 * aiPrice(model)[0] + aiMaxTokens(model) * aiPrice(model)[1]) / 1e6;
+// suggestTags inside the ceiling: over it, the wording rules alone.
+// opts.allowed: an aiCanSpend() already under way. opts.ctx: record the cost
+// after the answer has gone back, rather than in front of it.
+async function suggestWithinBudget(env, char, rows, model = AUTOTAG_MODEL, opts = {}) {
+  if (model === 'phrases' || !(await (opts.allowed || aiCanSpend(env)))) {
+    return { tags: await suggestTags(env, char, rows, 'phrases'), capped: model !== 'phrases' };
+  }
+  const charges = [];
+  try {
+    return { tags: await suggestTags(env, char, rows, model, (m, u) => charges.push(aiCharge(env, m, u))), capped: false };
+  } finally {
+    if (opts.ctx) opts.ctx.waitUntil(Promise.all(charges)); else await Promise.all(charges);
+  }
+}
+// The grid feed parsed once per isolate per version of it, not once a press.
+let _gridParsed = { body: null, rows: null };
+function gridRows(body) {
+  if (_gridParsed.body !== body) _gridParsed = { body, rows: JSON.parse(body) };
+  return _gridParsed.rows;
+}
+
+/* What writers did with "Suggest tags": one row per save that followed a
+   press. `suggested` is everything the suggester said, `before` what was
+   ticked before the first press, `saved` what the page was saved with, so
+   kept / removed / added by hand can all be counted. */
+let _tagFeedbackReady = false;
+async function ensureTagFeedbackTable(env) {
+  if (_tagFeedbackReady) return;
+  if (await schemaHas(env, { tables: { tag_feedback: [] } })) { _tagFeedbackReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS tag_feedback (
+       id        INTEGER PRIMARY KEY AUTOINCREMENT,
+       slug      TEXT NOT NULL,
+       user_id   INTEGER,
+       suggested TEXT NOT NULL,
+       before    TEXT NOT NULL,
+       saved     TEXT NOT NULL,
+       ts        TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _tagFeedbackReady = true;
+}
+async function recordTagFeedback(env, sess, slug, log, saved) {
+  const suggested = tagList(log && log.suggested);
+  if (!suggested.length) return;
+  await ensureTagFeedbackTable(env);
+  await env.DB.prepare('INSERT INTO tag_feedback (slug, user_id, suggested, before, saved) VALUES (?,?,?,?,?)')
+    .bind(String(slug), sess.userId, JSON.stringify(suggested), JSON.stringify(tagList(log.before)), JSON.stringify(tagList(saved))).run();
+}
+
+// Any list of tag names, reduced to the canonical spelling of known tags.
+const KNOWN_TAG_BY_LOWER = new Map(Tags.KNOWN_TAGS.map(t => [t.toLowerCase(), t]));
+const tagList = v => [...new Set((Array.isArray(v) ? v : []).map(t => KNOWN_TAG_BY_LOWER.get(String(t).trim().toLowerCase())).filter(Boolean))];
+
 /* The page a favorite names, resolved the way every other route resolves that
    type: a character by identity or address (resolveCharacterPath), a script by
    slug, a collection by PK slug or kebab id (findCollectionRow). Returns
    {slug, key, name, status} — `slug` is what the table stores and `key` is
    what a URL wants (a collection's id) — or null. */
-async function favoriteTarget(env, type, key) {
+async function favoriteTarget(env, type, key, origin) {
   key = String(key || '').trim();
   if (!FAVORITE_TYPES.includes(type) || !key || key.length > 180) return null;
+  // An official character ('off-{id}', listed on All Characters) is saved by
+  // its roster slug; there is no row, and it is always public.
+  if (type === 'character' && key.startsWith('off-')) {
+    const r = (await loadOfficialRoles(env, origin)).find(x => x.slug === key);
+    return r ? { slug: r.slug, key: r.slug, name: r.name, status: 'published' } : null;
+  }
   if (type === 'character') {
     const hit = await resolveCharacterPath(env, key);
     if (!hit) return null;
@@ -2297,7 +2580,7 @@ async function favoriteTarget(env, type, key) {
    does) but is reported with its status — 'deleted' for a page that was
    deleted or no longer exists at all, named only by the key that was saved.
    Every row is listed, or a bookmark nobody can see could never be removed. */
-async function favoritesPayload(env, userId, expand) {
+async function favoritesPayload(env, userId, expand, origin) {
   await ensureFavoritesTable(env);
   const { results } = await env.DB.prepare(
     'SELECT entity_type, slug, ts FROM favorites WHERE user_id=? ORDER BY ts DESC'
@@ -2333,10 +2616,13 @@ async function favoritesPayload(env, userId, expand) {
   const savedAt = {};
   for (const r of rows) savedAt[r.entity_type + ':' + r.slug] = r.ts;
   if (lists.characters.length) await ensureUrlSlugColumn(env);
-  const [chars, scripts] = await Promise.all([
-    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%)", lists.characters),
-    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%)", lists.scripts)
+  const ownSlugs = lists.characters.filter(s => !s.startsWith('off-'));
+  const [chars, scripts, officials] = await Promise.all([
+    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%)", ownSlugs),
+    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%)", lists.scripts),
+    ownSlugs.length < lists.characters.length || lists.scripts.length ? loadOfficialRoles(env, origin) : []
   ]);
+  const officialBySlug = new Map(officials.map(r => [r.slug, r]));
   const bySlug = list => Object.fromEntries(list.map(r => [r.slug, r]));
   const charMap = bySlug(chars), scriptMap = bySlug(scripts), collMap = bySlug(colls);
 
@@ -2352,6 +2638,12 @@ async function favoritesPayload(env, userId, expand) {
     return true;
   };
   for (const slug of lists.characters) {
+    const o = officialBySlug.get(slug);
+    if (o) {
+      items.characters.push({ slug, key: slug, page: o.page, official: true, name: o.name, team: o.team,
+        status: 'published', savedAt: savedAt['character:' + slug] });
+      continue;
+    }
     const r = charMap[slug]; if (gone('characters', 'character', slug, r)) continue;
     items.characters.push({ slug, key: slug, page: charAddress(r), name: r.name || slug, team: r.team || '',
       status: r.status, savedAt: savedAt['character:' + slug] });
@@ -2359,7 +2651,12 @@ async function favoritesPayload(env, userId, expand) {
   for (const slug of lists.scripts) {
     const r = scriptMap[slug]; if (gone('scripts', 'script', slug, r)) continue;
     const roster = await rosterCharacterSlugs(env, 'script', r, cache);
-    if (r.status === 'published') roster.forEach(s => via.add(s));
+    if (r.status === 'published') {
+      roster.forEach(s => via.add(s));
+      // The roster above is this wiki's pages; the script's official
+      // characters are listed on All Characters too, so they count here.
+      (parseData(r).characters || []).forEach(s => { if (officialBySlug.has(s)) via.add(s); });
+    }
     items.scripts.push({ slug, key: slug, name: r.name || slug, status: r.status, count: roster.length,
       savedAt: savedAt['script:' + slug] });
   }
@@ -3848,8 +4145,13 @@ async function sanitizeEditors(env, v, ownerId) {
   for (const raw of v.slice(0, PAGE_EDITORS_MAX * 2)) {
     const name = typeof raw === 'string' ? raw
       : (raw && typeof raw === 'object' ? String(raw.username || '') : '');
-    if (!name.trim()) continue;
-    const u = await selectUserByName(env, 'id, username', name).catch(() => null);
+    // A pair is resolved by id alone: a renamed editor stays on the list, and
+    // a deleted one drops off instead of passing to the next owner of the name.
+    const id = raw && typeof raw === 'object' ? parseInt(raw.id, 10) : NaN;
+    if (!name.trim() && !(id > 0)) continue;
+    const u = id > 0
+      ? await env.DB.prepare('SELECT id, username FROM users WHERE id=?').bind(id).first().catch(() => null)
+      : await selectUserByName(env, 'id, username', name).catch(() => null);
     if (!u) { if (unknown.length < PAGE_EDITORS_MAX) unknown.push(normUsername(name)); continue; }
     // The owner is not a guest on their own page, and an account listed twice
     // (once by name, once by pair) is one editor.
@@ -6108,7 +6410,7 @@ const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
   'related', 'tagsBy', 'creditUnlinked', 'artScale', 'hideSnapshot', 'hideCopyLink',
-  'almanacAlt'
+  'almanacAlt', 'iconByLabel'
 ]);
 
 // ---- owner_id -> username ----
@@ -6203,6 +6505,19 @@ function rowSeconds(ts) {
 // `card` drops character almanac fields; `grid` trims further for browsing.
 // Script/collection `browse` projections omit editor/export-only fields.
 // Full feeds and the character card feed keep the complete export schema.
+// A draft going live counts as newly added. "Recently added" everywhere is
+// feed order, and the feeds read rows in rowid order (ORDER BY rowid below),
+// so a page drafted a week before it was published used to land a week deep.
+// Move the row to the end and restamp created_at (the date the search's
+// "Newest first" and /articles read). Never fails the save it rides on.
+// ponytail: a page unpublished and republished jumps too; keep a
+// first-published mark if that ever matters.
+async function markNewlyLive(env, table, slug) {
+  await env.DB.prepare(
+    `UPDATE ${table} SET rowid=(SELECT MAX(rowid)+1 FROM ${table}), created_at=datetime('now') WHERE slug=?`
+  ).bind(slug).run().catch(e => console.error('markNewlyLive ' + table + ' ' + slug, e));
+}
+
 async function buildPublicJSON(env, table, opts = {}) {
   const drafts = !!opts.includeDrafts;
   const chars = table === 'characters';
@@ -6229,7 +6544,7 @@ async function buildPublicJSON(env, table, opts = {}) {
   // published-only filter and expose drafts in a public, cached response.
   // The url_slug column is added (and the same query retried) only when the
   // read says it is missing — not by an ALTER in front of every build.
-  const readRows = () => env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all();
+  const readRows = () => env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where} ORDER BY rowid`).all();
   // The collection sets the two passes at the end read come from one shared,
   // memoised query: start it beside the character read, not after it.
   if (chars) { curataCollections(env).catch(() => {}); includeCollections(env).catch(() => {}); }
@@ -6593,7 +6908,8 @@ async function buildMarkRegistry(env, flags = {}) {
     `SELECT username, display_name, lower(discord_username) AS dh, lower(username) AS uh FROM users
       WHERE COALESCE(banned, 0) = 0 AND (lower(discord_username) IN (${ph}) OR lower(username) IN (${ph}))`
   ).bind(...handles, ...handles).all().then(r => r.results || [], e => { if (!isMissingSchema(e)) flags.degraded = true; return []; });
-  const [rows, users] = await Promise.all([marks, linked]);
+  const banned = bannedMarks(env).then(l => new Set(l.map(e => e.k)), () => { flags.degraded = true; return new Set(); });
+  const [rows, users, bannedKeys] = await Promise.all([marks, linked, banned]);
   const byHandle = new Map();
   for (const u of users) if (u.dh) byHandle.set(u.dh, u);
   // A wiki username beats somebody else's Discord handle of the same spelling.
@@ -6603,6 +6919,7 @@ async function buildMarkRegistry(env, flags = {}) {
   const covered = new Set();
   const marked = new Set();
   for (const r of rows) {
+    if (bannedKeys.has(r.glyph_key)) continue;
     marked.add(usernameKey(r.username));
     let names = [];
     try { names = JSON.parse(r.names || '[]'); } catch { names = []; }
@@ -6618,7 +6935,7 @@ async function buildMarkRegistry(env, flags = {}) {
   for (const name of Object.keys(Creators.CREATOR_SYMBOLS)) {
     const g = Creators.CREATOR_SYMBOLS[name];
     const k = Creators.markKey(g);
-    if (taken.has(k) || covered.has(normCreator(name))) continue;
+    if (taken.has(k) || bannedKeys.has(k) || covered.has(normCreator(name))) continue;
     const h = Creators.LEGACY_ACCOUNTS[name];
     const u = h && byHandle.get(h.toLowerCase());
     // An account that chose a mark of its own released this one.
@@ -6630,6 +6947,20 @@ async function buildMarkRegistry(env, flags = {}) {
   }
   return out;
 }
+// Glyphs nobody may hold as a mark: one settings row, [{g, k, at}],
+// matched on markKey() so ♣ and ♣︎ are one ban. Banning takes the glyph off
+// whoever holds it (POST /api/admin/banned-marks), the registry skips it
+// (legacy list included), and both mark saves refuse it. Deliberately
+// uncaught: a failed read must reject, never read as "nothing banned".
+const BANNED_MARKS_KEY = 'banned_marks';
+async function bannedMarks(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(BANNED_MARKS_KEY).first();
+  let list;
+  try { list = JSON.parse((r && r.value) || '[]'); } catch { list = []; }
+  return (Array.isArray(list) ? list : []).filter(e => e && typeof e.k === 'string' && e.k);
+}
+const BANNED_MARK_ERROR = 'That symbol is not allowed as a mark. Pick another.';
+
 // One account's mark, written or replaced. Throws on the UNIQUE glyph_key
 // when another account holds it; callers turn that into a 409.
 function upsertMark(env, userId, glyph, key, show, names) {
@@ -6931,9 +7262,11 @@ const _summaryPending = new Map();
 function titleCaseTag(s) {
   return String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, m => m.toUpperCase());
 }
+// The official characters' tags count too: they are listed on the tag pages
+// (assets/official-tags.js; a deploy rolls the summary through BUILD_ID).
 function tagCounts(chars) {
   const tags = {};
-  for (const c of chars) {
+  for (const c of [...chars, ...Object.values(OFFICIAL_TAGS).map(tags => ({ tags }))]) {
     for (const raw of String((c && c.tags) || '').split(',')) {
       if (!raw.trim()) continue;
       const key = titleCaseTag(raw);
@@ -6974,16 +7307,47 @@ const SUMMARIES = {
       ]);
       return collectionTiles(JSON.parse(chars), JSON.parse(colls));
     }
+  },
+  // /recent: the feeds are in the order pages went live (markNewlyLive), so
+  // the newest is the last row. Drawn here with the homepage's own tiles.
+  // A collection with no characters yet is skipped, as on the homepage.
+  'recent': {
+    deps: ['character', 'collection', 'script'],
+    async build(env, ctx) {
+      const [chars, colls, scripts] = (await Promise.all([
+        cachedFeedBody(env, ctx, 'characters', 'grid'),
+        cachedFeedBody(env, ctx, 'collections', 'browse'),
+        cachedFeedBody(env, ctx, 'scripts', 'browse')
+      ])).map(b => JSON.parse(b));
+      const coll = collectionTiles(chars, colls).collections.pop(), sc = scripts[scripts.length - 1];
+      return {
+        characters: chars.slice(-RECENT_PAGE_CHARACTERS).reverse().map(recentCardHTML).join(''),
+        script: sc ? scriptTileHTML({ ...sc, count: (sc.characters || []).length }) : '',
+        collection: coll ? collectionTileHTML(coll) : ''
+      };
+    }
   }
 };
+const RECENT_PAGE_CHARACTERS = 48;
+const RECENT_PAGE_MEMBERS = 12;
+// New accounts bump no content version, so they are read live: one indexed
+// query, newest id first. Suspended accounts are left out, as in the search.
+async function recentMembersHTML(env) {
+  await ensureBanColumn(env);
+  const { results } = await env.DB.prepare(
+    `SELECT username, display_name, avatar_url, created_at FROM users
+     WHERE COALESCE(banned,0)=0 AND username IS NOT NULL ORDER BY id DESC LIMIT ${RECENT_PAGE_MEMBERS}`
+  ).all();
+  return (results || []).map(memberTileHTML).join('');
+}
 async function cachedSummary(env, ctx, request, name) {
   const spec = SUMMARIES[name];
   const version = await contentVersion(env, spec.deps);
-  const etag = `W/"${name}-v${version}-f${SUMMARY_FORMAT_V}"`;
+  const etag = `W/"${name}-v${version}-f${SUMMARY_FORMAT_V}-${BUILD_ID}"`;
   if (request && request.headers.get('If-None-Match') === etag) return { etag };
   const memo = _summaryCache.get(name);
   if (memo && memo.version === version) return { etag, body: memo.body };
-  const key = `https://feed.internal/summary/${name}.json?v=${version}&f=${SUMMARY_FORMAT_V}`;
+  const key = `https://feed.internal/summary/${name}.json?v=${version}&f=${SUMMARY_FORMAT_V}&b=${BUILD_ID}`;
   if (!_summaryPending.has(key)) {
     _summaryPending.set(key, (async () => {
       let body = await edgeCacheGet(key);
@@ -9220,7 +9584,7 @@ async function ssrRoute(env, ctx, request, url, build, prefetch) {
 // What worker/list-pages.js borrows: the same version keys, feed bodies and
 // edge cache as the SSR pages, and the same no-store HTML response.
 const LIST_HELPERS = {
-  contentVersion, cachedFeedBody, edgeCacheGet, edgeCachePut,
+  contentVersion, cachedFeedBody, edgeCacheGet, edgeCachePut, officialRoles: loadOfficialRoles,
   htmlPage: html => htmlPage(html), cacheControl: SSR_EDGE_CACHE_CONTROL, renderV: SSR_RENDER_V
 };
 
@@ -9301,6 +9665,16 @@ const app = {
       return summary.body === undefined
         ? new Response(null, { status: 304, headers })
         : new Response(summary.body, { headers });
+    }
+
+    // The /recent page: newest characters, script and collection (cached on
+    // the content versions) and the newest members (live).
+    if (method === 'GET' && path === '/api/recent') {
+      const [content, members] = await Promise.all([
+        cachedSummary(env, ctx, null, 'recent'),
+        recentMembersHTML(env).catch(e => { console.error('recent members', e); return null; })
+      ]);
+      return jsonResponse({ ...JSON.parse(content.body), members });
     }
 
     if (method === 'GET' && path === '/api/did-you-mean') {
@@ -10101,7 +10475,19 @@ const app = {
     // One page, two keys. profile.html renders both: an account profile when
     // the name belongs to somebody, and a plain creator page when it does not
     // (half the wiki was bulk-imported under names with no account behind them).
-    if (method === 'GET' && path.startsWith('/u/')) return serveProfileShell(env, request, url);
+    if (method === 'GET' && path.startsWith('/u/')) {
+      // A renamed account's old address forwards to the new one; a live
+      // account of that name always wins (see parkedFor).
+      let name = '';
+      try { name = decodeURIComponent(path.slice(3).replace(/\/+$/, '')); } catch { /* bad escape */ }
+      if (name && !(await selectUserByName(env, 'id', name))) {
+        const id = await parkedFor(env, name);
+        const u = id != null ? await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(id).first().catch(() => null) : null;
+        // 302, not 301: the owner may take the old name back.
+        if (u) return redirectResponse(url.origin + '/u/' + encodeURIComponent(u.username) + url.search, null, { 'Cache-Control': 'no-store' });
+      }
+      return serveProfileShell(env, request, url);
+    }
 
     // /author?a=Name — the link every character info box, credits list and the
     // homepage creator strip already points at. When the name belongs to an
@@ -10537,10 +10923,11 @@ const app = {
     if (method === 'GET' && path === '/api/account/mark') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
-      const [me, reg, creators] = await Promise.all([
+      const [me, reg, creators, banned] = await Promise.all([
         env.DB.prepare('SELECT username, display_name FROM users WHERE id=?').bind(sess.userId).first(),
         cachedMarkRegistry(env, ctx),
-        creatorsListParsed(env, ctx).catch(() => null)
+        creatorsListParsed(env, ctx).catch(() => null),
+        bannedMarks(env).catch(() => [])
       ]);
       if (!me) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
       const names = creators ? markNamesFor(creators, me.username, me.display_name) : [];
@@ -10548,7 +10935,10 @@ const app = {
       const legacy = reg.list
         .filter(m => m.legacy && (m.u ? usernameKey(m.u) === usernameKey(me.username) : m.n.some(n => names.includes(normCreator(n)))))
         .map(m => ({ g: m.g, k: m.k, name: m.d }));
-      return jsonResponse({ mark, legacy, names });
+      // Banned glyphs, so the editor says so instead of "Available" (the
+      // registry skips them, so they read as nobody's). The save refuses them
+      // regardless.
+      return jsonResponse({ mark, legacy, names, banned: banned.map(e => e.k) });
     }
 
     // Every creator mark: what the browser-side renderers draw beside a name
@@ -10637,9 +11027,9 @@ const app = {
         pub('characters'), pub('scripts'), pubCollections(), pubNews(), pubArticles(),
         customUrls('script'), customUrls('wikipage')
       ]);
-      const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
-        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'fancyscripts', 'mass-upload',
-        'bloodstar', 'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
+      const staticPages = ['', 'recent', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
+        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'fancyscripts', 'mass-upload', 'bloodstar',
+        'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -11670,8 +12060,9 @@ const app = {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       await ensureProfileColumn(env);
+      await ensureRenameColumn(env);
       const batch = await env.DB.batch([
-        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login FROM users WHERE id=?`).bind(sess.userId),
+        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login, username_changed_at FROM users WHERE id=?`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
@@ -11706,6 +12097,9 @@ const app = {
           discordUsername: u.discord_username || null,
           avatarUrl: u.avatar_url || null,
           hasPassword: !!u.password_hash,
+          // When the username may next change (null: now).
+          usernameNextChange: renameAllowedAt(u.username_changed_at) > Date.now()
+            ? new Date(renameAllowedAt(u.username_changed_at)).toISOString() : null,
           createdAt: u.created_at,
           lastLogin: u.last_login,
           links: parseProfileExtra(u).links,
@@ -11936,7 +12330,7 @@ const app = {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       const expand = url.searchParams.get('expand') === '1';
-      return jsonResponse(await favoritesPayload(env, sess.userId, expand));
+      return jsonResponse(await favoritesPayload(env, sess.userId, expand, url.origin));
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
@@ -12011,6 +12405,10 @@ const app = {
       // character, rather than implying it has checked it.
       out.note = 'Discord Developer Portal -> your application -> OAuth2 -> Redirects must contain this exact URL: ' + redirectUri;
       return jsonResponse(out);
+    }
+
+    if (method === 'GET' && path === '/api/admin/banned-marks') {
+      return jsonResponse({ banned: await bannedMarks(env) });
     }
 
     // ---------- ADMIN DASHBOARD (read, admin only) ----------
@@ -12505,6 +12903,45 @@ const app = {
     // the compensating control for that decision: one screen showing who is
     // new and how much they have already published, so a spam run is visible
     // as a row rather than as a hundred scattered pages.
+    // ---------- ADMIN: deleted accounts' backups ----------
+    // No ?key: every backup, newest first. ?key=: one backup, with each page
+    // in it and what the wiki has under that slug now.
+    if (method === 'GET' && path === '/api/admin/account-backups') {
+      if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+      const key = url.searchParams.get('key');
+      if (!key) {
+        const out = [];
+        let cursor;
+        do {
+          const res = await env.ART.list({ prefix: ACCOUNT_BACKUP_PREFIX, cursor, include: ['customMetadata'] });
+          for (const o of res.objects || []) {
+            const m = o.customMetadata || {};
+            out.push({ key: o.key, username: m.username || null, pages: Number(m.pages) || 0,
+                       keepPages: m.keepPages === '1', at: Number((o.key.match(/-(\d+)\.json$/) || [])[1]) || null });
+          }
+          cursor = res.truncated ? res.cursor : null;
+        } while (cursor);
+        out.sort((a, b) => (b.at || 0) - (a.at || 0));
+        return jsonResponse({ backups: out });
+      }
+      const bk = await readAccountBackup(env, key);
+      if (!bk) return jsonResponse({ error: 'No such backup.' }, { status: 404 });
+      const items = [];
+      for (const [type, list] of ACCOUNT_BACKUP_TYPES.map(t => [t, bk[ACCOUNT_BACKUP_FIELD[t]] || []])) {
+        for (const r of list) {
+          const now = await backupTargetRow(env, type, r.slug);
+          items.push({ type, slug: r.slug, name: r.name || r.display_name || r.title || r.slug,
+                       status: r.status, now: now ? now.status : null });
+        }
+      }
+      const u = bk.user || {};
+      return jsonResponse({
+        key, at: bk.at, keepPages: !!bk.keepPages,
+        user: { id: u.id, username: u.username, displayName: u.display_name || null, email: u.email || null, createdAt: u.created_at || null },
+        items, comments: (bk.comments || []).length
+      });
+    }
+
     if (method === 'GET' && path === '/api/admin/new-users') {
       await ensureBanColumn(env);
       const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days'), 10) || 7));
@@ -13247,6 +13684,174 @@ const app = {
         return jsonResponse({ ok: true });
       }
 
+      // ---- change your username: {username}, once every RENAME_EVERY_DAYS ----
+      // The old /u/ address forwards and stays parked for this account
+      // (parkedFor). Everything else is keyed on the account id.
+      if (path === '/api/account/username') {
+        if (await rateLimited(env, request, 'rename', 10, 3600, { sess })) {
+          return tooManyResponse('Too many tries. Wait a while and try again.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const username = normUsername(b.username);
+        const bad = usernameProblem(username);
+        if (bad) return jsonResponse({ error: bad }, { status: 400 });
+        await ensureUsernameKey(env);
+        await ensureRenameColumn(env);
+        await ensureRedirectsTable(env);
+        const u = await env.DB.prepare('SELECT id, username, username_changed_at FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        if (u.username === username) return jsonResponse({ ok: true, username, message: 'That is already your username.' });
+        const next = renameAllowedAt(u.username_changed_at);
+        if (next && Date.now() < next) {
+          return jsonResponse({
+            error: 'You can change your username once every ' + RENAME_EVERY_DAYS + ' days. You can change it again on ' +
+              new Date(next).toISOString().slice(0, 10) + '.',
+            nextAt: new Date(next).toISOString()
+          }, { status: 429 });
+        }
+        const TAKEN = 'That username is taken or too close to an existing one. Try adding something to it.';
+        if (await usernameTaken(env, username, sess.userId)) return jsonResponse({ error: TAKEN }, { status: 409 });
+        // A legacy mark is linked by username (Creators.LEGACY_ACCOUNTS), so a
+        // holder with no mark of their own claims it now or loses it.
+        let legacy = null;
+        try {
+          const reg = await cachedMarkRegistry(env, ctx);
+          if (!reg.degraded) legacy = reg.list.find(m => m.legacy && m.u && usernameKey(m.u) === usernameKey(u.username)) || null;
+        } catch { /* no registry: the nightly pass and the account page still work */ }
+        try {
+          await env.DB.prepare("UPDATE users SET username=?, username_key=?, username_changed_at=datetime('now') WHERE id=?")
+            .bind(username, usernameKey(username), sess.userId).run();
+        } catch (e) {
+          if (!/UNIQUE/i.test(String((e && e.message) || e))) throw e;
+          return jsonResponse({ error: TAKEN }, { status: 409 });
+        }
+        await env.DB.prepare("DELETE FROM redirects WHERE entity_type='user' AND from_slug=?")
+          .bind(usernameKey(username)).run().catch(() => {});
+        if (usernameKey(u.username) !== usernameKey(username)) {
+          await env.DB.prepare(
+            `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('user', ?, ?)
+             ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug, created_at=datetime('now')`
+          ).bind(usernameKey(u.username), String(sess.userId)).run().catch(() => {});
+        }
+        // Admin links from a creator name to this account store the handle.
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%' AND value <> ''"
+          ).all();
+          for (const r of results || []) {
+            if (usernameKey(r.value) !== usernameKey(u.username)) continue;
+            await env.DB.prepare('UPDATE settings SET value=? WHERE key=?').bind(username, r.key).run();
+          }
+        } catch { /* no aliases */ }
+        if (legacy) {
+          await ensureMarksTable(env);
+          const own = await env.DB.prepare('SELECT 1 FROM creator_marks WHERE user_id=?').bind(sess.userId).first().catch(() => null);
+          if (!own) await upsertMark(env, sess.userId, legacy.g, legacy.k, 1, legacy.n || []).catch(() => {});
+        }
+        await refreshMarkNames(env, sess.userId).catch(() => {});
+        // Marks, creator lists and cached profiles all carry the handle.
+        await bumpContentVersion(env, 'all');
+        await logActivity(env, sess, 'rename-user', 'user', null, u.username + ' -> ' + username);
+        return jsonResponse({ ok: true, username });
+      }
+
+      // ---- delete your own account: {password | confirm, keepPages} ----
+      // Backed up to R2 first (accountBackup); if that fails nothing is
+      // deleted. keepPages leaves every page and comment up with no owner;
+      // otherwise they are soft-deleted (wiki pages, which have no trash, are
+      // removed). Admins restore from Dashboard -> Deleted accounts.
+      if (path === '/api/account/delete') {
+        if (await rateLimited(env, request, 'acctdelete', 5, 3600, { sess })) {
+          return tooManyResponse('Too many tries. Wait a while and try again.', 3600);
+        }
+        if (!env.ART) return jsonResponse({ error: 'Account deletion is unavailable right now. Try again later.' }, { status: 503 });
+        const b = await request.json().catch(() => ({}));
+        const u = await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(sess.userId).first();
+        if (u.is_admin) {
+          return jsonResponse({ error: 'Admins cannot delete their account. Ask another admin to remove your admin role first.' }, { status: 400 });
+        }
+        if (u.password_hash) {
+          if (!(await verifyPassword(env, String(b.password || ''), u.password_hash))) {
+            return jsonResponse({ error: 'Your password is incorrect.' }, { status: 403 });
+          }
+        } else if (usernameKey(b.confirm) !== usernameKey(u.username)) {
+          return jsonResponse({ error: 'Type your username to confirm.' }, { status: 403 });
+        }
+        const keepPages = !!b.keepPages;
+        let backupKey;
+        try { backupKey = await accountBackup(env, u, keepPages); }
+        catch (e) {
+          console.error('[account delete] backup failed:', (e && e.message) || e);
+          return jsonResponse({ error: 'Could not back up your account, so nothing was deleted. Try again later.' }, { status: 503 });
+        }
+        const id = u.id;
+        const run = (sql, ...binds) => env.DB.prepare(sql).bind(...binds).run().catch(e => { if (!isMissingSchema(e)) throw e; });
+        await logActivity(env, sess, 'delete-account', 'user', null,
+          u.username + (keepPages ? ' (kept their pages)' : ' (deleted their pages)'));
+        await revokeSessions(env, id);
+        const at = new Date().toISOString();
+        for (const t of ['characters', 'scripts', 'collections']) {
+          if (!keepPages) {
+            await run(
+              `UPDATE ${t} SET status='deleted', updated_at=datetime('now'),
+                 data=CASE WHEN json_valid(data)
+                   THEN json_set(data, '$._deleted', json_object('at', ?, 'by', ?, 'from', status, 'account', 1))
+                   ELSE data END
+               WHERE owner_id=? AND status IS NOT 'deleted'`, at, u.username, id);
+          }
+          await run(`UPDATE ${t} SET owner_id=NULL WHERE owner_id=?`, id);
+        }
+        if (keepPages) {
+          await run('UPDATE pages SET owner_id=NULL WHERE owner_id=?', id);
+        } else {
+          let wiki = [];
+          try { wiki = (await env.DB.prepare('SELECT slug FROM pages WHERE owner_id=?').bind(id).all()).results || []; }
+          catch (e) { if (!isMissingSchema(e)) throw e; }
+          // ponytail: a few queries per wiki page; set-based deletes if an
+          // account with hundreds of pages ever hits the subrequest limit.
+          for (const p of wiki) {
+            await run('DELETE FROM pages WHERE slug=?', p.slug);
+            await run("DELETE FROM redirects WHERE entity_type='wikipage' AND to_slug=?", p.slug);
+            await dropPageRefs(env, 'wikipage', p.slug);
+            await unfeatureArticle(env, p.slug);
+          }
+          // Replies under their comments go down with them ('hidden', so
+          // restoring a comment brings its replies back), then their own.
+          await run(`UPDATE comments SET status='hidden' WHERE status='visible'
+                      AND parent_id IN (SELECT id FROM comments WHERE user_id=? AND status='visible')`, id);
+          await run("UPDATE comments SET status='removed' WHERE user_id=? AND status='visible'", id);
+        }
+        await run('DELETE FROM favorites WHERE user_id=?', id);
+        await run('DELETE FROM creator_marks WHERE user_id=?', id);
+        await run('DELETE FROM dm_blocks WHERE user_id=? OR blocked_id=?', id, id);
+        // An admin link from a creator name to this handle would hand those
+        // pages to whoever registers the name next.
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%' AND value <> ''").all();
+          for (const r of results || []) {
+            if (usernameKey(r.value) === usernameKey(u.username)) await run('DELETE FROM settings WHERE key=?', r.key);
+          }
+        } catch { /* no aliases */ }
+        // The handle stays parked, like its old ones, so nobody can take it
+        // and every link to this creator.
+        await ensureRedirectsTable(env);
+        await run(`INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('user', ?, ?)
+                   ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`, usernameKey(u.username), String(id));
+        // activity_log.user_id is a foreign key; the log keeps the name as text.
+        await run('UPDATE activity_log SET user_id=NULL WHERE user_id=?', id);
+        await env.DB.prepare('DELETE FROM users WHERE id=?').bind(id).run();
+        await bumpContentVersion(env, 'all');
+        if (u.email) {
+          ctx.waitUntil(sendEmail(env, u.email, 'Your account was deleted — ' + APP_NAME, emailShell('Your account was deleted',
+            `<p>Hi ${escapeHtml(u.display_name || u.username)},</p>
+             <p>Your account <b>@${escapeHtml(u.username)}</b> was deleted at your request.` +
+            (keepPages ? ' Your pages stay on the wiki without an owner.' : ' Your pages were taken down.') +
+            ` If this was a mistake, contact the admins on Discord: they keep a backup and can restore your pages.</p>`)).catch(() => {}));
+        }
+        return jsonResponse({ ok: true, backup: backupKey }, { 'Set-Cookie': clearCookie() });
+      }
+
       // ---- the creator page's look: {theme} (null clears it) ----
       // Same theme kit as scripts and collections (PageRender.sanitizeTheme),
       // stored in profile_json beside the links and pins. Its background
@@ -13360,10 +13965,11 @@ const app = {
         // Free unless some OTHER owner holds it: an account mark, or a legacy
         // glyph whose name is not this account's. A registry that could not
         // be read is no answer, so this fails closed.
-        const [reg, creators] = await Promise.all([
-          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null)
+        const [reg, creators, banned] = await Promise.all([
+          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null), bannedMarks(env).catch(() => null)
         ]);
-        if (reg.degraded || !creators) return jsonResponse({ error: 'Could not check whether that mark is free. Please try again.' }, { status: 503 });
+        if (reg.degraded || !creators || !banned) return jsonResponse({ error: 'Could not check whether that mark is free. Please try again.' }, { status: 503 });
+        if (banned.some(e => e.k === key)) return jsonResponse({ error: BANNED_MARK_ERROR }, { status: 400 });
         const names = markNamesFor(creators, me.username, me.display_name);
         const holder = reg.list.find(m => m.k === key);
         const mine = holder && (holder.u
@@ -14109,6 +14715,10 @@ const app = {
         let c = await request.json();
         if (!c || typeof c !== 'object' || !c.slug || !c.team)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        // What "Suggest tags" offered before this save (tag-suggest.js). Never
+        // stored on the page: recorded beside it once the save has gone through.
+        const tagLog = c._tagSuggest;
+        delete c._tagSuggest;
         /* A DRAFT may be saved with no name, no ability and no icon: somebody
            half-way through an idea should be able to put it away and come back
            to it. Publishing still needs all three (Classify.missingForPublish
@@ -14408,10 +15018,12 @@ const app = {
           return jsonResponse({ error: 'Another page has just taken that name. Pick a different name.' }, { status: 409 });
         }
         // The address this page's name and set now ask for (refreshCharAddress).
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'characters', c.slug);
         // Never lose a save over an address.
         const { address, movedFrom } = await refreshCharAddress(
           env, c.slug, c, existing ? existing.owner_id : sess.userId, existing);
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        if (tagLog) ctx.waitUntil(recordTagFeedback(env, sess, c.slug, tagLog, splitTags(c.tags)).catch(e => console.error('tag-feedback', e)));
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
             fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
@@ -14474,7 +15086,7 @@ const app = {
         }
         const b = await request.json().catch(() => null);
         if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
-        const target = await favoriteTarget(env, b.type, b.slug);
+        const target = await favoriteTarget(env, b.type, b.slug, url.origin);
         await ensureFavoritesTable(env);
         const on = b.on !== false && b.on !== 0 && b.on !== 'false';
         if (!target || target.status !== 'published') {
@@ -14501,6 +15113,41 @@ const app = {
             .bind(sess.userId, b.type, target.slug).run();
         }
         return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
+      }
+
+      /* ---------- TAG SUGGESTIONS (worker/autotag.js) ----------
+         The editors' "Suggest tags" button. Reads nothing private and writes
+         nothing: the answer goes back to the tag picker, where the person
+         decides. Counted per account because every call costs neurons. */
+      if (path === '/api/suggest-tags') {
+        const b = await request.json().catch(() => ({}));
+        const ability = String(b.ability || '').trim();
+        if (!ability) return jsonResponse({ error: 'Write the ability first: the suggestions are read off it.' }, { status: 400 });
+        const char = {
+          slug: String(b.slug || ''), name: String(b.name || ''), team: String(b.team || ''), ability
+        };
+        // quick: the wording rules alone, so the button can tick those at once
+        // while the model is still answering. No model, no feed read, no limit.
+        if (b.quick) return jsonResponse({ ok: true, tags: cueTags(char).sure });
+        // Everything before the model call goes out at once (the hourly
+        // limit, the examples, the answer key, the day's spend): one after
+        // another they were a visible part of the wait.
+        const limited = sess.isAdmin ? false : rateLimited(env, request, 'autotag', 40, 3600, { sess });
+        const feed = cachedFeedBody(env, ctx, 'characters', 'grid');
+        const checks = loadTagChecks(env).catch(() => null);
+        const allowed = aiCanSpend(env);
+        feed.catch(() => {});
+        if (await limited) {
+          return jsonResponse({ error: 'That is a lot of suggestions for one hour. Try again later.' }, { status: 429 });
+        }
+        try {
+          const rows = applyChecks(gridRows(await feed), await checks);
+          const { tags, capped } = await suggestWithinBudget(env, char, rows, AUTOTAG_MODEL, { allowed, ctx });
+          return jsonResponse({ ok: true, tags, capped });
+        } catch (e) {
+          if (!(e && e.public)) console.error('suggest-tags', e && e.stack || e);
+          return jsonResponse({ error: e && e.public ? e.message : 'No suggestions right now. Try again in a minute.' }, { status: 503 });
+        }
       }
 
       if (path === '/api/jinx') {
@@ -14708,6 +15355,7 @@ const app = {
         if (!existing && !(written && written.meta && written.meta.changes)) {
           return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
         }
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'collections', pkSlug);
         const urlDone = await commitCustomUrl(env, 'collection', pkSlug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
         if (existing && perm !== 'owner') {
@@ -14827,6 +15475,7 @@ const app = {
         if (!existing && !(written && written.meta && written.meta.changes)) {
           return jsonResponse({ error: 'A script with that name already exists.' }, { status: 409 });
         }
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'scripts', s.slug);
         const urlDone = await commitCustomUrl(env, 'script', s.slug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
         if (existing && perm !== 'owner') {
@@ -14977,6 +15626,7 @@ const app = {
         ).bind(slug, title, parent.type, parent.slug, page.author || null,
                existing ? existing.owner_id : (access === 'owner' ? sess.userId : parent.ownerId),
                JSON.stringify(page), status).run();
+        if (existing && existing.status === 'draft' && status === 'published') await markNewlyLive(env, 'pages', slug);
         const urlDone = await commitCustomUrl(env, 'wikipage', slug, urlChange);
         await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
         if (access !== 'owner') {
@@ -15040,6 +15690,7 @@ const app = {
           await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
             .bind(status, row.slug).run();
         }
+        if (row.status === 'draft' && status === 'published') await markNewlyLive(env, t.table, row.slug);
         await logActivity(env, sess, status === 'published' ? 'publish' : 'unpublish', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug, status });
       }
@@ -15210,10 +15861,11 @@ const app = {
         const bad = Creators.markProblem(glyph);
         if (bad) return jsonResponse({ error: bad }, { status: 400 });
         const key = Creators.markKey(glyph);
-        const [reg, creators] = await Promise.all([
-          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null)
+        const [reg, creators, banned] = await Promise.all([
+          cachedMarkRegistry(env, ctx), creatorsListParsed(env, ctx).catch(() => null), bannedMarks(env).catch(() => null)
         ]);
-        if (reg.degraded || !creators) return jsonResponse({ error: 'Could not check who holds that mark. Please try again.' }, { status: 503 });
+        if (reg.degraded || !creators || !banned) return jsonResponse({ error: 'Could not check who holds that mark. Please try again.' }, { status: 503 });
+        if (banned.some(e => e.k === key)) return jsonResponse({ error: 'That symbol is banned. Unban it first.' }, { status: 400 });
         const holder = reg.list.find(m => m.k === key);
         const other = holder && !(holder.u && usernameKey(holder.u) === usernameKey(u.username));
         if (other && !b.move) {
@@ -15239,6 +15891,39 @@ const app = {
         const from = other ? Creators.markOwner(holder) : (moved && moved.meta && moved.meta.changes ? 'a suspended account' : '');
         await logActivity(env, sess, 'admin-creator-mark', 'user', u.username, glyph + (from ? ' (from ' + from + ')' : ''));
         return jsonResponse({ ok: true, glyph, from: from || null, replaced: cur && cur.glyph !== glyph ? cur.glyph : null });
+      }
+
+      // An admin banning a mark: {glyph} bans it (and takes it off whoever
+      // holds it), {glyph, on: false} lifts the ban. The fresh list comes back.
+      if (path === '/api/admin/banned-marks') {
+        const b = await request.json().catch(() => ({}));
+        const glyph = String(b.glyph == null ? '' : b.glyph).normalize('NFC').trim();
+        const key = Creators.markKey(glyph);
+        if (!key || Array.from(key).length > 8) return jsonResponse({ error: 'Enter the symbol to ban.' }, { status: 400 });
+        const on = b.on !== false;
+        let list = await bannedMarks(env);
+        const had = list.some(e => e.k === key);
+        let takenFrom = [];
+        if (on) {
+          if (!had) list.unshift({ g: glyph, k: key, at: new Date().toISOString() });
+          await ensureMarksTable(env);
+          takenFrom = ((await env.DB.prepare(
+            'SELECT u.username FROM creator_marks m JOIN users u ON u.id = m.user_id WHERE m.glyph_key=?'
+          ).bind(key).all()).results || []).map(r => r.username);
+          await env.DB.prepare('DELETE FROM creator_marks WHERE glyph_key=?').bind(key).run();
+        } else {
+          list = list.filter(e => e.k !== key);
+        }
+        await env.DB.prepare(
+          `INSERT INTO settings (key,value) VALUES (?,?)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+        ).bind(BANNED_MARKS_KEY, JSON.stringify(list)).run();
+        if (on !== had || takenFrom.length) {
+          await bumpContentVersion(env, 'mark');
+          await logActivity(env, sess, on ? 'ban-mark' : 'unban-mark', 'user', takenFrom[0] || '',
+            glyph + (takenFrom.length ? ' (taken from @' + takenFrom.join(', @') + ')' : ''));
+        }
+        return jsonResponse({ ok: true, banned: list, takenFrom });
       }
 
       // ---- admin: link a creator name to an account (or unlink it) ----
@@ -16154,6 +16839,152 @@ const app = {
         return jsonResponse({ ok: true, made, skipped, parent: parent.name });
       }
 
+      // ---- admin: how good are the tag suggestions? ----
+      // Runs the suggester on `n` random published pages people already
+      // tagged (their own row left out of the examples) and scores it
+      // against those tags; or, with untagged:true, on pages with none, to
+      // read what it would say. Writes nothing. `model` swaps the model for
+      // a comparison. Existing tags are incomplete (108 of 342 pages with
+      // [setup] text lack Setup), so "extra" is not always wrong.
+      if (path === '/api/admin/autotag-eval') {
+        const b = await request.json().catch(() => ({}));
+        const n = Math.max(1, Math.min(50, Number(b.n) || 20));
+        const model = String(b.model || AUTOTAG_MODEL);
+        const checks = await loadTagChecks(env, true);
+        const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), checks);
+        // checked: the pages an admin checked by hand, scored against those
+        // answers rather than against the tags the page happened to carry.
+        const pool = b.checked ? rows.filter(r => r.ability && r.checked)
+          : rows.filter(r => r.ability && !!splitTags(r.tags).length === !b.untagged);
+        if (b.checked && !pool.length) return jsonResponse({ error: 'No pages checked yet. Use Check tags first.' }, { status: 400 });
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const sample = pool.slice(0, n);
+        // A run that would not fit in what is left of today's AI ceiling is
+        // refused up front, rather than half-run with the rest marked failed.
+        const runModels = b.compare ? ['phrases', AUTOTAG_MODEL, b.model ? model : AUTOTAG_MODEL + ':think'] : [model];
+        const needed = sample.length * runModels.reduce((t, m) => t + aiCallCeiling(m), 0);
+        let spent;
+        try { await ensureRateTable(env); spent = await aiSpentToday(env); } catch { spent = AI_DAILY_DOLLARS; }
+        const left = AI_DAILY_DOLLARS - spent;
+        if (needed > left) {
+          return jsonResponse({ error: 'That run could cost up to $' + needed.toFixed(2) + ' and $' + Math.max(0, left).toFixed(2) +
+            ' of today\'s $' + AI_DAILY_DOLLARS + ' AI limit is left. Try fewer pages, or tomorrow (it resets at midnight UTC).' }, { status: 429 });
+        }
+        const pct = x => isFinite(x) ? Math.round(x * 100) : null;
+        const score = async m => {
+          const results = [], perTag = {};
+          let tp = 0, fp = 0, fn = 0, ms = 0;
+          // Five at a time: fast enough, and well inside the subrequest cap.
+          for (let i = 0; i < sample.length; i += 5) {
+            await Promise.all(sample.slice(i, i + 5).map(async r => {
+              const gold = splitTags(r.tags).filter(t => SUGGESTABLE.includes(t));
+              let got = [], error = '';
+              const t0 = Date.now();
+              try {
+                const res = await suggestWithinBudget(env, r, rows, m);
+                if (res.capped) error = "today's AI limit is used up"; else got = res.tags;
+              } catch (e) { error = String(e && e.message || e); }
+              ms += Date.now() - t0;
+              const right = got.filter(t => gold.includes(t)), extra = got.filter(t => !gold.includes(t)), missed = gold.filter(t => !got.includes(t));
+              if (!b.untagged && !error) {
+                tp += right.length; fp += extra.length; fn += missed.length;
+                for (const [list, k] of [[right, 'tp'], [extra, 'fp'], [missed, 'fn']]) for (const t of list) (perTag[t] = perTag[t] || { tp: 0, fp: 0, fn: 0 })[k]++;
+              }
+              results.push({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability, gold, got, right, extra, missed, error });
+            }));
+          }
+          return { model: m, n: results.length, precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)),
+            seconds: Math.round(ms / Math.max(1, results.length) / 100) / 10, errors: results.filter(r => r.error).length, perTag, results };
+        };
+        // compare: the SAME pages through the wording rules alone, the
+        // current model, and either the model named in the box or (none
+        // named) the current model allowed to think first, so the difference
+        // is the method and not which pages the shuffle happened to pick.
+        if (b.compare) {
+          const other = b.model ? model : AUTOTAG_MODEL + ':think';
+          const runs = [];
+          for (const m of ['phrases', AUTOTAG_MODEL, other]) runs.push(await score(m));
+          return jsonResponse({ ok: true, compare: true, n: sample.length,
+            runs: runs.map(r => ({ model: r.model, precision: r.precision, recall: r.recall, seconds: r.seconds, errors: r.errors })),
+            results: sample.map(r => ({ slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
+              gold: splitTags(r.tags).filter(t => SUGGESTABLE.includes(t)),
+              got: runs.map(run => (run.results.find(x => x.slug === r.slug) || {}).got || []) })) });
+        }
+        const run = await score(model);
+        // How the tags the pages carried did against the same answers.
+        let oldTags = null;
+        if (b.checked) {
+          let tp = 0, fp = 0, fn = 0;
+          for (const c of checks.rows) {
+            if (!sample.some(r => r.slug === c.slug)) continue;
+            const gold = c.tags.filter(t => SUGGESTABLE.includes(t)), had = c.stored.filter(t => SUGGESTABLE.includes(t));
+            tp += had.filter(t => gold.includes(t)).length; fp += had.filter(t => !gold.includes(t)).length; fn += gold.filter(t => !had.includes(t)).length;
+          }
+          oldTags = { precision: pct(tp / (tp + fp)), recall: pct(tp / (tp + fn)) };
+        }
+        return jsonResponse({
+          ok: true, model, n: run.n, untagged: !!b.untagged, checked: !!b.checked, oldTags,
+          precision: run.precision, recall: run.recall, seconds: run.seconds,
+          perTag: run.perTag, results: run.results
+        });
+      }
+
+      // ---- admin: check the suggester's tags by hand (the answer key) ----
+      // next: a random published character nobody has checked, with its
+      // tags and the suggester's. save: what the admin confirmed. Nothing is
+      // written to the page; the answers are the test Score can run on and
+      // the examples the suggester is shown first.
+      if (path === '/api/admin/tag-check') {
+        const b = await request.json().catch(() => ({}));
+        await ensureTagChecksTable(env);
+        if (b.action === 'save') {
+          const slug = String(b.slug || '');
+          const row = slug && await env.DB.prepare("SELECT slug FROM characters WHERE slug=? AND status='published'").bind(slug).first();
+          if (!row) return jsonResponse({ error: 'No such page' }, { status: 404 });
+          await env.DB.prepare(
+            `INSERT INTO tag_checks (slug, tags, stored, suggested, user_id) VALUES (?,?,?,?,?)
+             ON CONFLICT(slug) DO UPDATE SET tags=excluded.tags, stored=excluded.stored, suggested=excluded.suggested, user_id=excluded.user_id, ts=datetime('now')`
+          ).bind(slug, JSON.stringify(tagList(b.tags)), JSON.stringify(tagList(b.stored)), JSON.stringify(tagList(b.suggested)), sess.userId).run();
+          _tagChecks = null;
+          return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        // What writers did with the button's suggestions, per tag: offered
+        // and new to the page, then kept or removed; and tags writers added
+        // that it never offered.
+        if (b.action === 'feedback') {
+          await ensureTagFeedbackTable(env);
+          const rows = (await env.DB.prepare('SELECT suggested, before, saved FROM tag_feedback ORDER BY id DESC LIMIT 5000').all()).results || [];
+          const parse = v => { try { return JSON.parse(v) || []; } catch { return []; } };
+          const per = {};
+          const at = t => (per[t] = per[t] || { offered: 0, kept: 0, removed: 0, addedByHand: 0 });
+          for (const r of rows) {
+            const sug = parse(r.suggested), had = parse(r.before), saved = parse(r.saved);
+            for (const t of sug) if (!had.includes(t)) { at(t).offered++; saved.includes(t) ? at(t).kept++ : at(t).removed++; }
+            for (const t of saved) if (!had.includes(t) && !sug.includes(t)) at(t).addedByHand++;
+          }
+          return jsonResponse({ ok: true, saves: rows.length, perTag: per });
+        }
+        if (b.action === 'undo') {
+          await env.DB.prepare('DELETE FROM tag_checks WHERE slug=?').bind(String(b.slug || '')).run();
+          _tagChecks = null;
+          return jsonResponse({ ok: true, checked: (await loadTagChecks(env, true)).size });
+        }
+        const checks = await loadTagChecks(env, true);
+        const rows = applyChecks(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'grid')), checks);
+        const pool = rows.filter(r => r.ability && !r.checked && String(b.skip || '') !== r.slug);
+        if (!pool.length) return jsonResponse({ ok: true, done: true, checked: checks.size });
+        const r = pool[Math.floor(Math.random() * pool.length)];
+        let suggested = [], error = '';
+        try {
+          const res = await suggestWithinBudget(env, r, rows, String(b.model || AUTOTAG_MODEL));
+          suggested = res.tags;
+          if (res.capped) error = "today's AI limit is used up, so these are the wording rules alone";
+        } catch (e) { error = String(e && e.message || e); }
+        return jsonResponse({ ok: true, checked: checks.size, error,
+          slug: r.slug, page: r.page, name: r.name, team: r.team, ability: r.ability,
+          stored: tagList(splitTags(r.tags)), suggested });
+      }
+
       // ---- admin: grant Curata to everything one account owns ----
       // Curata is what says "an admin has looked at this", and it also
       // lifts a page out of Partial. Doing that one page at a time through
@@ -16841,8 +17672,12 @@ const app = {
         if (scope !== '*' && !/^\/[\w./-]*$/.test(scope)) {
           return jsonResponse({ error: 'Bad scope.' }, { status: 400 });
         }
-        const replacement = String(b.replacement == null ? '' : b.replacement).slice(0, SITE_TEXT_MAX);
-        const revert = b.action === 'revert' || !replacement.trim() || replacement === original;
+        // {action:'remove'} stores an empty replacement: the wording is taken
+        // off the page. An empty box with any other action is still a revert,
+        // so a cleared field can never delete wording by accident.
+        const remove = b.action === 'remove';
+        const replacement = remove ? '' : String(b.replacement == null ? '' : b.replacement).slice(0, SITE_TEXT_MAX);
+        const revert = b.action === 'revert' || (!remove && !replacement.trim()) || replacement === original;
 
         if (revert) {
           await env.DB.prepare('DELETE FROM site_text WHERE scope=? AND original=?')
@@ -16975,35 +17810,67 @@ const app = {
         const current = await getEntityRow(env, type, hit.slug);
         if (current) await saveRevision(env, sess, type, current);
         const status = ['published', 'draft', 'deleted'].includes(hit.status) ? hit.status : 'published';
-        if (type === 'character') {
-          await env.DB.prepare(
-            `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
-             ON CONFLICT(slug) DO UPDATE SET
-               name=excluded.name, team=excluded.team, creator=excluded.creator,
-               owner_id=excluded.owner_id, tags=excluded.tags, appears_in=excluded.appears_in,
-               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-          ).bind(hit.slug, hit.name, hit.team, hit.creator || null, hit.owner_id || null,
-                 hit.tags || null, hit.appears_in || null, hit.data, status, hit.created_at || null).run();
-        } else if (type === 'collection') {
-          await env.DB.prepare(
-            `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
-             VALUES (?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
-             ON CONFLICT(slug) DO UPDATE SET
-               display_name=excluded.display_name, owner_id=excluded.owner_id,
-               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-          ).bind(hit.slug, hit.display_name || hit.slug, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
-        } else {
-          await env.DB.prepare(
-            `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
-             ON CONFLICT(slug) DO UPDATE SET
-               name=excluded.name, author=excluded.author, owner_id=excluded.owner_id,
-               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-          ).bind(hit.slug, hit.name || hit.slug, hit.author || null, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
-        }
+        await upsertBackupRow(env, type, hit, status);
         await logActivity(env, sess, 'restore-backup', type, hit.slug, hit.name || hit.display_name || hit.slug);
         return jsonResponse({ ok: true, slug: hit.slug, status, date });
+      }
+
+      // ---- admin: restore a deleted account's content from its backup ----
+      // Body: {key, type?, slug?, username?}. One page (type + slug) or all.
+      // A slug that is live again is skipped and reported; the rest go back
+      // as published or draft, owned by `username` or by nobody. Restoring
+      // everything also brings back the account's removed comments.
+      if (path === '/api/admin/restore-account') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        const b = await request.json().catch(() => ({}));
+        const bk = await readAccountBackup(env, String(b.key || ''));
+        if (!bk) return jsonResponse({ error: 'No such backup.' }, { status: 404 });
+        let ownerId = null;
+        if (b.username) {
+          const u = await findUserByUsername(env, String(b.username).trim());
+          if (!u) return jsonResponse({ error: 'No user named "' + String(b.username) + '".' }, { status: 404 });
+          ownerId = u.id;
+        }
+        const one = b.type || b.slug;
+        if (one && !ACCOUNT_BACKUP_TYPES.includes(String(b.type))) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const restored = [], skipped = [];
+        for (const type of ACCOUNT_BACKUP_TYPES) {
+          if (one && type !== b.type) continue;
+          for (const r of bk[ACCOUNT_BACKUP_FIELD[type]] || []) {
+            if (one && r.slug !== b.slug) continue;
+            // Deleted before the account was: not part of what it lost.
+            if (r.status === 'deleted') { if (one) skipped.push({ type, slug: r.slug, why: 'was already deleted' }); continue; }
+            const now = await backupTargetRow(env, type, r.slug);
+            if (now && now.status !== 'deleted') { skipped.push({ type, slug: r.slug, why: 'is live on the wiki' }); continue; }
+            const status = r.status === 'draft' ? 'draft' : 'published';
+            const d = (() => { try { const x = JSON.parse(r.data); delete x._deleted; return JSON.stringify(x); } catch { return r.data; } })();
+            await upsertBackupRow(env, type, { ...r, data: d, owner_id: ownerId }, status);
+            restored.push({ type, slug: r.slug });
+          }
+        }
+        if (one && !restored.length && !skipped.length) return jsonResponse({ error: 'That page is not in this backup.' }, { status: 404 });
+        // A removed wiki page's comments and history come back with it.
+        const wikiBack = new Set(restored.filter(r => r.type === 'wikipage').map(r => r.slug));
+        if (wikiBack.size) {
+          await reinsertRows(env, 'comments', (bk.pageComments || []).filter(c => wikiBack.has(c.slug)));
+          await reinsertRows(env, 'revisions', (bk.pageRevisions || []).filter(c => wikiBack.has(c.slug)));
+        }
+        let comments = 0;
+        if (!one) {
+          const ids = (bk.comments || []).filter(c => c.status === 'visible').map(c => Number(c.id)).filter(Boolean);
+          for (let i = 0; i < ids.length; i += 90) {
+            const chunk = ids.slice(i, i + 90), ph = chunk.map(() => '?').join(',');
+            const res = await env.DB.prepare(`UPDATE comments SET status='visible' WHERE status='removed' AND id IN (${ph})`)
+              .bind(...chunk).run().catch(() => null);
+            comments += (res && res.meta && res.meta.changes) || 0;
+            await env.DB.prepare(`UPDATE comments SET status='visible' WHERE status='hidden' AND parent_id IN (${ph})`)
+              .bind(...chunk).run().catch(() => {});
+          }
+        }
+        await bumpContentVersion(env, 'all');
+        await logActivity(env, sess, 'restore-account', 'user', null,
+          (bk.user && bk.user.username || '?') + ' (' + restored.length + ' page' + (restored.length === 1 ? '' : 's') + ')');
+        return jsonResponse({ ok: true, restored, skipped, comments });
       }
 
       // ---- admin: bulk actions across many pages ----
@@ -17071,6 +17938,7 @@ const app = {
                 await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
                   .bind(action === 'publish' ? 'published' : 'draft', row.slug).run();
               }
+              if (action === 'publish' && row.status === 'draft') await markNewlyLive(env, t.table, row.slug);
             } else if (action === 'delete') {
               if (row.status === 'deleted') { done++; continue; }
               let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }

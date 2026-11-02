@@ -2462,6 +2462,11 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
   padding: 6px 10px;
 }
+/* "Tag [all of / any of / only one of]": the choice sits in the label. */
+.filter-select.filter-tagmode {
+  font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: none;
+  padding: 1px 4px; margin-left: 4px; vertical-align: baseline;
+}
 .filter-reset {
   font-family: 'Roboto', sans-serif; font-size: .78rem; letter-spacing: .04em;
   cursor: pointer; background: none; border: none; color: var(--good-name);
@@ -3220,7 +3225,8 @@ a:hover .curata-mark { opacity: .9; }
   white-space: nowrap; cursor: help; margin-left: .45em;
   opacity: .75; font-weight: 400;
 }
-.page-class-partial { color: #8a7248; background: none; }
+.page-class-partial, .page-class-official { color: #8a7248; background: none; }
+.search-result-name .page-class-official { color: rgba(236,225,200,.75); }
 
 /* Collection tiles carry the wreath in the footer beside the character count,
    and character pages carry it at the end of the Tags row — both behind a

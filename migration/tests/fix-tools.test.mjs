@@ -49,6 +49,14 @@ test('site-text: a short site-wide phrase needs a confirmation, one character ne
   r = await f.request('/api/admin/site-text', adminPost({ scope: '*', original: 'Each night', action: 'revert' }));
   assert.equal(r.status, 200);
   assert.equal(rows().some(x => x.original === 'Each night'), false);
+
+  // An emptied box is a revert, unless the wording is removed on purpose.
+  const gone = 'Nothing sent yet, so nothing to show.';
+  r = await f.request('/api/admin/site-text', adminPost({ scope: '*', original: gone, replacement: '' }));
+  assert.equal((await r.json()).reverted, true);
+  r = await f.request('/api/admin/site-text', adminPost({ scope: '*', original: gone, replacement: 'ignored', action: 'remove' }));
+  assert.equal(r.status, 200);
+  assert.deepEqual(rows().find(x => x.original === gone), { scope: '*', original: gone, replacement: '' });
 });
 
 test('text-scan: built script names map back to their source files', () => {

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recently Added — BOTC HomeBrew Wiki</title>
+<meta name="description" content="The newest characters, scripts, collections and members on the BOTC HomeBrew Wiki.">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="preload" href="/api/recent" as="fetch" crossorigin="anonymous">
+<link rel="stylesheet" href="assets/header-redesign.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Recently Added</h1>
+    <p>The newest characters, scripts, collections and members on the wiki</p>
+  </div>
+
+  <main class="home-panel">
+    <section class="landing-section">
+      <h2 class="type-header">New Members</h2>
+      <div class="type-rule"></div>
+      <div class="creators-page-grid" id="recent-members"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="type-header">Characters</h2>
+      <div class="type-rule"></div>
+      <div class="recent-strip" id="recent-characters"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+      <p style="text-align:right;margin:10px 2px 0">
+        <a href="all-characters" style="font-family:'Roboto',sans-serif;font-size:.82rem;letter-spacing:.05em;color:rgba(236,225,200,.75);text-decoration:none">All characters →</a>
+      </p>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="type-header">Newest Script</h2>
+      <div class="type-rule"></div>
+      <div class="collections-grid" id="recent-script"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="type-header">Newest Collection</h2>
+      <div class="type-rule"></div>
+      <div class="collections-grid" id="recent-collection"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+    </section>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
+  <script src="assets/card-actions.js"></script>
+  <script>
+    // Every section arrives drawn by the Worker (GET /api/recent, with the
+    // homepage's own tiles); this only puts it in place.
+    (function () {
+      var EMPTY = { members: 'No members yet.', characters: 'No characters yet.',
+        script: 'No scripts yet.', collection: 'No collections yet.' };
+      function msg(el, text) {
+        el.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1"></p>';
+        el.firstChild.textContent = text;
+      }
+      BotcData.json('/api/recent').then(function (data) {
+        Object.keys(EMPTY).forEach(function (k) {
+          var el = document.getElementById('recent-' + k);
+          if (typeof data[k] === 'string' && data[k]) el.innerHTML = data[k];
+          else msg(el, data[k] == null ? 'Could not load this section. Please refresh to retry.' : EMPTY[k]);
+        });
+      }).catch(function () {
+        Object.keys(EMPTY).forEach(function (k) {
+          msg(document.getElementById('recent-' + k), 'Could not load this section. Please refresh to retry.');
+        });
+      });
+    })();
+  </script>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>

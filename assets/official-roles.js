@@ -135,8 +135,22 @@
       'If yours just shares the name, change the ability so it is not word-for-word the official one.';
   }
 
+  /* The official characters as the character lists show them (All
+     Characters, team and tag pages, search, /favorites): a card row like a
+     grid-feed row, from buildOfficialRoles()'s rows (whose `page` is the
+     official wiki) and the tags in assets/official-tags.js. `official` is
+     what draws the Official box on the name (classify.js) and sends the
+     card to the official almanac. */
+  function cards(built, tags) {
+    return (built || []).map(function (r) {
+      return { slug: r.slug, official: true, id: r.id, name: r.name, team: r.team, ability: r.ability,
+        image: r.image, page: r.page, tags: (tags && tags[r.id]) || '', creator: 'The Pandemonium Institute' };
+    });
+  }
+
   var api = {
     buildOfficialRoles: buildOfficialRoles,
+    cards: cards,
     cleanReminder: cleanReminder,
     officialKey: key,
     abilityKey: abilityKey,

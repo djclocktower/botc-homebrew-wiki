@@ -19,6 +19,14 @@ render.js, or the gear and close buttons in char-snapshot.js); a phone paints
 an emoji, or a dingbat like ⚙, as a coloured picture that clashes with the
 wiki's look.
 
+**No rounded corners and no gradients in new UI.** Square edges, flat
+colours. They make a page look generic and machine-made. Leave existing
+styles alone unless asked.
+
+**Minimal text.** Use as few words as the job needs. Not every control needs
+a description; most need none. Don't spell out everything a feature does, and
+avoid LLM tropes in anything a reader sees.
+
 ## Architecture in one paragraph
 
 A **Cloudflare Worker** (`worker/worker.js`, config in `wrangler.toml`) serves
@@ -179,6 +187,24 @@ Key dynamic behavior:
   served, which still draws everything in the browser. Team and tag cards
   are char-filters.js's card, so they carry the Curata wreath / Partial
   label All Characters always had.
+  **The 181 official characters are listed beside the homebrew ones** on
+  All Characters, /team, /tag (and /tags' counts), /search, the top-bar
+  search and /favorites: `OfficialRoles.cards()` over
+  `buildOfficialRoles(roles.json)`, always first in the list, loaded in the
+  browser by `BotcData.officials()`, with the tags in
+  `assets/official-tags.js` (settled by hand from the suggester's wording
+  cues, the Chinese wiki and Lady Mist's spreadsheet; edit freely). Icon
+  from `icons-sm/`, "View Character" opening the official wiki in a new tab,
+  an "Official" box on the name (`classifyCharacter()` answers 'official',
+  never Partial), the heart and Add to Script like any card, credited to The
+  Pandemonium Institute, and a Source chip "Official". `/api/favorite`
+  saves an `off-{id}` slug against the roster (no row), and a saved
+  script's official characters count in `characterSlugs`. The server's
+  first screens draw them too (`h.officialRoles`); if roles.json will not
+  load it serves the static page rather than a first screen the browser
+  would not match. A `?collection=` view leaves them out. They are NOT in
+  the grid feed itself, on purpose: the homepage counts, Recently Added,
+  Featured, /random and the tag suggester all read it.
 - **Site search**: the top-bar box on every page previews the best matches of
   every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
   results with a tab per kind and the All Characters filter. Both run the same
@@ -198,6 +224,14 @@ worker/list-pages.js   The first screen of /all-characters, /team and /tag,
                        char-filters.js (see the architecture notes). Returns
                        null for anything it cannot draw exactly; the route
                        then serves the static page.
+worker/autotag.js      Tag suggestions through Workers AI (env.AI), and the
+                       admins' answer key (tag_checks). See "Tag suggestions"
+                       below.
+worker/official-tags.js  The official characters with tags, for the tag
+                       suggester's examples. Generated, never hand-edited:
+                       `NODE_USE_ENV_PROXY=1 node migration/make-official-tags.mjs`
+                       (reads the Chinese official wiki's ability categories
+                       and assets/roles.json; its header says how they map).
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
@@ -242,6 +276,14 @@ assets/
   site.js              Shared topbar behavior: search preview, mobile nav,
                        script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
+                       It also keeps the reader's place on Back or a reload:
+                       the scroll goes into the history entry (botcY) on
+                       pagehide and is put back once a page that draws its
+                       list late is tall enough. A page that keeps its own
+                       place (all-characters, /search: filters too) sets
+                       history.scrollRestoration = 'manual' and is skipped.
+                       The homepage is the opposite: Back to it always opens
+                       at the top (owner's call), bfcache restores included.
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
                        change it here and every page's top bar and hamburger
                        follow, because no page hardcodes it.
@@ -362,8 +404,9 @@ assets/
                        card, beside the creator's name; on Recently Added,
                        side by side under the team name (see "Favorites").
                        Browser + Worker: slotHTML(c) prints an EMPTY
-                       <span class="cq" data-cq-slug> (nothing for a draft, an
-                       official character or a row with no slug), which the
+                       <span class="cq" data-cq-slug> (nothing for a draft or
+                       a row with no slug; an official 'off-' one gets one),
+                       which the
                        renderers wrap with the icon in a .card-side column;
                        render-page.js gets it through PageRender.
                        setCardActions() in worker.js. The browser half fills
@@ -461,6 +504,14 @@ assets/
                        and both halves follow.
                        card-filters.js is the other filter box: it filters
                        cards already in the DOM (collection and creator pages).
+                       Tags combine by the "Tag [all of / any of / only
+                       one of]" select in the Tag label (`tagMode`, both
+                       filter boxes). **Official is a Status chip**, not a
+                       Source one, so it ORs with "Curata only": both on
+                       keeps Curata pages and official characters.
+                       Sort also offers **SAO** wherever sao.js is loaded
+                       (all-characters, /search; the Worker hands
+                       saoCompare to init()).
                        Sort is TWO boxes in both filter boxes: what (Name,
                        Date added, Ability length — plus Best match, Page
                        order, SAO where they apply) and an Order box,
@@ -611,7 +662,9 @@ assets/
                        {{townsfolk|…}}…{{loric|…}}) plus the
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
-                       paths — nothing a writer types can become raw HTML.
+                       paths — nothing a writer types can become raw HTML
+                       (typed HTML tags are rebuilt from a whitelist, see
+                       Gotcha 10).
                        inlineFormat(text, {marks:'links'}) is the restricted
                        subset character pages use — see "Formatting on a
                        character page"; plainText() is the same marks taken
@@ -794,7 +847,9 @@ assets/
                        the form, so a failed load leaves the plain form behind.
                        Both editors are the same form — change one, change both.
   night-order-picker.js  The "I want the X to act directly after…" search on the
-                       wake-priority fields. Picking an official character fills
+                       wake-priority fields. Offers night-order.json's
+                       `meta` steps too: Dusk (0.xxxx, first), Minion Info,
+                       Demon Info, and "Just before Dawn" (9998.xxxx). Picking an official character fills
                        the field with that character's night position plus a
                        random four-digit fraction (Poisoner is 33 → 33.5691), so
                        homebrew pages that chose the same anchor still sort
@@ -1212,6 +1267,11 @@ favorites.html         /favorites — the pages this account saved, as cards:
                        with them. Same shape as /drafts, and linked from the
                        Your Favorites panel on the account page, which keeps
                        its own table with a Remove button. See "Favorites".
+recent.html            /recent — Recently Added: the 12 newest members, 48 newest
+                       characters, the newest script and collection, all drawn
+                       by the Worker (GET /api/recent, the homepage's tiles;
+                       the 'recent' entry in SUMMARIES plus a live members
+                       query). Linked from the homepage's Recently Added strip.
 404.html               The custom Not Found page. Nothing links to it: the
                        Worker serves it AT the address that failed (no
                        redirect) with a 404 status, via assetsOrNotFound(),
@@ -1311,6 +1371,9 @@ collection they belong to, author, owner_id, JSON `data`, status — see the
 section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
 a renamed page used to live at — for characters `to_slug` is the page's
 **identity**, never another address, see "Character identity vs address" below),
+`tag_checks` (the tag suggester's answer key, one row per character an
+admin checked by hand) and `tag_feedback` (what writers kept, removed and
+added after pressing Suggest tags) — see "Tag suggestions",
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
@@ -1998,7 +2061,7 @@ exported none):
 The night is not only characters: dusk opens it, dawn closes it, and the first
 night has the minion and demon info steps in the middle. Those live in
 `assets/night-order.json` under `meta`, positioned from their neighbours on the
-official sheet (minion info between the Magician and the Snitch, demon info
+official sheet (minion info after Tor, between the Magician and the Snitch, demon info
 between the Summoner and the King). Whoever loads that file hands them to
 `PageRender.setNightMeta()`; **without them the sequences are not written at
 all**, rather than publish a night order those steps are missing from.
@@ -2728,6 +2791,9 @@ Things worth knowing before touching any of it:
   An explicit picture handed to `renderCharacter()` (the editors' preview of
   a file just picked) replaces both; the `/c/` route passes the art's own
   address, which keeps the display copy.
+- **`iconByLabel: 'from'`** makes the info box's icon credit read "Icon
+  from:" instead of "Icon by:" (a select in the label of both editors'
+  Icon by field; the Snapshot poster follows). Nothing stored means "by".
 - **`artAlt`/`imageAlt`/`artAlt2`/`imageAlt2` stay in the card feed.** The
   Token Tool reads `characters.json?fields=card` and prints one token per
   version. `CARD_DROP_FIELDS` used to carry a misspelled `'altArt'` matching
@@ -3880,6 +3946,174 @@ set's custom pages, which were meant for that set's own mechanics.
   `to-article` (in `FEED_CHANGING_ACTIONS`). There is no way back, and an
   owner still cannot move a page: the parent is frozen for everyone else.
 
+## Tag suggestions (Workers AI)
+
+The editors' **Suggest tags** button (`assets/tag-suggest.js`, loaded by
+create.html and edit.html) asks **`POST /api/suggest-tags`**, which hands
+`worker/autotag.js` the name, team and ability, **and nothing else** (the
+owner's call: the lede and summary bullets went too, after Scout's rules
+note "sober & healthy when their ability triggers" was read as the Sober &
+Healthy tag; the scorer only ever measured the ability alone anyway). It builds a
+prompt from tags.js's list and descriptions plus the 8 tagged characters
+whose abilities share the most rare words with this one: published wiki
+pages (read off the cached grid feed, no query) and, for up to 3 of the 8,
+official characters (`worker/official-tags.js`, tagged from the official
+Chinese wiki's ability categories, which the owner ranks as the most reliable
+source). The 44 Chinese-edition characters this wiki has pages for (Temple
+Fair and The Storm Is Coming, under Festival of Lanterns) count as official
+examples too: `OFFICIAL_WIKI_TAGS` adds their category tags to the page's own
+when one is shown, and writes nothing to the page. Every example is shown with its own tags plus the sure cues it
+trips (`exampleTags()`), so the examples follow the owner's wording rulings
+where their taggers missed one. It runs `AUTOTAG_MODEL` through the `[ai]`
+binding in wrangler.toml, and filters the answer back to the tag list. The
+button ticks what is new and outlines it (`.tag-pick-btn.suggested`); it never
+unticks and never saves, so a person always decides. **Nothing a writer
+sees says "AI"** (the owner's call, as for Icon Forge): the button is
+"Suggest tags from the ability", a strip joined to the top of the tag box
+(`.tag-suggest` in editor.css), and when only the wording cues ran the note
+says only the surest tags were ticked. The admin dashboard still says AI.
+`Joke` is never suggested. Login required, 40 an hour per account (`autotag` bucket),
+admins exempt. About 25 neurons a call. **The model's thinking is off**
+(`chat_template_kwargs: {enable_thinking: false}`, 300 tokens): it was most
+of the wait, for an answer that is one short list; a model name ending in
+`:think` turns it back on, which is how the dashboard scorer compares the
+two. `temperature: 0`, so the same character gets the same answer on every
+press and a change in the scores is a real change; the answer still moves
+as the examples (and the answer key) change. Everything ticks at once when the answer comes (the owner's call: the
+keyword tags used to tick first, with the model's following). `quick: true`
+(the sure cues alone: no model, no feed read, no rate limit) is asked only
+when the full answer fails, so a writer still gets the surest tags.
+
+**Wording cues** (`CUES` in autotag.js) are the other half: phrases that
+mean a tag because of how the game is written (`[+1 Outsider]` is Outsider
+Modification, `(once)` is Once Per Game, "gain ... ability" is Ability Gain),
+each measured against the tagged pages. `sure` cues are added whatever the
+model says, and are the whole answer when the model is off or fails, so the
+button still works without the binding. `hint` cues go into the prompt with
+the words they matched, for the model to keep or drop. Single-Kill stops
+being sure when a Multi-Kill phrase is present, and "even if you die" is Even
+If Dead, never On Death. On the tagged pages most sure-cue hits that
+disagree with the stored tags are tags the taggers missed; 1,194 of the 1,475
+untagged pages get at least one tag from the sure cues alone.
+
+**The tag definitions are the owner's** (settled 2026-10, tag by tag): the
+descriptions in tags.js say what each tag means on this wiki, and the cues
+follow them. The rulings that decide cues: a tag the owner called word-based
+(Safe, Execution, Nominations, Votes, Win/Loss Condition, Death, Public,
+Reverse, "false" for False Info, "true info", "start knowing") is a sure cue on the
+word alone; Information is only this character's own player learning, and
+anybody else learning about it is Ping, which is never public; Single-Kill
+and Multi-Kill are any team and include once-per-game kills, but never "a
+player might die"; Timer is only a win or loss tied to a set day or night;
+Safety Net is only about the game's win or loss, never a personal backup;
+On Death covers any death the ability cares about; Quiet is an evil character
+nobody notices (Poisoner) and Hidden an Outsider that hides or does not know
+it is one (Sweetheart, Drunk); Passive is no choice and no waking, an
+ability that fires by itself included, so it is a sure cue on the absence of
+any choose / pick / guess / visit / learn / wake / each night / once wording.
+Word rules the owner approved from a data pass (2026-10): Magic on making
+a wish (never "as you wish"), Think on "thinks" / "think you're" (but "the
+Storyteller thinks / believes" is Subjective Info, with "advice"),
+Resurrection on rise / reborn / regurgitated / "is raised" (never a raised
+hand), Loud on "all players learn / know" and "announce", Nonconformist on
+"unlisted", Setup on the word "setup", Votes on "majority", Protection on
+"protect" only (not "safe from"), Demonsbane on "if the Demon kills you" and
+"if you die at night" (not "even if you die at night"), Ping on "a good /
+evil player learns / knows", Multi-Kill on "choose 2 players: they die",
+Character Change on "becomes a/an …" with any subject. A second pass added:
+Duplication on a "[+0 to +2 Legionary]" bracket (never a team) and "same
+character", Execution Survival on executed-but-lives wording, Social on
+speak / talk / whisper / silence / hand signals / sing / wink / clap / hug /
+point at, Multi-Kill on "2 players die", "both die", "all die", Binary Info
+on "learn their alignment", Safety Net on "a Minion becomes the Demon" and
+"if the Demon dies", Execution Failure on "executions fail", Day Deaths on
+"dies at dusk / immediately", Death Modification on "registers as alive /
+dead", Subjective Info on clue / hint / "learn something", Confirmation on
+"learn you are the …", Hidden (Outsiders) on "you think / don't know you
+are", Nonconformist on breaking the rules or a new / extra rule, and Ping on
+Minions / the Demon / good or evil players learning or knowing (never "all
+players", which is Loud). Quiet on "secretly" was turned down.
+Change a description and its cue together.
+
+**The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by
+the owner (2026-10, 20 pages each): the wording cues alone 60% right / 44%
+found; Gemma 56% / 70% in under a second; Gemma thinking 60% / 45% at 30 s a
+page (it ran out of room before answering, leaving only the cues); Llama 3.3
+70B 57% / 63%, at several times the price. Many "extras" are the owner's
+word rules being right where the stored tags are not.
+
+**`POST /api/admin/autotag-eval {n, model?, untagged?}`** (dashboard card "Tag
+suggestions") scores it against random pages people already tagged (`model:
+'phrases'` scores the wording cues alone, costing nothing), or shows
+what it would say about untagged ones, writing nothing. `compare: true`
+(the card's "Compare" button) runs the SAME pages three ways —
+`phrases`, the model in use, and the model typed in the box (or, with the
+box empty, the model in use with `:think`) — and returns each run's
+precision, recall and seconds per page, plus every page's three answers, so
+a change of model or of thinking is measured on one sample rather than two
+random ones. `checked: true` (the "Test on the pages checked by hand" tick) samples
+from the answer key below instead, scores against it, and also reports how
+the tags those pages already carried did against the same answers
+(`oldTags`). Read its numbers with
+care: the existing tags are incomplete (in 2026-10, 108 of the 342 tagged
+pages with `[setup]` text lacked Setup), so an "extra" tag is often right.
+A bulk "tag every untagged page" run is deliberately not built yet.
+
+**The answer key: "Check tags"** (dashboard card, `POST /api/admin/tag-check`
+`{action: 'next' | 'save' | 'undo'}`). `next` picks a random published
+character nobody has checked and runs the suggester on it; the card ticks
+the union of what the AI said and what the page has, the admin unticks the
+wrong ones and adds what was missed, and `save` stores the result in the
+lazily created `tag_checks` table (`slug` PK, `tags`, plus the page's
+`stored` tags and the `suggested` ones at that moment). **Nothing is written
+to the page.** Checked rows then do two jobs: they are the test the scorer
+can run on (above), and `applyChecks()` swaps their tags in for the page's
+own wherever the suggester picks examples, marked `checked` so they score
+1.5x in `pickExamples()`, are shown as "(team, checked)" and are given
+exactly the checked tags, without the sure cues on top (the admin already
+overruled those). `loadTagChecks()` memoises the table for a minute per
+isolate; a save clears it in its own isolate.
+
+**A hard daily ceiling on the AI: $25 a UTC day (`AI_DAILY_DOLLARS`, the
+owner's number).** The Workers Paid plan has no spending cap: past the
+10,000 free neurons a day it simply bills, so the wiki caps itself. Every
+call's real token use (`out.usage`, or the most it could have been when the
+answer carries none) is priced from `AI_PRICES` in autotag.js, Cloudflare's
+published $/M-token rates, and added to a `rate_limits` counter (key
+`ai:spend:YYYY-MM-DD`, millionths of a dollar). A model missing from
+`AI_PRICES` is charged as an expensive one, so add a model's row before
+switching to it. Once the day's spend reaches the ceiling,
+`suggestWithinBudget()` answers with the wording rules alone (`capped:
+true`, and the button says so), and a dashboard Score or Compare whose
+worst case (`aiCallCeiling()`) would not fit what is left is refused up
+front with a 429. Admins are not exempt. It FAILS CLOSED, unlike the other
+limiters: a counter that cannot be read refuses the AI.
+
+**What writers did with it: `tag_feedback`.** `tag-suggest.js` keeps what
+the button offered and what was ticked before the first press, and both
+editors post it with the save as `_tagSuggest` (read once, then cleared;
+edit.html also drops it from its baseline so a second save cannot carry it
+again). `/api/character` takes it off the page before anything is stored
+and, after the save, writes one row to the lazily created `tag_feedback`
+table (`slug`, `user_id`, `suggested`, `before`, `saved`). The dashboard's
+"What writers did" button (`/api/admin/tag-check {action: 'feedback'}`)
+counts per tag what the button added and the writer kept or removed, and
+what they added that it never offered. A press nobody saves after leaves no
+row.
+
+**Training on existing tags was measured and not built (2026-10).** A
+per-tag classifier trained on the wiki's tagged pages, scored on pages it
+had not seen, lifted the share of existing tags found from 50% to 62% with
+the cues, while the share of its picks matching an existing tag fell from
+68% to 60%. Adding Lady Mist's Constellation spreadsheet (795 characters,
+its own tag names) or the official tags moved neither number: the sources
+agree on only about half the tags of the characters they share, so each
+teaches its own taggers' habits. The fix is an answer key in the owner's own
+definitions first. Scored against the official tags, the sure cues are right
+78% of the time and find 63% of them (Death aside, which the cues give to
+any death by the owner's ruling and the official category reserves for
+extra deaths).
+
 ## System text (`/text-editor`)
 
 The wiki's own wording — page copy, buttons, labels, notices, the banners the
@@ -3951,13 +4185,26 @@ knows instantly what is editable. Two things keep it honest:
   Anything the guard turns away is still in the list on /text-editor, where
   the source file is shown beside it.
 
+**A double-click opens the whole BOX, not one text node.** Overrides live on
+text nodes, so a paragraph with a link in it is three catalogue strings (the
+words before, the link, the words after); the editor finds the nearest
+element that is not laid out inline and shows one field per piece, so the
+paragraph is rewritten in one go and the link keeps working. Pieces are
+matched on what the page said BEFORE any override: site.js remembers each
+rewritten node's source text (`SiteText.sourceOf()`) and re-applies a new
+rule set from it, which is also what makes an edit that only deletes words,
+and its Undo, repaint correctly (the old text-based undo pass could not).
+**Emptying a field removes the wording**: it posts `action: 'remove'`, which
+stores an empty replacement; an empty box with any other action is still a
+revert, so /text-editor asks before it sends one. The bar offers Undo for
+ten seconds after a save.
+
 A click on an editable link or button is held ~320 ms and replayed if no
 second click follows, so double-click can reach a nav label without the first
 click navigating away. Anything NOT editable is never intercepted, so ordinary
-browsing keeps its normal speed. `SiteText.setItems()` also builds **undo
-rules** (replacement → original) from what the page currently shows, so
-pressing Undo — or editing the same words twice — repaints instead of leaving
-the old wording behind.
+browsing keeps its normal speed. Because site.js re-applies every rule
+change from each node's remembered source text, pressing Undo — or editing
+the same words twice — repaints instead of leaving the old wording behind.
 
 Two rules worth knowing before changing any of this:
 
@@ -4952,6 +5199,11 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   `{username, glyph, show?}` assigns or changes it; a glyph somebody else
   holds (an account or a name on the legacy list) is a 409 naming them
   unless `move: true`. Dashboard → Users → "Creator marks".
+- **Banned marks**: `settings.banned_marks` (`[{g, k, at}]`, matched on
+  `markKey`). `POST /api/admin/banned-marks {glyph, on}` bans one (taking it
+  off whoever holds it) or lifts the ban; `GET` lists them. The registry
+  skips a banned glyph, the legacy list's included, and both mark saves
+  refuse it. Same dashboard card, under the list.
 - **Creator marks on names**: a script's `creatorMarks: true` (the Script
   Builder's tick and publish-script's "In the Official App" panel, both on
   `botc_script_meta`) puts each homebrew character's creators' marks after its
@@ -5124,10 +5376,10 @@ somebody over their objection. Three rules:
 - The grant is still stored, so an admin's decision is not lost — and
   `/api/admin/curata` and the dashboard's page list both report the opt-out,
   or an admin who granted the mark and saw nothing change would just re-grant
-  it. The control is `#curataOptOut` in **edit.html only**, drawn only for a
-  page that actually has the mark, and `/api/page` returns `curataFrom` so it
-  can say which collection lent it. It warns first when taking the mark off
-  would drop an unfinished page back into Partial. If you add
+  it. The control is `#curataOptOut` in **edit.html only**, a bare "Disable
+  Curata" tick (the owner asked for no explanatory text), drawn only for a
+  page that actually has the mark — `/api/page`'s `curataFrom` counts mark
+  lent by a collection. If you add
 a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `ALMANAC_TEXT_FIELDS` in `classify.js` too, or pages using it stay Partial.
 
@@ -5478,6 +5730,38 @@ losing that key would make every password reset impossible. Image-slot
 squatting (`uploadSlotDenied` on a page that does not exist yet) is still
 open. Two-factor login is not built yet.
 
+## Changing a username, and deleting an account
+
+- **`POST /api/account/username`**: once every `RENAME_EVERY_DAYS` (30),
+  stamped in a lazily ALTERed `users.username_changed_at`; same rules as
+  signup (`usernameProblem()`). The old handle gets a `redirects` row
+  (`entity_type 'user'`, `from_slug` its `usernameKey`, `to_slug` the
+  account id): `/u/{old}` 302s to the new name, and `usernameTaken()` treats
+  the name as parked (`parkedFor()`) for everyone but that account.
+  `creator_alias:` rows naming the old handle are rewritten, and a legacy
+  mark linked by username (`LEGACY_ACCOUNTS`) is claimed into
+  `creator_marks` first. Everything else is keyed on the account id;
+  `sanitizeEditors()` resolves a stored `{id, username}` pair by id only.
+- **`POST /api/account/delete {password | confirm, keepPages}`**: the
+  account page's confirmation `<dialog>` (password, or the typed username
+  for a Discord-only account). Admins are refused. `accountBackup()` writes
+  one JSON file to R2 under `account-backups/` first (never served, never
+  expired), and a failed backup deletes nothing. It holds the user row minus
+  the password hash, every page it owned, its comments, mark and favorites,
+  and the comments and history of wiki pages about to go. Not DMs: admins
+  only read reported conversations. Then every page loses its owner; without
+  `keepPages`, characters/scripts/collections are soft-deleted, wiki pages
+  removed, and comments `removed` (replies `hidden`). Favorites, mark,
+  blocks and alias rows go, the handle stays parked, `activity_log.user_id`
+  is nulled (a foreign key D1 enforces), and the users row is deleted. Ids
+  are AUTOINCREMENT, so none is reused.
+- **Restoring**: Dashboard -> Content -> "Deleted accounts".
+  `GET /api/admin/account-backups[?key=]` lists the files or shows one;
+  `POST /api/admin/restore-account {key, type?, slug?, username?}` writes
+  pages back through `upsertBackupRow()` (shared with the nightly restore),
+  owned by `username` or nobody. A slug live again is skipped. Restoring
+  everything brings the comments back; a wiki page brings its own.
+
 ## Rate limiting (and why the counters are not in KV)
 
 `rateLimited()` in worker.js is the whole limiter: one counter per
@@ -5651,6 +5935,15 @@ seeded with whole collections whose characters all arrived unowned.
   the credit marks inside character names are content (gotcha 7), and the
   plain text dingbats elsewhere (`&#10003;` on a save, `&#10007;` on a
   failure) are glyphs in the site's own ink, not emoji.
+- **Never rewrite page markup on every keystroke in a text box.** Chrome
+  ends the box's undo step whenever script replaces nodes in the document
+  (`textContent`, `innerHTML`, even with the same text), so Ctrl+Z undid
+  one letter at a time in the character editors' Ability and Name boxes,
+  Grimoire Forge, the Custom CSS box and the collection editor. A live
+  counter or label updates its TEXT NODE's `.data` (a character-data
+  change does not end the undo step); anything bigger is redrawn when the
+  typing pauses (Grimoire Forge, the collection's match list, the CSS
+  warnings), flushed on blur. Attribute and class changes are harmless.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
   — so it runs past its panel, past the viewport, and widens the whole
@@ -6378,6 +6671,16 @@ keeps `content-visibility: auto`.
    first and whitelists hrefs (http/https/mailto/site-relative only) and image
    paths. Never switch any of them to `innerHTML` with raw text, and never add
    a mark that emits an attribute the writer controls.
+   **Typed HTML is the one exception, and it is rebuilt, never copied**
+   (`stashTags()`): a short list of inline tags (`HTML_TAGS`: b, i, u, s,
+   sub, sup, span, br …), only `style` and `title` kept, the style cut down
+   by `safeStyle()` to whitelisted properties with plain values (colour
+   functions only, no negatives, sizes capped by `STYLE_CAP`), and every tag
+   left open closed at the end of its line. Widening either list is a
+   security change: add its escape attempt to the tests first. The MediaWiki
+   marks (`'''bold'''`, `''italic''`, `[https://… label]`, `== Heading ==`)
+   live beside it; all of them except the heading work in links mode too,
+   and `plainText()` strips them.
    `site.js` loads `render-wiki.js` **before** `render-news.js` — the news
    renderer is a wrapper and formats nothing on its own.
 11. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the

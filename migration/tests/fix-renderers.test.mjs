@@ -236,6 +236,21 @@ test('the Night Order box carries dusk, minion info, demon info and dawn', () =>
   } finally { PageRender.setNightMeta(null); }
 });
 
+test('a script export writes a jinx with another homebrew character under that character\'s exported id', () => {
+  // A Bloodstar import stores `{name}_{set}`; the Esper itself exports as
+  // under its own exported id, and the official app pairs the two by id.
+  const esper = { slug: 'esper', name: 'Esper', team: 'minion', ability: 'x',
+    page: 'c/the-bootlegger-s-anthology/esper' };
+  const vis = { slug: 'visionary-tba', name: 'Visionary', team: 'minion', ability: 'y',
+    page: 'c/the-bootlegger-s-anthology/visionary',
+    jinxes: [{ id: 'esper_the_bootleggers_anthology', name: 'Esper', text: 'Only 1.' },
+             { id: 'elsewhere_not_here', text: 'Untouched.' }] };
+  const out = JSON.parse(PageRender.buildPageExport('S', '', '', [esper, vis], {}));
+  const e = out.find(x => x.name === 'Esper');
+  const v = out.find(x => x.name === 'Visionary');
+  assert.deepEqual(v.jinxes.map(j => j.id), [e.id, 'elsewhere_not_here']);
+});
+
 test('a kept JSON (customJson) replaces the built one on script and collection pages, and stays off the feeds', async t => {
   const f = await fixture();
   t.after(() => f.finish());
@@ -263,4 +278,22 @@ test('a kept JSON (customJson) replaces the built one on script and collection p
   assert.equal((await (await f.request('/api/page-json?type=script&slug=saved')).json())[0].name, 'Saved');
   // No kept JSON: the wiki builds it as before.
   assert.equal(PageRender.customExport(''), '');
+});
+
+test('typed HTML is rebuilt from a whitelist, MediaWiki marks render', () => {
+  const f = (s, o) => WikiRender.inlineFormat(s, o || { marks: 'links' });
+  assert.equal(f('<span style="color:#8b2c2c;font-style:italic;padding:0 6px">x</span>'),
+    '<span style="color:#8b2c2c;font-style:italic;padding:0 6px">x</span>');
+  assert.equal(f('<b>open <i>x</b> y'), '<b>open <i>x</i></b> y');
+  assert.equal(f('<script>alert(1)</script></b>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+  assert.equal(f('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+  assert.equal(f('<span onclick="x" style="background:url(x);position:fixed;font-size:900px;margin:-9px;color:expression(1)">s</span>'), '<span>s</span>');
+  assert.equal(f('<span title=\'a" onmouseover=x\'>t</span>'), '<span title="a&quot; onmouseover=x">t</span>');
+  assert.equal(f('x <3 and a < b'), 'x &lt;3 and a &lt; b');
+  assert.equal(f('`<b>c</b>`', {}), '<code class="wiki-code">&lt;b&gt;c&lt;/b&gt;</code>');
+  assert.equal(f("'''b''' ''i'' '''''bi''''' don't"), '<strong>b</strong> <em>i</em> <strong><em>bi</em></strong> don\'t');
+  assert.equal(f('[https://x.y/a?b=1&c=2 lab] [javascript:alert(1) x]'),
+    '<a href="https://x.y/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">lab</a> [javascript:alert(1) x]');
+  assert.match(WikiRender.renderBody('== Rules ==\n=== Sub ==='), /<h2[^>]*id="sec-rules".*<h3/);
+  assert.equal(WikiRender.plainText("<b>B</b><br>''i'' [https://x.y lab]"), 'B i lab');
 });

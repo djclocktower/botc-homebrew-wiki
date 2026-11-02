@@ -485,7 +485,7 @@
       }).join(' ');
       var placeholder = /\{[A-Za-z][\w-]*\}/.test(entry.text);
       return '<div class="te-item' + (ov ? ' edited' : '') + '" data-i="' + idx + '">' +
-        '<p class="te-text">' + highlight(ov ? ov.replacement : entry.text) + '</p>' +
+        '<p class="te-text">' + (ov && !ov.replacement ? '<em>(removed from the site)</em>' : highlight(ov ? ov.replacement : entry.text)) + '</p>' +
         '<div class="te-meta">' +
           (ov ? '<span class="te-badge">Edited</span>' : '') +
           '<span>' + esc(whereLabel(entry)) + '</span>' +
@@ -690,6 +690,10 @@
            here. A short phrase changed site-wide is applied wherever it
            stands as whole words in the site's own wording, so say so before
            it happens. The server refuses one without this confirmation. */
+        // An emptied box takes the wording off the site, so ask first.
+        var remove = act !== 'revert' && !value.trim();
+        if (remove && !window.confirm('Remove "' + entry.text.trim().slice(0, 120) +
+          '" from the site? Undo puts it back.')) return;
         var short = !!(act !== 'revert' && entry.scope === '*' &&
           entry.text.trim().length < SHORT_TEXT && value.trim() && value !== entry.text);
         if (short && !window.confirm(
@@ -706,8 +710,8 @@
           source: entry.files.join(', '),
           original: entry.text,
           replacement: value,
-          action: act === 'revert' ? 'revert' : 'save',
-          confirmShort: short
+          action: act === 'revert' ? 'revert' : (remove ? 'remove' : 'save'),
+          confirmShort: short || remove
         }).then(function (res) {
           for (var j = 0; j < buttons.length; j++) buttons[j].disabled = false;
           if (!res.ok) {

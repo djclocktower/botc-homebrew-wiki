@@ -9,7 +9,7 @@
   // draw as text, not as a coloured emoji, on phones.
   var PALETTE = ('✠✢✣✤✥✦✧✩✪✫✬✭✮✯✰✱✲✵✶✷✸✹✺✻✼✽✾✿❀❁❂❃❅❆❈❉❊❋❖❦❧☉☊☋☌☍☙☤☥☦☧☨☩☫☬☽☿' +
     '♀♁♂♃♅♆♇♔♕♖♗♘♙♚♛♜♝♞♢♤♧♩♫♬♭♮♯⚘⚚⚝⚶⚷⚸⚹⚺⚻⚼⛤⛥⛦⟡⟐⧫⧖⧗⬟⬠⬡⬢⬣⬥⬦' +
-    'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛃᛇᛈᛉᛊᛏᛒᛗᛚᛜᛞᛟ🜁🜂🜃🜄🜍🜔🜛');
+    'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛃᛇᛈᛉᛊᛏᛒᛗᛚᛜᛞᛟ🜁🜂🜃🜍🜔🜛');
   var PALETTE_SHOWN = 40;
 
   function esc(s) {
@@ -28,7 +28,7 @@
     var CS = window.CreatorSymbols;
     if (!el || !CS) return;
     var me = String(opts.username || '');
-    var state = { mark: null, legacy: [], glyph: '', show: true };
+    var state = { mark: null, legacy: [], banned: [], glyph: '', show: true };
 
     el.innerHTML =
       '<div class="mark-ed">' +
@@ -66,6 +66,7 @@
       }
       return null;
     }
+    function isBanned(glyph) { return state.banned.indexOf(CS.markKey(glyph)) !== -1; }
     function markInner(g) { return '<span class="creator-mark">' + esc(g || '?') + '</span>'; }
     function paint() {
       var g = state.glyph;
@@ -73,7 +74,7 @@
       $('me-sample').innerHTML = 'by <strong>' + esc(opts.displayName || me) + '</strong>' +
         (state.show && g ? ' ' + markInner(g) : '') +
         (state.show ? '' : ' <span class="mark-ed-opt">(hidden)</span>');
-      var bad = state.glyph ? CS.markProblem(state.glyph) : '';
+      var bad = state.glyph ? CS.markProblem(state.glyph) || (isBanned(state.glyph) ? 'Not allowed as a mark' : '') : '';
       var other = !bad && state.glyph ? takenBy(state.glyph) : null;
       var av = $('me-avail');
       av.className = 'mark-ed-avail ' + (bad || other ? 'err' : (state.glyph ? 'ok' : ''));
@@ -83,7 +84,7 @@
     function palette() {
       // An even spread across the whole list, so every family of symbols
       // (stars, astrology, chess, runes, alchemy) is offered, not just the first.
-      var all = Array.from(PALETTE).filter(function (g) { return !takenBy(g); });
+      var all = Array.from(PALETTE).filter(function (g) { return !takenBy(g) && !isBanned(g); });
       var step = Math.max(1, all.length / PALETTE_SHOWN), free = [];
       for (var i = 0; i < all.length && free.length < PALETTE_SHOWN; i += step) free.push(all[Math.floor(i)]);
       $('me-palette').innerHTML = free.map(function (g) {
@@ -140,6 +141,7 @@
       var m = mine.mark || null;
       state.mark = m;
       state.legacy = Array.isArray(mine.legacy) ? mine.legacy : [];
+      state.banned = Array.isArray(mine.banned) ? mine.banned : [];
       if (m) {
         state.glyph = m.g;
         state.show = !m.hide;

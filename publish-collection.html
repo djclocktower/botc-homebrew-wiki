@@ -186,7 +186,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
       <p class="pub-url" id="pub-url" style="display:none"></p>
       <div class="sb-fld">
-        <label for="pc-author">Author / curator</label>
+        <label for="pc-author">Author / curator <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(several? separate them with commas)</span></label>
         <input type="text" id="pc-author" placeholder="Your name">
         <label class="credit-unlink" for="pc-credit-unlinked"><input type="checkbox" id="pc-credit-unlinked"> This credit isn’t mine</label>
         <span class="credit-unlink-hint">Tick this if you’re publishing someone else’s collection. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
@@ -734,7 +734,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       }
       renderMembers();
     });
-    $('pc-match').addEventListener('input', renderMembers);
+    // Redrawn once the typing pauses, so Ctrl+Z in the box undoes the run
+    // rather than one letter (a redraw mid-typing ends Chrome's undo step).
+    var matchTimer;
+    $('pc-match').addEventListener('input', function(){ clearTimeout(matchTimer); matchTimer = setTimeout(renderMembers, 400); });
+    $('pc-match').addEventListener('blur', function(){ if (matchTimer) { clearTimeout(matchTimer); matchTimer = null; renderMembers(); } });
 
     // ── add-character search ──
     // Only searches characters created by the logged-in account (myChars),
@@ -913,7 +917,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var u = $('pub-url');
       if (!id){ u.style.display = 'none'; return; }
       u.style.display = '';
-      u.innerHTML = 'Page URL' + (EDIT_KEY ? ' (fixed once created)' : '') + ': <code>' + esc(SITE_ROOT + 'collection/' + id) + '</code>';
+      // Drawn once, then only the address's text node changes: rewriting the
+      // markup on every keystroke in the name box broke Ctrl+Z there (Chrome
+      // undid one letter at a time).
+      var code = u.querySelector('code');
+      if (!code || u._edit !== !!EDIT_KEY) {
+        u._edit = !!EDIT_KEY;
+        u.innerHTML = 'Page URL' + (EDIT_KEY ? ' (fixed once created)' : '') + ': <code></code>';
+        code = u.querySelector('code');
+        code.appendChild(document.createTextNode(''));
+      }
+      var addr = SITE_ROOT + 'collection/' + id;
+      if (code.firstChild.data !== addr) code.firstChild.data = addr;
     }
     $('pc-name').addEventListener('input', updateUrlPreview);
 

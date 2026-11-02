@@ -108,6 +108,21 @@ export function recentCardHTML(c) {
   '</a>';
 }
 
+// A new member on /recent: the /search page's user tile, plus the day they
+// joined. Handle, display name and picture are public already (their /u/ page
+// and the search index carry all three).
+export function memberTileHTML(u) {
+  const joined = new Date(String(u.created_at || '').replace(' ', 'T') + 'Z');
+  return '<a class="creator-pill creator-pill-wide" href="' + esc('u/' + encodeURIComponent(u.username)) + '">' +
+    (u.avatar_url ? '<img class="creator-av" loading="lazy" decoding="async" src="' + esc(u.avatar_url) + '" alt="">'
+      : '<span class="creator-sym">·</span>') +
+    '<span class="creator-name">' + esc(u.display_name || u.username) +
+      '<span class="creator-at">@' + esc(u.username) + '</span>' +
+      (isNaN(joined) ? '' : '<span class="creator-count">Joined ' +
+        esc(joined.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })) + '</span>') +
+    '</span></a>';
+}
+
 // The daily pick is made by featuredPick() in home-data.js; the lede was
 // flattened through WikiRender.plainText() there.
 export function featuredCardHTML(c) {

@@ -284,6 +284,7 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
         f = _transform_bg(bg_scale, bg_dx, bg_dy, bg_rot)
     else:
         f = BARE.copy()
+    bg, f = f, Image.new('RGBA', f.size, (0, 0, 0, 0))   # rim pieces go on their own layer
     # "Everything" size (web_render.py): the rim pieces grow or shrink in
     # place, each from where it meets the edge, so they stay cut off by it.
     rim = float(g('all_scale', 1.0))
@@ -305,4 +306,12 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
     # The top leaves hang from the rim already (_place_top pins their top),
     # so they need only the size.
     _reminders(f, n, float(g('leaf_scale', 1.0)) * rim, g('leaf_dy', 0), g('leaf_dx', 0), g('leaf_rot', 0))
-    return f
+    # Each piece above is cut to the stock circle (_DISK); a background that
+    # was resized or moved has a different edge, and the leaves hung past it.
+    # Cut the layer to the background actually drawn, edge anti-aliasing
+    # included. Nothing moves: this only trims what is outside the token.
+    import numpy as _np
+    la = _np.array(f)
+    la[:, :, 3] = (la[:, :, 3].astype(_np.uint16) * _np.array(bg)[:, :, 3] // 255).astype(_np.uint8)
+    bg.alpha_composite(Image.fromarray(la))
+    return bg

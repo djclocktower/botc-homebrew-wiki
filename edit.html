@@ -96,6 +96,9 @@
     font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
     color:#5b4632; cursor:pointer; }
   .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+  /* "Icon by" / "Icon from": the label's own words are the choice. */
+  .fld label select.credit-word { width:auto; padding:2px 6px; font:inherit; color:inherit;
+    text-transform:uppercase; letter-spacing:.04em; }
   .fld .credit-unlink-hint { display:block; margin-top:4px;
     font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
     letter-spacing:0; font-weight:400; }
@@ -184,7 +187,7 @@
           <div class="sub" data-team-only="other" style="display:none;margin-top:4px">Not an official character type. Exported as Loric in script JSON. Rename the type under Advanced Options.</div>
         </div>
         <div class="fld">
-          <label for="creator">Creator</label>
+          <label for="creator">Creator <span class="hint">(more than one? separate the names with commas, so each gets their own creator page)</span></label>
           <input type="text" id="creator">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
           <span class="credit-unlink-hint">Tick this if you’re uploading someone else’s character. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
@@ -223,6 +226,7 @@
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
             <li><code>**bold**</code> prints <strong>bold</strong> and <code>{{i|text}}</code> prints <em>italics</em> (single <code>*asterisks*</code> don&rsquo;t work)</li>
+            <li><code>'''bold'''</code>, <code>''italic''</code> and <code>[https://example.com a link]</code> work too, as do <code>&lt;b&gt;</code> <code>&lt;i&gt;</code> <code>&lt;u&gt;</code> <code>&lt;s&gt;</code> <code>&lt;sup&gt;</code> <code>&lt;sub&gt;</code> <code>&lt;br&gt;</code> and <code>&lt;span style="color:#8b2c2c"&gt;</code></li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span>, <code>{{other|&hellip;}}</code> <span class="wiki-other">purple</span></li>
@@ -283,7 +287,7 @@
         <input type="text" id="translatedBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
       <div class="fld">
-        <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
+        <label for="iconBy"><select id="iconByLabel" class="credit-word" aria-label="How the icon credit reads"><option value="">Icon by</option><option value="from">Icon from</option></select> <span class="hint">(optional)</span></label>
         <input type="text" id="iconBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
       <div class="fld" id="typeName-fld" data-team-only="other" style="display:none">
@@ -445,9 +449,7 @@
       </fieldset>
 
       <div class="fld" id="curata-fld" style="display:none">
-        <label>Curata</label>
-        <p class="sub" id="curata-note" style="margin:0 0 8px"></p>
-        <label class="curata-check"><input type="checkbox" id="curataOptOut"> Don’t show the Curata mark on this page</label>
+        <label class="curata-check"><input type="checkbox" id="curataOptOut"> Disable Curata</label>
       </div>
 
       <fieldset>
@@ -807,6 +809,7 @@
         ipa: $('ipa').value.trim(),
         respelling: $('respelling').value.trim(),
         translatedBy: $('translatedBy').value.trim(), iconBy: $('iconBy').value.trim(),
+        iconByLabel: $('iconByLabel').value === 'from' ? 'from' : '',
         artScale: artScaleSetting(),
         edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value)||0,
@@ -863,7 +866,7 @@
     var deb;
     function schedule(){ clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
-     'quote','appears','tags','typeName','exportTeam','pronunciation','ipa','respelling','edition','firstNight','otherNight','fnReminder','onReminder',
+     'quote','appears','tags','typeName','exportTeam','pronunciation','ipa','respelling','translatedBy','iconBy','iconByLabel','edition','firstNight','otherNight','fnReminder','onReminder',
      'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson','hideSnapshot','hideCopyLink'].forEach(function(id){
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
@@ -1606,30 +1609,12 @@
        control is only drawn for a page that HAS the mark, and only for the
        owner — offering "turn off the wreath" on a page with no wreath would
        be a setting for nothing, and a guest editor cannot save it anyway.
-
-       Where the mark came from matters to the wording: most of it is lent by
-       a Curata collection rather than granted page by page, so a creator
-       looking for the star on their own page would find nothing to explain
-       it. `curataFrom` is the collection's name, straight from /api/page. */
+       `curataFrom` (from /api/page) counts mark lent by a collection. */
     function syncCurataBox(entry, curataFrom, isOwner) {
       var fld = $('curata-fld');
       var has = !!entry.curata || curataFrom !== null;
       if (!fld || !isOwner || !has) { if (fld) fld.style.display = 'none'; return; }
       fld.style.display = '';
-      var where = entry.curata
-        ? 'The admins marked this page as Curata.'
-        : ('This page is Curata because it is in ' +
-           (curataFrom ? '\u201c' + esc(curataFrom) + '\u201d' : 'a Curata collection') + '.');
-      // The honest cost, said before the box is ticked rather than found
-      // afterwards: the mark also lifts an unfinished page out of Partial.
-      var cost = window.Classify && window.Classify.isIncomplete(entry)
-        ? ' This page is still missing ' +
-          window.Classify.listPhrase(window.Classify.missingBits(entry)) +
-          ', so without the mark it becomes Partial: never picked as the Featured or Random Character, and hidden from readers who choose to hide Partial pages.'
-        : '';
-      $('curata-note').innerHTML = where +
-        ' It adds a laurel wreath and shows the page more often on the homepage. ' +
-        'Tick the box to hide the mark on this page only.' + cost;
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);
@@ -1702,6 +1687,7 @@
       $('respelling').value      = entry.respelling || '';
       $('translatedBy').value    = entry.translatedBy || '';
       $('iconBy').value          = entry.iconBy || '';
+      $('iconByLabel').value     = entry.iconByLabel === 'from' ? 'from' : '';
       $('typeName').value        = entry.typeName || '';
       $('exportTeam').value      = entry.exportTeam || '';
       var sc = window.artScaleValue ? window.artScaleValue(entry.artScale) : 0;
@@ -1803,8 +1789,13 @@
       $('fighting-fld').style.display = (!isGood || strayFight) ? '' : 'none';
       $('bluffing-note').hidden = !strayBluff;
       $('fighting-note').hidden = !strayFight;
-      $('bluffing-label').textContent = name;
-      $('fighting-label').textContent = name;
+      // Through the text node (see the ability counter below): a textContent
+      // write here on every keystroke in Name broke Ctrl+Z in that box.
+      ['bluffing-label', 'fighting-label'].forEach(function (id) {
+        var el = $(id);
+        if (!el.firstChild) el.appendChild(document.createTextNode(''));
+        if (el.firstChild.data !== name) el.firstChild.data = name;
+      });
     }
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
@@ -1820,7 +1811,11 @@
       if (!ta || !ct) return;
       function update() {
         var n = ta.value.length;
-        ct.textContent = n + ' character' + (n === 1 ? '' : 's');
+        // The text node's data, never textContent: replacing a node in the
+        // page while somebody types makes Chrome's Ctrl+Z undo one letter
+        // at a time instead of the whole run.
+        if (!ct.firstChild) ct.appendChild(document.createTextNode(''));
+        ct.firstChild.data = n + ' character' + (n === 1 ? '' : 's');
         // Hand the current line to the Forge, so the checker opens on THIS
         // ability instead of an empty box.
         if (gf) {
@@ -2018,6 +2013,9 @@
         }
         posted = entry;
         // Write to D1 via the Worker (instant; requires login + ownership)
+        // What Suggest tags offered, so the Worker can record what was kept.
+        var tagLog = window.tagSuggestLog && window.tagSuggestLog();
+        if (tagLog) entry._tagSuggest = tagLog;
         return fetch('/api/character', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2066,7 +2064,7 @@
         // plus a thumbnail and display copy of each), unchanged. The row as
         // posted becomes the baseline, so the next save still carries the
         // art paths this one wrote.
-        if (posted) { delete posted.baseUpdatedAt; originalEntry = posted; }
+        if (posted) { delete posted.baseUpdatedAt; delete posted._tagSuggest; originalEntry = posted; }
         // The icon just uploaded is the stored one now, not a pending upload.
         if (almAltUI && posted) almAltUI.set(posted.almanacAlt);
         artChanged = false;
@@ -2228,6 +2226,7 @@
   </script>
 
 
+  <script src="assets/tag-suggest.js"></script>
   <script src="assets/rules.js"></script>
   <script src="assets/rules-gate.js"></script>
   <script src="assets/site.js"></script>

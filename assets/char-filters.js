@@ -57,6 +57,7 @@
     ['classBadgeHTML', 'classifyCharacter', 'isPartial', 'isCurata'].forEach(function (k) { if (C[k]) deps[k] = C[k]; });
     if (o.splitCreators) deps.splitCreators = o.splitCreators;
     if (o.CardActions) deps.CardActions = o.CardActions;
+    if (o.saoCompare) deps.saoCompare = o.saoCompare;
     return api;
   }
 
@@ -66,10 +67,14 @@
     ['traveller', 'Traveller'], ['fabled', 'Fabled'],
     ['loric', 'Loric'], ['other', 'Other']
   ];
+  // Official is a Status chip, not a Source one, so it can be combined with
+  // Curata ("Curata or Official"); sourceOf() still answers 'official'.
   var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
+  // How the picked (included) tags combine.
+  var TAG_MODES = [['all', 'all of'], ['any', 'any of'], ['one', 'only one of']];
   var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
   // The direction each sort starts in when it is picked.
-  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc' };
+  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc', sao: 'asc' };
   // Callers from before the direction box passed the direction inside the
   // sort ('name-desc'); read those as the two halves they now are.
   var LEGACY_SORT = { 'name-asc': ['name', 'asc'], 'name-desc': ['name', 'desc'] };
@@ -97,6 +102,7 @@
     (scripts || []).forEach(function (s) { (s.characters || []).forEach(function (sl) { inScript[norm(sl)] = true; }); });
     var colls = (collections || []).filter(function (c) { return !c.standalone; });
     return function (c) {
+      if (c.official) return 'official';
       for (var i = 0; i < colls.length; i++) if (inCollection(c, colls[i])) return 'collection';
       if (inScript[norm(c.slug)]) return 'script';
       return null;
@@ -112,6 +118,7 @@
   // yet), versioned by the row's `v` so it caches for a year. Same order as
   // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
   function thumb(c) {
+    if (c.official) return 'assets/icons-sm/' + norm(c.id) + '.webp';
     var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
     if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
     if (c.art) return 'assets/' + c.art + ver;
@@ -125,7 +132,8 @@
   function card(c, mark) {
     var m = mark || esc;
     var typeClass = GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '';
-    return '<a class="char-card" href="' + esc(c.page) + '">' +
+    // An official character has no page here: it opens the official wiki.
+    return '<a class="char-card" href="' + esc(c.page) + '"' + (c.official ? ' target="_blank" rel="noopener"' : '') + '>' +
       // The icon, and under it the Favorites / Add to Script quick actions
       // (assets/card-actions.js fills the slot).
       '<span class="card-side">' +
@@ -149,6 +157,8 @@
       return LEGACY_SORT[s[0]] ? [LEGACY_SORT[s[0]][0], s[0] === 'name-asc' ? 'Name' : null] : s;
     }).filter(function (s) { return s[1]; });
     if (!sorts.some(function (s) { return s[0] === 'ability'; })) sorts.push(['ability', 'Ability length']);
+    // Steven Approved Order, wherever sao.js is loaded (or handed to init()).
+    if (dep('saoCompare') && !sorts.some(function (s) { return s[0] === 'sao'; })) sorts.push(['sao', 'SAO']);
     var legacyDefault = LEGACY_SORT[opts.defaultSort];
     var sort = legacyDefault ? legacyDefault[0] : (opts.defaultSort || sorts[0][0]);
     return {
@@ -168,7 +178,8 @@
     return {
       includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
       includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-      creatorQuery: '', hidePartial: false, curataOnly: false, favOnly: false,
+      creatorQuery: '', hidePartial: false, curataOnly: false, officialOnly: false, favOnly: false,
+      tagMode: 'all',
       sort: cfg.sort, dir: cfg.dir,
       // 'team': one section per team; 'none': every card in one grid, so
       // the sort runs across all of them at once; 'author': one section
@@ -184,7 +195,7 @@
   function barModel(list, sourceOf) {
     sourceOf = sourceOf || function () { return null; };
     var tagSet = Object.create(null), creatorSet = Object.create(null),
-      teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0;
+      teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0, nOfficial = 0;
     var isPartial = dep('isPartial'), isCurata = dep('isCurata');
     list.forEach(function (c) {
       teamSet[c.team] = 1;
@@ -194,6 +205,7 @@
       var s = sourceOf(c); if (s) srcSet[s] = 1;
       if (isPartial(c)) nPartial++;
       if (isCurata(c)) nCurata++;
+      if (c.official) nOfficial++;
     });
     return {
       teams: TEAMS.filter(function (t) { return teamSet[t[0]]; }),
@@ -202,7 +214,7 @@
       // Source (From Collection / From Script) — collection takes precedence.
       // Only offer the chips whose source actually appears in the list.
       sources: SOURCE_LABELS.filter(function (s) { return srcSet[s[0]]; }),
-      nPartial: nPartial, nCurata: nCurata
+      nPartial: nPartial, nCurata: nCurata, nOfficial: nOfficial
     };
   }
 
@@ -221,7 +233,11 @@
     html += '</div></div>';
     // Tags
     if (model.tags.length) {
-      html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
+      html += '<div class="filter-group"><span class="filter-group-label">Tag ' +
+        '<select class="filter-select filter-tagmode" id="fc-tagmode" aria-label="How picked tags combine" ' +
+        'title="All of: every picked tag. Any of: at least one. Only one of: exactly one of them.">' +
+        TAG_MODES.map(function (m) { return '<option value="' + m[0] + '">' + m[1] + '</option>'; }).join('') +
+        '</select></span><div class="filter-chips" id="fc-tags">';
       model.tags.forEach(function (t) { html += '<button type="button" class="filter-chip" data-tag="' + esc(t) + '">' + esc(t) + '</button>'; });
       html += '</div></div>';
     }
@@ -232,17 +248,20 @@
     }
     // Status (Partial / Curata). Both are narrowing filters: "Hide Partial"
     // leaves the unfinished pages out, "Curata only" keeps the picked ones.
-    var nPartial = model.nPartial, nCurata = model.nCurata;
+    var nPartial = model.nPartial, nCurata = model.nCurata, nOfficial = model.nOfficial || 0;
     // The Favorites chip is built hidden: the saved list arrives after the
     // bar does, and the chip shows once something on the page is in it.
     var wantFav = !!o.favHeart;
-    if (nPartial || nCurata || wantFav) {
-      html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
+    if (nPartial || nCurata || nOfficial || wantFav) {
+      html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata || nOfficial ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
       if (nPartial) {
         html += '<button type="button" class="filter-chip" id="fc-partial" title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
       }
       if (nCurata) {
-        html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
+        html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out. With Official on too, shows both.">Curata only (' + nCurata + ')</button>';
+      }
+      if (nOfficial) {
+        html += '<button type="button" class="filter-chip" id="fc-official" title="The official characters. With Curata only on too, shows both.">Official (' + nOfficial + ')</button>';
       }
       if (wantFav) {
         html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' + o.favHeart + ' Favorites</button>';
@@ -314,13 +333,18 @@
     var out = input.slice();
     // "Hide Partial" leaves the unfinished pages out.
     if (st.hidePartial) out = out.filter(function (c) { return !isPartial(c); });
-    if (st.curataOnly) out = out.filter(function (c) { return isCurata(c); });
+    // Curata only and Official each keep their own; on together they keep
+    // either ("Curata or Official").
+    if (st.curataOnly || st.officialOnly) out = out.filter(function (c) {
+      return (st.curataOnly && isCurata(c)) || (st.officialOnly && !!c.official);
+    });
     if (st.favOnly) out = out.filter(function (c) { return !!(ctx.favSet && ctx.favSet.has(c.slug)); });
     if (st.includeTeams.length) out = out.filter(function (c) { return st.includeTeams.indexOf(c.team) !== -1; });
     if (st.excludeTeams.length) out = out.filter(function (c) { return st.excludeTeams.indexOf(c.team) === -1; });
     if (st.includeTags.length) out = out.filter(function (c) {
       var ct = splitTags(c).map(titleCase);
-      return st.includeTags.every(function (t) { return ct.indexOf(t) !== -1; });
+      var n = st.includeTags.filter(function (t) { return ct.indexOf(t) !== -1; }).length;
+      return st.tagMode === 'any' ? n > 0 : st.tagMode === 'one' ? n === 1 : n === st.includeTags.length;
     });
     if (st.excludeTags.length) out = out.filter(function (c) {
       var ct = splitTags(c).map(titleCase);
@@ -342,6 +366,7 @@
       // Ties (and every blank ability) fall back to the name, A–Z.
       return flip * ((a.ability || '').length - (b.ability || '').length) || cmpName(a, b);
     });
+    else if (st.sort === 'sao' && dep('saoCompare')) out.sort(function (a, b) { return flip * dep('saoCompare')(a, b); });
     else if (st.sort === 'recent') {
       // The feed is oldest first. Without a position function every step
       // above was a filter, which keeps that order, so ascending is the
@@ -446,6 +471,18 @@
       curataBtn.classList.toggle('active', ctrl.state.curataOnly);
       changed();
     });
+    var officialBtn = byId('fc-official');
+    if (officialBtn) officialBtn.addEventListener('click', function () {
+      ctrl.state.officialOnly = !ctrl.state.officialOnly;
+      officialBtn.classList.toggle('active', ctrl.state.officialOnly);
+      changed();
+    });
+    var tagModeSel = byId('fc-tagmode');
+    if (tagModeSel) tagModeSel.addEventListener('change', function () {
+      ctrl.state.tagMode = tagModeSel.value;
+      // Only moves the list when there are picked tags for it to combine.
+      if (ctrl.state.includeTags.length) changed();
+    });
     // ── Favorites chip ──
     // Counted against the current list, so a collection-scoped view (or a
     // search) says how many of its characters are saved. Re-counted after a
@@ -478,7 +515,7 @@
           favBtn.hidden = !n && !keep;
           favBtn.innerHTML = root.Favorites.heartSVG() + ' Favorites' + (n || keep ? ' (' + n + ')' : '');
           var group = byId('fc-status-group');
-          if (group && !partialBtn && !curataBtn) group.hidden = !n && !keep;
+          if (group && !partialBtn && !curataBtn && !officialBtn) group.hidden = !n && !keep;
           if (!n && ctrl.state.favOnly && !keep) { ctrl.state.favOnly = false; favBtn.classList.remove('active'); }
           if (n && !ctrl.state.favOnly && /[?&]favorites=1(&|$)/.test(location.search) && !favLoad.opened) {
             favLoad.opened = true;
@@ -559,6 +596,7 @@
       ctrl.state = blankState(cfg);
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
       if (crSearch) crSearch.value = '';
+      if (tagModeSel) tagModeSel.value = 'all';
       renderCreatorChips();
       sortSel.value = DEFAULT_SORT;
       dirSel.value = DEFAULT_DIR;
@@ -567,6 +605,34 @@
       changed();
     };
     byId('fc-reset').addEventListener('click', ctrl.reset);
+    // Put back a state saved earlier (the /search page keeps it in the
+    // history entry, so Back and a reload find the filters as they were).
+    // Only keys a blank state has, of the same kind; the caller redraws.
+    ctrl.restore = function (saved) {
+      var st = ctrl.state = blankState(cfg);
+      Object.keys(st).forEach(function (k) {
+        if (saved && saved[k] != null && typeof saved[k] === typeof st[k]) st[k] = saved[k];
+      });
+      [['data-team', 'Teams'], ['data-tag', 'Tags'], ['data-source', 'Sources']].forEach(function (p) {
+        bar.querySelectorAll('[' + p[0] + ']').forEach(function (b) {
+          var v = b.getAttribute(p[0]);
+          b.classList.toggle('active', st['include' + p[1]].indexOf(v) !== -1);
+          b.classList.toggle('active-exclude', st['exclude' + p[1]].indexOf(v) !== -1);
+        });
+      });
+      if (partialBtn) partialBtn.classList.toggle('active', st.hidePartial);
+      if (curataBtn) curataBtn.classList.toggle('active', st.curataOnly);
+      if (officialBtn) officialBtn.classList.toggle('active', st.officialOnly);
+      if (tagModeSel) tagModeSel.value = st.tagMode;
+      if (favBtn) favBtn.classList.toggle('active', st.favOnly);
+      if (crSearch) crSearch.value = st.creatorQuery;
+      renderCreatorChips();
+      sortSel.value = st.sort;
+      dirSel.value = st.dir;
+      dirSel.disabled = st.sort === 'relevance';
+      groupSel.value = st.group;
+      updateToggle();
+    };
 
     ctrl.activeCount = function () {
       var st = ctrl.state;
@@ -574,7 +640,7 @@
         st.includeTags.length + st.excludeTags.length +
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
-        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
+        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.officialOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {
       if (!toggle) return;
@@ -594,6 +660,7 @@
       countList = next;
       if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(function (c) { return dep('isPartial')(c); }).length + ')';
       if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(function (c) { return dep('isCurata')(c); }).length + ')';
+      if (officialBtn) officialBtn.textContent = 'Official (' + next.filter(function (c) { return !!c.official; }).length + ')';
       if (favBtn && FAV_SET) favLoad(true);
     };
 

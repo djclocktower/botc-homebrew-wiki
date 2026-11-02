@@ -305,7 +305,8 @@
       if (c.appearsIn) sets.push(c.appearsIn);
       (c.appearsInFrom || []).forEach(function (f) { if (f && f.name) sets.push(f.name); });
       add({
-        type: 'character', name: c.name, href: root + (c.page || ('c/' + encodeURIComponent(c.slug || ''))),
+        // An official character's page is the official wiki, an absolute URL.
+        type: 'character', name: c.name, href: /^https?:/i.test(c.page || '') ? c.page : root + (c.page || ('c/' + encodeURIComponent(c.slug || ''))),
         data: c, curata: !!c.curata, partial: c.classification === 'partial' && !c.curata
       }, [
         [c.name, 10, true, true],
@@ -314,8 +315,9 @@
         [sets.join(' , '), 4, true, true],
         [c.creator || '', 4, true, true],
         [c.ability || '', 2, false],
-        // Curata is a mark, not a word on the page; this lets people search it.
-        [c.curata ? 'curata' : '', 3, true]
+        // Curata and Official are marks, not words on the page; this lets
+        // people search them.
+        [(c.curata ? 'curata ' : '') + (c.official ? 'official' : ''), 3, true]
       ]);
     });
     (data.scripts || []).forEach(function (s) {
@@ -745,7 +747,10 @@
         return p.catch(function () { partial = true; return empty; });
       }
       loading = Promise.all([
-        list('characters.json?fields=grid'),
+        // The official characters lead the list, as on All Characters.
+        // Without them (a failed load answers []) the index is not kept.
+        Promise.all([B.officials ? B.officials() : [], list('characters.json?fields=grid')])
+          .then(function (r) { if (B.officials && !r[0].length) partial = true; return r[0].concat(r[1]); }),
         optional(list('scripts.json?fields=browse'), []),
         optional(list('collections.json?fields=browse'), []),
         optional(B.json(r + 'api/search-index'), {})

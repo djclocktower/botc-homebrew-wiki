@@ -975,9 +975,12 @@
             (c.curataFrom
               ? 'Curata: part of the ' + esc(c.curataFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
-            '" aria-label="Curata"></span>' : '');
+            '" aria-label="Curata"></span>' : '') +
+        // An official character (OfficialRoles.cards(), on /favorites) opens
+        // the official almanac.
+        (c.official ? '<span class="page-class page-class-official" title="An official character. Opens the official almanac.">Official</span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
-        '" href="' + esc(charHref(c, root)) + '"' +
+        '" href="' + esc(charHref(c, root)) + '"' + offsite(c) +
         // The identity, for the Favorites chip in card-filters.js: a saved
         // character is keyed on it, never on the address the link goes to.
         ' data-slug="' + esc(c.slug || '') + '"' +
@@ -1430,20 +1433,10 @@
     var add = Array.isArray(edits.add) ? edits.add : [];
     if (!off.length && !add.length) return null;
 
-    // `byId` answers "is this jinx's target on this script", and it is asked
-    // with the id the CHARACTER STORED, so it has to hold every shape a jinx
-    // can name a target by: the id this export writes, the identity, and the
-    // bare name a jinx typed by hand carries. Keying it on the exported id
-    // alone left every hand-typed jinx looking off-script, which kept it as
-    // written AND rebuilt it from the script's list — the same jinx twice.
-    var bySlug = Object.create(null), byId = Object.create(null);
-    (entries || []).forEach(function (c) {
-      bySlug[c.slug] = c;
-      [exportId(c, xo), c.jsonId, c.name, c.slug].forEach(function (k) {
-        var key = norm(k);
-        if (key && !byId[key]) byId[key] = c;
-      });
-    });
+    var bySlug = Object.create(null);
+    (entries || []).forEach(function (c) { bySlug[c.slug] = c; });
+    var resolver = dep('scriptJinxResolver');
+    var resolve = resolver ? resolver(entries || []) : function () { return null; };
     var touched = Object.create(null);
     off.forEach(function (k) {
       String(k).split('|').forEach(function (s) { if (bySlug[s]) touched[s] = 1; });
@@ -1458,8 +1451,7 @@
       // stay exactly as written: they are part of the character, and this
       // script has no business editing them out of it.
       var kept = (c.jinxes || []).filter(function (j) {
-        var idKey = String(j.id || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        return !byId[idKey];
+        return !resolve(j, c);
       }).map(function (j) {
         // The target is NOT on this script, so there is no entry to qualify
         // this against: the id stays exactly as the character stored it.

@@ -50,6 +50,31 @@
   }
   var state = readURL();
   input.value = state.q;
+  /* The filters, the other tabs' choices and the scroll position live in
+     the history entry (snapshot()), written as the page is left. Back from a
+     character page, or a reload (a phone's pull-to-refresh), reloads this
+     page from scratch, and without them every chip came back off and the
+     browser scrolled a list that had not been drawn yet. So the scroll is
+     put back by hand, once the results are on screen. */
+  var saved = null;
+  try { saved = history.state; history.scrollRestoration = 'manual'; } catch (e) { /* sandboxed */ }
+  function snapshot() {
+    return { f: filters ? filters.state : null, o: tabState, y: window.pageYOffset };
+  }
+  function saveState() {
+    // Left before the results loaded: what was saved has not been used yet.
+    try { history.replaceState(saved || snapshot(), ''); } catch (e) { /* file:// or sandboxed */ }
+  }
+  window.addEventListener('pagehide', saveState);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') saveState();
+  });
+  function restore(st) {
+    if (!st) return;
+    tabState = st.o || {};
+    barType = null;
+    if (st.f) { ensureFilters(); filters.restore(st.f); }
+  }
 
   function writeURL(push) {
     var p = new URLSearchParams();
@@ -57,7 +82,10 @@
     if (state.tab !== 'all') p.set('type', state.tab);
     var qs = p.toString();
     var url = location.pathname + (qs ? '?' + qs : '');
-    try { history[push ? 'pushState' : 'replaceState'](null, '', url); } catch (e) { /* file:// or sandboxed */ }
+    // A new tab starts a new entry (the one being left keeps its scroll, for
+    // Back); retyping keeps this entry's snapshot.
+    if (push) saveState();
+    try { history[push ? 'pushState' : 'replaceState'](push ? null : history.state, '', url); } catch (e) { /* file:// or sandboxed */ }
     document.title = (state.q ? state.q + ' · ' : '') + 'Search — BOTC HomeBrew Wiki';
   }
 
@@ -698,10 +726,10 @@
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) input.blur();
     if (index) run();
   });
-  window.addEventListener('popstate', function () {
+  window.addEventListener('popstate', function (e) {
     state = readURL();
     input.value = state.q;
-    if (index) run();
+    if (index) { run(); if (e.state) window.scrollTo(0, e.state.y || 0); }
   });
   // The top-bar box on this page searches here instead of reloading it.
   window.SearchPage = {
@@ -717,7 +745,10 @@
   function load() {
     S.load().then(function (idx) {
       index = idx;
+      restore(saved);
       run();
+      if (saved && saved.y) window.scrollTo(0, saved.y);
+      saved = null;
       warmMembers();
     }).catch(function () {
       out.innerHTML = emptyHTML('The search could not load. <button type="button" class="filter-reset" id="sp-retry">Try again</button>');

@@ -7,12 +7,11 @@ const require = createRequire(import.meta.url);
 const CardActions = require('../../assets/card-actions.js');
 const PageRender = require('../../assets/render-page.js');
 
-test('card quick actions: a slot for every saveable character, none for drafts or official ones', () => {
+test('card quick actions: a slot for every saveable character, official ones included, none for drafts', () => {
   assert.equal(CardActions.slotHTML({ slug: 'abbot' }), '<span class="cq" data-cq-slug="abbot"></span>');
   assert.equal(CardActions.slotHTML({ slug: 'a"b<c' }), '<span class="cq" data-cq-slug="a&quot;b&lt;c"></span>');
   assert.equal(CardActions.slotHTML({ slug: 'drafty', status: 'draft' }), '');
-  assert.equal(CardActions.slotHTML({ slug: 'off-imp' }), '');
-  assert.equal(CardActions.slotHTML({ slug: 'imp', official: true }), '');
+  assert.equal(CardActions.slotHTML({ slug: 'off-imp', official: true }), '<span class="cq" data-cq-slug="off-imp"></span>');
   assert.equal(CardActions.slotHTML({ name: 'No slug' }), '');
   assert.equal(CardActions.slotHTML(null), '');
   // The glyphs the info card draws with are the ones the cards draw with.
@@ -54,7 +53,8 @@ test('card quick actions: the server-rendered pages print the slots and load car
   const scriptHTML = await get('/s/demo');
   assert.ok(before(order(scriptHTML), 'favorites', 'card-actions'), 'script page order: ' + order(scriptHTML));
   assert.match(scriptHTML, /<span class="cq" data-cq-slug="b"><\/span>/);
-  assert.doesNotMatch(scriptHTML, /data-cq-slug="off-imp"/);
+  // An official character on the roster is saved and scripted like the rest.
+  assert.match(scriptHTML, /data-cq-slug="off-imp"/);
 
   const collHTML = await get('/collection/coll-id');
   assert.ok(before(order(collHTML), 'favorites', 'card-actions') && before(order(collHTML), 'card-actions', 'card-filters'),
