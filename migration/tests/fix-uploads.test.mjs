@@ -272,3 +272,18 @@ test('a wiki page called "{slug}-header" cannot overwrite the banner of the page
   art.set('pages/guide-bg.png', 'x', { owner: '9' });
   assert.equal(await denied(1, 'pages/guide-bg.png'), null);
 });
+
+test('a guest cannot switch off the Curata mark on a script or collection', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f);
+  f.insert('collections', 'cc', { id: 'cc', displayName: 'CC', publicEdit: 'all', curata: true }); own(f, 'collections', 'cc', 1);
+  f.insert('scripts', 'ss', { name: 'SS', author: 'x', publicEdit: 'all', curata: true, characters: [] }); own(f, 'scripts', 'ss', 1);
+  const post = (path, body) => f.request(path, { method: 'POST',
+    headers: { ...member(2), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  await post('/api/collection', { slug: 'cc', id: 'cc', displayName: 'CC', include: [], curataOptOut: true });
+  await post('/api/script', { slug: 'ss', name: 'SS', author: 'x', characters: [], curataOptOut: true });
+  for (const [table, slug] of [['collections', 'cc'], ['scripts', 'ss']]) {
+    const d = JSON.parse(f.db.prepare(`SELECT data FROM ${table} WHERE slug=?`).get(slug).data);
+    assert.equal(d.curata, true);
+    assert.equal(d.curataOptOut, undefined, table);
+  }
+});

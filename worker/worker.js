@@ -14851,6 +14851,10 @@ const app = {
         if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.curata = existing ? !!parseData(existing).curata : false;
+        // The opt-out is a character's (the creator declining the mark); a
+        // script or collection has no such control, so a posted one is a guest
+        // switching the admins' mark off. Never stored here.
+        delete c.curataOptOut;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
         if (!existing && await rowByCustomUrl(env, 'collection', c.id)) {
@@ -14972,6 +14976,10 @@ const app = {
         if (!s.editors || !s.editors.length) delete s.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.curata = existing ? !!parseData(existing).curata : false;
+        // The opt-out is a character's (the creator declining the mark); a
+        // script or collection has no such control, so a posted one is a guest
+        // switching the admins' mark off. Never stored here.
+        delete s.curataOptOut;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(s, storedScript, perm);
         // A new script never lands on somebody's custom address: the slug
