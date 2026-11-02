@@ -3802,7 +3802,9 @@ default), and an icon put on a character from the editor fills its "Icon by".
 The page's text about the gallery is copied word for word from their
 Magma page (magma.com/s/starlit-gallery/profile/about), the owner's call:
 never rewrite it; only its "How to Use" part, which is about Magma, is left
-out. Their terms, from that page, are on /starlit: credit is not
+out. The one exception is the owner's: the line under the title reads "a
+free to use icon collection". The title is the team's own lettering,
+`assets/starlit-logo.webp`, not text. Their terms, from that page, are on /starlit: credit is not
 required but a shout-out is appreciated, and no commercial use.
 
 - **An icon is two layers**, as the original gallery drew them: the BLACK one

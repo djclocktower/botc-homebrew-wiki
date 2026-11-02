@@ -6,10 +6,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Starlit Gallery — BOTC HomeBrew Wiki</title>
-<meta name="description" content="The Starlit Gallery is a free and black-and-white icon collection, developed by @harryandco and @bendan07.">
+<meta name="description" content="The Starlit Gallery is a free to use icon collection, developed by @harryandco and @bendan07.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Starlit Gallery">
-<meta property="og:description" content="The Starlit Gallery is a free and black-and-white icon collection, developed by @harryandco and @bendan07.">
+<meta property="og:description" content="The Starlit Gallery is a free to use icon collection, developed by @harryandco and @bendan07.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -22,9 +22,8 @@
    live from its two layers (assets/starlit.js). */
 [hidden] { display: none !important; }
 
-.sg-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 20px); }
-.sg-hero-mark { width: clamp(44px, 7vw, 72px); height: auto; color: var(--parch); filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); flex-shrink: 0; }
-.home-hero .sg-hero-row h1 { margin: 0; }
+.home-hero h1.sg-logo { margin: 0; line-height: 0; }
+.sg-logo img { display: block; width: min(420px, 82vw); height: auto; margin: 0 auto; filter: drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
 .sg-by { margin-top: 12px !important; }
 .sg-by a { color: var(--parch); text-decoration: none; border-bottom: 1px solid rgba(236,225,200,.4); }
 .sg-by a:hover { border-bottom-color: var(--parch); }
@@ -211,11 +210,8 @@ html.sg-pick .home-panel { padding-top: 14px; }
   </nav>
 
   <div class="home-hero">
-    <div class="sg-hero-row">
-      <svg class="sg-hero-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5c.7 4.6 2.9 6.8 7.5 7.5-4.6.7-6.8 2.9-7.5 7.5-.7-4.6-2.9-6.8-7.5-7.5 4.6-.7 6.8-2.9 7.5-7.5Z"/><path d="M19 15.5c.3 1.9 1.1 2.7 3 3-1.9.3-2.7 1.1-3 3-.3-1.9-1.1-2.7-3-3 1.9-.3 2.7-1.1 3-3Z"/><path d="M5 2c.2 1.3.8 1.8 2 2-1.2.2-1.8.7-2 2-.2-1.3-.8-1.8-2-2 1.2-.2 1.8-.7 2-2Z"/></svg>
-      <h1>Starlit Gallery</h1>
-    </div>
-    <p class="sg-by">The Starlit Gallery is a free and black-and-white icon collection, developed by <a href="u/harryandco" id="sg-by-link">@harryandco</a> and <a href="u/Bendan">@bendan07</a>.</p>
+    <h1 class="sg-logo"><img src="assets/starlit-logo.webp" width="840" height="451" alt="Starlit Gallery" fetchpriority="high"></h1>
+    <p class="sg-by">The Starlit Gallery is a free to use icon collection, developed by <a href="u/harryandco" id="sg-by-link">@harryandco</a> and <a href="u/Bendan">@bendan07</a>.</p>
   </div>
 
   <main class="home-panel" id="content">
