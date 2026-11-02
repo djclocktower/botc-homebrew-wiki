@@ -647,7 +647,7 @@
       var old = document.querySelector('.sg-by .creator-mark');
       if (old) old.remove();
       var m = window.CreatorSymbols.markHTMLFor(ARTISTS);
-      if (m) $('sg-by-link').insertAdjacentHTML('afterend', ' ' + m);
+      if (m) $('sg-by-link').parentNode.insertAdjacentHTML('beforeend', ' ' + m);
     };
     drawHeroMark();
     window.CreatorSymbols.load().then(drawHeroMark);
