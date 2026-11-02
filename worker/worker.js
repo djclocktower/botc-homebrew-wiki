@@ -41,6 +41,10 @@
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
  *   POST /api/account/unlink-discord
+ *   POST /api/account/username -> change your username (once every 30 days)
+ *   POST /api/account/delete  -> delete your account (backed up to R2 first)
+ *   GET  /api/admin/account-backups[?key=] -> deleted accounts' backups
+ *   POST /api/admin/restore-account -> put a deleted account's pages back
  *   GET  /api/contact         -> your modmail conversations with the admins
  *   GET  /api/contact/thread  -> one of them in full (?id=), head + replies
  *   POST /api/contact         -> open one ({category, body, images[]})
@@ -1087,6 +1091,126 @@ async function ensureAuthColumns(env) {
   _authColsReady = true;
 }
 
+// users.username_changed_at, for the once-every-30-days rule. Added lazily.
+const RENAME_EVERY_DAYS = 30;
+let _renameColReady = false;
+async function ensureRenameColumn(env) {
+  if (_renameColReady) return;
+  if (!(await schemaHas(env, { tables: { users: ['username_changed_at'] } }))) {
+    try { await env.DB.prepare('ALTER TABLE users ADD COLUMN username_changed_at TEXT').run(); }
+    catch { /* already there */ }
+  }
+  _renameColReady = true;
+}
+// The time (ms) the next rename is allowed, or 0 when it is allowed now.
+function renameAllowedAt(changedAt) {
+  const last = changedAt ? Date.parse(String(changedAt).replace(' ', 'T') + 'Z') : NaN;
+  return last > 0 ? last + RENAME_EVERY_DAYS * 86400000 : 0;
+}
+
+// One page row from a backup (nightly or a deleted account's), written back
+// over whatever has that slug now. `row.owner_id` is used as given.
+async function upsertBackupRow(env, type, hit, status) {
+  if (type === 'character') {
+    await env.DB.prepare(
+      `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         name=excluded.name, team=excluded.team, creator=excluded.creator,
+         owner_id=excluded.owner_id, tags=excluded.tags, appears_in=excluded.appears_in,
+         data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.name, hit.team, hit.creator || null, hit.owner_id || null,
+           hit.tags || null, hit.appears_in || null, hit.data, status, hit.created_at || null).run();
+  } else if (type === 'collection') {
+    await env.DB.prepare(
+      `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         display_name=excluded.display_name, owner_id=excluded.owner_id,
+         data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.display_name || hit.slug, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
+  } else if (type === 'script') {
+    await env.DB.prepare(
+      `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         name=excluded.name, author=excluded.author, owner_id=excluded.owner_id,
+         data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.name || hit.slug, hit.author || null, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
+  } else if (type === 'wikipage') {
+    await ensurePagesTable(env);
+    await env.DB.prepare(
+      `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         title=excluded.title, parent_type=excluded.parent_type, parent_slug=excluded.parent_slug,
+         author=excluded.author, owner_id=excluded.owner_id, data=excluded.data,
+         status=excluded.status, updated_at=datetime('now')`
+    ).bind(hit.slug, hit.title || hit.slug, hit.parent_type, hit.parent_slug || '', hit.author || null,
+           hit.owner_id || null, hit.data, status, hit.created_at || null).run();
+  }
+}
+
+// Which of a backup's lists each page type lives in.
+const ACCOUNT_BACKUP_TYPES = ['character', 'script', 'collection', 'wikipage'];
+const ACCOUNT_BACKUP_FIELD = { character: 'characters', script: 'scripts', collection: 'collections', wikipage: 'pages' };
+async function readAccountBackup(env, key) {
+  if (!/^account-backups\/\d+-\d+\.json$/.test(key)) return null;
+  const obj = await env.ART.get(key);
+  if (!obj) return null;
+  try { const d = await obj.json(); return d && typeof d === 'object' ? d : null; } catch { return null; }
+}
+// Backup rows put back as they were, ids included (a taken id is skipped).
+// Column names go into the SQL, so they are checked even though we wrote them.
+async function reinsertRows(env, table, rows) {
+  for (const r of rows) {
+    const cols = Object.keys(r).filter(k => /^[a-z_]+$/.test(k));
+    if (!cols.length) continue;
+    await env.DB.prepare(`INSERT OR IGNORE INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`)
+      .bind(...cols.map(k => r[k])).run().catch(() => {});
+  }
+}
+// The row the wiki has under a backed-up slug now (or null).
+async function backupTargetRow(env, type, slug) {
+  if (type !== 'wikipage') return getEntityRow(env, type, slug);
+  return env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(slug).first().catch(() => null);
+}
+
+// ---- the backup a deleted account leaves behind ----
+// One JSON file in R2 per deletion, kept for good (outside backups/, which
+// expires after 30 days): the account row minus the password hash, every page
+// it owned, its comments and mark, and the comments and history of wiki pages
+// about to be removed. Not DMs: admins may only read reported conversations.
+// Throws on any failure, so the caller deletes nothing.
+const ACCOUNT_BACKUP_PREFIX = 'account-backups/';
+async function accountBackup(env, u, keepPages) {
+  const rows = async (sql, ...binds) => {
+    try { return (await env.DB.prepare(sql).bind(...binds).all()).results || []; }
+    catch (e) { if (isMissingSchema(e)) return []; throw e; }
+  };
+  const { password_hash, ...user } = u;
+  const onPages = `entity_type='wikipage' AND slug IN (SELECT slug FROM pages WHERE owner_id=?)`;
+  const data = {
+    at: new Date().toISOString(), keepPages, user,
+    characters: await rows('SELECT * FROM characters WHERE owner_id=?', u.id),
+    scripts: await rows('SELECT * FROM scripts WHERE owner_id=?', u.id),
+    collections: await rows('SELECT * FROM collections WHERE owner_id=?', u.id),
+    pages: await rows('SELECT * FROM pages WHERE owner_id=?', u.id),
+    comments: await rows('SELECT * FROM comments WHERE user_id=?', u.id),
+    pageComments: keepPages ? [] : await rows(`SELECT * FROM comments WHERE ${onPages}`, u.id),
+    pageRevisions: keepPages ? [] : await rows(`SELECT * FROM revisions WHERE ${onPages}`, u.id),
+    creatorMarks: await rows('SELECT * FROM creator_marks WHERE user_id=?', u.id),
+    favorites: await rows('SELECT * FROM favorites WHERE user_id=?', u.id)
+  };
+  const pages = data.characters.length + data.scripts.length + data.collections.length + data.pages.length;
+  const key = ACCOUNT_BACKUP_PREFIX + u.id + '-' + Date.now() + '.json';
+  await env.ART.put(key, JSON.stringify(data), {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: { username: String(u.username), pages: String(pages), keepPages: keepPages ? '1' : '0' }
+  });
+  return key;
+}
+
 // How long a half-finished Discord sign-in stays valid. Ten minutes used to be
 // enough for a desktop consent screen; on a phone the flow can hand off to the
 // Discord app, ask for a password and a 2FA code, and come back well after
@@ -1853,13 +1977,20 @@ function mixesScripts(name) {
   );
 }
 
-function validSignup(username, email, password) {
+// The handle rule, shared by signup and a rename.
+function usernameProblem(username) {
   if (!USERNAME_RE.test(username || '')) {
     return 'Username must be 3–20 characters: letters (accents welcome), numbers, hyphens or underscores.';
   }
   if (mixesScripts(username)) {
     return 'Username mixes letters from two different alphabets. Please use one alphabet.';
   }
+  return null;
+}
+
+function validSignup(username, email, password) {
+  const bad = usernameProblem(username);
+  if (bad) return bad;
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
     return 'Please enter a valid email address.';
   }
@@ -1999,8 +2130,22 @@ async function findUserByShownName(env, id) {
 // Is this handle taken — or close enough to an existing one to read as it?
 // Both questions are the same question once the key has the accents folded out
 // of it, which is the point of keying it that way.
-async function usernameTaken(env, name) {
-  return !!(await selectUserByName(env, 'id', name));
+async function usernameTaken(env, name, selfId) {
+  const u = await selectUserByName(env, 'id', name);
+  if (u && Number(u.id) !== Number(selfId)) return true;
+  const parked = await parkedFor(env, name);
+  return parked != null && parked !== Number(selfId);
+}
+
+/* A handle somebody renamed away from stays theirs: /u/{old} forwards to the
+   new name (a `redirects` row, entity_type 'user', keyed on usernameKey, to
+   the account id), and nobody else may take it, or every link posted to the
+   old name would land on a stranger. The account itself may take it back.
+   Deleting the account drops its rows, which frees the names. */
+async function parkedFor(env, name) {
+  const r = await env.DB.prepare("SELECT to_slug FROM redirects WHERE entity_type='user' AND from_slug=?")
+    .bind(usernameKey(name)).first().catch(() => null);
+  return r ? Number(r.to_slug) : null;
 }
 
 // ---- wiki lock (global freeze flag, stored in D1 settings) ----
@@ -4000,8 +4145,13 @@ async function sanitizeEditors(env, v, ownerId) {
   for (const raw of v.slice(0, PAGE_EDITORS_MAX * 2)) {
     const name = typeof raw === 'string' ? raw
       : (raw && typeof raw === 'object' ? String(raw.username || '') : '');
-    if (!name.trim()) continue;
-    const u = await selectUserByName(env, 'id, username', name).catch(() => null);
+    // A pair is resolved by id alone: a renamed editor stays on the list, and
+    // a deleted one drops off instead of passing to the next owner of the name.
+    const id = raw && typeof raw === 'object' ? parseInt(raw.id, 10) : NaN;
+    if (!name.trim() && !(id > 0)) continue;
+    const u = id > 0
+      ? await env.DB.prepare('SELECT id, username FROM users WHERE id=?').bind(id).first().catch(() => null)
+      : await selectUserByName(env, 'id, username', name).catch(() => null);
     if (!u) { if (unknown.length < PAGE_EDITORS_MAX) unknown.push(normUsername(name)); continue; }
     // The owner is not a guest on their own page, and an account listed twice
     // (once by name, once by pair) is one editor.
@@ -10235,7 +10385,19 @@ const app = {
     // One page, two keys. profile.html renders both: an account profile when
     // the name belongs to somebody, and a plain creator page when it does not
     // (half the wiki was bulk-imported under names with no account behind them).
-    if (method === 'GET' && path.startsWith('/u/')) return serveProfileShell(env, request, url);
+    if (method === 'GET' && path.startsWith('/u/')) {
+      // A renamed account's old address forwards to the new one; a live
+      // account of that name always wins (see parkedFor).
+      let name = '';
+      try { name = decodeURIComponent(path.slice(3).replace(/\/+$/, '')); } catch { /* bad escape */ }
+      if (name && !(await selectUserByName(env, 'id', name))) {
+        const id = await parkedFor(env, name);
+        const u = id != null ? await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(id).first().catch(() => null) : null;
+        // 302, not 301: the owner may take the old name back.
+        if (u) return redirectResponse(url.origin + '/u/' + encodeURIComponent(u.username) + url.search, null, { 'Cache-Control': 'no-store' });
+      }
+      return serveProfileShell(env, request, url);
+    }
 
     // /author?a=Name — the link every character info box, credits list and the
     // homepage creator strip already points at. When the name belongs to an
@@ -11808,8 +11970,9 @@ const app = {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       await ensureProfileColumn(env);
+      await ensureRenameColumn(env);
       const batch = await env.DB.batch([
-        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login FROM users WHERE id=?`).bind(sess.userId),
+        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login, username_changed_at FROM users WHERE id=?`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
@@ -11844,6 +12007,9 @@ const app = {
           discordUsername: u.discord_username || null,
           avatarUrl: u.avatar_url || null,
           hasPassword: !!u.password_hash,
+          // When the username may next change (null: now).
+          usernameNextChange: renameAllowedAt(u.username_changed_at) > Date.now()
+            ? new Date(renameAllowedAt(u.username_changed_at)).toISOString() : null,
           createdAt: u.created_at,
           lastLogin: u.last_login,
           links: parseProfileExtra(u).links,
@@ -12631,6 +12797,45 @@ const app = {
     // the compensating control for that decision: one screen showing who is
     // new and how much they have already published, so a spam run is visible
     // as a row rather than as a hundred scattered pages.
+    // ---------- ADMIN: deleted accounts' backups ----------
+    // No ?key: every backup, newest first. ?key=: one backup, with each page
+    // in it and what the wiki has under that slug now.
+    if (method === 'GET' && path === '/api/admin/account-backups') {
+      if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+      const key = url.searchParams.get('key');
+      if (!key) {
+        const out = [];
+        let cursor;
+        do {
+          const res = await env.ART.list({ prefix: ACCOUNT_BACKUP_PREFIX, cursor, include: ['customMetadata'] });
+          for (const o of res.objects || []) {
+            const m = o.customMetadata || {};
+            out.push({ key: o.key, username: m.username || null, pages: Number(m.pages) || 0,
+                       keepPages: m.keepPages === '1', at: Number((o.key.match(/-(\d+)\.json$/) || [])[1]) || null });
+          }
+          cursor = res.truncated ? res.cursor : null;
+        } while (cursor);
+        out.sort((a, b) => (b.at || 0) - (a.at || 0));
+        return jsonResponse({ backups: out });
+      }
+      const bk = await readAccountBackup(env, key);
+      if (!bk) return jsonResponse({ error: 'No such backup.' }, { status: 404 });
+      const items = [];
+      for (const [type, list] of ACCOUNT_BACKUP_TYPES.map(t => [t, bk[ACCOUNT_BACKUP_FIELD[t]] || []])) {
+        for (const r of list) {
+          const now = await backupTargetRow(env, type, r.slug);
+          items.push({ type, slug: r.slug, name: r.name || r.display_name || r.title || r.slug,
+                       status: r.status, now: now ? now.status : null });
+        }
+      }
+      const u = bk.user || {};
+      return jsonResponse({
+        key, at: bk.at, keepPages: !!bk.keepPages,
+        user: { id: u.id, username: u.username, displayName: u.display_name || null, email: u.email || null, createdAt: u.created_at || null },
+        items, comments: (bk.comments || []).length
+      });
+    }
+
     if (method === 'GET' && path === '/api/admin/new-users') {
       await ensureBanColumn(env);
       const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days'), 10) || 7));
@@ -13371,6 +13576,174 @@ const app = {
           return jsonResponse({ ok: true, links: extra.links, pinned: extra.pinned });
         }
         return jsonResponse({ ok: true });
+      }
+
+      // ---- change your username: {username}, once every RENAME_EVERY_DAYS ----
+      // The old /u/ address forwards and stays parked for this account
+      // (parkedFor). Everything else is keyed on the account id.
+      if (path === '/api/account/username') {
+        if (await rateLimited(env, request, 'rename', 10, 3600, { sess })) {
+          return tooManyResponse('Too many tries. Wait a while and try again.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const username = normUsername(b.username);
+        const bad = usernameProblem(username);
+        if (bad) return jsonResponse({ error: bad }, { status: 400 });
+        await ensureUsernameKey(env);
+        await ensureRenameColumn(env);
+        await ensureRedirectsTable(env);
+        const u = await env.DB.prepare('SELECT id, username, username_changed_at FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        if (u.username === username) return jsonResponse({ ok: true, username, message: 'That is already your username.' });
+        const next = renameAllowedAt(u.username_changed_at);
+        if (next && Date.now() < next) {
+          return jsonResponse({
+            error: 'You can change your username once every ' + RENAME_EVERY_DAYS + ' days. You can change it again on ' +
+              new Date(next).toISOString().slice(0, 10) + '.',
+            nextAt: new Date(next).toISOString()
+          }, { status: 429 });
+        }
+        const TAKEN = 'That username is taken or too close to an existing one. Try adding something to it.';
+        if (await usernameTaken(env, username, sess.userId)) return jsonResponse({ error: TAKEN }, { status: 409 });
+        // A legacy mark is linked by username (Creators.LEGACY_ACCOUNTS), so a
+        // holder with no mark of their own claims it now or loses it.
+        let legacy = null;
+        try {
+          const reg = await cachedMarkRegistry(env, ctx);
+          if (!reg.degraded) legacy = reg.list.find(m => m.legacy && m.u && usernameKey(m.u) === usernameKey(u.username)) || null;
+        } catch { /* no registry: the nightly pass and the account page still work */ }
+        try {
+          await env.DB.prepare("UPDATE users SET username=?, username_key=?, username_changed_at=datetime('now') WHERE id=?")
+            .bind(username, usernameKey(username), sess.userId).run();
+        } catch (e) {
+          if (!/UNIQUE/i.test(String((e && e.message) || e))) throw e;
+          return jsonResponse({ error: TAKEN }, { status: 409 });
+        }
+        await env.DB.prepare("DELETE FROM redirects WHERE entity_type='user' AND from_slug=?")
+          .bind(usernameKey(username)).run().catch(() => {});
+        if (usernameKey(u.username) !== usernameKey(username)) {
+          await env.DB.prepare(
+            `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('user', ?, ?)
+             ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug, created_at=datetime('now')`
+          ).bind(usernameKey(u.username), String(sess.userId)).run().catch(() => {});
+        }
+        // Admin links from a creator name to this account store the handle.
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%' AND value <> ''"
+          ).all();
+          for (const r of results || []) {
+            if (usernameKey(r.value) !== usernameKey(u.username)) continue;
+            await env.DB.prepare('UPDATE settings SET value=? WHERE key=?').bind(username, r.key).run();
+          }
+        } catch { /* no aliases */ }
+        if (legacy) {
+          await ensureMarksTable(env);
+          const own = await env.DB.prepare('SELECT 1 FROM creator_marks WHERE user_id=?').bind(sess.userId).first().catch(() => null);
+          if (!own) await upsertMark(env, sess.userId, legacy.g, legacy.k, 1, legacy.n || []).catch(() => {});
+        }
+        await refreshMarkNames(env, sess.userId).catch(() => {});
+        // Marks, creator lists and cached profiles all carry the handle.
+        await bumpContentVersion(env, 'all');
+        await logActivity(env, sess, 'rename-user', 'user', null, u.username + ' -> ' + username);
+        return jsonResponse({ ok: true, username });
+      }
+
+      // ---- delete your own account: {password | confirm, keepPages} ----
+      // Backed up to R2 first (accountBackup); if that fails nothing is
+      // deleted. keepPages leaves every page and comment up with no owner;
+      // otherwise they are soft-deleted (wiki pages, which have no trash, are
+      // removed). Admins restore from Dashboard -> Deleted accounts.
+      if (path === '/api/account/delete') {
+        if (await rateLimited(env, request, 'acctdelete', 5, 3600, { sess })) {
+          return tooManyResponse('Too many tries. Wait a while and try again.', 3600);
+        }
+        if (!env.ART) return jsonResponse({ error: 'Account deletion is unavailable right now. Try again later.' }, { status: 503 });
+        const b = await request.json().catch(() => ({}));
+        const u = await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(sess.userId).first();
+        if (u.is_admin) {
+          return jsonResponse({ error: 'Admins cannot delete their account. Ask another admin to remove your admin role first.' }, { status: 400 });
+        }
+        if (u.password_hash) {
+          if (!(await verifyPassword(env, String(b.password || ''), u.password_hash))) {
+            return jsonResponse({ error: 'Your password is incorrect.' }, { status: 403 });
+          }
+        } else if (usernameKey(b.confirm) !== usernameKey(u.username)) {
+          return jsonResponse({ error: 'Type your username to confirm.' }, { status: 403 });
+        }
+        const keepPages = !!b.keepPages;
+        let backupKey;
+        try { backupKey = await accountBackup(env, u, keepPages); }
+        catch (e) {
+          console.error('[account delete] backup failed:', (e && e.message) || e);
+          return jsonResponse({ error: 'Could not back up your account, so nothing was deleted. Try again later.' }, { status: 503 });
+        }
+        const id = u.id;
+        const run = (sql, ...binds) => env.DB.prepare(sql).bind(...binds).run().catch(e => { if (!isMissingSchema(e)) throw e; });
+        await logActivity(env, sess, 'delete-account', 'user', null,
+          u.username + (keepPages ? ' (kept their pages)' : ' (deleted their pages)'));
+        await revokeSessions(env, id);
+        const at = new Date().toISOString();
+        for (const t of ['characters', 'scripts', 'collections']) {
+          if (!keepPages) {
+            await run(
+              `UPDATE ${t} SET status='deleted', updated_at=datetime('now'),
+                 data=CASE WHEN json_valid(data)
+                   THEN json_set(data, '$._deleted', json_object('at', ?, 'by', ?, 'from', status, 'account', 1))
+                   ELSE data END
+               WHERE owner_id=? AND status IS NOT 'deleted'`, at, u.username, id);
+          }
+          await run(`UPDATE ${t} SET owner_id=NULL WHERE owner_id=?`, id);
+        }
+        if (keepPages) {
+          await run('UPDATE pages SET owner_id=NULL WHERE owner_id=?', id);
+        } else {
+          let wiki = [];
+          try { wiki = (await env.DB.prepare('SELECT slug FROM pages WHERE owner_id=?').bind(id).all()).results || []; }
+          catch (e) { if (!isMissingSchema(e)) throw e; }
+          // ponytail: a few queries per wiki page; set-based deletes if an
+          // account with hundreds of pages ever hits the subrequest limit.
+          for (const p of wiki) {
+            await run('DELETE FROM pages WHERE slug=?', p.slug);
+            await run("DELETE FROM redirects WHERE entity_type='wikipage' AND to_slug=?", p.slug);
+            await dropPageRefs(env, 'wikipage', p.slug);
+            await unfeatureArticle(env, p.slug);
+          }
+          // Replies under their comments go down with them ('hidden', so
+          // restoring a comment brings its replies back), then their own.
+          await run(`UPDATE comments SET status='hidden' WHERE status='visible'
+                      AND parent_id IN (SELECT id FROM comments WHERE user_id=? AND status='visible')`, id);
+          await run("UPDATE comments SET status='removed' WHERE user_id=? AND status='visible'", id);
+        }
+        await run('DELETE FROM favorites WHERE user_id=?', id);
+        await run('DELETE FROM creator_marks WHERE user_id=?', id);
+        await run('DELETE FROM dm_blocks WHERE user_id=? OR blocked_id=?', id, id);
+        // An admin link from a creator name to this handle would hand those
+        // pages to whoever registers the name next.
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%' AND value <> ''").all();
+          for (const r of results || []) {
+            if (usernameKey(r.value) === usernameKey(u.username)) await run('DELETE FROM settings WHERE key=?', r.key);
+          }
+        } catch { /* no aliases */ }
+        // The handle stays parked, like its old ones, so nobody can take it
+        // and every link to this creator.
+        await ensureRedirectsTable(env);
+        await run(`INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('user', ?, ?)
+                   ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`, usernameKey(u.username), String(id));
+        // activity_log.user_id is a foreign key; the log keeps the name as text.
+        await run('UPDATE activity_log SET user_id=NULL WHERE user_id=?', id);
+        await env.DB.prepare('DELETE FROM users WHERE id=?').bind(id).run();
+        await bumpContentVersion(env, 'all');
+        if (u.email) {
+          ctx.waitUntil(sendEmail(env, u.email, 'Your account was deleted — ' + APP_NAME, emailShell('Your account was deleted',
+            `<p>Hi ${escapeHtml(u.display_name || u.username)},</p>
+             <p>Your account <b>@${escapeHtml(u.username)}</b> was deleted at your request.` +
+            (keepPages ? ' Your pages stay on the wiki without an owner.' : ' Your pages were taken down.') +
+            ` If this was a mistake, contact the admins on Discord: they keep a backup and can restore your pages.</p>`)).catch(() => {}));
+        }
+        return jsonResponse({ ok: true, backup: backupKey }, { 'Set-Cookie': clearCookie() });
       }
 
       // ---- the creator page's look: {theme} (null clears it) ----
@@ -17326,35 +17699,67 @@ const app = {
         const current = await getEntityRow(env, type, hit.slug);
         if (current) await saveRevision(env, sess, type, current);
         const status = ['published', 'draft', 'deleted'].includes(hit.status) ? hit.status : 'published';
-        if (type === 'character') {
-          await env.DB.prepare(
-            `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
-             ON CONFLICT(slug) DO UPDATE SET
-               name=excluded.name, team=excluded.team, creator=excluded.creator,
-               owner_id=excluded.owner_id, tags=excluded.tags, appears_in=excluded.appears_in,
-               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-          ).bind(hit.slug, hit.name, hit.team, hit.creator || null, hit.owner_id || null,
-                 hit.tags || null, hit.appears_in || null, hit.data, status, hit.created_at || null).run();
-        } else if (type === 'collection') {
-          await env.DB.prepare(
-            `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
-             VALUES (?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
-             ON CONFLICT(slug) DO UPDATE SET
-               display_name=excluded.display_name, owner_id=excluded.owner_id,
-               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-          ).bind(hit.slug, hit.display_name || hit.slug, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
-        } else {
-          await env.DB.prepare(
-            `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,COALESCE(?,datetime('now')),datetime('now'))
-             ON CONFLICT(slug) DO UPDATE SET
-               name=excluded.name, author=excluded.author, owner_id=excluded.owner_id,
-               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-          ).bind(hit.slug, hit.name || hit.slug, hit.author || null, hit.owner_id || null, hit.data, status, hit.created_at || null).run();
-        }
+        await upsertBackupRow(env, type, hit, status);
         await logActivity(env, sess, 'restore-backup', type, hit.slug, hit.name || hit.display_name || hit.slug);
         return jsonResponse({ ok: true, slug: hit.slug, status, date });
+      }
+
+      // ---- admin: restore a deleted account's content from its backup ----
+      // Body: {key, type?, slug?, username?}. One page (type + slug) or all.
+      // A slug that is live again is skipped and reported; the rest go back
+      // as published or draft, owned by `username` or by nobody. Restoring
+      // everything also brings back the account's removed comments.
+      if (path === '/api/admin/restore-account') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        const b = await request.json().catch(() => ({}));
+        const bk = await readAccountBackup(env, String(b.key || ''));
+        if (!bk) return jsonResponse({ error: 'No such backup.' }, { status: 404 });
+        let ownerId = null;
+        if (b.username) {
+          const u = await findUserByUsername(env, String(b.username).trim());
+          if (!u) return jsonResponse({ error: 'No user named "' + String(b.username) + '".' }, { status: 404 });
+          ownerId = u.id;
+        }
+        const one = b.type || b.slug;
+        if (one && !ACCOUNT_BACKUP_TYPES.includes(String(b.type))) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const restored = [], skipped = [];
+        for (const type of ACCOUNT_BACKUP_TYPES) {
+          if (one && type !== b.type) continue;
+          for (const r of bk[ACCOUNT_BACKUP_FIELD[type]] || []) {
+            if (one && r.slug !== b.slug) continue;
+            // Deleted before the account was: not part of what it lost.
+            if (r.status === 'deleted') { if (one) skipped.push({ type, slug: r.slug, why: 'was already deleted' }); continue; }
+            const now = await backupTargetRow(env, type, r.slug);
+            if (now && now.status !== 'deleted') { skipped.push({ type, slug: r.slug, why: 'is live on the wiki' }); continue; }
+            const status = r.status === 'draft' ? 'draft' : 'published';
+            const d = (() => { try { const x = JSON.parse(r.data); delete x._deleted; return JSON.stringify(x); } catch { return r.data; } })();
+            await upsertBackupRow(env, type, { ...r, data: d, owner_id: ownerId }, status);
+            restored.push({ type, slug: r.slug });
+          }
+        }
+        if (one && !restored.length && !skipped.length) return jsonResponse({ error: 'That page is not in this backup.' }, { status: 404 });
+        // A removed wiki page's comments and history come back with it.
+        const wikiBack = new Set(restored.filter(r => r.type === 'wikipage').map(r => r.slug));
+        if (wikiBack.size) {
+          await reinsertRows(env, 'comments', (bk.pageComments || []).filter(c => wikiBack.has(c.slug)));
+          await reinsertRows(env, 'revisions', (bk.pageRevisions || []).filter(c => wikiBack.has(c.slug)));
+        }
+        let comments = 0;
+        if (!one) {
+          const ids = (bk.comments || []).filter(c => c.status === 'visible').map(c => Number(c.id)).filter(Boolean);
+          for (let i = 0; i < ids.length; i += 90) {
+            const chunk = ids.slice(i, i + 90), ph = chunk.map(() => '?').join(',');
+            const res = await env.DB.prepare(`UPDATE comments SET status='visible' WHERE status='removed' AND id IN (${ph})`)
+              .bind(...chunk).run().catch(() => null);
+            comments += (res && res.meta && res.meta.changes) || 0;
+            await env.DB.prepare(`UPDATE comments SET status='visible' WHERE status='hidden' AND parent_id IN (${ph})`)
+              .bind(...chunk).run().catch(() => {});
+          }
+        }
+        await bumpContentVersion(env, 'all');
+        await logActivity(env, sess, 'restore-account', 'user', null,
+          (bk.user && bk.user.username || '?') + ' (' + restored.length + ' page' + (restored.length === 1 ? '' : 's') + ')');
+        return jsonResponse({ ok: true, restored, skipped, comments });
       }
 
       // ---- admin: bulk actions across many pages ----

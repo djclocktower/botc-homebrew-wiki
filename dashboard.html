@@ -559,6 +559,14 @@
         </p>
         <div id="deleted-list"></div>
       </section>
+      <section class="panel" id="acct-backups-panel">
+        <h3>Deleted accounts</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Every deleted account is backed up first, and the backup is kept for good. Open one to see its pages and restore any of them. Restored pages have no owner unless you type a username. A page that is live again at the same address is skipped.
+        </p>
+        <button type="button" class="del-btn del-restore" id="ab-load">Load backups</button>
+        <div id="ab-list" style="margin-top:10px"></div>
+      </section>
       <section class="panel" id="draft-page-panel">
         <h3>Send a page to drafts</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
@@ -3427,6 +3435,79 @@
       }).catch(function(err){
         btn.disabled = false; status.textContent = '✗ ' + err.message; status.style.color = '#9A0D12';
       });
+    });
+
+    // ---- deleted accounts (GET /api/admin/account-backups, POST /api/admin/restore-account) ----
+    function abLoad(){
+      var box = $('ab-list');
+      box.innerHTML = '<p class="note">Loading…</p>';
+      getJSON('/api/admin/account-backups').then(function(d){
+        if (d.error) { box.innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+        if (!d.backups.length) { box.innerHTML = '<p class="note">No account has been deleted.</p>'; return; }
+        box.innerHTML = d.backups.map(function(b){
+          var when = b.at ? new Date(b.at).toISOString().slice(0, 19) : '';
+          return '<div class="ab-item" data-key="' + esc(b.key) + '">' +
+            '<div class="del-row"><span class="del-name">@' + esc(b.username || '?') + '</span>' +
+            '<span class="del-when" title="' + esc(absTime(when)) + '">deleted ' + esc(relTime(when)) + ', ' + b.pages + ' page' + (b.pages === 1 ? '' : 's') +
+            (b.keepPages ? ', kept on the wiki' : '') + '</span>' +
+            '<button type="button" class="del-btn del-restore ab-open">Open</button></div>' +
+            '<div class="ab-detail"></div></div>';
+        }).join('');
+      });
+    }
+    function abRestore(item, body, status){
+      var owner = item.querySelector('.ab-owner');
+      body.key = item.getAttribute('data-key');
+      if (owner && owner.value.trim()) body.username = owner.value.trim();
+      status.textContent = 'Restoring…';
+      return postJSON('/api/admin/restore-account', body).then(function(res){
+        if (res.status !== 200) { status.textContent = (res.body && res.body.error) || 'Failed.'; return; }
+        var r = res.body;
+        status.textContent = 'Restored ' + r.restored.length + ' page' + (r.restored.length === 1 ? '' : 's') +
+          (r.comments ? ' and ' + r.comments + ' comment' + (r.comments === 1 ? '' : 's') : '') +
+          (r.skipped.length ? '. Left alone: ' + r.skipped.map(function(x){ return x.slug + ' (' + x.why + ')'; }).join(', ') : '') + '.';
+        abOpen(item, true);
+      });
+    }
+    function abOpen(item, keepStatus){
+      var det = item.querySelector('.ab-detail');
+      var prev = keepStatus && det.querySelector('.ab-all-status');
+      var prevText = prev ? prev.textContent : '';
+      det.innerHTML = '<p class="note">Loading…</p>';
+      getJSON('/api/admin/account-backups?key=' + encodeURIComponent(item.getAttribute('data-key'))).then(function(d){
+        if (d.error) { det.innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+        var u = d.user || {};
+        det.innerHTML = '<p class="note" style="font-style:normal">Account #' + esc(u.id) + (u.email ? ', ' + esc(u.email) : '') +
+          (u.createdAt ? ', joined ' + esc(absTime(u.createdAt)) : '') + '. ' + d.comments + ' comment' + (d.comments === 1 ? '' : 's') + ' in the backup.</p>' +
+          '<div class="act-filters"><input type="text" class="ab-owner" placeholder="owner's username (optional)">' +
+          '<button type="button" class="del-btn del-restore ab-all">Restore everything</button>' +
+          '<span class="del-status ab-all-status"></span></div>' +
+          (d.items.length ? d.items.map(function(it){
+            var now = it.now === null ? 'not on the wiki' : it.now === 'deleted' ? 'in the trash' : 'live (' + it.now + ')';
+            var can = it.status !== 'deleted' && (it.now === null || it.now === 'deleted');
+            return '<div class="del-row" data-type="' + esc(it.type) + '" data-slug="' + esc(it.slug) + '">' +
+              '<span class="tag tag-type">' + esc(it.type) + '</span>' +
+              '<span class="del-name">' + esc(it.name) + '</span>' +
+              '<span class="del-when">was ' + esc(it.status) + ', now ' + esc(now) + '</span>' +
+              (can ? '<button type="button" class="del-btn del-restore ab-one">Restore</button>' : '') +
+              '<span class="del-status"></span></div>';
+          }).join('') : '<p class="note">The account owned no pages.</p>');
+        if (prevText) det.querySelector('.ab-all-status').textContent = prevText;
+      });
+    }
+    $('ab-load').addEventListener('click', abLoad);
+    document.addEventListener('click', function(e){
+      var t = e.target;
+      var item = t.closest && t.closest('.ab-item');
+      if (!item) return;
+      if (t.classList.contains('ab-open')) abOpen(item);
+      else if (t.classList.contains('ab-all')) {
+        if (!confirm('Restore every page and comment in this backup? Pages that are live again are skipped.')) return;
+        abRestore(item, {}, item.querySelector('.ab-all-status'));
+      } else if (t.classList.contains('ab-one')) {
+        var row = t.closest('.del-row');
+        abRestore(item, { type: row.getAttribute('data-type'), slug: row.getAttribute('data-slug') }, row.querySelector('.del-status'));
+      }
     });
 
     function renderDeleted(rows){
