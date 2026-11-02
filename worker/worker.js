@@ -9689,7 +9689,7 @@ const app = {
       const texOnly = url.searchParams.get('textures') === '1';
       let icons = [], textures = [];
       try {
-        textures = ((await env.DB.prepare('SELECT * FROM starlit_textures ORDER BY name COLLATE NOCASE, id').all()).results || [])
+        textures = ((await env.DB.prepare('SELECT * FROM starlit_textures ORDER BY id').all()).results || [])
           .map(starlitTextureOut);
         if (!texOnly) {
           icons = ((await env.DB.prepare('SELECT * FROM starlit_icons ORDER BY name COLLATE NOCASE, id').all()).results || [])

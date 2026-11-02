@@ -17,32 +17,17 @@
   var LAYER_MAX = 1200;       // longest side a layer is stored at
   var THUMB = 256;            // the grid's picture
   var ARTISTS = 'Harry & Co & Bendan';
-  var TEX = '/assets/iconforge/textures/';
-  // Icon Forge's sheets, under Icon Forge's ids (assets/iconforge/textures.js),
-  // so "Open in Icon Forge" can carry the choice across.
-  var BUILT_IN = [
-    { id: 'blue', name: 'Good', src: TEX + 'blue.png' },
-    { id: 'red', name: 'Evil', src: TEX + 'red.png' },
-    // The official traveller icons are split down the middle: unaligned is
-    // blue | red, good is blue | brown, evil is brown | red.
-    { id: 'traveller_split', name: 'Traveller', src: TEX + 'blue.png', src2: TEX + 'red.png' },
-    { id: 'traveller_good', name: 'Traveller Good', src: TEX + 'blue.png', src2: TEX + 'brown.png' },
-    { id: 'traveller_evil', name: 'Traveller Evil', src: TEX + 'brown.png', src2: TEX + 'red.png' },
-    { id: 'yellow_fibbin', name: 'Fabled', src: TEX + 'yellow_fibbin.png' },
-    { id: 'green_pope', name: 'Loric', src: TEX + 'green_pope.png' },
-    { id: 'white', name: 'Monochrome', src: TEX + 'white.png' },
-    { id: 'brown', name: 'Brown', src: TEX + 'brown.png' }
-  ];
-
-  var PARCHMENT = TEX + 'white.png';
+  // The white layer (the outline) is always painted with the team's Outline
+  // sheet; the black layer takes whichever of the gallery's textures is picked.
+  var PARCHMENT = '/assets/starlit/texture-outline.webp';
   var TOGGLES = ['texture', 'whites', 'blacks', 'shadow'];
 
   var gallery = { icons: [], textures: [], canUpload: false, isAdmin: false, uploaders: [] };
-  var textures = BUILT_IN.slice();   // + the gallery's own, + the reader's
+  var textures = [];                 // the gallery's own, + the reader's
   var own = null;                    // a texture picked from the reader's device
   var filter = { q: '', tag: '' };
   // An icon opens as it was uploaded: no texture until the reader picks one.
-  var view = { tex: 'blue', texture: false, whites: true, blacks: true, shadow: true };
+  var view = { tex: '', texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
   var previewUrl = null, paintSeq = 0;
 
@@ -75,18 +60,10 @@
     for (var i = 0; i < textures.length; i++) if (textures[i].id === id) return textures[i];
     return null;
   }
-  // The traveller textures: one sheet down the left, the other down the
-  // right. compose() centres the fill, so the split runs through the icon.
-  function splitFill(a, b) {
-    var w = a.naturalWidth, h = a.naturalHeight, c = canvas(w, h), x = c.getContext('2d');
-    x.drawImage(a, 0, 0, w, h);
-    x.drawImage(b, b.naturalWidth / 2, 0, b.naturalWidth / 2, b.naturalHeight, w / 2, 0, w / 2, h);
-    return c;
-  }
   function texturesFor(id) {
-    var t = texById(id) || BUILT_IN[0];
-    return Promise.all([loadImg(t.src), loadImg(PARCHMENT), t.src2 ? loadImg(t.src2) : null])
-      .then(function (r) { return { fill: r[2] ? splitFill(r[0], r[2]) : r[0], parch: r[1] }; });
+    var t = texById(id) || textures[0];
+    return Promise.all([t ? loadImg(t.src) : null, loadImg(PARCHMENT)])
+      .then(function (r) { return { fill: r[0], parch: r[1] }; });
   }
 
   /* ── drawing ──────────────────────────────────────────────────── */
@@ -263,7 +240,7 @@
     if (!icon) return;
     current = icon;
     view.texture = false;
-    if (!texById(view.tex)) view.tex = 'blue';
+    if (!texById(view.tex)) view.tex = textures[0] ? textures[0].id : '';
     $('sg-d-name').textContent = icon.name;
     $('sg-d-credit').innerHTML = creditHTML(icon);
     $('sg-d-tags').innerHTML = icon.tags.map(function (t) {
@@ -293,15 +270,14 @@
   }
 
   function rebuildTextures() {
-    textures = BUILT_IN.concat(gallery.textures.map(function (t) {
+    textures = gallery.textures.map(function (t) {
       return { id: 'starlit-' + t.id, name: t.name, src: t.image + '?v=' + t.v };
-    }), own ? [own] : []);
+    }).concat(own ? [own] : []);
   }
   function drawTexs() {
     $('sg-texs').innerHTML = textures.map(function (t) {
       return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (view.texture && t.id === view.tex) + '" title="' + esc(t.name) + '">' +
-        (t.src2 ? '<span class="sg-tex-split"><img src="' + esc(t.src) + '" alt=""><img src="' + esc(t.src2) + '" alt=""></span>'
-          : '<img src="' + esc(t.src) + '" alt="" decoding="async">') + '<b>' + esc(t.name) + '</b></button>';
+        '<img src="' + esc(t.src) + '" alt="" decoding="async"><b>' + esc(t.name) + '</b></button>';
     }).join('') +
       '<button type="button" class="sg-tex sg-tex-own" data-own="1" title="Use a texture from your device"><i aria-hidden="true">+</i><b>Your own</b></button>';
   }
@@ -471,7 +447,6 @@
     readDataURL(file).then(function (data) { return api({ action: 'texture', name: name, image: data }); })
       .then(function (r) {
         gallery.textures.push(r.texture);
-        gallery.textures.sort(byName);
         rebuildTextures(); drawTeam();
         $('sg-t-name').value = ''; $('sg-t-file').value = '';
         say('sg-t-msg', 'Added to the texture picker.');

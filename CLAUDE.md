@@ -3816,14 +3816,15 @@ required but a shout-out is appreciated, and no commercial use.
   `<img>` so a phone can long-press it. The two layers must be the same size:
   a layer exported trimmed to its drawing (Photoshop's "Export As" on one
   layer) has lost its place on the canvas, so the form refuses the pair.
-- **Textures**: Icon Forge's sheets under its ids (Good `blue`, Evil `red`,
-  Fabled, Loric, Monochrome `white`, and the plain `brown` sheet as "Brown"),
-  plus the three traveller splits the official icons use (Harry & Co's
-  correction): Traveller `traveller_split` blue | red, Traveller Good
-  `traveller_good` blue | brown, Traveller Evil `traveller_evil` brown | red.
-  Brown alone is NOT a traveller texture, it is the other half of one,
-  the gallery's own (`starlit_textures`, also in Icon Forge as
-  `starlit-{id}`), and "Your own", a local file that is never uploaded.
+- **Textures are the gallery's own and nothing else** (the owner's call,
+  2026-11: not Icon Forge's official sheets): the `starlit_textures` rows, in
+  id order, then "Your own", a local file that is never uploaded. They are
+  also in Icon Forge as `starlit-{id}`. The team's Photoshop template
+  (Default.psd) gave the first eight: Base, Good, Evil, Traveller (blue |
+  red), Traveller Good (blue | brown), Traveller Evil (brown | red), Fabled,
+  Loric, with the traveller splits baked into the sheets. Its Outline sheet
+  (`assets/starlit/texture-outline.webp`) is not a choice: it always paints
+  the white layer (`PARCHMENT`).
   **An icon opens as it was uploaded** (the owner's call): black lines, white
   outline, shadow, no texture (`AS_UPLOADED`), and its grid picture is drawn
   the same way. Picking a texture tile turns the texture on. The upload form
@@ -3835,8 +3836,7 @@ required but a shout-out is appreciated, and no commercial use.
   key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
   the browser, 1200px at most), textures PNG/JPEG/WebP, bytes sniffed.
   The one exception is what came from the team's own Photoshop template: the
-  first icon, Goat Skull, and eight textures (named by colour, so they do not
-  clash with the built-in Good/Evil/... tiles). Their files are committed
+  first icon, Goat Skull, and the eight textures above. Their files are committed
   under `assets/starlit/` and their rows were written to D1 by hand, so the
   preview could show them before anyone had uploaded anything. A file missing
   from R2 falls back to the committed copy, as for `art/`.
