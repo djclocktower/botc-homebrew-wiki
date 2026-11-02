@@ -150,6 +150,23 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sg-tex-own i { display: flex; align-items: center; justify-content: center; color: var(--maroon); font-size: 1.4rem; font-family: 'Roboto', sans-serif; }
+/* The texture cut: Icon Forge's placement pad, under each picker. */
+.sg-cut { display: flex; gap: 12px; align-items: center; margin: -6px 0 14px; }
+.sg-pad { display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap: 3px; flex: 0 0 auto; }
+.sg-pad button {
+  cursor: pointer; padding: 0; line-height: 1; color: var(--maroon);
+  background: rgba(255,253,248,.62); border: 1px solid var(--parch-frame); -webkit-tap-highlight-color: transparent;
+}
+.sg-pad button:hover { background: #fffdf8; }
+.sg-pad .sg-pad-mid { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.sg-pad .sg-pad-mid:hover { filter: brightness(1.15); background: var(--maroon); }
+.sg-pad .ico { font-size: 1rem; }
+.sg-pad .sg-ico-up { transform: rotate(-90deg); }
+.sg-pad .sg-ico-down { transform: rotate(90deg); }
+.sg-cut-side { flex: 1 1 auto; min-width: 0; }
+.sg-cut-zoom { display: block; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .78rem; letter-spacing: .04em; color: var(--maroon); }
+.sg-cut .sg-link-btn { color: var(--maroon); padding-left: 0; }
+.sg-cut-zoom input { display: block; width: 100%; margin: 4px 0 6px; accent-color: var(--maroon); }
 .sg-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 0 0 16px; }
 .sg-toggles label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: .95rem; color: var(--maroon); }
 .sg-toggles input { width: 18px; height: 18px; margin: 0; accent-color: var(--maroon); }

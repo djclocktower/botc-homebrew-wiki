@@ -3841,7 +3841,13 @@ required but a shout-out is appreciated, and no commercial use.
   every texture grouped by set. There are two, one per layer (`PICKERS`):
   the blacks' (Plain black, then every texture) and the whites' (Match
   blacks, which takes the blacks' set's Outline and is the default, Plain
-  white, each set's Outline, Your own). The window's sizes are 400 (what
+  white, each set's Outline, Your own). Under each picker is the CUT
+  (`view.bcut` / `view.wcut`, `{x, y, z}`): Icon Forge's placement pad,
+  arrows round a dice for a random cut, a zoom slider (1-4) and Reset,
+  read by `cover()`. Zoom 1 is the sheet just covering the frame, so an
+  arrow there zooms in to `CUT_MIN_PAN_ZOOM` first; pan is -1..1 of what
+  the zoom leaves spare. Hidden while its layer has no texture (texture
+  off, or Plain). The window's sizes are 400 (what
   tokens are printed at and the official app uses), 591 (the wiki's) and
   1182. A window closes only on a press that starts AND ends on its
   backdrop, so dragging out past its edge does not close it. "Open in Icon Forge" hands over the picked

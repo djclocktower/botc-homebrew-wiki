@@ -56,7 +56,7 @@
   var ownFor = 'black';              // which picker the device file is for
   var filter = { q: '', tag: '' };
   // An icon opens as it was uploaded: no texture until the reader picks one.
-  var view = { tex: 'default-base', wtex: '', texture: false, whites: true, blacks: true, shadow: true };
+  var view = { tex: 'default-base', wtex: '', bcut: { x: 0, y: 0, z: 1 }, wcut: { x: 0, y: 0, z: 1 }, texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
   var previewUrl = null, paintSeq = 0;
 
@@ -123,10 +123,14 @@
     }
     return icon._layers;
   }
-  function cover(x, img, size) {
+  // A texture over the whole frame, cut as `cut` says: z zooms in from the
+  // sheet just covering the frame, x / y (-1..1) pan across what the zoom
+  // leaves spare. No cut is the sheet centred, as it always was.
+  function cover(x, img, size, cut) {
     var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-    var s = size / Math.min(w, h);
-    x.drawImage(img, (size - w * s) / 2, (size - h * s) / 2, w * s, h * s);
+    var s = size / Math.min(w, h) * ((cut && cut.z) || 1), dw = w * s, dh = h * s;
+    x.drawImage(img, (size - dw) / 2 - ((cut && cut.x) || 0) * (dw - size) / 2,
+      (size - dh) / 2 - ((cut && cut.y) || 0) * (dh - size) / 2, dw, dh);
   }
   /* The icon at `size` px. `o` says what to show (TOGGLES) and carries the
      loaded textures: `fill` for the black layer, `parch` for the white. With
@@ -134,18 +138,18 @@
   function compose(L, o, size) {
     var b = L.box, k = size * FILL / Math.max(b.w, b.h, 1);
     var dx = size / 2 - (b.x + b.w / 2) * k, dy = size / 2 - (b.y + b.h / 2) * k;
-    function layer(img, fill) {
+    function layer(img, fill, cut) {
       var c = canvas(size), x = c.getContext('2d');
       x.imageSmoothingQuality = 'high';
       x.drawImage(img, dx, dy, b.W * k, b.H * k);
       x.globalCompositeOperation = 'source-in';
       if (typeof fill === 'string') { x.fillStyle = fill; x.fillRect(0, 0, size, size); }
-      else cover(x, fill, size);
+      else cover(x, fill, size, cut);
       return c;
     }
     var art = canvas(size), ax = art.getContext('2d');
-    if (o.whites) ax.drawImage(layer(L.white, o.texture && o.parch ? o.parch : '#ffffff'), 0, 0);
-    if (o.blacks) ax.drawImage(layer(L.black, o.texture && o.fill ? o.fill : '#000000'), 0, 0);
+    if (o.whites) ax.drawImage(layer(L.white, o.texture && o.parch ? o.parch : '#ffffff', o.pcut), 0, 0);
+    if (o.blacks) ax.drawImage(layer(L.black, o.texture && o.fill ? o.fill : '#000000', o.fcut), 0, 0);
     var out = canvas(size), ctx = out.getContext('2d');
     if (o.shadow) {
       // Icon Forge's default shadow, at any size.
@@ -163,7 +167,7 @@
     return Promise.all([layersOf(icon), texturesFor(opts)]).then(function (r) {
       return compose(r[0], {
         texture: opts.texture, whites: opts.whites, blacks: opts.blacks, shadow: opts.shadow,
-        fill: r[1].fill, parch: r[1].parch
+        fill: r[1].fill, parch: r[1].parch, fcut: opts.bcut, pcut: opts.wcut
       }, size);
     });
   }
@@ -355,7 +359,59 @@
     }).join('') +
       '<div class="sg-texs"><button type="button" class="sg-tex sg-tex-own" data-own="1" title="Use a texture from your device"><i aria-hidden="true">+</i><b>Your own</b></button></div>';
   }
-  function drawTexs() { drawPicker('black'); drawPicker('white'); }
+  /* Under each picker, the cut: a pad of arrows to pan the texture, dice in
+     the middle for a random cut, a zoom slider and Reset, as Icon Forge
+     places its texture. Built here, once per picker. Hidden while that
+     layer has no texture to cut. */
+  var CUT_STEP = 0.15, CUT_MIN_PAN_ZOOM = 1.3;
+  function cutKey(which) { return which === 'white' ? 'wcut' : 'bcut'; }
+  function arrow(cls, label, n) {
+    return '<button type="button" data-n="' + n + '" aria-label="' + label + '"><span class="ico ' + cls + '" aria-hidden="true"></span></button>';
+  }
+  Object.keys(PICKERS).forEach(function (which) {
+    var box = document.createElement('div');
+    box.className = 'sg-cut';
+    box.id = 'sg-cut-' + which;
+    box.innerHTML = '<div class="sg-pad">' +
+      '<span></span>' + arrow('ico-right sg-ico-up', 'Move the texture up', '0,1') + '<span></span>' +
+      arrow('ico-left', 'Move the texture left', '1,0') +
+      '<button type="button" class="sg-pad-mid" data-rand="1" aria-label="A random cut of the texture"><span class="ico ico-dice" aria-hidden="true"></span></button>' +
+      arrow('ico-right', 'Move the texture right', '-1,0') +
+      '<span></span>' + arrow('ico-right sg-ico-down', 'Move the texture down', '0,-1') + '<span></span></div>' +
+      '<div class="sg-cut-side"><label class="sg-cut-zoom"><span>Zoom</span><input type="range" min="1" max="4" step="0.05" aria-label="Zoom the texture"></label>' +
+      '<button type="button" class="sg-link-btn" data-reset="1">Reset</button></div>';
+    $(PICKERS[which].drop).insertAdjacentElement('afterend', box);
+    var zoom = box.querySelector('input');
+    function set(c) { view[cutKey(which)] = c; zoom.value = c.z; paint(); }
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var c = view[cutKey(which)];
+      if (b.hasAttribute('data-rand')) {
+        set({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1, z: 1.3 + Math.random() * 1.2 });
+      } else if (b.hasAttribute('data-reset')) {
+        set({ x: 0, y: 0, z: 1 });
+      } else {
+        // At full size there is nothing spare to pan across, so an arrow
+        // zooms in a little first.
+        var n = b.getAttribute('data-n').split(',').map(Number), clamp = function (v) { return Math.max(-1, Math.min(1, v)); };
+        set({ x: clamp(c.x + n[0] * CUT_STEP), y: clamp(c.y + n[1] * CUT_STEP), z: Math.max(c.z, CUT_MIN_PAN_ZOOM) });
+      }
+    });
+    zoom.addEventListener('input', function () {
+      var c = view[cutKey(which)];
+      view[cutKey(which)] = { x: c.x, y: c.y, z: parseFloat(this.value) || 1 };
+      paint();
+    });
+  });
+  function drawCuts() {
+    Object.keys(PICKERS).forEach(function (which) {
+      var t = PICKERS[which].find(view[PICKERS[which].key]);
+      $('sg-cut-' + which).hidden = !view.texture || !t || !!t.plain;
+      $('sg-cut-' + which).querySelector('input').value = view[cutKey(which)].z;
+    });
+  }
+  function drawTexs() { drawPicker('black'); drawPicker('white'); drawCuts(); }
   Object.keys(PICKERS).forEach(function (which) {
     var P = PICKERS[which];
     $(P.panel).addEventListener('click', function (e) {
