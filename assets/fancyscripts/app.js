@@ -28,7 +28,7 @@ import {
   PAGE_EM, PAGE_SHAPES, setPageRatio,
   FONTS, PRESETS, ELEMENTS, ELEMENT_BY_KEY, EL_DEFAULT, TEAM_ORDER, TEAM_NAMES,
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
-  withBootlegger, hasBootlegger,
+  withBootlegger,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
   pageStyle, ART_CHOICES, DECOR_STICKERS, NO_ART, STICKER_LAYERS, stickerLayer,
 } from './script.js';
@@ -283,6 +283,8 @@ function computeLayouts() {
     counts.jinx = layouts.jinxSpec.empty ? 0 : layouts.jinx.pages.length;
     counts.jinxTitle = layouts.jinxSpec.title;
   }
+  // a ticked jinx page with nothing to show has no tab, so the tick says why
+  if ($('fs-jinx-empty')) $('fs-jinx-empty').hidden = !(options.jinxPage.enabled && layouts.jinxSpec && layouts.jinxSpec.empty);
   const ni = options.night;
   if (ni.combined && (ni.first || ni.other)) {
     layouts.bothSpec = buildNightSpec(derived, options, 'both');
@@ -523,7 +525,7 @@ function loadJson(json, label, slug, keepDesign) {
      load starts it at whether THIS file carries the Fabled already — and it
      has to be settled before the parse, which is what applies it. A design
      being restored keeps its own answer. */
-  if (!keepDesign) options.bootlegger = hasBootlegger(json);
+  if (!keepDesign) options.bootlegger = false; // off by default, even when the file carries it
   if (!reparse()) {
     // not a script: keep what was loaded, the error note says why
     rawJson = prev.rawJson; sourceLabel = prev.sourceLabel; scriptKey = prev.scriptKey;
@@ -1274,6 +1276,9 @@ function buildPagesCard() {
     onChange: (on) => { if (on && !options.night.first && !options.night.other) { options.night.first = true; options.night.other = true; syncControls(); } },
   });
   makeToggle(box, 'Jinxes & bootlegger rules page', bindPath('jinxPage.enabled'));
+  const jinxEmpty = makeHint(box, 'This script has no jinxes or Bootlegger rules.');
+  jinxEmpty.id = 'fs-jinx-empty';
+  jinxEmpty.hidden = true;
   makeSelect(box, 'Page shape', PAGE_SHAPES.map(([, label], i) => [String(i), label]), {
     get: () => {
       const r = Number(options.pageRatio) || SHEET.ratio;
@@ -2404,10 +2409,31 @@ function buildBackPanel() {
   }
   track(makeToggle(box, 'Player count table', bindPath('playerTable'), { onChange: () => buildBackPanel() }));
   if (options.playerTable) track(makeColor(makeRow(box, 'fs-colors'), 'Table colour', bindPath('back.tableColor')));
+  // the title words' look, set on every word at once (each word can still
+  // be changed on its own from the Elements card)
+  makeLabel(box, 'Title words');
+  const words = () => options.back.texts || [];
+  const all = (k, d) => ({
+    get: () => (words()[0] && words()[0][k] != null ? words()[0][k] : d),
+    set: (v) => { for (const t of words()) t[k] = v; },
+  });
+  track(makeFont(box, 'Font', all('font', 'unlovable')));
+  const wc = makeRow(box, 'fs-colors');
+  track(makeColor(wc, 'Colour', { get: all('fill', '#bea881').get, set: (v) => { for (const t of words()) { t.fill = v; t.fillGrad = false; } } }));
+  track(makeColor(wc, 'Stroke', all('strokeColor', '#000000')));
+  track(makeColor(wc, 'Shadow', all('shadowColor', '#000000')));
+  track(makeSlider(box, 'Stroke width', 0, 8, 0.25, (v) => Number(v).toFixed(2) + 'px', all('strokeW', 0), { reset: 1.5 }));
+  track(makeSlider(box, 'Shadow across', -25, 25, 1, fmtPx, all('shadowX', 0), { reset: 0 }));
+  track(makeSlider(box, 'Shadow down', -25, 25, 1, fmtPx, all('shadowY', 0), { reset: 2 }));
+  track(makeSlider(box, 'Shadow blur', 0, 50, 1, fmtPx, all('shadowBlur', 0), { reset: 4 }));
   const row = makeRow(box);
   row.style.marginTop = '10px';
   makeButton(row, 'Re-stack the title words', () => {
-    options.back.texts = seedBackTexts((options.titleOverride || '').trim() || parsed.meta.name || 'Untitled');
+    // a re-stack keeps the words' look
+    const keep = {};
+    const first = words()[0];
+    if (first) for (const k of ['font', 'fill', 'fillGrad', 'fill2', 'gradAngle', 'strokeW', 'strokeColor', 'shadowX', 'shadowY', 'shadowBlur', 'shadowColor']) if (first[k] != null) keep[k] = first[k];
+    options.back.texts = seedBackTexts((options.titleOverride || '').trim() || parsed.meta.name || 'Untitled').map((t) => Object.assign(t, keep));
     setSelected(options.back.texts.length ? 'back:0' : '');
     commit();
   });

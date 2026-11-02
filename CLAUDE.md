@@ -4492,7 +4492,8 @@ and dots (`dotStyle`: a dot, a little token carrying the character's icon,
 or nothing).
 
 The pages are ticked on in the Pages card (`night.first` / `night.other`;
-`night.combined` puts both nights on one page in two columns;
+`night.combined` puts both nights on one page in two columns, and is ON by
+default (the owner's call), so ticking either night gives that page;
 `night.twoColumns` splits one night over two columns by weight). Each
 carries its own colours, fonts and background; `''` for a night colour
 means "follow the sheet". The list auto-fits down to `night.minFit` and then
@@ -4797,6 +4798,10 @@ design only to someone who can edit the draft.
   (`jinxNotes()`: each pair once, under the first in the list; `jinxNote()` /
   `NOTE` in sheet.js). Measured in `rowHeightEm` exactly as drawn, so the
   one-page fit still holds. The jinx page is untouched.
+- **Title words** (Back cover card): font, colour, stroke and shadow set on
+  every back-cover word at once (`all()` in `buildBackPanel()`, reading the
+  first word); one word is still changed on its own from the Elements card.
+  "Re-stack the title words" keeps that look.
 - **`playerTable`** (Back cover card): the 5 to 15+ setup table
   (`PLAYER_TABLE`) on the back cover, in `back.tableColor`. It is an element
   (`el.backTable`), so it moves and sizes from the Elements card.
@@ -4848,11 +4853,9 @@ calls `reparse()`), since the tick changes the roster.
 
 `options.bootlegger` puts the Bootlegger — the Fabled that says a script
 carries homebrew characters or house rules — on the sheet, or takes it off
-one that came with it. It is a tick rather than a rule because it is the
-author's statement about their own script: `loadJson()` starts it at
-whether the file already has one (`hasBootlegger`), so a script that
-carries it keeps it and one that does not is not given it, and the tick
-settles it from then on.
+one that came with it. **It starts unticked on every fresh load**, even for
+a file that carries the Bootlegger (the owner's call, 2026-11); a design
+being restored keeps its own answer.
 
 `withBootlegger(json, on)` applies it **at parse time**, on the way into
 `parseScript()`, so the entry goes through the same door as every other
@@ -5195,7 +5198,7 @@ needs its ratio re-measured or it is picked at the wrong size.
   - `reminderParts()` matches `:reminder:` in any case (homebrew writes
     `:Reminder:`); render-page.js's `nightItems()` strips it from the
     wiki's own night lists the same way.
-  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note. Bootlegger rules on it carry the official Bootlegger icon. Its title (`jinxPage.title`) is blank by default and names the page after what is on it: Jinxes, Bootlegger Rules, Jinxes & Rules, Notes, or the sections joined ("Fabled, Jinxes & Rules"). An old design's stored "Jinxes" is folded to blank.
+  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note on a page. The tick in the Pages card says so instead (`#fs-jinx-empty`), or it looked broken. Bootlegger rules on it carry the official Bootlegger icon. Its title (`jinxPage.title`) is blank by default and names the page after what is on it: Jinxes, Bootlegger Rules, Jinxes & Rules, Notes, or the sections joined ("Fabled, Jinxes & Rules"). An old design's stored "Jinxes" is folded to blank.
   - **The jinx page is sections**, each under a centred heading between two fading hairlines (no heading when there is only one, the page title says it): the Travellers, Fabled and Loric when `jinxPage.extraTeams` moves them there (`movedTeams()` / `frontCharacters()` in script.js take them off the script sheet, only while the jinx page is on, or they would be on no page), then Jinxes, Bootlegger Rules, Notes. Its rows are kept together (`FIT.jinxGrowMax` 1.75, `FIT.jinxSpreadMax` 1.15) and centred, rather than spread down the page. **A sparse ribbon-style jinx page moves the logo to the top**, large: when the rows are as big as they go and more than 22 em is left, `layoutList()` lays out again with `spec.topLogo` (its height), never past twice the picture's own pixels.
   - **A logo is trimmed to its ink** (`trimmedArt()` in util.js): many sit in a wide transparent margin, which drew them small and left the skull and flourishes standing off the picture. The first render draws the URL as given; once the image has loaded a cropped copy (a data URL, at most 1600 px) replaces it and one re-render is asked for (`onArtTrimmed`, set to `requestRender`). An unreadable (tainted) image or one with no margin is drawn as it is. Every logo goes through it: the classic and app sheets, the night and jinx pages.
   - **The back cover keeps its words on the page** (`keepOnPage()` in back.js): each word's ink is measured with the canvas (`textInk()`, swashes included, which no DOM box sees), shrunk if wider than the page and moved in from an edge. Only the drawing changes, never the stored word. LHF Unlovable's tail on "Carnival" ran off the right edge.

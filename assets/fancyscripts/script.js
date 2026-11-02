@@ -503,7 +503,7 @@ export const DEFAULT_NIGHT = {
   hang: true, // indent a reminder's second and later lines (ribbon style)
   iconShiftX: 0, // every icon on the page, % of the width
   iconShiftY: 0, // every icon on the page, em
-  combined: false, // both nights on ONE page, two columns
+  combined: true, // both nights on ONE page, two columns (on by default)
   twoColumns: false, // one night split over two columns (long lists on one page)
   showMeta: true, // dusk / minion info / demon info / dawn
   showReminders: true,

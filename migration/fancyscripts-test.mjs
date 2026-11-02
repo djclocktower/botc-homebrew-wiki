@@ -63,8 +63,9 @@ const n = S.normalizeOptions({ titleDX: 3, skullScale: 1.2, flourishSpread: 2, i
 check('legacy sliders fold into elements', n.el, { title: { dx: 3 }, skull: { scale: 1.2 }, fll: { dx: -2 }, flr: { dx: 2 } });
 check('legacy back-cover tick', n.exportOpts.pages.back, false);
 check('every default present', [n.night.titleOther, n.bg.mode, n.jinxPage.title, n.exportOpts.pageSize], ['Other Nights', 'parchment', '', 'trim']);
-check('page list', S.pageList(n, { front: 2 }).map(S.pageKey), ['front:0', 'front:1', 'night:first']);
-check('page list with everything', S.pageList(S.normalizeOptions({ night: { first: true, other: true }, jinxPage: { enabled: true } }), { front: 1, first: 2, other: 1, jinx: 1 }).map(S.pageKey),
+check('page list: both nights on one page by default', S.pageList(n, { front: 2 }).map(S.pageKey), ['front:0', 'front:1', 'night:both']);
+check('page list', S.pageList(S.normalizeOptions({ ...JSON.parse(JSON.stringify(n)), night: { ...n.night, combined: false } }), { front: 2 }).map(S.pageKey), ['front:0', 'front:1', 'night:first']);
+check('page list with everything', S.pageList(S.normalizeOptions({ night: { first: true, other: true, combined: false }, jinxPage: { enabled: true } }), { front: 1, first: 2, other: 1, jinx: 1 }).map(S.pageKey),
   ['front:0', 'night:first', 'night:first:1', 'night:other', 'jinx', 'back']);
 check('page list: an empty jinx page is no page', S.pageList(S.normalizeOptions({ jinxPage: { enabled: true } }), { front: 1, jinx: 0 }).map(S.pageKey).includes('jinx'), false);
 check('jinx page: an old design\'s stored "Jinxes" title becomes automatic', [S.normalizeOptions({ jinxPage: { title: 'Jinxes' } }).jinxPage.title, S.normalizeOptions({ jinxPage: { title: 'House Rules' } }).jinxPage.title], ['', 'House Rules']);
