@@ -1170,7 +1170,7 @@ fancyscripts.html      Fancy Scripts (/fancyscripts) — turns a script into an
                        assets/fancyscripts/. Takes a script published here
                        (the picker, or ?s={slug} — the "Fancy Sheet" action
                        on /s/ pages), an uploaded/pasted script-tool JSON, a
-                       design file, or a sample. See "Fancy Scripts" below.
+                       design file. A first visit shows Trouble Brewing until one is picked. See "Fancy Scripts" below.
 iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        photo into an official-style character icon. Same
                        treatment as Grimoire Forge: the handoff shipped a React
@@ -4350,7 +4350,7 @@ classic printed sheet and the app view.
   DOM, `node --input-type=module --check`-able, unit-tested with plain
   node: **`node migration/fancyscripts-test.mjs`** checks the night order
   of the owner's reference sheets line for line (the "Blending In" roster
-  in app.js's samples), the `_meta` sequences, reminder marks, the option
+  in the test file itself), the `_meta` sequences, reminder marks, the option
   model's legacy folding, page lists, per-character overrides and the
   ribbon-style night sheet's defaults — run it after touching script.js.
   `DEFAULT_OPTIONS` (+ `DEFAULT_NIGHT`, `DEFAULT_JINX`, `DEFAULT_BG`,

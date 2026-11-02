@@ -87,47 +87,13 @@ function registerFont(family, dataUrl) {
   document.fonts.load(`16px "${family}"`).then(() => { fontsChanged(); requestRender(); }).catch(() => {});
 }
 
-/* ── samples ── */
+/* ── what a first visit shows before a script is picked ── */
 const SAMPLE_TROUBLE_BREWING = [
   { id: '_meta', name: 'Trouble Brewing', author: 'The Pandemonium Institute' },
   'washerwoman', 'librarian', 'investigator', 'chef', 'empath', 'fortuneteller',
   'undertaker', 'monk', 'ravenkeeper', 'virgin', 'slayer', 'soldier', 'mayor',
   'butler', 'drunk', 'recluse', 'saint',
   'poisoner', 'spy', 'scarletwoman', 'baron', 'imp',
-];
-
-/* The calibration reference sheet ("Harold Holt's Revenge") — a Sects & Violets
-   era teensyville the whole layout was measured against. The {id, ability}
-   overrides carry the exact wording of the reference render (its author's JSON
-   used "and" where the official text uses "&"), so this demo wraps like it. */
-const SAMPLE_HAROLD_HOLT = [
-  { id: '_meta', name: "Harold Holt's Revenge", author: '' },
-  'librarian', 'investigator', 'shugenja', 'balloonist',
-  { id: 'dreamer', ability: 'Each night, choose a player (not yourself or Travellers): you learn 1 good and 1 evil character, 1 of which is correct.' },
-  { id: 'snakecharmer', ability: 'Each night, choose an alive player: a chosen Demon swaps characters and alignments with you and is then poisoned.' },
-  'towncrier', 'slayer',
-  { id: 'savant', ability: 'Each day, you may visit the Storyteller to learn 2 things in private: 1 is true and 1 is false.' },
-  'amnesiac', 'seamstress',
-  { id: 'courtier', ability: 'Once per game, at night, choose a character: they are drunk for 3 nights and 3 days.' },
-  'magician', 'mutant',
-  { id: 'lunatic', ability: 'You think you are a Demon, but you are not. The Demon knows who you are and who you choose at night.' },
-  'damsel',
-  { id: 'politician', ability: 'If you were the player most responsible for your team losing, you change alignment and win, even if dead.' },
-  { id: 'cerenovus', ability: 'Each night, choose a player and a good character: they are “mad” they are this character tomorrow, or might be executed.' },
-  'baron', 'marionette',
-  { id: 'pithag', ability: 'Each night*, choose a player and a character they become (if not in play). If a Demon is made, deaths tonight are arbitrary.' },
-  { id: 'goblin', ability: 'If you publicly claim to be the Goblin when nominated and are executed that day, your team wins.' },
-  'leviathan',
-];
-
-/* the night-order reference roster ("Blending In") — every step on the
-   owner's reference night sheets, so the night pages can be checked
-   against them line by line */
-const SAMPLE_BLENDING_IN = [
-  { id: '_meta', name: 'Blending In', author: '' },
-  'boffin', 'magician', 'pixie', 'librarian', 'steward', 'bountyhunter', 'highpriestess', 'chambermaid',
-  'farmer', 'undertaker', 'towncrier', 'seamstress', 'juggler', 'nightwatchman',
-  'damsel', 'xaan', 'poisoner', 'scarletwoman', 'imp',
 ];
 
 /* ── messages ── */
@@ -2880,13 +2846,6 @@ async function boot() {
     const i = v.indexOf(':');
     loadWikiScript(v.slice(i + 1), false, v.slice(0, i));
   });
-  $('fs-sample-tb').addEventListener('click', () => loadJson(SAMPLE_TROUBLE_BREWING, 'Trouble Brewing'));
-  $('fs-sample-hh').addEventListener('click', () => loadJson(SAMPLE_HAROLD_HOLT, "Harold Holt's Revenge"));
-  $('fs-sample-bi').addEventListener('click', () => {
-    loadJson(SAMPLE_BLENDING_IN, 'Blending In (night-order demo)');
-    options.night.first = true; options.night.other = true;
-    syncControls(); commit();
-  });
 
   $('fs-export-share').addEventListener('click', (e) => withExport(e.currentTarget, exportShare));
   // The way back: the roster goes to the Script Builder the same way it
@@ -3016,7 +2975,7 @@ async function boot() {
     applyDesignData(saved);
     loadJson(saved.script, saved.sourceLabel || 'your last session', saved.key && saved.key.startsWith('wiki:') ? saved.key.slice(5) : '', true);
     buildFontSelects();
-    note('Restored your last design. Pick a script or a sample to start fresh.', 'ok');
+    note('Restored your last design. Pick a script to start fresh.', 'ok');
   }
   if (rawJson == null) loadJson(SAMPLE_TROUBLE_BREWING);
 
