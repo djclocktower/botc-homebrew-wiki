@@ -666,7 +666,7 @@
       });
     if (tags.length) rows.push(['Tags:', textRuns(tags.join(', '))]);
     if (d.translatedBy && d.translatedBy.trim()) rows.push(['Translated by:', marked(d.translatedBy.trim(), 'full')]);
-    if (d.iconBy && d.iconBy.trim()) rows.push(['Icon by:', marked(d.iconBy.trim(), 'full')]);
+    if (d.iconBy && d.iconBy.trim()) rows.push([d.iconByLabel === 'from' ? 'Icon from:' : 'Icon by:', marked(d.iconBy.trim(), 'full')]);
     return rows;
   }
 

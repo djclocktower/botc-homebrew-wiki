@@ -138,7 +138,7 @@
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [],
                inSources: [], exSources: [], creator: '',
-               hidePartial: false, curataOnly: false, favOnly: false,
+               hidePartial: false, curataOnly: false, favOnly: false, tagMode: 'all',
                sort: DEFAULT_SORT, dir: NATURAL_DIR[DEFAULT_SORT],
                group: 'team',
                q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
@@ -190,7 +190,12 @@
       html += '</div></div>';
     }
     if (tags.length) {
-      html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="cf-tags">';
+      // How the picked tags combine; the same choice as All Characters'.
+      html += '<div class="filter-group"><span class="filter-group-label">Tag ' +
+        '<select class="filter-select filter-tagmode" id="cf-tagmode" aria-label="How picked tags combine" ' +
+        'title="All of: every picked tag. Any of: at least one. Only one of: exactly one of them.">' +
+        '<option value="all">all of</option><option value="any">any of</option><option value="one">only one of</option>' +
+        '</select></span><div class="filter-chips" id="cf-tags">';
       tags.forEach(function (t) { html += '<button type="button" class="filter-chip" data-tag="' + esc(t) + '">' + esc(t) + '</button>'; });
       html += '</div></div>';
     }
@@ -328,8 +333,14 @@
     dirSel.addEventListener('change', function () { STATE.dir = dirSel.value; apply(); });
     var groupSel = bar.querySelector('#cf-group');
     if (groupSel) groupSel.addEventListener('change', function () { STATE.group = groupSel.value; apply(); });
+    var tagModeSel = bar.querySelector('#cf-tagmode');
+    if (tagModeSel) tagModeSel.addEventListener('change', function () {
+      STATE.tagMode = tagModeSel.value;
+      if (STATE.inTags.length) apply();
+    });
     bar.querySelector('#cf-reset').addEventListener('click', function () {
       if (searchEl) searchEl.value = '';
+      if (tagModeSel) tagModeSel.value = 'all';
       STATE = freshState();
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
       if (partialBtn) partialBtn.classList.toggle('active', STATE.hidePartial);
@@ -360,7 +371,10 @@
         if (STATE.exSources.indexOf(src) !== -1) return false;
       }
       var ctags = cardTags(card);
-      if (STATE.inTags.length && !STATE.inTags.every(function (t) { return ctags.indexOf(t) !== -1; })) return false;
+      if (STATE.inTags.length) {
+        var hit = STATE.inTags.filter(function (t) { return ctags.indexOf(t) !== -1; }).length;
+        if (STATE.tagMode === 'any' ? !hit : STATE.tagMode === 'one' ? hit !== 1 : hit !== STATE.inTags.length) return false;
+      }
       if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
       // A filter on one name matches any card that credits them.
       if (STATE.creator && cardCredits(card).indexOf(STATE.creator) === -1) return false;
