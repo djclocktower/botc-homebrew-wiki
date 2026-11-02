@@ -3824,10 +3824,12 @@ required but a shout-out is appreciated, and no commercial use.
   so it works only from a site that allows it (CORS); otherwise the form
   says to save the image and pick it. Deliberately no server-side fetch: a
   Worker fetching any URL a member types is an open proxy.
-- **Textures are the team's own and nothing else** (the owner's call,
-  2026-11: not Icon Forge's official sheets). Four sets from the team's
-  Photoshop templates (Default, Vibrant, Treasure Hunt, Starlit; `SETS` /
-  `KINDS` in starlit.js), eight sheets each: Base, Good, Evil, Traveller
+- **Textures are the team's own** (the owner's call,
+  2026-11), plus the wiki's own. Five sets from the team's Photoshop
+  templates (Default, Vibrant, Treasure Hunt, Starlit, Glitchy; `SETS` /
+  `KINDS` in starlit.js), and Official (Icon Forge's sheets, the halves
+  baked into files the same way, its base sheet called Monochrome); eight
+  sheets each: Base, Good, Evil, Traveller
   (blue | red), Traveller Good (blue | brown), Traveller Evil (brown | red),
   Fabled, Loric, the traveller splits baked in. Committed as
   `assets/starlit/tex/{set}-{kind}.webp` plus a 160px `-s` copy for the

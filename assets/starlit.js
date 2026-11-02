@@ -22,14 +22,18 @@
   // set's sheets is on the black one. assets/starlit/tex/{set}-{kind}.webp,
   // with a small -s copy for the picker.
   var TEX_DIR = '/assets/starlit/tex/';
-  var SETS = [['default', 'Default'], ['vibrant', 'Vibrant'], ['treasure', 'Treasure Hunt'], ['starlit', 'Starlit']];
+  // Official is the wiki's own (Icon Forge's sheets, assets/iconforge/
+  // textures/), its traveller halves baked into files like the team's; its
+  // base sheet is the white one, so it goes by Icon Forge's name for it.
+  var SETS = [['default', 'Default'], ['vibrant', 'Vibrant'], ['treasure', 'Treasure Hunt'], ['starlit', 'Starlit'],
+    ['glitchy', 'Glitchy'], ['official', 'Official', { base: 'Monochrome' }]];
   var KINDS = [['base', 'Base'], ['good', 'Good'], ['evil', 'Evil'], ['traveller', 'Traveller'],
     ['traveller-good', 'Traveller Good'], ['traveller-evil', 'Traveller Evil'], ['fabled', 'Fabled'], ['loric', 'Loric']];
   var BUILT_IN = [];
   SETS.forEach(function (s) {
     KINDS.forEach(function (k) {
       var f = TEX_DIR + s[0] + '-' + k[0];
-      BUILT_IN.push({ id: s[0] + '-' + k[0], set: s[1], name: k[1], src: f + '.webp', thumb: f + '-s.webp',
+      BUILT_IN.push({ id: s[0] + '-' + k[0], set: s[1], name: (s[2] && s[2][k[0]]) || k[1], src: f + '.webp', thumb: f + '-s.webp',
         outline: TEX_DIR + s[0] + '-outline.webp' });
     });
   });
