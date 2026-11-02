@@ -570,6 +570,7 @@
     try { last = localStorage.getItem('botc_starlit_artist') || ''; } catch (e) { /* none */ }
     $('sg-f-artist').value = icon ? icon.artist : last;
     $('sg-f-black').value = ''; $('sg-f-white').value = '';
+    Array.prototype.forEach.call($('sg-form').querySelectorAll('.sg-paste input'), function (f) { f.value = ''; });
     say('sg-f-msg', icon ? 'Pick a new layer only to replace it.' : '');
     show('sg-form-modal', true);
     formPreview();
@@ -595,6 +596,81 @@
       }).catch(function (e) { say('sg-f-msg', e.message, true); });
     });
   });
+  /* Paste into an upload: under each file box, a box that takes a pasted
+     image or an image link (and a Paste button, for a phone, where the
+     browser can read the clipboard). Whatever arrives is put into the file
+     box itself, so the rest of the form cannot tell it from a picked file. */
+  function pasteImageInto(input, msgId) {
+    var box = document.createElement('div');
+    box.className = 'sg-paste';
+    box.innerHTML = '<input type="text" inputmode="url" placeholder="or paste an image or an image link here" aria-label="Paste an image or an image link">' +
+      '<button type="button" class="sg-btn sg-btn-quiet" hidden>Paste</button>';
+    input.closest('label').insertAdjacentElement('afterend', box);
+    var field = box.querySelector('input'), btn = box.querySelector('button');
+    function use(blob) {
+      if (!blob || !/^image\//.test(blob.type)) { say(msgId, 'That is not an image.', true); return; }
+      var ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      var file = blob instanceof File && blob.name ? blob : new File([blob], 'pasted image.' + ext, { type: blob.type });
+      try {
+        var dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      } catch (e) {
+        say(msgId, 'This browser cannot take a pasted image here. Save it and pick the file instead.', true);
+        return;
+      }
+      field.value = '';
+      say(msgId, '');
+      input.dispatchEvent(new Event('change'));
+    }
+    function fromLink(text) {
+      var url = String(text || '').trim();
+      if (!/^https?:\/\/\S+$/i.test(url)) { if (url) say(msgId, 'Paste an image, or a link starting with https://.', true); return; }
+      say(msgId, 'Fetching the image…');
+      fetch(url, { mode: 'cors', credentials: 'omit' })
+        .then(function (r) { if (!r.ok) throw new Error('status'); return r.blob(); })
+        .then(use, function () {
+          say(msgId, 'That site does not let other pages copy its images, or the link is not an image. Save the image and pick the file instead.', true);
+        });
+    }
+    field.addEventListener('paste', function (e) {
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file' && /^image\//.test(items[i].type)) {
+          e.preventDefault();
+          use(items[i].getAsFile());
+          return;
+        }
+      }
+      var text = e.clipboardData && e.clipboardData.getData('text/plain');
+      if (text) { e.preventDefault(); field.value = text.trim(); fromLink(text); }
+    });
+    field.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); fromLink(field.value); }
+    });
+    field.addEventListener('change', function () { fromLink(field.value); });
+    if (navigator.clipboard && navigator.clipboard.read) {
+      btn.hidden = false;
+      btn.addEventListener('click', function () {
+        navigator.clipboard.read().then(function (items) {
+          for (var i = 0; i < items.length; i++) {
+            var type = items[i].types.filter(function (t) { return /^image\//.test(t); })[0];
+            if (type) return items[i].getType(type).then(use);
+          }
+          return navigator.clipboard.readText().then(function (t) {
+            if (t && t.trim()) { field.value = t.trim(); fromLink(t); }
+            else say(msgId, 'There is no image or link on the clipboard. Copy one first.', true);
+          });
+        }).catch(function () {
+          say(msgId, 'The browser did not let the page read the clipboard. Paste into the box instead.', true);
+        });
+      });
+    }
+  }
+  pasteImageInto($('sg-f-black'), 'sg-f-msg');
+  pasteImageInto($('sg-f-white'), 'sg-f-msg');
+  pasteImageInto($('sg-t-file'), 'sg-t-msg');
+
   $('sg-add').addEventListener('click', function () { openForm(null); });
   $('sg-edit').addEventListener('click', function () {
     var icon = current;

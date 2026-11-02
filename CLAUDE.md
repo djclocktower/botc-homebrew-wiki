@@ -3816,6 +3816,14 @@ required but a shout-out is appreciated, and no commercial use.
   `<img>` so a phone can long-press it. The two layers must be the same size:
   a layer exported trimmed to its drawing (Photoshop's "Export As" on one
   layer) has lost its place on the canvas, so the form refuses the pair.
+  Under each file box (both layers and the team's texture) sits a box
+  that takes a pasted image or an image link, plus a Paste button where
+  the browser can read the clipboard (`pasteImageInto()`). What arrives is
+  put INTO the file box (DataTransfer) and a change event fired, so the
+  form cannot tell it from a picked file. A link is fetched by the browser,
+  so it works only from a site that allows it (CORS); otherwise the form
+  says to save the image and pick it. Deliberately no server-side fetch: a
+  Worker fetching any URL a member types is an open proxy.
 - **Textures are the team's own and nothing else** (the owner's call,
   2026-11: not Icon Forge's official sheets). Four sets from the team's
   Photoshop templates (Default, Vibrant, Treasure Hunt, Starlit; `SETS` /

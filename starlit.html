@@ -170,6 +170,9 @@
   background: #fffdf8; border: 1px solid var(--parch-frame); padding: 7px 9px; margin-top: 4px;
 }
 .sg-form input[type=file], .sg-team input[type=file] { display: block; margin-top: 4px; font-size: .9rem; max-width: 100%; }
+.sg-paste { display: flex; gap: 6px; margin: -6px 0 12px; }
+.sg-form .sg-paste input[type=text], .sg-team .sg-paste input[type=text] { flex: 1; min-width: 0; margin-top: 0; font-size: .9rem; padding: 6px 8px; }
+.sg-paste .sg-btn { flex-shrink: 0; padding: 6px 12px; }
 .sg-f-layers { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 14px; align-items: start; }
 @media (max-width: 480px) { .sg-f-layers { grid-template-columns: minmax(0, 1fr); } }
 .sg-f-preview { width: 150px; height: 150px; display: block; background: radial-gradient(circle at 50% 40%, #4a2548, #1a0820 75%); border: 2px solid var(--parch-frame); }
@@ -186,6 +189,7 @@
 .sg-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; }
 .sg-row > .sg-btn { align-self: flex-end; }
 .sg-row > label { flex: 1 1 180px; min-width: 0; }
+.sg-row > .sg-paste { flex: 1 1 220px; margin: 0; align-self: flex-end; }
 
 /* Picking an icon for a character page: the gallery opens inside the editor
    (assets/starlit-picker.js), so everything but the gallery itself goes. */
@@ -279,7 +283,7 @@ html.sg-pick .home-panel { padding-top: 14px; }
         <p><button type="button" class="sg-btn sg-btn-green" id="sg-add">Add an icon</button></p>
 
         <h3>Textures</h3>
-        <p>Listed beside the official textures, here and in Icon Forge.</p>
+        <p>Listed under "More from the gallery", here and in Icon Forge.</p>
         <ul class="sg-tex-list" id="sg-tex-list" data-user-content></ul>
         <div class="sg-row">
           <label>Name <input type="text" id="sg-t-name" maxlength="40" placeholder="Starlit"></label>
