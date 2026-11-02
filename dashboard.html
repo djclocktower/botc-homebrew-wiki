@@ -3479,7 +3479,7 @@
         var u = d.user || {};
         det.innerHTML = '<p class="note" style="font-style:normal">Account #' + esc(u.id) + (u.email ? ', ' + esc(u.email) : '') +
           (u.createdAt ? ', joined ' + esc(absTime(u.createdAt)) : '') + '. ' + d.comments + ' comment' + (d.comments === 1 ? '' : 's') + ' in the backup.</p>' +
-          '<div class="act-filters"><input type="text" class="ab-owner" placeholder="owner's username (optional)">' +
+          '<div class="act-filters"><input type="text" class="ab-owner" placeholder="owner\'s username (optional)">' +
           '<button type="button" class="del-btn del-restore ab-all">Restore everything</button>' +
           '<span class="del-status ab-all-status"></span></div>' +
           (d.items.length ? d.items.map(function(it){
