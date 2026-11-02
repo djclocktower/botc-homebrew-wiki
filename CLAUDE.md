@@ -3818,10 +3818,12 @@ required but a shout-out is appreciated, and no commercial use.
   Traveller II `traveller_split` — blue down the left, red down the right, as
   Icon Forge splits it — and Monochrome `white`),
   the gallery's own (`starlit_textures`, also in Icon Forge as
-  `starlit-{id}`), and "Your own", a local file that is never uploaded. An
-  icon's `tex` is the texture it opens in and its thumbnail is drawn in;
-  with none we have, and in the upload form, it is the gallery texture named
-  Grey (the team's base, `DEFAULT_TEX_NAME`), else Good.
+  `starlit-{id}`), and "Your own", a local file that is never uploaded.
+  **An icon opens as it was uploaded** (the owner's call): black lines, white
+  outline, shadow, no texture (`AS_UPLOADED`), and its grid picture is drawn
+  the same way. Picking a texture tile turns the texture on. The upload form
+  has no texture choice; `tex` is stored empty, and an older icon that still
+  has one gets a new untextured grid picture on its next save.
 - **Storage**: lazy tables `starlit_icons` and `starlit_textures`; files in R2
   under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
   `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new

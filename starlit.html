@@ -149,7 +149,6 @@
   background: #fffdf8; border: 1px solid var(--parch-frame); padding: 7px 9px; margin-top: 4px;
 }
 .sg-form input[type=file], .sg-team input[type=file] { display: block; margin-top: 4px; font-size: .9rem; max-width: 100%; }
-.sg-hint { display: block; font-size: .84rem; line-height: 1.45; color: rgba(0,0,0,.62); margin: 2px 0 0; }
 .sg-f-layers { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 14px; align-items: start; }
 @media (max-width: 480px) { .sg-f-layers { grid-template-columns: minmax(0, 1fr); } }
 .sg-f-preview { width: 150px; height: 150px; display: block; background: radial-gradient(circle at 50% 40%, #4a2548, #1a0820 75%); border: 2px solid var(--parch-frame); }
@@ -340,18 +339,12 @@ html.sg-pick .home-panel { padding-top: 14px; }
       <button type="button" class="sg-x" id="sg-f-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2 class="sg-title" id="sg-f-title">Add an icon</h2>
       <label class="sg-f">Name <input type="text" id="sg-f-name" maxlength="60" required></label>
-      <label class="sg-f">Keywords <input type="text" id="sg-f-tags" maxlength="600" placeholder="knight, sword, armour">
-        <span class="sg-hint">Separated by commas. The search uses them.</span></label>
-      <label class="sg-f">Artist <input type="text" id="sg-f-artist" maxlength="80" placeholder="Harry &amp; Co &amp; Bendan">
-        <span class="sg-hint">Shown on the icon, and credited on any character it goes onto.</span></label>
+      <label class="sg-f">Keywords <input type="text" id="sg-f-tags" maxlength="600" placeholder="knight, sword, armour"></label>
+      <label class="sg-f">Artist <input type="text" id="sg-f-artist" maxlength="80" placeholder="Harry &amp; Co &amp; Bendan"></label>
       <div class="sg-f-layers">
         <div>
-          <label class="sg-f">Black layer <input type="file" id="sg-f-black" accept="image/png,image/webp">
-            <span class="sg-hint">The part that gets the texture.</span></label>
-          <label class="sg-f">White layer <input type="file" id="sg-f-white" accept="image/png,image/webp">
-            <span class="sg-hint">The outline under it. Both are PNGs with a transparent background, exported at the full canvas size (not trimmed).</span></label>
-          <label class="sg-f">Shown in <select id="sg-f-tex"></select>
-            <span class="sg-hint">The texture the icon opens in, and its picture in the grid.</span></label>
+          <label class="sg-f">Black layer <input type="file" id="sg-f-black" accept="image/png,image/webp"></label>
+          <label class="sg-f">White layer <input type="file" id="sg-f-white" accept="image/png,image/webp"></label>
         </div>
         <canvas class="sg-f-preview" id="sg-f-preview" width="300" height="300" aria-label="Preview"></canvas>
       </div>

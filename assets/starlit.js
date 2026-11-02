@@ -29,9 +29,7 @@
     { id: 'green_pope', name: 'Loric', src: TEX + 'green_pope.png' },
     { id: 'white', name: 'Monochrome', src: TEX + 'white.png' }
   ];
-  // What an icon opens in when it names no texture we have: the team's base
-  // grey (one of the gallery's own, so found by name), else Good.
-  var DEFAULT_TEX_NAME = 'Grey';
+
   var PARCHMENT = TEX + 'white.png';
   var TOGGLES = ['texture', 'whites', 'blacks', 'shadow'];
 
@@ -39,7 +37,8 @@
   var textures = BUILT_IN.slice();   // + the gallery's own, + the reader's
   var own = null;                    // a texture picked from the reader's device
   var filter = { q: '', tag: '' };
-  var view = { tex: 'blue', texture: true, whites: true, blacks: true, shadow: true };
+  // An icon opens as it was uploaded: no texture until the reader picks one.
+  var view = { tex: 'blue', texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
   var previewUrl = null, paintSeq = 0;
 
@@ -72,12 +71,6 @@
     for (var i = 0; i < textures.length; i++) if (textures[i].id === id) return textures[i];
     return null;
   }
-  function defaultTex() {
-    for (var i = 0; i < textures.length; i++) {
-      if (textures[i].id.indexOf('starlit-') === 0 && textures[i].name === DEFAULT_TEX_NAME) return textures[i].id;
-    }
-    return 'blue';
-  }
   // Traveller II, as in Icon Forge: one sheet down the left, the other down
   // the right. compose() centres the fill, so the split runs through the icon.
   function splitFill(a, b) {
@@ -87,7 +80,7 @@
     return c;
   }
   function texturesFor(id) {
-    var t = texById(id) || texById(defaultTex()) || BUILT_IN[0];
+    var t = texById(id) || BUILT_IN[0];
     return Promise.all([loadImg(t.src), loadImg(PARCHMENT), t.src2 ? loadImg(t.src2) : null])
       .then(function (r) { return { fill: r[2] ? splitFill(r[0], r[2]) : r[0], parch: r[1] }; });
   }
@@ -145,6 +138,8 @@
     ctx.drawImage(art, 0, 0);
     return out;
   }
+  // The grid picture and the upload form's preview: the layers as uploaded.
+  var AS_UPLOADED = { texture: false, whites: true, blacks: true, shadow: true };
   function render(icon, size, opts) {
     opts = opts || view;
     return Promise.all([layersOf(icon), texturesFor(opts.tex)]).then(function (r) {
@@ -263,7 +258,8 @@
   function openIcon(icon) {
     if (!icon) return;
     current = icon;
-    view.tex = texById(icon.tex) ? icon.tex : defaultTex();
+    view.texture = false;
+    if (!texById(view.tex)) view.tex = 'blue';
     $('sg-d-name').textContent = icon.name;
     $('sg-d-credit').innerHTML = creditHTML(icon);
     $('sg-d-tags').innerHTML = icon.tags.map(function (t) {
@@ -299,7 +295,7 @@
   }
   function drawTexs() {
     $('sg-texs').innerHTML = textures.map(function (t) {
-      return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (t.id === view.tex) + '" title="' + esc(t.name) + '">' +
+      return '<button type="button" class="sg-tex" data-tex="' + esc(t.id) + '" aria-pressed="' + (view.texture && t.id === view.tex) + '" title="' + esc(t.name) + '">' +
         (t.src2 ? '<span class="sg-tex-split"><img src="' + esc(t.src) + '" alt=""><img src="' + esc(t.src2) + '" alt=""></span>'
           : '<img src="' + esc(t.src) + '" alt="" decoding="async">') + '<b>' + esc(t.name) + '</b></button>';
     }).join('') +
@@ -310,6 +306,7 @@
     if (!b) return;
     if (b.hasAttribute('data-own')) { $('sg-own-tex').click(); return; }
     view.tex = b.getAttribute('data-tex');
+    view.texture = true; $('sg-o-texture').checked = true;
     drawTexs(); paint();
   });
   // A texture from the reader's own device: used here and nowhere else.
@@ -321,10 +318,11 @@
     own = { id: 'own', name: 'Yours', src: URL.createObjectURL(f) };
     rebuildTextures();
     view.tex = 'own';
+    view.texture = true; $('sg-o-texture').checked = true;
     drawTexs(); paint();
   });
   TOGGLES.forEach(function (k) {
-    $('sg-o-' + k).addEventListener('change', function () { view[k] = this.checked; paint(); });
+    $('sg-o-' + k).addEventListener('change', function () { view[k] = this.checked; if (k === 'texture') drawTexs(); paint(); });
   });
   $('sg-d-tags').addEventListener('click', function (e) {
     var b = e.target.closest('[data-tag]');
@@ -360,7 +358,7 @@
     render(icon, TARGET * 2, { tex: view.tex, texture: false, whites: view.whites, blacks: view.blacks, shadow: false })
       .then(function (c) {
         localStorage.setItem('botc_starlit_forge', JSON.stringify({
-          name: icon.name, png: c.toDataURL('image/png'), tex: view.tex === 'own' ? '' : view.tex
+          name: icon.name, png: c.toDataURL('image/png'), tex: view.texture && view.tex !== 'own' ? view.tex : ''
         }));
         location.href = 'iconforge?from=starlit';
       })
@@ -541,10 +539,8 @@
     if (!form.black || !form.white) return Promise.resolve();
     if (layersDiffer()) say('sg-f-msg', SIZES_DIFFER, true);
     var L = formLayers();
-    return texturesFor($('sg-f-tex').value).then(function (t) {
-      x.clearRect(0, 0, c.width, c.height);
-      x.drawImage(compose(L, { texture: true, whites: true, blacks: true, shadow: true, fill: t.fill, parch: t.parch }, c.width), 0, 0);
-    }).catch(function (e) { say('sg-f-msg', e.message, true); });
+    x.drawImage(compose(L, AS_UPLOADED, c.width), 0, 0);
+    return Promise.resolve();
   }
   function openForm(icon) {
     form = { icon: icon || null, black: null, white: null, blackData: null, whiteData: null, L: null };
@@ -555,10 +551,6 @@
     try { last = localStorage.getItem('botc_starlit_artist') || ''; } catch (e) { /* none */ }
     $('sg-f-artist').value = icon ? icon.artist : last;
     $('sg-f-black').value = ''; $('sg-f-white').value = '';
-    $('sg-f-tex').innerHTML = textures.filter(function (t) { return t.id !== 'own'; }).map(function (t) {
-      return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>';
-    }).join('');
-    $('sg-f-tex').value = icon && texById(icon.tex) ? icon.tex : defaultTex();
     say('sg-f-msg', icon ? 'Pick a new layer only to replace it.' : '');
     show('sg-form-modal', true);
     formPreview();
@@ -584,7 +576,6 @@
       }).catch(function (e) { say('sg-f-msg', e.message, true); });
     });
   });
-  $('sg-f-tex').addEventListener('change', formPreview);
   $('sg-add').addEventListener('click', function () { openForm(null); });
   $('sg-edit').addEventListener('click', function () {
     var icon = current;
@@ -606,7 +597,7 @@
     var icon = form.icon, btn = $('sg-f-save');
     var body = {
       action: 'save', name: $('sg-f-name').value.trim(), tags: $('sg-f-tags').value,
-      artist: $('sg-f-artist').value.trim(), tex: $('sg-f-tex').value
+      artist: $('sg-f-artist').value.trim(), tex: ''
     };
     if (icon) body.id = icon.id;
     if (!body.name) { say('sg-f-msg', 'Give the icon a name.', true); return; }
@@ -617,14 +608,13 @@
     if (layersDiffer()) { say('sg-f-msg', SIZES_DIFFER, true); return; }
     if (form.blackData) body.black = form.blackData;
     if (form.whiteData) body.white = form.whiteData;
-    var newLook = !icon || body.black || body.white || icon.tex !== body.tex;
+    var newLook = !icon || body.black || body.white || icon.tex;
     btn.disabled = true;
     say('sg-f-msg', 'Saving…');
-    (newLook ? texturesFor(body.tex).then(function (t) {
-      body.thumb = compose(formLayers(), {
-        texture: true, whites: true, blacks: true, shadow: true, fill: t.fill, parch: t.parch
-      }, THUMB).toDataURL('image/webp', 0.86);
-    }) : Promise.resolve()).then(function () { return api(body); }).then(function (r) {
+    Promise.resolve().then(function () {
+      if (newLook) body.thumb = compose(formLayers(), AS_UPLOADED, THUMB).toDataURL('image/webp', 0.86);
+      return api(body);
+    }).then(function (r) {
       gallery.icons = gallery.icons.filter(function (x) { return x.id !== r.icon.id; }).concat([r.icon]).sort(byName);
       try { localStorage.setItem('botc_starlit_artist', body.artist); } catch (e2) { /* fine */ }
       closeWindow('sg-form-modal');
