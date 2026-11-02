@@ -54,7 +54,8 @@
   var own = null;                    // a texture picked from the reader's device
   var ownWhite = null;               // the same, for the whites
   var ownFor = 'black';              // which picker the device file is for
-  var filter = { q: '', tag: '' };
+  // tags: {keyword: 1 to require it, -1 to leave it out}.
+  var filter = { q: '', tags: Object.create(null) };
   // An icon opens as it was uploaded: no texture until the reader picks one.
   var view = { tex: 'default-base', wtex: '', bcut: { x: 0, y: 0, z: 1 }, wcut: { x: 0, y: 0, z: 1 }, texture: false, whites: true, blacks: true, shadow: true };
   var current = null;                // the icon open in the window
@@ -98,7 +99,8 @@
   // plain colour (compose() takes either).
   function texturesFor(o) {
     var t = o.tex === 'plain' ? PLAIN_BLACK : texById(o.tex) || textures[0], w = whiteById(o.wtex || '');
-    var white = w.match ? (t.outline || PARCHMENT) : w.plain || w.src;
+    // Match blacks follows the blacks: plain black takes plain white.
+    var white = w.match ? (t.plain ? '#ffffff' : t.outline || PARCHMENT) : w.plain || w.src;
     return Promise.all([t.plain ? t.plain : loadImg(t.src), white.charAt(0) === '#' ? white : loadImg(white)])
       .then(function (r) { return { fill: r[0], parch: r[1] }; });
   }
@@ -182,12 +184,20 @@
 
   /* ── the grid ─────────────────────────────────────────────────── */
 
+  /* Every ticked keyword must be on the icon and no crossed-out one may be;
+     every typed word must be found, and a word typed with a minus in front
+     (-skull) must not. */
   function matches(icon) {
-    if (filter.tag && icon.tags.indexOf(filter.tag) < 0) return false;
+    for (var t in filter.tags) {
+      if ((icon.tags.indexOf(t) >= 0) !== (filter.tags[t] > 0)) return false;
+    }
     var words = fold(filter.q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     var hay = fold(icon.name + ' ' + icon.tags.join(' ') + ' ' + icon.artist);
-    return words.every(function (w) { return hay.indexOf(w) >= 0; });
+    return words.every(function (w) {
+      if (w.charAt(0) === '-' && w.length > 1) return hay.indexOf(w.slice(1)) < 0;
+      return hay.indexOf(w) >= 0;
+    });
   }
   function shown() { return gallery.icons.filter(matches); }
   function byId(id) {
@@ -206,24 +216,38 @@
       : list.length + ' of ' + n + ' icons';
     $('sg-random').disabled = !list.length;
   }
-  // The most used keywords as chips; the search box finds the rest.
-  function drawTags() {
+  // Every keyword in the gallery, most used first.
+  function tagCounts() {
     var count = Object.create(null);
     gallery.icons.forEach(function (ic) { ic.tags.forEach(function (t) { count[t] = (count[t] || 0) + 1; }); });
-    var tags = Object.keys(count).sort(function (a, b) { return count[b] - count[a] || a.localeCompare(b); }).slice(0, 30);
-    if (filter.tag && tags.indexOf(filter.tag) < 0) tags.unshift(filter.tag);
-    $('sg-tags').innerHTML = tags.map(function (t) {
-      return '<button type="button" class="sg-chip" data-tag="' + esc(t) + '" aria-pressed="' + (t === filter.tag) + '">' +
-        esc(t) + '<small>' + (count[t] || 0) + '</small></button>';
-    }).join('');
+    return Object.keys(count).sort(function (a, b) { return count[b] - count[a] || a.localeCompare(b); })
+      .map(function (t) { return { tag: t, n: count[t] }; });
+  }
+  /* The most used keywords as chips, plus any in use. A tap cycles a chip
+     through: show only icons with it, leave icons with it out, off. */
+  function drawTags() {
+    var all = tagCounts(), top = all.slice(0, 30), on = Object.keys(filter.tags);
+    on.forEach(function (t) {
+      if (!top.some(function (x) { return x.tag === t; })) top.unshift({ tag: t, n: 0 });
+    });
+    $('sg-tags').innerHTML = top.map(function (x) {
+      var st = filter.tags[x.tag] || 0;
+      return '<button type="button" class="sg-chip" data-tag="' + esc(x.tag) + '" data-state="' + st + '" aria-pressed="' + (st !== 0) + '"' +
+        ' title="' + (st > 0 ? 'Only icons with this. Tap to leave them out instead.' : st < 0 ? 'Icons with this are left out. Tap to clear.' : 'Tap to show only icons with this.') + '">' +
+        esc(x.tag) + '<small>' + (x.n || '') + '</small></button>';
+    }).join('') + (on.length ? '<button type="button" class="sg-chip sg-chip-clear" data-clear="1">Clear</button>' : '');
   }
   function setTag(t) {
-    filter.tag = filter.tag === t ? '' : t;
+    var st = filter.tags[t] || 0;
+    if (st > 0) filter.tags[t] = -1;
+    else if (st < 0) delete filter.tags[t];
+    else filter.tags[t] = 1;
     drawTags(); drawGrid();
   }
 
   $('sg-search').addEventListener('input', function () { filter.q = this.value; drawGrid(); });
   $('sg-tags').addEventListener('click', function (e) {
+    if (e.target.closest('[data-clear]')) { filter.tags = Object.create(null); drawTags(); drawGrid(); return; }
     var b = e.target.closest('[data-tag]');
     if (b) setTag(b.getAttribute('data-tag'));
   });
@@ -275,10 +299,9 @@
   function creditHTML(icon) {
     var who = icon.artist || ARTISTS;
     var names = window.splitCreators ? window.splitCreators(who) : [who];
-    var target = PICK ? ' target="_blank" rel="noopener"' : '';
     return 'Art by ' + names.map(function (n) {
       var mark = window.CreatorSymbols ? window.CreatorSymbols.markHTMLFor(n) : '';
-      return '<a href="author?a=' + encodeURIComponent(n) + '"' + target + '>' + esc(n) + '</a>' + (mark ? ' ' + mark : '');
+      return esc(n) + (mark ? ' ' + mark : '');
     }).join(', ') + ', from the Starlit Gallery';
   }
   function openIcon(icon) {
@@ -451,7 +474,7 @@
     var b = e.target.closest('[data-tag]');
     if (!b) return;
     closeWindow('sg-detail');
-    filter.tag = '';
+    filter.tags = Object.create(null);
     setTag(b.getAttribute('data-tag'));
     $('sg-search').scrollIntoView({ block: 'center' });
   });
@@ -670,6 +693,7 @@
     $('sg-f-title').textContent = icon ? 'Edit ' + icon.name : 'Add an icon';
     $('sg-f-name').value = icon ? icon.name : '';
     $('sg-f-tags').value = icon ? icon.tags.join(', ') : '';
+    drawFormTags();
     var last = '';
     try { last = localStorage.getItem('botc_starlit_artist') || ''; } catch (e) { /* none */ }
     $('sg-f-artist').value = icon ? icon.artist : last;
@@ -774,6 +798,29 @@
   pasteImageInto($('sg-f-black'), 'sg-f-msg');
   pasteImageInto($('sg-f-white'), 'sg-f-msg');
   pasteImageInto($('sg-t-file'), 'sg-t-msg');
+
+  /* The keywords already in the gallery, under the form's Keywords box: a
+     tap adds one to the box, or takes it out if it is there. */
+  function formTags() {
+    return $('sg-f-tags').value.split(',').map(function (t) { return t.toLowerCase().replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+  }
+  function drawFormTags() {
+    var have = formTags(), all = tagCounts();
+    $('sg-f-tagpick').hidden = !all.length;
+    $('sg-f-tagpick-list').innerHTML = all.map(function (x) {
+      var on = have.indexOf(x.tag) >= 0;
+      return '<button type="button" class="sg-chip" data-tag="' + esc(x.tag) + '" aria-pressed="' + on + '">' + esc(x.tag) + '<small>' + x.n + '</small></button>';
+    }).join('');
+  }
+  $('sg-f-tagpick-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-tag]');
+    if (!b) return;
+    var t = b.getAttribute('data-tag'), have = formTags(), i = have.indexOf(t);
+    if (i >= 0) have.splice(i, 1); else have.push(t);
+    $('sg-f-tags').value = have.join(', ');
+    drawFormTags();
+  });
+  $('sg-f-tags').addEventListener('input', drawFormTags);
 
   $('sg-add').addEventListener('click', function () { openForm(null); });
   $('sg-edit').addEventListener('click', function () {

@@ -51,6 +51,10 @@
 }
 .sg-chip:hover { background: rgba(91,31,33,.08); }
 .sg-chip[aria-pressed=true] { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.sg-chip[data-state="-1"] { background: #fffdf8; color: var(--evil); border-color: var(--evil); text-decoration: line-through; }
+.sg-chip-clear { border-style: dashed; }
+.sg-tagpick { margin: -4px 0 14px; }
+.sg-tagpick-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 132px; overflow-y: auto; padding: 2px; }
 .sg-chip small { opacity: .65; margin-left: 4px; }
 .sg-btn {
   font-family: 'Roboto', sans-serif; font-weight: 600; letter-spacing: .03em; font-size: .88rem;
@@ -262,7 +266,7 @@ html.sg-pick .home-panel { padding-top: 14px; }
     <p class="sg-pick-head" id="sg-pick-head" hidden>Pick an icon from the Starlit Gallery</p>
 
     <div class="sg-bar">
-      <input class="sg-search" id="sg-search" type="search" placeholder="Search icons by name or keyword…" autocomplete="off" enterkeyhint="search" aria-label="Search the Starlit Gallery">
+      <input class="sg-search" id="sg-search" type="search" placeholder="Search by name or keyword, -word to leave one out…" autocomplete="off" enterkeyhint="search" aria-label="Search the Starlit Gallery">
       <button type="button" class="sg-btn" id="sg-random" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
         Random icon
@@ -388,6 +392,10 @@ html.sg-pick .home-panel { padding-top: 14px; }
       <h2 class="sg-title" id="sg-f-title">Add an icon</h2>
       <label class="sg-f">Name <input type="text" id="sg-f-name" maxlength="60" required></label>
       <label class="sg-f">Keywords <input type="text" id="sg-f-tags" maxlength="600" placeholder="knight, sword, armour"></label>
+      <div class="sg-tagpick" id="sg-f-tagpick" hidden>
+        <span class="sg-label">Keywords already in the gallery</span>
+        <div class="sg-tagpick-list" id="sg-f-tagpick-list" data-user-content></div>
+      </div>
       <label class="sg-f">Artist <input type="text" id="sg-f-artist" maxlength="80" placeholder="Harry &amp; Co &amp; Bendan"></label>
       <div class="sg-f-layers">
         <div>

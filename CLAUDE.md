@@ -3797,8 +3797,10 @@ Character icons by **Harry & Co & Bendan** (wiki account `harryandco`; the
 makers of the Travel by the Starlight collection), hosted here after the
 platform they were on broke. Credit them: the hero names them with their mark
 and links each of them to their wiki profile (`/u/harryandco`, `/u/Bendan`),
-every icon shows its `artist` (theirs by
-default), and an icon put on a character from the editor fills its "Icon by".
+every icon shows its `artist` (theirs by default) as plain text with its
+mark, deliberately NOT a link (the team's call: the credit links led to
+creator pages that did not match), and an icon put on a character from the
+editor fills its "Icon by".
 The page's text about the gallery is copied word for word from their
 Magma page (magma.com/s/starlit-gallery/profile/about), the owner's call:
 never rewrite it; only its "How to Use" part, which is about Magma, is left
@@ -3841,7 +3843,8 @@ required but a shout-out is appreciated, and no commercial use.
   every texture grouped by set. There are two, one per layer (`PICKERS`):
   the blacks' (Plain black, then every texture) and the whites' (Match
   blacks, which takes the blacks' set's Outline and is the default, Plain
-  white, each set's Outline, Your own). Under each picker is the CUT
+  white, each set's Outline, Your own). Match blacks with Plain black is
+  plain white. Under each picker is the CUT
   (`view.bcut` / `view.wcut`, `{x, y, z}`): Icon Forge's placement pad,
   arrows round a dice for a random cut, a zoom slider (1-4) and Reset,
   read by `cover()`. Zoom 1 is the sheet just covering the frame, so an
@@ -3857,6 +3860,14 @@ required but a shout-out is appreciated, and no commercial use.
   the same way. Picking a texture tile turns the texture on. The upload form
   has no texture choice; `tex` is stored empty, and an older icon that still
   has one gets a new untextured grid picture on its next save.
+- **Finding icons**: the search box needs every word typed (name, keyword
+  or artist) and leaves out icons matching a word typed `-like-this`. The
+  keyword chips (the 30 most used, plus any in use) cycle on a tap:
+  required (maroon), left out (red, struck through), off, with Clear while
+  any is set (`filter.tags`, `{keyword: 1 | -1}`). The upload form lists
+  every keyword already in the gallery under its Keywords box; a tap adds
+  or removes one, so the team reuses keywords rather than inventing near
+  copies.
 - **Storage**: lazy tables `starlit_icons` and `starlit_textures`; files in R2
   under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
   `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new
