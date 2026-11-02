@@ -915,6 +915,10 @@ assets/
   starlit.js           The Starlit Gallery page (/starlit): browsing, the icon
                        window and the team's forms. compose() draws an icon.
                        See "The Starlit Gallery".
+  char-icon-save.js    CharIconSave: put a finished icon on one of your own
+                       characters (drafts included) — art/{identity}.png,
+                       then the row saved back with its status unchanged.
+                       Shared by Icon Forge and the Starlit Gallery.
   starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
                        the gallery in an iframe; the picked PNG goes into the
                        art file input with a change event.
@@ -3770,7 +3774,8 @@ uploaded — except for the one opt-in save described below.
   phone; the button stays hidden in browsers without that API. A paste while
   the art editor is open is left to the editor, and a text paste into a field
   is never intercepted.
-- **Save to a character** is the only server call. It uploads the 591 px
+- **Save to a character** is the only server call (`assets/char-icon-save.js`,
+  shared with the Starlit Gallery). It uploads the 591 px
   render to `art/{slug}.png` — the same R2 slot the character editor uses —
   and then re-saves the row through `/api/character` with `art`/`image`
   pointing at it, so a page whose art lived elsewhere still picks it up. The
@@ -3835,7 +3840,11 @@ required but a shout-out is appreciated, and no commercial use.
 - **Hand-offs**: "Open in Icon Forge" leaves the flattened icon in
   localStorage for `iconforge?from=starlit`; the editors' "Browse the Starlit
   Gallery" (`assets/starlit-picker.js`) opens `/starlit?pick=1` in an iframe
-  and "Use this icon" posts the PNG back. `?icon={id}` opens one icon. Not
+  and "Use this icon" posts the PNG back. "Save to one of your characters"
+  in the icon window puts the icon, as shown, on a character the reader owns
+  (drafts too) through `assets/char-icon-save.js`, Icon Forge's save, and
+  fills "Icon by" unless the page credits somebody else; it asks before
+  replacing an icon. `?icon={id}` opens one icon. Not
   built: a Token Tool hand-off (an icon reaches it through its character).
 
 ## Creator marks (a creator's own symbol)

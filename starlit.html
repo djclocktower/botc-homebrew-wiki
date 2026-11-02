@@ -131,6 +131,9 @@
 .sg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
 .sg-actions .sg-btn { flex: 1 1 auto; justify-content: center; }
 .sg-size { font: inherit; font-size: .9rem; color: var(--maroon); background: #fffdf8; border: 1px solid var(--parch-frame); padding: 7px 8px; }
+.sg-save { margin-top: 12px; }
+.sg-save-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sg-save-row select { flex: 1 1 180px; min-width: 0; }
 .sg-manage { border-top: 1px solid rgba(180,160,120,.55); padding-top: 12px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
 .sg-msg { font-size: .9rem; margin: 8px 0 0; color: var(--maroon); }
 .sg-msg.err { color: var(--evil); }
@@ -301,6 +304,14 @@ html.sg-pick .home-panel { padding-top: 14px; }
             <button type="button" class="sg-btn sg-btn-green" id="sg-download">Download PNG</button>
             <button type="button" class="sg-btn sg-btn-blue sg-not-pick" id="sg-forge">Open in Icon Forge</button>
           </div>
+          <div class="sg-save sg-not-pick" id="sg-save" hidden>
+            <span class="sg-label">Save to one of your characters</span>
+            <div class="sg-save-row" id="sg-save-row" hidden>
+              <select class="sg-size" id="sg-save-pick" aria-label="Which of your characters"></select>
+              <button type="button" class="sg-btn sg-btn-green" id="sg-save-go" disabled>Save as its icon</button>
+            </div>
+            <p class="sg-msg" id="sg-save-msg"></p>
+          </div>
           <p class="sg-msg" id="sg-d-msg"></p>
           <div class="sg-manage sg-not-pick" id="sg-manage" hidden>
             <button type="button" class="sg-btn sg-btn-quiet" id="sg-edit">Edit this icon</button>
@@ -344,6 +355,8 @@ html.sg-pick .home-panel { padding-top: 14px; }
 
   <script src="assets/creators.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-thumb.js"></script>
+  <script src="assets/char-icon-save.js"></script>
   <script src="assets/starlit.js"></script>
   <script src="assets/site.js"></script>
 </body>

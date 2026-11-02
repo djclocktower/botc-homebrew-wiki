@@ -276,6 +276,8 @@
     TOGGLES.forEach(function (k) { $('sg-o-' + k).checked = view[k]; });
     show('sg-detail', true);
     setUrlIcon(icon.id);
+    say('sg-save-msg', '');
+    loadMyChars();
     paint();
   }
   function paint() {
@@ -376,6 +378,50 @@
       }, location.origin);
     }).catch(function (e) { say('sg-d-msg', e.message, true); })
       .then(function () { btn.disabled = false; });
+  });
+
+  /* ── save straight onto one of your characters (drafts too) ───── */
+  // assets/char-icon-save.js does the work, shared with Icon Forge.
+
+  var myChars = null;   // asked once, on the first icon opened
+  function loadMyChars() {
+    if (myChars || PICK || !window.CharIconSave) return;
+    myChars = window.CharIconSave.list().then(function (list) {
+      $('sg-save').hidden = false;
+      if (!list) {
+        $('sg-save-msg').innerHTML = '<a href="login?next=' + encodeURIComponent('starlit' + location.search) + '">Sign in</a> to save it straight onto one of your characters.';
+        return;
+      }
+      if (!list.length) {
+        $('sg-save-msg').innerHTML = 'You have no characters yet. Start one in the <a href="create">character editor</a>.';
+        return;
+      }
+      list.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      $('sg-save-pick').innerHTML = '<option value="">Choose a character…</option>' + list.map(function (c) {
+        return '<option value="' + esc(c.slug) + '">' + esc(c.name) + (c.status === 'draft' ? ' (draft)' : '') + '</option>';
+      }).join('');
+      $('sg-save-row').hidden = false;
+    }).catch(function () { myChars = null; });
+  }
+  $('sg-save-pick').addEventListener('change', function () { $('sg-save-go').disabled = !this.value; });
+  $('sg-save-go').addEventListener('click', function () {
+    var pick = $('sg-save-pick'), slug = pick.value, icon = current, btn = this;
+    if (!slug || !icon) return;
+    var name = pick.options[pick.selectedIndex].text.replace(/ \(draft\)$/, '');
+    btn.disabled = true;
+    say('sg-save-msg', 'Saving…');
+    render(icon, TARGET).then(function (c) {
+      return window.CharIconSave.save(slug, c.toDataURL('image/png'), {
+        iconBy: String(icon.artist || ARTISTS).replace(/[[\]()]/g, '').trim() +
+          ' ([Starlit Gallery](/starlit?icon=' + encodeURIComponent(icon.id) + '))',
+        confirmReplace: function (n) { return window.confirm('Replace the icon on ' + n + '?'); }
+      });
+    }).then(function (saved) {
+      if (!saved) { say('sg-save-msg', ''); return; }
+      $('sg-save-msg').className = 'sg-msg';
+      $('sg-save-msg').innerHTML = 'Saved to <a href="c/' + encodeURIComponent(saved) + '">' + esc(name) + '</a>.';
+    }).catch(function (e) { say('sg-save-msg', e.message, true); })
+      .then(function () { btn.disabled = !pick.value; });
   });
 
   /* ── the gallery team ─────────────────────────────────────────── */

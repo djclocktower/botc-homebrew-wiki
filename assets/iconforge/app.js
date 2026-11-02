@@ -926,10 +926,9 @@ fetch('/api/me', { credentials: 'same-origin' })
       );
       return;
     }
-    return fetch('/api/account', { credentials: 'same-origin' })
-      .then((r) => r.json())
-      .then((acc) => {
-        const chars = (acc && acc.characters) || [];
+    return window.CharIconSave.list()
+      .then((list) => {
+        const chars = list || [];
         if (!chars.length) {
           setSaveMsg(
             '',
@@ -965,50 +964,9 @@ $('if-save').addEventListener('click', async () => {
     const dataUrl = out.toDataURL('image/png');
 
     setSaveMsg('', 'Uploading…');
-    const page = await fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), {
-      credentials: 'same-origin'
-    }).then((r) => r.json());
-    if (!page || page.error) throw new Error(page && page.error ? page.error : 'Could not load that character.');
-    if (!page.canEdit) throw new Error('That character belongs to another account.');
-
-    const key = 'art/' + page.slug + '.png';
-    const up = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ key, data: dataUrl })
-    }).then((r) => r.json());
-    if (!up || up.error) throw new Error((up && up.error) || 'The upload failed.');
-    // The card thumbnail rides along with the art (assets/art-thumb.js is
-    // loaded by iconforge.html); never awaited.
-    if (window.ArtThumb) window.ArtThumb.upload(key, dataUrl);
-
-    // Point the row at the slot we just wrote. Everything else on the page is
-    // sent back unchanged, including its published/draft status.
-    const entry = Object.assign({}, page.data, {
-      slug: page.slug,
-      art: key,
-      image: 'https://botchomebrew.wiki/assets/' + key,
-      status: page.status
-    });
-    // An older row may hold its alternate icons only as positions two and
-    // three of an `image` ARRAY (no artAlt/imageAlt fields — see "A
-    // character's three icons" in CLAUDE.md). `image` becomes the new main
-    // icon's string, so those positions move to their own fields first, or
-    // saving an icon would quietly delete a traveller's good and evil art.
-    if (Array.isArray(page.data && page.data.image)) {
-      ['imageAlt', 'imageAlt2'].forEach((field, i) => {
-        const was = page.data.image[i + 1];
-        if (typeof was === 'string' && was && !entry[field]) entry[field] = was;
-      });
-    }
-    const saved = await fetch('/api/character', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(entry)
-    }).then((r) => r.json());
-    if (!saved || saved.error) throw new Error((saved && saved.error) || 'The character could not be saved.');
+    // assets/char-icon-save.js, shared with the Starlit Gallery.
+    const savedSlug = await window.CharIconSave.save(slug, dataUrl);
+    const page = { slug: savedSlug };
 
     setSaveMsg(
       'ok',
