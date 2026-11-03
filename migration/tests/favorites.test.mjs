@@ -60,10 +60,11 @@ test('favorites: save by address or id, list, expand through rosters, unsave', a
   assert.equal(list.total, 3);
   assert.equal(list.characterSlugs, undefined);
 
-  // ?expand=1: the saved character, the script's roster (an off- slug is not
-  // a page here) and the collection's members.
+  // ?expand=1: the saved character, the script's roster (its official
+  // character included: All Characters lists those too) and the
+  // collection's members.
   const exp = await (await f.request('/api/favorites?expand=1', member(1))).json();
-  assert.deepEqual(new Set(exp.characterSlugs), new Set(['a', 'b', 'c']));
+  assert.deepEqual(new Set(exp.characterSlugs), new Set(['a', 'b', 'off-imp', 'c']));
   assert.equal(exp.items.characters[0].page, 'test-set/a');
   assert.equal(exp.items.scripts[0].count, 1);
   assert.equal(exp.items.collections[0].key, 'coll-id');
@@ -80,6 +81,20 @@ test('favorites: save by address or id, list, expand through rosters, unsave', a
   const after = await (await f.request('/api/favorites?expand=1', member(1))).json();
   assert.deepEqual(after.scripts, []);
   assert.deepEqual(new Set(after.characterSlugs), new Set(['a', 'c']));
+
+  // An official character is saved by its roster slug; it has no row here
+  // and links to the official wiki. An id that is not on the roster is not.
+  r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'off-imp', on: true }));
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).name, 'Imp');
+  assert.equal((await f.request('/api/favorite', post(1, { type: 'character', slug: 'off-nobody', on: true }))).status, 404);
+  const off = await (await f.request('/api/favorites?expand=1', member(1))).json();
+  const imp = off.items.characters.find(c => c.slug === 'off-imp');
+  assert.equal(imp.page, 'https://wiki.bloodontheclocktower.com/Imp');
+  assert.equal(imp.official, true);
+  assert.ok(off.characterSlugs.includes('off-imp'));
+  r = await f.request('/api/favorite', post(1, { type: 'character', slug: 'off-imp', on: false }));
+  assert.equal((await r.json()).on, false);
 });
 
 test('favorites: a saved page that stops being public leaves the filter but stays saved', async t => {

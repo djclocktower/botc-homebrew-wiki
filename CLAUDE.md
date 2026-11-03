@@ -19,6 +19,14 @@ render.js, or the gear and close buttons in char-snapshot.js); a phone paints
 an emoji, or a dingbat like ⚙, as a coloured picture that clashes with the
 wiki's look.
 
+**No rounded corners and no gradients in new UI.** Square edges, flat
+colours. They make a page look generic and machine-made. Leave existing
+styles alone unless asked.
+
+**Minimal text.** Use as few words as the job needs. Not every control needs
+a description; most need none. Don't spell out everything a feature does, and
+avoid LLM tropes in anything a reader sees.
+
 ## Architecture in one paragraph
 
 A **Cloudflare Worker** (`worker/worker.js`, config in `wrangler.toml`) serves
@@ -181,6 +189,24 @@ Key dynamic behavior:
   served, which still draws everything in the browser. Team and tag cards
   are char-filters.js's card, so they carry the Curata wreath / Partial
   label All Characters always had.
+  **The 181 official characters are listed beside the homebrew ones** on
+  All Characters, /team, /tag (and /tags' counts), /search, the top-bar
+  search and /favorites: `OfficialRoles.cards()` over
+  `buildOfficialRoles(roles.json)`, always first in the list, loaded in the
+  browser by `BotcData.officials()`, with the tags in
+  `assets/official-tags.js` (settled by hand from the suggester's wording
+  cues, the Chinese wiki and Lady Mist's spreadsheet; edit freely). Icon
+  from `icons-sm/`, "View Character" opening the official wiki in a new tab,
+  an "Official" box on the name (`classifyCharacter()` answers 'official',
+  never Partial), the heart and Add to Script like any card, credited to The
+  Pandemonium Institute, and a Source chip "Official". `/api/favorite`
+  saves an `off-{id}` slug against the roster (no row), and a saved
+  script's official characters count in `characterSlugs`. The server's
+  first screens draw them too (`h.officialRoles`); if roles.json will not
+  load it serves the static page rather than a first screen the browser
+  would not match. A `?collection=` view leaves them out. They are NOT in
+  the grid feed itself, on purpose: the homepage counts, Recently Added,
+  Featured, /random and the tag suggester all read it.
 - **Site search**: the top-bar box on every page previews the best matches of
   every kind; Enter opens **`/search?q=`** (the static `search.html`), the full
   results with a tab per kind and the All Characters filter. Both run the same
@@ -381,8 +407,9 @@ assets/
                        card, beside the creator's name; on Recently Added,
                        side by side under the team name (see "Favorites").
                        Browser + Worker: slotHTML(c) prints an EMPTY
-                       <span class="cq" data-cq-slug> (nothing for a draft, an
-                       official character or a row with no slug), which the
+                       <span class="cq" data-cq-slug> (nothing for a draft or
+                       a row with no slug; an official 'off-' one gets one),
+                       which the
                        renderers wrap with the icon in a .card-side column;
                        render-page.js gets it through PageRender.
                        setCardActions() in worker.js. The browser half fills
@@ -480,6 +507,14 @@ assets/
                        and both halves follow.
                        card-filters.js is the other filter box: it filters
                        cards already in the DOM (collection and creator pages).
+                       Tags combine by the "Tag [all of / any of / only
+                       one of]" select in the Tag label (`tagMode`, both
+                       filter boxes). **Official is a Status chip**, not a
+                       Source one, so it ORs with "Curata only": both on
+                       keeps Curata pages and official characters.
+                       Sort also offers **SAO** wherever sao.js is loaded
+                       (all-characters, /search; the Worker hands
+                       saoCompare to init()).
                        Sort is TWO boxes in both filter boxes: what (Name,
                        Date added, Ability length — plus Best match, Page
                        order, SAO where they apply) and an Order box,
@@ -590,7 +625,9 @@ assets/
                        {{townsfolk|…}}…{{loric|…}}) plus the
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
-                       paths — nothing a writer types can become raw HTML.
+                       paths — nothing a writer types can become raw HTML
+                       (typed HTML tags are rebuilt from a whitelist, see
+                       Gotcha 10).
                        inlineFormat(text, {marks:'links'}) is the restricted
                        subset character pages use — see "Formatting on a
                        character page"; plainText() is the same marks taken
@@ -748,7 +785,9 @@ assets/
                        the form, so a failed load leaves the plain form behind.
                        Both editors are the same form — change one, change both.
   night-order-picker.js  The "I want the X to act directly after…" search on the
-                       wake-priority fields. Picking an official character fills
+                       wake-priority fields. Offers night-order.json's
+                       `meta` steps too: Dusk (0.xxxx, first), Minion Info,
+                       Demon Info, and "Just before Dawn" (9998.xxxx). Picking an official character fills
                        the field with that character's night position plus a
                        random four-digit fraction (Poisoner is 33 → 33.5691), so
                        homebrew pages that chose the same anchor still sort
@@ -1568,7 +1607,7 @@ exported none):
 The night is not only characters: dusk opens it, dawn closes it, and the first
 night has the minion and demon info steps in the middle. Those live in
 `assets/night-order.json` under `meta`, positioned from their neighbours on the
-official sheet (minion info between the Magician and the Snitch, demon info
+official sheet (minion info after Tor, between the Magician and the Snitch, demon info
 between the Summoner and the King). Whoever loads that file hands them to
 `PageRender.setNightMeta()`; **without them the sequences are not written at
 all**, rather than publish a night order those steps are missing from.
@@ -2307,6 +2346,9 @@ Things worth knowing before touching any of it:
   An explicit picture handed to `renderCharacter()` (the editors' preview of
   a file just picked) replaces both; the `/c/` route passes the art's own
   address, which keeps the display copy.
+- **`iconByLabel: 'from'`** makes the info box's icon credit read "Icon
+  from:" instead of "Icon by:" (a select in the label of both editors'
+  Icon by field; the Snapshot poster follows). Nothing stored means "by".
 - **`artAlt`/`imageAlt`/`artAlt2`/`imageAlt2` stay in the card feed.** The
   Token Tool reads `characters.json?fields=card` and prints one token per
   version. `CARD_DROP_FIELDS` used to carry a misspelled `'altArt'` matching
@@ -4266,6 +4308,38 @@ losing that key would make every password reset impossible. Image-slot
 squatting (`uploadSlotDenied` on a page that does not exist yet) is still
 open. Two-factor login is not built yet.
 
+## Changing a username, and deleting an account
+
+- **`POST /api/account/username`**: once every `RENAME_EVERY_DAYS` (30),
+  stamped in a lazily ALTERed `users.username_changed_at`; same rules as
+  signup (`usernameProblem()`). The old handle gets a `redirects` row
+  (`entity_type 'user'`, `from_slug` its `usernameKey`, `to_slug` the
+  account id): `/u/{old}` 302s to the new name, and `usernameTaken()` treats
+  the name as parked (`parkedFor()`) for everyone but that account.
+  `creator_alias:` rows naming the old handle are rewritten, and a legacy
+  mark linked by username (`LEGACY_ACCOUNTS`) is claimed into
+  `creator_marks` first. Everything else is keyed on the account id;
+  `sanitizeEditors()` resolves a stored `{id, username}` pair by id only.
+- **`POST /api/account/delete {password | confirm, keepPages}`**: the
+  account page's confirmation `<dialog>` (password, or the typed username
+  for a Discord-only account). Admins are refused. `accountBackup()` writes
+  one JSON file to R2 under `account-backups/` first (never served, never
+  expired), and a failed backup deletes nothing. It holds the user row minus
+  the password hash, every page it owned, its comments, mark and favorites,
+  and the comments and history of wiki pages about to go. Not DMs: admins
+  only read reported conversations. Then every page loses its owner; without
+  `keepPages`, characters/scripts/collections are soft-deleted, wiki pages
+  removed, and comments `removed` (replies `hidden`). Favorites, mark,
+  blocks and alias rows go, the handle stays parked, `activity_log.user_id`
+  is nulled (a foreign key D1 enforces), and the users row is deleted. Ids
+  are AUTOINCREMENT, so none is reused.
+- **Restoring**: Dashboard -> Content -> "Deleted accounts".
+  `GET /api/admin/account-backups[?key=]` lists the files or shows one;
+  `POST /api/admin/restore-account {key, type?, slug?, username?}` writes
+  pages back through `upsertBackupRow()` (shared with the nightly restore),
+  owned by `username` or nobody. A slug live again is skipped. Restoring
+  everything brings the comments back; a wiki page brings its own.
+
 ## Rate limiting (and why the counters are not in KV)
 
 `rateLimited()` in worker.js is the whole limiter: one counter per
@@ -4410,6 +4484,15 @@ seeded with whole collections whose characters all arrived unowned.
   one is a prefix of the other, so longest-first is always the most specific
   match and the list above can be reordered freely.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Never rewrite page markup on every keystroke in a text box.** Chrome
+  ends the box's undo step whenever script replaces nodes in the document
+  (`textContent`, `innerHTML`, even with the same text), so Ctrl+Z undid
+  one letter at a time in the character editors' Ability and Name boxes,
+  Grimoire Forge, the Custom CSS box and the collection editor. A live
+  counter or label updates its TEXT NODE's `.data` (a character-data
+  change does not end the undo step); anything bigger is redrawn when the
+  typing pauses (Grimoire Forge, the collection's match list, the CSS
+  warnings), flushed on blur. Attribute and class changes are harmless.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
   — so it runs past its panel, past the viewport, and widens the whole
@@ -5119,6 +5202,16 @@ keeps `content-visibility: auto`.
    first and whitelists hrefs (http/https/mailto/site-relative only) and image
    paths. Never switch any of them to `innerHTML` with raw text, and never add
    a mark that emits an attribute the writer controls.
+   **Typed HTML is the one exception, and it is rebuilt, never copied**
+   (`stashTags()`): a short list of inline tags (`HTML_TAGS`: b, i, u, s,
+   sub, sup, span, br …), only `style` and `title` kept, the style cut down
+   by `safeStyle()` to whitelisted properties with plain values (colour
+   functions only, no negatives, sizes capped by `STYLE_CAP`), and every tag
+   left open closed at the end of its line. Widening either list is a
+   security change: add its escape attempt to the tests first. The MediaWiki
+   marks (`'''bold'''`, `''italic''`, `[https://… label]`, `== Heading ==`)
+   live beside it; all of them except the heading work in links mode too,
+   and `plainText()` strips them.
    `site.js` loads `render-wiki.js` **before** `render-news.js` — the news
    renderer is a wrapper and formats nothing on its own.
 11. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the

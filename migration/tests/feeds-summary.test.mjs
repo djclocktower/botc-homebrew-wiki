@@ -46,7 +46,9 @@ test('/api/tag-counts counts exactly what the tags page used to count from the g
   const grid = await (await f.request('/characters.json?fields=grid')).json();
   const expected = {};
   const titleCase = s => String(s || '').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, m => m.toUpperCase());
-  grid.forEach(c => (c.tags || '').split(',').forEach(tag => {
+  // Plus the official characters, which the tag pages list too.
+  const official = Object.values(require('../../assets/official-tags.js')).map(tags => ({ tags }));
+  [...grid, ...official].forEach(c => (c.tags || '').split(',').forEach(tag => {
     if (!tag.trim()) return;
     expected[titleCase(tag)] = (expected[titleCase(tag)] || 0) + 1;
   }));
@@ -55,7 +57,7 @@ test('/api/tag-counts counts exactly what the tags page used to count from the g
   assert.match(res.headers.get('Cache-Control'), /private, max-age=0/);
   const body = await res.json();
   assert.deepEqual(body.tags, expected);
-  assert.deepEqual(body.tags, { Information: 1, Poison: 2, 'Win/Loss Condition': 1, 'Multi-Kill': 1 });
+  assert.ok(body.tags.Poison > 2 && body.tags.Information > 1);
   // A returning browser gets a 304; a character edit rolls the ETag.
   const etag = res.headers.get('ETag');
   assert.equal((await f.request('/api/tag-counts', { headers: { 'If-None-Match': etag } })).status, 304);
@@ -63,7 +65,7 @@ test('/api/tag-counts counts exactly what the tags page used to count from the g
   await f.hooks.logActivity(f.env, null, 'create', 'character', 'new-one', 'New One');
   const changed = await f.request('/api/tag-counts', { headers: { 'If-None-Match': etag } });
   assert.equal(changed.status, 200);
-  assert.equal((await changed.json()).tags.Setup, 1);
+  assert.equal((await changed.json()).tags.Setup, body.tags.Setup + 1);
 });
 
 test('/api/collection-tiles matches the collections page’s own counting and icon choice', async t => {

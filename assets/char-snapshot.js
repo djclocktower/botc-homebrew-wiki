@@ -201,7 +201,8 @@
           italic: st.italic || tag === 'EM' || tag === 'I',
           strike: st.strike || tag === 'S' || tag === 'DEL' || tag === 'STRIKE',
           mono: st.mono || tag === 'CODE',
-          under: st.under, color: st.color, token: st.token, drop: st.drop
+          under: st.under || tag === 'U' || tag === 'INS', color: (n.style && n.style.color) || st.color,
+          token: st.token, drop: st.drop
         };
         // The colour marks win over a link inside them, exactly as
         // `.wiki-red a { color: inherit !important }` does on the page.
@@ -666,7 +667,7 @@
       });
     if (tags.length) rows.push(['Tags:', textRuns(tags.join(', '))]);
     if (d.translatedBy && d.translatedBy.trim()) rows.push(['Translated by:', marked(d.translatedBy.trim(), 'full')]);
-    if (d.iconBy && d.iconBy.trim()) rows.push(['Icon by:', marked(d.iconBy.trim(), 'full')]);
+    if (d.iconBy && d.iconBy.trim()) rows.push([d.iconByLabel === 'from' ? 'Icon from:' : 'Icon by:', marked(d.iconBy.trim(), 'full')]);
     return rows;
   }
 

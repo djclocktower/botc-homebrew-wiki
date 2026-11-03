@@ -215,8 +215,24 @@
     if (window.scrollY !== y) window.scrollTo(x, y);
   }
 
+  /* The official characters as card rows (OfficialRoles.cards()), for the
+     pages that list them beside the homebrew ones: All Characters, team,
+     tag and tag counts, search, /favorites. One load per page; a failure
+     answers [] and is forgotten, so the next call tries again. Called as
+     window.BotcData.script() so the build hashes the two files. */
+  var officialsP = null;
+  function officials() {
+    if (!officialsP) {
+      officialsP = Promise.all([json(asset('roles.json')),
+        window.BotcData.script('official-roles.js'), window.BotcData.script('official-tags.js')])
+        .then(function (r) { return window.OfficialRoles.cards(window.OfficialRoles.buildOfficialRoles(r[0]), window.OFFICIAL_TAGS); })
+        .catch(function () { officialsP = null; return []; });
+    }
+    return officialsP;
+  }
+
   window.BotcData = {
-    json: json, asset: asset, script: script, style: style, root: root,
+    json: json, asset: asset, script: script, style: style, root: root, officials: officials,
     boot: boot, me: me, forgetMe: forgetMe, loginHint: loginHint,
     fitHeight: fitHeight
   };
