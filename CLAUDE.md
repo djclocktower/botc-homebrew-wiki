@@ -490,8 +490,10 @@ assets/
                        prefix rule, 0.62 threshold), shared by 404.html and
                        the Worker's /api/did-you-mean so the two cannot score
                        an address differently. Browser + Worker.
-  char-filters.js      The All Characters filter box (team/tag/source/status/
-                       creator chips, Sort, Group) as a module over an ARRAY
+  char-filters.js      The All Characters filter box (team/tag/source/status
+                       chips, a creator search whose matches drop down under
+                       it with each creator's mark, picked creators as
+                       chips, Sort, Group) as a module over an ARRAY
                        of characters, plus the character card itself.
                        all-characters.html and /search both mount it;
                        team.html and tag.html draw its card. Browser AND
