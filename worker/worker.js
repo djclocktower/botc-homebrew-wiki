@@ -10520,7 +10520,16 @@ const app = {
         return { sql: `(${clauses.join(' OR ')}) AND status IN ${statusIn}`,
                  binds: [...(u ? [u.id] : []), ...names.map(creditProbe)] };
       }
+      // A draft credited to this name but owned by another account is not
+      // this reader's to open: the /c/ draft gate (canEditPage) 404s them.
+      // Listing it put somebody else's draft in the owner's Drafts section
+      // as a dead link. Admins can open any draft, so they still see it.
+      function foreignDraft(r) {
+        return r.status === 'draft' && !sess.isAdmin &&
+          !(u && Number(r.owner_id) === Number(u.id));
+      }
       function keep(r) {
+        if (foreignDraft(r)) return false;
         if (u && Number(r.owner_id) === Number(u.id) && !Number(r.dis) &&
             !creditHas(r.c, disowned)) return true;
         return creditHas(r.c, names);
@@ -10557,6 +10566,7 @@ const app = {
           `SELECT slug, data, status, owner_id FROM collections WHERE status IN ${statusIn}`
         ).all();
         collRows = (results || []).filter(r => {
+          if (foreignDraft(r)) return false;
           const d = parseData(r);
           // Disowned credit: owning it is not enough to list it here, exactly
           // as in whereFor above — the row's own tick, or the credit having

@@ -299,3 +299,18 @@ test('a wiki page\'s history goes down with its set', async t => {
   assert.equal((await hist('under-draft', 'member')).status, 200, 'its owner still can');
   assert.equal((await hist('under-draft', 'admin')).status, 200);
 });
+
+test("creator page drafts: a co-credited draft owned by somebody else is not listed", async t => {
+  const f = await fixture(); t.after(() => f.finish()); await seed(f);
+  f.insert('characters', 'theirs', { ...complete, name: 'Theirs', creator: 'other, member' }, 'draft');
+  f.insert('characters', 'mine', { ...complete, name: 'Mine', creator: 'member' }, 'draft');
+  // A published page proves the name "member" is this account's.
+  f.insert('characters', 'proof', { ...complete, name: 'Proof', creator: 'member' });
+  f.db.prepare("UPDATE characters SET creator=json_extract(data,'$.creator'), owner_id=CASE slug WHEN 'theirs' THEN 3 ELSE 2 END").run();
+  const me = await json(await f.request('/api/user?u=member', as('member')));
+  assert.deepEqual(me.drafts.characters.map(c => c.slug), ['mine']);
+  const adm = await json(await f.request('/api/user?u=member', as('admin')));
+  assert.deepEqual(adm.drafts.characters.map(c => c.slug).sort(), ['mine', 'theirs']);
+  const owner = await json(await f.request('/api/user?u=other', as('other')));
+  assert.deepEqual(owner.drafts.characters.map(c => c.slug), ['theirs']);
+});
