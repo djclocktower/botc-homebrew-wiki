@@ -10527,6 +10527,12 @@ const app = {
             !creditHas(r.c, disowned)) return true;
         return creditHas(r.c, names);
       }
+      // A draft is listed only to someone who can open it: its owner, or an
+      // admin. One credited to this name but owned by somebody else is theirs
+      // to publish, and a link here would only be a 404.
+      function draftOk(r) {
+        return r.status !== 'draft' || sess.isAdmin || Number(r.owner_id) === Number(sess.userId);
+      }
       // The PK slug comes off the row, not out of the JSON: legacy rows do not
       // all carry `slug` in their data blob, and a card with no slug is a
       // broken link.
@@ -10543,7 +10549,7 @@ const app = {
             `SELECT slug, data, status, owner_id, ${nameCol} AS c, ${CREDIT_UNLINKED_SQL} AS dis
                FROM ${table} WHERE ${w.sql} ORDER BY updated_at DESC`
           ).bind(...w.binds).all();
-          return (results || []).filter(keep);
+          return (results || []).filter(r => keep(r) && draftOk(r));
         } catch { degraded = true; return []; }
       }
 
@@ -10559,6 +10565,7 @@ const app = {
           `SELECT slug, data, status, owner_id FROM collections WHERE status IN ${statusIn}`
         ).all();
         collRows = (results || []).filter(r => {
+          if (!draftOk(r)) return false;
           const d = parseData(r);
           // Disowned credit: owning it is not enough to list it here, exactly
           // as in whereFor above — the row's own tick, or the credit having
@@ -12008,7 +12015,7 @@ const app = {
       await ensureRenameColumn(env);
       const batch = await env.DB.batch([
         env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login, username_changed_at FROM users WHERE id=?`).bind(sess.userId),
-        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at, CASE WHEN status='draft' THEN data END AS data FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT ts, action, entity_type, entity_slug, entity_name FROM activity_log WHERE user_id=? ORDER BY ts DESC, id DESC LIMIT 50`).bind(sess.userId)
@@ -12052,7 +12059,24 @@ const app = {
           theme: PageRender.sanitizeTheme(parseProfileExtra(u).theme, profileThemeBase(sess.userId)),
           themeBase: profileThemeBase(sess.userId)
         },
-        characters: batch[1].results,
+        // A draft carries what its card needs (/drafts draws them), since no
+        // public feed has it; published rows stay the bare columns.
+        characters: batch[1].results.map(r => {
+          const { data, ...row } = r;
+          if (r.status !== 'draft') return row;
+          const d = parseData(r);
+          row.ability = d.ability || '';
+          row.tags = d.tags || '';
+          row.creator = d.creator || '';
+          row.appearsIn = d.appearsIn || '';
+          row.art = d.art || '';
+          row.image = Array.isArray(d.image) ? d.image[0] : (d.image || '');
+          const v = rowVersion(r.updated_at);
+          if (v) row.v = v;
+          const cls = Classify.classifyPage(d, 'character');
+          if (cls !== 'standard') row.classification = cls;
+          return row;
+        }),
         collections: batch[2].results,
         scripts: batch[3].results,
         pages: myPages,

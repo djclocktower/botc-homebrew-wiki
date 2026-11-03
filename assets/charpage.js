@@ -65,9 +65,13 @@
     editBtn.style.display = '';
   }
 
-  mountToggleButton('botc_script', '', glyphSVG('script'), 'On Your Script', 'Add to Script',
-    function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
-  mountToggleButton('botc_token_set', 'add-to-token-btn', glyphSVG('token'), 'In Token Tool', 'Add to Token Tool');
+  // Not on a draft: the Script Builder and the Token Tool read the published
+  // feeds, so a draft added to either never shows up there.
+  if (!window.PAGE_DRAFT) {
+    mountToggleButton('botc_script', '', glyphSVG('script'), 'On Your Script', 'Add to Script',
+      function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
+    mountToggleButton('botc_token_set', 'add-to-token-btn', glyphSVG('token'), 'In Token Tool', 'Add to Token Tool');
+  }
 
   // Favorite — the third button in the same stack, under the JSON bar with
   // the other two, but this one is stored on the ACCOUNT (assets/favorites.js),
