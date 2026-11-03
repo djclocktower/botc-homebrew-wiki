@@ -65,7 +65,9 @@ export async function fixture() {
           run() { return this.execute('run'); }
         };
         return statement;
-      }
+      },
+      // Reads only: D1's batch runs each statement and returns every result.
+      async batch(statements) { return Promise.all(statements.map(st => st.all())); }
     },
     SESSIONS: { async get(key) { return state.sessions.has(key) ? JSON.stringify(state.sessions.get(key)) : null; } },
     ASSETS: { async fetch(request) {

@@ -130,7 +130,9 @@
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
  *
- *   -- importing a Bloodstar project (/bloodstar) --
+ *   -- importing (/mass-upload) --
+ *   POST /api/bloodstar       -> the same bundle from a script JSON in the body
+ *                                ({script}), for a file or a paste.
  *   GET  /api/bloodstar       -> read a project on Bloodstar: fetches its
  *                                script.json AND its almanac.html and returns
  *                                one normalized bundle (meta, characters with
@@ -10525,6 +10527,12 @@ const app = {
             !creditHas(r.c, disowned)) return true;
         return creditHas(r.c, names);
       }
+      // A draft is listed only to someone who can open it: its owner, or an
+      // admin. One credited to this name but owned by somebody else is theirs
+      // to publish, and a link here would only be a 404.
+      function draftOk(r) {
+        return r.status !== 'draft' || sess.isAdmin || Number(r.owner_id) === Number(sess.userId);
+      }
       // The PK slug comes off the row, not out of the JSON: legacy rows do not
       // all carry `slug` in their data blob, and a card with no slug is a
       // broken link.
@@ -10541,7 +10549,7 @@ const app = {
             `SELECT slug, data, status, owner_id, ${nameCol} AS c, ${CREDIT_UNLINKED_SQL} AS dis
                FROM ${table} WHERE ${w.sql} ORDER BY updated_at DESC`
           ).bind(...w.binds).all();
-          return (results || []).filter(keep);
+          return (results || []).filter(r => keep(r) && draftOk(r));
         } catch { degraded = true; return []; }
       }
 
@@ -10557,6 +10565,7 @@ const app = {
           `SELECT slug, data, status, owner_id FROM collections WHERE status IN ${statusIn}`
         ).all();
         collRows = (results || []).filter(r => {
+          if (!draftOk(r)) return false;
           const d = parseData(r);
           // Disowned credit: owning it is not enough to list it here, exactly
           // as in whereFor above — the row's own tick, or the credit having
@@ -10938,7 +10947,7 @@ const app = {
         customUrls('script'), customUrls('wikipage')
       ]);
       const staticPages = ['', 'recent', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
-        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
+        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload',
         'steven-approved-order', 'rules', 'news', 'jinxes', 'articles'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
@@ -11167,6 +11176,34 @@ const app = {
        Login required, and the host is pinned to Bloodstar: this is the Worker
        fetching a URL a stranger typed, and the only safe version of that is
        one that can only ever reach Bloodstar. */
+    /* POST is the importer's other source: a script JSON the person pasted or
+       picked, read through the same buildBundle() so a file and a Bloodstar
+       project arrive at /mass-upload in one shape, with one official test.
+       Nothing is fetched for it. */
+    if (method === 'POST' && path === '/api/bloodstar') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
+      const Bloodstar = await loadBloodstar();
+      let scriptJson = null;
+      try {
+        const bytes = await Bloodstar.readCapped(request, Bloodstar.BLOODSTAR_FILE_MAX);
+        if (!bytes) return jsonResponse({ error: 'That file is too large to be a script.' }, { status: 413 });
+        scriptJson = JSON.parse(new TextDecoder().decode(bytes)).script;
+      } catch {
+        return jsonResponse({ error: 'Could not read that JSON.' }, { status: 400 });
+      }
+      // One character on its own, not wrapped in a list.
+      if (scriptJson && !Array.isArray(scriptJson) && typeof scriptJson === 'object') scriptJson = [scriptJson];
+      if (!Array.isArray(scriptJson)) {
+        return jsonResponse({ error: 'That is not a script or a list of characters.' }, { status: 422 });
+      }
+      const official = await loadOfficialRoles(env, url.origin);
+      if (!official.length) {
+        return jsonResponse({ error: "The official character list couldn't be loaded just now. Please try again in a moment." }, { status: 503 });
+      }
+      return jsonResponse(Bloodstar.buildBundle(scriptJson, null, {}, official));
+    }
+
     if (method === 'GET' && path === '/api/bloodstar') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
@@ -11308,14 +11345,18 @@ const app = {
         ? (await identityParked(env, base).catch(() => false)) ||
           (await artSlotClash(env, base).catch(() => false))
         : !!(await lookupRedirect(env, type, base)) || !!(await rowByCustomUrl(env, type, base))));
-      if (!row && !parked) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
+      // Identities an importer has claimed in this run but not saved yet: the
+      // Worker cannot see them, so the importer names them and they count as
+      // taken. Two characters of one name in one file get two pages.
+      const avoid = new Set(String(url.searchParams.get('avoid') || '').split(',').slice(0, 400).filter(Boolean));
+      if (!row && !parked && !avoid.has(base)) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
       // `mine` says a save on this URL would update that page rather than
       // collide with it — which is what the create page wants, and what a
       // rename must still avoid (it would move a page onto a live one).
       // A deleted page is never "mine": the save refuses to write over one
       // (only an admin's restore brings it back), so an importer told it was
       // aimed every re-import of that name at a page it could not save.
-      const mine = !!row && row.status !== 'deleted' && canEditRow(sess, row);
+      const mine = !!row && !avoid.has(base) && row.status !== 'deleted' && canEditRow(sess, row);
       // Find the first free variant either way.
       let used;
       if (type === 'collection') {
@@ -11366,6 +11407,7 @@ const app = {
         for (const r of results || []) used.add(String(r.from_slug));
       } catch { /* nothing has ever been renamed */ }
       used.add(base);
+      for (const s of avoid) used.add(s);
       // Disambiguation ladder, in order:
       //   witcher
       //   witcher-{collection or script}   <- the character's own "appears in"
@@ -11973,7 +12015,7 @@ const app = {
       await ensureRenameColumn(env);
       const batch = await env.DB.batch([
         env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login, username_changed_at FROM users WHERE id=?`).bind(sess.userId),
-        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at, CASE WHEN status='draft' THEN data END AS data FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT ts, action, entity_type, entity_slug, entity_name FROM activity_log WHERE user_id=? ORDER BY ts DESC, id DESC LIMIT 50`).bind(sess.userId)
@@ -12017,7 +12059,24 @@ const app = {
           theme: PageRender.sanitizeTheme(parseProfileExtra(u).theme, profileThemeBase(sess.userId)),
           themeBase: profileThemeBase(sess.userId)
         },
-        characters: batch[1].results,
+        // A draft carries what its card needs (/drafts draws them), since no
+        // public feed has it; published rows stay the bare columns.
+        characters: batch[1].results.map(r => {
+          const { data, ...row } = r;
+          if (r.status !== 'draft') return row;
+          const d = parseData(r);
+          row.ability = d.ability || '';
+          row.tags = d.tags || '';
+          row.creator = d.creator || '';
+          row.appearsIn = d.appearsIn || '';
+          row.art = d.art || '';
+          row.image = Array.isArray(d.image) ? d.image[0] : (d.image || '');
+          const v = rowVersion(r.updated_at);
+          if (v) row.v = v;
+          const cls = Classify.classifyPage(d, 'character');
+          if (cls !== 'standard') row.classification = cls;
+          return row;
+        }),
         collections: batch[2].results,
         scripts: batch[3].results,
         pages: myPages,
