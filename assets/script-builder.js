@@ -1458,6 +1458,7 @@
      toggles each row's inline display), so this can never disagree with
      what the panel shows. */
   function visibleRows(homebrewOnly) {
+    if (filterAPI && filterAPI.flush) filterAPI.flush();   // a search still waiting on a typing pause
     var q = '#sb-add-list .sbx-add-row' + (homebrewOnly ? '[data-source="homebrew"]' : '');
     var scope = view ? view.panelScope : 'all';
     var out = [];

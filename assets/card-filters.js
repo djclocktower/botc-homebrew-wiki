@@ -369,12 +369,20 @@
       if (groupSel) groupSel.value = STATE.group;
       apply();
     });
+    /* On a big list (the Script Builder's 3,700 rows) each filter pass is a
+       re-layout of every row, so keystrokes queued up behind each other and
+       the box stopped keeping up with typing. There the pass waits for a
+       pause in the typing; flush() runs a pending one at once. */
+    var searchTimer = 0;
     function onSearch() {
-      STATE.q = searchEl.value.trim().toLowerCase();
-      apply();
+      clearTimeout(searchTimer);
+      if (cards.length < 400) { apply(); return; }
+      searchTimer = setTimeout(apply, 160);
     }
+    function flush() { if (searchTimer) apply(); }
     if (searchEl) searchEl.addEventListener('input', onSearch);
     grid._cfDestroy = function () {
+      clearTimeout(searchTimer);
       toggle.removeEventListener('click', onToggle);
       if (searchEl) searchEl.removeEventListener('input', onSearch);
       bar.innerHTML = '';
@@ -579,6 +587,11 @@
     }
 
     function apply() {
+      // Every pass reads the box, so a chip clicked mid-typing cannot run
+      // on a stale search; it also settles any pass still waiting.
+      clearTimeout(searchTimer);
+      searchTimer = 0;
+      if (searchEl) STATE.q = searchEl.value.trim().toLowerCase();
       sortCards();
       var shown = 0;
       // All together, every card sits in the one flat grid and the team
@@ -641,7 +654,7 @@
     // Truthy, like the `true` it used to return, and a handle for a host that
     // wants to re-apply after changing something the box reads on the fly
     // (searchAbility), or take the box down before rebuilding its grid.
-    return { apply: apply, destroy: grid._cfDestroy, state: function () { return STATE; } };
+    return { apply: apply, flush: flush, destroy: grid._cfDestroy, state: function () { return STATE; } };
   }
 
   if (typeof window !== 'undefined') window.mountCardFilters = mountCardFilters;

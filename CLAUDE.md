@@ -553,7 +553,13 @@ assets/
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not
                        built, and it reads the ability off the card rather than
-                       a repeated data-* attribute. mountCardFilters()
+                       a repeated data-* attribute. On a grid of 400+
+                       cards the search box waits for a 160 ms pause in the
+                       typing before it filters (each pass re-lays out every
+                       row, and on the Script Builder's 3,700 keystrokes
+                       queued behind each other); the returned flush() runs
+                       a waiting pass at once, and apply() always reads the
+                       box. mountCardFilters()
                        wires one box to one grid; auto-mounts on SSR collection
                        pages with defaultSort:'page' so the author's arranged
                        order is what a reader sees first, and profile.html
