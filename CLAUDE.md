@@ -4802,6 +4802,14 @@ design only to someone who can edit the draft.
   every back-cover word at once (`all()` in `buildBackPanel()`, reading the
   first word); one word is still changed on its own from the Elements card.
   "Re-stack the title words" keeps that look.
+- **Marks** (Characters card, per character): `options.chars[id].marks =
+  [{id, note}]`, another character on the script whose icon is drawn where
+  the jinx icons are (beside the name on the printed sheet, after the
+  ability in the app view), with an optional note in small italic.
+  `deriveScript()` resolves them like the jinx pills: a mark whose character
+  is hidden or off the script is not drawn, and a character never marks
+  itself. On the printed sheet the note sits in the name's one-line row and
+  is cut with an ellipsis rather than pushing past the column.
 - **`playerTable`** (Back cover card): the 5 to 15+ setup table
   (`PLAYER_TABLE`) on the back cover, in `back.tableColor`. It is an element
   (`el.backTable`), so it moves and sizes from the Elements card.

@@ -392,7 +392,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     whiteSpace: 'nowrap',
     textTransform: options.nameCase === 'upper' ? 'uppercase' : 'none',
     fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
-  }, el('span', null, smartTypography(char.name)));
+  }, el('span', { flexShrink: '0' }, smartTypography(char.name)));
 
   if (options.showJinxes) {
     for (const j of char.jinxIcons) {
@@ -409,6 +409,26 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
       }, j.name);
       ji.title = 'Jinxed: ' + j.name + (j.reason ? ' — ' + j.reason : '');
       nameRow.append(ji);
+    }
+  }
+  // marks: another character's icon, and a short note in small italic
+  for (const m of char.marks || []) {
+    const mf = options.normalizeIcons ? iconFit(m.icon) : ICON_IDENTITY;
+    const msz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
+    const mi = iconImg(drawIcon(m.icon), {
+      height: px(msz), width: px(msz), objectFit: 'contain', flexShrink: '0',
+      transform: inkTransform(mf), transformOrigin: 'center',
+      filter: iconFilter(options.iconEffect, options.iconShadow * 0.7, ed),
+    }, m.name);
+    mi.title = m.name + (m.note ? ': ' + m.note : '');
+    nameRow.append(mi);
+    if (m.note) {
+      nameRow.append(el('span', {
+        fontFamily: fonts.ability, fontWeight: '400', fontStyle: 'italic',
+        fontSize: '0.6em', letterSpacing: '0', textTransform: 'none', fontVariant: 'normal',
+        color: options.inkColor || '#222222',
+        minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis',
+      }, smartTypography(m.note)));
     }
   }
   row.append(nameRow);

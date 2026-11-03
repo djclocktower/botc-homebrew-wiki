@@ -2311,6 +2311,20 @@ function buildCharPanel() {
   track(makeSlider(box, 'Icon size', 0.5, 1.8, 0.01, pct, { get: () => g('iconScale', 1), set: (v) => { ov().iconScale = v; } }, { reset: 1 }));
   track(makeSlider(box, 'Icon left / right', -4, 4, 0.05, signed(2, '%'), { get: () => g('iconDX', 0), set: (v) => { ov().iconDX = v; } }, { reset: 0 }));
   track(makeSlider(box, 'Icon up / down', -3, 3, 0.05, signed(2), { get: () => g('iconDY', 0), set: (v) => { ov().iconDY = v; } }, { reset: 0 }));
+  // marks: another character's icon beside this one's name, with a note
+  makeLabel(box, 'Marks');
+  const others = chars.filter((x) => x.id !== c.id).map((x) => [x.id, (options.chars[x.id] && options.chars[x.id].name) || x.name]);
+  const marks = () => (ov().marks = Array.isArray(ov().marks) ? ov().marks : []);
+  g('marks', []).forEach((m, i) => {
+    track(makeSelect(box, 'Mark ' + (i + 1), others, { get: () => marks()[i].id, set: (v) => { marks()[i].id = v; } }));
+    track(makeText(box, 'Note (optional)', { get: () => marks()[i].note || '', set: (v) => { marks()[i].note = v; } }));
+    const r = makeRow(box);
+    makeButton(r, 'Remove mark', () => { marks().splice(i, 1); commit(); buildCharPanel(); });
+  });
+  if (others.length) {
+    const add = makeRow(box);
+    makeButton(add, '+ Add a mark', () => { marks().push({ id: others[0][0], note: '' }); commit(); buildCharPanel(); });
+  }
   const order = makeRow(box);
   order.style.marginTop = '8px';
   makeButton(order, '▲ Move up', () => moveChar(c.id, -1));

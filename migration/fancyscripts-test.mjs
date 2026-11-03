@@ -204,6 +204,13 @@ check('keywords: the text survives the split', S.keywordParts('If a good player 
   check('jinx rules: a pair printed once, under the first', [...notes.keys()], ['a']);
   check('jinx rules: an empty rule is left out', notes.get('a').map((j) => j.id), ['b']);
 }
+{
+  const marked = S.deriveScript(S.parseScript([{ id: '_meta', name: 'M' }, 'imp', 'washerwoman', 'spy'], true),
+    S.normalizeOptions({ chars: { imp: { marks: [{ id: 'washerwoman', note: ' starts here ' }, { id: 'nobody' }, { id: 'imp' }] } } }));
+  const imp = marked.characters.find((c) => c.id === 'imp');
+  check('marks: only characters on the sheet, never itself, note trimmed', imp.marks.map((m) => [m.id, m.note]), [['washerwoman', 'starts here']]);
+  check('marks: a character with none has none', marked.characters.find((c) => c.id === 'spy').marks, []);
+}
 check('player table: 11 player counts, 4 rows', [S.PLAYER_TABLE.players.length, S.PLAYER_TABLE.rows.every((r) => r[2].length === 11)], [11, true]);
 check('player table: 7 players is 5/0/1/1', S.PLAYER_TABLE.rows.map((r) => r[2][2]), [5, 0, 1, 1]);
 

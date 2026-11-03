@@ -1419,7 +1419,7 @@ export function splitColumns(items) {
 
 /* ── per-character overrides ────────────────────────────────────────────
    options.chars[id] = {hidden, name, ability, icon, team, color, iconScale,
-   iconDX, iconDY, order}. deriveScript() applies them to a parsed script
+   iconDX, iconDY, order, marks: [{id, note}]}. deriveScript() applies them to a parsed script
    and hands back a new one; the original parse is never touched, so
    clearing an override is a re-derive, not a re-parse. `resolveSrc` maps
    an 'asset:' reference to its data URL (the app's asset store). */
@@ -1452,12 +1452,19 @@ export function deriveScript(parsed, options, resolveSrc) {
       otherNightReminder: o.otherNightReminder != null && String(o.otherNightReminder).trim()
         ? String(o.otherNightReminder) : c.otherNightReminder,
       order: Number(o.order) || 0,
+      marks: Array.isArray(o.marks) ? o.marks : [],
     };
     iconOf.set(c.id, { icon: d.icon, name: d.name, team: d.team });
     out.push(d);
   }
-  // a partner's replaced art or name follows it into the jinx pills
+  // a partner's replaced art or name follows it into the jinx pills, and a
+  // mark (another character's icon beside this one's name, with a note) is
+  // drawn only while that character is on the sheet
   for (const d of out) {
+    d.marks = d.marks.filter((m) => m && iconOf.has(m.id) && m.id !== d.id).map((m) => {
+      const p = iconOf.get(m.id);
+      return { id: m.id, name: p.name, icon: p.icon, note: String(m.note || '').trim() };
+    });
     d.jinxIcons = d.jinxIcons.filter((j) => iconOf.has(j.id)).map((j) => {
       const p = iconOf.get(j.id);
       return { ...j, icon: p.icon, name: p.name };
@@ -1708,7 +1715,7 @@ export function breakRuns(runs, maxW, measure, opts) {
     for (const p of String(r.s).split(/(\s+)/)) {
       if (!p) continue;
       if (/^\s+$/.test(p)) { pendingSpace = true; continue; }
-      push({ s: p, font: r.font, kind: r.kind || 'text', w: measure(p, r.font), ...(r.color ? { color: r.color } : {}) });
+      push({ s: p, font: r.font, kind: r.kind || 'text', w: measure(p, r.font), ...(r.color ? { color: r.color } : {}), ...(r.style ? { style: r.style } : {}) });
     }
   }
   if (line.items.length || !lines.length) lines.push(line);

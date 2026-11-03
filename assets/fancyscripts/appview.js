@@ -191,6 +191,17 @@ export function layoutAppSheet(script, options, requestRender) {
       const jw = textPx * 1.3 * (options.jinxIconSize || 1);
       for (const j of c.jinxIcons) runs.push({ kind: 'icon', src: j.icon, name: j.name, reason: j.reason, w: jw, font });
     }
+    if (c.marks && c.marks.length) {
+      // marks: another character's icon, then a short note in small italic
+      const mw = textPx * 1.3 * (options.jinxIconSize || 1);
+      const notePx = textPx * 0.8;
+      const noteFont = `italic 400 ${notePx.toFixed(2)}px ${fonts.text}`;
+      for (const m of c.marks) {
+        runs.push({ s: ' ', font, kind: 'text' });
+        runs.push({ kind: 'icon', src: m.icon, name: m.name, w: mw, font });
+        if (m.note) runs.push({ s: ' ' + smartTypography(m.note), font: noteFont, kind: 'text', style: { fontStyle: 'italic', fontSize: px(notePx) } });
+      }
+    }
     const lines = breakRuns(runs, textW, textWidth, { baseFont: font });
     for (const j of (notes && notes.get(c.id)) || []) {
       // a jinx rule under the ability: smaller, italic, the partner's icon first
@@ -438,7 +449,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
         ji.title = 'Jinxed: ' + it.name;
         return ji;
       }
-      return it.color ? el('span', { color: it.color }, it.s) : document.createTextNode(it.s);
+      return it.color || it.style ? el('span', { ...(it.style || {}), ...(it.color ? { color: it.color } : {}) }, it.s) : document.createTextNode(it.s);
     }));
   });
   return row;
