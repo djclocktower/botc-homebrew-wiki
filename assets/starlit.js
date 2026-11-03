@@ -644,10 +644,11 @@
   function drawPacks() {
     if (!gallery.canUpload) return;
     var packs = packsOf(gallery.textures);
-    $('sg-packs').innerHTML = packs.length ? packs.map(function (p) {
+    $('sg-packs').innerHTML = packs.length ? packs.map(function (p, pi) {
       var have = {};
       p.sheets.forEach(function (t) { have[t.kind] = t; });
       return '<div class="sg-pack" data-pack="' + esc(p.name) + '"><div class="sg-pack-head"><b>' + esc(p.name) + '</b>' +
+        moveButtons(pi, packs.length, 'pack') +
         '<button type="button" class="sg-link-btn" data-act="more">Add several</button>' +
         '<button type="button" class="sg-link-btn" data-act="rename">Rename</button>' +
         '<button type="button" class="sg-link-btn" data-act="drop">Delete pack</button></div>' +
@@ -695,15 +696,34 @@
       return { image: c.toDataURL('image/webp', 0.86), thumb: th.toDataURL('image/webp', 0.8) };
     }, function () { URL.revokeObjectURL(url); throw new Error(file.name + ' could not be read as an image.'); });
   }
+  // A sheet back from the server: in its old place, or after its pack's
+  // other sheets, or (a new pack) at the end, which is where the server
+  // lists a pack its order does not name yet.
   function putSheet(t) {
-    gallery.textures = gallery.textures.filter(function (x) { return x.id !== t.id; }).concat([t])
-      .sort(function (a, b) { return a.id - b.id; });
+    var list = gallery.textures, i = list.findIndex(function (x) { return x.id === t.id; });
+    if (i >= 0) { list[i] = t; return; }
+    var last = -1;
+    list.forEach(function (x, j) { if (x.pack === t.pack) last = j; });
+    if (last >= 0) list.splice(last + 1, 0, t); else list.push(t);
   }
-  // The server lists packs by their first sheet, so keep that order here.
-  function packOrder() {
-    var first = {};
-    gallery.textures.forEach(function (t) { if (!(t.pack in first) || t.id < first[t.pack]) first[t.pack] = t.id; });
-    gallery.textures.sort(function (a, b) { return first[a.pack] - first[b.pack] || a.id - b.id; });
+  /* Moving a pack or a download up or down the list. The order is stored
+     as a list of names (`order {what, list}`), so it costs one small save. */
+  var UP = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 7.5 6 4l3.5 3.5"/></svg>';
+  var DOWN = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>';
+  function moveButtons(i, n, what) {
+    return '<span class="sg-move"><button type="button" data-move="-1" aria-label="Move this ' + what + ' up"' + (i === 0 ? ' disabled' : '') + '>' + UP + '</button>' +
+      '<button type="button" data-move="1" aria-label="Move this ' + what + ' down"' + (i === n - 1 ? ' disabled' : '') + '>' + DOWN + '</button></span>';
+  }
+  function moved(names, name, by) {
+    var i = names.indexOf(name), j = i + by;
+    if (i < 0 || j < 0 || j >= names.length) return null;
+    names = names.slice();
+    names.splice(i, 1);
+    names.splice(j, 0, name);
+    return names;
+  }
+  function regroup(list, key, names) {
+    return names.reduce(function (out, n) { return out.concat(list.filter(function (x) { return x[key] === n; })); }, []);
   }
   /* Files into a pack, one after another; `kind` puts a single file on that
      sheet, otherwise each goes where its name says. */
@@ -724,7 +744,7 @@
         if (j.file.size > 25 * 1024 * 1024) throw new Error(j.file.name + ' is over 25 MB.');
         return prepSheet(j.file).then(function (img) {
           return api({ action: 'texture', pack: pack, kind: j.kind, image: img.image, thumb: img.thumb });
-        }).then(function (r) { putSheet(r.texture); packOrder(); done++; });
+        }).then(function (r) { putSheet(r.texture); done++; });
       });
     }, Promise.resolve()).then(function () {
       rebuildTextures(); drawPacks();
@@ -737,6 +757,16 @@
   }
   var packTarget = null;   // {pack, kind} for the hidden file boxes
   $('sg-packs').addEventListener('click', function (e) {
+    var mv = e.target.closest('[data-move]');
+    if (mv) {
+      var names = moved(packsOf(gallery.textures).map(function (p) { return p.name; }),
+        mv.closest('[data-pack]').getAttribute('data-pack'), Number(mv.getAttribute('data-move')));
+      if (!names) return;
+      gallery.textures = regroup(gallery.textures, 'pack', names);
+      rebuildTextures(); drawPacks();
+      api({ action: 'order', what: 'packs', list: names }).catch(function (e2) { say('sg-t-msg', e2.message, true); });
+      return;
+    }
     var b = e.target.closest('[data-act]');
     if (!b) return;
     var pack = b.closest('[data-pack]').getAttribute('data-pack'), act = b.getAttribute('data-act');
@@ -821,17 +851,29 @@
     var team = gallery.canUpload && !PICK;
     $('sg-dl').hidden = !groups.length && !team;
     $('sg-dl-team').hidden = !team;
-    $('sg-dl-list').innerHTML = groups.length ? groups.map(function (g) {
-      return '<li><div class="sg-dl-t">' + esc(g.title) + '</div>' + (g.note ? '<p class="sg-dl-n">' + esc(g.note) + '</p>' : '') +
+    $('sg-dl-list').innerHTML = groups.length ? groups.map(function (g, gi) {
+      return '<li data-group="' + esc(g.title) + '"><div class="sg-dl-head"><div class="sg-dl-t">' + esc(g.title) + '</div>' +
+        (team && groups.length > 1 ? moveButtons(gi, groups.length, 'download') : '') + '</div>' + (g.note ? '<p class="sg-dl-n">' + esc(g.note) + '</p>' : '') +
         '<div class="sg-dl-files">' + g.files.map(function (f) {
           var ext = String(f.name.split('.').pop() || '').toUpperCase();
           return '<a class="sg-btn" href="' + esc(f.url) + '" download="' + esc(f.name) + '">Download ' + esc(ext) + '<small>' + sizeText(f.size) + '</small></a>' +
             (team ? '<button type="button" class="sg-link-btn" data-fdel="' + f.id + '">Delete ' + esc(ext) + '</button>' : '');
         }).join('') + (team ? '<button type="button" class="sg-link-btn" data-fedit="' + esc(g.title) + '">Edit title and note</button>' : '') +
         '</div></li>';
-    }).join('') : '<li>Nothing to download yet.</li>';
+    }).join('') : '<li class="sg-dl-none">Nothing to download yet.</li>';
   }
   $('sg-dl-list').addEventListener('click', function (e) {
+    var mv = e.target.closest('[data-move]');
+    if (mv) {
+      var titles = [];
+      gallery.files.forEach(function (f) { if (titles.indexOf(f.title) < 0) titles.push(f.title); });
+      titles = moved(titles, mv.closest('[data-group]').getAttribute('data-group'), Number(mv.getAttribute('data-move')));
+      if (!titles) return;
+      gallery.files = regroup(gallery.files, 'title', titles);
+      drawDownloads();
+      api({ action: 'order', what: 'files', list: titles }).catch(function (e2) { say('sg-dl-msg', e2.message, true); });
+      return;
+    }
     var del = e.target.closest('[data-fdel]'), ed = e.target.closest('[data-fedit]');
     if (del) {
       var id = Number(del.getAttribute('data-fdel'));
@@ -1153,20 +1195,21 @@
      the team saves anything, the page's own HTML is what shows. The DEFAULT
      texts are that HTML in marks, so the editor opens on what is there. */
   var DEFAULT_INTRO = 'The Starlit Gallery is a free to use icon collection, developed by [@harryandco](/u/harryandco) and [@bendan07](/u/Bendan).';
-  var DEFAULT_ABOUT = [
+  var DEFAULT_SYNOPSIS = [
     '{{i|The endless void of the skies above stretches into the darkness far beyond mortal perception. Galaxies, vagabond planets, and unreachable alien life dwell beyond the lights that mark our known universe, shimmering with miracles humanity may never witness.}}',
     '{{i|Vibrant constellations line the ceilings in colors beyond perception. As gravity weaves, the planets waltz in a pure celestial dance of forces that will last far beyond the mortal race.}}',
     '{{i|Mother nature\'s firstborn children, the stars, blink past the shimmering veils of the night sky, waiting to be seen, known, and found.}}',
     '{{i|This is the universe at its finest, its veil, its costume.}}',
-    '{{i|Welcome in, visitors, to the...}}',
-    '## Starlit Gallery',
-    '### Overview',
+    '{{i|Welcome in, visitors, to the...}}'
+  ].join('\n\n');
+  var DEFAULT_OVERVIEW = [
     'Created by [@Harry & Co](/u/harryandco) and [@Bendan07](/u/Bendan), the creators of **Travel by the Starlight**, the Starlit Gallery contains **100 unique, hand-drawn, and black-and-white icons**, **5 texture variants,** and handful of **icon templates, a custom script logo, and a blank character token image** for you to use on your botc homebrew characters.',
     'Notably, you **do not** need to credit us when you use* our resources - however, a shout-out would be appreciated, since it helps promote the collection.\n{{i|*Please refrain from using our work for commercial products, though!}}',
     'So take a look, visitors, and experience the wonders of craft, of creativity, of human expression.',
     'Welcome once more to the... **Starlit Gallery.**'
   ].join('\n\n');
-  var ORIGINAL = { introHTML: document.querySelector('.sg-by').innerHTML, aboutHTML: $('sg-about-text').innerHTML };
+  // What the page's own HTML says, put back when the team clears a piece.
+  var ORIGINAL = { intro: document.querySelector('.sg-by').innerHTML, synopsis: $('sg-synopsis').innerHTML, overview: $('sg-overview').innerHTML };
   var PAGE_BASE = 'starlit/page';
 
   function drawHeroMark() {
@@ -1178,8 +1221,9 @@
   }
   function drawPageText(page) {
     var W = window.WikiRender;
-    document.querySelector('.sg-by').innerHTML = page && page.intro && W ? W.inlineFormat(page.intro) : ORIGINAL.introHTML;
-    $('sg-about-text').innerHTML = page && page.about && W ? W.renderBody(page.about) : ORIGINAL.aboutHTML;
+    document.querySelector('.sg-by').innerHTML = page && page.intro && W ? W.inlineFormat(page.intro) : ORIGINAL.intro;
+    $('sg-synopsis').innerHTML = page && page.synopsis && W ? W.renderBody(page.synopsis) : ORIGINAL.synopsis;
+    $('sg-overview').innerHTML = page && page.overview && W ? W.renderBody(page.overview) : ORIGINAL.overview;
     drawHeroMark();
   }
   // What a theme added last time is taken off before the next is put on.
@@ -1248,12 +1292,11 @@
   // The editor, built the first time Settings opens it.
   var pe = null;
   function peDraft() {
-    return { intro: $('sg-pe-intro').value.trim(), about: $('sg-pe-about').value.trim(), theme: pe.theme };
+    return { synopsis: $('sg-pe-synopsis').value.trim(), intro: $('sg-pe-intro').value.trim(),
+      overview: $('sg-pe-overview').value.trim(), theme: pe.theme };
   }
-  function pePreview() {
-    var d = peDraft();
-    drawPageText({ intro: d.intro, about: d.about });
-  }
+  function pePreview() { drawPageText(peDraft()); }
+  var PE_TEXT = ['sg-pe-synopsis', 'sg-pe-intro', 'sg-pe-overview'];
   function colorRow(k, label, val) {
     return '<div class="th-row"><label for="th-' + k + '">' + label + '</label><span class="th-state" id="th-' + k + '-state">not set</span>' +
       '<input type="color" id="th-' + k + '" data-k="' + k + '" value="' + val + '"><button type="button" class="th-clear" data-k="' + k + '">reset</button></div>';
@@ -1264,9 +1307,10 @@
     var page = gallery.page || {};
     pageScripts(true, true).then(function () {
       $('sg-page-body').innerHTML =
+        '<label class="sg-f">Above the title<textarea id="sg-pe-synopsis" rows="9" maxlength="4000"></textarea></label>' +
         '<label class="sg-f">The line under the title<textarea id="sg-pe-intro" rows="3" maxlength="600"></textarea></label>' +
-        '<label class="sg-f">About the gallery<textarea id="sg-pe-about" rows="16" maxlength="12000"></textarea></label>' +
-        '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/harryandco), ## a heading, ### a smaller one, - a list. The page changes as you type; nothing is kept until you press Save.</p>' +
+        '<label class="sg-f">Under that line, in smaller type<textarea id="sg-pe-overview" rows="10" maxlength="8000"></textarea></label>' +
+        '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/harryandco), ## a heading, ### a smaller one, - a list. Leave a box empty to show nothing there. The page changes as you type; nothing is kept until you press Save.</p>' +
         '<h4>Look</h4>' +
         '<div class="sg-row"><span class="sg-label" style="flex-basis:100%">Page background</span>' +
         '<img id="sg-pe-bg" alt="" style="display:none;width:120px;height:68px;object-fit:cover;border:1px solid #cdbfa0">' +
@@ -1280,9 +1324,10 @@
         '<div class="sg-actions"><button type="button" class="sg-btn sg-btn-green" id="sg-pe-save">Save the page</button>' +
         '<button type="button" class="sg-btn sg-btn-quiet" id="sg-pe-reset">Put back the original</button></div>' +
         '<p class="sg-msg" id="sg-pe-msg"></p>';
+      $('sg-pe-synopsis').value = page.synopsis || DEFAULT_SYNOPSIS;
       $('sg-pe-intro').value = page.intro || DEFAULT_INTRO;
-      $('sg-pe-about').value = page.about || DEFAULT_ABOUT;
-      ['sg-pe-intro', 'sg-pe-about'].forEach(function (id) { $(id).addEventListener('input', pePreview); });
+      $('sg-pe-overview').value = page.overview || DEFAULT_OVERVIEW;
+      PE_TEXT.forEach(function (id) { $(id).addEventListener('input', pePreview); });
       window.ThemeEditor.wire({
         get: function () { return pe.theme; },
         set: function (t) { pe.theme = t || {}; },
@@ -1320,8 +1365,10 @@
       });
       $('sg-pe-save').addEventListener('click', function () {
         var btn = this, d = peDraft();
+        // Unchanged from the original: nothing to store, the HTML says it.
         if (d.intro === DEFAULT_INTRO) d.intro = '';
-        if (d.about === DEFAULT_ABOUT) d.about = '';
+        if (d.synopsis === DEFAULT_SYNOPSIS) d.synopsis = '';
+        if (d.overview === DEFAULT_OVERVIEW) d.overview = '';
         btn.disabled = true;
         api({ action: 'page', page: d }).then(function (r) {
           gallery.page = r.page;
@@ -1334,7 +1381,7 @@
         api({ action: 'page', page: null }).then(function () {
           gallery.page = null;
           pe.theme = {};
-          $('sg-pe-intro').value = DEFAULT_INTRO; $('sg-pe-about').value = DEFAULT_ABOUT;
+          $('sg-pe-intro').value = DEFAULT_INTRO; $('sg-pe-synopsis').value = DEFAULT_SYNOPSIS; $('sg-pe-overview').value = DEFAULT_OVERVIEW;
           window.ThemeEditor.prime(pe.theme);
           showPage(null); showBg();
           say('sg-pe-msg', 'The page is back to its original.');

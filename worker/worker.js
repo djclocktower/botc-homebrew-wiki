@@ -2392,6 +2392,28 @@ async function starlitPage(env) {
   const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(STARLIT_PAGE_KEY).first().catch(() => null);
   try { const p = JSON.parse((r && r.value) || 'null'); return p && typeof p === 'object' ? p : null; } catch { return null; }
 }
+/* The team's order for packs and for download titles, as lists of names
+   (settings `starlit_order` = {packs: [], files: []}). A name the list does
+   not hold sorts after the ones it does, by when it was first added, so a
+   new pack or download lands at the end without anyone saving an order. */
+const STARLIT_ORDER_KEY = 'starlit_order';
+async function starlitOrder(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(STARLIT_ORDER_KEY).first().catch(() => null);
+  let o; try { o = JSON.parse((r && r.value) || '{}'); } catch { o = {}; }
+  const list = v => Array.isArray(v) ? v.map(x => String(x || '').slice(0, 80)).filter(Boolean).slice(0, 300) : [];
+  return { packs: list(o && o.packs), files: list(o && o.files) };
+}
+async function saveStarlitOrder(env, order) {
+  await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
+    .bind(STARLIT_ORDER_KEY, JSON.stringify(order)).run();
+}
+// Stable: rows keep their own order inside a name, names follow `names`.
+function byStarlitOrder(rows, key, names) {
+  const rank = new Map(names.map((n, i) => [n, i])), first = new Map();
+  rows.forEach((r, i) => { if (!first.has(r[key])) first.set(r[key], i); });
+  const at = r => rank.has(r[key]) ? rank.get(r[key]) : names.length + first.get(r[key]);
+  return rows.map((r, i) => [r, i]).sort((a, b) => at(a[0]) - at(b[0]) || a[1] - b[1]).map(x => x[0]);
+}
 function starlitFileOut(r) {
   return { id: r.id, title: r.title, note: r.note || '', name: r.name, url: '/assets/' + r.file, size: r.size, type: r.type };
 }
@@ -9766,14 +9788,16 @@ const app = {
       // tables if nothing has yet; schemaHas() makes that one read per isolate.
       await ensureStarlitTables(env);
       // A pack sits where its first sheet was added; its sheets in KINDS order.
-      const textures = ((await env.DB.prepare(
+      const order = await starlitOrder(env);
+      const textures = byStarlitOrder(((await env.DB.prepare(
         `SELECT t.* FROM starlit_textures t
            JOIN (SELECT pack, MIN(id) AS first FROM starlit_textures GROUP BY pack) p ON p.pack = t.pack
-          ORDER BY p.first, t.id`).all()).results || []).map(starlitTextureOut);
+          ORDER BY p.first, t.id`).all()).results || []).map(starlitTextureOut), 'pack', order.packs);
       if (texOnly) return jsonResponse({ textures });
       const [icons, files, page] = await Promise.all([
         env.DB.prepare('SELECT * FROM starlit_icons ORDER BY name COLLATE NOCASE, id').all().then(r => (r.results || []).map(starlitIconOut)),
-        env.DB.prepare('SELECT * FROM starlit_files ORDER BY id').all().then(r => (r.results || []).map(starlitFileOut)),
+        env.DB.prepare('SELECT * FROM starlit_files ORDER BY id').all()
+          .then(r => byStarlitOrder((r.results || []).map(starlitFileOut), 'title', order.files)),
         starlitPage(env)
       ]);
       const sess = await getSession(env, request);
@@ -14210,6 +14234,8 @@ const app = {
             const clash = await env.DB.prepare('SELECT 1 AS x FROM starlit_textures WHERE pack=? LIMIT 1').bind(to).first();
             if (clash) return jsonResponse({ error: 'There is already a pack called "' + to + '".' }, { status: 409 });
             await env.DB.prepare('UPDATE starlit_textures SET pack=? WHERE pack=?').bind(to, from).run();
+            const order = await starlitOrder(env);
+            if (order.packs.includes(from)) await saveStarlitOrder(env, { ...order, packs: order.packs.map(n => n === from ? to : n) });
             await logActivity(env, sess, 'starlit-pack-rename', 'starlit', null, from + ' -> ' + to);
           }
           return jsonResponse({ ok: true });
@@ -14253,9 +14279,11 @@ const app = {
           let page = null;
           if (b.page) {
             const p = b.page, out = {};
-            const intro = String(p.intro || '').trim().slice(0, 600), about = String(p.about || '').trim().slice(0, 12000);
-            if (intro) out.intro = intro;
-            if (about) out.about = about;
+            // Above the title, the line under it, and smaller type under that.
+            for (const [k, max] of [['synopsis', 4000], ['intro', 600], ['overview', 8000]]) {
+              const v = String(p[k] || '').trim().slice(0, max);
+              if (v) out[k] = v;
+            }
             const theme = PageRender.sanitizeTheme(p.theme, STARLIT_PAGE_BASE);
             if (theme) out.theme = theme;
             if (Object.keys(out).length) page = out;
@@ -14290,8 +14318,25 @@ const app = {
         if (b.action === 'file') {
           const title = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 80);
           if (!title) return jsonResponse({ error: 'Give it a title.' }, { status: 400 });
+          const old = await env.DB.prepare('SELECT title FROM starlit_files WHERE id=?').bind(id).first();
           await env.DB.prepare('UPDATE starlit_files SET title=?, note=? WHERE id=?')
             .bind(title, String(b.note || '').trim().slice(0, 300), id).run();
+          // A retitled row keeps its place in the team's order.
+          const order = await starlitOrder(env);
+          if (old && old.title !== title && order.files.includes(old.title)) {
+            const files = order.files.includes(title) ? order.files.filter(n => n !== old.title)
+              : order.files.map(n => n === old.title ? title : n);
+            await saveStarlitOrder(env, { ...order, files });
+          }
+          return jsonResponse({ ok: true });
+        }
+
+        // The team's order: {what: 'packs' | 'files', list: [names]}.
+        if (b.action === 'order') {
+          const what = b.what === 'files' ? 'files' : 'packs';
+          const list = Array.isArray(b.list) ? [...new Set(b.list.map(x => String(x || '').replace(/\s+/g, ' ').trim().slice(0, 80)).filter(Boolean))].slice(0, 300) : [];
+          const order = await starlitOrder(env);
+          await saveStarlitOrder(env, { ...order, [what]: list });
           return jsonResponse({ ok: true });
         }
 

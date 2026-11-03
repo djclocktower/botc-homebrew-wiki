@@ -226,6 +226,36 @@ test('downloads: any size up to the cap, typed by their bytes', async t => {
   assert.equal(objects.size, 0);
 });
 
+test('the team orders packs and downloads; new ones land at the end; a rename keeps its place', async t => {
+  const { f, call, feed } = await setup(t);
+  const packs = async () => [...new Set((await feed()).textures.map(x => x.pack))];
+  assert.equal((await call('admin', { action: 'order', what: 'packs', list: ['Glitchy', 'Default'] })).status, 200);
+  assert.deepEqual(await packs(), ['Glitchy', 'Default', 'Vibrant', 'Treasure Hunt', 'Starlit', 'Official']);
+  await call('admin', { action: 'texture', pack: 'Moonlit', kind: 'base', image: png() });
+  assert.equal((await packs()).at(-1), 'Moonlit');
+  await call('admin', { action: 'pack', from: 'Glitchy', to: 'Glitch' });
+  assert.equal((await packs())[0], 'Glitch');
+  // Icon Forge's list follows the same order.
+  const forge = await (await f.request('/api/starlit?textures=1')).json();
+  assert.equal(forge.textures[0].pack, 'Glitch');
+
+  const up = (bytes, title) => f.request('/api/starlit-file?' + new URLSearchParams({ title }), {
+    method: 'POST', headers: { Cookie: 'botc_session=admin', 'Content-Length': String(bytes.length) }, body: bytes });
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(50)]);
+  const ids = [];
+  for (const title of ['A', 'B', 'C']) ids.push((await (await up(pdf, title)).json()).file.id);
+  await call('admin', { action: 'order', what: 'files', list: ['C', 'A'] });
+  assert.deepEqual((await feed()).files.map(x => x.title), ['C', 'A', 'B']);
+  await call('admin', { action: 'file', id: ids[2], title: 'Sea', note: '' });
+  assert.deepEqual((await feed()).files.map(x => x.title), ['Sea', 'A', 'B']);
+});
+
+test('the page keeps the synopsis, the line and the overview, and nothing else', async t => {
+  const { call, feed } = await setup(t);
+  await call('admin', { action: 'page', page: { synopsis: '{{i|Stars}}', intro: 'Hi', overview: 'Small', about: 'old field' } });
+  assert.deepEqual((await feed()).page, { synopsis: '{{i|Stars}}', intro: 'Hi', overview: 'Small' });
+});
+
 test('/api/upload cannot write into the gallery\'s folder', async t => {
   const { f } = await setup(t);
   const res = await f.request('/api/upload', post('admin', { key: 'starlit/abc-black.png', data: png() }));

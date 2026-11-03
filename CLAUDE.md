@@ -3897,13 +3897,23 @@ required but a shout-out is appreciated, and no commercial use.
   `Content-Disposition: attachment`. 95 MB cap (Cloudflare's request limit
   is 100). Table `starlit_files`; `file {id, title, note}` and
   `delete-file {id}`. Files with the same title are one row, so a PSD sits
-  beside its PNG. The browser sends with XMLHttpRequest for a progress count.
-- **The page itself** is the team's: `settings` `starlit_page` = `{intro,
-  about, theme}` (`page {page}`; `page: null` puts the original back).
-  Intro and About are wiki text marks, drawn by render-wiki.js
-  (`inlineFormat` / `renderBody`), so nothing typed becomes HTML; the editor
-  opens on `DEFAULT_INTRO` / `DEFAULT_ABOUT`, the original text in marks,
-  and saving them unchanged stores nothing. The theme is the full theme kit
+  beside its PNG; on a computer the rows sit two to a line. The browser
+  sends with XMLHttpRequest for a progress count.
+- **Order**: the team moves packs and download rows up and down (the arrows
+  on each). Stored as names in `settings` `starlit_order` = `{packs: [],
+  files: []}` (`order {what, list}`); GET sorts by it (`byStarlitOrder()`),
+  and a name not on the list sorts after the listed ones in the order it was
+  added, so a new pack or download lands at the end. Renaming a pack or
+  retitling a download carries its place in the list.
+- **The page itself** is the team's: `settings` `starlit_page` = `{synopsis,
+  intro, overview, theme}` (`page {page}`; `page: null` puts the original
+  back). There is no About box any more (the team's call, 2026-11): the
+  synopsis sits above the title logo (`#sg-synopsis`), `intro` is the line
+  under it, and the overview follows in smaller type (`#sg-overview`). All
+  three are wiki text marks, drawn by render-wiki.js (`inlineFormat` for the
+  line, `renderBody` for the other two), so nothing typed becomes HTML; the
+  editor opens on `DEFAULT_SYNOPSIS` / `DEFAULT_INTRO` / `DEFAULT_OVERVIEW`,
+  the original text in marks, and saving one unchanged stores nothing. The theme is the full theme kit
   (theme-editor.js, `data-kind="page"`), cleaned by `sanitizeTheme(t,
   'starlit/page')` and applied in the browser like a creator page's
   (`applyTheme()`, custom CSS framing the hero and the gallery). Its
