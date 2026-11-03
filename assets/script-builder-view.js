@@ -26,7 +26,7 @@
 
   var DEFAULTS = {
     layout: 'sheet',      // sheet | cards | list | icons
-    look: 'parchment',    // parchment | dark | printed
+    look: 'parchment',    // parchment | dark | printed | official
     size: 'normal',       // small | normal | large — icons, text, spacing
     columns: 'auto',      // auto | 1 | 2 (the whole script down two columns)
     teamColour: 'heads',  // off | heads | rows
@@ -54,7 +54,7 @@
       options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons']],
       hint: 'Sheet is the character sheet, Cards the browse grid, List one line each, Icons the art alone.' },
     { group: 'Roster', key: 'look', label: 'Look', type: 'seg', repaint: '',
-      options: [['parchment', 'Parchment'], ['dark', 'Dark'], ['printed', 'Printed']] },
+      options: [['parchment', 'Parchment'], ['dark', 'Dark'], ['printed', 'Printed'], ['official', 'Official']] },
     { group: 'Roster', key: 'size', label: 'Size', type: 'seg', repaint: '',
       options: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']],
       hint: 'Icons, text and spacing together, in the roster and the panel.' },
@@ -95,7 +95,8 @@
   var LOOKS = {
     parchment: { tone: 'parchment', font: 'wiki' },
     dark:      { tone: 'dark',      font: 'wiki' },
-    printed:   { tone: 'paper',     font: 'print' }
+    printed:   { tone: 'paper',     font: 'print' },
+    official:  { tone: 'official',  font: 'official' }
   };
 
   var byKey = {};
