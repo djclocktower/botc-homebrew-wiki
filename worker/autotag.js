@@ -1,8 +1,9 @@
 /* Tag suggestions through Workers AI (env.AI).
 
-   A model is handed the wiki's tag list with its descriptions (tags.js, the
-   one source of truth), a handful of already-tagged characters whose
-   abilities share the most words with this one, and the character itself,
+   A model is handed the wiki's tag list (tags.js) with the owner's rulings
+   on what each means (RULINGS below), a handful of already-tagged
+   characters whose abilities share the most words with this one, and the
+   character itself,
    and asked which tags apply. The answer is filtered back down to the tag
    list, so nothing the model invents can ever become a tag.
 
@@ -25,6 +26,69 @@ export const AUTOTAG_MODEL = '@cf/google/gemma-4-26b-a4b-it';
 const NEVER = new Set(['Joke']);
 export const SUGGESTABLE = Tags.KNOWN_TAGS.filter(t => !NEVER.has(t));
 const BY_LOWER = new Map(SUGGESTABLE.map(t => [t.toLowerCase(), t]));
+
+/* What each tag means, as the model is told it: the owner's rulings,
+   settled tag by tag (2026-10), which the CUES below follow. Kept here, not
+   in tags.js, so the descriptions readers see on the site can say something
+   else. A tag missing here falls back to tags.js. Change a ruling here and
+   its cue together. */
+const RULINGS = {
+  'Ability Gain': 'Gains an ability during the game, or gives one to another player.',
+  'Alignment Change': 'A player’s real alignment changes: good becomes evil or evil becomes good. Only registering as the other alignment is Misregistration.',
+  'Binary Info': 'Learns information with only two possible answers: yes or no, true or false, this one or that one.',
+  'Character Change': 'A player actually becomes a different character. Gaining another character’s ability without becoming it is Ability Gain.',
+  'Confirmation': 'Can confirm itself or others.',
+  'Consult': 'The player has to visit or talk with the Storyteller to use the ability.',
+  'Day Deaths': 'Causes a player to die during the day by something other than an execution.',
+  'Death': 'Mentions death at all: kills players, or cares about players dying or being dead.',
+  'Death Modification': 'Bends how death works: deaths that are delayed, moved to another player, ignored, or registered differently.',
+  'Demonsbane': 'Its team benefits when this player is killed at night or by the Demon. Never a downside.',
+  'Drunkenness': 'Causes drunkenness, or interacts with drunk players.',
+  'Even If Dead': 'Keeps working after the player dies, or only works once they are dead.',
+  'Execution': 'Causes, prevents, reacts to or mentions executions.',
+  'Execution Failure': 'An execution itself fails or cannot happen. Surviving one is Execution Survival.',
+  'Execution Survival': 'A player is executed but does not die, including living on while registering as dead.',
+  'Extra Evil': 'Adds, or can create, an extra evil player.',
+  'False Info': 'Causes or interacts with false info. Being drunk or poisoned does not count on its own.',
+  'Duplication': 'More than one of this same character can be in play.',
+  'Grim Peeker': 'Shows the Grimoire, or part of it, to any player.',
+  'Hidden': 'An Outsider that wants to stay hidden, like the Sweetheart, or doesn’t know it is one, like the Drunk.',
+  'Information': 'This character’s own player learns something from their ability. Another player learning about it is Ping.',
+  'Joke': ';P',
+  'Loud': 'Something everyone in the town knows about, like the Fearmonger.',
+  'Madness': 'Creates madness, or interacts with mad players.',
+  'Magic': 'Can cause almost anything to happen, or lets the Storyteller break the rules, like the Atheist.',
+  'Misregistration': 'Can register as another character, team, or alignment.',
+  'Multi-Kill': 'Can kill more than one player in a night. A killer that only sometimes kills two is Multi-Kill, not Single-Kill.',
+  'Neighbor': 'Cares about the players sitting next to someone.',
+  'Nominations': 'Makes, blocks, reacts to or mentions nominations.',
+  'Nonconformist': 'Breaks a core rule, the kind a veteran would say is not how the game works: no Demon, two Demons, an executable Storyteller.',
+  'On Death': 'Something happens when a player dies: this one, or another player the ability cares about.',
+  'Once Per Game': 'Its ability can only be used once per game.',
+  'Outsider Modification': 'Changes the number of Outsiders in play during setup.',
+  'Passive': 'Always on: no choices and no waking. Effects that fire by themselves count.',
+  'Ping': 'Another player privately learns about this character: that it is in play, who it is, or that it acted. Public reveals are Public, not Ping.',
+  'Poison': 'Poisons players, or interacts with poisoning.',
+  'Protection': 'Stops a player from dying. Protection from anything other than death does not count.',
+  'Public': 'The player does something in front of everyone, like the Gossip.',
+  'Quiet': 'An evil character whose work nobody notices, like the Poisoner.',
+  'Resurrection': 'Brings a dead player back to life. Never dying in the first place is Death Modification.',
+  'Reverse': 'Reverses an effect, a rule, or another character’s ability. Any ability that says “reverse” or “reversed” counts.',
+  'Safe': 'Makes a player safe. The word “safe” appears in the ability.',
+  'Safety Net': 'Stops the game being won or lost too early, like the Scarlet Woman taking over when the Demon dies.',
+  'Setup': 'Changes the game during setup (square-bracket setup text).',
+  'Single-Kill': 'Kills one player, each night or once per game, on any team. “A player might die” does not count.',
+  'Sober & Healthy': 'Cares about being sober and healthy, or makes a player sober and healthy.',
+  'Social': 'Changes how players behave socially: talking, silence, gestures, or who they must interact with.',
+  'Subjective Info': 'The Storyteller decides what the information is, rather than a fixed rule.',
+  'Think': 'Thinks it is a different character, or makes other players think they are.',
+  'Timer': 'A team wins or loses on a set day or night, like “after day 4, evil wins”.',
+  'True Info': 'Guarantees true info, or changes whether info is true. Ordinary info does not count.',
+  'Votes': 'Interacts with or mentions voting: extra votes, blocked votes, changed counts, vote tokens.',
+  'Win/Loss Condition': 'Adds a new way for a player or team to win or lose the game.',
+  'You Start Knowing': 'Starts the game knowing something. Any ability that says “start knowing” counts.'
+};
+const ruling = t => (Object.hasOwn(RULINGS, t) && RULINGS[t]) || Tags.describeTag(t);
 
 const EXAMPLES = 8;
 // Of those, up to this many are official characters (worker/official-tags.js,
@@ -215,7 +279,7 @@ export function exampleTags(r) {
 const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
 export function buildMessages(char, examples) {
-  const list = SUGGESTABLE.map(t => '- ' + t + ': ' + Tags.describeTag(t)).join('\n');
+  const list = SUGGESTABLE.map(t => '- ' + t + ': ' + ruling(t)).join('\n');
   const ex = examples.map(r => 'Character: ' + clip(r.name, 80) + ' (' + r.team + (r.checked ? ', checked' : r.official ? ', official' : '') + ')\nAbility: ' +
     clip(r.ability, 400) + '\nTags: ' + exampleTags(r).join(', ')).join('\n\n');
   const cues = cueTags(char);

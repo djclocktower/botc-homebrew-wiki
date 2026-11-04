@@ -3306,6 +3306,32 @@ a:hover .curata-mark { opacity: .9; }
   .filter-search { width: 100%; }
   .filter-chips-scroll { max-height: 160px; }
 }
+/* All Characters' creator search: a drop-down of matches under the box. */
+.cf-creator-combo { position: relative; width: 260px; max-width: 100%; }
+/* The filter's .home-panel is its own layer (z-index 5) and the card list
+   after it is another, drawn on top: lift it while the drop-down is open. */
+.home-panel:has(.cf-creator-combo:focus-within) { z-index: 6; }
+.cf-creator-combo .filter-search { width: 100%; }
+.cf-creator-drop {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 30;
+  max-height: 280px; overflow-y: auto;
+  background: #fffdf8; border: 1px solid var(--parch-frame); border-top: 0;
+}
+.cf-creator-opt {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid #f0e8d5;
+  padding: 6px 10px;
+  font-family: 'Roboto', sans-serif; font-size: .84rem; color: var(--maroon);
+}
+.cf-creator-opt:last-child { border-bottom: 0; }
+.cf-creator-opt:hover, .cf-creator-opt.on { background: #efe7d3; }
+.cf-creator-opt .creator-mark { cursor: inherit; }
+.cf-creator-none { margin: 0; padding: 8px 10px; font-size: .84rem; font-style: italic; color: #726348; }
+.filter-chip.active .creator-mark, .filter-chip.active-exclude .creator-mark { color: inherit; }
+.filter-group-creators .filter-chip-selected-row:not(:empty) { margin-bottom: 6px; }
+@media (max-width: 640px) {
+  .cf-creator-combo { width: 100%; }
+}
 
 /* ─── News ───────────────────────────────────────────────────── */
 .news-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }

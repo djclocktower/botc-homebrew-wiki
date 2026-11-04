@@ -493,8 +493,10 @@ assets/
                        prefix rule, 0.62 threshold), shared by 404.html and
                        the Worker's /api/did-you-mean so the two cannot score
                        an address differently. Browser + Worker.
-  char-filters.js      The All Characters filter box (team/tag/source/status/
-                       creator chips, Sort, Group) as a module over an ARRAY
+  char-filters.js      The All Characters filter box (team/tag/source/status
+                       chips, a creator search whose matches drop down under
+                       it with each creator's mark, picked creators as
+                       chips, Sort, Group) as a module over an ARRAY
                        of characters, plus the character card itself.
                        all-characters.html and /search both mount it;
                        team.html and tag.html draw its card. Browser AND
@@ -3397,9 +3399,11 @@ If Dead, never On Death. On the tagged pages most sure-cue hits that
 disagree with the stored tags are tags the taggers missed; 1,194 of the 1,475
 untagged pages get at least one tag from the sure cues alone.
 
-**The tag definitions are the owner's** (settled 2026-10, tag by tag): the
-descriptions in tags.js say what each tag means on this wiki, and the cues
-follow them. The rulings that decide cues: a tag the owner called word-based
+**The tag definitions are the owner's** (settled 2026-10, tag by tag): they
+are `RULINGS` in autotag.js, which is what the model is told each tag means,
+and the cues follow them. The hover descriptions readers see stay in tags.js
+and are deliberately the older, shorter wording (the owner asked for them
+back); the prompt does not read them unless a tag has no ruling. The rulings that decide cues: a tag the owner called word-based
 (Safe, Execution, Nominations, Votes, Win/Loss Condition, Death, Public,
 Reverse, "false" for False Info, "true info", "start knowing") is a sure cue on the
 word alone; Information is only this character's own player learning, and
@@ -3434,7 +3438,7 @@ dead", Subjective Info on clue / hint / "learn something", Confirmation on
 are", Nonconformist on breaking the rules or a new / extra rule, and Ping on
 Minions / the Demon / good or evil players learning or knowing (never "all
 players", which is Loud). Quiet on "secretly" was turned down.
-Change a description and its cue together.
+Change a ruling and its cue together.
 
 **The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by
 the owner (2026-10, 20 pages each): the wording cues alone 60% right / 44%

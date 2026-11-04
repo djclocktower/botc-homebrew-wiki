@@ -75,7 +75,7 @@ test('list pages: the first screen of cards is in the HTML, drawn exactly as the
   const scripts = await (await f.request('/scripts.json?fields=browse')).json();
   const sourceOf = CF.makeSourceOf(colls, scripts);
   const model = CF.barModel(grid, sourceOf);
-  assert.ok(html.includes(CF.barHTML(model, CF.config(), { creatorChips: CF.creatorListHTML(model.creators, '') })));
+  assert.ok(html.includes(CF.barHTML(model, CF.config())));
 });
 
 test('list pages: team and tag pages honour ?t=, end with the add card, and fall back when they cannot draw', async t => {
