@@ -36,6 +36,9 @@ async function setup({ pepper, breached = [] } = {}) {
       lines.push('0000000000000000000000000000000000A:0');
       return new Response(lines.join('\r\n'));
     }
+    if (u === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
+      return Response.json({ success: init.body.get('response') === 'good-token' });
+    }
     throw new Error('unexpected fetch ' + u);
   };
   const restore = () => { globalThis.fetch = realFetch; };
@@ -351,5 +354,44 @@ test('a new character identity cannot start with a hyphen; [[2]] is never a link
     W.setCharLinks({ 2: 'forgetful-brewing/deliverer' });
     assert.equal(W.inlineFormat('[[2]]', { marks: 'links' }), '<span class="tok">2</span>');
     W.setCharLinks({});
+  } finally { await t.finish(); }
+});
+
+test('one shared connection: logins only stop on failures, and a guesser still stops', async () => {
+  const t = await setup();
+  try {
+    await t.post('/api/signup', { username: 'hall', email: 'hall@example.com', password: 'hall-password-77' });
+    // A room of people on one Wi-Fi: well past the old 10-per-10-minutes.
+    for (let i = 0; i < 15; i++) {
+      const res = await t.post('/api/login', { username: 'hall', password: 'hall-password-77' });
+      assert.equal(res.status, 200, 'login ' + i);
+    }
+    // 30 wrong passwords from the connection (spread over made-up names, so
+    // the per-account count is not what stops it).
+    for (let i = 0; i < 30; i++) {
+      const res = await t.post('/api/login', { username: 'nobody' + i, password: 'wrong-password-1' });
+      assert.equal(res.status, 401);
+    }
+    const res = await t.post('/api/login', { username: 'hall', password: 'hall-password-77' });
+    assert.equal(res.status, 429);
+  } finally { await t.finish(); }
+});
+
+test('Turnstile guards signup once both keys are set', async () => {
+  const t = await setup();
+  try {
+    const before = await (await t.f.request('/api/me')).json();
+    assert.equal(before.turnstileSiteKey, undefined);
+    t.f.env.TURNSTILE_SITE_KEY = 'site-key';
+    t.f.env.TURNSTILE_SECRET_KEY = 'secret-key';
+    assert.equal((await (await t.f.request('/api/me')).json()).turnstileSiteKey, 'site-key');
+    const signup = turnstile => t.post('/api/signup', { username: 'robo', email: 'robo@example.com', password: 'robo-password-5', turnstile });
+    let res = await signup(undefined);
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).turnstile, true);
+    res = await signup('bad-token');
+    assert.equal(res.status, 400);
+    res = await signup('good-token');
+    assert.equal(res.status, 200);
   } finally { await t.finish(); }
 });

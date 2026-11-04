@@ -4226,6 +4226,17 @@ covers each one.
   to is counted the same way (`phantomLoginId()`), or the 429 would only ever
   appear for a member's email. A Discord-only account is only named as one to
   a login by **name**; an email gets the same vague message as any miss.
+  Per connection it is **failures only** too (`LOGIN_IP_FAIL_LIMIT`, 30 per
+  10 minutes, `rl:loginip:`): it used to count every attempt, 10 per 10
+  minutes, so a convention hall or school behind one address could not log
+  in. Discord sign-in starts are 120 an hour per connection for the same
+  reason.
+- **Turnstile on signup** (`turnstileProblem()`), off until BOTH Worker
+  Secrets exist: `TURNSTILE_SITE_KEY` (public; `/api/me` hands it to
+  login.html when logged out) and `TURNSTILE_SECRET_KEY`. Create the widget in
+  the Cloudflare dashboard (Turnstile, hostname botchomebrew.wiki). Checked
+  last, after the taken-name checks, because a token is single-use. Fails
+  CLOSED. With it on, signups per connection go from 5 to 30 an hour.
 - **Sessions are revoked in D1** (`users.session_gen`, lazily ALTERed).
   Every session carries the number from when it was minted; `revokeSessions()`
   (password change, reset, ban, demote) bumps it, and `getSession()` refuses a
@@ -4769,6 +4780,18 @@ saves clear it in their isolate, while other isolates can take up to five
 seconds to observe a change. A failed version read cannot reuse a stale
 version-zero public cache, and failed feed queries never retry without their
 visibility filters. No new database migration is required.
+**A failed version read falls back to the last good one** (this isolate's,
+else `feed.internal/content-version.json` in the colo's edge cache), so a D1
+outage leaves every cached page, feed and homepage serving instead of
+erroring; it is retried after the same 5 s memo.
+
+**The grid feed is cut from the card body** (`cachedFeedBody()`), never built
+by its own whole-table read: after every edit the two used to be rebuilt side
+by side in each colo, the biggest allocations the Worker makes (a 128 MB
+isolate; one card build peaks around 45 MB at 3,600 characters). The full
+character feed is served from its edge copy and never memoised in the
+isolate (~19 MB as a JS string, wanted only by an admin tool and outside
+scripts).
 
 **A degraded answer is never cached.** Wherever a read can fail soft (the
 sitemap, the anonymous `/api/user` body, the creators list, the search index,

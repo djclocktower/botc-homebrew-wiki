@@ -211,13 +211,13 @@ test('starting a Discord sign-in is rate-limited per connection', async () => {
   try {
     t.f.env.DISCORD_CLIENT_ID = 'cid'; t.f.env.DISCORD_CLIENT_SECRET = 'secret';
     const ip = { 'CF-Connecting-IP': '10.3.3.3' };
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 120; i++) {
       const res = await t.get('/api/auth/discord', null, ip);
       assert.match(res.headers.get('Location'), /^https:\/\/discord\.com\//);
     }
     const res = await t.get('/api/auth/discord', null, ip);
     assert.match(res.headers.get('Location'), /\/login\?error=/);
-    assert.equal([...t.kv.keys()].filter(k => k.startsWith('oauth:')).length, 30);
+    assert.equal([...t.kv.keys()].filter(k => k.startsWith('oauth:')).length, 120);
   } finally { await t.finish(); }
 });
 

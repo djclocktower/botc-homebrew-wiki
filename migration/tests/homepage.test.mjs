@@ -105,7 +105,8 @@ test('a conditional homepage request in a fresh isolate skips feed scans and bod
     assert.equal(response.status, 304);
     assert.equal(await response.text(), '');
     assert.equal(cold.calls.filter(c => /FROM (characters|collections|scripts)\b/.test(c.sql)).length, 0);
-    assert.equal(cold.cache.size, 0);
+    // Only the last-good content version (contentVersion's outage fallback).
+    assert.deepEqual([...cold.cache.keys()], ['https://feed.internal/content-version.json']);
   } finally { await cold.finish(); }
 });
 
