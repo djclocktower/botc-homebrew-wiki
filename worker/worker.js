@@ -1525,16 +1525,53 @@ function loginFailIdentity(userId) { return typeof userId === 'string' ? userId 
 async function phantomLoginId(identifier) {
   return 'n' + (await sha256Hex('login:' + usernameKey(identifier))).slice(0, 32);
 }
-async function loginFailuresExceeded(env, userId) {
+async function counterReached(env, key, limit) {
   try {
     await ensureRateTable(env);
     const row = await env.DB.prepare('SELECT n FROM rate_limits WHERE key=? AND expires>?')
-      .bind(loginFailKey(userId), Math.floor(Date.now() / 1000)).first();
-    return !!row && row.n >= LOGIN_FAIL_LIMIT;
+      .bind(key, Math.floor(Date.now() / 1000)).first();
+    return !!row && row.n >= limit;
   } catch { return false; }
 }
+function loginFailuresExceeded(env, userId) {
+  return counterReached(env, loginFailKey(userId), LOGIN_FAIL_LIMIT);
+}
+// Failed logins per CONNECTION, beside the per-account count above. Only
+// failures count: a whole convention hall or school behind one address logs
+// in fine, while one machine guessing passwords still stops after 30.
+const LOGIN_IP_FAIL_LIMIT = 30;
+const LOGIN_IP_FAIL_WINDOW = 10 * 60;
+function loginIpKey(request) { return 'rl:loginip:' + (request.headers.get('CF-Connecting-IP') || 'unknown'); }
+function loginIpBlocked(env, request) {
+  return counterReached(env, loginIpKey(request), LOGIN_IP_FAIL_LIMIT);
+}
 async function recordLoginFailure(env, request, userId) {
-  await rateLimited(env, request, 'loginfail', LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, { identity: loginFailIdentity(userId) });
+  await Promise.all([
+    rateLimited(env, request, 'loginfail', LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, { identity: loginFailIdentity(userId) }),
+    rateLimited(env, request, 'loginip', LOGIN_IP_FAIL_LIMIT, LOGIN_IP_FAIL_WINDOW)
+  ]);
+}
+
+// ---- Cloudflare Turnstile on signup ----
+// Off until both Worker secrets exist: TURNSTILE_SITE_KEY (public, handed to
+// login.html through /api/me) and TURNSTILE_SECRET_KEY. Fails CLOSED: it is
+// the bot gate, and Cloudflare's verify endpoint being down is rare.
+function turnstileOn(env) { return !!(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY); }
+async function turnstileProblem(env, request, token) {
+  if (!turnstileOn(env)) return null;
+  if (!token || typeof token !== 'string' || token.length > 2048) return 'Complete the check above the button.';
+  try {
+    const form = new FormData();
+    form.append('secret', env.TURNSTILE_SECRET_KEY);
+    form.append('response', token);
+    const ip = request.headers.get('CF-Connecting-IP');
+    if (ip) form.append('remoteip', ip);
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form });
+    const out = await r.json();
+    return out && out.success ? null : 'The check did not go through. Try it again.';
+  } catch {
+    return 'The check could not be reached. Try again in a minute.';
+  }
 }
 async function clearLoginFailures(env, userId) {
   try { await env.DB.prepare('DELETE FROM rate_limits WHERE key=?').bind(loginFailKey(userId)).run(); }
@@ -6309,12 +6346,41 @@ async function contentVersion(env, scopes) {
       if (r && r.value) snapshot.v = String(r.value);
       if (r && r.scopes) snapshot.scopes = JSON.parse(r.scopes);
       if (epoch === _contentVersionEpoch) _contentVersionCache = snapshot;
-    } catch { snapshot.failed = true; /* retry; never match an old version-zero cache */ }
+      rememberGoodVersion(snapshot);
+    } catch {
+      // D1 is unreachable. Every cached page, feed and homepage is keyed on
+      // this version, so without one nothing can be served from cache and the
+      // whole site fails with it. Fall back to the last version read
+      // successfully (this isolate's, else the colo's): pages keep serving
+      // what was live a moment ago, and the read is retried after the usual
+      // 5 s memo. Never version zero — that could match a pre-history cache.
+      const last = _contentVersionLastGood || await edgeCacheGet(CONTENT_VERSION_EDGE_KEY)
+        .then(body => body && JSON.parse(body)).catch(() => null);
+      if (last && last.v && last.v !== '0') {
+        snapshot.v = String(last.v);
+        snapshot.scopes = last.scopes || null;
+        if (epoch === _contentVersionEpoch) _contentVersionCache = snapshot;
+      } else snapshot.failed = true; /* retry; never match an old version-zero cache */
+    }
     return snapshot;
   })();
   _contentVersionPending = pending;
   try { return versionFor(await pending, scopes); }
   finally { if (_contentVersionPending === pending) _contentVersionPending = null; }
+}
+
+// The last version D1 actually answered, kept for contentVersion()'s fallback:
+// in this isolate, and once per change in the colo's edge cache so a fresh
+// isolate started during an outage has one too. Storing newer content under
+// an older key while D1 is down is harmless: the next real read is at least
+// this version, and a key it has moved past is never matched again.
+let _contentVersionLastGood = null;
+const CONTENT_VERSION_EDGE_KEY = 'https://feed.internal/content-version.json';
+function rememberGoodVersion(snapshot) {
+  if (snapshot.v === '0') return;
+  const changed = !_contentVersionLastGood || _contentVersionLastGood.v !== snapshot.v;
+  _contentVersionLastGood = { v: snapshot.v, scopes: snapshot.scopes };
+  if (changed) edgeCachePut(null, CONTENT_VERSION_EDGE_KEY, JSON.stringify(_contentVersionLastGood), INTERNAL_CACHE_CONTROL);
 }
 
 // True when contentVersion() can answer from this isolate's memo without a
@@ -7166,10 +7232,20 @@ async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   const pending = (async () => {
     let body = await edgeCacheGet(key);
     if (body === null) {
-      body = JSON.stringify(await buildPublicJSON(env, table, { fields }));
+      // The grid is the card feed with gridRow() applied (see the end of
+      // buildPublicJSON), so it is cut from the card body rather than built
+      // by a second whole-table read and parse running beside the card's.
+      // After every edit both used to be rebuilt at once in each location,
+      // which is two of the biggest allocations this Worker makes.
+      body = table === 'characters' && fields === 'grid'
+        ? JSON.stringify(JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'card', version)).map(gridRow))
+        : JSON.stringify(await buildPublicJSON(env, table, { fields }));
       edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
     }
-    _feedBodyCache.set(memoKey, { version, body });
+    // The whole-almanac character feed (~9 MB, twice that as a JS string) is
+    // only asked for by an admin tool and outside scripts: serve it from the
+    // edge copy each time instead of keeping it in every isolate's memory.
+    if (!(table === 'characters' && fields === 'full')) _feedBodyCache.set(memoKey, { version, body });
     return body;
   })();
   _feedBodyPending.set(key, pending);
@@ -10996,7 +11072,9 @@ const app = {
 
     // ---------- AUTH: SIGN UP ----------
     if (method === 'POST' && path === '/api/signup') {
-      if (await rateLimited(env, request, 'signup', 5, 3600)) {
+      // With Turnstile stopping bots, the per-connection cap only has to stop
+      // one person making accounts by hand, so a shared network gets room.
+      if (await rateLimited(env, request, 'signup', turnstileOn(env) ? 30 : 5, 3600)) {
         return tooManyResponse('Too many signups from this connection. Try again later.', 3600);
       }
       const body = await request.json().catch(() => ({}));
@@ -11021,6 +11099,9 @@ const app = {
         .bind(email).first();
       const EMAIL_TAKEN_MSG = 'An account with that email already exists. Try logging in or resetting your password.';
       if (emailTaken) return jsonResponse({ error: EMAIL_TAKEN_MSG }, { status: 409 });
+      // Last, so a taken name does not use up the (single-use) token.
+      const robot = await turnstileProblem(env, request, body.turnstile);
+      if (robot) return jsonResponse({ error: robot, turnstile: true }, { status: 400 });
 
       const hash = await hashPassword(env, password);
       await ensureUsernameKey(env);
@@ -11058,8 +11139,8 @@ const app = {
 
     // ---------- AUTH: LOG IN ----------
     if (method === 'POST' && path === '/api/login') {
-      if (await rateLimited(env, request, 'login', 10, 600)) {
-        return tooManyResponse('Too many login attempts. Wait a few minutes and try again.', 600);
+      if (await loginIpBlocked(env, request)) {
+        return tooManyResponse('Too many wrong passwords from this connection. Wait a few minutes and try again.', LOGIN_IP_FAIL_WINDOW);
       }
       const body = await request.json().catch(() => ({}));
       const identifier = String(body.username || body.email || '').trim();
@@ -11127,7 +11208,9 @@ const app = {
       // or the page would keep asking on every view (see withLoginHint).
       if (!sess) {
         const stale = /(?:^|;\s*)(?:botc_session=[^;\s]|botc_li=)/.test(request.headers.get('Cookie') || '');
-        return jsonResponse({ loggedIn: false, isAdmin: false }, stale ? { 'Set-Cookie': clearCookie() } : {});
+        const out = { loggedIn: false, isAdmin: false };
+        if (turnstileOn(env)) out.turnstileSiteKey = env.TURNSTILE_SITE_KEY;
+        return jsonResponse(out, stale ? { 'Set-Cookie': clearCookie() } : {});
       }
       const u = await env.DB.prepare(
         `SELECT username, email, is_admin, display_name, avatar_url, email_verified, discord_id, password_hash
@@ -11642,7 +11725,8 @@ const app = {
       // account — so without a limit, a loop of anonymous GETs spends the KV
       // write quota that createSession() also lives on, and once it is gone
       // nobody can log in at all. Counted in D1, like every other limit.
-      if (await rateLimited(env, request, 'discordauth', 30, 3600)) {
+      // 120 rather than 30: a room of people on one Wi-Fi is one address.
+      if (await rateLimited(env, request, 'discordauth', 120, 3600)) {
         return loginErrorRedirect(url.origin, 'Too many Discord sign-in attempts from this connection. Wait a while and try again.');
       }
       const state = randomToken();

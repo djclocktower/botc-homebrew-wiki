@@ -61,6 +61,7 @@
     opacity: 1;
   }
   .login-field { margin-bottom: 16px; }
+  #su-turnstile:not(:empty) { margin-bottom: 16px; }
   .login-field label {
     display: block;
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
@@ -245,6 +246,7 @@
             <input type="password" id="su-password" autocomplete="new-password">
             <div class="login-hint">At least 8 characters.</div>
           </div>
+          <div id="su-turnstile"></div>
           <button class="login-btn" id="signup-btn" type="button">Create Account</button>
         </div>
 
@@ -298,8 +300,28 @@
 
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
-      .then(function(d){ if (d.loggedIn) showLoggedIn(d); else showLoggedOut(); })
+      .then(function(d){
+        if (d.loggedIn) return showLoggedIn(d);
+        showLoggedOut();
+        tsKey = d.turnstileSiteKey || null;
+        mountTurnstile();
+      })
       .catch(function(){ showLoggedOut(); });
+
+    // Cloudflare Turnstile on Sign Up, when the Worker has a site key for it.
+    // Its script is fetched only once the Sign Up panel is open.
+    var tsKey = null, tsId = null, tsLoading = false;
+    function mountTurnstile() {
+      if (!tsKey || tsLoading || $('signup-form').style.display === 'none') return;
+      tsLoading = true;
+      var s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true;
+      s.onload = function () { tsId = window.turnstile.render('#su-turnstile', { sitekey: tsKey, size: 'flexible' }); };
+      s.onerror = function () { tsLoading = false; };
+      document.head.appendChild(s);
+    }
+    function resetTurnstile() { if (tsId !== null && window.turnstile) window.turnstile.reset(tsId); }
 
     // ── tabs / panel switching ──
     function showPanel(which) {
@@ -311,6 +333,7 @@
       $('card-title').textContent = which === 'signup' ? 'Create an Account'
         : which === 'forgot' ? 'Reset Password' : 'Log In';
       setMsg('', '');
+      if (which === 'signup') mountTurnstile();
     }
     // #signup / #forgot open the matching panel — the comment sections and a
     // few other pages link straight to login#signup, which used to land
@@ -384,8 +407,10 @@
       var email = $('su-email').value.trim();
       var password = $('su-password').value;
       if (!username || !email || !password) { setMsg('error', 'Fill in username, email, and password.'); return; }
+      var check = tsId !== null && window.turnstile ? window.turnstile.getResponse(tsId) : '';
+      if (tsKey && !check) { setMsg('error', 'Complete the check above the button.'); mountTurnstile(); return; }
       btn.disabled = true; btn.textContent = 'Creating account…';
-      postJSON('/api/signup', { username: username, email: email, password: password })
+      postJSON('/api/signup', { username: username, email: email, password: password, turnstile: check })
         .then(function(res){
           if (res.ok && res.body.ok) {
             try { sessionStorage.removeItem('botc_me'); } catch(e){}
@@ -394,11 +419,13 @@
           } else {
             setMsg('error', res.body.error || 'Signup failed.');
             btn.disabled = false; btn.textContent = 'Create Account';
+            resetTurnstile();   // a token is good for one try
           }
         })
         .catch(function(){
           setMsg('error', 'Network error. Try again.');
           btn.disabled = false; btn.textContent = 'Create Account';
+          resetTurnstile();
         });
     });
     $('su-password').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('signup-btn').click(); });
