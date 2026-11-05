@@ -374,6 +374,12 @@
         <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
           Pages you saved with the heart button. <a href="favorites" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a>
         </p>
+        <p class="acct-body" style="font-size:.85rem;margin:0 0 10px">
+          <label><input type="checkbox" id="fav-share"> Share my favorites</label>
+          <span id="fav-share-on" style="display:none">&middot;
+            <a id="fav-share-link" href="favorites" style="color:var(--maroon);font-weight:700">Shared list</a>
+            <button type="button" class="mini-btn" id="fav-share-copy">Copy link</button></span>
+        </p>
         <table class="row-list" id="fav-table"></table>
       </div>
 
@@ -765,7 +771,30 @@
       });
     });
 
+    function paintFavShare(on) {
+      $('fav-share').checked = !!on;
+      $('fav-share-on').style.display = on ? '' : 'none';
+    }
+    $('fav-share').addEventListener('change', function () {
+      var box = this;
+      box.disabled = true;
+      postJSON('/api/account/favorites-share', { on: box.checked }).then(function (res) {
+        box.disabled = false;
+        if (!res.ok) { paintFavShare(!box.checked); alert(res.body.error || 'Could not save.'); return; }
+        paintFavShare(res.body.favPublic);
+      }).catch(function () { box.disabled = false; paintFavShare(!box.checked); });
+    });
+    $('fav-share-copy').addEventListener('click', function () {
+      var btn = this;
+      navigator.clipboard.writeText($('fav-share-link').href).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy link'; }, 1500);
+      });
+    });
+
     function renderProfile(p) {
+      $('fav-share-link').href = 'favorites?u=' + encodeURIComponent(p.username);
+      paintFavShare(p.favPublic);
       PROFILE = p;
       var pageHref = '/u/' + encodeURIComponent(p.username);
       $('pa-link').href = pageHref; $('pa-view').href = pageHref;

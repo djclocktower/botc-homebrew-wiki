@@ -79,9 +79,9 @@
   </nav>
 
   <div class="home-hero">
-    <h1>My Favorites</h1>
-    <p class="fav-sub">The pages you saved. Only you can see this list.</p>
-    <a class="fav-back" href="account">← Back to my account</a>
+    <h1 id="fav-title">My Favorites</h1>
+    <p class="fav-sub" id="fav-sub">The pages you saved.</p>
+    <a class="fav-back" id="fav-back" href="account">← Back to my account</a>
   </div>
 
   <main class="home-panel" id="panel">
@@ -98,16 +98,16 @@
       <p class="fav-count" id="fav-count"></p>
       <div id="other-favs"></div>
       <div id="char-section" style="display:none">
-        <h2 class="type-header">Characters you saved</h2>
+        <h2 class="type-header" id="char-head">Characters you saved</h2>
         <div class="type-rule"></div>
         <div id="char-filters"></div>
         <p class="fav-count" id="char-count" style="margin:-12px 0 14px"></p>
         <div id="char-grid"></div>
       </div>
       <div id="via-section" class="fav-via" style="display:none">
-        <h2 class="type-header">On your saved scripts &amp; collections</h2>
+        <h2 class="type-header" id="via-head">On your saved scripts &amp; collections</h2>
         <div class="type-rule"></div>
-        <p class="fav-section-note">The <strong>Favorites</strong> filter on
+        <p class="fav-section-note" id="via-note">The <strong>Favorites</strong> filter on
           <a href="all-characters?favorites=1" style="color:#9fc4ee">All Characters</a> and in the Script Builder includes these too.</p>
         <div id="via-grid"></div>
       </div>
@@ -160,19 +160,44 @@
     // favorites.js answers null both for "not logged in" and for a failed
     // read, so a null asks who is reading before it shows the log-in box:
     // somebody who is logged in gets told the list failed, not to log in.
-    function failed() {
+    var failed = function () {
       hide('loading');
       hide('favs');
       window.Favorites.me().then(function (m) { show(m ? 'error' : 'gate'); });
+    };
+    // ?u={username}: somebody's shared list, read-only.
+    var shared = new URLSearchParams(location.search).get('u');
+    var source;
+    if (shared) {
+      source = fetch('/api/favorites?u=' + encodeURIComponent(shared), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; });
+      $('fav-sub').style.display = 'none';
+      $('fav-back').href = 'u/' + encodeURIComponent(shared);
+      $('fav-back').textContent = '← Profile';
+      $('char-head').textContent = 'Characters';
+      $('via-head').innerHTML = 'On these scripts &amp; collections';
+      $('via-note').style.display = 'none';
+      $('error').innerHTML = '<p>This list is not shared.</p>';
+      failed = function () { hide('loading'); show('error'); };
+    } else {
+      if (!window.Favorites) { hide('loading'); show('error'); return; }
+      source = window.Favorites.expanded();
     }
-    if (!window.Favorites) { hide('loading'); show('error'); return; }
-    window.Favorites.expanded()
+    source
       .then(function (fav) {
         if (!fav) { failed(); return; }
+        if (fav.owner) {
+          var who = fav.owner.displayName || fav.owner.username;
+          $('fav-title').textContent = who + '\u2019s Favorites';
+          document.title = who + '\u2019s Favorites \u2014 BOTC HomeBrew Wiki';
+        }
         var items = fav.items || { characters: [], scripts: [], collections: [] };
         var total = (fav.characters || []).length + (fav.scripts || []).length + (fav.collections || []).length;
         hide('loading');
-        if (!total) { show('empty'); return; }
+        if (!total) {
+          if (shared) $('empty').innerHTML = '<p>Nothing here yet.</p>';
+          show('empty'); return;
+        }
         show('favs');
         $('fav-count').textContent = total + ' favorite' + (total === 1 ? '' : 's');
 

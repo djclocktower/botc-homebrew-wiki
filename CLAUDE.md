@@ -2981,6 +2981,11 @@ saved characters PLUS those rosters, resolved server-side.
   `status`. One that was deleted, or no longer exists at all, is listed with
   `status: 'deleted'` and only the key that was saved as its name: it has to
   stay visible and removable (the account page shows it unlinked, with Remove).
+- **Sharing is opt-in**: "Share my favorites" on the account page
+  (`POST /api/account/favorites-share {on}`, stored as `favPublic` in
+  `users.profile_json`) makes `GET /api/favorites?u={username}` answer for
+  anyone, and `/favorites?u={username}` draws it read-only. Published pages
+  only, no save dates, nothing for a suspended account; off, it is a 404.
 - **`assets/favorites.js` is the whole browser side**, and the reason the
   five places that touch favorites cannot drift. `mountButton()` draws the
   button unsaved at once and corrects it when the list arrives, so no page
