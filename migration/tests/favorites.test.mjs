@@ -157,3 +157,34 @@ test('favorites: the server-rendered pages load favorites.js before the scripts 
   // Roster cards carry the identity the Favorites chip filters on.
   assert.match(collHTML, /data-slug="c"/);
 });
+
+test('favorites: a shared list is readable by anyone, published pages only, and only while shared', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f); seed(f);
+  for (const slug of ['a', 'demo']) {
+    await f.request('/api/favorite', post(1, { type: slug === 'a' ? 'character' : 'script', slug, on: true }));
+  }
+  // Saved, then the page goes to draft: the shared list must not name it.
+  await f.request('/api/favorite', post(1, { type: 'character', slug: 'd', on: true }));
+  f.db.prepare("UPDATE characters SET status='draft' WHERE slug='d'").run();
+
+  // Off by default.
+  assert.equal((await f.request('/api/favorites?u=user-1')).status, 404);
+  let r = await f.request('/api/account/favorites-share', post(1, { on: true }));
+  assert.equal((await r.json()).favPublic, true);
+  // Another profile save keeps the tick.
+  await f.request('/api/account/profile', post(1, { displayName: 'One', links: {}, pinned: [] }));
+  assert.equal((await (await f.request('/api/account', member(1))).json()).profile.favPublic, true);
+
+  const shared = await (await f.request('/api/favorites?u=user-1')).json();
+  assert.deepEqual(shared.characters, ['a']);
+  assert.deepEqual(shared.scripts, ['demo']);
+  assert.equal(shared.owner.displayName, 'One');
+  assert.ok(!JSON.stringify(shared).includes('"d"'));
+  assert.equal(shared.items.characters[0].savedAt, undefined);
+
+  await f.request('/api/account/favorites-share', post(1, { on: false }));
+  assert.equal((await f.request('/api/favorites?u=user-1')).status, 404);
+  assert.equal((await f.request('/api/favorites?u=nobody')).status, 404);
+});

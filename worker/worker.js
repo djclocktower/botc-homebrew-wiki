@@ -198,6 +198,9 @@
  *                                every character on a saved script or
  *                                collection, which is what the Favorites
  *                                filter on the browse pages admits
+ *                                ?u={username} is that account's list, for
+ *                                anyone, only while it is shared
+ *   POST /api/account/favorites-share -> {on}: share this account's list
  *   POST /api/favorite        -> {type, slug, on}: save or unsave one page.
  *                                Published pages only, capped per account,
  *                                and not a content write (no feed changes,
@@ -3651,7 +3654,10 @@ function parseProfileExtra(row) {
     pinned: Array.isArray(x && x.pinned) ? x.pinned : [],
     // The creator page's look (theme kit + custom CSS), set from the account
     // page through /api/account/theme. Sanitized on save and again on read.
-    theme: (x && x.theme && typeof x.theme === 'object') ? x.theme : null
+    theme: (x && x.theme && typeof x.theme === 'object') ? x.theme : null,
+    // The owner's tick: anyone may read this account's favorites at
+    // /favorites?u={username}. Off unless set.
+    favPublic: !!(x && x.favPublic)
   };
 }
 // The one way profile_json is written, so a save of one part (links, pins,
@@ -3659,6 +3665,7 @@ function parseProfileExtra(row) {
 function packProfileExtra(extra) {
   const out = { links: extra.links || {}, pinned: extra.pinned || [] };
   if (extra.theme) out.theme = extra.theme;
+  if (extra.favPublic) out.favPublic = true;
   return JSON.stringify(out);
 }
 // The R2 base a creator page's background lives under (avatars/u{id}-bg.*).
@@ -12057,6 +12064,7 @@ const app = {
           links: parseProfileExtra(u).links,
           pinned: parseProfileExtra(u).pinned,
           theme: PageRender.sanitizeTheme(parseProfileExtra(u).theme, profileThemeBase(sess.userId)),
+          favPublic: parseProfileExtra(u).favPublic,
           themeBase: profileThemeBase(sess.userId)
         },
         // A draft carries what its card needs (/drafts draws them), since no
@@ -12280,6 +12288,28 @@ const app = {
     // the browse pages admits: saved characters plus every character on a
     // saved script or collection). Private: the lists are one reader's own.
     if (method === 'GET' && path === '/api/favorites') {
+      // ?u={username}: somebody's SHARED list, readable by anyone, and only
+      // while its owner has sharing on. Published pages only: a saved draft
+      // or deleted page is the owner's business, not the reader's.
+      const shared = url.searchParams.get('u');
+      if (shared) {
+        await ensureProfileColumn(env);
+        const owner = await selectUserByName(env, 'id, username, display_name, profile_json', shared);
+        if (!owner || !parseProfileExtra(owner).favPublic || (await getAccountFlags(env, owner.id) || {}).banned) {
+          return jsonResponse({ error: 'This list is not shared.' }, { status: 404 });
+        }
+        const fav = await favoritesPayload(env, owner.id, true, url.origin);
+        const items = {};
+        for (const k of ['characters', 'scripts', 'collections']) {
+          items[k] = fav.items[k].filter(r => r.status === 'published').map(({ savedAt, ...r }) => r);
+          fav[k] = items[k].map(r => r.slug);
+        }
+        return jsonResponse({
+          characters: fav.characters, scripts: fav.scripts, collections: fav.collections,
+          items, characterSlugs: fav.characterSlugs,
+          owner: { username: owner.username, displayName: owner.display_name || owner.username }
+        });
+      }
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       const expand = url.searchParams.get('expand') === '1';
@@ -13630,6 +13660,7 @@ const app = {
           const cur = await env.DB.prepare('SELECT profile_json FROM users WHERE id=?')
             .bind(sess.userId).first().catch(() => null);
           extra.theme = parseProfileExtra(cur).theme;
+          extra.favPublic = parseProfileExtra(cur).favPublic;
           await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
             .bind(packProfileExtra(extra), sess.userId).run();
           return jsonResponse({ ok: true, links: extra.links, pinned: extra.pinned });
@@ -13803,6 +13834,19 @@ const app = {
             ` If this was a mistake, contact the admins on Discord: they keep a backup and can restore your pages.</p>`)).catch(() => {}));
         }
         return jsonResponse({ ok: true, backup: backupKey }, { 'Set-Cookie': clearCookie() });
+      }
+
+      // ---- share my favorites: {on} ----
+      if (path === '/api/account/favorites-share') {
+        const b = await request.json().catch(() => ({}));
+        await ensureProfileColumn(env);
+        const cur = await env.DB.prepare('SELECT profile_json FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        const extra = parseProfileExtra(cur);
+        extra.favPublic = !!b.on;
+        await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
+          .bind(packProfileExtra(extra), sess.userId).run();
+        return jsonResponse({ ok: true, favPublic: extra.favPublic });
       }
 
       // ---- the creator page's look: {theme} (null clears it) ----
