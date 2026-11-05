@@ -631,6 +631,7 @@
     $('sg-admin').hidden = !gallery.isAdmin;
     drawPacks();
     drawDownloads();
+    if (!gallery.page || !gallery.page.credits) drawCredits(gallery.page);
     drawRenameList();
     if (gallery.isAdmin) {
       $('sg-up-list').innerHTML = gallery.uploaders.length ? gallery.uploaders.map(function (u) {
@@ -1225,6 +1226,15 @@
     $('sg-synopsis').innerHTML = page && page.synopsis && W ? W.renderBody(page.synopsis) : ORIGINAL.synopsis;
     $('sg-overview').innerHTML = page && page.overview && W ? W.renderBody(page.overview) : ORIGINAL.overview;
     drawHeroMark();
+    drawCredits(page);
+  }
+  /* The Credits section near the bottom: the team's text, or for the team
+     alone a note saying where to write it. Readers see nothing until then. */
+  function drawCredits(page) {
+    var W = window.WikiRender, text = page && page.credits, team = gallery.canUpload && !PICK;
+    $('sg-credits').hidden = !(text && W) && !team;
+    $('sg-credits-body').innerHTML = text && W ? W.renderBody(text)
+      : '<p class="sg-credits-empty">Nothing here yet. Write the credits in Settings, under "The gallery page". Only the team sees this note.</p>';
   }
   // What a theme added last time is taken off before the next is put on.
   var themed = { cls: [], props: [] };
@@ -1293,10 +1303,10 @@
   var pe = null;
   function peDraft() {
     return { synopsis: $('sg-pe-synopsis').value.trim(), intro: $('sg-pe-intro').value.trim(),
-      overview: $('sg-pe-overview').value.trim(), theme: pe.theme };
+      overview: $('sg-pe-overview').value.trim(), credits: $('sg-pe-credits').value.trim(), theme: pe.theme };
   }
   function pePreview() { drawPageText(peDraft()); }
-  var PE_TEXT = ['sg-pe-synopsis', 'sg-pe-intro', 'sg-pe-overview'];
+  var PE_TEXT = ['sg-pe-synopsis', 'sg-pe-intro', 'sg-pe-overview', 'sg-pe-credits'];
   function colorRow(k, label, val) {
     return '<div class="th-row"><label for="th-' + k + '">' + label + '</label><span class="th-state" id="th-' + k + '-state">not set</span>' +
       '<input type="color" id="th-' + k + '" data-k="' + k + '" value="' + val + '"><button type="button" class="th-clear" data-k="' + k + '">reset</button></div>';
@@ -1310,6 +1320,7 @@
         '<label class="sg-f">Above the title<textarea id="sg-pe-synopsis" rows="9" maxlength="4000"></textarea></label>' +
         '<label class="sg-f">The line under the title<textarea id="sg-pe-intro" rows="3" maxlength="600"></textarea></label>' +
         '<label class="sg-f">Under that line, in smaller type<textarea id="sg-pe-overview" rows="10" maxlength="8000"></textarea></label>' +
+        '<label class="sg-f">Credits, near the bottom of the page<textarea id="sg-pe-credits" rows="8" maxlength="8000"></textarea></label>' +
         '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/harryandco), ## a heading, ### a smaller one, - a list. Leave a box empty to show nothing there. The page changes as you type; nothing is kept until you press Save.</p>' +
         '<h4>Look</h4>' +
         '<div class="sg-row"><span class="sg-label" style="flex-basis:100%">Page background</span>' +
@@ -1327,6 +1338,7 @@
       $('sg-pe-synopsis').value = page.synopsis || DEFAULT_SYNOPSIS;
       $('sg-pe-intro').value = page.intro || DEFAULT_INTRO;
       $('sg-pe-overview').value = page.overview || DEFAULT_OVERVIEW;
+      $('sg-pe-credits').value = page.credits || '';
       PE_TEXT.forEach(function (id) { $(id).addEventListener('input', pePreview); });
       window.ThemeEditor.wire({
         get: function () { return pe.theme; },
@@ -1381,7 +1393,7 @@
         api({ action: 'page', page: null }).then(function () {
           gallery.page = null;
           pe.theme = {};
-          $('sg-pe-intro').value = DEFAULT_INTRO; $('sg-pe-synopsis').value = DEFAULT_SYNOPSIS; $('sg-pe-overview').value = DEFAULT_OVERVIEW;
+          $('sg-pe-intro').value = DEFAULT_INTRO; $('sg-pe-synopsis').value = DEFAULT_SYNOPSIS; $('sg-pe-overview').value = DEFAULT_OVERVIEW; $('sg-pe-credits').value = '';
           window.ThemeEditor.prime(pe.theme);
           showPage(null); showBg();
           say('sg-pe-msg', 'The page is back to its original.');

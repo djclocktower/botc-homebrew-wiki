@@ -34,6 +34,9 @@
 .sg-overview { font-size: .84rem; line-height: 1.5; opacity: .85; margin-top: 14px; }
 .home-hero .sg-synopsis p, .home-hero .sg-overview p { margin: 0 0 .7em; font-size: inherit; color: inherit; letter-spacing: .01em; }
 .sg-synopsis:empty, .sg-overview:empty { display: none; }
+.sg-credits-body { overflow-wrap: anywhere; }
+.sg-credits-body h2, .sg-credits-body h3, .sg-credits-body h4 { color: var(--maroon); }
+.sg-credits-empty { font-style: italic; opacity: .75; }
 .sg-synopsis h2, .sg-synopsis h3, .sg-synopsis h4, .sg-overview h2, .sg-overview h3, .sg-overview h4 { color: var(--parch); margin: 12px 0 6px; }
 .sg-synopsis .sec-anchor, .sg-overview .sec-anchor { border: 0; }
 .sg-by .creator-mark { color: var(--parch); }
@@ -378,6 +381,14 @@ html.sg-pick .home-panel { padding-top: 14px; }
       </div>
     </section>
 
+
+    <!-- Credits: the team writes them in Settings → The gallery page. Hidden
+         from readers until there is something to show. -->
+    <section class="landing-section sg-not-pick" id="sg-credits" hidden style="margin-top:44px">
+      <h2 class="type-header">Credits</h2>
+      <div class="type-rule"></div>
+      <div class="about-card sg-credits-body" id="sg-credits-body" data-user-content></div>
+    </section>
 
     <section class="landing-section sg-not-pick sg-team" id="sg-team" hidden>
       <h2 class="type-header">Settings</h2>

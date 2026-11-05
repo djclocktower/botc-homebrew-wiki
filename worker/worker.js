@@ -14280,7 +14280,7 @@ const app = {
           if (b.page) {
             const p = b.page, out = {};
             // Above the title, the line under it, and smaller type under that.
-            for (const [k, max] of [['synopsis', 4000], ['intro', 600], ['overview', 8000]]) {
+            for (const [k, max] of [['synopsis', 4000], ['intro', 600], ['overview', 8000], ['credits', 8000]]) {
               const v = String(p[k] || '').trim().slice(0, max);
               if (v) out[k] = v;
             }

@@ -3906,14 +3906,18 @@ required but a shout-out is appreciated, and no commercial use.
   added, so a new pack or download lands at the end. Renaming a pack or
   retitling a download carries its place in the list.
 - **The page itself** is the team's: `settings` `starlit_page` = `{synopsis,
-  intro, overview, theme}` (`page {page}`; `page: null` puts the original
+  intro, overview, credits, theme}` (`page {page}`; `page: null` puts the original
   back). There is no About box any more (the team's call, 2026-11): the
   synopsis sits above the title logo (`#sg-synopsis`), `intro` is the line
   under it, and the overview follows in smaller type (`#sg-overview`). All
   three are wiki text marks, drawn by render-wiki.js (`inlineFormat` for the
   line, `renderBody` for the other two), so nothing typed becomes HTML; the
   editor opens on `DEFAULT_SYNOPSIS` / `DEFAULT_INTRO` / `DEFAULT_OVERVIEW`,
-  the original text in marks, and saving one unchanged stores nothing. The theme is the full theme kit
+  the original text in marks, and saving one unchanged stores nothing.
+  A fourth piece, `credits`, is the **Credits** section near the bottom
+  (`#sg-credits`, above Settings; the team's ask, 2026-11), also
+  `renderBody`. It has no default: readers see no section until the team
+  writes one, and the team sees a note saying where to write it. The theme is the full theme kit
   (theme-editor.js, `data-kind="page"`), cleaned by `sanitizeTheme(t,
   'starlit/page')` and applied in the browser like a creator page's
   (`applyTheme()`, custom CSS framing the hero and the gallery). Its

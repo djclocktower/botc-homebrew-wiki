@@ -252,8 +252,8 @@ test('the team orders packs and downloads; new ones land at the end; a rename ke
 
 test('the page keeps the synopsis, the line and the overview, and nothing else', async t => {
   const { call, feed } = await setup(t);
-  await call('admin', { action: 'page', page: { synopsis: '{{i|Stars}}', intro: 'Hi', overview: 'Small', about: 'old field' } });
-  assert.deepEqual((await feed()).page, { synopsis: '{{i|Stars}}', intro: 'Hi', overview: 'Small' });
+  await call('admin', { action: 'page', page: { synopsis: '{{i|Stars}}', intro: 'Hi', overview: 'Small', credits: '- Art: us', about: 'old field' } });
+  assert.deepEqual((await feed()).page, { synopsis: '{{i|Stars}}', intro: 'Hi', overview: 'Small', credits: '- Art: us' });
 });
 
 test('/api/upload cannot write into the gallery\'s folder', async t => {
