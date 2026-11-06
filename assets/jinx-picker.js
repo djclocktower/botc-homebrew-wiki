@@ -229,7 +229,35 @@
     field.removeAttribute('data-jxsetting');
   }
 
+  /* "+ Character" under the editors' Formatting help: pick a character and
+     its name goes into `target` at the cursor, already marked up the way
+     the almanac writes it — {{blue|[[Name]]}} for good, {{red|[[Name]]}} for
+     evil, the team's own mark for everyone else. */
+  var MARK = { townsfolk: 'blue', outsider: 'blue', minion: 'red', demon: 'red' };
+  function mountCharInsert(field, target) {
+    if (!field || !target) return;
+    mountJinxPicker(field);
+    field.addEventListener('change', function () {
+      if (!field.dataset.slug && !field.dataset.id) return;
+      var team = field.dataset.team || '';
+      var text = '{{' + (MARK[team] || TEAM_LABEL[team] && team || 'other') + '|[[' + field.value + ']]}}';
+      // Cleared first: focusing the box blurs this field, which fires its
+      // own change event, and that one must find nothing to insert.
+      setJinxField(field, '');
+      var a = target.selectionStart, b = target.selectionEnd;
+      if (a == null) a = b = target.value.length;
+      target.focus();
+      target.setSelectionRange(a, b);
+      // execCommand keeps the insert on the box's undo stack; setRangeText is the fallback.
+      if (!document.execCommand || !document.execCommand('insertText', false, text)) {
+        target.setRangeText(text, a, b, 'end');
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  }
+
   if (typeof window !== 'undefined') {
+    window.mountCharInsert = mountCharInsert;
     window.mountJinxPicker = mountJinxPicker;
     window.setJinxField = setJinxField;
     window.loadJinxRoster = load;
