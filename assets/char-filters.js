@@ -57,6 +57,7 @@
     ['classBadgeHTML', 'classifyCharacter', 'isPartial', 'isCurata'].forEach(function (k) { if (C[k]) deps[k] = C[k]; });
     if (o.splitCreators) deps.splitCreators = o.splitCreators;
     if (o.CardActions) deps.CardActions = o.CardActions;
+    if (o.saoCompare) deps.saoCompare = o.saoCompare;
     return api;
   }
 
@@ -66,10 +67,14 @@
     ['traveller', 'Traveller'], ['fabled', 'Fabled'],
     ['loric', 'Loric'], ['other', 'Other']
   ];
-  var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script'], ['official', 'Official']];
+  // Official is a Status chip, not a Source one, so it can be combined with
+  // Curata ("Curata or Official"); sourceOf() still answers 'official'.
+  var SOURCE_LABELS = [['collection', 'From Collection'], ['script', 'From Script']];
+  // How the picked (included) tags combine.
+  var TAG_MODES = [['all', 'all of'], ['any', 'any of'], ['one', 'only one of']];
   var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
   // The direction each sort starts in when it is picked.
-  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc' };
+  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc', sao: 'asc' };
   // Callers from before the direction box passed the direction inside the
   // sort ('name-desc'); read those as the two halves they now are.
   var LEGACY_SORT = { 'name-asc': ['name', 'asc'], 'name-desc': ['name', 'desc'] };
@@ -152,6 +157,8 @@
       return LEGACY_SORT[s[0]] ? [LEGACY_SORT[s[0]][0], s[0] === 'name-asc' ? 'Name' : null] : s;
     }).filter(function (s) { return s[1]; });
     if (!sorts.some(function (s) { return s[0] === 'ability'; })) sorts.push(['ability', 'Ability length']);
+    // Steven Approved Order, wherever sao.js is loaded (or handed to init()).
+    if (dep('saoCompare') && !sorts.some(function (s) { return s[0] === 'sao'; })) sorts.push(['sao', 'SAO']);
     var legacyDefault = LEGACY_SORT[opts.defaultSort];
     var sort = legacyDefault ? legacyDefault[0] : (opts.defaultSort || sorts[0][0]);
     return {
@@ -171,7 +178,8 @@
     return {
       includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
       includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-      creatorQuery: '', hidePartial: false, curataOnly: false, favOnly: false,
+      creatorQuery: '', hidePartial: false, curataOnly: false, officialOnly: false, favOnly: false,
+      tagMode: 'all',
       sort: cfg.sort, dir: cfg.dir,
       // 'team': one section per team; 'none': every card in one grid, so
       // the sort runs across all of them at once; 'author': one section
@@ -187,7 +195,7 @@
   function barModel(list, sourceOf) {
     sourceOf = sourceOf || function () { return null; };
     var tagSet = Object.create(null), creatorSet = Object.create(null),
-      teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0;
+      teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0, nOfficial = 0;
     var isPartial = dep('isPartial'), isCurata = dep('isCurata');
     list.forEach(function (c) {
       teamSet[c.team] = 1;
@@ -197,6 +205,7 @@
       var s = sourceOf(c); if (s) srcSet[s] = 1;
       if (isPartial(c)) nPartial++;
       if (isCurata(c)) nCurata++;
+      if (c.official) nOfficial++;
     });
     return {
       teams: TEAMS.filter(function (t) { return teamSet[t[0]]; }),
@@ -205,14 +214,13 @@
       // Source (From Collection / From Script) — collection takes precedence.
       // Only offer the chips whose source actually appears in the list.
       sources: SOURCE_LABELS.filter(function (s) { return srcSet[s[0]]; }),
-      nPartial: nPartial, nCurata: nCurata
+      nPartial: nPartial, nCurata: nCurata, nOfficial: nOfficial
     };
   }
 
   /* The filter box's markup. A pure string, so the Worker prints exactly
      the box the browser is about to build. `o.favHeart` is the Favorites
-     chip's heart (Favorites.heartSVG()); without it there is no chip.
-     `o.creatorChips` fills the creator list the way mount() would. */
+     chip's heart (Favorites.heartSVG()); without it there is no chip. */
   function barHTML(model, cfg, o) {
     o = o || {};
     var html = '';
@@ -224,7 +232,11 @@
     html += '</div></div>';
     // Tags
     if (model.tags.length) {
-      html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
+      html += '<div class="filter-group"><span class="filter-group-label">Tag ' +
+        '<select class="filter-select filter-tagmode" id="fc-tagmode" aria-label="How picked tags combine" ' +
+        'title="All of: every picked tag. Any of: at least one. Only one of: exactly one of them.">' +
+        TAG_MODES.map(function (m) { return '<option value="' + m[0] + '">' + m[1] + '</option>'; }).join('') +
+        '</select></span><div class="filter-chips" id="fc-tags">';
       model.tags.forEach(function (t) { html += '<button type="button" class="filter-chip" data-tag="' + esc(t) + '">' + esc(t) + '</button>'; });
       html += '</div></div>';
     }
@@ -235,33 +247,37 @@
     }
     // Status (Partial / Curata). Both are narrowing filters: "Hide Partial"
     // leaves the unfinished pages out, "Curata only" keeps the picked ones.
-    var nPartial = model.nPartial, nCurata = model.nCurata;
+    var nPartial = model.nPartial, nCurata = model.nCurata, nOfficial = model.nOfficial || 0;
     // The Favorites chip is built hidden: the saved list arrives after the
     // bar does, and the chip shows once something on the page is in it.
     var wantFav = !!o.favHeart;
-    if (nPartial || nCurata || wantFav) {
-      html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
+    if (nPartial || nCurata || nOfficial || wantFav) {
+      html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata || nOfficial ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
       if (nPartial) {
         html += '<button type="button" class="filter-chip" id="fc-partial" title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
       }
       if (nCurata) {
-        html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
+        html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out. With Official on too, shows both.">Curata only (' + nCurata + ')</button>';
+      }
+      if (nOfficial) {
+        html += '<button type="button" class="filter-chip" id="fc-official" title="The official characters. With Curata only on too, shows both.">Official (' + nOfficial + ')</button>';
       }
       if (wantFav) {
         html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' + o.favHeart + ' Favorites</button>';
       }
       html += '</div></div>';
     }
-    // Creator — a search box plus 3-state chips. The full creator list is
-    // hundreds long, so only matches for the current search are shown;
-    // anything already picked stays pinned above the search results.
+    // Creator — a search box with a drop-down of matches, plus 3-state
+    // chips for the creators already picked. Nothing is listed until the box
+    // is used: the creator list is hundreds long.
     var creators = model.creators;
     if (creators.length > 1) {
       html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">Creator</span>' +
         '<div class="filter-chip-selected-row" id="fc-creator-selected"></div>' +
-        '<input type="search" class="filter-search" id="fc-creator-search" ' +
-          'placeholder="Search ' + creators.length + ' creators…" autocomplete="off" aria-label="Search creators">' +
-        '<div class="filter-chips-scroll" id="fc-creator-list">' + (o.creatorChips || '') + '</div>' +
+        '<div class="cf-creator-combo"><input type="search" class="filter-search" id="fc-creator-search" ' +
+          'placeholder="Search ' + creators.length + ' creators…" autocomplete="off" aria-label="Search creators" ' +
+          'role="combobox" aria-expanded="false" aria-controls="fc-creator-list">' +
+        '<div class="cf-creator-drop" id="fc-creator-list" role="listbox" hidden></div></div>' +
         '</div>';
     }
     // Sort
@@ -288,24 +304,26 @@
     return html;
   }
 
-  /* The creator chips under the search box: the matches, capped so a blank
-     search doesn't paint every creator on the wiki. Picked creators are
-     drawn separately, above. */
-  var CREATOR_LIST_CAP = 40;
+  /* A creator's name with their mark after it (assets/creators.js), on the
+     picked chips and in the drop-down. */
+  function creatorLabel(name) {
+    var C = dep('CreatorSymbols');
+    var mark = C ? C.markHTMLFor(name, { noFocus: true }) : '';
+    return esc(name) + (mark ? ' ' + mark : '');
+  }
   function creatorChipHTML(name, cls) {
     return '<button type="button" class="filter-chip' + (cls ? ' ' + cls : '') +
-      '" data-creator="' + esc(name) + '">' + esc(name) + '</button>';
+      '" data-creator="' + esc(name) + '">' + creatorLabel(name) + '</button>';
   }
+  /* The drop-down under the search box: every match, scrolling inside
+     itself. Picked creators are drawn separately, above. */
   function creatorListHTML(matches, query) {
-    var shown = matches.slice(0, CREATOR_LIST_CAP);
     var q = String(query || '').trim();
-    return shown.map(function (c) { return creatorChipHTML(c, ''); }).join('') +
-      (matches.length > shown.length
-        ? '<span class="filter-more">+' + (matches.length - shown.length) + ' more (keep typing)</span>'
-        : '') +
-      (!matches.length && q
-        ? '<span class="filter-more">No creator matches “' + esc(q) + '”</span>'
-        : '');
+    if (!matches.length) return q ? '<p class="cf-creator-none">No creator matches “' + esc(q) + '”</p>' : '';
+    return matches.map(function (c, i) {
+      return '<button type="button" class="cf-creator-opt' + (i ? '' : ' on') + '" role="option" data-creator="' +
+        esc(c) + '">' + creatorLabel(c) + '</button>';
+    }).join('');
   }
 
   /* The list a state asks for: filtered, then sorted. ctx carries what the
@@ -317,13 +335,18 @@
     var out = input.slice();
     // "Hide Partial" leaves the unfinished pages out.
     if (st.hidePartial) out = out.filter(function (c) { return !isPartial(c); });
-    if (st.curataOnly) out = out.filter(function (c) { return isCurata(c); });
+    // Curata only and Official each keep their own; on together they keep
+    // either ("Curata or Official").
+    if (st.curataOnly || st.officialOnly) out = out.filter(function (c) {
+      return (st.curataOnly && isCurata(c)) || (st.officialOnly && !!c.official);
+    });
     if (st.favOnly) out = out.filter(function (c) { return !!(ctx.favSet && ctx.favSet.has(c.slug)); });
     if (st.includeTeams.length) out = out.filter(function (c) { return st.includeTeams.indexOf(c.team) !== -1; });
     if (st.excludeTeams.length) out = out.filter(function (c) { return st.excludeTeams.indexOf(c.team) === -1; });
     if (st.includeTags.length) out = out.filter(function (c) {
       var ct = splitTags(c).map(titleCase);
-      return st.includeTags.every(function (t) { return ct.indexOf(t) !== -1; });
+      var n = st.includeTags.filter(function (t) { return ct.indexOf(t) !== -1; }).length;
+      return st.tagMode === 'any' ? n > 0 : st.tagMode === 'one' ? n === 1 : n === st.includeTags.length;
     });
     if (st.excludeTags.length) out = out.filter(function (c) {
       var ct = splitTags(c).map(titleCase);
@@ -345,6 +368,7 @@
       // Ties (and every blank ability) fall back to the name, A–Z.
       return flip * ((a.ability || '').length - (b.ability || '').length) || cmpName(a, b);
     });
+    else if (st.sort === 'sao' && dep('saoCompare')) out.sort(function (a, b) { return flip * dep('saoCompare')(a, b); });
     else if (st.sort === 'recent') {
       // The feed is oldest first. Without a position function every step
       // above was a filter, which keeps that order, so ascending is the
@@ -375,8 +399,7 @@
     var model = barModel(list, sourceOf);
     var ALL_CREATORS = model.creators;
     var html = barHTML(model, cfg, {
-      favHeart: root.Favorites ? root.Favorites.heartSVG() : '',
-      creatorChips: creatorListHTML(ALL_CREATORS, '')
+      favHeart: root.Favorites ? root.Favorites.heartSVG() : ''
     });
 
     // A server-drawn page already shows this same box, greyed out while the
@@ -449,6 +472,18 @@
       curataBtn.classList.toggle('active', ctrl.state.curataOnly);
       changed();
     });
+    var officialBtn = byId('fc-official');
+    if (officialBtn) officialBtn.addEventListener('click', function () {
+      ctrl.state.officialOnly = !ctrl.state.officialOnly;
+      officialBtn.classList.toggle('active', ctrl.state.officialOnly);
+      changed();
+    });
+    var tagModeSel = byId('fc-tagmode');
+    if (tagModeSel) tagModeSel.addEventListener('change', function () {
+      ctrl.state.tagMode = tagModeSel.value;
+      // Only moves the list when there are picked tags for it to combine.
+      if (ctrl.state.includeTags.length) changed();
+    });
     // ── Favorites chip ──
     // Counted against the current list, so a collection-scoped view (or a
     // search) says how many of its characters are saved. Re-counted after a
@@ -481,7 +516,7 @@
           favBtn.hidden = !n && !keep;
           favBtn.innerHTML = root.Favorites.heartSVG() + ' Favorites' + (n || keep ? ' (' + n + ')' : '');
           var group = byId('fc-status-group');
-          if (group && !partialBtn && !curataBtn) group.hidden = !n && !keep;
+          if (group && !partialBtn && !curataBtn && !officialBtn) group.hidden = !n && !keep;
           if (!n && ctrl.state.favOnly && !keep) { ctrl.state.favOnly = false; favBtn.classList.remove('active'); }
           if (n && !ctrl.state.favOnly && /[?&]favorites=1(&|$)/.test(location.search) && !favLoad.opened) {
             favLoad.opened = true;
@@ -511,39 +546,72 @@
       else if (ii !== -1) { st.includeCreators.splice(ii, 1); st.excludeCreators.push(name); }
       else st.excludeCreators.splice(ei, 1);
     }
+    var crSearch = byId('fc-creator-search');
+    var crDrop = byId('fc-creator-list');
+    var dropOpen = false;
     function renderCreatorChips() {
       var selected = byId('fc-creator-selected');
-      var listEl = byId('fc-creator-list');
-      if (!selected || !listEl) return;
+      if (!selected || !crDrop) return;
       var st = ctrl.state;
       selected.innerHTML =
         st.includeCreators.map(function (c) { return creatorChipHTML(c, 'active'); }).join('') +
         st.excludeCreators.map(function (c) { return creatorChipHTML(c, 'active-exclude'); }).join('');
-      listEl.innerHTML = creatorListHTML(matchingCreators(), st.creatorQuery);
-      // Re-wire: both rows are rebuilt on every keystroke.
-      bar.querySelectorAll('[data-creator]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          cycleCreator(btn.getAttribute('data-creator'));
-          renderCreatorChips();
-          changed();
-        });
-      });
+      var body = dropOpen ? creatorListHTML(matchingCreators(), st.creatorQuery) : '';
+      crDrop.innerHTML = body;
+      crDrop.hidden = !body;
+      crSearch.setAttribute('aria-expanded', body ? 'true' : 'false');
     }
-    var crSearch = byId('fc-creator-search');
-    if (crSearch) {
+    function openDrop(on) {
+      if (dropOpen === on) return;
+      dropOpen = on;
+      renderCreatorChips();
+    }
+    function pickCreator(name) {
+      cycleCreator(name);
+      crSearch.value = ctrl.state.creatorQuery = '';
+      renderCreatorChips();
+      changed();
+    }
+    if (crSearch && crDrop) {
+      // One listener for both rows: they are rebuilt on every keystroke.
+      bar.querySelector('.filter-group-creators').addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('[data-creator]');
+        if (!btn) return;
+        var inDrop = crDrop.contains(btn);
+        pickCreator(btn.getAttribute('data-creator'));
+        if (inDrop) crSearch.focus();
+      });
+      // Keep the focus in the box while an option is pressed, so blur does
+      // not close the list before the click lands.
+      crDrop.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      crSearch.addEventListener('focus', function () {
+        openDrop(true);
+        // Account marks come from the live registry; redraw once it is in.
+        var C = dep('CreatorSymbols');
+        if (C && C.load) C.load().then(function (r) { if (r) renderCreatorChips(); });
+      });
+      crSearch.addEventListener('blur', function () { openDrop(false); });
       crSearch.addEventListener('input', function () {
         ctrl.state.creatorQuery = crSearch.value;
+        dropOpen = document.activeElement === crSearch;
         renderCreatorChips();
       });
-      // Enter picks the only match, which makes the search usable one-handed
-      // on a phone without hunting for the chip.
       crSearch.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        var matches = matchingCreators();
-        if (matches.length === 1) { cycleCreator(matches[0]); crSearch.value = ''; ctrl.state.creatorQuery = ''; }
-        renderCreatorChips();
-        changed();
+        var opts = [].slice.call(crDrop.querySelectorAll('.cf-creator-opt'));
+        var cur = opts.findIndex(function (o) { return o.classList.contains('on'); });
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          if (!opts.length) { openDrop(true); return; }
+          e.preventDefault();
+          var next = Math.max(0, Math.min(opts.length - 1, cur + (e.key === 'ArrowDown' ? 1 : -1)));
+          if (cur !== -1) opts[cur].classList.remove('on');
+          opts[next].classList.add('on');
+          opts[next].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (cur !== -1) pickCreator(opts[cur].getAttribute('data-creator'));
+        } else if (e.key === 'Escape') {
+          openDrop(false);
+        }
       });
       renderCreatorChips();
     }
@@ -562,6 +630,7 @@
       ctrl.state = blankState(cfg);
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
       if (crSearch) crSearch.value = '';
+      if (tagModeSel) tagModeSel.value = 'all';
       renderCreatorChips();
       sortSel.value = DEFAULT_SORT;
       dirSel.value = DEFAULT_DIR;
@@ -587,6 +656,8 @@
       });
       if (partialBtn) partialBtn.classList.toggle('active', st.hidePartial);
       if (curataBtn) curataBtn.classList.toggle('active', st.curataOnly);
+      if (officialBtn) officialBtn.classList.toggle('active', st.officialOnly);
+      if (tagModeSel) tagModeSel.value = st.tagMode;
       if (favBtn) favBtn.classList.toggle('active', st.favOnly);
       if (crSearch) crSearch.value = st.creatorQuery;
       renderCreatorChips();
@@ -603,7 +674,7 @@
         st.includeTags.length + st.excludeTags.length +
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
-        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
+        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.officialOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {
       if (!toggle) return;
@@ -623,6 +694,7 @@
       countList = next;
       if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(function (c) { return dep('isPartial')(c); }).length + ')';
       if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(function (c) { return dep('isCurata')(c); }).length + ')';
+      if (officialBtn) officialBtn.textContent = 'Official (' + next.filter(function (c) { return !!c.official; }).length + ')';
       if (favBtn && FAV_SET) favLoad(true);
     };
 

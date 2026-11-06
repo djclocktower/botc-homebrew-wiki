@@ -883,7 +883,15 @@
       var e = p.length;
       while (e > 0 && /\s/.test(p.charAt(e - 1))) e--;
       p = p.slice(0, e);
-      return p.trim() ? '<p>' + tok(p).replace(/\n/g, '<br>') + '</p>' : '';
+      if (!p.trim()) return '';
+      // A paragraph of table rows is a table (render.js's paraHTML, which
+      // goes through the wiki text engine); everything else is as it was.
+      var para = dep('paraHTML');
+      if (para && /^\s*\|[\s\S]*\|\s*$/.test(p)) {
+        var t = para(p, true);
+        if (t.indexOf('<p>') !== 0) return t;
+      }
+      return '<p>' + tok(p).replace(/\n/g, '<br>') + '</p>';
     }).join('');
   }
 

@@ -299,3 +299,22 @@ test('a wiki page\'s history goes down with its set', async t => {
   assert.equal((await hist('under-draft', 'member')).status, 200, 'its owner still can');
   assert.equal((await hist('under-draft', 'admin')).status, 200);
 });
+
+test('drafts: a creator page lists only drafts the viewer can open; /api/account carries draft card fields', async t => {
+  const f = await fixture(); t.after(() => f.finish()); await seed(f);
+  const ins = f.db.prepare(`INSERT INTO characters(slug,name,team,creator,owner_id,data,status)
+    VALUES(?,?,'townsfolk','member',?,?,'draft')`);
+  ins.run('mine', 'Mine', 2, JSON.stringify({ name: 'Mine', ...complete, creator: 'member' }));
+  ins.run('theirs', 'Theirs', 3, JSON.stringify({ name: 'Theirs', ...complete, creator: 'member' }));
+  // A published page proves the name 'member' is this account's.
+  f.db.prepare(`INSERT INTO characters(slug,name,team,creator,owner_id,data,status)
+    VALUES('live','Live','townsfolk','member',2,?,'published')`).run(JSON.stringify({ name: 'Live', ...complete, creator: 'member' }));
+  const slugs = p => p.drafts.characters.map(c => c.slug).sort();
+  assert.deepEqual(slugs(await json(await f.request('/api/user?u=member', as('member')))), ['mine']);
+  assert.deepEqual(slugs(await json(await f.request('/api/user?u=member', as('admin')))), ['mine', 'theirs']);
+  const acct = await json(await f.request('/api/account', as('member')));
+  const c = acct.characters.find(x => x.slug === 'mine');
+  assert.equal(c.art, 'art/x.png');
+  assert.equal(c.ability, 'Does a thing.');
+  assert.equal(c.data, undefined);
+});

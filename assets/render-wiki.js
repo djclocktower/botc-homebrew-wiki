@@ -2,7 +2,8 @@
    (/p/{slug}), the news articles and the site-wide announcement banner.
 
    Everything a writer types is PLAIN TEXT. It is escaped first and then a
-   deliberately small, whitelisted set of marks is turned back into markup, so
+   deliberately small, whitelisted set of marks (and of HTML tags, rebuilt
+   rather than copied) is turned back into markup, so
    nothing anyone writes can ever become raw HTML on a page other people read.
 
    Block marks (one per line, blank line separates blocks):
@@ -23,6 +24,7 @@
      ::: note Title                callout box (note/tip/warning/example/lore)
      …text…
      :::
+     == Heading ==                 MediaWiki headings (== is #, === is ##)
 
    Inline marks:
 
@@ -50,6 +52,10 @@
                                    mark per team. Traveller is the half-blue,
                                    half-red split the Related ribbon uses
                                    ({{traveler|…}} is accepted too).
+     '''bold'''  ''italic''  [https://… label]   MediaWiki marks
+     <b> <i> <u> <s> <sub> <sup> <span style="…"> <br> …
+                                   a short list of HTML tags, rebuilt from
+                                   what was parsed (see stashTags)
      {{i|text}}                    italics. A brace mark rather than
                                    *asterisks* because character prose is
                                    full of the official "Each night*"
@@ -317,6 +323,106 @@
      help text rather than leaving people to find out. */
   var DROP_RE = /\{\{drop\|([^{}\n<>])\}\}/gi;
 
+  /* ── HTML tags a writer may type ──
+     A short list of inline tags is let through, each one REBUILT from what
+     was parsed rather than copied: only the attributes below survive, a style
+     keeps only whitelisted properties with plain values (no url(), no
+     functions but colours, no negative or huge sizes, so nothing can cover
+     the page or fetch anything), and every tag left open is closed at the end
+     of the same line, so a forgotten </b> cannot run on through the page.
+     Anything else that looks like a tag is printed as the text it is. */
+  var HTML_TAGS = {
+    b: 1, strong: 1, i: 1, em: 1, u: 1, ins: 1, s: 1, strike: 1, del: 1,
+    sub: 1, sup: 1, small: 1, big: 1, mark: 1, span: 1, code: 1, kbd: 1,
+    abbr: 1, q: 1, br: 1
+  };
+  var TAG_SPLIT = /(<\/?[a-z]+(?:\s[^<>\n]{0,400})?\s*\/?>)/i;
+  var STYLE_PROP = /^(color|background|background-color|font-weight|font-style|font-variant|font-size|font-family|text-decoration|text-decoration-color|text-transform|letter-spacing|text-shadow|padding|border|border-color|border-style|border-width|border-radius|opacity|white-space)$/;
+  var STYLE_CAP = { px: 64, em: 4, rem: 4, '%': 100, '': 1000 };
+  function safeStyle(raw) {
+    var out = [];
+    String(raw || '').split(';').forEach(function (d) {
+      var c = d.indexOf(':');
+      if (c < 1) return;
+      var prop = d.slice(0, c).trim().toLowerCase();
+      var val = d.slice(c + 1).trim().replace(/\s*!important$/i, '');
+      if (!STYLE_PROP.test(prop) || !val || val.length > 120) return;
+      if (!/^[#a-z0-9 .,%()'"-]+$/i.test(val)) return;
+      // The only functions are colours, so url(), expression() and the rest
+      // never reach the page.
+      if (val.replace(/\b(?:rgba?|hsla?)\([^()]*\)/gi, '').indexOf('(') !== -1) return;
+      if (/(^|[\s(,])-[\d.]/.test(val)) return;
+      var nums = val.replace(/#[0-9a-f]{3,8}\b/gi, '').match(/\d*\.?\d+[a-z%]*/gi) || [];
+      for (var k = 0; k < nums.length; k++) {
+        var m = nums[k].match(/^(\d*\.?\d+)([a-z%]*)$/i);
+        var cap = STYLE_CAP[m[2].toLowerCase()];
+        if (cap == null || parseFloat(m[1]) > cap) return;
+      }
+      out.push(prop + ':' + val);
+    });
+    return out.join(';');
+  }
+  // Splits raw text into escaped text and whitelisted tags, which are stashed
+  // behind placeholders (so no later mark can reach inside one) in `tags`.
+  // `tags.close` is whatever the line leaves open, closed in order.
+  var TAG_MARK = '\u0000h';
+  // With `code` set, a `code span` is left as text: a tag typed inside one
+  // is meant to be shown, not obeyed.
+  function stashTags(text, tags, code) {
+    var src = String(text == null ? '' : text).replace(/\u0000/g, '');
+    var parts = [];
+    (code ? src.split(/(`[^`\n]{1,300}`)/) : [src]).forEach(function (chunk, c) {
+      if (c % 2) parts[parts.length - 1] += chunk;
+      else {
+        var bits = chunk.split(TAG_SPLIT);
+        if (parts.length) parts[parts.length - 1] += bits.shift();
+        parts.push.apply(parts, bits);
+      }
+    });
+    var open = [];
+    var out = '';
+    for (var p = 0; p < parts.length; p++) {
+      var piece = parts[p];
+      if (p % 2 === 0 || tags.length > 200) { out += esc(piece); continue; }
+      var m = piece.match(/^<(\/?)([a-z]+)([\s\S]*?)\/?>$/i);
+      var name = m[2].toLowerCase();
+      if (!Object.prototype.hasOwnProperty.call(HTML_TAGS, name)) { out += esc(piece); continue; }
+      var html = '';
+      if (m[1]) {
+        var at = open.lastIndexOf(name);
+        if (at === -1) continue;              // a closer with no opener is dropped
+        while (open.length > at) html += '</' + open.pop() + '>';
+      } else if (name === 'br') {
+        html = '<br>';
+      } else {
+        var attrs = '';
+        m[3].replace(/([a-z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"']+))/gi, function (x, k, a, b, c) {
+          var v = a != null ? a : (b != null ? b : c);
+          k = k.toLowerCase();
+          if (k === 'style') { v = safeStyle(v); if (v) attrs += ' style="' + esc(v) + '"'; }
+          else if (k === 'title') attrs += ' title="' + esc(v.slice(0, 200)) + '"';
+          return '';
+        });
+        open.push(name);
+        html = '<' + name + attrs + '>';
+      }
+      tags.push(html);
+      out += TAG_MARK + (tags.length - 1) + '\u0000';
+    }
+    tags.close = open.reverse().map(function (n) { return '</' + n + '>'; }).join('');
+    return out;
+  }
+  function restoreTags(s, tags) {
+    return s.replace(/\u0000h(\d+)\u0000/g, function (m, i) { return tags[+i]; }) + tags.close;
+  }
+
+  /* MediaWiki's apostrophe marks: '''''bold italic''''', '''bold''', ''italic''. */
+  var MW_BI_RE = /'''''([^\n]{1,300}?)'''''/g;
+  var MW_B_RE = /'''([^\n]{1,300}?)'''/g;
+  var MW_I_RE = /''([^'\n](?:[^\n]{0,298}?[^'\n])?)''/g;
+  /* MediaWiki's external link: [https://example.com label] or [https://example.com]. */
+  var MW_LINK_RE = /\[(https?:\/\/[^\s\[\]{}\u0000]{1,500})(?:\s+([^\[\]\n]{1,160}))?\]/g;
+
   /* ── inline marks ──────────────────────────────────────────────
      Order matters: code spans are pulled out first so their contents are
      never re-formatted, then links (whose labels are plain text), then the
@@ -327,7 +433,8 @@
     opts = opts || {};
     var root = opts.linkRoot || '';
     var linksOnly = opts.marks === 'links';
-    var out = esc(text);
+    var tags = [];
+    var out = stashTags(text, tags, !linksOnly);
 
     // `code` — stashed behind a placeholder so **bold** inside it stays literal
     var codes = [];
@@ -364,6 +471,14 @@
       return '<a href="' + esc(url) + '"' +
         (external ? ' target="_blank" rel="noopener noreferrer"' : '') +
         '>' + label + '</a>';
+    });
+
+    // [https://example.com label] — MediaWiki's external link
+    out = out.replace(MW_LINK_RE, function (m, href, label) {
+      var url = safeHref(href.replace(/&amp;/g, '&'));
+      if (!url) return m;
+      return '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+        (label || href) + '</a>';
     });
 
     // [[Character Name]] / [[Character Name|label]] — one of THIS character's
@@ -422,14 +537,20 @@
     // *italic* it cannot fire on prose nobody marked up.
     out = out.replace(/\*\*([^*\n]{1,300})\*\*/g, '<strong>$1</strong>');
 
+    // '''bold''' / ''italic'' — MediaWiki's apostrophes. In links mode too:
+    // a doubled apostrophe is never ordinary prose.
+    out = out.replace(MW_BI_RE, '<strong><em>$1</em></strong>')
+      .replace(MW_B_RE, '<strong>$1</strong>')
+      .replace(MW_I_RE, '<em>$1</em>');
+
     // Nothing below this line is offered in links mode: every one of these
     // marks can be typed by accident in ordinary character prose.
-    if (linksOnly) return out;
+    if (linksOnly) return restoreTags(out, tags);
 
     out = out.replace(/~~([^~\n]{1,200})~~/g, '<s>$1</s>');
     out = out.replace(/(^|[^*])\*([^*\n]{1,300})\*(?!\*)/g, '$1<em>$2</em>');
 
-    return out.replace(/\u0000c(\d+)\u0000/g, function (m, i) { return codes[+i]; });
+    return restoreTags(out.replace(/\u0000c(\d+)\u0000/g, function (m, i) { return codes[+i]; }), tags);
   }
 
   /* ── the marks, taken back out ──
@@ -443,6 +564,10 @@
      mark, and links mode never rendered it as one either. */
   function plainText(text) {
     return String(text == null ? '' : text)
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/?(?:b|strong|i|em|u|ins|s|strike|del|sub|sup|small|big|mark|span|code|kbd|abbr|q)(?:\s[^<>\n]{0,400})?\s*>/gi, '')
+      .replace(MW_BI_RE, '$1').replace(MW_B_RE, '$1').replace(MW_I_RE, '$1')
+      .replace(MW_LINK_RE, function (m, href, label) { return label || href; })
       // Drop first, then colour — the same order inlineFormat uses, so a
       // nested {{red|{{drop|T}}}} comes back as the bare letter rather than
       // leaving a stray {{red|…}} behind.
@@ -546,6 +671,18 @@
     return html;
   }
 
+  /* A paragraph that is nothing but table rows (2+ lines, each starting and
+     ending with '|'), as a table; '' otherwise. For the prose fields that are
+     not rendered as a whole body (character pages, a script's synopsis), so a
+     character count table can go there too. opts as inlineFormat's: a
+     character page passes marks: 'links', so a cell follows its rules. */
+  function tableHTML(text, opts) {
+    var lines = String(text || '').split('\n').map(function (l) { return l.trim(); })
+      .filter(function (l) { return l; });
+    if (lines.length < 2 || !lines.every(function (l) { return /^\|.*\|$/.test(l); })) return '';
+    return tableBlock(lines, opts || {});
+  }
+
   function imageBlock(line, opts) {
     var m = line.match(new RegExp('^!\\[([^\\]\\n]{0,160})\\]\\(([^)\\s|]{1,400})' + IMG_OPT_RE + '\\)\\s*$'));
     if (!m) return null;
@@ -646,6 +783,14 @@
       // re-scanned every run of spaces once per character, which took
       // seconds over a long one.
       var h = trimmed.match(/^(#{1,4})\s+(.+)$/);
+      // == Heading == (MediaWiki): == is #, === is ##, and so on.
+      var eq = !h && trimmed.match(/^={2,5}(?=[^=])/);
+      if (eq) {
+        var n = eq[0].length;
+        var inner = trimmed.slice(n, -n).trim();
+        if (trimmed.length > 2 * n && trimmed.slice(-n) === eq[0] &&
+            trimmed.charAt(trimmed.length - n - 1) !== '=' && inner) h = [, '#'.repeat(n - 1), inner];
+      }
       if (h) {
         closePara();
         var level = h[1].length;
@@ -892,7 +1037,7 @@
     setReminderTokens: setReminderTokens, linkKey: normName,
     esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
     inlineFormat: inlineFormat, plainText: plainText,
-    renderBody: renderBody, tocHTML: tocHTML,
+    renderBody: renderBody, tocHTML: tocHTML, tableHTML: tableHTML,
     autoSummary: autoSummary, formatDate: formatDate,
     renderBoxes: renderBoxes, renderInfobox: renderInfobox,
     renderWikiPage: renderWikiPage, renderPageLinks: renderPageLinks,

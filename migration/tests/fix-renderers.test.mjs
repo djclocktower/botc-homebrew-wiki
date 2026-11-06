@@ -278,3 +278,35 @@ test('a kept JSON (customJson) replaces the built one on script and collection p
   // No kept JSON: the wiki builds it as before.
   assert.equal(PageRender.customExport(''), '');
 });
+
+test('a paragraph of table rows is a table on character pages and in a script\'s prose', () => {
+  const t = '| Players | 5 | 6 |\n|---|---|---|\n| Townsfolk | 3 | *3* |';
+  const html = Render.renderCharacter({ name: 'X', team: 'townsfolk', ability: 'a',
+    howToRun: ['Before.', t], customBoxes: [{ title: 'Counts', content: t }] }, '', '');
+  assert.equal((html.match(/<table class="wiki-table">/g) || []).length, 2);
+  // Cells follow the character page's links-only marks: a lone pair of
+  // asterisks stays text.
+  assert.match(html, /<td>\*3\*<\/td>/);
+  assert.equal(Render.paraHTML('| just one line |'), '<p>| just one line |</p>');
+  const page = PageRender.renderScriptPage({ name: 'S', synopsis: 'Intro.\n\n' + t, characters: [] }, [], { root: '../' });
+  assert.match(page, /<table class="wiki-table">/);
+  assert.match(page, /<p>Intro\.<\/p>/);
+});
+
+test('typed HTML is rebuilt from a whitelist, MediaWiki marks render', () => {
+  const f = (s, o) => WikiRender.inlineFormat(s, o || { marks: 'links' });
+  assert.equal(f('<span style="color:#8b2c2c;font-style:italic;padding:0 6px">x</span>'),
+    '<span style="color:#8b2c2c;font-style:italic;padding:0 6px">x</span>');
+  assert.equal(f('<b>open <i>x</b> y'), '<b>open <i>x</i></b> y');
+  assert.equal(f('<script>alert(1)</script></b>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+  assert.equal(f('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+  assert.equal(f('<span onclick="x" style="background:url(x);position:fixed;font-size:900px;margin:-9px;color:expression(1)">s</span>'), '<span>s</span>');
+  assert.equal(f('<span title=\'a" onmouseover=x\'>t</span>'), '<span title="a&quot; onmouseover=x">t</span>');
+  assert.equal(f('x <3 and a < b'), 'x &lt;3 and a &lt; b');
+  assert.equal(f('`<b>c</b>`', {}), '<code class="wiki-code">&lt;b&gt;c&lt;/b&gt;</code>');
+  assert.equal(f("'''b''' ''i'' '''''bi''''' don't"), '<strong>b</strong> <em>i</em> <strong><em>bi</em></strong> don\'t');
+  assert.equal(f('[https://x.y/a?b=1&c=2 lab] [javascript:alert(1) x]'),
+    '<a href="https://x.y/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">lab</a> [javascript:alert(1) x]');
+  assert.match(WikiRender.renderBody('== Rules ==\n=== Sub ==='), /<h2[^>]*id="sec-rules".*<h3/);
+  assert.equal(WikiRender.plainText("<b>B</b><br>''i'' [https://x.y lab]"), 'B i lab');
+});

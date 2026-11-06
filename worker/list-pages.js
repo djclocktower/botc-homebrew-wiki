@@ -25,8 +25,9 @@ import Creators from '../assets/creators.js';
 import Tags from '../assets/tags.js';
 import OFFICIAL_TAGS from '../assets/official-tags.js';
 import OfficialRoles from '../assets/official-roles.js';
+import Sao from '../assets/sao.js';
 
-CharFilters.init({ Classify, CardActions, splitCreators: Creators.splitCreators });
+CharFilters.init({ Classify, CardActions, splitCreators: Creators.splitCreators, saoCompare: Sao.saoCompare });
 
 export const LIST_PAGES = { '/all-characters': 'all', '/team': 'team', '/tag': 'tag' };
 // The feeds each page is drawn from. All Characters' Source chips need the
@@ -94,7 +95,7 @@ export function renderListPage(kind, template, data, query) {
     const list = CharFilters.applyState(chars, CharFilters.blankState(cfg), { sourceOf });
     if (!list.length) return null;
     const model = CharFilters.barModel(chars, sourceOf);
-    const bar = CharFilters.barHTML(model, cfg, { creatorChips: CharFilters.creatorListHTML(model.creators, '') });
+    const bar = CharFilters.barHTML(model, cfg);
     html = swap(html, /<button type="button" id="filter-toggle" class="filter-toggle" hidden /, '<button type="button" id="filter-toggle" class="filter-toggle" ');
     html = swap(html, '<div id="filter-bar" class="filter-bar" hidden></div>',
       '<div id="filter-bar" class="filter-bar cf-loading" aria-busy="true">' + bar + '</div>');

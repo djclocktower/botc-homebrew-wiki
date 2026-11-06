@@ -265,6 +265,15 @@
       ? W.inlineFormat(str, { linkRoot: R(), marks: 'links' })
       : tok(str);
   }
+  /* One paragraph of almanac prose, or a table when it is nothing but table
+     rows (WikiRender.tableHTML, cells in the same links-only mode). */
+  function paraHTML(p, br) {
+    var W = engine();
+    var t = W && W.tableHTML ? W.tableHTML(p, { linkRoot: R(), marks: 'links' }) : '';
+    if (t) return t;
+    var h = inlineLinks(p);
+    return '<p>' + (br ? h.replace(/\n/g, '<br>') : h) + '</p>';
+  }
   /* The marks taken back out, for the two places this text leaves the page as
      plain prose: the official-schema JSON box (the app renders no markup) and
      the meta description the Worker puts in the page head. */
@@ -1090,44 +1099,6 @@
     return { byKey: byKey, byName: byName };
   }
 
-  /* Where a jinx entry will land — for the tools that WRITE one rather than
-     draw it, which is both importers. Drawing a jinx can afford to just pick
-     the best candidate; an import is the moment somebody can still fix it, and
-     a jinx stored by a name three pages share is a coin toss nobody is told
-     about. So this answers with its working:
-
-       picked      the page it will resolve to, or null for none here
-       candidates  EVERY page of that name, so a caller can say who else it
-                   could have been
-       guessed     true when the pick was made on the bare name while more
-                   than one page answers to it — i.e. it came down to
-                   whichever was registered first
-
-     `guessed` is deliberately false when the id or the host's own set settled
-     it (see jinxLookupKeys): those are evidence, not a coin toss. */
-  function jinxTargetCheck(j, host, index) {
-    var out = { name: '', picked: null, candidates: [], guessed: false, official: false };
-    if (!j || !index) return out;
-    out.name = jinxDisplayName(j);
-    // The picker writes the target outright; there is nothing to guess.
-    if (j.slug) { out.picked = index.byKey[normJinxId(j.slug)] || null; return out; }
-    // An official character beats every page here (resolveJinxTarget step 2),
-    // so a jinx with one is settled however many pages share the name. This
-    // needs setOfficialNames() to have been called — without it every jinx
-    // with an official character looks homebrew, which is a warning on almost
-    // every import.
-    out.official = !!jinxOfficialId(j);
-    if (out.official) return out;
-    var keys = jinxLookupKeys(j, host), hit = '';
-    for (var i = 0; i < keys.length && !out.picked; i++) {
-      if (index.byKey[keys[i]]) { out.picked = index.byKey[keys[i]]; hit = keys[i]; }
-    }
-    var nameKey = normJinxId(out.name);
-    out.candidates = (nameKey && index.byName[nameKey]) || [];
-    out.guessed = out.candidates.length > 1 && hit === nameKey;
-    return out;
-  }
-
   /* Who a jinx on a script's roster is with: the roster entry it lands on,
      or null when it is with nobody on the script. One rule for the page's
      jinx list (findScriptJinxes) and the export (buildPageExport in
@@ -1331,7 +1302,7 @@
     var callouts = (Array.isArray(d.callout) ? d.callout : [d.callout])
       .filter(function (x) { return typeof x === 'string' && x.trim(); });
 
-    var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
+    var howColBody = paras.map(function (p) { return paraHTML(p); }).join('') +
       callouts.map(function (c) { return '<div class="callout">' + inlineLinks(c) + '</div>'; }).join('');
     var howCol = howColBody ? sech('sec-howtorun', 'How to Run') + howColBody : '';
 
@@ -1437,7 +1408,7 @@
          whitelists the href, so nothing typed here can become raw HTML; with
          the engine absent it falls back to the plain escaped text. */
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd class="info-credit">' + inlineText(d.translatedBy.trim()) + '</dd>' : '') +
-      (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
+      (d.iconBy && d.iconBy.trim() ? '<dt>' + (d.iconByLabel === 'from' ? 'Icon from:' : 'Icon by:') + '</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>'; }
     var info = pair(infoFor(d), alt ? infoFor(altD) : '');
 
@@ -1593,7 +1564,7 @@
       if (!title && !content.trim()) return '';
       var body = content.split(/\n{2,}/).map(function (p) {
         p = trimEnd(p);
-        return p.trim() ? '<p>' + inlineLinks(p).replace(/\n/g, '<br>') + '</p>' : '';
+        return p.trim() ? paraHTML(p, true) : '';
       }).join('');
       return '<div class="card custom-box">' +
         (title ? '<h2 class="info-h custom-box-h">' + esc(title) + '</h2>' : '') +
@@ -1628,6 +1599,7 @@
 
   if (typeof window !== 'undefined') {
     window.renderCharacter = renderCharacter;
+    window.paraHTML = paraHTML;
     window.initCharacterRender = init;
     window.fitCharTitle = fitCharTitle;
     window.renderJsonBox = renderJsonBox;
@@ -1658,7 +1630,6 @@
     window.jinxQualKeys = jinxQualKeys;
     window.jinxLookupKeys = jinxLookupKeys;
     window.jinxCharIndex = jinxCharIndex;
-    window.jinxTargetCheck = jinxTargetCheck;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setOfficialNames = setOfficialNames;
     window.setWikiChars = setWikiChars;
@@ -1678,6 +1649,7 @@
     module.exports = {
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
+      paraHTML: paraHTML,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,
@@ -1693,7 +1665,7 @@
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       jinxExportId: jinxExportId,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
-      jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
+      jinxCharIndex: jinxCharIndex,
       charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,

@@ -247,6 +247,18 @@
   .inline-msg { font-size: .85rem; margin-top: 8px; min-height: 1.1em; }
   .inline-msg.ok  { color: #2a6e2a; }
   .inline-msg.err { color: #9a2c2c; }
+  .btn.danger { background: #8a2626; border-color: #5a1515; border-radius: 0; }
+  .btn.danger:hover { background: #9a2c2c; }
+  .set-hint { font-size: .82rem; color: #6b5a3e; margin: 6px 0 0; }
+  /* The "are you sure" box for deleting an account: a native <dialog>. */
+  #del-dialog { max-width: 460px; width: calc(100% - 32px); border: 1px solid #4a1719; border-radius: 0;
+    background: #f4ead2; color: #2b2116; padding: 20px; }
+  #del-dialog::backdrop { background: rgba(0,0,0,.55); }
+  #del-dialog h4 { font-family: 'Dumbledor2', serif; color: var(--maroon); margin: 0 0 10px; font-size: 1.15rem; }
+  #del-dialog p { font-size: .92rem; margin: 0 0 10px; }
+  #del-dialog .del-keep { display: flex; gap: 8px; align-items: flex-start; font-size: .92rem; margin: 12px 0; }
+  #del-dialog .del-keep input { margin-top: 3px; }
+  #del-dialog .del-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
   .settings-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
   @media (min-width: 760px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
   .settings-grid section { min-width: 0; }
@@ -443,6 +455,17 @@
           </section>
 
           <section>
+            <h4>Username</h4>
+            <div class="set-field">
+              <label for="s-username">Username</label>
+              <input id="s-username" maxlength="20" autocomplete="username" spellcheck="false" autocapitalize="off">
+            </div>
+            <p class="set-hint" id="username-hint">You can change it once every 30 days. Old links to your page keep working.</p>
+            <button class="btn" id="save-username">Change Username</button>
+            <div class="inline-msg" id="username-msg"></div>
+          </section>
+
+          <section>
             <h4 id="pw-title">Change Password</h4>
             <div class="set-field" id="cur-pw-field">
               <label for="s-curpw">Current password</label>
@@ -480,7 +503,33 @@
               <button class="btn secondary" id="logout-btn">Log Out</button>
             </div>
           </section>
+
+          <section>
+            <h4>Delete Account</h4>
+            <p class="acct-body" style="font-size:.88rem;margin:0 0 10px">Delete your account for good. You can choose to keep your pages on the wiki.</p>
+            <button class="btn danger" id="delete-account-btn" type="button">Delete My Account</button>
+          </section>
         </div>
+        <dialog id="del-dialog" aria-labelledby="del-title">
+          <h4 id="del-title">Delete your account?</h4>
+          <p>You will be logged out everywhere.</p>
+          <label class="del-keep"><input type="checkbox" id="del-keep">
+            <span>Keep my characters, scripts, collections, pages and comments on the wiki. They stay up and credited, with no owner.</span></label>
+          <p id="del-what">Unticked, they are all taken down. The admins keep a backup and can restore them if you ask.</p>
+          <div class="set-field" id="del-pw-field">
+            <label for="del-pw">Your password</label>
+            <input type="password" id="del-pw" autocomplete="current-password">
+          </div>
+          <div class="set-field" id="del-name-field" style="display:none">
+            <label for="del-name">Type your username to confirm</label>
+            <input id="del-name" autocomplete="off" spellcheck="false" autocapitalize="off">
+          </div>
+          <div class="inline-msg" id="del-msg"></div>
+          <div class="del-actions">
+            <button class="btn secondary" id="del-cancel" type="button">Cancel</button>
+            <button class="btn danger" id="del-confirm" type="button">Delete My Account</button>
+          </div>
+        </dialog>
       </div>
 
       <!-- contact the admins -->
@@ -773,6 +822,14 @@
       });
 
       // settings prefill
+      $('s-username').value = p.username || '';
+      if (p.usernameNextChange) {
+        $('username-hint').textContent = 'You can change it again on ' + fmtDate(p.usernameNextChange) +
+          '. Old links to your page keep working.';
+        $('save-username').disabled = true;
+      }
+      $('del-pw-field').style.display = p.hasPassword ? '' : 'none';
+      $('del-name-field').style.display = p.hasPassword ? 'none' : '';
       $('s-display').value = p.displayName || '';
       $('s-bio').value = p.bio || '';
       $('s-email').value = p.email || '';
@@ -1408,6 +1465,47 @@
           setInline('c-msg', 'err', res.body.error || 'Could not send. Try again.');
         }
       });
+    });
+
+    $('save-username').addEventListener('click', function(){
+      var btn = this;
+      var name = $('s-username').value.trim();
+      if (!PROFILE || name === PROFILE.username) { setInline('username-msg', 'err', 'That is already your username.'); return; }
+      if (!confirm('Change your username to @' + name + '? You can only do this once every 30 days.')) return;
+      btn.disabled = true;
+      postJSON('/api/account/username', { username: name }).then(function(res){
+        btn.disabled = false;
+        setInline('username-msg', res.ok ? 'ok' : 'err', res.ok ? 'Username changed to @' + res.body.username + '.' : (res.body.error || 'Change failed.'));
+        if (res.ok) { try { sessionStorage.removeItem('botc_me'); } catch(e){} load(); }
+      });
+    });
+
+    $('delete-account-btn').addEventListener('click', function(){
+      $('del-keep').checked = false; $('del-pw').value = ''; $('del-name').value = '';
+      setInline('del-msg', '', '');
+      $('del-dialog').showModal();
+    });
+    $('del-cancel').addEventListener('click', function(){ $('del-dialog').close(); });
+    $('del-keep').addEventListener('change', function(){
+      $('del-what').textContent = this.checked
+        ? 'Your pages and comments stay up. Your profile, favorites and creator mark are deleted.'
+        : 'Unticked, they are all taken down. The admins keep a backup and can restore them if you ask.';
+    });
+    $('del-confirm').addEventListener('click', function(){
+      var btn = this;
+      var hasPw = PROFILE && PROFILE.hasPassword;
+      if (hasPw && !$('del-pw').value) { setInline('del-msg', 'err', 'Enter your password.'); return; }
+      if (!hasPw && !$('del-name').value.trim()) { setInline('del-msg', 'err', 'Type your username.'); return; }
+      btn.disabled = true;
+      setInline('del-msg', '', 'Deleting…');
+      postJSON('/api/account/delete', {
+        password: $('del-pw').value, confirm: $('del-name').value.trim(), keepPages: $('del-keep').checked
+      }).then(function(res){
+        if (!res.ok) { btn.disabled = false; setInline('del-msg', 'err', res.body.error || 'Delete failed.'); return; }
+        try { sessionStorage.removeItem('botc_me'); } catch(e){}
+        if (window.Favorites) window.Favorites.drop();
+        location.href = '/';
+      }, function(){ btn.disabled = false; setInline('del-msg', 'err', 'Could not reach the wiki. Try again.'); });
     });
 
     $('logout-btn').addEventListener('click', function(){

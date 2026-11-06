@@ -147,6 +147,8 @@
   margin-bottom: 6px;
 }
 .fmt-help-list { margin: 0; padding: 0; list-style: none; }
+.fmt-help .jx-combo { margin-top: 8px; max-width: 320px; }
+.fmt-char { width: 100%; }
 .fmt-help-list li { margin: 0 0 5px; padding-left: 0; line-height: 1.45; }
 /* The site's global li::before draws a bullet in --evil; these rows already
    start with the mark itself, which is the thing to read first. */
