@@ -237,6 +237,7 @@
             <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (only this way round)</li>
             <li>The Ability box takes none of these</li>
           </ul>
+          <input type="text" id="fmt-char" class="fmt-char" placeholder="+ Character" aria-label="Add a character to Examples">
         </div>
         <textarea id="examples"></textarea>
       </div>
@@ -534,6 +535,7 @@
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
+  <script>if (window.mountCharInsert) mountCharInsert(document.getElementById('fmt-char'), document.getElementById('examples'));</script>
   <script src="assets/related-editor.js"></script>
   <script src="assets/almanac-alt.js"></script>
   <script src="assets/approved-editors.js"></script>
@@ -1937,7 +1939,8 @@
           howToRun: d.howToRun, callout: d.callout, examples: d.examples,
           tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote, appearsIn: d.appearsIn, tags: d.tags,
           pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
-          translatedBy: d.translatedBy, iconBy: d.iconBy, typeName: d.typeName, exportTeam: d.exportTeam,
+          translatedBy: d.translatedBy, iconBy: d.iconBy, iconByLabel: d.iconByLabel || undefined,
+          typeName: d.typeName, exportTeam: d.exportTeam,
           artScale: d.artScale,
           edition: d.edition, firstNight: d.firstNight,
           firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
