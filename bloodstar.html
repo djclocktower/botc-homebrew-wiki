@@ -20,6 +20,9 @@
    Page-local only. Shared colours come from styles.css. The form is a
    stack of cards on purpose: the owner reviews this on a phone, and a
    two-column options grid there is a pinch-zoom exercise. */
+  .bs-hero { padding-bottom: 0; }
+  /* A long title: one line beside its icon on a phone. */
+  @media (max-width: 640px) { .bs-hero h1 { font-size: clamp(1.4rem, 6vw, 2rem); } }
   .bs-wrap { position:relative; z-index:5; max-width:940px; margin:0 auto;
     padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 80px; box-sizing:border-box; }
   .bs-card { background:#f7f6f2; border:1px solid var(--card-edge); border-radius:10px;
@@ -156,6 +159,13 @@
     <a href="all-collections">Collections</a>
     <a href="script">Script Builder</a>
   </nav>
+
+  <div class="home-hero bs-hero">
+    <div class="tool-hero-row">
+      <img class="tool-hero-icon" src="assets/tool-icons/bloodstar.webp" width="300" height="220" alt="">
+      <h1>Bloodstar Import</h1>
+    </div>
+  </div>
 
   <div class="bs-wrap">
 

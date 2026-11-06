@@ -699,6 +699,12 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   margin: 0 0 .3em;
   text-shadow: 0 3px 12px rgba(0,0,0,.5);
 }
+/* A tool page's own icon beside its title, as on Grimoire Forge (whose
+   page keeps its own .gf-hero-* copy of these rules). The pictures are the
+   Starlit team's, in assets/tool-icons/. */
+.tool-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 22px); }
+.tool-hero-row h1 { margin: 0; }
+.tool-hero-icon { width: clamp(56px, 9vw, 92px); height: auto; flex-shrink: 0; filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); }
 .home-hero p {
   font-size: clamp(.95rem, 2vw, 1.2rem); color: rgba(236,225,200,.7);
   margin: 0; letter-spacing: .03em;

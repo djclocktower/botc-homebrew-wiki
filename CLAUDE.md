@@ -1076,6 +1076,14 @@ tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        Grimoire Forge, Icon Forge, Starlit Gallery, Bloodstar
                        Import, Jinxes, Creator Icons. This is what the "Tools"
                        nav entry points at.
+                       Each card carries its tool's icon: assets/grimforge.png
+                       and assets/tool-icons/{script,tokens,iconforge,starlit,
+                       bloodstar,jinxes,creators}.webp (the Starlit team's
+                       art, trimmed to the drawing, 300px). The same picture
+                       sits beside each tool page's title (.tool-hero-row /
+                       .tool-hero-icon in styles.css; Grimoire Forge keeps its
+                       own .gf-hero-* copy), except /starlit, whose title is
+                       the team's lettering.
 starlit.html           The Starlit Gallery (/starlit). See that section.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
