@@ -707,7 +707,7 @@ $('if-stage-inner').addEventListener('pointerdown', (e) => {
 $('if-fills-clear').addEventListener('click', () => setOpts({ bucketFills: [] }));
 
 /* ── texture picker ─────────────────────────────────────────────── */
-COLOR_TEXTURES.forEach((t) => {
+function addTexButton(t) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'if-tex';
@@ -739,7 +739,27 @@ COLOR_TEXTURES.forEach((t) => {
   b.appendChild(cap);
   b.addEventListener('click', () => pickTexture(t.id));
   $('if-textures').appendChild(b);
-});
+}
+COLOR_TEXTURES.forEach(addTexButton);
+
+/* The Starlit Gallery's own textures, after the official ones. Pushed onto
+   COLOR_TEXTURES, where loadTexturesFor() looks ids up; resolves once they
+   are in. */
+const starlitTextures = fetch('/api/starlit?textures=1', { credentials: 'same-origin' })
+  .then((r) => (r.ok ? r.json() : { textures: [] }))
+  .then((d) => {
+    // Each pack's sheets, but not its outline (that paints the whites) and
+    // not the Official pack's (those are the sheets this tool already has).
+    const KIND = { base: 'Base', good: 'Good', evil: 'Evil', traveller: 'Traveller', 'traveller-good': 'Traveller Good',
+      'traveller-evil': 'Traveller Evil', fabled: 'Fabled', loric: 'Loric' };
+    (d.textures || []).forEach((t) => {
+      if (!KIND[t.kind] || t.image.startsWith('/assets/starlit/tex/official-')) return;
+      const def = { id: 'starlit-' + t.id, label: t.pack + ': ' + (t.name || KIND[t.kind]), sub: 'Starlit Gallery', file: t.image + '?v=' + t.v };
+      COLOR_TEXTURES.push(def);
+      addTexButton(def);
+    });
+  })
+  .catch(() => {});
 
 function pickTexture(id) {
   colorTexId = id;
@@ -911,10 +931,9 @@ fetch('/api/me', { credentials: 'same-origin' })
       );
       return;
     }
-    return fetch('/api/account', { credentials: 'same-origin' })
-      .then((r) => r.json())
-      .then((acc) => {
-        const chars = (acc && acc.characters) || [];
+    return window.CharIconSave.list()
+      .then((list) => {
+        const chars = list || [];
         if (!chars.length) {
           setSaveMsg(
             '',
@@ -950,50 +969,9 @@ $('if-save').addEventListener('click', async () => {
     const dataUrl = out.toDataURL('image/png');
 
     setSaveMsg('', 'Uploading…');
-    const page = await fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), {
-      credentials: 'same-origin'
-    }).then((r) => r.json());
-    if (!page || page.error) throw new Error(page && page.error ? page.error : 'Could not load that character.');
-    if (!page.canEdit) throw new Error('That character belongs to another account.');
-
-    const key = 'art/' + page.slug + '.png';
-    const up = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ key, data: dataUrl })
-    }).then((r) => r.json());
-    if (!up || up.error) throw new Error((up && up.error) || 'The upload failed.');
-    // The card thumbnail rides along with the art (assets/art-thumb.js is
-    // loaded by iconforge.html); never awaited.
-    if (window.ArtThumb) window.ArtThumb.upload(key, dataUrl);
-
-    // Point the row at the slot we just wrote. Everything else on the page is
-    // sent back unchanged, including its published/draft status.
-    const entry = Object.assign({}, page.data, {
-      slug: page.slug,
-      art: key,
-      image: 'https://botchomebrew.wiki/assets/' + key,
-      status: page.status
-    });
-    // An older row may hold its alternate icons only as positions two and
-    // three of an `image` ARRAY (no artAlt/imageAlt fields — see "A
-    // character's three icons" in CLAUDE.md). `image` becomes the new main
-    // icon's string, so those positions move to their own fields first, or
-    // saving an icon would quietly delete a traveller's good and evil art.
-    if (Array.isArray(page.data && page.data.image)) {
-      ['imageAlt', 'imageAlt2'].forEach((field, i) => {
-        const was = page.data.image[i + 1];
-        if (typeof was === 'string' && was && !entry[field]) entry[field] = was;
-      });
-    }
-    const saved = await fetch('/api/character', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(entry)
-    }).then((r) => r.json());
-    if (!saved || saved.error) throw new Error((saved && saved.error) || 'The character could not be saved.');
+    // assets/char-icon-save.js, shared with the Starlit Gallery.
+    const savedSlug = await window.CharIconSave.save(slug, dataUrl);
+    const page = { slug: savedSlug };
 
     setSaveMsg(
       'ok',
@@ -1012,3 +990,37 @@ $('if-save').addEventListener('click', async () => {
 pickTexture(colorTexId);
 syncControls();
 sizeStage();
+
+/* The Starlit Gallery's "Open in Icon Forge": the icon, flattened black over
+   white, waits in localStorage for iconforge?from=starlit and is read once.
+   Its white layer is the outline, so the forge's own border and hole filling
+   start off. */
+if (new URLSearchParams(location.search).get('from') === 'starlit') {
+  let handoff = null;
+  try {
+    handoff = JSON.parse(localStorage.getItem('botc_starlit_forge') || 'null');
+    localStorage.removeItem('botc_starlit_forge');
+  } catch (e) { /* nothing handed over */ }
+  if (handoff && typeof handoff.png === 'string' && handoff.png.startsWith('data:image/png')) {
+    fetch(handoff.png)
+      .then((r) => r.blob())
+      .then((blob) => onFile(new File([blob], String(handoff.name || 'Starlit icon') + '.png', { type: 'image/png' })))
+      .then(() => {
+        setOpts({ borderWidth: 0, fillHoles: false, innerDetails: false });
+        return starlitTextures;
+      })
+      .then(() => {
+        // The gallery's texture, as a file: its sets are not Icon Forge's.
+        const t = handoff.tex;
+        if (!t || typeof t.file !== 'string' || !t.file.startsWith('/assets/starlit/')) return;
+        const id = 'starlit-pick-' + String(t.id || '').replace(/[^a-z0-9-]/gi, '');
+        if (!COLOR_TEXTURES.some((x) => x.id === id)) {
+          const def = { id, label: String(t.name || 'Starlit').slice(0, 60), sub: 'Starlit Gallery', file: t.file };
+          COLOR_TEXTURES.push(def);
+          addTexButton(def);
+        }
+        pickTexture(id);
+      })
+      .catch(() => toast('The icon from the Starlit Gallery could not be opened.', 'err'));
+  }
+}

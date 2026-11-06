@@ -98,7 +98,8 @@ Key dynamic behavior:
 - `GET /assets/art|collections|scripts|tokens|pages|news|avatars/*` is served
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
-  pictures, uploaded via `/api/account/avatar`, never via `/api/upload`).
+  pictures, uploaded via `/api/account/avatar`, never via `/api/upload`; so is
+  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
@@ -108,6 +109,8 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page),
   **message images** (`/api/attachment` — one image for a comment or a modmail
   message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
+  **the Starlit Gallery** (`/api/starlit` and `/api/admin/starlit-uploaders`;
+  see that section),
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
   requests per page view; `/api/site-text` and `/api/announcement` stay for
@@ -916,6 +919,16 @@ assets/
                        Subfolders textures/ minipaint/ vendor/ are the
                        sealed payload — see the section below, and
                        migration/icon-forge-guide.md for the engine reference.
+  starlit.js           The Starlit Gallery page (/starlit): browsing, the icon
+                       window and the team's forms. compose() draws an icon.
+                       See "The Starlit Gallery".
+  char-icon-save.js    CharIconSave: put a finished icon on one of your own
+                       characters (drafts included) — art/{identity}.png,
+                       then the row saved back with its status unchanged.
+                       Shared by Icon Forge and the Starlit Gallery.
+  starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
+                       the gallery in an iframe; the picked PNG goes into the
+                       art file input with a change event.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
@@ -1077,8 +1090,19 @@ scripts.html           /scripts — the script index. Filter chips for Curata an
                        unreachable on a phone without it.
 script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
-                       Creator Icons. This is what the "Tools" nav entry points at.
+                       Grimoire Forge, Icon Forge, Starlit Gallery, Mass
+                       Import, Jinxes, Creator Icons. This is what the "Tools"
+                       nav entry points at.
+                       Each card carries its tool's icon: assets/grimforge.png
+                       and assets/tool-icons/{script,tokens,iconforge,starlit,
+                       bloodstar,jinxes,creators}.webp (the Starlit team's
+                       art, trimmed to the drawing, 300px; bloodstar.webp is
+                       Mass Import's, which took the Bloodstar importer in). The same picture
+                       sits beside each tool page's title (.tool-hero-row /
+                       .tool-hero-icon in styles.css; Grimoire Forge keeps its
+                       own .gf-hero-* copy), except /starlit, whose title is
+                       the team's lettering.
+starlit.html           The Starlit Gallery (/starlit). See that section.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -3717,7 +3741,8 @@ uploaded — except for the one opt-in save described below.
   phone; the button stays hidden in browsers without that API. A paste while
   the art editor is open is left to the editor, and a text paste into a field
   is never intercepted.
-- **Save to a character** is the only server call. It uploads the 591 px
+- **Save to a character** is the only server call (`assets/char-icon-save.js`,
+  shared with the Starlit Gallery). It uploads the 591 px
   render to `art/{slug}.png` — the same R2 slot the character editor uses —
   and then re-saves the row through `/api/character` with `art`/`image`
   pointing at it, so a page whose art lived elsewhere still picks it up. The
@@ -3728,7 +3753,173 @@ uploaded — except for the one opt-in save described below.
   in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
+- **Starlit Gallery** (next section): `?from=starlit` opens the icon the
+  gallery left in localStorage (`botc_starlit_forge`, read once) with the
+  forge's border and hole filling off; the gallery's textures are added to
+  the picker from `/api/starlit?textures=1`.
 
+## The Starlit Gallery (`/starlit`)
+
+Character icons by **Harry & Co & Bendan** (wiki account `harryandco`; the
+makers of the Travel by the Starlight collection), hosted here after the
+platform they were on broke. Credit them: the hero names them with their mark
+and links each of them to their wiki profile (`/u/harryandco`, `/u/Bendan`),
+every icon shows its `artist` (theirs by default) as plain text with its
+mark, deliberately NOT a link (the team's call: the credit links led to
+creator pages that did not match), and an icon put on a character from the
+editor fills its "Icon by".
+The page's text about the gallery is copied word for word from their
+Magma page (magma.com/s/starlit-gallery/profile/about), the owner's call:
+never rewrite it in code; only its "How to Use" part, which is about Magma,
+is left out. The line under the title reads "a free to use icon collection"
+(the owner's wording). **The team can now change both themselves**, and the
+page's look: Settings → "The gallery page" (see the bullet below), so the
+static HTML is only what shows until they save something. The title is the team's own lettering,
+`assets/starlit-logo.webp`, not text. Their terms, from that page, are on /starlit: credit is not
+required but a shout-out is appreciated, and no commercial use.
+
+- **An icon is two layers**, as the original gallery drew them: the BLACK one
+  takes the reader's texture, the WHITE one (the outline) takes parchment, and
+  a drop shadow goes under both. The layers are only masks (`source-in`).
+  `compose()` in `assets/starlit.js` does all the drawing: the figure is
+  fitted to `ART_FILL` of the frame (`artTrimBox`) and the texture spans the
+  whole frame, as official icons are cut from their sheets. The preview is an
+  `<img>` so a phone can long-press it. The two layers must be the same size:
+  a layer exported trimmed to its drawing (Photoshop's "Export As" on one
+  layer) has lost its place on the canvas, so the form refuses the pair.
+  Under each layer's file box sits a box
+  that takes a pasted image or an image link, plus a Paste button where
+  the browser can read the clipboard (`pasteImageInto()`). What arrives is
+  put INTO the file box (DataTransfer) and a change event fired, so the
+  form cannot tell it from a picked file. A link is fetched by the browser,
+  so it works only from a site that allows it (CORS); otherwise the form
+  says to save the image and pick it. Deliberately no server-side fetch: a
+  Worker fetching any URL a member types is an open proxy.
+- **Textures come in PACKS the team keeps** (the owner's call, 2026-11).
+  A pack is rows of `starlit_textures` sharing a `pack` name, one per `kind`
+  (`STARLIT_KINDS`: Base, Good, Evil, Traveller (blue | red), Traveller Good
+  (blue | brown), Traveller Evil (brown | red), Fabled, Loric, and Outline,
+  which paints the white layer whichever of the pack's sheets is picked), an
+  optional `name` label (Official's base is "Monochrome") and a 160px
+  `thumb`. The six the page shipped with (the team's Photoshop sets Default,
+  Vibrant, Treasure Hunt, Starlit, Glitchy, and Official, Icon Forge's sheets)
+  are committed files, `assets/starlit/tex/{set}-{kind}.webp` + `-s`, written
+  in as rows ONCE by whichever request's `ALTER … ADD COLUMN pack` succeeds
+  (`STARLIT_SEED_PACKS`; a second isolate's ALTER fails and seeds nothing),
+  served through the `starlit/` R2 fallback. So every pack is edited the
+  same way: Settings lists each pack with a tile per sheet (tap to add or
+  replace, Remove), Add several, Rename (409 on a name in use) and Delete
+  pack (which leaves the repo's files alone). "New pack" takes a name and
+  several files at once; `guessKind()` files each by its name (good, evil,
+  traveller good, outline…), else the first sheet the pack lacks. Sheets are
+  re-encoded to WebP (1182px max) in the browser. `POST /api/starlit`
+  `texture {pack, kind, image, thumb}` upserts by pack + kind; `pack {from,
+  to}` / `{from, remove}`. GET lists packs in order of their first row. Icon
+  Forge lists every pack's sheets as `starlit-{id}` "Pack: Sheet", leaving
+  out outlines and the Official pack (it has those already). "Your own" is
+  a local file that is never uploaded. The picker is a drop-down (a
+  `<details>`) showing the texture in use, open to
+  every texture grouped by set. There are two, one per layer (`PICKERS`):
+  the blacks' (Plain black, then every pack's sheets) and the whites' (Match
+  blacks, which takes the blacks' pack's Outline and is the default, Plain
+  white, each pack's Outline, Your own). Match blacks with Plain black is
+  plain white. Under each picker is the CUT
+  (`view.bcut` / `view.wcut`, `{x, y, z}`): Icon Forge's placement pad,
+  arrows round a dice for a random cut, a zoom slider (1-4) and Reset,
+  read by `cover()`. Zoom 1 is the sheet just covering the frame, so an
+  arrow there zooms in to `CUT_MIN_PAN_ZOOM` first; pan is -1..1 of what
+  the zoom leaves spare. Hidden while its layer has no texture (texture
+  off, or Plain). The window's sizes are 400 (what
+  tokens are printed at and the official app uses), 591 (the wiki's) and
+  1182. A window closes only on a press that starts AND ends on its
+  backdrop, so dragging out past its edge does not close it. "Open in Icon Forge" hands over the picked
+  sheet's file, which the forge adds to its list.
+  **An icon opens as it was uploaded** (the owner's call): black lines, white
+  outline, shadow, no texture (`AS_UPLOADED`), and its grid picture is drawn
+  the same way. Picking a texture tile turns the texture on. The upload form
+  has no texture choice; `tex` is stored empty, and an older icon that still
+  has one gets a new untextured grid picture on its next save.
+- **Finding icons**: the search box needs every word typed (name, keyword
+  or artist) and leaves out icons matching a word typed `-like-this`. The
+  keyword chips (the 30 most used, plus any in use) cycle on a tap:
+  required (maroon), left out (red, struck through), off, with Clear while
+  any is set (`filter.tags`, `{keyword: 1 | -1}`). Hovering a grid tile
+  shows its keywords over the picture ("No keywords" in red when it has
+  none), so the team can spot untagged icons; pointer devices only
+  (`@media (hover: hover)`). The upload form lists
+  every keyword already in the gallery under its Keywords box; a tap adds
+  or removes one, so the team reuses keywords rather than inventing near
+  copies. Artists work the same way: a second chip row (`filter.artists`,
+  shown when there are two or more, one chip per comma-separated name,
+  `artistsOf()`), and the form's Artist box has its own chips.
+  **Renaming** a keyword or an artist across every icon is Settings →
+  "Rename a keyword or an artist" (`rename {what: 'tag' | 'artist', from,
+  to}`; an empty `to` takes a keyword off; artists match one name at a time).
+- **Downloads** (`#sg-dl`, shown once there is a file, or to the team):
+  files that are not icons, PSDs included. `POST /api/starlit-file?title=
+  &note=&name=` with the FILE AS THE BODY (base64 JSON would not carry tens
+  of MB), streamed into R2 (`starlit/files/{token}-{name}`) after reading
+  the first bytes: `starlitFileType()` takes PNG, JPEG, WebP, GIF, PSD/PSB,
+  ZIP and PDF by their magic bytes, never their name, and stores them with
+  `Content-Disposition: attachment`. 95 MB cap (Cloudflare's request limit
+  is 100). Table `starlit_files`; `file {id, title, note}` and
+  `delete-file {id}`. Files with the same title are one row, so a PSD sits
+  beside its PNG; on a computer the rows sit two to a line. The browser
+  sends with XMLHttpRequest for a progress count.
+- **Order**: the team moves packs and download rows up and down (the arrows
+  on each). Stored as names in `settings` `starlit_order` = `{packs: [],
+  files: []}` (`order {what, list}`); GET sorts by it (`byStarlitOrder()`),
+  and a name not on the list sorts after the listed ones in the order it was
+  added, so a new pack or download lands at the end. Renaming a pack or
+  retitling a download carries its place in the list.
+- **The page itself** is the team's: `settings` `starlit_page` = `{synopsis,
+  intro, overview, credits, theme}` (`page {page}`; `page: null` puts the original
+  back). There is no About box any more (the team's call, 2026-11): the
+  synopsis sits above the title logo (`#sg-synopsis`), `intro` is the line
+  under it, and the overview follows in smaller type (`#sg-overview`). All
+  three are wiki text marks, drawn by render-wiki.js (`inlineFormat` for the
+  line, `renderBody` for the other two), so nothing typed becomes HTML; the
+  editor opens on `DEFAULT_SYNOPSIS` / `DEFAULT_INTRO` / `DEFAULT_OVERVIEW`,
+  the original text in marks, and saving one unchanged stores nothing.
+  A fourth piece, `credits`, is the **Credits** section near the bottom
+  (`#sg-credits`, above Settings; the team's ask, 2026-11), also
+  `renderBody`. It has no default: readers see no section until the team
+  writes one, and the team sees a note saying where to write it. The theme is the full theme kit
+  (theme-editor.js, `data-kind="page"`), cleaned by `sanitizeTheme(t,
+  'starlit/page')` and applied in the browser like a creator page's
+  (`applyTheme()`, custom CSS framing the hero and the gallery). Its
+  background and stickers are fixed slots `starlit/page-bg.*` and
+  `starlit/page-st{n}.*` (`page-image {kind, n, data}`). Readers load
+  render-wiki/render-page/custom-css only when something is stored.
+- **Storage**: lazy tables `starlit_icons`, `starlit_textures` and `starlit_files`; files in R2
+  under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
+  `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new
+  key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
+  the browser, 1200px at most), textures PNG/JPEG/WebP, bytes sniffed.
+  The one exception is what came from the team's own Photoshop template: the
+  first icon, Goat Skull, whose files are committed under `assets/starlit/`
+  and whose row was written to D1 by hand, so the
+  preview could show it before anyone had uploaded anything. A file missing
+  from R2 falls back to the committed copy, as for `art/`.
+- **Who can upload**: admins and the accounts in `settings` `starlit_uploaders`
+  (`[{id, username}]` via `sanitizeEditors()`), set by an admin in the
+  gallery's team panel: the list with a Remove per artist, and a box that
+  only ADDS. It was one comma-separated box that replaced the whole list,
+  and saving it with one new name twice took the other artist off. Any of them can change or delete anything there. No
+  public submissions and no mass upload, on purpose: vetting for copyright and
+  AI is the team's job, and two-layer uploads do not batch well.
+- `starlit-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
+  reads the gallery, so it must not roll the feed caches). `/api/starlit` and
+  `/api/starlit-file` are in the wiki-lock list.
+- **Hand-offs**: "Open in Icon Forge" leaves the flattened icon in
+  localStorage for `iconforge?from=starlit`; the editors' "Browse the Starlit
+  Gallery" (`assets/starlit-picker.js`) opens `/starlit?pick=1` in an iframe
+  and "Use this icon" posts the PNG back. "Save to one of your characters"
+  in the icon window puts the icon, as shown, on a character the reader owns
+  (drafts too) through `assets/char-icon-save.js`, Icon Forge's save, and
+  fills "Icon by" unless the page credits somebody else; it asks before
+  replacing an icon. `?icon={id}` opens one icon. Not
+  built: a Token Tool hand-off (an icon reaches it through its character).
 
 ## Creator marks (a creator's own symbol)
 
@@ -3760,7 +3951,7 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   that mark to the account with that username (else that `discord_username`),
   setting `u` on the legacy entry, so it is drawn on their comments and is
   theirs to claim — live, so a handle links the day they sign up. Shared
-  marks (The Bazaar, Harry & Co. & Bendan) stay the name's.
+  marks (The Bazaar, Harry & Co & Bendan) stay the name's.
 - **The registry is two parallel queries** (`buildMarkRegistry()`), because the SSR read
   path must not grow: each row stores `names`, the credit names it is drawn
   beside (`markNamesFor()`: what the /creators list gives that account, plus
@@ -3775,6 +3966,11 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   the page degraded. Browser pages call `CreatorSymbols.load()`
   (`/api/creator-marks`); comments and the search index carry `markHTML`
   drawn by the Worker.
+- **Drawn as text**: `markHTML()` adds U+FE0E after any pictographic code
+  point without a variation selector, so a mark like Harry & Co & Bendan's
+  Gemini sign (U+264A) draws in the wiki's colours, where a phone would paint
+  a coloured emoji. The stored glyph and the export (`nameWithMarks()`) are
+  unchanged.
 - **Routes**: `GET /api/creator-marks` (public), `GET/POST /api/account/mark`
   (own mark; POST `{glyph, show}` or `{remove:true}`),
   `POST /api/admin/creator-mark` — `{username}` clears an account's mark,
