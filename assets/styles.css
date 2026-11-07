@@ -2133,11 +2133,16 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .browse-card-sym {
   display: flex; align-items: center; justify-content: center;
   color: var(--maroon);
+  min-height: 56px;
   margin-bottom: 10px;
 }
 .browse-card-sym svg {
   width: 46px; height: 46px;
   filter: drop-shadow(0 2px 3px rgba(91,31,33,.20));
+}
+.browse-card-sym img {
+  max-height: 56px; width: auto;
+  filter: drop-shadow(0 2px 5px rgba(91,31,33,.3));
 }
 .browse-card-title {
   font-family: 'Dumbledor2', serif; font-weight: 400;
