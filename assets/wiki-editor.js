@@ -139,7 +139,21 @@
       del.type = 'button';
       del.title = 'Remove this box';
       del.setAttribute('aria-label', 'Remove this box');
-      head.appendChild(t); head.appendChild(del);
+      function mover(label, html, move) {
+        var b = el('button', 'we-box-mv');
+        b.type = 'button'; b.innerHTML = html;
+        b.title = label; b.setAttribute('aria-label', label);
+        b.addEventListener('click', function () { if (move()) onChange(); });
+        head.appendChild(b);
+      }
+      head.appendChild(t);
+      mover('Move this box up', '&#9650;', function () {
+        var p = row.previousElementSibling; if (p) container.insertBefore(row, p); return !!p;
+      });
+      mover('Move this box down', '&#9660;', function () {
+        var n = row.nextElementSibling; if (n) container.insertBefore(n, row); return !!n;
+      });
+      head.appendChild(del);
       var c = el('textarea', 'we-box-content');
       c.placeholder = 'Box contents… (same formatting as the page body)';
       c.value = content || '';

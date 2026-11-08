@@ -53,7 +53,7 @@
     .row2 { grid-template-columns:1fr; }
     .jinx-row { grid-template-columns:minmax(0,1fr) minmax(64px,auto) auto; }
   }
-  .box-row { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:14px;
+  .box-row { display:grid; grid-template-columns:1fr auto auto auto; gap:8px; margin-bottom:14px;
     align-items:start; padding-bottom:12px; border-bottom:1px dashed #d8caa8; }
   .box-row:last-of-type { border-bottom:none; }
   .box-row textarea { grid-column:1 / -1; min-height:56px; }
@@ -755,12 +755,20 @@
       row.className = 'box-row';
       row.innerHTML =
         '<input type="text" class="bx-title" placeholder="Box title">' +
+        '<button type="button" class="btn btn-ghost btn-sm bx-up" aria-label="Move box up">&#9650;</button>' +
+        '<button type="button" class="btn btn-ghost btn-sm bx-dn" aria-label="Move box down">&#9660;</button>' +
         '<button type="button" class="btn btn-del btn-sm bx-del" aria-label="Remove box"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
       if (title)   row.querySelector('.bx-title').value   = title;
       if (content) row.querySelector('.bx-content').value = content;
       row.querySelector('.bx-del').addEventListener('click', function () { row.remove(); update(); });
+      row.querySelector('.bx-up').addEventListener('click', function () {
+        var p = row.previousElementSibling; if (p) { row.parentNode.insertBefore(row, p); update(); }
+      });
+      row.querySelector('.bx-dn').addEventListener('click', function () {
+        var n = row.nextElementSibling; if (n) { row.parentNode.insertBefore(n, row); update(); }
+      });
       row.querySelectorAll('input,textarea').forEach(function (el) { el.addEventListener('input', update); });
       row.querySelectorAll('textarea').forEach(function (ta) {
         ta.style.overflowY = 'hidden';
