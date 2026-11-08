@@ -122,7 +122,10 @@
   var ACTION_IDS = ['publish', 'save-draft', 'save', 'save-publish', 'snapshot', 'delete-char', 'status'];
 
   function bucketOf(node) {
-    var cand = [node.id, node.querySelector ? (node.querySelector('[id]') || {}).id : null];
+    // The label's `for` too: a field whose first id is a helper inside it
+    // (Examples' "+ Character" box) is still filed by the box it labels.
+    var cand = [node.id, node.querySelector ? (node.querySelector('[id]') || {}).id : null,
+      node.querySelector ? (node.querySelector('label[for]') || {}).htmlFor : null];
     for (var i = 0; i < cand.length; i++) {
       var id = cand[i];
       if (!id) continue;
