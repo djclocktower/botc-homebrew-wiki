@@ -72,7 +72,7 @@
    WHAT IT DOES (approved scope)
      • Bar: solid deep purple with the Fancy Scripts ribbon damask,
        official leaves growing in from both ends (clipped to the bar,
-       behind the logo, search and menu), a gold rule along the
+       behind the logo, search and menu), a thin gold line along the
        bottom edge (owner's pick, 2026-11). .scrolled no longer
        changes anything.
      • Brand: skull + wordmark aligned, slightly slimmer heights.
@@ -100,7 +100,7 @@ html.redesign-on .topbar {
   gap: clamp(10px, 1.6vw, 22px);
   padding: 7px clamp(16px, 3vw, 36px);
   background: #1c0822;
-  border-bottom: 2px solid #d99a1c;
+  border-bottom: 1px solid rgba(214,196,150,.5);
   box-shadow: 0 4px 14px rgba(5,1,7,.34);
 }
 /* Two layers behind everything in the bar (the bar's z-index makes it the
