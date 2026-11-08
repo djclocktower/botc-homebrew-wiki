@@ -791,7 +791,7 @@
     return card(stack(parts), width, assets.parchment);
   }
 
-  function jinxCard(ctx, jinxes, width, assets) {
+  function jinxCard(ctx, jinxes, width, assets, team) {
     if (!jinxes.length) return null;
     var inner = cardInnerWidth(width);
     var ico = 56, gap = 12, rowPad = 9;
@@ -807,7 +807,7 @@
       var laid = body
         ? layout(ctx, marked(body, 'full'), textW, { size: 17, family: FAM.quote, italic: true, lh: 1.3, color: C.ink })
         : layout(ctx, textRuns(j.name || ''), textW, { size: 17, family: FAM.name, weight: 600, lh: 1.3,
-            color: j.align === 'evil' ? C.evil : C.good });
+            color: (global.jinxAlign ? global.jinxAlign(j, team) : j.align) === 'evil' ? C.evil : C.good });
       var h = Math.max(img ? ico : 0, laid.height);
       parts.push(blk(h, function (c, x, y) {
         if (img) fitInto(c, img, x, y, ico, ico);
@@ -934,7 +934,7 @@
     var sideCards = [infoCard(ctx, d, assets, RIGHT_W, opts)];
     var qr = qrCard(ctx, opts.pageUrl, RIGHT_W, assets);
     if (qr) sideCards.push(qr);
-    var jx = jinxCard(ctx, assets.jinxes, RIGHT_W, assets);
+    var jx = jinxCard(ctx, assets.jinxes, RIGHT_W, assets, d.team);
     if (jx) sideCards.push(jx);
     customBoxCards(ctx, d.customBoxes || [], RIGHT_W, assets).forEach(function (c) { sideCards.push(c); });
     var side = stack(sideCards, CARD_GAP);
