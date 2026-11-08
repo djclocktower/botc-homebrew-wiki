@@ -70,10 +70,11 @@
    fine too).
 
    WHAT IT DOES (approved scope)
-     • Bar: deeper purple matching the marble background, ~98%
-       opaque (stops cards ghosting through on scroll), subtle lift
-       shadow + faint gold glint on the bottom edge; fully solid with
-       a slightly firmer shadow once .scrolled is added past 24px.
+     • Bar: solid deep purple with the Fancy Scripts ribbon damask,
+       official leaves growing in from both ends (clipped to the bar,
+       behind the logo, search and menu), a gold rule along the
+       bottom edge (owner's pick, 2026-11). .scrolled no longer
+       changes anything.
      • Brand: skull + wordmark aligned, slightly slimmer heights.
      • Community Created Content badge — OPTION A: stays in the bar
        after the wordmark, but smaller (24px), slightly dimmed, with
@@ -98,23 +99,44 @@ html.redesign-on .topbar {
   flex-wrap: nowrap;
   gap: clamp(10px, 1.6vw, 22px);
   padding: 7px clamp(16px, 3vw, 36px);
-  background: linear-gradient(180deg, rgba(44,19,51,.97), rgba(26,10,31,.98));
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(214,196,150,.32);
-  box-shadow: 0 4px 14px rgba(5,1,7,.28);
+  background: #1c0822;
+  border-bottom: 2px solid #d99a1c;
+  box-shadow: 0 4px 14px rgba(5,1,7,.34);
 }
-/* faint gilded glint along the bottom edge */
+/* Two layers behind everything in the bar (the bar's z-index makes it the
+   stacking context, so -1 is above its own background and below its
+   children). ::before is the Fancy Scripts sidebar ribbon damask, turned to
+   run along the bar and mirrored at its ends so it tiles; it is a MASK, so
+   the colour lives here. ::after is the leaves (official art from the Fancy
+   Scripts decor set, pre-composed into one picture per side), clipped to the
+   bar because a background never paints outside its box. The pictures are
+   57px tall, the bar's height; the phone set is arranged for a narrow bar. */
+html.redesign-on .topbar::before,
 html.redesign-on .topbar::after {
-  content: "";
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
-  background: linear-gradient(90deg, transparent 6%, rgba(214,196,150,.45) 50%, transparent 94%);
-  pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
 }
-/* stronger, fully-solid bar once scrolled (see step 4 above) */
-html.redesign-on .topbar.scrolled {
-  background: linear-gradient(180deg, rgba(37,15,43,.99), rgba(22,8,26,.99));
-  box-shadow: 0 6px 18px rgba(5,1,7,.34);
+html.redesign-on .topbar::before {
+  background: #48205c;
+  -webkit-mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
+          mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
 }
+html.redesign-on .topbar::after {
+  background: url('topbar/leaves-left.webp') left top / auto 57px no-repeat,
+              url('topbar/leaves-right.webp') right top / auto 57px no-repeat;
+}
+@media (max-width: 880px) {
+  html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
+  html.redesign-on .topbar::after {
+    background-image: url('topbar/leaves-left-m.webp'), url('topbar/leaves-right-m.webp');
+  }
+}
+/* keep what sits over the leaves readable */
+html.redesign-on .brand-skull,
+html.redesign-on .brand-header-text {
+  filter: drop-shadow(0 0 1.5px #12041a) drop-shadow(0 0 4px rgba(18,4,26,.95)) drop-shadow(0 0 8px rgba(18,4,26,.7));
+}
+html.redesign-on .crumb a { text-shadow: 0 1px 3px rgba(10,2,14,.9); }
+html.redesign-on .hamburger span { box-shadow: 0 0 0 1px rgba(20,6,26,.55), 0 1px 4px rgba(10,2,14,.9); }
 
 /* ── 2. Brand lockup ──────────────────────────────────────────── */
 html.redesign-on .brand { gap: 10px; align-items: center; }
@@ -211,7 +233,7 @@ html.redesign-on .topbar .topbar-badge {
 
 /* ── 4. Search ────────────────────────────────────────────────── */
 html.redesign-on .search-input {
-  background-color: rgba(240,232,213,.06);
+  background-color: rgba(28,8,34,.88);   /* solid enough to read over the leaves */
   border: 1px solid rgba(214,196,150,.35);
   padding: 8px 12px 8px 32px;   /* keeps room for the inline SVG magnifier */
   font-size: .85rem;
@@ -224,7 +246,7 @@ html.redesign-on .search-wrap { flex-shrink: 1; min-width: 0; }
 html.redesign-on .search-input::placeholder { color: rgba(222,207,167,.55); }
 html.redesign-on .search-input:focus {
   border-color: rgba(214,196,150,.75);
-  background-color: rgba(240,232,213,.10);
+  background-color: rgba(28,8,34,.94);
   box-shadow: 0 0 0 3px rgba(214,196,150,.14);
 }
 

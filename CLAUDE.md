@@ -929,6 +929,16 @@ assets/
   starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
                        the gallery in an iframe; the picked PNG goes into the
                        art file input with a change event.
+  topbar/              The top bar's art, drawn by header-redesign.css
+                       section 1 as the bar's ::before / ::after (no markup):
+                       ribbon-damask.webp is a MASK (the Fancy Scripts sidebar
+                       ribbon, turned sideways and mirrored to tile; the colour
+                       is in the CSS), leaves-left/right(-m).webp are official
+                       leaves from the Fancy Scripts decor set
+                       (branch ccr-4b7b5eb2-95qzpo, assets/fancyscripts/decor),
+                       pre-composed per side at the bar's 57px height, desktop
+                       and phone sets. To move a leaf, recompose the picture;
+                       nothing else knows where they are.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
