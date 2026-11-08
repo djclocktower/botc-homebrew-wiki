@@ -70,11 +70,9 @@
    fine too).
 
    WHAT IT DOES (approved scope)
-     • Bar: solid deep purple with the Fancy Scripts ribbon damask,
-       official leaves growing in from both ends (clipped to the bar,
-       behind the logo, search and menu), a thin gold line along the
-       bottom edge (owner's pick, 2026-11). .scrolled no longer
-       changes anything.
+     • Bar: solid deep purple with the Fancy Scripts ribbon damask
+       and a thin gold line along the bottom edge (owner's pick,
+       2026-11). .scrolled no longer changes anything.
      • Brand: skull + wordmark aligned, slightly slimmer heights.
      • Community Created Content badge — OPTION A: stays in the bar
        after the wordmark, but smaller (24px), slightly dimmed, with
@@ -103,38 +101,21 @@ html.redesign-on .topbar {
   border-bottom: 1px solid rgba(214,196,150,.5);
   box-shadow: 0 2px 6px rgba(8,4,10,.2);
 }
-/* Two layers behind everything in the bar (the bar's z-index makes it the
-   stacking context, so -1 is above its own background and below its
-   children). ::before is the Fancy Scripts sidebar ribbon damask, turned to
-   run along the bar and mirrored at its ends so it tiles; it is a MASK, so
-   the colour lives here. ::after is the leaves (official art from the Fancy
-   Scripts decor set, pre-composed into one picture per side), clipped to the
-   bar because a background never paints outside its box. The pictures are
-   drawn at the bar's height inside its border (they were made at 56px), and each holds only its
-   own side's leaves, trimmed to where they end, so nothing is cut but by
-   the bar; the phone set is arranged for a narrow bar. */
-html.redesign-on .topbar::before,
-html.redesign-on .topbar::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-}
+/* The damask: the Fancy Scripts sidebar ribbon, turned to run along the bar
+   and mirrored at its ends so it tiles. It is a MASK, so the colour lives
+   here. z-index -1 sits above the bar's own background and below its
+   children (the bar's z-index makes it the stacking context). */
 html.redesign-on .topbar::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: #452953;
   opacity: .7;   /* the damask, softened into the ground */
   -webkit-mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
           mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
 }
-html.redesign-on .topbar::after {
-  opacity: .8;   /* lets a little of the damask through the leaves */
-  background: url('topbar/leaves-left-v3.webp') left top / auto 100% no-repeat,
-              url('topbar/leaves-right-v3.webp') right top / auto 100% no-repeat;
-}
 @media (max-width: 880px) {
   html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
-  html.redesign-on .topbar::after {
-    background-image: url('topbar/leaves-left-m-v3.webp'), url('topbar/leaves-right-m-v3.webp');
-  }
 }
-/* keep what sits over the leaves readable */
+/* a soft shadow so the logo, links and menu sit off the damask */
 html.redesign-on .brand-skull,
 html.redesign-on .brand-header-text {
   filter: drop-shadow(0 0 1.5px rgba(16,10,19,.75)) drop-shadow(0 0 4px rgba(16,10,19,.5));
@@ -237,7 +218,7 @@ html.redesign-on .topbar .topbar-badge {
 
 /* ── 4. Search ────────────────────────────────────────────────── */
 html.redesign-on .search-input {
-  background-color: rgba(26,12,30,.88);   /* solid enough to read over the leaves */
+  background-color: rgba(26,12,30,.88);
   border: 1px solid rgba(214,196,150,.35);
   padding: 8px 12px 8px 32px;   /* keeps room for the inline SVG magnifier */
   font-size: .85rem;
