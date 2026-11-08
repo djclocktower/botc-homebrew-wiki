@@ -121,6 +121,7 @@ html.redesign-on .topbar::before {
           mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
 }
 html.redesign-on .topbar::after {
+  opacity: .8;   /* lets a little of the damask through the leaves */
   background: url('topbar/leaves-left.webp') left top / auto 57px no-repeat,
               url('topbar/leaves-right-2.webp') right top / auto 57px no-repeat;
 }
