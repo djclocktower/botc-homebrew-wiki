@@ -98,7 +98,7 @@
 html.redesign-on .topbar {
   flex-wrap: nowrap;
   gap: clamp(10px, 1.6vw, 22px);
-  padding: 7px clamp(16px, 3vw, 36px);
+  padding: 4px clamp(16px, 3vw, 36px);
   background: #1c0822;
   border-bottom: 1px solid rgba(214,196,150,.5);
   box-shadow: 0 4px 14px rgba(5,1,7,.34);
@@ -110,7 +110,7 @@ html.redesign-on .topbar {
    the colour lives here. ::after is the leaves (official art from the Fancy
    Scripts decor set, pre-composed into one picture per side), clipped to the
    bar because a background never paints outside its box. The pictures are
-   56px tall, the bar's height inside its border, and each holds only its
+   drawn at the bar's height inside its border (they were made at 56px), and each holds only its
    own side's leaves, trimmed to where they end, so nothing is cut but by
    the bar; the phone set is arranged for a narrow bar. */
 html.redesign-on .topbar::before,
@@ -124,8 +124,8 @@ html.redesign-on .topbar::before {
 }
 html.redesign-on .topbar::after {
   opacity: .8;   /* lets a little of the damask through the leaves */
-  background: url('topbar/leaves-left-v3.webp') left top / auto 56px no-repeat,
-              url('topbar/leaves-right-v3.webp') right top / auto 56px no-repeat;
+  background: url('topbar/leaves-left-v3.webp') left top / auto 100% no-repeat,
+              url('topbar/leaves-right-v3.webp') right top / auto 100% no-repeat;
 }
 @media (max-width: 880px) {
   html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
