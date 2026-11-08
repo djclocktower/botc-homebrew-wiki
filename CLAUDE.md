@@ -933,9 +933,13 @@ assets/
                        section 1 as the bar's ::before (no markup):
                        ribbon-damask.webp is a MASK (the Fancy Scripts sidebar
                        ribbon, turned sideways and mirrored to tile; the colour
-                       and strength are in the CSS). Official leaves growing
-                       in from both ends were tried and dropped (owner's call,
-                       2026-11).
+                       and strength are in the CSS). leaves-right(-m)-v3.webp
+                       are official leaves from the Fancy Scripts decor set
+                       (branch ccr-4b7b5eb2-95qzpo), the bar's ::after, on the
+                       RIGHT end only (the owner dropped the left side,
+                       2026-11), one picture for desktop and one for phones.
+                       They are cached for a year (/assets/*.webp), so a
+                       recomposed picture takes a new filename.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.

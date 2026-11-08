@@ -70,9 +70,10 @@
    fine too).
 
    WHAT IT DOES (approved scope)
-     • Bar: solid deep purple with the Fancy Scripts ribbon damask
-       and a thin gold line along the bottom edge (owner's pick,
-       2026-11). .scrolled no longer changes anything.
+     • Bar: solid deep purple with the Fancy Scripts ribbon damask,
+       official leaves growing in from the right end, and a thin gold
+       line along the bottom edge (owner's pick, 2026-11). .scrolled
+       no longer changes anything.
      • Brand: skull + wordmark aligned, slightly slimmer heights.
      • Community Created Content badge — OPTION A: stays in the bar
        after the wordmark, but smaller (24px), slightly dimmed, with
@@ -101,19 +102,30 @@ html.redesign-on .topbar {
   border-bottom: 1px solid rgba(214,196,150,.5);
   box-shadow: 0 2px 6px rgba(8,4,10,.2);
 }
-/* The damask: the Fancy Scripts sidebar ribbon, turned to run along the bar
-   and mirrored at its ends so it tiles. It is a MASK, so the colour lives
-   here. z-index -1 sits above the bar's own background and below its
-   children (the bar's z-index makes it the stacking context). */
-html.redesign-on .topbar::before {
+/* Two layers behind everything in the bar (z-index -1 sits above the bar's
+   own background and below its children; the bar's z-index makes it the
+   stacking context). ::before is the damask: the Fancy Scripts sidebar
+   ribbon, turned to run along the bar and mirrored at its ends so it tiles.
+   It is a MASK, so the colour lives here. ::after is the leaves on the
+   RIGHT end only (official art from the Fancy Scripts decor set, one
+   picture per screen size, drawn at the bar's height and clipped by it). */
+html.redesign-on .topbar::before,
+html.redesign-on .topbar::after {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+}
+html.redesign-on .topbar::before {
   background: #452953;
   opacity: .7;   /* the damask, softened into the ground */
   -webkit-mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
           mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
 }
+html.redesign-on .topbar::after {
+  opacity: .8;
+  background: url('topbar/leaves-right-v3.webp') right top / auto 100% no-repeat;
+}
 @media (max-width: 880px) {
   html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
+  html.redesign-on .topbar::after { background-image: url('topbar/leaves-right-m-v3.webp'); }
 }
 /* a soft shadow so the logo, links and menu sit off the damask */
 html.redesign-on .brand-skull,
