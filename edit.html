@@ -713,13 +713,22 @@
         '<input type="text" class="jx-name" placeholder="Jinxed character">' +
         '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
         '<button type="button" class="btn btn-del btn-sm jx-del" aria-label="Remove jinx"><span class="ico ico-x" aria-hidden="true"></span></button>' +
-        '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
+        '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>' +
+        '<span class="jx-move"><button type="button" class="btn btn-ghost btn-sm jx-up" aria-label="Move jinx up">&#9650;</button>' +
+        '<button type="button" class="btn btn-ghost btn-sm jx-down" aria-label="Move jinx down">&#9660;</button></span>';
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
       else if (name) row.querySelector('.jx-name').value = name;
       if(align) row.querySelector('.jx-align').value = align;
       if(text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function(){ row.remove(); update(); });
+      // Stored in the order the rows stand, so moving a row IS the order.
+      row.querySelector('.jx-up').addEventListener('click', function () {
+        var p = row.previousElementSibling; if (p) { row.parentNode.insertBefore(p, row.nextSibling); update(); }
+      });
+      row.querySelector('.jx-down').addEventListener('click', function () {
+        var n = row.nextElementSibling; if (n) { row.parentNode.insertBefore(n, row); update(); }
+      });
       row.querySelectorAll('input,select,textarea').forEach(function(el){ el.addEventListener('input', update); });
       row.querySelectorAll('textarea').forEach(function(ta) {
         ta.style.overflowY = 'hidden';
