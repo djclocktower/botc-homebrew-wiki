@@ -4482,10 +4482,9 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
    SCRIPT BUILDER — the app shell (.sbx-*, script.html)
    ════════════════════════════════════════════════════════════════
 
-   The OLD builder styles are the .sb-* block further up. They are still
-   there because tokens.html (the Token Tool) reuses the whole of that
-   layout — .sb-layout, .sb-add-sidebar, .sb-script-item and the rest. Do
-   not fold the two together: this namespace belongs to the builder alone.
+   The OLD builder styles are the .sb-* block further up. Nothing draws
+   that layout any more: the Token Tool and Fancy Scripts sit in this
+   frame too, each adding only its own page-local rules.
 
    The shell is a FIXED-HEIGHT app, not a scrolling page. The old builder
    was a normal document with a `height: calc(100vh - 56px)` sticky

@@ -411,54 +411,135 @@
   }
   var pendingEdit = null;
 
-  /* ---- LEFT SIDEBAR: all characters, grouped by team (Script Builder style) ---- */
-  function renderSidebar(filter) {
-    filter = (filter || '').trim().toLowerCase();
+  /* ---- the character panel (the Script Builder's rows) ----
+     Built ONCE: 3,700 rows rebuilt per keystroke, or per character added,
+     was what made this panel slow. A search hides rows in place, after a
+     short pause in the typing, and adding a character repaints one row. */
+  function ico(n) { return window.UIIcons ? window.UIIcons.svg(n) : ''; }
+  var rowBySlug = {};
+  function renderSidebar() {
     var html = '';
+    var known = TEAMS.map(function (t) { return t[0]; });
     TEAMS.forEach(function (t) {
       var key = t[0], label = t[1];
       var group = allChars.filter(function (c) {
-        if (c.team !== key) return false;
-        if (filter && (c.name || '').toLowerCase().indexOf(filter) === -1) return false;
-        return true;
+        return c.team === key || (key === 'other' && known.indexOf(c.team) < 0);
       }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
       if (!group.length) return;
-      html += '<div class="sb-add-group"><h3 class="sb-add-grouphead">' + esc(label) + '</h3>';
+      html += '<div class="sbx-add-group"><h3 class="sbx-add-grouphead">' + esc(label) +
+        ' <span class="sbx-add-groupcount">(' + group.length + ')</span></h3><div class="sbx-add-rows">';
       group.forEach(function (c) {
         var on = setSlugs.indexOf(c.slug) >= 0;
-        var ability = c.ability || '';
-        html += '<div class="sb-add-row">' +
-          '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-            '<span class="sb-add-name">' + esc(c.name) + '</span>' +
+        html += '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
+          '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
+            '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+            '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+            '<span class="sbx-add-tick" aria-hidden="true">' + ico('check') + '</span>' +
           '</button>' +
-          (ability
-            ? '<button type="button" class="sb-add-chevron" data-slug="' + esc(c.slug) + '" aria-label="Show ability" aria-expanded="false">&#9662;</button>' +
-              '<div class="sb-add-ability" id="tta-' + esc(c.slug) + '" hidden>' + esc(ability) + '</div>'
-            : '') +
+          (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + ico('down') + '</button>' : '') +
+          '</div>' +
+          (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
           '</div>';
       });
-      html += '</div>';
+      html += '</div></div>';
     });
-    $('sb-add-list').innerHTML = html || '<p class="sb-loading">No matches.</p>';
+    var list = $('sb-add-list');
+    list.innerHTML = html || '<p class="sbx-note">No characters found.</p>';
+    rowBySlug = {};
+    [].slice.call(list.querySelectorAll('.sbx-add-row')).forEach(function (r) {
+      r._name = (r.querySelector('.sbx-add-name').textContent || '').toLowerCase();
+      var ab = r.querySelector('.sbx-add-ab');
+      r._ab = ab ? ab.textContent.toLowerCase() : '';
+      rowBySlug[r.dataset.slug] = r;
+    });
+    filterSidebar();
+  }
+  function filterSidebar() {
+    var q = ($('sb-filter').value || '').trim().toLowerCase();
+    var abil = $('tt-abilities').checked, shown = 0, total = 0;
+    [].slice.call($('sb-add-list').querySelectorAll('.sbx-add-group')).forEach(function (g) {
+      var n = 0;
+      [].slice.call(g.querySelectorAll('.sbx-add-row')).forEach(function (r) {
+        var vis = !q || r._name.indexOf(q) >= 0 || (abil && r._ab.indexOf(q) >= 0);
+        var want = vis ? '' : 'none';
+        if (r.style.display !== want) r.style.display = want;
+        if (vis) n++;
+        total++;
+      });
+      g.style.display = n ? '' : 'none';
+      g.querySelector('.sbx-add-groupcount').textContent = '(' + n + ')';
+      shown += n;
+    });
+    $('tt-side-count').textContent = q ? shown + ' of ' + total + ' characters' : total + ' characters';
+  }
+  function paintSidebarOn() {
+    Object.keys(rowBySlug).forEach(function (sl) {
+      var b = rowBySlug[sl].firstChild.firstChild, on = setSlugs.indexOf(sl) >= 0;
+      if (b.classList.contains('on') !== on) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+    });
+  }
+  function sideOpen(on) {
+    $('sbx-side').classList.toggle('on', on);
+    $('sbx-scrim').classList.toggle('on', on);
+    document.documentElement.classList.toggle('sbx-locked', on);
   }
 
   function wireSidebar() {
     $('sb-add-list').addEventListener('click', function (e) {
-      var chev = e.target.closest('.sb-add-chevron');
-      if (chev) {
-        var box = $('tta-' + chev.dataset.slug);
-        if (box) { box.hidden = !box.hidden; chev.classList.toggle('open', !box.hidden); chev.setAttribute('aria-expanded', String(!box.hidden)); }
-        return;
-      }
-      var item = e.target.closest('.sb-add-item');
+      var chev = e.target.closest('.sbx-add-chev');
+      if (chev) { chev.closest('.sbx-add-row').classList.toggle('open'); return; }
+      var item = e.target.closest('.sbx-add-item');
       if (!item) return;
       var sl = item.dataset.slug;
       if (setSlugs.indexOf(sl) >= 0) removeSlug(sl); else addSlug(sl);
     });
-    $('sb-filter').addEventListener('input', function () { renderSidebar(this.value); });
-    $('sb-mobile-toggle').addEventListener('click', function () { $('sb-add-sidebar').classList.add('open'); });
-    $('sb-close-mobile').addEventListener('click', function () { $('sb-add-sidebar').classList.remove('open'); });
+    var timer = 0;
+    $('sb-filter').addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(filterSidebar, 120); });
+    $('sb-filter').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      clearTimeout(timer); filterSidebar();
+      var first = [].slice.call($('sb-add-list').querySelectorAll('.sbx-add-row')).filter(function (r) { return r.style.display !== 'none'; })[0];
+      if (first) first.querySelector('.sbx-add-item').click();
+    });
+    $('tt-abilities').addEventListener('change', function () {
+      $('sb-add-list').classList.toggle('abil', this.checked);
+      filterSidebar();
+    });
+    $('sbx-open').addEventListener('click', function () { sideOpen(true); });
+    $('sbx-close').addEventListener('click', function () { sideOpen(false); });
+    $('sbx-scrim').addEventListener('click', function () { sideOpen(false); });
+  }
+
+  /* ---- the tabs ---- */
+  function showTab(name) {
+    [].slice.call(document.querySelectorAll('#tt-tabs .sbx-tab')).forEach(function (b) {
+      var on = b.dataset.tab === name;
+      b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    [].slice.call(document.querySelectorAll('.tt-panes .sbx-pane')).forEach(function (p) {
+      p.classList.toggle('on', p.dataset.tab === name);
+    });
+    $('tt-work').setAttribute('data-tab', name);
+    var sc = $('sbx-scroll'); sc.scrollTop = 0;
+    // a phone scrolls the document: put the tab strip back where it sticks
+    if (getComputedStyle(sc).overflowY === 'visible') {
+      var tb = document.querySelector('.topbar');
+      var target = sc.offsetTop - (tb ? tb.offsetHeight : 56) - $('tt-tabs').offsetHeight;
+      if ((window.pageYOffset || 0) > target) window.scrollTo(0, Math.max(0, target));
+    }
+    try { localStorage.setItem('botc_token_tab', name); } catch (e) {}
+  }
+  function wireTabs() {
+    $('tt-tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('.sbx-tab'); if (b) showTab(b.dataset.tab);
+    });
+    var t = null; try { t = localStorage.getItem('botc_token_tab'); } catch (e) {}
+    if (t && document.querySelector('#tt-tabs .sbx-tab[data-tab="' + t + '"]')) showTab(t);
+    function syncTop() {
+      var tb = document.querySelector('.topbar');
+      document.documentElement.style.setProperty('--sbx-top', (tb ? tb.offsetHeight : 56) + 'px');
+    }
+    syncTop(); window.addEventListener('resize', syncTop);
   }
 
   /* ---- working set (main column, Script Builder rows + stepper + edit) ---- */
@@ -495,7 +576,11 @@
     var box = $('tt-set');
     $('tt-count').textContent = setSlugs.length + ' character' + (setSlugs.length === 1 ? '' : 's');
     var chars = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(Boolean);
-    if (!chars.length) { box.innerHTML = '<p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>'; return; }
+    if (!chars.length) {
+      box.innerHTML = '<div class="tt-empty"><p>Add characters from the panel, or import a script.</p>' +
+        '<button type="button" class="tt-btn-sm" id="tt-empty-open">Add characters</button></div>';
+      return;
+    }
     var html = '';
     var known = TEAMS.map(function (t) { return t[0]; });
     TEAMS.forEach(function (t) {
@@ -503,27 +588,29 @@
       // Other also holds any team this list does not know.
       var group = chars.filter(function (c) { return c.team === key || (key === 'other' && known.indexOf(c.team) < 0); });
       if (!group.length) return;
-      html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
+      html += '<div class="sbx-panel tt-team"><h3 class="tt-team-head">' + esc(label) + ' <span>(' + group.length + ')</span></h3><div class="tt-team-rows">';
       group.forEach(function (c) {
         var edited = adjState.per[c.slug] && Object.keys(adjState.per[c.slug].adj || {}).length > 0;
-        html += '<div class="sb-script-item">' +
-          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-          '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
-          '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
+        html += '<div class="tt-item">' +
+          '<img class="tt-item-img" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+          '<div class="tt-item-txt"><span class="tt-item-name">' + esc(c.name) + (edited ? '<span class="tt-edited-dot" title="Has its own adjustments"></span>' : '') + '</span>' +
+          '<span class="tt-item-ab">' + esc(c.ability || '') + '</span>' +
           versionChipsHTML(c) + '</div>' +
+          '<div class="tt-item-btns">' +
           stepperHTML('tt-step-char', c.slug, charCount(c.slug)) +
-          '<button type="button" class="tt-edit-btn" data-slug="' + esc(c.slug) + '" aria-label="Edit token"><span class="ico ico-edit" aria-hidden="true"></span></button>' +
-          '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove"><span class="ico ico-x" aria-hidden="true"></span></button>' +
-          '</div>';
+          '<button type="button" class="sbx-icon tt-edit-btn" data-slug="' + esc(c.slug) + '" title="Edit this token" aria-label="Edit token">' + ico('pencil') + '</button>' +
+          '<button type="button" class="sbx-icon tt-rm" data-slug="' + esc(c.slug) + '" title="Remove" aria-label="Remove">' + ico('close') + '</button>' +
+          '</div></div>';
       });
-      html += '</div>';
+      html += '</div></div>';
     });
     box.innerHTML = html;
   }
-  function renderAll() { renderSet(); renderSidebar($('sb-filter').value); refreshMainTf(); }
+  function renderAll() { renderSet(); paintSidebarOn(); refreshMainTf(); }
   function wireSet() {
     $('tt-set').addEventListener('click', function (e) {
-      var rm = e.target.closest('.sb-script-remove');
+      if (e.target.closest('#tt-empty-open')) { if (window.innerWidth <= 900) sideOpen(true); else $('sb-filter').focus(); return; }
+      var rm = e.target.closest('.tt-rm');
       if (rm) { removeSlug(rm.dataset.slug); return; }
       var ed = e.target.closest('.tt-edit-btn');
       if (ed) { openEditor(ed.dataset.slug); return; }
@@ -617,7 +704,7 @@
         html += '</div></div>';
       } else {
         var gear = (f.k === 'name_kern' && prefix === 'ta-')
-          ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">&#9881;&#xFE0E;</button>' : '';
+          ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">' + ico('gear') + '</button>' : '';
         html += '<div class="tt-row"><label>' + f.label + gear + '</label><div class="tt-range">' +
           '<input type="range" id="' + prefix + f.k + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">' +
           '<output id="' + prefix + f.k + '-out"></output></div></div>';
@@ -694,12 +781,6 @@
 
   /* global "Adjust All Tokens" card */
   function wireGlobalAdj() {
-    $('tt-adj-toggle').addEventListener('click', function () {
-      var body = $('tt-adj-body');
-      var open = body.style.display !== 'none';
-      body.style.display = open ? 'none' : '';
-      $('tt-adj-caret').innerHTML = open ? '&#9662;' : '&#9652;';
-    });
     buildAdjPanel($('tt-adj-panel'), 'ga-',
       function (k) { return globalVal(k); },
       function (k, v) {
@@ -1171,12 +1252,6 @@
     });
   }
   function wireAssets() {
-    $('tt-assets-toggle').addEventListener('click', function () {
-      var body = $('tt-assets-body');
-      var open = body.style.display !== 'none';
-      body.style.display = open ? 'none' : '';
-      $('tt-assets-caret').innerHTML = open ? '&#9662;' : '&#9652;';
-    });
     renderAssets();
     $('tt-assets-panel').addEventListener('click', function (e) {
       var up = e.target.closest('.tt-asset-up');
@@ -1660,6 +1735,7 @@
       if (!pyReady || !slugs.length) return;
       var btn = this; btn.disabled = true;
       $('output').innerHTML = ''; $('thumbs').innerHTML = ''; clearMsg();
+      showTab('print');
       showGenLoad();
       var payloads = [];
       slugs.forEach(function (sl) { payloads = payloads.concat(payloadsFor(sl)); });
@@ -1696,7 +1772,7 @@
     setSlugs = loadSet().filter(function (sl) { return charBySlug[sl]; });
     return ingestUrl();
   }).then(function () {
-    saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
+    saveSet(); renderSidebar(); renderAll(); wireSidebar(); wireTabs(); wireSet(); wireOptions(); wireGenerate();
     wireGlobalAdj(); wireEditor(); wireAssets(); wireStyle(); wireImport(); wireTransform();
     refreshGenerate(); schedulePreview();
     if (pendingEdit) openEditor(pendingEdit);

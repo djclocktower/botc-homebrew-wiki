@@ -1187,6 +1187,15 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning).
+                       Sits in the Script Builder's app frame (.sbx-*): the
+                       characters are the side panel (the builder's .sbx-add-*
+                       rows, built once, filtered in place after a pause in
+                       the typing, one row repainted per add), Import / Clear
+                       / Generate sheets the bar, and Tokens / Print / Adjust
+                       / Custom Art the tabs (botc_token_tab), with the
+                       preview pinned beside them (above them on a narrow
+                       screen, and only on Adjust and Custom Art there).
+                       Generating opens the Print tab, where the sheets land.
                        Adjustments layer defaults -> Custom Style -> All
                        Tokens -> one token; custom art is a slot's own upload,
                        else the style's. "Save as Custom Style" (on the page
