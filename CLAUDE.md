@@ -933,7 +933,7 @@ assets/
                        section 1 as the bar's ::before (no markup):
                        ribbon-damask.webp is a MASK (the Fancy Scripts sidebar
                        ribbon, turned sideways and mirrored to tile; the colour
-                       and strength are in the CSS). leaves-right(-m)-v4.webp
+                       and strength are in the CSS). leaves-right(-m)-v5.webp
                        are official leaves from the Fancy Scripts decor set
                        (branch ccr-4b7b5eb2-95qzpo), the bar's ::after, on the
                        RIGHT end only (the owner dropped the left side,
