@@ -698,7 +698,7 @@
       if (!nm) nm = j.id || '';
       return {
         name: nm,
-        align: j.align === 'evil' ? 'evil' : 'good',
+        align: j.align === 'evil' || j.align === 'good' ? j.align : '',
         text: j.text || j.reason || '',
         slug: j.slug || '',
         id: j.id || ''
@@ -718,7 +718,10 @@
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
       else if (name) row.querySelector('.jx-name').value = name;
-      if (align) row.querySelector('.jx-align').value = align;
+      // Unchosen, the side follows the team (Minion/Demon: evil) until picked.
+      var alSel = row.querySelector('.jx-align');
+      if (align) alSel.value = align; else { alSel.dataset.auto = '1'; alSel.value = teamJinxAlign(); }
+      alSel.addEventListener('change', function () { delete alSel.dataset.auto; });
       if (text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
       // Stored in the order the rows stand, so moving a row IS the order.
@@ -741,6 +744,10 @@
       if (window.checkJinxConflicts) window.checkJinxConflicts();
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
+    function teamJinxAlign() { return window.jinxAlign ? window.jinxAlign(null, $('team').value) : 'good'; }
+    $('team').addEventListener('change', function () {
+      document.querySelectorAll('.jx-align[data-auto]').forEach(function (sel) { sel.value = teamJinxAlign(); });
+    });
 
     // ── custom sidebar box rows ────────────────────────────────────
     function addBox(title, content) {

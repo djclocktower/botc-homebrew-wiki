@@ -3609,9 +3609,10 @@ function sanitizeJinxes(jinxes) {
   return jinxes.map(j => {
     const o = {
       name: String((j && j.name) || '').slice(0, 120).trim(),
-      align: (j && j.align) === 'evil' ? 'evil' : 'good',
       text: String((j && (j.text || j.reason)) || '').slice(0, 2000)
     };
+    // Unset stays unset, so it follows the character's team (Render.jinxAlign).
+    if (j && (j.align === 'evil' || j.align === 'good')) o.align = j.align;
     // `slug` points at a page on this wiki, `id` at an official character.
     const slug = String((j && j.slug) || '');
     if (/^[a-z0-9-]{1,80}$/.test(slug)) o.slug = slug;
@@ -8742,7 +8743,7 @@ function buildJinxIndex(chars, officialNames) {
         key,
         name: j.name || '',
         id: j.id || '',
-        align: j.align === 'evil' ? 'evil' : 'good',
+        align: Render.jinxAlign(j, c.team),
         text
       };
       edges.push(edge);
