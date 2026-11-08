@@ -119,6 +119,7 @@ html.redesign-on .topbar::after {
 }
 html.redesign-on .topbar::before {
   background: #452953;
+  opacity: .7;   /* the damask, softened into the ground */
   -webkit-mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
           mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
 }
