@@ -1,4 +1,4 @@
-import json, math
+import json, math, unicodedata
 import numpy as _np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -98,22 +98,79 @@ def render_ability(text, size_mul=1.0, dy=0):
     return img
 
 # ---------- NAME (arced, per-glyph, embossed) ----------
+# Dumbledor has 75 glyphs and no accented letters, so an accented name letter
+# is drawn as its plain Dumbledor letter with Trade Gothic's accent above (or
+# below) it; a letter with no plain form (Ø, Æ, Ł…) is drawn in Trade Gothic.
+DUM_CHARS = set(' !"$&\'*,-./0123456789?@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')
+MARKS = {0x300: '`', 0x301: '\u00b4', 0x302: '\u02c6', 0x303: '\u02dc', 0x304: '\u00af',
+         0x306: '\u02d8', 0x307: '\u02d9', 0x308: '\u00a8', 0x30A: '\u02da', 0x30B: '\u02dd',
+         0x30C: '\u02c7', 0x327: '\u00b8', 0x328: '\u02db'}
+MARKS_BELOW = (0x327, 0x328)
+_tg_cache = {}
+
+def _tg(size):
+    if size not in _tg_cache:
+        _tg_cache[size] = ImageFont.truetype(TG, size)
+    return _tg_cache[size]
+
+def _ink(font, ch):
+    """Ink box of ch drawn at (0, 0); getbbox() is wrong for Trade Gothic's accents."""
+    o = font.size
+    im = Image.new('L', (o * 3, o * 3))
+    ImageDraw.Draw(im).text((o, o), ch, font=font, fill=255)
+    b = im.getbbox() or (o, o, o, o)
+    return (b[0] - o, b[1] - o, b[2] - o, b[3] - o)
+
+def glyph_parts(ch, f):
+    """(font, base letter, [combining marks]) for one name letter."""
+    if ch in DUM_CHARS:
+        return f, ch, []
+    d = unicodedata.normalize('NFD', ch)
+    if d[0] in DUM_CHARS and all(ord(m) in MARKS for m in d[1:]):
+        return f, d[0], [ord(m) for m in d[1:]]
+    return _tg(f.size), ch, []
+
+def glyph_adv(ch, f):
+    gf, base, _ = glyph_parts(ch, f)
+    return gf.getlength(base)
+
+def _draw_glyph(d, xy, ch, f, fill):
+    gf, base, marks = glyph_parts(ch, f)
+    x, y = xy
+    d.text((x, y), base, font=gf, fill=fill)
+    if not marks:
+        return
+    bb = _ink(gf, base)                # ink box of the plain letter
+    cx = x + (bb[0] + bb[2]) / 2.0
+    tg = _tg(f.size)
+    top, bot = y + bb[1], y + bb[3]
+    for m in marks:
+        mb = _ink(tg, MARKS[m])
+        mx = cx - (mb[0] + mb[2]) / 2.0
+        if m in MARKS_BELOW:
+            my = bot - mb[1] - f.size * 0.02
+        else:
+            my = top - f.size * 0.05 - mb[3]
+            top = my + mb[1]           # a second mark stacks above the first
+        d.text((mx, my), MARKS[m], font=tg, fill=fill)
+
 def glyph_tile(ch, f, asc, desc, pad=12):
-    adv = f.getlength(ch)
+    adv = glyph_adv(ch, f)
+    top = int(f.size * 0.3) if glyph_parts(ch, f)[2] else 0   # room for an accent
     tw = max(1, int(math.ceil(adv)) + 2*pad)
-    th = asc + desc + 2*pad
-    x, yb = pad, pad
+    th = asc + desc + 2*pad + top
+    x, yb = pad, pad + top
     # soft drop shadow for gentle lift off the parchment
     sh = Image.new('RGBA', (tw, th), (0,0,0,0))
-    ImageDraw.Draw(sh).text((x+1, yb+2), ch, font=f, fill=(0,0,0,150))
+    _draw_glyph(ImageDraw.Draw(sh), (x+1, yb+2), ch, f, (0,0,0,150))
     sh = sh.filter(ImageFilter.GaussianBlur(1.6))
     tile = sh
     g = ImageDraw.Draw(tile)
     # whisper of a top-left highlight (peeks out from under the fill)
-    g.text((x-1, yb-1), ch, font=f, fill=(248,242,226,70))
+    _draw_glyph(g, (x-1, yb-1), ch, f, (248,242,226,70))
     # solid, clean fill
-    g.text((x, yb), ch, font=f, fill=FILL)
-    anchor = (pad + adv/2.0, pad + asc)
+    _draw_glyph(g, (x, yb), ch, f, FILL)
+    anchor = (pad + adv/2.0, yb + asc)
     return tile, anchor, adv
 
 def _name_radius(total_adv):
@@ -123,7 +180,7 @@ def _name_radius(total_adv):
     return NAME_R_MAX + t*(NAME_R_MIN - NAME_R_MAX)
 
 def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0, kern=0.0, gaps=None):
-    name = name.upper()
+    name = unicodedata.normalize('NFC', name).upper()
     arc = max(0.2, float(arc))
     # kern: extra letter spacing in em, on top of NAME_TRACK (the Kerning slider)
     kern = min(0.4, max(-0.15, float(kern or 0)))
@@ -144,7 +201,7 @@ def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0, kern=0.0, gaps=None):
     for size in range(start, stop, -1):
         f = ImageFont.truetype(DUM, size)
         track = (NAME_TRACK + kern) * size
-        advs = [f.getlength(c) + track + g * size for c, g in zip(name, gap)]
+        advs = [glyph_adv(c, f) + track + g * size for c, g in zip(name, gap)]
         total_adv = sum(advs)
         R = _name_radius(total_adv) / arc     # arc>1 curves more, arc<1 flattens
         if total_adv / R <= NAME_SPAN_MAX * max(1.0, arc):
