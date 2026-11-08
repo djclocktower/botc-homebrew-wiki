@@ -72,8 +72,8 @@
    WHAT IT DOES (approved scope)
      • Bar: solid deep purple with the Fancy Scripts ribbon damask,
        official leaves growing in from the right end, and a thin gold
-       line along the bottom edge (owner's pick, 2026-11). .scrolled
-       no longer changes anything.
+       line along the bottom edge (owner's pick, 2026-11). site.js
+       no longer sets .scrolled; it sets .stuck (see section 1).
      • Brand: skull + wordmark aligned, slightly slimmer heights.
      • Community Created Content badge — OPTION A: stays in the bar
        after the wordmark, but smaller (24px), slightly dimmed, with
@@ -102,6 +102,14 @@ html.redesign-on .topbar {
   border-bottom: 1px solid rgba(214,196,150,.5);
   box-shadow: 0 2px 6px rgba(8,4,10,.2);
 }
+/* While the bar is pinned (.stuck, set by site.js), its colour and damask
+   reach 200px ABOVE it. On Chrome for Android, when the address bar slides
+   away the pinned bar is drawn where it was for a moment, and the strip that
+   opens above it used to show the page's dark background as a gap. The
+   second shadow is the bar's colour, ending at its bottom edge; shadows never
+   add scroll room. Only while pinned, because the bar's layer sits above
+   everything, and an announcement or draft bar above it would be covered. */
+html.redesign-on .topbar.stuck { box-shadow: 0 2px 6px rgba(8,4,10,.2), 0 -100px 0 100px #1a0c1e; }
 /* Two layers behind everything in the bar (z-index -1 sits above the bar's
    own background and below its children; the bar's z-index makes it the
    stacking context). ::before is the damask: the Fancy Scripts sidebar
@@ -116,15 +124,19 @@ html.redesign-on .topbar::after {
 html.redesign-on .topbar::before {
   background: #452953;
   opacity: .7;   /* the damask, softened into the ground */
-  -webkit-mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
-          mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
+  -webkit-mask: url('topbar/ribbon-damask-v2.webp') -180px -24px / 2120px 140px repeat;
+          mask: url('topbar/ribbon-damask-v2.webp') -180px -24px / 2120px 140px repeat;
 }
+/* pinned: 200px taller upward, the pattern moved down by the same 200px
+   (176 = 200 - 24, inside the 140px tile) so the band in the bar stays put */
+html.redesign-on .topbar.stuck::before { top: -200px; -webkit-mask-position: -180px 176px; mask-position: -180px 176px; }
 html.redesign-on .topbar::after {
   opacity: .8;
   background: url('topbar/leaves-right-v5.webp') right top / auto 100% no-repeat;
 }
 @media (max-width: 880px) {
-  html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
+  html.redesign-on .topbar::before { -webkit-mask-position: -60px -24px; mask-position: -60px -24px; }
+  html.redesign-on .topbar.stuck::before { -webkit-mask-position: -60px 176px; mask-position: -60px 176px; }
   html.redesign-on .topbar::after { background-image: url('topbar/leaves-right-m-v5.webp'); }
 }
 /* a soft shadow so the logo, links and menu sit off the damask */
