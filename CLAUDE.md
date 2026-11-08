@@ -1196,6 +1196,10 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        preview pinned beside them (above them on a narrow
                        screen, and only on Adjust and Custom Art there).
                        Generating opens the Print tab, where the sheets land.
+                       On a phone the preview is pinned under the tab strip
+                       on Adjust and Custom Art, and the token editor's
+                       preview (`.tte-stick`) stays at the top of its window
+                       while its sliders scroll under it.
                        Adjustments layer defaults -> Custom Style -> All
                        Tokens -> one token; custom art is a slot's own upload,
                        else the style's. "Save as Custom Style" (on the page
@@ -4847,11 +4851,15 @@ hairline box round it.
 
 The tool sits in the Script Builder's app frame (`html.sbx-page`, `.sbx`,
 `.sbx-side`, `.sbx-bar`, `.sbx-tabs`, `.sbx-scroll`, `.sbx-b` in styles.css):
-the settings are the side panel (a drawer under 900px, `#sbx-open`), the
+the settings are the side panel (a sheet under 900px, `#sbx-open`), the
 export buttons the bar (PNG, every page and the builder hand-off in its More
 menu), the pages the tabs with the zoom at the end of the strip. Everything
 page-local in fancyscripts.html is square and flat. Fit is measured against
-the preview pane (`#fs-scroll`).
+the preview pane (`#fs-scroll`). **On a phone the settings are a bottom
+sheet, not a side drawer**: opening them sets `html.fs-split`, which fixes
+`#fs-scroll` to the top 44% of the screen and fits the whole page into it
+(`fitPreview()`), so every change is seen as it is made. There is no scrim
+there, so the page above stays touchable (tap an element to select it).
 
 ### The watermark
 

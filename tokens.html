@@ -229,7 +229,13 @@
   background: #1d0a1a; border: 1px solid var(--parch-frame); padding: 12px;
 }
 .tt-preview img { max-width: 100%; max-height: 330px; display: block; }
-.tte-preview { min-height: 170px; padding: 10px; margin-bottom: 12px; }
+.tte-preview { min-height: 170px; padding: 10px; }
+/* the editor's token stays in view while its sliders scroll under it
+   (-20px: the window's own top padding, which a sticky offset counts from) */
+.tte-stick {
+  position: sticky; top: -20px; z-index: 6; margin: 0 -16px 12px; padding: 8px 16px 10px;
+  background: var(--parch); border-bottom: 1px solid var(--parch-frame);
+}
 .tte-preview img { max-width: 100%; max-height: 280px; display: block; }
 .tt-preview .ph, .tte-preview .ph { color: rgba(236,225,200,.55); font-size: .84rem; text-align: center; }
 
@@ -293,8 +299,13 @@
      bar's words give way to its icons */
   .sbx-bar .sbx-b-txt { display: none; }
   .tt-preview-col { position: sticky; top: calc(var(--sbx-top, 56px) + 36px); }
-  .tt-preview { min-height: 110px; padding: 8px; }
-  .tt-preview img { max-height: 26vh; }
+  .tt-preview-col .sbx-panel { padding: 8px 10px; }
+  .tt-preview-col .sbx-panel-head { display: none; }
+  .tt-preview-col .tt-tf-bar { margin-bottom: 6px; }
+  .tt-preview { min-height: 110px; padding: 6px; }
+  .tt-preview img { max-height: 24vh; }
+  .tte-preview { min-height: 110px; padding: 6px; }
+  .tte-preview img { max-height: 26vh; }
   #tt-adj-panel { columns: 1; }
 }
 </style>
@@ -502,8 +513,10 @@
         <h2 id="tte-title">Edit Token</h2>
         <button type="button" class="sbx-icon" id="tte-close" aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
       </div>
-      <div class="tt-tf-bar" id="tte-tf-bar"></div>
-      <div class="tte-preview" id="tte-preview"></div>
+      <div class="tte-stick">
+        <div class="tt-tf-bar" id="tte-tf-bar"></div>
+        <div class="tte-preview" id="tte-preview"></div>
+      </div>
       <div class="tt-row" id="tte-count"><label>Copies of this token</label><span class="tt-step"><button type="button" class="tt-step-dn" aria-label="Fewer">&minus;</button><span class="tt-step-val" id="tte-count-val">1</span><button type="button" class="tt-step-up" aria-label="More">+</button></span></div>
       <div id="tte-adj-panel"></div>
       <h3 class="tt-adj-sect">Reminder Copies</h3>

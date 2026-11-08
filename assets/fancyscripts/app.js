@@ -460,6 +460,9 @@ function fitPreview() {
   if (window.innerWidth > 900 && pane) {
     const maxH = Math.max(320, pane.clientHeight - (box.offsetTop - pane.offsetTop) - 52);
     fitScale = Math.min(fitScale, maxH / SHEET_H);
+  } else if (pane && document.documentElement.classList.contains('fs-split')) {
+    // a phone with the settings open: the whole page in the top half
+    fitScale = Math.min(fitScale, Math.max(80, pane.clientHeight - 16) / SHEET_H);
   }
   const scale = zoom === 'fit' ? fitScale : clamp(Number(zoom), 0.1, 3);
   lastScale = scale;
@@ -2914,6 +2917,9 @@ async function boot() {
     $('sbx-side').classList.toggle('on', on);
     $('sbx-scrim').classList.toggle('on', on);
     document.documentElement.classList.toggle('sbx-locked', on);
+    // on a phone the page moves above the settings sheet (fancyscripts.html)
+    document.documentElement.classList.toggle('fs-split', on && window.innerWidth <= 900);
+    fitPreview();
   };
   // the bar's More menu (the builder's .sbx-menu)
   const menu = (on) => { $('fs-more-menu').classList.toggle('on', on); $('fs-more').setAttribute('aria-expanded', String(on)); };
@@ -2922,7 +2928,11 @@ async function boot() {
   $('sbx-open').addEventListener('click', () => side(true));
   $('sbx-close').addEventListener('click', () => side(false));
   $('sbx-scrim').addEventListener('click', () => side(false));
-  window.addEventListener('resize', fitPreview);
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 900) document.documentElement.classList.remove('fs-split');
+    else if ($('sbx-side').classList.contains('on')) document.documentElement.classList.add('fs-split');
+    fitPreview();
+  });
 
   // drop a file anywhere: a script or design JSON loads, an image becomes
   // a sticker on the page being shown, a font joins the font menus

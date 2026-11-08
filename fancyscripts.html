@@ -222,6 +222,22 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .86rem; }
   .fs-tabrow .sbx-tabs { position: static; background: none; backdrop-filter: none; }
   .fs-tabrow .sbx-tabs { flex-basis: 100%; }
   .fs-zoombar { margin: 0 auto; }
+  /* the settings open as a sheet over the lower half of the screen, and
+     the page being designed stays in view above it, fitted to what is
+     left (html.fs-split, set by app.js), so every change shows as it is
+     made. No scrim: the page above must stay visible and touchable. */
+  .sbx-side {
+    top: auto; bottom: 0; width: 100%; height: 56dvh;
+    border-right: 0; border-top: 2px solid var(--parch-frame);
+    transform: translateY(100%);
+  }
+  .sbx-side.on { box-shadow: 0 -6px 26px rgba(0,0,0,.55); }
+  #sbx-scrim { display: none !important; }
+  html.fs-split #fs-scroll {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 56dvh; z-index: 55;
+    overflow: auto; padding: 8px; background: #1f0c25;
+  }
+  html.fs-split #fs-sel-info { display: none; }
 }
 </style>
 </head>
