@@ -110,7 +110,9 @@ html.redesign-on .topbar {
    the colour lives here. ::after is the leaves (official art from the Fancy
    Scripts decor set, pre-composed into one picture per side), clipped to the
    bar because a background never paints outside its box. The pictures are
-   57px tall, the bar's height; the phone set is arranged for a narrow bar. */
+   56px tall, the bar's height inside its border, and each holds only its
+   own side's leaves, trimmed to where they end, so nothing is cut but by
+   the bar; the phone set is arranged for a narrow bar. */
 html.redesign-on .topbar::before,
 html.redesign-on .topbar::after {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -122,13 +124,13 @@ html.redesign-on .topbar::before {
 }
 html.redesign-on .topbar::after {
   opacity: .8;   /* lets a little of the damask through the leaves */
-  background: url('topbar/leaves-left.webp') left top / auto 57px no-repeat,
-              url('topbar/leaves-right-2.webp') right top / auto 57px no-repeat;
+  background: url('topbar/leaves-left-v3.webp') left top / auto 56px no-repeat,
+              url('topbar/leaves-right-v3.webp') right top / auto 56px no-repeat;
 }
 @media (max-width: 880px) {
   html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
   html.redesign-on .topbar::after {
-    background-image: url('topbar/leaves-left-m.webp'), url('topbar/leaves-right-m-2.webp');
+    background-image: url('topbar/leaves-left-m-v3.webp'), url('topbar/leaves-right-m-v3.webp');
   }
 }
 /* keep what sits over the leaves readable */
