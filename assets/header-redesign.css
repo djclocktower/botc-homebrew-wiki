@@ -150,7 +150,7 @@ html.redesign-on .brand-header-text { height: 33px; }
    stays in the bar after the wordmark, tamed: smaller, dimmed,
    divided from the wordmark by a thin gold rule. */
 html.redesign-on .topbar .topbar-badge {
-  height: 24px; opacity: .9;
+  height: 30px; opacity: .9;
   margin-left: 2px; padding-left: 12px;
   border-left: 1px solid rgba(214,196,150,.32);
 }
