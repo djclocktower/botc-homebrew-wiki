@@ -946,6 +946,14 @@
      carries the jinx and `b` is the matching character also in the list. */
   // Accents fold away exactly as slugId() folds them, so a name and an id
   // written for it ('Médium', 'medium') are one key, not two.
+  /* The side a jinx is shown as. One its writer did not choose (an import)
+     follows the character carrying it: a Minion or Demon's jinx is evil. */
+  function jinxAlign(j, team) {
+    var a = j && j.align;
+    if (a === 'evil' || a === 'good') return a;
+    return team === 'minion' || team === 'demon' ? 'evil' : 'good';
+  }
+
   function normJinxId(id) {
     return String(id || '').replace(/_festival_of_lanterns$/, '')
       .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -1516,7 +1524,7 @@
 
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
     var jinxItems = jinxes.map(function (j) {
-      var al = (j.align === 'evil') ? 'evil' : 'good';
+      var al = jinxAlign(j, team);
       var t = resolveJinxTarget(j, root);
       // A mirrored jinx is stored on the OTHER character's page. It reads the
       // same, but the line underneath says where to go to edit it.
@@ -1626,6 +1634,7 @@
     window.resolveJinxTarget = resolveJinxTarget;
     window.resolveRelatedTarget = resolveRelatedTarget;
     window.normJinxId = normJinxId;
+    window.jinxAlign = jinxAlign;
     window.jinxExportId = jinxExportId;
     window.jinxQualKeys = jinxQualKeys;
     window.jinxLookupKeys = jinxLookupKeys;
@@ -1662,7 +1671,7 @@
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes, scriptJinxResolver: scriptJinxResolver,
-      resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId, jinxAlign: jinxAlign,
       jinxExportId: jinxExportId,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
       jinxCharIndex: jinxCharIndex,

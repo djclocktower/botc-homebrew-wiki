@@ -743,6 +743,7 @@
         }
 
         $('jx-mine').value = mine.slug;
+        $('jx-mine').dispatchEvent(new Event('change'));
         if (window.setJinxField) {
           window.setJinxField($('jx-other'), other.name,
             other.official ? '' : other.slug,
@@ -772,6 +773,13 @@
               sel.appendChild(o);
             });
             chars.forEach(function (c) { MY_CHARS[c.slug] = c.name; });
+            // "Shown as" starts on the character's side: Minion or Demon is evil.
+            function sideOf() {
+              var c = chars.filter(function (x) { return x.slug === sel.value; })[0];
+              $('jx-align').value = c && /^(minion|demon)$/.test(c.team) ? 'evil' : 'good';
+            }
+            sel.addEventListener('change', sideOf);
+            sideOf();
             $('jx-add-section').hidden = false;
             $('jg-f-link').hidden = false;
             if (window.mountJinxPicker) window.mountJinxPicker($('jx-other'));
