@@ -122,12 +122,12 @@ html.redesign-on .topbar::before {
 }
 html.redesign-on .topbar::after {
   background: url('topbar/leaves-left.webp') left top / auto 57px no-repeat,
-              url('topbar/leaves-right.webp') right top / auto 57px no-repeat;
+              url('topbar/leaves-right-2.webp') right top / auto 57px no-repeat;
 }
 @media (max-width: 880px) {
   html.redesign-on .topbar::before { -webkit-mask-position: -60px 0; mask-position: -60px 0; }
   html.redesign-on .topbar::after {
-    background-image: url('topbar/leaves-left-m.webp'), url('topbar/leaves-right-m.webp');
+    background-image: url('topbar/leaves-left-m.webp'), url('topbar/leaves-right-m-2.webp');
   }
 }
 /* keep what sits over the leaves readable */

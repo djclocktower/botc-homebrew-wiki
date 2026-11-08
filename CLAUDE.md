@@ -938,7 +938,9 @@ assets/
                        (branch ccr-4b7b5eb2-95qzpo, assets/fancyscripts/decor),
                        pre-composed per side at the bar's 57px height, desktop
                        and phone sets. To move a leaf, recompose the picture;
-                       nothing else knows where they are.
+                       nothing else knows where they are. They are cached for a
+                       year (/assets/*.webp), so a recomposed picture takes a
+                       new filename (leaves-right-2.webp).
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
