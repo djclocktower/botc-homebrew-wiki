@@ -99,7 +99,7 @@ html.redesign-on .topbar {
   flex-wrap: nowrap;
   gap: clamp(10px, 1.6vw, 22px);
   padding: 4px clamp(16px, 3vw, 36px);
-  background: #190d1d;
+  background: #1a0c1e;
   border-bottom: 1px solid rgba(214,196,150,.5);
   box-shadow: 0 2px 6px rgba(8,4,10,.2);
 }
@@ -118,7 +118,7 @@ html.redesign-on .topbar::after {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
 }
 html.redesign-on .topbar::before {
-  background: #442c50;
+  background: #452953;
   -webkit-mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
           mask: url('topbar/ribbon-damask.webp') -180px 0 / 2120px 70px repeat-x;
 }
@@ -236,7 +236,7 @@ html.redesign-on .topbar .topbar-badge {
 
 /* ── 4. Search ────────────────────────────────────────────────── */
 html.redesign-on .search-input {
-  background-color: rgba(25,13,29,.88);   /* solid enough to read over the leaves */
+  background-color: rgba(26,12,30,.88);   /* solid enough to read over the leaves */
   border: 1px solid rgba(214,196,150,.35);
   padding: 8px 12px 8px 32px;   /* keeps room for the inline SVG magnifier */
   font-size: .85rem;
@@ -249,7 +249,7 @@ html.redesign-on .search-wrap { flex-shrink: 1; min-width: 0; }
 html.redesign-on .search-input::placeholder { color: rgba(222,207,167,.55); }
 html.redesign-on .search-input:focus {
   border-color: rgba(214,196,150,.75);
-  background-color: rgba(25,13,29,.94);
+  background-color: rgba(26,12,30,.94);
   box-shadow: 0 0 0 3px rgba(214,196,150,.14);
 }
 
