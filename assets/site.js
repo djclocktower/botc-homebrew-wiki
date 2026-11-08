@@ -1286,15 +1286,29 @@
   });
 })();
 
-/* ── Redesigned top bar: solid/scrolled state past 24px of scroll ── */
+/* ── Redesigned top bar: .stuck while it is pinned to the top of the screen ──
+   header-redesign.css then paints the bar's colour and damask into the strip
+   ABOVE it, which Chrome for Android leaves open for a moment when its
+   address bar slides away. Only while pinned: before that, an announcement,
+   a draft bar or the Partial notice can sit above the bar and must stay
+   visible. A bar with nothing above it counts as pinned at the very top,
+   where the extra paint is above the page and never seen. */
 (function () {
   var tb = document.querySelector('.topbar');
   if (!tb) return;
+  var queued = false;
+  function check() {
+    queued = false;
+    tb.classList.toggle('stuck', tb.getBoundingClientRect().top <= 0.5);
+  }
   function onScroll() {
-    tb.classList.toggle('scrolled', (window.scrollY || window.pageYOffset || 0) > 24);
+    if (!queued) { queued = true; requestAnimationFrame(check); }
   }
   window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
+  window.addEventListener('resize', onScroll, { passive: true });
+  /* an announcement or notice drawn in above the bar moves it with no scroll */
+  if ('ResizeObserver' in window) new ResizeObserver(onScroll).observe(document.body);
+  check();
 })();
 
 /* ── Redesigned top bar: Edit button placement (editable pages) ──

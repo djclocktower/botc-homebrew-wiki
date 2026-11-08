@@ -929,6 +929,23 @@ assets/
   starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
                        the gallery in an iframe; the picked PNG goes into the
                        art file input with a change event.
+  topbar/              The top bar's damask, drawn by header-redesign.css
+                       section 1 as the bar's ::before (no markup):
+                       ribbon-damask-v2.webp is a MASK (the Fancy Scripts sidebar
+                       ribbon, turned sideways and mirrored to tile; the colour
+                       and strength are in the CSS). leaves-right(-m)-v5.webp
+                       are official leaves from the Fancy Scripts decor set
+                       (branch ccr-4b7b5eb2-95qzpo), the bar's ::after, on the
+                       RIGHT end only (the owner dropped the left side,
+                       2026-11), one picture for desktop and one for phones.
+                       They are cached for a year (/assets/*.webp), so a
+                       recomposed picture takes a new filename.
+                       While the bar is pinned (.stuck, set by site.js) its
+                       colour and damask also reach 200px ABOVE it: Chrome on
+                       Android briefly draws a pinned bar low as its address
+                       bar hides, and the strip it left was blank. Only while
+                       pinned, or that layer would cover an announcement,
+                       draft bar or Partial notice above the bar.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
