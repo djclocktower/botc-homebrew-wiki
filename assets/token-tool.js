@@ -417,50 +417,82 @@
      short pause in the typing, and adding a character repaints one row. */
   function ico(n) { return window.UIIcons ? window.UIIcons.svg(n) : ''; }
   var rowBySlug = {};
+  /* Built in slices, one per frame: 3,700 rows in one go held the page
+     still for half a second on a fast machine, and for seconds on a slow
+     one, right while the engine was downloading. Each row reflects the set
+     as it is when its slice is drawn, and takes the current search. */
+  var sideRun = 0, SIDE_CHUNK = 120;
   function renderSidebar() {
-    var html = '';
+    var run = ++sideRun;
     var known = TEAMS.map(function (t) { return t[0]; });
+    var groups = [];
     TEAMS.forEach(function (t) {
-      var key = t[0], label = t[1];
-      var group = allChars.filter(function (c) {
+      var key = t[0];
+      var chars = allChars.filter(function (c) {
         return c.team === key || (key === 'other' && known.indexOf(c.team) < 0);
       }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      if (!group.length) return;
-      html += '<div class="sbx-add-group"><h3 class="sbx-add-grouphead">' + esc(label) +
-        ' <span class="sbx-add-groupcount">(' + group.length + ')</span></h3><div class="sbx-add-rows">';
-      group.forEach(function (c) {
-        var on = setSlugs.indexOf(c.slug) >= 0;
-        html += '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
-          '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
-            '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
-            '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
-            '<span class="sbx-add-tick" aria-hidden="true">' + ico('check') + '</span>' +
-          '</button>' +
-          (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + ico('down') + '</button>' : '') +
-          '</div>' +
-          (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
-          '</div>';
-      });
-      html += '</div></div>';
+      if (chars.length) groups.push({ label: t[1], chars: chars, at: 0, el: null });
     });
     var list = $('sb-add-list');
-    list.innerHTML = html || '<p class="sbx-note">No characters found.</p>';
     rowBySlug = {};
-    [].slice.call(list.querySelectorAll('.sbx-add-row')).forEach(function (r) {
-      r._name = (r.querySelector('.sbx-add-name').textContent || '').toLowerCase();
-      var ab = r.querySelector('.sbx-add-ab');
-      r._ab = ab ? ab.textContent.toLowerCase() : '';
-      rowBySlug[r.dataset.slug] = r;
-    });
-    filterSidebar();
+    if (!groups.length) { list.innerHTML = '<p class="sbx-note">No characters found.</p>'; return; }
+    list.innerHTML = '';
+    var TICK = ico('check'), CHEV = ico('down'), gi = 0;
+    function rowHTML(c) {
+      var on = setSlugs.indexOf(c.slug) >= 0;
+      return '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
+        '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
+          '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+          '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+          '<span class="sbx-add-tick" aria-hidden="true">' + TICK + '</span>' +
+        '</button>' +
+        (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + CHEV + '</button>' : '') +
+        '</div>' +
+        (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
+        '</div>';
+    }
+    function slice() {
+      if (run !== sideRun) return;   // a newer build replaced this one
+      var budget = SIDE_CHUNK, q = searchQ(), abil = $('tt-abilities').checked;
+      while (budget > 0 && gi < groups.length) {
+        var g = groups[gi];
+        if (!g.el) {
+          var wrap = document.createElement('div');
+          wrap.className = 'sbx-add-group';
+          wrap.innerHTML = '<h3 class="sbx-add-grouphead">' + esc(g.label) +
+            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span></h3><div class="sbx-add-rows"></div>';
+          list.appendChild(wrap);
+          g.el = wrap.lastChild;
+        }
+        var to = Math.min(g.chars.length, g.at + budget), html = '';
+        for (var i = g.at; i < to; i++) html += rowHTML(g.chars[i]);
+        var before = g.el.childElementCount;
+        g.el.insertAdjacentHTML('beforeend', html);
+        for (var k = before; k < g.el.children.length; k++) {
+          var c = g.chars[g.at + k - before], r = g.el.children[k];
+          r._name = (c.name || '').toLowerCase();
+          r._ab = (c.ability || '').toLowerCase();
+          rowBySlug[c.slug] = r;
+          if (q && !rowMatches(r, q, abil)) r.style.display = 'none';
+        }
+        budget -= to - g.at;
+        g.at = to;
+        if (g.at >= g.chars.length) gi++;
+      }
+      if (gi < groups.length) requestAnimationFrame(slice);
+      else filterSidebar();
+    }
+    slice();
   }
+  function searchQ() { return ($('sb-filter').value || '').trim().toLowerCase(); }
+  function rowMatches(r, q, abil) { return !q || r._name.indexOf(q) >= 0 || (abil && r._ab.indexOf(q) >= 0); }
   function filterSidebar() {
-    var q = ($('sb-filter').value || '').trim().toLowerCase();
+    var q = searchQ();
     var abil = $('tt-abilities').checked, shown = 0, total = 0;
     [].slice.call($('sb-add-list').querySelectorAll('.sbx-add-group')).forEach(function (g) {
       var n = 0;
       [].slice.call(g.querySelectorAll('.sbx-add-row')).forEach(function (r) {
-        var vis = !q || r._name.indexOf(q) >= 0 || (abil && r._ab.indexOf(q) >= 0);
+        var vis = rowMatches(r, q, abil);
         var want = vis ? '' : 'none';
         if (r.style.display !== want) r.style.display = want;
         if (vis) n++;

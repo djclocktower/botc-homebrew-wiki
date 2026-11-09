@@ -1189,8 +1189,10 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning).
                        Sits in the Script Builder's app frame (.sbx-*): the
                        characters are the side panel (the builder's .sbx-add-*
-                       rows, built once, filtered in place after a pause in
-                       the typing, one row repainted per add), Import / Clear
+                       rows, built once in slices of 120 a frame, so the page
+                       never stops answering while the engine downloads,
+                       filtered in place after a pause in the typing, one row
+                       repainted per add), Import / Clear
                        / Generate sheets the bar, and Tokens / Print / Adjust
                        / Custom Art the tabs (botc_token_tab), with the
                        preview pinned beside them (above them on a narrow
