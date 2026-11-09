@@ -2,14 +2,14 @@
    buttons. Both draw on a canvas in the browser and hand a data URL back
    (opts.onUse) for the builder to upload, as Upload does.
 
-   BgMaker   the Fancy Scripts ribbon's damask (assets/script-bg/damask.webp,
-             a mirrored, seamless tile cut from fancyscripts/art/
-             sidebar-flat.png) over a two-colour gradient, with a mottled
-             texture and shading round the edges, at 1920x1080.
+   BgMaker   the Fancy Scripts back cover's swirl pattern (assets/script-bg/
+             swirl.webp, fancyscripts/art/back-pattern2.png at half size; it
+             repeats without a seam) over a two-colour gradient, with a
+             mottled texture and shading round the edges, at 1920x1080.
    LogoMaker the script's name in LHF Unlovable, the Fancy Scripts title
              face, filled with a two-colour gradient and the same texture,
-             with a white edge and a raised edge under it, on a transparent
-             1200x1200 square sized like the official app's own logos.
+             inside a thin white outline, on a transparent 1200x1200 square
+             sized like the official app's own logos.
 
    The colour picker is drawn here (a saturation square, a hue strip and a
    hex box) for the reason Fancy Scripts draws its own: <input type="color">
@@ -231,7 +231,7 @@
     ['Rose', '#a34a6a', '#3b0f22']
   ];
   /* The tile as black with the gaps between the motifs opaque, so drawing
-     it over the gradient darkens the ground and leaves the damask in the
+     it over the gradient darkens the ground and leaves the swirls in the
      chosen colour. Made once. */
   var tilePromise = null;
   function tile() {
@@ -249,7 +249,7 @@
         resolve(c);
       };
       img.onerror = function () { tilePromise = null; reject(new Error('tile')); };
-      img.src = root() + 'assets/script-bg/damask.webp';
+      img.src = root() + 'assets/script-bg/swirl.webp';
     });
     return tilePromise;
   }
@@ -270,7 +270,7 @@
     x.fillRect(0, 0, w, h);
     if (t && o.strength > 0) {
       var pat = x.createPattern(t, 'repeat');
-      var sc = (436 / 654) * (o.size / 100) * k;
+      var sc = 0.9 * (o.size / 100) * k;
       if (pat.setTransform && window.DOMMatrix) pat.setTransform(new DOMMatrix().scale(sc));
       x.globalAlpha = o.strength / 100;
       x.fillStyle = pat;
@@ -292,7 +292,7 @@
     open: function (opts) {
       openMaker({
         title: 'Make a background', key: 'botc_bgmaker', file: 'background', opts: opts,
-        defaults: { c1: '#1f6fa8', c2: '#101a70', dir: 'lr', size: 100, strength: 65, texture: 35, shade: 55 },
+        defaults: { c1: '#1f6fa8', c2: '#101a70', dir: 'lr', size: 100, strength: 65, texture: 15, shade: 55 },
         presets: BG_PRESETS,
         colours: [['c1', 'Colour 1'], ['c2', 'Colour 2']],
         preview: { w: 960, h: 540 },
@@ -385,8 +385,7 @@
       if (two.size > L.size * 1.2) { L = two; lines = sets[1]; }
     }
     var font = L.size.toFixed(1) + 'px "' + LOGO_FONT + '"';
-    var edge = Math.max(2, L.size * 0.05);          // the white edge
-    var depth = Math.round(L.size * 0.045 * (o.depth / 50));
+    var edge = L.size * 0.08 * (o.outline / 100);   // the white outline
     function each(fn) {
       lines.forEach(function (l, i) { fn(l, L.xs[i], L.top + L.asc + i * L.lineH); });
     }
@@ -394,16 +393,11 @@
     x.font = font;
     x.textBaseline = 'alphabetic';
     x.lineJoin = 'round';
-    // the raised edge: the outline repeated down and to the right
-    x.fillStyle = x.strokeStyle = o.edge;
-    x.lineWidth = edge + 2;
-    for (var d = depth; d >= 1; d--) {
-      each(function (l, lx, ly) { x.strokeText(l, lx + d, ly + d); x.fillText(l, lx + d, ly + d); });
+    if (edge > 0) {
+      x.strokeStyle = '#fffdf8';
+      x.lineWidth = edge;
+      each(function (l, lx, ly) { x.strokeText(l, lx, ly); });
     }
-    // the white edge
-    x.strokeStyle = '#fffdf8';
-    x.lineWidth = edge;
-    each(function (l, lx, ly) { x.strokeText(l, lx, ly); });
     x.restore();
     // the letters: the gradient and the texture, kept inside the letters
     var f = document.createElement('canvas');
@@ -434,16 +428,16 @@
     open: function (opts) {
       openMaker({
         title: 'Make a logo', key: 'botc_logomaker', file: 'logo', opts: opts,
-        defaults: { text: '', c1: '#262c8c', c2: '#1e94b8', edge: '#c9a77e', texture: 40, depth: 50 },
+        defaults: { text: '', c1: '#262c8c', c2: '#1e94b8', texture: 40, outline: 30 },
         init: function (o, op) { o.text = op.text || o.text || 'My Script'; },
         presets: LOGO_PRESETS,
-        colours: [['c1', 'Top'], ['c2', 'Bottom'], ['edge', 'Edge']],
+        colours: [['c1', 'Top'], ['c2', 'Bottom']],
         preview: { w: 600, h: 600 },
         prevClass: 'bgm-prev-logo',
         top: '<label class="bgm-row">Name <input type="text" data-k="text" maxlength="60"></label>',
         fields:
           '<label class="bgm-row">Texture <input type="range" data-k="texture" min="0" max="100" step="1"></label>' +
-          '<label class="bgm-row">Depth <input type="range" data-k="depth" min="0" max="100" step="1"></label>',
+          '<label class="bgm-row">Outline <input type="range" data-k="outline" min="0" max="100" step="1"></label>',
         draw: drawLogo,
         prepare: logoFont,
         full: function (o) {

@@ -1868,18 +1868,19 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   (one dialog and one colour picker for both). The **logo maker**
   (`LogoMaker.open()`) sets the script's name (editable in the dialog) in
   LHF Unlovable, the Fancy Scripts title face, loaded with `FontFace`,
-  filled top to bottom with two colours plus the texture, inside a white
-  edge over a raised edge in a third colour (Depth), on a transparent
+  filled top to bottom with two colours plus the texture, inside a thin
+  white outline (Outline; the owner had the raised edge taken off), on a transparent
   1200x1200 square: the ink is measured (`actualBoundingBox*`, the swashes
   reach past the advance widths) and set to fill 86% of the width, never
   taller than 30% of the square, and on two lines when one line would be
   small and the split makes it clearly bigger. Its preview sits on the
   script's background when there is one. The letters are clipped to ONE
   mask of every line (clipping line by line kept only their overlap, which
-  is nothing). The **background maker** (`BgMaker.open()`): the Fancy Scripts ribbon's damask
-  (`assets/script-bg/damask.webp`, a 654x1650 grey tile cut from
-  `fancyscripts/art/sidebar-flat.png` and mirrored both ways so it repeats
-  without a seam; light is the motif) laid over a two-colour gradient,
+  is nothing). The **background maker** (`BgMaker.open()`): the Fancy
+  Scripts back cover's swirl pattern (`assets/script-bg/swirl.webp`,
+  `fancyscripts/art/back-pattern2.png` at half size, which repeats without
+  a seam; light is the motif; the owner chose it over the ribbon's damask)
+  laid over a two-colour gradient,
   then a mottled texture and shading round the edges, drawn on a canvas at
   1920x1080 and uploaded through the same route as Upload (WebP, or JPEG
   where the browser cannot write WebP). Presets, two colours on a picker of
