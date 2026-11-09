@@ -14,7 +14,7 @@
    The colour picker is drawn here (a saturation square, a hue strip and a
    hex box) for the reason Fancy Scripts draws its own: <input type="color">
    on Android Chrome offers a grid of presets and nothing else. Settings are
-   kept per browser (localStorage botc_bgmaker / botc_logomaker). */
+   kept per browser (localStorage botc_bgmaker / botc_logomaker2: the key moved when the logo defaults changed). */
 (function () {
   'use strict';
 
@@ -377,7 +377,7 @@
       xs: ms.map(function (m) { return (w - ((m.actualBoundingBoxRight || m.width) - (m.actualBoundingBoxLeft || 0)) * k) / 2; })
     };
   }
-  function drawLogo(canvas, o) {
+  function drawLogo(canvas, o, t) {
     var w = canvas.width, x = canvas.getContext('2d');
     x.clearRect(0, 0, w, w);
     // Two lines only when one line comes out well under the largest the
@@ -388,7 +388,7 @@
       if (two.size > L.size * 1.2) { L = two; lines = sets[1]; }
     }
     var font = L.size.toFixed(1) + 'px "' + LOGO_FONT + '"';
-    var edge = L.size * 0.08 * (o.outline / 100);   // the white outline
+    var edge = L.size * 0.04 * (o.outline / 100);   // the white outline
     function each(fn) {
       lines.forEach(function (l, i) { fn(l, L.xs[i], L.top + L.asc + i * L.lineH); });
     }
@@ -413,6 +413,15 @@
     g.addColorStop(1, o.c2);
     y.fillStyle = g;
     lines.forEach(function (l, i) { y.fillText(l, L.xs[i], L.top + L.asc + i * L.lineH); });
+    // a faint damask: the background maker's swirl, scaled to the letters
+    if (t && o.damask > 0) {
+      var pat = y.createPattern(t, 'repeat');
+      if (pat.setTransform && window.DOMMatrix) pat.setTransform(new DOMMatrix().scale(L.size / 900));
+      y.globalAlpha = o.damask / 100;
+      y.fillStyle = pat;
+      y.fillRect(0, 0, w, w);
+      y.globalAlpha = 1;
+    }
     texture(y, w, w, o.texture);
     // Clip to every line at once: clipping line by line keeps only the
     // overlap of the lines, which is nothing.
@@ -430,8 +439,8 @@
     draw: drawLogo,
     open: function (opts) {
       openMaker({
-        title: 'Make a logo', key: 'botc_logomaker', file: 'logo', opts: opts,
-        defaults: { text: '', c1: '#9c1230', c2: '#6c0410', texture: 40, outline: 30 },
+        title: 'Make a logo', key: 'botc_logomaker2', file: 'logo', opts: opts,
+        defaults: { text: '', c1: '#9c1230', c2: '#6c0410', texture: 40, damask: 35, outline: 40 },
         init: function (o, op) { o.text = op.text || o.text || 'My Script'; },
         presets: LOGO_PRESETS,
         colours: [['c1', 'Top'], ['c2', 'Bottom']],
@@ -440,13 +449,18 @@
         top: '<label class="bgm-row">Name <input type="text" data-k="text" maxlength="60"></label>',
         fields:
           '<label class="bgm-row">Texture <input type="range" data-k="texture" min="0" max="100" step="1"></label>' +
+          '<label class="bgm-row">Pattern <input type="range" data-k="damask" min="0" max="100" step="1"></label>' +
           '<label class="bgm-row">Outline <input type="range" data-k="outline" min="0" max="100" step="1"></label>',
         draw: drawLogo,
-        prepare: logoFont,
-        full: function (o) {
+        // The font must load; the pattern is a nicety and its failure is not.
+        prepare: function () {
+          return Promise.all([logoFont(), tile().catch(function () { return null; })])
+            .then(function (r) { return r[1]; });
+        },
+        full: function (o, t) {
           var c = document.createElement('canvas');
           c.width = c.height = LS;
-          drawLogo(c, o);
+          drawLogo(c, o, t);
           return encode(c, 'image/png');
         }
       });

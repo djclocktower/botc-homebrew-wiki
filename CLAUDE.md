@@ -1868,7 +1868,9 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   (one dialog and one colour picker for both). The **logo maker**
   (`LogoMaker.open()`) sets the script's name (editable in the dialog) in
   LHF Unlovable, the Fancy Scripts title face, loaded with `FontFace`,
-  filled top to bottom with two colours plus the texture, inside a thin
+  filled top to bottom with two colours plus the texture and a faint
+  damask (Pattern: the background maker's swirl tile, scaled to the
+  letters), inside a thin
   white outline (Outline; the owner had the raised edge taken off), on a transparent
   1200x1200 square: the ink is measured (`actualBoundingBox*`, the swashes
   reach past the advance widths) and set to fill 94% of the width, never
