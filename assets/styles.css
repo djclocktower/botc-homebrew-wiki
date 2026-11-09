@@ -258,6 +258,12 @@ body::before {
   background: url('bg.webp') center top / cover no-repeat var(--purple-deep);
   pointer-events: none;
 }
+/* A wide screen gets the picture turned on its side (bg-wide.webp, 3224px
+   across): the portrait one was stretched past its 1920px there and looked
+   soft. */
+@media (min-width: 761px) and (min-aspect-ratio: 5/4) {
+  body::before { background-image: url('bg-wide.webp'); }
+}
 @media (max-width: 760px) {
   body::before { background-image: url('bg-m.webp'); }
 }
