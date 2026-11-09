@@ -31,11 +31,14 @@ export const SHEET = {
   // vertical grid
   contentTop: 9.36, // first row top
   contentBottom: 86.23, // content must end above this (garland starts 89.25)
+  bottomNoGarland: 92.4, // …or, with the garland set to None, above the footnote
   rowPitch: 5.734,
   rowIcon: 4.9,
-  sectionGap: 0.763,
+  sectionGap: 0.38, // halved from 0.763 (the owner asked for every gap between elements halved, 2026-11)
+  rowTail: 0.75, // em under a row's last ability line (1.05 before the gaps were halved)
+  rowIconPad: 0.175, // em under a row's icon (0.35 before)
   nameTop: 0.9, // name offset within a row
-  abilityTop: 2.5, // ability first-line offset within a row
+  abilityTop: 2.31, // ability first-line offset within a row (2.5 before the gaps were halved)
   abilityLine: 1.24, // ability line pitch
   nameSize: 1.318, // wrap-fidelity correction: reference names are 5.2% narrower
   abilitySize: 1.031, // wrap-fidelity correction: reference abilities are 3.6% wider
@@ -43,8 +46,8 @@ export const SHEET = {
   // horizontal grid
   col1IconX: 12.25,
   col2IconX: 51.45,
-  textOffsetX: 7.8, // text left, relative to icon x
-  textWidth: 30.64,
+  textOffsetX: 7.167, // text left, relative to icon x (7.8 before the icon-to-text gap was halved)
+  textWidth: 31.273, // 30.64 + what the icon gap gave up, so the column ends where it did
   // sidebar
   sidebarX: 0.967,
   sidebarY: 0.725,
@@ -204,19 +207,19 @@ export const APP_SHEET = {
   labelPad: 0.66, // em at each end: a short team grows to hold its name
   iconCX: 12.5,
   iconSize: 4.54, // em
-  nameX: 16.39,
-  nameW: 12.36, // the name column, to just short of the bar
+  nameX: 15.36, // 16.39 before the icon-to-name gap was halved
+  nameW: 13.87, // the name column, to just short of the bar (gap to the bar halved)
   nameSize: 1.84, // em (Trade Gothic Bold Condensed; the app sets 1.665, larger reads better on paper)
   nameLine: 1.02, // × nameSize, for a name that wraps
   barX: 29.7,
   barW: 0.378,
-  textX: 31.78,
+  textX: 30.93, // 31.78 before the bar-to-text gap was halved
   textRight: 93.02, // bounded by where ten of the app's abilities wrap
   textSize: 1.475, // em (Trade Gothic)
   textLine: 1.655, // em
-  rowMin: 3.55, // em, a one-line row
-  rowPad: 0.47, // em under a taller block
-  sectionGap: 1.14, // em between teams; the rule sits in the middle
+  rowMin: 3.13, // em, a one-line row (3.55 before the space between icons was halved)
+  rowPad: 0.235, // em under a taller block
+  sectionGap: 0.57, // em between teams, halved from 1.14; the rule sits in the middle
   dividerX0: 2.5, // the rule starts on the ribbon…
   dividerX1: 95.5, // …and fades out here
   titleCY: 4.07,
@@ -224,11 +227,12 @@ export const APP_SHEET = {
   titleMaxW: 67,
   logoMaxH: 8.6, // em, a logo (the app's text title is smaller)
   titleSize: 4.6, // em, the text title when the script has no logo
-  authorGap: 0.35, // em between the title and the author credit
+  authorGap: 0.175, // em between the title and the author credit
   authorSize: 1.2,
   contentTop: 6.98, // first row top under the title
   bareTop: 3.2, // first row top on a page without the title
   contentBottom: 88.6, // the parchment's garland starts at 89.25
+  bottomNoGarland: 92.6, // with the garland set to None: above the footnote
   footnoteCX: 53.21, // inside the garland's oval, where the classic sheet sets it
   footnoteTop: 95.0, // the paper sits 4% higher in the app view (elements.js)
   footnoteSize: 1.22,
@@ -266,6 +270,108 @@ export const APP_NIGHT = {
   decorW: 17.6,
   decorMaxH: 8,
   colGap: 2.4,
+};
+
+/* The night columns style (columns.js): the owner's own Photoshop sheets
+   (Axiom of Logic, No Greater Joy, Laissez Un Where?, Golden Dawn). A damask
+   column down each edge carries the night order, first night on the left
+   and other nights on the right, as a stack of icons under its label; the
+   title and logo across the top; then each team under a heading with a rule
+   running from it, its characters in a grid of icon + name + centred
+   ability. Measured off the 1500x2100 files: x in % of width (px / 15),
+   y in em (px / 21), sizes in em (px / 20). */
+export const COLUMN_SHEET = {
+  colW: 6.4, // each edge column, % of the width
+  colRule: 0.45, // the black edge on its inner side, % of the width
+  labelSize: 1.2, // FIRST NIGHT / OTHER NIGHTS, em
+  labelGap: 0.4, // em between the label and the first icon
+  nightMargin: 1.5, // em kept clear at the top and foot of a full column
+  nightIcon: 4.1, // em, at most
+  nightPitch: 4.4, // em between icon tops, at most (4.7 before the gaps were halved)
+  // the header is one fixed, modest size on every script (the owner's call:
+  // the same sheet every time beats the biggest title), and the grid gets
+  // the room the PSDs gave it
+  titleTop: 0.9,
+  titleX0: 9, // the title's box when there is a logo beside it…
+  titleX1: 60,
+  logoX0: 62, // …and the logo's
+  logoX1: 91,
+  logoBottom: 10.6,
+  titleSize: 6, // em, the title at most this big
+  authorSize: 1.3,
+  authorGap: 0.1, // em between the title's foot and the author line
+  headerGap: 0.2, // em between the header's foot and the first heading
+  paperZoom: 1.04, // the parchment, zoomed so its left frame and gold edge sit under the column
+  paperBand: 1, // % of the width: the gold edge past the frame, also hidden
+  contentTop: 11.6, // the first heading's top
+  contentBottom: 95.6, // above the footnote
+  contentX0: 7.6, // the grid, between the columns
+  contentX1: 92.4,
+  headX: 7.9, // a team heading's left edge
+  headSize: 2.5,
+  headBand: 2.85, // em, the heading and the room under it (the room halved)
+  ruleH: 0.62, // the divider art's height at density 1 (the classic sheet's is 0.5)
+  sectionGap: 0.4,
+  rowGap: 0.55, // em under every grid row
+  spreadEm: 4, // em at most added under a row or between teams when there is room
+  topShare: 0.15, // of the room still left after that, the share above the first heading
+  iconGap: 0.3, // % of the width between an icon and its text
+  soloW: 66, // % of the width, a lone character's cell
+  iconMaxShare: 0.3, // an icon is at most this share of its cell's width
+  iconYield: 0.7, // ...and gives up width down to this share of itself for a long name
+  // per grid width: icon, name, ability (em) — fewer columns, bigger type
+  cell: { 3: [8.2, 2.0, 1.35], 2: [9.4, 2.2, 1.55], 1: [12.5, 3.0, 2.0] },
+  abilityLine: 1.2, // × the ability size
+  nameLine: 1.15,
+  footnoteRight: 8, // % in from the right edge
+  footnoteTop: 97.1,
+  footnoteSize: 2.0,
+};
+
+/* how many characters across a team's grid is: the sheets put a lone
+   Demon full width, two or four in pairs, everything else in threes */
+export function columnsFor(n) {
+  if (n <= 1) return 1;
+  if (n === 2 || n === 4) return 2;
+  return 3;
+}
+
+/* Which column each of a team's n characters goes in, as lists of their
+   indexes. Five in three columns: 'across' fills row by row, so the
+   columns hold [0 3] [1 4] [2]; 'down' fills column by column, the first
+   columns one longer: [0 1] [2 3] [4]. The character order (sortMode: SAO
+   and the rest) is the sequence; this is how it flows into the grid. */
+export function columnLists(n, cols, order) {
+  const lists = Array.from({ length: cols }, () => []);
+  if (order === 'down') {
+    for (let k = 0, i = 0; k < cols; k++) {
+      const cnt = Math.floor(n / cols) + (k < n % cols ? 1 : 0);
+      for (let j = 0; j < cnt; j++) lists[k].push(i++);
+    }
+  } else {
+    for (let i = 0; i < n; i++) lists[i % cols].push(i);
+  }
+  return lists;
+}
+
+/* is this team's grid balanced (every column ending on one line)? A design
+   saved when it was one switch for the whole sheet stored `true` */
+export function balancedTeam(options, team) {
+  const b = options && options.colBalance;
+  return b === true || !!(b && typeof b === 'object' && b[team]);
+}
+
+/* a team's own size (icons, names and abilities together), 0.5 to 1.6;
+   1 for a team with no slider set */
+export function teamSize(options, team) {
+  const v = Number(options && options.colTeamSize && options.colTeamSize[team]);
+  return v > 0 ? Math.min(1.6, Math.max(0.5, v)) : 1;
+}
+
+/* the team heading inks on the owner's sheets */
+export const COLUMN_HEAD_INK = {
+  townsfolk: '#0064ac', outsider: '#0a3e64', minion: '#640a0a', demon: '#d00000',
+  traveller: '#5a3e88', fabled: '#8a6d1f', loric: '#3d6b35',
 };
 
 /* The ribbon style, the default night sheet: measured off the owner's
@@ -419,6 +525,10 @@ export const ELEMENTS = [
   { key: 'appAuthor', label: 'Author credit', page: 'front', kind: 'text', only: 'app' },
   { key: 'appSidebar', label: 'Ribbon', page: 'front night', kind: 'image', fixed: true, only: 'app' },
   { key: 'appLabels', label: 'Team names', page: 'front', kind: 'text', fixed: true, only: 'app' },
+  { key: 'colTitle', label: 'Title', page: 'front', kind: 'text', only: 'columns' },
+  { key: 'colAuthor', label: 'Author credit', page: 'front', kind: 'text', only: 'columns' },
+  { key: 'colLogo', label: 'Logo', page: 'front', kind: 'image', only: 'columns' },
+  { key: 'colNight', label: 'Night order columns', page: 'front', kind: 'block', fixed: true, only: 'columns' },
   { key: 'content', label: 'Character grid', page: 'front', kind: 'block' },
   { key: 'col1', label: 'Left column', page: 'front', kind: 'block', only: 'classic' },
   { key: 'col2', label: 'Right column', page: 'front', kind: 'block', only: 'classic' },
@@ -485,8 +595,68 @@ export const DEFAULT_APP = {
   nightTextShift: 0,
   showDividers: true,
   dividerStrength: 1,
+  nameSpacing: 0, // em
+  sidebarContrast: 1,
+  fontFootnote: 'trade',
   bg: { ...DEFAULT_BG, mode: 'parchment' },
 };
+
+/* the night columns style's own look: the owner's sheets set names, headings
+   and labels in Optimus Princeps and the abilities centred in Helvetica, with
+   black names. Everything else it shares with the classic sheet (its paper,
+   its ribbon colour, its ink). */
+export const DEFAULT_COLS = {
+  fontTitle: 'unlovable',
+  fontName: 'optimus',
+  fontAbility: 'arial',
+  fontLabel: 'optimus',
+  fontAuthor: 'optimus',
+  fontFootnote: 'optimus',
+  nameCase: 'upper',
+  nameSpacing: 0, // em
+  labelSpacing: 0, // em, the team headings
+  abilityAlign: 'center',
+  labelColor: '#ffffff', // the night labels on the columns
+  authorColor: '#222222',
+  footnoteColor: '#222222',
+  goodColor: '#222222',
+  evilColor: '#222222',
+  neutralColor: '#222222',
+  teamColors: { townsfolk: '', outsider: '', minion: '', demon: '', traveller: '', fabled: '', loric: '' },
+  sidebarWidth: 1,
+};
+
+/* One set of controls edits whichever script sheet style is showing; each
+   style keeps its own look. STYLE_LOOK names where a style stores a shared
+   setting when it is not the top-level key (the classic sheet's). */
+export const STYLE_LOOK = {
+  classic: {},
+  app: {
+    sidebarMode: 'app.sidebarMode', sidebarColor: 'app.sidebarColor', sidebarContrast: 'app.sidebarContrast',
+    labelColor: 'app.labelColor', labelSpacing: 'app.labelSpacing', nameSpacing: 'app.nameSpacing',
+    fontLabel: 'app.fontLabel', fontName: 'app.fontName', fontAbility: 'app.fontText', fontFootnote: 'app.fontFootnote',
+    inkColor: 'app.inkColor', titleColor: 'app.titleColor', authorColor: 'app.authorColor', footnoteColor: 'app.footnoteColor',
+    showDividers: 'app.showDividers', dividerOpacity: 'app.dividerStrength', rowGap: 'app.rowGap', bg: 'app.bg',
+  },
+  columns: Object.fromEntries(Object.keys(DEFAULT_COLS).map((k) => [k, 'cols.' + k])),
+};
+/* the path a style keeps `key` at ('bg.mode', 'teamColors.demon' work too) */
+export function lookPath(style, key) {
+  const map = STYLE_LOOK[style] || {};
+  const head = key.split('.')[0];
+  return map[head] ? map[head] + key.slice(head.length) : key;
+}
+/* the classic options with a style's own look laid over them, so a renderer
+   can read options.fontName and the rest whatever the style */
+export function withLook(options, style) {
+  const map = STYLE_LOOK[style] || {};
+  const out = { ...options };
+  for (const [k, path] of Object.entries(map)) {
+    const v = path.split('.').reduce((o, p) => (o == null ? undefined : o[p]), options);
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
 
 export const DEFAULT_NIGHT = {
   first: false, // the tick boxes — a night page exists only when it is ticked
@@ -584,8 +754,10 @@ export const DEFAULT_EXPORT = {
 
 export const DEFAULT_OPTIONS = {
   pageRatio: 4 / 3, // every page's height / width (PAGE_SHAPES)
-  sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view)
+  sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view) | columns (night order down the sides)
   app: { ...DEFAULT_APP, bg: { ...DEFAULT_APP.bg } },
+  cols: { ...DEFAULT_COLS, teamColors: { ...DEFAULT_COLS.teamColors } },
+  rowGap: 1, // space between characters (1 = the style's own)
   sortMode: 'script', // 'script' (as in the JSON) | 'official' | 'sao' | 'alpha'
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
   //                       | 'shared' (classic: col 2 staggered under the title)
@@ -594,6 +766,11 @@ export const DEFAULT_OPTIONS = {
   // which is how the printed edition sheets do it: Bad Moon Rising's six
   // long Townsfolk abilities sit beside seven short ones)
   columnSplit: 'count',
+  // night columns style: how a team flows into its grid, and per team whether
+  // its columns are spread to end on one line
+  colOrder: 'across', // across (row by row) | down (column by column)
+  colBalance: { townsfolk: false, outsider: false, minion: false, demon: false, traveller: false, fabled: false, loric: false },
+  colTeamSize: { townsfolk: 1, outsider: 1, minion: 1, demon: 1, traveller: 1, fabled: 1, loric: 1 }, // night columns style: each team's size
   showJinxes: true,
   jinxIconSize: 1, // the partner icons beside a name
   jinxText: false, // each jinx's rule printed under the character that carries it
@@ -659,7 +836,7 @@ export const DEFAULT_OPTIONS = {
   dividerOpacity: 1,
   columnWidth: 1, // multiplier on the text column width
   nameCase: 'normal', // normal | upper | smallcaps
-  abilityAlign: 'left', // left | justify
+  abilityAlign: 'left', // left | center | justify
   bracketStyle: 'plain', // how "[+2 Outsiders]" setup notes print: plain | italic | bold | muted
   iconShadow: 1,
   iconShiftX: 0, // every icon on the sheet, % of the width
@@ -1007,7 +1184,18 @@ export function garlandOval(src, widthPct, scale, dyEm, maxHEm) {
   let h = widthPct * scale / SHEET.ratio * ratio;
   if (maxHEm) h = Math.min(h, maxHEm * scale);
   const bottom = PAGE_EM + dyEm;
-  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, PAGE_EM) };
+  // imgTop: the picture's own top edge (its leaf tips), em
+  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, PAGE_EM), imgTop: bottom - h };
+}
+/* How far down the rows may run above the garland, em. The painted garland
+   and an upload keep the sheet's fixed bottom; a pack garland that has been
+   shrunk or moved down gives the room it left (up to where no garland would
+   stop them); no garland gives it all. */
+export function contentFloor(src, hidden, fixedEm, noneEm, widthPct, scale, dyEm, maxHEm) {
+  if (hidden || src === NO_ART) return footEm(noneEm);
+  const ov = garlandOval(src, widthPct, scale, dyEm, maxHEm);
+  if (!ov) return footEm(fixedEm);
+  return Math.max(footEm(fixedEm), Math.min(footEm(noneEm), ov.imgTop - 0.6));
 }
 /* the footnote's top (em) for its lines to sit in the middle of the oval */
 export function footInOval(oval, text, lineEm) {
@@ -1043,7 +1231,8 @@ export const ART_CHOICES = {
   nightDecorOther: [{ label: 'None', src: '' },
     ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/othernight.webp' }))],
 };
-ART_CHOICES.appGarland = ART_CHOICES.garland.filter((c) => c.src !== NO_ART).map((c) => (c.src ? c : { label: 'None', src: '' }));
+// the app view's garland: the same list, built in (the parchment's own), a pack garland, or None
+ART_CHOICES.appGarland = ART_CHOICES.garland;
 const CHOICE_BY_SRC = new Map(Object.values(ART_CHOICES).flat().filter((c) => c.src).map((c) => [c.src, c]));
 export function artChoice(src) { return CHOICE_BY_SRC.get(src) || null; }
 
@@ -1647,7 +1836,7 @@ export const PRESETS = [
    night sheets 'classic' means the printed family night.js draws, the
    ribbon style included: night.js reads night.style itself. */
 export function pageStyle(options, kind) {
-  if (kind === 'front') return options.sheetStyle === 'app' ? 'app' : 'classic';
+  if (kind === 'front') return options.sheetStyle === 'app' || options.sheetStyle === 'columns' ? options.sheetStyle : 'classic';
   if (kind === 'night') return options.night && options.night.style === 'app' ? 'app' : 'classic';
   return 'classic';
 }

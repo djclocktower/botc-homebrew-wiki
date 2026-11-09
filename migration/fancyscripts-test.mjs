@@ -121,7 +121,7 @@ check('app view: a design saved before it existed gets its defaults',
   [plain.app.sidebarColor, plain.app.fontName, plain.app.bg.mode, plain.night.appTitle], ['#670818', 'tradebold', 'parchment', false]);
 check('app view: element keys are unique and styled', (() => {
   const keys = S.ELEMENTS.map((e) => e.key);
-  return keys.length === new Set(keys).size && S.ELEMENTS.every((e) => !e.only || e.only === 'classic' || e.only === 'app');
+  return keys.length === new Set(keys).size && S.ELEMENTS.every((e) => !e.only || ['classic', 'app', 'columns'].includes(e.only));
 })(), true);
 const lineText = (lines) => lines.map((l) => l.items.map((it) => (it.lead ? ' ' : '') + (it.kind === 'dot' ? '●' : it.s)).join(''));
 check('break: words wrap at the width', lineText(S.breakRuns([{ s: 'aaa bbb ccc ddd', font: 'f' }], 7, unit)), ['aaa bbb', 'ccc ddd']);
@@ -213,6 +213,40 @@ check('keywords: the text survives the split', S.keywordParts('If a good player 
 }
 check('player table: 11 player counts, 4 rows', [S.PLAYER_TABLE.players.length, S.PLAYER_TABLE.rows.every((r) => r[2].length === 11)], [11, true]);
 check('player table: 7 players is 5/0/1/1', S.PLAYER_TABLE.rows.map((r) => r[2][2]), [5, 0, 1, 1]);
+
+// the night columns style: the grid each team gets, and the style switch
+check('columns: a lone Demon full width, two or four in pairs, the rest in threes',
+  [1, 2, 3, 4, 5, 6, 13].map(S.columnsFor), [1, 2, 3, 2, 3, 3, 3]);
+check('columns: the script sheet style', ['columns', 'app', 'classic', 'nonsense'].map((s) => S.pageStyle({ sheetStyle: s }, 'front')),
+  ['columns', 'app', 'classic', 'classic']);
+check('columns: the night sheets keep their own style', S.pageStyle(S.normalizeOptions({ sheetStyle: 'columns' }), 'night'), 'classic');
+check('columns: across fills row by row', S.columnLists(5, 3, 'across'), [[0, 3], [1, 4], [2]]);
+check('columns: down fills column by column, the first ones longer', S.columnLists(5, 3, 'down'), [[0, 1], [2, 3], [4]]);
+check('columns: thirteen down in threes is 5/4/4', S.columnLists(13, 3, 'down').map((l) => l.length), [5, 4, 4]);
+check('columns: balanced per team, and an old one-switch design means every team',
+  [S.balancedTeam({ colBalance: { townsfolk: true } }, 'townsfolk'), S.balancedTeam({ colBalance: { townsfolk: true } }, 'minion'),
+    S.balancedTeam({ colBalance: true }, 'minion'), S.balancedTeam(S.normalizeOptions({}), 'demon')], [true, false, true, false]);
+check('columns: a team size is clamped, and 1 when unset',
+  [S.teamSize({ colTeamSize: { demon: 1.4 } }, 'demon'), S.teamSize({ colTeamSize: { demon: 9 } }, 'demon'),
+    S.teamSize({ colTeamSize: { demon: 0.1 } }, 'demon'), S.teamSize(S.normalizeOptions({}), 'minion')], [1.4, 1.6, 0.5, 1]);
+check('columns: every grid width has its sizes', [1, 2, 3].every((n) => S.COLUMN_SHEET.cell[n].length === 3), true);
+
+// one set of controls, a look per style
+check('look: a style keeps a shared setting at its own path',
+  [S.lookPath('classic', 'fontName'), S.lookPath('app', 'fontAbility'), S.lookPath('columns', 'teamColors.demon'),
+    S.lookPath('app', 'bg.mode'), S.lookPath('columns', 'iconSize')],
+  ['fontName', 'app.fontText', 'cols.teamColors.demon', 'app.bg.mode', 'iconSize']);
+{
+  const o = S.normalizeOptions({});
+  const c = S.withLook(o, 'columns'), a = S.withLook(o, 'app');
+  check('look: each style reads its own defaults, the rest shared',
+    [c.fontName, c.nameCase, c.abilityAlign, c.goodColor, c.sidebarColor === o.sidebarColor, a.fontAbility, a.inkColor, a.rowGap, o.rowGap,
+      S.withLook(o, 'classic').fontName],
+    ['optimus', 'upper', 'center', '#222222', true, 'trade', '#271d17', 1, 1, 'goudy']);
+  // every look path a style names exists in a fresh design
+  const get = (p) => p.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o);
+  check('look: every mapped path has a default', Object.values(S.STYLE_LOOK).flatMap((m) => Object.values(m)).filter((p) => get(p) === undefined), []);
+}
 
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);
