@@ -97,7 +97,7 @@
     paper: 'A4', format: 'png', layout: 'grid',
     char_margin: 1.05, rem_margin: 1.10, pad_mm: 2,
     dpi: 400, want_char: true, want_rem: true, want_official: true,
-    preview_scale: (window.matchMedia && matchMedia('(max-width: 820px)').matches) ? 0.32 : 0.42
+    preview_scale: (window.matchMedia && matchMedia('(max-width: 820px)').matches) ? 0.5 : 0.8
   };
 
   /* Official characters (from imported scripts / roles.json) are printed only
@@ -991,7 +991,7 @@
     if (!pyReady) { box.innerHTML = '<span class="ph">Preview will appear once loading finishes…</span>'; return; }
     var sl = editorSlug, mySeq = ++edPrevSeq;
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
-    o.preview_scale = 0.34;
+    o.preview_scale = 0.55;
     // The editor edits the GENERATED token; previewing a saved one here
     // would make every slider a no-op.
     o.ignore_premade = true;

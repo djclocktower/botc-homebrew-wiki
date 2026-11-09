@@ -35,14 +35,14 @@
 .sbx-b-go:hover { background: #6d2628; }
 
 /* the preview beside the tabs, pinned while the pane scrolls */
-.tt-work { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.tt-work { display: grid; grid-template-columns: minmax(0, 1fr) clamp(360px, 50%, 660px); gap: 16px; align-items: start; }
 .tt-panes { min-width: 0; }
 .tt-preview-col { position: sticky; top: 0; min-width: 0; }
 .tt-preview-col .sbx-panel { margin-bottom: 0; }
 @media (max-width: 1180px) {
   .tt-work { grid-template-columns: minmax(0, 1fr); }
   .tt-preview-col { order: -1; z-index: 10; }
-  .tt-preview img { max-height: 30vh; }
+  .tt-preview img { max-height: 42vh; }
   /* the list of tokens and the print options do not need the picture
      beside them; adjusting does, so there it stays pinned */
   .tt-work[data-tab="set"] .tt-preview-col, .tt-work[data-tab="print"] .tt-preview-col { display: none; }
@@ -229,7 +229,7 @@
   position: relative; min-height: 200px; display: flex; align-items: center; justify-content: center;
   background: #1d0a1a; border: 1px solid var(--parch-frame); padding: 12px;
 }
-.tt-preview img { max-width: 100%; max-height: 330px; display: block; }
+.tt-preview img { max-width: 100%; max-height: calc(100vh - 250px); display: block; }
 .tte-preview { min-height: 170px; padding: 10px; }
 /* the editor's token stays in view while its sliders scroll under it
    (-20px: the window's own top padding, which a sticky offset counts from) */
@@ -237,7 +237,7 @@
   position: sticky; top: -20px; z-index: 6; margin: 0 -16px 12px; padding: 8px 16px 10px;
   background: var(--parch); border-bottom: 1px solid var(--parch-frame);
 }
-.tte-preview img { max-width: 100%; max-height: 280px; display: block; }
+.tte-preview img { max-width: 100%; max-height: min(420px, 45vh); display: block; }
 .tt-preview .ph, .tte-preview .ph { color: rgba(236,225,200,.55); font-size: .84rem; text-align: center; }
 
 /* the sheets that came out */
@@ -304,9 +304,9 @@
   .tt-preview-col .sbx-panel-head { display: none; }
   .tt-preview-col .tt-tf-bar { margin-bottom: 6px; }
   .tt-preview { min-height: 110px; padding: 6px; }
-  .tt-preview img { max-height: 24vh; }
+  .tt-preview img { max-height: 34vh; }
   .tte-preview { min-height: 110px; padding: 6px; }
-  .tte-preview img { max-height: 26vh; }
+  .tte-preview img { max-height: 34vh; }
   #tt-adj-panel { columns: 1; }
 }
 </style>
