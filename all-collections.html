@@ -65,10 +65,11 @@
   <div class="home-panel" style="padding-bottom:0">
     <!-- Below 640px the CSS hides .filter-bar unless it is .open, so without
          this button the chips were unreachable on a phone. display:none on
-         desktop. Same wiring as scripts.html. -->
-    <button type="button" id="filter-toggle" class="filter-toggle" hidden
+         desktop. Same wiring as scripts.html. Both start invisible rather
+         than hidden: they hold their room, so showing them moves nothing. -->
+    <button type="button" id="filter-toggle" class="filter-toggle" style="visibility:hidden"
       aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
-    <div class="filter-bar" id="filter-bar" hidden>
+    <div class="filter-bar" id="filter-bar" style="visibility:hidden">
       <div class="filter-group"><span class="filter-group-label">Status</span>
         <div class="filter-chips">
           <button type="button" class="filter-chip filter-chip-curata" id="fc-curata"
@@ -85,7 +86,7 @@
       </div>
     </div>
   </div>
-  <main class="home-panel">
+  <main class="home-panel" style="min-height:100vh">
     <section class="landing-section">
       <div class="collections-grid" id="collections-grid">
         <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading collections…</p>
@@ -178,8 +179,8 @@
       var bar = document.getElementById('filter-bar');
       var toggle = document.getElementById('filter-toggle');
       function showBar(){
-        bar.hidden = false;
-        if (toggle) toggle.hidden = false;
+        bar.hidden = false; bar.style.visibility = '';
+        if (toggle) { toggle.hidden = false; toggle.style.visibility = ''; }
       }
       if (toggle) {
         toggle.addEventListener('click', function(){
@@ -217,7 +218,11 @@
       // saved favorite, and a chip with no handler there was a dead button.
       var nCurata = SHOWN.filter(function(x){ return x.coll.curata; }).length;
       var btn = document.getElementById('fc-curata');
-      if (!nCurata) btn.closest('.filter-group').hidden = true;
+      if (!nCurata) {
+        btn.closest('.filter-group').hidden = true;
+        // Nothing to show (yet): give the room back. A favorite still calls showBar().
+        if (bar.style.visibility) { bar.hidden = true; if (toggle) toggle.hidden = true; }
+      }
       else {
         btn.textContent = 'Curata only (' + nCurata + ')';
         showBar();

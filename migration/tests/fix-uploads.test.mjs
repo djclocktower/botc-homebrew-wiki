@@ -21,13 +21,14 @@ function bucket(f) {
   const meta = (key, o) => ({
     key, size: o.body.length, etag: o.etag, httpEtag: '"' + o.etag + '"', uploaded: null,
     customMetadata: o.custom || {},
-    writeHttpMetadata(h) { h.set('Content-Type', key.endsWith('.webp') ? 'image/webp' : 'image/png'); }
+    writeHttpMetadata(h) { h.set('Content-Type', o.type || (key.endsWith('.webp') ? 'image/webp' : 'image/png')); }
   });
   f.env.ART = {
     objects,
     set(key, body, custom) { objects.set(key, { body: Buffer.from(body), etag: 'e' + (++n), custom }); },
     async put(key, body, opts) {
-      objects.set(key, { body: Buffer.from(body), etag: 'e' + (++n), custom: opts && opts.customMetadata });
+      objects.set(key, { body: Buffer.from(body), etag: 'e' + (++n), custom: opts && opts.customMetadata,
+        type: opts && opts.httpMetadata && opts.httpMetadata.contentType });
       return { etag: 'e' + n };
     },
     async head(key) { const o = objects.get(key); return o ? meta(key, o) : null; },
@@ -124,6 +125,11 @@ test('thumbnails and resized copies do not spend the art upload allowance, and b
   const webp = 'data:image/webp;base64,' + Buffer.alloc(1000, 1).toString('base64');
   assert.equal((await upload({ key: 'thumb/mine.png.webp', data: webp })).status, 200);
   assert.ok(f.db.prepare("SELECT n FROM rate_limits WHERE key='rl:uploadcopy:u2'").get().n >= 1);
+  // Safari cannot encode WebP: a PNG thumbnail is taken under the same name,
+  // and served as what it is. Nowhere else may the name and the bytes differ.
+  assert.equal((await upload({ key: 'thumb/mine.png.webp', data: png })).status, 200);
+  assert.equal((await f.request('/assets/thumb/mine.png.webp')).headers.get('Content-Type'), 'image/png');
+  assert.equal((await upload({ key: 'media/320/scripts/mine.png.webp', data: png })).status, 400);
   assert.equal((await upload({ key: 'art/other.png', data: 'data:image/png;base64,@@not base64@@' })).status, 400);
 });
 

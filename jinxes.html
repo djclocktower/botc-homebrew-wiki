@@ -55,7 +55,7 @@
     font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
   }
   .jg-bar select {
-    padding: 7px 10px; max-width: 260px;
+    padding: 7px 10px; width: 200px; max-width: 100%;   /* fixed: it widened as its options arrived and pushed the map down */
     border: 1px solid var(--parch-frame); background: #fffdf8;
     font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
   }
@@ -155,7 +155,9 @@
   .jg-panel-note { font-family: 'Trade Gothic', sans-serif; font-size: .72rem; opacity: .6; margin: 3px 0 0; }
 
   /* The list below the map */
-  .jx-list-char { margin: 0 0 22px; }
+  /* 600 characters' jinxes are 20,000 nodes: only the ones near the screen
+     are laid out and painted (the size is a stand-in until then). */
+  .jx-list-char { margin: 0 0 22px; content-visibility: auto; contain-intrinsic-size: auto 220px; }
   .jx-list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
   .jx-list-head img { width: 42px; height: 42px; object-fit: contain; flex: none; }
   .jx-list-head a { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: 1.06rem; color: var(--maroon); text-decoration: none; }
@@ -239,7 +241,7 @@
       <div class="jg-bar">
         <button type="button" class="filter-chip" id="jg-f-homebrew">Wiki characters only</button>
         <button type="button" class="filter-chip" id="jg-f-official">Official only</button>
-        <button type="button" class="filter-chip" id="jg-f-base" hidden>Show base-game jinxes</button>
+        <button type="button" class="filter-chip" id="jg-f-base">Show base-game jinxes</button>
         <button type="button" class="filter-chip" id="jg-f-fit">Fit all</button>
         <button type="button" class="filter-chip" id="jg-f-reset">Reset view</button>
         <button type="button" class="filter-chip" id="jg-f-relayout">Reset layout</button>
@@ -346,11 +348,12 @@
       var MY_CHARS = {};        // slug -> name, for the characters you own
 
       // ---------- the map ----------
-      function buildGraph() {
+      function buildGraph(positions) {
         if (!window.mountJinxGraph) return;
         GRAPH = window.mountJinxGraph({
           mount: 'jg-stage',
           data: DATA,
+          positions: positions,
           onSelect: showPanel,
           onLinkStep: showLinkStep,
           onPair: startJinxForPair
@@ -361,7 +364,10 @@
         }
         $('jg-summary').textContent =
           GRAPH.nodeCount + ' characters, ' + GRAPH.edgeCount + ' jinxes between them.';
-        if (GRAPH.baseCount) $('jg-f-base').hidden = false;
+        // A chip tapped while the map was still being laid out.
+        applyGraphFilter();
+        if (!GRAPH.baseCount) $('jg-f-base').hidden = true;
+        else if ($('jg-f-base').classList.contains('active')) GRAPH.setBaseLayer(true);
 
         /* /jinxes?c={slug} opens focused on that character: where the "See
            this on the jinx map" link on every /c/ page points, and what makes
@@ -843,8 +849,11 @@
             $('jg-summary').textContent = 'No jinxes on the wiki yet.';
             $('jx-list').innerHTML = '<p style="opacity:.7">No jinxes yet. Add the first one above.</p>';
           } else {
-            buildGraph();
+            // The list first: the map's layout is worked out off the main
+            // thread (or remembered from the last visit) and drawn when ready.
             renderList();
+            if (window.mountJinxGraph && window.mountJinxGraph.layout) window.mountJinxGraph.layout(DATA).then(buildGraph);
+            else buildGraph();
           }
           setupForm();
         })

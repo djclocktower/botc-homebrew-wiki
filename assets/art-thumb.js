@@ -20,6 +20,9 @@
        Safari) gets a PNG back from toDataURL and the Worker would refuse
        `thumb/x.png.webp` carrying image/png — so the helper checks the
        result's type and simply skips, rather than uploading a mislabelled file.
+       The one exception is the 192px thumbnail, which goes up as that PNG:
+       with no thumbnail at all, every icon uploaded from Safari drew its
+       full-size original on every card.
      - a picture or nothing. A thumbnail that drew nothing is far worse than
        one that was never made: the fallback only fires when the file is
        ABSENT, so a blank one is served as a real image, `onerror` never
@@ -102,7 +105,11 @@
     ctx.drawImage(img, 0, 0, cw, ch);
     if (isBlank(ctx, cw, ch)) throw new Error('blank render');
     var out = cv.toDataURL('image/webp', opts.quality || 0.8);
-    return /^data:image\/webp/i.test(out) ? out : '';
+    if (/^data:image\/webp/i.test(out)) return out;
+    // Safari cannot encode WebP. The 192px thumbnail goes up as a PNG
+    // instead (~25 KB against the original's ~180 KB; the Worker takes one
+    // under the thumbnail's .webp name). Nothing else has a fallback.
+    return opts.png ? out : '';
   }
 
   /* Load and DECODE `src` (a data: URL, a blob URL or a same-origin/CORS
@@ -214,7 +221,7 @@
       var thumb = Promise.resolve(false);
       if (tKey) {
         var data = '';
-        try { data = render(img); } catch (e) { /* blank: no thumbnail, as before */ }
+        try { data = render(img, { box: SIZE, png: true }); } catch (e) { /* blank: no thumbnail, as before */ }
         if (data) thumb = post(tKey, data).then(function () { return true; });
       }
       return thumb.catch(function () { return false; }).then(function (ok) {
