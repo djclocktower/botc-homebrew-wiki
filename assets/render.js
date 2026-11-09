@@ -265,6 +265,15 @@
       ? W.inlineFormat(str, { linkRoot: R(), marks: 'links' })
       : tok(str);
   }
+  /* One paragraph of almanac prose, or a table when it is nothing but table
+     rows (WikiRender.tableHTML, cells in the same links-only mode). */
+  function paraHTML(p, br) {
+    var W = engine();
+    var t = W && W.tableHTML ? W.tableHTML(p, { linkRoot: R(), marks: 'links' }) : '';
+    if (t) return t;
+    var h = inlineLinks(p);
+    return '<p>' + (br ? h.replace(/\n/g, '<br>') : h) + '</p>';
+  }
   /* The marks taken back out, for the two places this text leaves the page as
      plain prose: the official-schema JSON box (the app renders no markup) and
      the meta description the Worker puts in the page head. */
@@ -1040,6 +1049,14 @@
      carries the jinx and `b` is the matching character also in the list. */
   // Accents fold away exactly as slugId() folds them, so a name and an id
   // written for it ('Médium', 'medium') are one key, not two.
+  /* The side a jinx is shown as. One its writer did not choose (an import)
+     follows the character carrying it: a Minion or Demon's jinx is evil. */
+  function jinxAlign(j, team) {
+    var a = j && j.align;
+    if (a === 'evil' || a === 'good') return a;
+    return team === 'minion' || team === 'demon' ? 'evil' : 'good';
+  }
+
   function normJinxId(id) {
     return String(id || '').replace(/_festival_of_lanterns$/, '')
       .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -1444,7 +1461,7 @@
     var callouts = (Array.isArray(d.callout) ? d.callout : [d.callout])
       .filter(function (x) { return typeof x === 'string' && x.trim(); });
 
-    var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
+    var howColBody = paras.map(function (p) { return paraHTML(p); }).join('') +
       callouts.map(function (c) { return '<div class="callout">' + inlineLinks(c) + '</div>'; }).join('');
     var howCol = howColBody ? sech('sec-howtorun', 'How to Run') + howColBody : '';
 
@@ -1658,7 +1675,7 @@
 
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
     var jinxItems = jinxes.map(function (j) {
-      var al = (j.align === 'evil') ? 'evil' : 'good';
+      var al = jinxAlign(j, team);
       var t = resolveJinxTarget(j, root);
       // A mirrored jinx is stored on the OTHER character's page. It reads the
       // same, but the line underneath says where to go to edit it.
@@ -1706,7 +1723,7 @@
       if (!title && !content.trim()) return '';
       var body = content.split(/\n{2,}/).map(function (p) {
         p = trimEnd(p);
-        return p.trim() ? '<p>' + inlineLinks(p).replace(/\n/g, '<br>') + '</p>' : '';
+        return p.trim() ? paraHTML(p, true) : '';
       }).join('');
       return '<div class="card custom-box">' +
         (title ? '<h2 class="info-h custom-box-h">' + esc(title) + '</h2>' : '') +
@@ -1741,6 +1758,7 @@
 
   if (typeof window !== 'undefined') {
     window.renderCharacter = renderCharacter;
+    window.paraHTML = paraHTML;
     window.initCharacterRender = init;
     window.fitCharTitle = fitCharTitle;
     window.renderJsonBox = renderJsonBox;
@@ -1771,6 +1789,7 @@
     window.resolveJinxTarget = resolveJinxTarget;
     window.resolveRelatedTarget = resolveRelatedTarget;
     window.normJinxId = normJinxId;
+    window.jinxAlign = jinxAlign;
     window.jinxQualKeys = jinxQualKeys;
     window.jinxLookupKeys = jinxLookupKeys;
     window.jinxCharIndex = jinxCharIndex;
@@ -1794,6 +1813,7 @@
     module.exports = {
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
+      paraHTML: paraHTML,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,
@@ -1808,7 +1828,7 @@
       artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes, scriptJinxResolver: scriptJinxResolver,
-      resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId, jinxAlign: jinxAlign,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys, jinxOfficialId: jinxOfficialId,
       jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
       charSetKeys: charSetKeys,

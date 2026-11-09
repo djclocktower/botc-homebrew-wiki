@@ -70,10 +70,10 @@
    fine too).
 
    WHAT IT DOES (approved scope)
-     • Bar: deeper purple matching the marble background, ~98%
-       opaque (stops cards ghosting through on scroll), subtle lift
-       shadow + faint gold glint on the bottom edge; fully solid with
-       a slightly firmer shadow once .scrolled is added past 24px.
+     • Bar: solid deep purple with the Fancy Scripts ribbon damask,
+       official leaves growing in from the right end, and a thin gold
+       line along the bottom edge (owner's pick, 2026-11). site.js
+       no longer sets .scrolled; it sets .stuck (see section 1).
      • Brand: skull + wordmark aligned, slightly slimmer heights.
      • Community Created Content badge — OPTION A: stays in the bar
        after the wordmark, but smaller (24px), slightly dimmed, with
@@ -97,24 +97,55 @@
 html.redesign-on .topbar {
   flex-wrap: nowrap;
   gap: clamp(10px, 1.6vw, 22px);
-  padding: 7px clamp(16px, 3vw, 36px);
-  background: linear-gradient(180deg, rgba(44,19,51,.97), rgba(26,10,31,.98));
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(214,196,150,.32);
-  box-shadow: 0 4px 14px rgba(5,1,7,.28);
+  padding: 4px clamp(16px, 3vw, 36px);
+  background: #1a0c1e;
+  border-bottom: 1px solid rgba(214,196,150,.5);
+  box-shadow: 0 2px 6px rgba(8,4,10,.2);
 }
-/* faint gilded glint along the bottom edge */
+/* While the bar is pinned (.stuck, set by site.js), its colour and damask
+   reach 200px ABOVE it. On Chrome for Android, when the address bar slides
+   away the pinned bar is drawn where it was for a moment, and the strip that
+   opens above it used to show the page's dark background as a gap. The
+   second shadow is the bar's colour, ending at its bottom edge; shadows never
+   add scroll room. Only while pinned, because the bar's layer sits above
+   everything, and an announcement or draft bar above it would be covered. */
+html.redesign-on .topbar.stuck { box-shadow: 0 2px 6px rgba(8,4,10,.2), 0 -100px 0 100px #1a0c1e; }
+/* Two layers behind everything in the bar (z-index -1 sits above the bar's
+   own background and below its children; the bar's z-index makes it the
+   stacking context). ::before is the damask: the Fancy Scripts sidebar
+   ribbon, turned to run along the bar and mirrored at its ends so it tiles.
+   It is a MASK, so the colour lives here. ::after is the leaves on the
+   RIGHT end only (official art from the Fancy Scripts decor set, one
+   picture per screen size, drawn at the bar's height and clipped by it). */
+html.redesign-on .topbar::before,
 html.redesign-on .topbar::after {
-  content: "";
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
-  background: linear-gradient(90deg, transparent 6%, rgba(214,196,150,.45) 50%, transparent 94%);
-  pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
 }
-/* stronger, fully-solid bar once scrolled (see step 4 above) */
-html.redesign-on .topbar.scrolled {
-  background: linear-gradient(180deg, rgba(37,15,43,.99), rgba(22,8,26,.99));
-  box-shadow: 0 6px 18px rgba(5,1,7,.34);
+html.redesign-on .topbar::before {
+  background: #452953;
+  opacity: .7;   /* the damask, softened into the ground */
+  -webkit-mask: url('topbar/ribbon-damask-v2.webp') -180px -24px / 2120px 140px repeat;
+          mask: url('topbar/ribbon-damask-v2.webp') -180px -24px / 2120px 140px repeat;
 }
+/* pinned: 200px taller upward, the pattern moved down by the same 200px
+   (176 = 200 - 24, inside the 140px tile) so the band in the bar stays put */
+html.redesign-on .topbar.stuck::before { top: -200px; -webkit-mask-position: -180px 176px; mask-position: -180px 176px; }
+html.redesign-on .topbar::after {
+  opacity: .8;
+  background: url('topbar/leaves-right-v5.webp') right top / auto 100% no-repeat;
+}
+@media (max-width: 880px) {
+  html.redesign-on .topbar::before { -webkit-mask-position: -60px -24px; mask-position: -60px -24px; }
+  html.redesign-on .topbar.stuck::before { -webkit-mask-position: -60px 176px; mask-position: -60px 176px; }
+  html.redesign-on .topbar::after { background-image: url('topbar/leaves-right-m-v5.webp'); }
+}
+/* a soft shadow so the logo, links and menu sit off the damask */
+html.redesign-on .brand-skull,
+html.redesign-on .brand-header-text {
+  filter: drop-shadow(0 0 1.5px rgba(16,10,19,.75)) drop-shadow(0 0 4px rgba(16,10,19,.5));
+}
+html.redesign-on .crumb a { text-shadow: 0 1px 2px rgba(10,6,12,.6); }
+html.redesign-on .hamburger span { box-shadow: 0 1px 3px rgba(10,6,12,.6); }
 
 /* ── 2. Brand lockup ──────────────────────────────────────────── */
 html.redesign-on .brand { gap: 10px; align-items: center; }
@@ -125,7 +156,7 @@ html.redesign-on .brand-header-text { height: 33px; }
    stays in the bar after the wordmark, tamed: smaller, dimmed,
    divided from the wordmark by a thin gold rule. */
 html.redesign-on .topbar .topbar-badge {
-  height: 24px; opacity: .9;
+  height: 30px; opacity: .9;
   margin-left: 2px; padding-left: 12px;
   border-left: 1px solid rgba(214,196,150,.32);
 }
@@ -211,7 +242,7 @@ html.redesign-on .topbar .topbar-badge {
 
 /* ── 4. Search ────────────────────────────────────────────────── */
 html.redesign-on .search-input {
-  background-color: rgba(240,232,213,.06);
+  background-color: rgba(26,12,30,.88);
   border: 1px solid rgba(214,196,150,.35);
   padding: 8px 12px 8px 32px;   /* keeps room for the inline SVG magnifier */
   font-size: .85rem;
@@ -224,7 +255,7 @@ html.redesign-on .search-wrap { flex-shrink: 1; min-width: 0; }
 html.redesign-on .search-input::placeholder { color: rgba(222,207,167,.55); }
 html.redesign-on .search-input:focus {
   border-color: rgba(214,196,150,.75);
-  background-color: rgba(240,232,213,.10);
+  background-color: rgba(26,12,30,.94);
   box-shadow: 0 0 0 3px rgba(214,196,150,.14);
 }
 

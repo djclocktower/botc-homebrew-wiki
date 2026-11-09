@@ -699,6 +699,12 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   margin: 0 0 .3em;
   text-shadow: 0 3px 12px rgba(0,0,0,.5);
 }
+/* A tool page's own icon beside its title, as on Grimoire Forge (whose
+   page keeps its own .gf-hero-* copy of these rules). The pictures are the
+   Starlit team's, in assets/tool-icons/. */
+.tool-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 22px); }
+.tool-hero-row h1 { margin: 0; }
+.tool-hero-icon { width: clamp(56px, 9vw, 92px); height: auto; flex-shrink: 0; filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); }
 .home-hero p {
   font-size: clamp(.95rem, 2vw, 1.2rem); color: rgba(236,225,200,.7);
   margin: 0; letter-spacing: .03em;
@@ -2130,11 +2136,16 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .browse-card-sym {
   display: flex; align-items: center; justify-content: center;
   color: var(--maroon);
+  min-height: 56px;
   margin-bottom: 10px;
 }
 .browse-card-sym svg {
   width: 46px; height: 46px;
   filter: drop-shadow(0 2px 3px rgba(91,31,33,.20));
+}
+.browse-card-sym img {
+  max-height: 56px; width: auto;
+  filter: drop-shadow(0 2px 5px rgba(91,31,33,.3));
 }
 .browse-card-title {
   font-family: 'Dumbledor2', serif; font-weight: 400;
@@ -2436,7 +2447,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 
 /* ─── All-characters filter bar ──────────────────────────── */
 .filter-bar {
-  display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end;
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
   background: var(--parch);
   border: 2px solid var(--parch-frame);
   padding: 14px 18px; margin-bottom: 26px;
@@ -2452,7 +2463,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   cursor: pointer; user-select: none;
   background: #fffdf8; color: var(--maroon);
   border: 1px solid var(--parch-frame); border-radius: 0;
-  padding: 4px 11px; transition: background .12s, color .12s;
+  padding: 4px 9px; transition: background .12s, color .12s;
 }
 .filter-chip:hover { background: rgba(91,31,33,.08); }
 .filter-chip.active { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
@@ -2460,7 +2471,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .filter-select {
   font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: var(--maroon);
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
-  padding: 6px 10px;
+  padding: 6px 6px;
 }
 /* "Tag [all of / any of / only one of]": the choice sits in the label. */
 .filter-select.filter-tagmode {
@@ -3308,6 +3319,32 @@ a:hover .curata-mark { opacity: .9; }
 @media (max-width: 640px) {
   .filter-search { width: 100%; }
   .filter-chips-scroll { max-height: 160px; }
+}
+/* All Characters' creator search: a drop-down of matches under the box. */
+.cf-creator-combo { position: relative; width: 170px; max-width: 100%; }
+/* The filter's .home-panel is its own layer (z-index 5) and the card list
+   after it is another, drawn on top: lift it while the drop-down is open. */
+.home-panel:has(.cf-creator-combo:focus-within) { z-index: 6; }
+.cf-creator-combo .filter-search { width: 100%; }
+.cf-creator-drop {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 30;
+  max-height: 280px; overflow-y: auto;
+  background: #fffdf8; border: 1px solid var(--parch-frame); border-top: 0;
+}
+.cf-creator-opt {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid #f0e8d5;
+  padding: 6px 10px;
+  font-family: 'Roboto', sans-serif; font-size: .84rem; color: var(--maroon);
+}
+.cf-creator-opt:last-child { border-bottom: 0; }
+.cf-creator-opt:hover, .cf-creator-opt.on { background: #efe7d3; }
+.cf-creator-opt .creator-mark { cursor: inherit; }
+.cf-creator-none { margin: 0; padding: 8px 10px; font-size: .84rem; font-style: italic; color: #726348; }
+.filter-chip.active .creator-mark, .filter-chip.active-exclude .creator-mark { color: inherit; }
+.filter-group-creators .filter-chip-selected-row:not(:empty) { margin-bottom: 6px; }
+@media (max-width: 640px) {
+  .cf-creator-combo { width: 100%; }
 }
 
 /* ─── News ───────────────────────────────────────────────────── */
@@ -4716,6 +4753,7 @@ html.sbx-page .nav-dropdown { z-index: 80; }
   background: rgba(26,10,31,.5);
   border-bottom: 1px solid rgba(214,196,150,.2);
 }
+.sbx-tool-ico { width: 30px; height: auto; flex: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.5)); }
 .sbx-names {
   display: flex; align-items: baseline; gap: 8px; flex: 1 1 260px; min-width: 0;
   background: none; border: none; padding: 3px 3px 2px; cursor: pointer; text-align: left;
@@ -5174,6 +5212,20 @@ html.sbx-page .nav-dropdown { z-index: 80; }
   scrollbar-width: thin; scrollbar-color: var(--parch-frame) transparent;
 }
 .sbx-pop[hidden] { display: none; }
+/* the import's questions (importChoices in script-builder.js) */
+.sbx-dlg {
+  width: min(420px, calc(100vw - 32px)); padding: 14px 16px; color: var(--ink);
+  background: var(--parch); border: 2px solid var(--parch-frame); box-shadow: 0 12px 34px rgba(0,0,0,.5);
+}
+.sbx-dlg::backdrop { background: rgba(20,6,16,.6); }
+.sbx-dlg .sbx-pop-title { margin: 0 0 8px; }
+.sbx-dlg-opt { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0; font-size: .9rem; cursor: pointer; }
+.sbx-dlg-opt input { margin-top: 3px; flex: none; accent-color: var(--maroon); }
+.sbx-dlg-opt small { display: block; font-size: .78rem; color: #6b5d49; }
+.sbx-dlg-opt[hidden] { display: none; }
+.sbx-dlg-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.sbx-dlg-go { background: var(--maroon); color: #fffdf8; }
+.sbx-dlg-go:hover { background: #6d2628; }
 .sbx-pop-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; padding-right: 26px; position: relative; }
 .sbx-pop-title { font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em; font-size: 1rem; color: var(--maroon); }
 .sbx-pop-sub { font-size: .74rem; color: #6b5d49; flex-basis: 100%; line-height: 1.35; }

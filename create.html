@@ -53,7 +53,7 @@
     .row2 { grid-template-columns:1fr; }
     .jinx-row { grid-template-columns:minmax(0,1fr) minmax(64px,auto) auto; }
   }
-  .box-row { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:14px;
+  .box-row { display:grid; grid-template-columns:1fr auto auto auto; gap:8px; margin-bottom:14px;
     align-items:start; padding-bottom:12px; border-bottom:1px dashed #d8caa8; }
   .box-row:last-of-type { border-bottom:none; }
   .box-row textarea { grid-column:1 / -1; min-height:56px; }
@@ -173,7 +173,7 @@
         <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
         <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
         <div id="importmsg"></div>
-        <p class="sub" style="margin:10px 0 0">Have a whole script or list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Mass-upload them &rarr;</a></p>
+        <p class="sub" style="margin:10px 0 0">Have a whole script or list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Import them all at once &rarr;</a></p>
       </fieldset>
 
       <div class="fld">
@@ -246,6 +246,7 @@
             <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap (only this way round)</li>
             <li>The Ability box takes none of these</li>
           </ul>
+          <input type="text" id="fmt-char" class="fmt-char" placeholder="+ Character" aria-label="Add a character to Examples">
         </div>
         <textarea id="examples"></textarea>
       </div>
@@ -321,6 +322,9 @@
           <button type="button" class="btn btn-sm" id="artStd"><span class="ico ico-resize" aria-hidden="true"></span> Resize icon</button>
           <button type="button" class="btn btn-sm" id="artAdjust"><span class="ico ico-edit" aria-hidden="true"></span> Adjust by hand</button>
           <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame. Resize restores that fit; Adjust lets you move and size it by hand.</div>
+        </div>
+        <div class="sub" style="margin-top:6px">
+          <button type="button" class="btn btn-sm" data-starlit-into="art">Browse the Starlit Gallery</button>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing <span class="ico ico-external" aria-hidden="true"></span></a>
@@ -525,10 +529,12 @@
   <script src="assets/art-normalize.js"></script>
   <script src="assets/art-thumb.js"></script>
   <script src="assets/art-adjust.js"></script>
+  <script src="assets/starlit-picker.js"></script>
   <script src="assets/token-auto.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
+  <script>if (window.mountCharInsert) mountCharInsert(document.getElementById('fmt-char'), document.getElementById('examples'));</script>
   <script src="assets/related-editor.js"></script>
   <script src="assets/almanac-alt.js"></script>
   <script src="assets/approved-editors.js"></script>
@@ -692,7 +698,7 @@
       if (!nm) nm = j.id || '';
       return {
         name: nm,
-        align: j.align === 'evil' ? 'evil' : 'good',
+        align: j.align === 'evil' || j.align === 'good' ? j.align : '',
         text: j.text || j.reason || '',
         slug: j.slug || '',
         id: j.id || ''
@@ -706,13 +712,25 @@
         '<input type="text" class="jx-name" placeholder="Jinxed character (e.g. Goon)">' +
         '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
         '<button type="button" class="btn btn-del btn-sm jx-del" aria-label="Remove jinx"><span class="ico ico-x" aria-hidden="true"></span></button>' +
-        '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
+        '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>' +
+        '<span class="jx-move"><button type="button" class="btn btn-ghost btn-sm jx-up" aria-label="Move jinx up">&#9650;</button>' +
+        '<button type="button" class="btn btn-ghost btn-sm jx-down" aria-label="Move jinx down">&#9660;</button></span>';
       $('jinxes').appendChild(row);
       if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
       else if (name) row.querySelector('.jx-name').value = name;
-      if (align) row.querySelector('.jx-align').value = align;
+      // Unchosen, the side follows the team (Minion/Demon: evil) until picked.
+      var alSel = row.querySelector('.jx-align');
+      if (align) alSel.value = align; else { alSel.dataset.auto = '1'; alSel.value = teamJinxAlign(); }
+      alSel.addEventListener('change', function () { delete alSel.dataset.auto; });
       if (text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
+      // Stored in the order the rows stand, so moving a row IS the order.
+      row.querySelector('.jx-up').addEventListener('click', function () {
+        var p = row.previousElementSibling; if (p) { row.parentNode.insertBefore(p, row.nextSibling); update(); }
+      });
+      row.querySelector('.jx-down').addEventListener('click', function () {
+        var n = row.nextElementSibling; if (n) { row.parentNode.insertBefore(n, row); update(); }
+      });
       row.querySelectorAll('input,select,textarea').forEach(function (el) { el.addEventListener('input', update); });
       row.querySelectorAll('textarea').forEach(function(ta) {
         ta.style.overflowY = 'hidden';
@@ -726,6 +744,10 @@
       if (window.checkJinxConflicts) window.checkJinxConflicts();
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
+    function teamJinxAlign() { return window.jinxAlign ? window.jinxAlign(null, $('team').value) : 'good'; }
+    $('team').addEventListener('change', function () {
+      document.querySelectorAll('.jx-align[data-auto]').forEach(function (sel) { sel.value = teamJinxAlign(); });
+    });
 
     // ── custom sidebar box rows ────────────────────────────────────
     function addBox(title, content) {
@@ -733,12 +755,20 @@
       row.className = 'box-row';
       row.innerHTML =
         '<input type="text" class="bx-title" placeholder="Box title">' +
+        '<button type="button" class="btn btn-ghost btn-sm bx-up" aria-label="Move box up">&#9650;</button>' +
+        '<button type="button" class="btn btn-ghost btn-sm bx-dn" aria-label="Move box down">&#9660;</button>' +
         '<button type="button" class="btn btn-del btn-sm bx-del" aria-label="Remove box"><span class="ico ico-x" aria-hidden="true"></span></button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
       if (title)   row.querySelector('.bx-title').value   = title;
       if (content) row.querySelector('.bx-content').value = content;
       row.querySelector('.bx-del').addEventListener('click', function () { row.remove(); update(); });
+      row.querySelector('.bx-up').addEventListener('click', function () {
+        var p = row.previousElementSibling; if (p) { row.parentNode.insertBefore(row, p); update(); }
+      });
+      row.querySelector('.bx-dn').addEventListener('click', function () {
+        var n = row.nextElementSibling; if (n) { row.parentNode.insertBefore(n, row); update(); }
+      });
       row.querySelectorAll('input,textarea').forEach(function (el) { el.addEventListener('input', update); });
       row.querySelectorAll('textarea').forEach(function (ta) {
         ta.style.overflowY = 'hidden';
@@ -1422,7 +1452,7 @@
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
             pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
-            translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
+            translatedBy: d.translatedBy, iconBy: d.iconBy, iconByLabel: d.iconByLabel || undefined, edition: d.edition,
             typeName: d.typeName, exportTeam: d.exportTeam,
             artScale: d.artScale,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,

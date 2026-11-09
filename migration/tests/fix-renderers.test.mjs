@@ -280,6 +280,20 @@ test('a kept JSON (customJson) replaces the built one on script and collection p
   assert.equal(PageRender.customExport(''), '');
 });
 
+test('a paragraph of table rows is a table on character pages and in a script\'s prose', () => {
+  const t = '| Players | 5 | 6 |\n|---|---|---|\n| Townsfolk | 3 | *3* |';
+  const html = Render.renderCharacter({ name: 'X', team: 'townsfolk', ability: 'a',
+    howToRun: ['Before.', t], customBoxes: [{ title: 'Counts', content: t }] }, '', '');
+  assert.equal((html.match(/<table class="wiki-table">/g) || []).length, 2);
+  // Cells follow the character page's links-only marks: a lone pair of
+  // asterisks stays text.
+  assert.match(html, /<td>\*3\*<\/td>/);
+  assert.equal(Render.paraHTML('| just one line |'), '<p>| just one line |</p>');
+  const page = PageRender.renderScriptPage({ name: 'S', synopsis: 'Intro.\n\n' + t, characters: [] }, [], { root: '../' });
+  assert.match(page, /<table class="wiki-table">/);
+  assert.match(page, /<p>Intro\.<\/p>/);
+});
+
 test('typed HTML is rebuilt from a whitelist, MediaWiki marks render', () => {
   const f = (s, o) => WikiRender.inlineFormat(s, o || { marks: 'links' });
   assert.equal(f('<span style="color:#8b2c2c;font-style:italic;padding:0 6px">x</span>'),

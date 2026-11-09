@@ -1982,86 +1982,150 @@
   }
 
   // ── import ─────────────────────────────────────────────────────────────
-  function idToSlug() {
-    var map = {};
+  /* A script entry names its character by id, and 166 names on this wiki
+     belong to more than one page, so the id alone used to land on whichever
+     page was registered last. Now:
+       - a bare id ("spy") is how the schema names an OFFICIAL character, so
+         the official one wins it;
+       - an object entry carrying the official ability is the official
+         character (a page here with the very same ability is a copy of it);
+       - otherwise, among the pages answering to its id or name, the one with
+         the same ability wins, then one in the set the file is named after,
+         then an exact jsonId or identity. */
+  function importIndex() {
+    var byKey = {}, exact = {}, off = {};
+    function add(m, k, c) { if (k) (m[k] = m[k] || []).push(c); }
     allChars.forEach(function (c) {
-      var id = window.slugId ? window.slugId(c.name) : slugify(c.name);
-      map[id] = c.slug;
-      if (c.jsonId) map[slugify(c.jsonId)] = c.slug;
-      map[(c.slug || '').replace(/-/g, '')] = c.slug;
+      add(byKey, slugify(c.name), c);
+      if (c.jsonId) add(exact, slugify(c.jsonId), c);
+      add(exact, slugify(c.slug), c);
     });
-    // Official roles by bare id and by name. Homebrew was added first and is
-    // never overwritten, so a homebrew page sharing an official name wins.
     officialChars.forEach(function (c) {
-      var id = c.slug.replace(/^off-/, '');
-      if (!(id in map)) map[id] = c.slug;
-      var byName = slugify(c.name);
-      if (!(byName in map)) map[byName] = c.slug;
+      off[c.slug.replace(/^off-/, '')] = c;
+      if (!off[slugify(c.name)]) off[slugify(c.name)] = c;
     });
-    return map;
+    return { byKey: byKey, exact: exact, off: off };
   }
+  function matchEntry(entry, ix, setName) {
+    var abilityKey = window.OfficialRoles ? window.OfficialRoles.abilityKey : slugify;
+    if (typeof entry === 'string') {
+      var k = slugify(entry), o = ix.off[k];
+      if (o) return o.slug;
+      var first = (ix.exact[k] || ix.byKey[k] || [])[0];
+      return first ? first.slug : '';
+    }
+    var key = slugify(entry.id), nameKey = slugify(entry.name);
+    var ab = entry.ability ? abilityKey(entry.ability) : '';
+    var exact = ix.exact[key] || [];
+    var cands = [];
+    exact.concat(ix.byKey[key] || [], ix.byKey[nameKey] || []).forEach(function (c) {
+      if (cands.indexOf(c) === -1) cands.push(c);
+    });
+    var official = ix.off[key] || ix.off[nameKey];
+    if (official && ab && abilityKey(official.ability) === ab) return official.slug;
+    var same = ab ? cands.filter(function (c) { return abilityKey(c.ability) === ab; }) : [];
+    if (official && !same.length && !ab) return official.slug;
+    var pool = same.length ? same : cands;
+    var inSet = setName ? pool.filter(function (c) { return slugify(c.appearsIn) === slugify(setName); }) : [];
+    var hit = pool.filter(function (c) { return exact.indexOf(c) !== -1; });
+    var pick = inSet[0] || hit[0] || pool[0];
+    return pick ? pick.slug : '';
+  }
+
+  /* The import's two questions in one dialog with real buttons. They were
+     two confirm() boxes where Cancel meant "add to it" and "let the wiki
+     build the JSON": the button that reads as stop did something instead. */
+  function importChoices(hasScript) {
+    return new Promise(function (resolve) {
+      var d = document.createElement('dialog');
+      d.className = 'sbx-dlg';
+      d.innerHTML = '<h3 class="sbx-pop-title">Import this script</h3>' +
+        (hasScript
+          ? '<label class="sbx-dlg-opt"><input type="radio" name="sbx-imp" value="replace" checked> Replace the script you have open</label>' +
+            '<label class="sbx-dlg-opt"><input type="radio" name="sbx-imp" value="add"> Add these characters to it</label>'
+          : '') +
+        '<label class="sbx-dlg-opt" id="sbx-imp-json-row"><input type="checkbox" id="sbx-imp-json"> <span>Use this file as the script\'s JSON' +
+          '<small>When you publish, the page\'s JSON is exactly this file.</small></span></label>' +
+        '<div class="sbx-dlg-btns"><button type="button" class="sbx-b-sm" data-v="cancel">Cancel</button>' +
+        '<button type="button" class="sbx-b-sm sbx-dlg-go" data-v="ok">Import</button></div>';
+      document.body.appendChild(d);
+      function addOn() { var a = d.querySelector('input[value=add]'); return !!(a && a.checked); }
+      d.addEventListener('change', function () { d.querySelector('#sbx-imp-json-row').hidden = addOn(); });
+      function done(v) {
+        var out = v === 'ok' ? { add: addOn(), keepJson: d.querySelector('#sbx-imp-json').checked } : null;
+        d.close(); d.remove(); resolve(out);
+      }
+      d.addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-v]');
+        if (b) done(b.getAttribute('data-v'));
+      });
+      d.addEventListener('cancel', function (e) { e.preventDefault(); done('cancel'); });
+      d.showModal();
+    });
+  }
+
   function importScript(text) {
     var data;
     try { data = JSON.parse(text); } catch (e) { alert('That is not valid JSON.'); return; }
     if (!Array.isArray(data)) { alert('Not a script file. Expected the official script JSON, which is an array.'); return; }
-    var map = idToSlug();
-    var slugs = [], missing = [], meta = null;
+    var ix = importIndex();
+    var meta = data.filter(function (e) { return e && e.id === '_meta'; })[0] || null;
+    var setName = meta && meta.name;
+    var slugs = [], missing = [];
     data.forEach(function (entry) {
       var id = (typeof entry === 'string') ? entry : (entry && entry.id);
-      if (!id) return;
-      if (id === '_meta') { meta = entry; return; }
-      var key = slugify(id);
+      if (!id || id === '_meta') return;
       // Our own credits Fabled is rebuilt on every export, so a script this
       // builder wrote must not come back reported as unrecognised.
-      if (key === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
-      var slug = map[key];
+      if (slugify(id) === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
+      var slug = matchEntry(entry, ix, setName);
       if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
       else { missing.push((entry && entry.name) || id); }
     });
     if (!slugs.length) { alert('None of the characters in that script are on this wiki.'); return; }
 
-    var replace = true;
-    if (order.length) {
-      replace = confirm('Replace the script you have open?\n\nOK = replace it, Cancel = add these characters to it.');
-    }
-    var next = replace ? [] : order.slice();
-    slugs.forEach(function (s) { if (next.indexOf(s) === -1) next.push(s); });
+    importChoices(order.length > 0).then(function (choice) {
+      if (!choice) return;
+      var replace = !choice.add;
+      var next = replace ? [] : order.slice();
+      slugs.forEach(function (s) { if (next.indexOf(s) === -1) next.push(s); });
 
-    mark('import');
-    if (replace) {
-      // Whatever is being replaced goes to its saved copy first: the import
-      // clears libId below, so nothing after this point can write over it.
-      syncLibrary();
-      // A different script is a different script: its name, its author and
-      // its official-app options come with it, and it is NOT an edit of
-      // whatever published page happened to be open before.
-      var m = {};
-      if (meta) {
-        if (meta.name) m.name = String(meta.name).slice(0, 90);
-        if (meta.author) m.author = String(meta.author).slice(0, 70);
-        if (meta.hideTitle) m.hideTitle = true;
-        if (meta.almanac) m.almanac = String(meta.almanac).slice(0, 300);
-        if (Array.isArray(meta.bootlegger)) m.bootlegger = meta.bootlegger.slice(0, 20).map(String);
+      mark('import');
+      if (replace) {
+        // Whatever is being replaced goes to its saved copy first: the import
+        // clears libId below, so nothing after this point can write over it.
+        syncLibrary();
+        // A different script is a different script: its name, its author and
+        // its official-app options come with it, and it is NOT an edit of
+        // whatever published page happened to be open before.
+        var m = {};
+        if (meta) {
+          if (meta.name) m.name = String(meta.name).slice(0, 90);
+          if (meta.author) m.author = String(meta.author).slice(0, 70);
+          if (meta.hideTitle) m.hideTitle = true;
+          if (meta.almanac) m.almanac = String(meta.almanac).slice(0, 300);
+          if (Array.isArray(meta.bootlegger)) m.bootlegger = meta.bootlegger.slice(0, 20).map(String);
+        }
+        // A new script may keep the file itself as its JSON: publish-script's
+        // Custom JSON box, which the published page's JSON box and download
+        // then give instead of the wiki-built one.
+        if (choice.keepJson) m.customJson = text;
+        setMeta(m);
+        primeForm();
       }
-      // A new script may keep the file itself as its JSON: publish-script's
-      // Custom JSON box, which the published page's JSON box and download
-      // then give instead of the wiki-built one.
-      if (confirm('Keep this file as the script\'s JSON?\n\nOK = when you publish, the script page\'s JSON is exactly this file. Cancel = the wiki builds it from the characters.')) m.customJson = text;
-      setMeta(m);
-      primeForm();
-    }
-    replaceOrder(next, true);
+      replaceOrder(next, true);
 
-    var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
-    var msg = 'Imported ' + slugs.length + ' character' + (slugs.length === 1 ? '' : 's') +
-      (offCount ? ' (' + offCount + ' official)' : '') + '.';
-    if (missing.length) {
-      msg += '\n\nNot on this wiki (' + missing.length + '): ' +
-        missing.slice(0, 10).join(', ') + (missing.length > 10 ? '…' : '');
-      alert(msg);
-    } else {
-      toast(msg);
-    }
+      var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
+      var msg = 'Imported ' + slugs.length + ' character' + (slugs.length === 1 ? '' : 's') +
+        (offCount ? ' (' + offCount + ' official)' : '') + '.';
+      if (missing.length) {
+        msg += '\n\nNot on this wiki (' + missing.length + '): ' +
+          missing.slice(0, 10).join(', ') + (missing.length > 10 ? '…' : '');
+        alert(msg);
+      } else {
+        toast(msg);
+      }
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════

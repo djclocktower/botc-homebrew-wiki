@@ -318,3 +318,24 @@ test('a new identity never shares an art slot with another character', async t =
   // A page that already exists keeps saving to its own identity.
   assert.equal((await post(f, 2, '/api/character', char('imp', { ability: 'Still the Imp.' }))).status, 200);
 });
+
+test('the importer: a pasted JSON is read like a Bloodstar project, and a run\'s claims count as taken', async t => {
+  const f = await setup(t);
+  let r = await post(f, 1, '/api/bloodstar', { script: [{ id: '_meta', name: 'Set' }, { name: 'Lone', team: 'other', ability: 'x.' }] });
+  assert.equal(r.status, 200);
+  const b = await r.json();
+  assert.equal(b.meta.name, 'Set');
+  assert.deepEqual(b.characters.map(c => [c.id, c.team]), [['Lone', 'other']]);
+  assert.equal((await f.request('/api/bloodstar', { method: 'POST', body: '{}' })).status, 401);
+  assert.equal((await post(f, 1, '/api/bloodstar', { script: 'nope' })).status, 422);
+
+  // Two characters of one name in one run get two identities.
+  let j = await (await f.request('/api/slug-check?type=character&name=Twin', as(1))).json();
+  assert.equal(j.taken, false);
+  j = await (await f.request('/api/slug-check?type=character&name=Twin&avoid=twin', as(1))).json();
+  assert.equal(j.taken, true);
+  assert.notEqual(j.suggestion, 'twin');
+  const second = j.suggestion;
+  j = await (await f.request('/api/slug-check?type=character&name=Twin&avoid=twin,' + second, as(1))).json();
+  assert.ok(![ 'twin', second ].includes(j.suggestion));
+});

@@ -98,7 +98,8 @@ Key dynamic behavior:
 - `GET /assets/art|collections|scripts|tokens|pages|news|avatars/*` is served
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
-  pictures, uploaded via `/api/account/avatar`, never via `/api/upload`).
+  pictures, uploaded via `/api/account/avatar`, never via `/api/upload`; so is
+  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
@@ -108,6 +109,8 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page),
   **message images** (`/api/attachment` — one image for a comment or a modmail
   message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
+  **the Starlit Gallery** (`/api/starlit` and `/api/admin/starlit-uploaders`;
+  see that section),
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
   requests per page view; `/api/site-text` and `/api/announcement` stay for
@@ -121,7 +124,8 @@ Key dynamic behavior:
   **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
   `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
-  (`GET /api/bloodstar` reads a project on Bloodstar, `POST
+  (`GET /api/bloodstar` reads a project on Bloodstar, `POST /api/bloodstar`
+  reads a pasted script JSON into the same shape, `POST
   /api/bloodstar-art` copies one of its images into R2), admin tools
   (dashboard, full activity log, report, revisions/rollback, comment
   moderation, Curata, wiki lock, backup, seed), plus the public page
@@ -149,9 +153,10 @@ Key dynamic behavior:
   `officialPrefixed()` are the one test, asked by the check and refused by
   `/api/character` on a create. The Worker is still the enforcer — the check
   only decides which slug the editor asks for.
-  `mass-upload.html` additionally tracks the slugs **its own run** has just
-  taken, so two characters with the same name in one file get two pages
-  instead of the second overwriting the first.
+  `mass-upload.html` passes the identities **its own run** has claimed and
+  not saved yet as `&avoid=a,b,…`, which the check counts as taken, so two
+  characters with the same name in one file get two pages instead of the
+  second overwriting the first.
   **Scripts and collections work the same way** (`publish-script.html`,
   `publish-collection.html`), with one difference: a page being *created*
   never lands on an existing URL, **not even one of your own**. There is no
@@ -235,7 +240,8 @@ worker/official-tags.js  The official characters with tags, for the tag
 worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        into this wiki's shapes. Worker-only — Workers have no
                        DOMParser, so the almanac is scanned rather than parsed.
-                       See "Importing from Bloodstar" below.
+                       Also reads a pasted script JSON into the same bundle.
+                       See "Mass Import" below.
 worker/home-page.js    The server-rendered homepage: tile/card markup and the
                        region filler over index.html (see "The homepage (SSR)").
                        worker/home-data.js builds the snapshot it draws from.
@@ -326,7 +332,7 @@ assets/
                        bound to the original's ETag, read with one HEAD), and
                        a banner's 320/640/1280 sizes — never enlarged. Mounted
                        by every page that uploads art (create, edit,
-                       mass-upload, bloodstar, normalize-icons, iconforge,
+                       mass-upload, normalize-icons, iconforge,
                        publish-script/-collection) and by the dashboard's
                        backfill card. Fire and forget; WebP or nothing. See
                        "Caching", part 3.
@@ -462,7 +468,7 @@ assets/
                        and still finds its description.
                        The chips' CSS (.tag-pick-btn) is in styles.css, not in
                        the pages: it was hand-copied into create.html and
-                       edit.html, so /bloodstar — the third page to use the
+                       edit.html, so the old Bloodstar importer — the third page to use the
                        widget — rendered bare browser buttons with no selected
                        state, and no way to see which tag was about to be
                        assigned.
@@ -490,8 +496,10 @@ assets/
                        prefix rule, 0.62 threshold), shared by 404.html and
                        the Worker's /api/did-you-mean so the two cannot score
                        an address differently. Browser + Worker.
-  char-filters.js      The All Characters filter box (team/tag/source/status/
-                       creator chips, Sort, Group) as a module over an ARRAY
+  char-filters.js      The All Characters filter box (team/tag/source/status
+                       chips, a creator search whose matches drop down under
+                       it with each creator's mark, picked creators as
+                       chips, Sort, Group) as a module over an ARRAY
                        of characters, plus the character card itself.
                        all-characters.html and /search both mount it;
                        team.html and tag.html draw its card. Browser AND
@@ -507,11 +515,22 @@ assets/
                        Tags combine by the "Tag [all of / any of / only
                        one of]" select in the Tag label (`tagMode`, both
                        filter boxes). **Official is a Status chip**, not a
-                       Source one, so it ORs with "Curata only": both on
-                       keeps Curata pages and official characters.
+                       Source one. The Status chips (Partial, Curata,
+                       Official) are 3-state like Team: once = only these
+                       (two on keep either), twice = struck out, three
+                       times = off (`partial`/`curata`/`official` 1/-1/0).
                        Sort also offers **SAO** wherever sao.js is loaded
                        (all-characters, /search; the Worker hands
                        saoCompare to init()).
+                       **Common Terms** is a search box like Creator's:
+                       COMMON_TERMS (the SAO sheet's openings) in the
+                       drop-down, anything typed can be picked too.
+                       hasTerm(): a listed term is a whole phrase ("Each
+                       night" is not "Each night*", "(*)" takes either), a
+                       typed one matches from a word's start. Picked terms
+                       must all be in the ability. 3-state chips.
+                       **There is one filter box.** card-filters.js is only
+                       an adapter over this one (see its entry).
                        Sort is TWO boxes in both filter boxes: what (Name,
                        Date added, Ability length — plus Best match, Page
                        order, SAO where they apply) and an Order box,
@@ -537,19 +556,25 @@ assets/
                        CharFilters.sections(list, group, setOf) is the one
                        layout both all-characters.html and /search draw
                        through.
-  card-filters.js      The collapsed filter box (3-state team/tag chips, Hide
-                       Partial, Curata only, creator, sort). Mounting again
-                       over the same grid takes the old box down first
-                       (grid._cfDestroy), returns {apply, destroy, state},
-                       and `searchAbility` (a boolean or a function) lets
-                       the search box match ability text too — all for the
-                       Script Builder, which rebuilds its panel under a
-                       different grouping. apply() runs on
-                       every keystroke, so it walks a cached card list, only
-                       writes a style that actually changed, and re-sorts
-                       ONLY when the sort itself changed — re-appending 1,900
-                       rows per letter was most of the cost of typing in the
-                       Script Builder's panel. Sort offers Page
+  card-filters.js      NOT a second filter box any more: it reads cards
+                       already in the DOM into rows (data-* attributes, the
+                       ability's text) and mounts char-filters.js's box over
+                       them, then hides, re-orders and regroups the cards.
+                       Pages load char-filters.js before it. Script pages
+                       mount it too, over the roster rows (#sv-roster, Page
+                       order first; filterAttrs() in render-page.js writes
+                       the rows' and the cards' data-*). What follows
+                       describes what the box does on those pages.
+                       For the Script Builder it also takes the old box down
+                       when mounted again over the same grid
+                       (grid._cfDestroy), lets `searchAbility` (a boolean or
+                       a function) match ability text, waits for a 160 ms
+                       pause in the typing on a grid of 400+ rows (flush()
+                       runs a waiting pass), only writes a display that
+                       changed and re-sorts only when Sort or Group changed,
+                       and returns {apply, flush, destroy, state}.
+                       The collapsed filter box (3-state team/tag chips, Hide
+                       Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not
                        built, and it reads the ability off the card rather than
@@ -703,32 +728,14 @@ assets/
                        /api/account-lookup; the Worker resolves the list again
                        on save regardless, so the lookup is a courtesy, never
                        the check. See "Approved editing".
-  bloodstar.js         The mapping half of /bloodstar: what each part of a
-                       Bloodstar project becomes here, and the exact objects
-                       that decision posts to /api/character, /api/script,
-                       /api/collection and /api/wiki-page. No DOM, no fetch —
-                       the page owns the form and the progress table, this owns
-                       the rules. Same split as grimforge.js.
-  import-merge.js      What a re-import keeps and what it replaces: the rules
-                       behind mass-upload.html AND /bloodstar landing on a
-                       page this account already has. Mechanics (name, team,
-                       ability, night order, reminders, setup flags, jinxes)
-                       come from the file — the empties included, but only
-                       the ones it carries; everything else on the page stays —
-                       tags, almanac text, the printable token, the art slots,
-                       who may edit it, its publish state — and
-                       flavour/edition only when the file carries them.
-                       Almanac prose (FILL_EMPTY, what a Bloodstar import
-                       brings) only fills a field the page has nothing in,
-                       and assigned tags are added to the page's.
-                       artPlan() says which art slots the file may write:
-                       none the page already fills unless "Replace the art"
-                       is ticked. ownPages()/reuseOwn() land a name another
-                       account holds, or a second same-named character in one
-                       file, back on the page of yours the last run made
-                       instead of the next free address (a new page every
-                       run). No DOM, no fetch (same split as bloodstar.js);
-                       the tests run it in a vm.
+  importer.js          The rules behind /mass-upload, the one importer: who
+                       becomes what (plan), the character fields (character),
+                       what a re-import keeps (merge, artPlan), the jinxes
+                       from either source shape, the roster, the night order
+                       and the script/collection page (setPage, mergeSetPage).
+                       No DOM, no fetch; migration/tests/importer.test.mjs
+                       runs it in a vm against the real buildBundle(). See
+                       "Mass Import" below.
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   char-preview.js      The live preview iframe on create.html + edit.html.
@@ -1008,6 +1015,33 @@ assets/
                        Subfolders textures/ minipaint/ vendor/ are the
                        sealed payload — see the section below, and
                        migration/icon-forge-guide.md for the engine reference.
+  starlit.js           The Starlit Gallery page (/starlit): browsing, the icon
+                       window and the team's forms. compose() draws an icon.
+                       See "The Starlit Gallery".
+  char-icon-save.js    CharIconSave: put a finished icon on one of your own
+                       characters (drafts included) — art/{identity}.png,
+                       then the row saved back with its status unchanged.
+                       Shared by Icon Forge and the Starlit Gallery.
+  starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
+                       the gallery in an iframe; the picked PNG goes into the
+                       art file input with a change event.
+  topbar/              The top bar's damask, drawn by header-redesign.css
+                       section 1 as the bar's ::before (no markup):
+                       ribbon-damask-v2.webp is a MASK (the Fancy Scripts sidebar
+                       ribbon, turned sideways and mirrored to tile; the colour
+                       and strength are in the CSS). leaves-right(-m)-v5.webp
+                       are official leaves from the Fancy Scripts decor set
+                       (branch ccr-4b7b5eb2-95qzpo), the bar's ::after, on the
+                       RIGHT end only (the owner dropped the left side,
+                       2026-11), one picture for desktop and one for phones.
+                       They are cached for a year (/assets/*.webp), so a
+                       recomposed picture takes a new filename.
+                       While the bar is pinned (.stuck, set by site.js) its
+                       colour and damask also reach 200px ABOVE it: Chrome on
+                       Android briefly draws a pinned bar low as its address
+                       bar hides, and the strip it left was blank. Only while
+                       pinned, or that layer would cover an announcement,
+                       draft bar or Partial notice above the bar.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
@@ -1063,6 +1097,13 @@ script.html            Script Builder — the markup only; the behaviour is
                        document does not scroll, the character panel and the
                        main column do. Tabs: Script, Night Order, Jinxes,
                        Analyse, Details & Export. See "The Script Builder".
+                       Import matches each entry with matchEntry(): a bare id
+                       is an official character, and so is an object entry
+                       carrying the official ability; any other is matched by
+                       ABILITY among the pages answering to its id or name,
+                       then the set the file is named after. Its questions
+                       (replace or add, keep the file as the JSON) are one
+                       dialog (importChoices), never confirm().
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description (only name and author are
                        required — the description is optional, and on
@@ -1123,9 +1164,21 @@ scripts.html           /scripts — the script index. Filter chips for Curata an
                        unreachable on a phone without it.
 script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Fancy Scripts, Grimoire Forge, Icon Forge, Bloodstar
-                       Import, Jinxes, Creator Icons. This is what the "Tools"
-                       nav entry points at.
+                       Fancy Scripts, Grimoire Forge, Icon Forge, Starlit
+                       Gallery, Mass Import, Jinxes, Creator Icons. This is
+                       what the "Tools" nav entry points at.
+                       Each card carries its tool's icon: assets/grimforge.png
+                       and assets/tool-icons/{script,tokens,iconforge,starlit,
+                       bloodstar,jinxes,creators}.webp (the Starlit team's
+                       art, trimmed to the drawing, 300px; bloodstar.webp is
+                       Mass Import's, which took the Bloodstar importer in). The same picture
+                       sits beside each tool page's title (.tool-hero-row /
+                       .tool-hero-icon in styles.css; Grimoire Forge keeps its
+                       own .gf-hero-* copy), except /starlit, whose title is
+                       the team's lettering, and the Script Builder and Token
+                       Tool, which have no hero: theirs is a small one at the
+                       start of the bar (.sbx-tool-ico).
+starlit.html           The Starlit Gallery (/starlit). See that section.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -1214,34 +1267,12 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        Its two character lists draw the 192px thumbnails
                        (thumbSrc() in token-tool.js); the tokens themselves
                        render from the originals (artAbs).
-mass-upload.html       Bulk import from official-schema JSON. Warns before it
-                       writes when a jinx in the file names a character more
-                       than one page here shares a name with, says which page
-                       it will land on and who else it could have been, and
-                       follows the "Appears in" box as it is typed — filling
-                       that in is what settles most of them (see "Warning
-                       about a jinx before it is written" below).
-                       A character landing on a page this account already
-                       has UPDATES it, through assets/import-merge.js: the
-                       page is read back from /api/page and the file merged
-                       into it, so a re-import cannot strip what the file
-                       does not carry, and the icon is kept unless "Replace
-                       the art on pages that already exist" is ticked (or the
-                       page has none). A page that cannot be read is not
-                       written. It used to replace the page outright and
-                       write the file's picture over the icon slot, which is
-                       how one re-import cost a creator 24 Icon Forge icons,
-                       their tags and their printable tokens.
-bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project link,
-                       choose what becomes what, and the whole thing lands: every
-                       character with its art and its almanac entry, the jinxes,
-                       the night order and a script or collection page. The page
-                       is the form and the runner; assets/bloodstar.js is the
-                       mapping and worker/bloodstar.js the reading. Its jinx
-                       warning redraws with the plan: a jinx whose other end you
-                       are LEAVING OUT can only be stored by name (the same
-                       section below), and one whose ends both stay out cannot
-                       be stored at all.
+mass-upload.html       /mass-upload — Mass Import, the one importer: a Bloodstar
+                       link or a script JSON (file or paste) in, character
+                       pages and optionally a script or collection page out.
+                       The page is the form and the runner; the rules are
+                       assets/importer.js. See "Mass Import" below.
+bloodstar.html         Redirect stub to mass-upload (old links).
 login.html, account.html, dashboard.html, reset-password.html
                        Every text box on the dashboard is a type-ahead
                        (assets/suggest.js): page slugs follow the type dropdown
@@ -2539,6 +2570,15 @@ The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
 `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom
 sidebar boxes.
 
+**Tables**: a How to Run paragraph or a custom-box paragraph that is nothing
+but `| a | b |` rows (two or more) is drawn as the wiki's table
+(`Render.paraHTML()` over `WikiRender.tableHTML()`, cells in links mode), and
+so is such a paragraph in a script or collection's synopsis, gameplay and
+strategy (`prose()` in render-page.js). Asked for to show how a character
+changes the character counts. Everything else stays a paragraph, so no
+existing page changes. The Snapshot poster does not draw tables yet: it
+shows the raw `|` rows.
+
 **`callout` is a LIST** — the How-to-Run notes, one box each, drawn after the
 How to Run paragraphs. It was a single string for years and thousands of rows
 still hold one, so nothing was migrated: `renderCharacter()` reads a bare
@@ -2859,14 +2899,13 @@ came out, and all three were pushing the same way:
 - **Standardizing was opt-in, so a sixth of the live art never was.** A
   live sample of 139 icons had 24 above 0.75 and 15 at 0.85+ — a figure
   cropped to its ink, which then printed at half again the official size.
-  Both character editors, `mass-upload.html` and `/bloodstar` now
+  Both character editors and `mass-upload.html` now
   standardize art as it lands (Adjust by hand still opens on the file as
   picked, so a deliberate crop is one click away). Bloodstar's server-side
-  copy never passes through a canvas, so `copyArt()` reads the copied file
+  copy never passes through a canvas, so `putArt()` reads the copied file
   back from our own origin, and uploads a standardized version only when
   `{ifNeeded: true}` says the file is not already on the frame — the thumb
-  is made from whichever version is stored, in that order, so the two
-  cannot race. Only `art/` keys: a logo or a background is not an icon.
+  is made after, from whichever version is stored. Only `art/` keys: a logo or a background is not an icon.
 
 **One file serves every surface**, so this is visible on the wiki too:
 cards, the `/c/` emblem, search results, jinx boxes and the Script Builder
@@ -3405,7 +3444,7 @@ others writes a different credit, which is what the credit string is for.
   which disowns it. `creatorNamesFor()` clears the name out of `disowned` when
   an alias grants it, or the pages would stay off the profile the alias just
   pointed them at.
-- The two bulk importers (`mass-upload.html`, `/bloodstar`) do **not** offer the
+- The importer (`mass-upload.html`) does **not** offer the
   tick yet, so an imported page is ticked afterwards in its own editor.
 
 ## Jinxes
@@ -3460,29 +3499,12 @@ character (or a script's `jinxEdits`) may carry; the owner asked for the old
   script.html and publish-script.html all pass the file in.
 ### Warning about a jinx before it is written
 
-The set rule (gotcha 8) settles a name clash whenever there is anything to
-settle it with. An import is the one moment somebody can fix the cases where
-there is not, so both importers say so before they write:
-
-- **`Render.jinxCharIndex(chars, row)`** is the one keyed index — identities
-  and names, then the set-qualified keys, each claiming only what is free. It
-  replaced three hand-rolled copies (the Worker's jinx index and both character
-  editors) and keeps `byName`, EVERY page of a given name, which is what turns
-  "resolve this" into "is this ambiguous".
-- **`Render.jinxTargetCheck(j, host, index)`** answers with its working:
-  `picked`, `candidates`, and `guessed` — true only when the pick came down to
-  the bare name while more than one page answers to it. An explicit slug, an
-  official character (official wins wherever the page is drawn, so both
-  importers load `roles.json` for this) and a set that settled it are all
-  `guessed: false`. **Silence is the normal answer** — a re-import of The
-  Bootlegger's Anthology reports 3 of its 114 jinxes with "Appears in" empty
-  and none at all with it filled in. A warning that fires on every import is
-  one nobody reads.
-- **`BI.resolveJinxes()` records its own risks** as `nameOnly[]` rather than
-  the page working them out again, and `BI.previewSlugs(planned)` lets
-  /bloodstar ask what the run WOULD do before a single identity has been
-  resolved. The warning therefore comes off the code that does the writing and
-  cannot drift from it.
+`Importer.jinxes()` reports `byName`: jinxes whose other end is neither a
+character in the source nor an official one. They can only be stored by name,
+and a name is not unique here (gotcha 8), so /mass-upload lists them before
+anything is written; ticking that character back in fixes it. Jinxes neither
+of whose ends gets a page here (`dropped`) are listed too. The warning is
+worked out by the same function the run writes with, so the two cannot drift.
 
 - **`GET /api/admin/jinx-health`** counts jinxes that point at nothing (a
   typo, or a bulk import naming a character never brought over) and pairs
@@ -3658,12 +3680,12 @@ Three places ask:
 - **`POST /api/character`** refuses an exact match, for everyone including
   admins — "never" is the point, and an admin saving one is how two of the
   three already on the wiki got there. It is the one door every route goes
-  through (both editors, `mass-upload.html`, `/bloodstar`, Grimoire Forge's
+  through (both editors, `mass-upload.html`, Grimoire Forge's
   "+ Add to Drafts"), so there is one rule rather than five that can drift.
   It **fails closed**: if `roles.json` cannot be loaded the save is refused
   with a 503 and a retry message (as is `/api/bloodstar`), and the failed
   load is not memoised, so the next request tries again.
-- **`/bloodstar`** has no option for it: an exact match is always pointed at
+- **`/mass-upload`** has no option for it: an exact match is always pointed at
   `off-{id}` and never becomes a page. A script keeps the character either
   way — `charHref()` in render-page.js sends an official roster entry to the
   official wiki, `offsite()` opens it in a new tab and `offMark()` adds the ↗.
@@ -3676,38 +3698,21 @@ Three places ask:
   so it lands in the dashboard's deleted list and can be restored. Nothing is
   purged and no art is removed.
 
-## Importing from Bloodstar (`/bloodstar`)
+## Mass Import (`/mass-upload`)
 
-Bloodstar is where a lot of homebrew is actually written, and a published
-project has **two** files side by side:
+One page for every bulk import: a **Bloodstar link** or a **script JSON**
+(file or paste). It replaced two tools (the old JSON mass upload and the
+separate `/bloodstar` importer, now a redirect stub) that had grown two copies
+of every rule and kept disagreeing. The owner asked for it rebuilt from
+scratch (2026-10).
 
-```
-.../p/{User}/{Project}/script.json     the official-schema export — mechanics
-.../p/{User}/{Project}/almanac.html    the almanac, as a generated page
-```
-
-**Bloodstar is two hosts and both are read.** The reworked tool publishes at
-**bloodstar.clocktica.com** and the original is still up at **bloodstar.xyz**,
-with years of projects on it people are still linking to. Nothing else about a
-project differs — same `/p/{User}/{Project}/` layout, same `script.json`, same
-generated almanac — so the host is the whole of the difference.
-`BLOODSTAR_HOST_CANON` in `worker/bloodstar.js` is the list, and it is a map
-rather than an array because both spellings of each host are accepted while
-neither site answers on both: only `www.bloodstar.xyz` has an address on the
-old side and only the bare `bloodstar.clocktica.com` on the new one. A pasted
-link is moved onto the spelling that serves (`bloodstarHost()`) before
-anything is fetched, and `/api/bloodstar-art` does the same to an image URL —
-an old project's export writes whichever spelling it was written under. Adding
-a third host is one row of that map: `bloodstar.html` asks whether an image
-sits on the same host as the project it came from rather than keeping a list
-of its own.
-
-`mass-upload.html` has always taken the JSON, which carries the name, team,
-ability, art, reminders and night order. Everything a reader comes to an
-almanac *for* — the flavour, the overview, the examples, the how-to-run, the
-tips — is in the HTML and nowhere else, so importing from the JSON alone threw
-away the half of the work that takes longest to write and landed every page
-**Partial**. This tool reads both.
+**Both sources become one bundle, on the Worker.** `GET /api/bloodstar?url=`
+fetches a project's `script.json` and `almanac.html`; `POST /api/bloodstar
+{script}` takes a pasted JSON. Both go through `buildBundle()` in
+`worker/bloodstar.js`, so there is one list of characters, one official test
+(`OfficialRoles.officialMatch`) and one shape for the page to read. A bundle
+character carries the official schema's own `jinxes` list and the entry as
+written (`raw`, for "Keep the JSON from the source") beside the almanac prose.
 
 Three files, one job each:
 
@@ -3723,122 +3728,106 @@ Three files, one job each:
   `page-contents`, and a `</div>` in a selector would close a block the scan is
   counting). The background image is read off that CSS first, since it exists
   nowhere else.
-- **`assets/bloodstar.js`** — the mapping. What each part becomes, and the
-  exact objects that decision posts. Same split as `grimforge.js`: the rules
-  are worth reading and `node --check`ing without a page of markup around them.
-- **`bloodstar.html`** — the form, the character table and the runner.
+- **`assets/importer.js`** — the rules (see the repo map). No DOM, no fetch.
+- **`mass-upload.html`** — the form, the table and the runner.
 
-### The two Worker routes
+**Bloodstar is two hosts and both are read.** The reworked tool publishes at
+**bloodstar.clocktica.com** and the original is still up at **bloodstar.xyz**,
+with years of projects on it people are still linking to. Nothing else about a
+project differs — same `/p/{User}/{Project}/` layout, same `script.json`, same
+generated almanac — so the host is the whole of the difference.
+`BLOODSTAR_HOST_CANON` in `worker/bloodstar.js` is the list, and it is a map
+rather than an array because both spellings of each host are accepted while
+neither site answers on both: only `www.bloodstar.xyz` has an address on the
+old side and only the bare `bloodstar.clocktica.com` on the new one. A pasted
+link is moved onto the spelling that serves (`bloodstarHost()`) before
+anything is fetched, and `/api/bloodstar-art` does the same to an image URL —
+an old project's export writes whichever spelling it was written under. Adding
+a third host is one row of that map.
 
-- **`GET /api/bloodstar?url=`** fetches both files and returns the bundle.
-  Login required, rate-limited, and **the host is pinned to Bloodstar's own
-  hosts**: this is the Worker fetching a URL a stranger typed, and the only
-  safe version of that is one that can only ever reach one place. Redirects
-  are followed by hand (`fetchBloodstar()`, a few hops, each back onto a
-  Bloodstar host) and bodies are read with a cap whether or not a length is
-  announced (`readCapped()`). A project
-  with no almanac still imports — the tool says the prose is missing rather
-  than looking like it lost it.
-- **`POST /api/bloodstar-art {key, src}`** copies one image straight from
-  Bloodstar into R2. It exists because the alternative is 40 images down and 40
-  base64 bodies back up through somebody's phone. It shares `/api/upload`'s
-  permission check — **`uploadSlotDenied()`**, extracted for exactly this — so
-  it can reach nothing that route could not, and there is no second copy of
-  those rules to keep in step. Art hosted anywhere else (a project's
-  imgur-hosted background) goes the old way: canvas plus `/api/upload`, which
-  is also the fallback when the server copy fails.
+### The rules
 
-### What becomes what
+- **An exact official character (name AND ability) never becomes a page.** It
+  stays on a script roster as `off-{id}` and links to the official wiki — see
+  "No official characters". A character that only shares an official name is
+  ordinary homebrew and gets a page.
+- **A name matching one of YOUR pages updates that page**, oldest first, so a
+  re-import lands on the pages the last one made. The table shows it per row
+  ("Update my page" / "New page") before anything is written. An update reads
+  the page back (`/api/page`) and `Importer.merge()` takes the mechanics from
+  the source (empties included), quote/edition/custom JSON only when the
+  source has one, almanac prose only into empty fields, ADDS the tags, and
+  keeps everything else: art slots (unless "Replace the icons" is ticked), the
+  token, sharing, publish state. A page that cannot be read is not written.
+- **A character already on the wiki under somebody else is pointed at, not
+  copied.** Same name AND same ability (`Importer.abilityKey`, the
+  `OfficialRoles.abilityKey` fold) as a published page here: the row is
+  `existing` ("Use the page already here", switchable to "Make my own copy"),
+  the roster gets that page, and no page, art or tags are written. A script
+  JSON is often half other people's characters (Necrovitality was 12 of 20),
+  and copying them made a second page of each credited to the importer's
+  Creator box. The page reads the grid feed for it (`Importer.wikiIndex`). A
+  jinx between such a page and a character with no page of its own is left
+  to the page that is already here; one with a character outside the file is
+  pointed at its page when exactly one page has that name (an export's id,
+  `matsuraid_hblreleased`, is read as the name before the underscore).
+- **A script JSON's own night order** (`_meta.firstNight` / `otherNight`, ids
+  with dusk / minioninfo / demoninfo / dawn) becomes the script's arranged
+  `nightOrder` (`Importer.metaNight`), ahead of an almanac's. A character it
+  lists that has no number of its own is given one between its listed
+  neighbours (never towards dawn's 9999), because only a number above 0 puts
+  a character on a night list at all: the Necrovitality Observer, Katana and
+  Necromancer would otherwise wake on no night. Night reminders lose HTML
+  entities and `:reminder:` marks on the way in (`cleanNightReminder`, as
+  official-roles.js does for the official ones).
+- **A new page asks `/api/slug-check` with `avoid=`** (the identities this run
+  has claimed), so same-named characters in one file get separate pages.
+- **The set page.** "Make a page for the set" offers a script or collection;
+  if you already own one of that name it is offered first, and a re-import
+  updates it (`mergeSetPage()`: roster, night order, jinxes and bootlegger
+  rules from the source; prose, logo and background only fill what is empty;
+  a collection ADDS to its members). The changelog becomes a `/p/` page, only
+  when the set page is new.
+- **Jinxes** from both shapes (Bloodstar's pair entries, the schema's per-
+  character `{id, reason}`) are written onto whichever end gets a page; two
+  official ends become the script's own `jinxEdits.add`. See "Warning about a
+  jinx before it is written".
+- **Order of a run:** every identity first (a jinx names the other one's),
+  then each character (art, then a re-read of the page if art touched it, then
+  the save), then the set page. A 429 stops the run; rows already done are
+  skipped on the next press, and a set page made in this sitting is updated,
+  not made again.
+- **Art** is read through a canvas and standardized (`art-normalize.js`,
+  icons only) before `/api/upload`. When the host will not allow that and the
+  image is on Bloodstar, `/api/bloodstar-art` copies it server-side and the
+  page reads it back to standardize. Anything else that cannot be read stays
+  linked where it is. Thumbnails, display copies and logo sizes follow through
+  `ArtThumb.uploadFromUrl()`.
+- **Where the text goes** is a card of selects, one row per thing the source
+  actually has (`syncAlmanac()`): flavour (quote / flavour line / skip), the
+  Overview (lede + summary / summary / How to Run / skip), tips (Tips /
+  callout / skip), and, with a set page, the project's synopsis, overview and
+  changelog (wiki page / box / skip). `Importer.character()` and
+  `setPage()` read them; the defaults are the old Bloodstar importer's.
+  Examples and How to Run always map to their own fields; an attribution
+  crediting art fills "Icon by", any other becomes a Credit box.
+- **Icons: copy or link.** "Character icons" sets every row, and each row
+  with a picture has its own Copy / Link select. A linked icon stores the
+  source's URL in the slot (`image*`) and clears the slot's `art*` path, so it
+  wins on a page being updated.
+- **"Publish new pages straight away"** is a tick, off by default (drafts).
+- **"Use the uploaded JSON as the pages' JSON"** keeps each character's entry
+  as its `customJson` AND the whole file (`bundle.script`) as the script or
+  collection page's, unless the file is over the 100 KB `PAGE_JSON_MAX`, which
+  the finish message says.
+- **Tags** are per character: pick a tag, tap it on each character it fits,
+  or give it to all. "Suggest tags for every character" runs the editors'
+  `/api/suggest-tags` per page (three at a time) and ADDS what it suggests;
+  past the suggester's 40-an-hour limit, or on a failure, a character gets
+  the wording rules alone (`quick`), which have no limit.
 
-Every row of this is an option on the page; `defaultOptions()` is only where
-the form starts.
-
-| Bloodstar | this wiki |
-|---|---|
-| `flavor` | the quote under the title, or the flavour line |
-| almanac overview, 1st paragraph | `lede` |
-| almanac overview, the rest | `summaryBullets` |
-| Examples / How to Run / tips | `examples[]` / `howToRun[]` / `tips[]` or the callout |
-| `attribution` | `iconBy` when it credits the art, else a "Credit" box |
-| `image` (and a traveller's `imageAlt` / `imageAlt2`) | `art/{identity}.png` (`-alt`, `-alt2`) in R2 |
-| synopsis / overview / changelog | the page's Synopsis and Gameplay, and a `/p/` page |
-| the almanac's night order | the page's arranged `nightOrder` |
-| (nothing — Bloodstar has no tags) | assigned by hand, per character, in the tool |
-
-Character fields take only the links-only subset (see "Formatting on a
-character page"), so an almanac's `*emphasis*` is converted to plain text —
-typed here it would print its asterisks. Only the changelog page goes through
-the full `render-wiki.js` mark set. That is what the `mode` argument to
-`htmlToText()` is for.
-
-### Tags are assigned per character, not per project
-
-Bloodstar has no tags and this wiki leans on them: a character with none reads
-as **Partial**, which keeps it out of Featured and Random Character and lets
-readers hide it. The tool first carried one
-tag picker applied to every character in the project, which is not what a tag
-is — "Information" is true of the Ferrotypist and false of the Drunk, and 36
-characters sharing one tag tells a reader nothing.
-
-So tags live on `opts.tagsById` (`{characterId: [tag]}`) and the page has a tag
-assigner: search the cast, tick the characters a tag is true of, give it to all
-of them at once, repeat. `addTags` / `removeTags` / `clearTags` / `tagString`
-in `assets/bloodstar.js` own the shape and each returns a NEW map rather than
-editing the one it was handed. Tagging the whole project is still reachable —
-Select all shown, then assign — but as a deliberate act rather than the default.
-
-**Two independent selections live on that page and must not be confused**: the
-tick in the character table decides whether a character is imported at all, the
-tick in the tag assigner only decides who the next tag lands on. That is why
-the assigner is its own list rather than another column on the table. It offers
-only characters being imported as pages, because a tag on a skipped one, or on
-one pointed at the official character, goes nowhere.
-
-### Three things that are load-bearing
-
-- **Official characters are graded, not guessed.** A script carries official
-  characters alongside homebrew ones and Bloodstar exports them as ordinary
-  entries. `'exact'` (the name **and** the ability match) always points the
-  roster at `off-{id}` and never makes a page — see "No official characters"
-  above; there is no option for it. `'named'` (the name matches, the ability
-  does not) is a character wearing a familiar name and defaults to its own
-  page: linking it would put an ability on the script the author never wrote.
-  `'credit'` is the attribution alone, which is usually a rename (this
-  sample's Agent is the Spy) and is homebrew.
-- **Identities are settled before anything is written.** A jinx names the other
-  character's identity, so half a list of identities cannot resolve one. The
-  run resolves the page's slug, copies its logo and background (the slot is
-  free before the page exists), resolves **every** character identity, then
-  writes the character pages, then the script or collection page, then the
-  changelog page — which needs its parent to exist. A jinx whose two ends are
-  both official has no character here to live on and becomes one of the
-  script's own `jinxEdits.add` rules instead.
-- **Every address read out of the almanac is made absolute before it leaves
-  the parser** (`absoluteUrl()`, with the project's own folder URL as the
-  base). The generated page links its images root-relative
-  (`/p/User/Project/witch.png`), which is a path and not a place: the importer
-  copies art *by URL*, and a path with no host in front of it names a file on
-  this wiki that does not exist. Anything that is not http(s) after resolving
-  is dropped rather than carried, because these strings end up in an `<img
-  src>` on somebody's character page.
-- **A script or collection being created never lands on an existing URL, not
-  even one of your own** (the wiki's rule — see "Character identity vs
-  address"), so its `slug-check` asks for a fresh one. Characters are the
-  opposite: landing on your own page is how re-running an import over your own
-  characters works, exactly as `mass-upload.html` does it — and, as there,
-  **the page is read back (`/api/page`) and the project merged into it through
-  `assets/import-merge.js`**: mechanics from the project, almanac prose only
-  into fields the page has nothing in, assigned tags added, and the page's
-  publish state, alternate art, token, editors and sharing kept. An icon slot
-  the page already fills is kept unless "Replace the icons on pages you
-  already have" is ticked. A page that cannot be read is not written. It
-  used to post the project over the page, which replaced it outright and —
-  the form defaulting to draft — took a live page off the site. Art copied
-  over an existing page touches its row, so the page is read again before
-  the save to carry the new stamp (`/api/bloodstar-art` does not return one).
-  Identities saved in a run are remembered for as long as the project is on
-  the page, so pressing Import again after a halt reuses them rather than
-  resolving a done row to a different address.
+`migration/scp-fragmented-veil/build.mjs` is a one-off from before this and
+still requires the deleted `assets/bloodstar.js`; it is history, not a tool.
 
 ## Custom wiki pages (`/p/{slug}`)
 
@@ -4019,9 +4008,11 @@ If Dead, never On Death. On the tagged pages most sure-cue hits that
 disagree with the stored tags are tags the taggers missed; 1,194 of the 1,475
 untagged pages get at least one tag from the sure cues alone.
 
-**The tag definitions are the owner's** (settled 2026-10, tag by tag): the
-descriptions in tags.js say what each tag means on this wiki, and the cues
-follow them. The rulings that decide cues: a tag the owner called word-based
+**The tag definitions are the owner's** (settled 2026-10, tag by tag): they
+are `RULINGS` in autotag.js, which is what the model is told each tag means,
+and the cues follow them. The hover descriptions readers see stay in tags.js
+and are deliberately the older, shorter wording (the owner asked for them
+back); the prompt does not read them unless a tag has no ruling. The rulings that decide cues: a tag the owner called word-based
 (Safe, Execution, Nominations, Votes, Win/Loss Condition, Death, Public,
 Reverse, "false" for False Info, "true info", "start knowing") is a sure cue on the
 word alone; Information is only this character's own player learning, and
@@ -4056,7 +4047,7 @@ dead", Subjective Info on clue / hint / "learn something", Confirmation on
 are", Nonconformist on breaking the rules or a new / extra rule, and Ping on
 Minions / the Demon / good or evil players learning or knowing (never "all
 players", which is Loud). Quiet on "secretly" was turned down.
-Change a description and its cue together.
+Change a ruling and its cue together.
 
 **The model stays `@cf/google/gemma-4-26b-a4b-it`, thinking off.** Scored by
 the owner (2026-10, 20 pages each): the wording cues alone 60% right / 44%
@@ -4335,7 +4326,8 @@ uploaded — except for the one opt-in save described below.
   phone; the button stays hidden in browsers without that API. A paste while
   the art editor is open is left to the editor, and a text paste into a field
   is never intercepted.
-- **Save to a character** is the only server call. It uploads the 591 px
+- **Save to a character** is the only server call (`assets/char-icon-save.js`,
+  shared with the Starlit Gallery). It uploads the 591 px
   render to `art/{slug}.png` — the same R2 slot the character editor uses —
   and then re-saves the row through `/api/character` with `art`/`image`
   pointing at it, so a page whose art lived elsewhere still picks it up. The
@@ -4346,7 +4338,173 @@ uploaded — except for the one opt-in save described below.
   in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
+- **Starlit Gallery** (next section): `?from=starlit` opens the icon the
+  gallery left in localStorage (`botc_starlit_forge`, read once) with the
+  forge's border and hole filling off; the gallery's textures are added to
+  the picker from `/api/starlit?textures=1`.
 
+## The Starlit Gallery (`/starlit`)
+
+Character icons by **Harry & Co & Bendan** (wiki account `harryandco`; the
+makers of the Travel by the Starlight collection), hosted here after the
+platform they were on broke. Credit them: the hero names them with their mark
+and links each of them to their wiki profile (`/u/harryandco`, `/u/Bendan`),
+every icon shows its `artist` (theirs by default) as plain text with its
+mark, deliberately NOT a link (the team's call: the credit links led to
+creator pages that did not match), and an icon put on a character from the
+editor fills its "Icon by".
+The page's text about the gallery is copied word for word from their
+Magma page (magma.com/s/starlit-gallery/profile/about), the owner's call:
+never rewrite it in code; only its "How to Use" part, which is about Magma,
+is left out. The line under the title reads "a free to use icon collection"
+(the owner's wording). **The team can now change both themselves**, and the
+page's look: Settings → "The gallery page" (see the bullet below), so the
+static HTML is only what shows until they save something. The title is the team's own lettering,
+`assets/starlit-logo.webp`, not text. Their terms, from that page, are on /starlit: credit is not
+required but a shout-out is appreciated, and no commercial use.
+
+- **An icon is two layers**, as the original gallery drew them: the BLACK one
+  takes the reader's texture, the WHITE one (the outline) takes parchment, and
+  a drop shadow goes under both. The layers are only masks (`source-in`).
+  `compose()` in `assets/starlit.js` does all the drawing: the figure is
+  fitted to `ART_FILL` of the frame (`artTrimBox`) and the texture spans the
+  whole frame, as official icons are cut from their sheets. The preview is an
+  `<img>` so a phone can long-press it. The two layers must be the same size:
+  a layer exported trimmed to its drawing (Photoshop's "Export As" on one
+  layer) has lost its place on the canvas, so the form refuses the pair.
+  Under each layer's file box sits a box
+  that takes a pasted image or an image link, plus a Paste button where
+  the browser can read the clipboard (`pasteImageInto()`). What arrives is
+  put INTO the file box (DataTransfer) and a change event fired, so the
+  form cannot tell it from a picked file. A link is fetched by the browser,
+  so it works only from a site that allows it (CORS); otherwise the form
+  says to save the image and pick it. Deliberately no server-side fetch: a
+  Worker fetching any URL a member types is an open proxy.
+- **Textures come in PACKS the team keeps** (the owner's call, 2026-11).
+  A pack is rows of `starlit_textures` sharing a `pack` name, one per `kind`
+  (`STARLIT_KINDS`: Base, Good, Evil, Traveller (blue | red), Traveller Good
+  (blue | brown), Traveller Evil (brown | red), Fabled, Loric, and Outline,
+  which paints the white layer whichever of the pack's sheets is picked), an
+  optional `name` label (Official's base is "Monochrome") and a 160px
+  `thumb`. The six the page shipped with (the team's Photoshop sets Default,
+  Vibrant, Treasure Hunt, Starlit, Glitchy, and Official, Icon Forge's sheets)
+  are committed files, `assets/starlit/tex/{set}-{kind}.webp` + `-s`, written
+  in as rows ONCE by whichever request's `ALTER … ADD COLUMN pack` succeeds
+  (`STARLIT_SEED_PACKS`; a second isolate's ALTER fails and seeds nothing),
+  served through the `starlit/` R2 fallback. So every pack is edited the
+  same way: Settings lists each pack with a tile per sheet (tap to add or
+  replace, Remove), Add several, Rename (409 on a name in use) and Delete
+  pack (which leaves the repo's files alone). "New pack" takes a name and
+  several files at once; `guessKind()` files each by its name (good, evil,
+  traveller good, outline…), else the first sheet the pack lacks. Sheets are
+  re-encoded to WebP (1182px max) in the browser. `POST /api/starlit`
+  `texture {pack, kind, image, thumb}` upserts by pack + kind; `pack {from,
+  to}` / `{from, remove}`. GET lists packs in order of their first row. Icon
+  Forge lists every pack's sheets as `starlit-{id}` "Pack: Sheet", leaving
+  out outlines and the Official pack (it has those already). "Your own" is
+  a local file that is never uploaded. The picker is a drop-down (a
+  `<details>`) showing the texture in use, open to
+  every texture grouped by set. There are two, one per layer (`PICKERS`):
+  the blacks' (Plain black, then every pack's sheets) and the whites' (Match
+  blacks, which takes the blacks' pack's Outline and is the default, Plain
+  white, each pack's Outline, Your own). Match blacks with Plain black is
+  plain white. Under each picker is the CUT
+  (`view.bcut` / `view.wcut`, `{x, y, z}`): Icon Forge's placement pad,
+  arrows round a dice for a random cut, a zoom slider (1-4) and Reset,
+  read by `cover()`. Zoom 1 is the sheet just covering the frame, so an
+  arrow there zooms in to `CUT_MIN_PAN_ZOOM` first; pan is -1..1 of what
+  the zoom leaves spare. Hidden while its layer has no texture (texture
+  off, or Plain). The window's sizes are 400 (what
+  tokens are printed at and the official app uses), 591 (the wiki's) and
+  1182. A window closes only on a press that starts AND ends on its
+  backdrop, so dragging out past its edge does not close it. "Open in Icon Forge" hands over the picked
+  sheet's file, which the forge adds to its list.
+  **An icon opens as it was uploaded** (the owner's call): black lines, white
+  outline, shadow, no texture (`AS_UPLOADED`), and its grid picture is drawn
+  the same way. Picking a texture tile turns the texture on. The upload form
+  has no texture choice; `tex` is stored empty, and an older icon that still
+  has one gets a new untextured grid picture on its next save.
+- **Finding icons**: the search box needs every word typed (name, keyword
+  or artist) and leaves out icons matching a word typed `-like-this`. The
+  keyword chips (the 30 most used, plus any in use) cycle on a tap:
+  required (maroon), left out (red, struck through), off, with Clear while
+  any is set (`filter.tags`, `{keyword: 1 | -1}`). Hovering a grid tile
+  shows its keywords over the picture ("No keywords" in red when it has
+  none), so the team can spot untagged icons; pointer devices only
+  (`@media (hover: hover)`). The upload form lists
+  every keyword already in the gallery under its Keywords box; a tap adds
+  or removes one, so the team reuses keywords rather than inventing near
+  copies. Artists work the same way: a second chip row (`filter.artists`,
+  shown when there are two or more, one chip per comma-separated name,
+  `artistsOf()`), and the form's Artist box has its own chips.
+  **Renaming** a keyword or an artist across every icon is Settings →
+  "Rename a keyword or an artist" (`rename {what: 'tag' | 'artist', from,
+  to}`; an empty `to` takes a keyword off; artists match one name at a time).
+- **Downloads** (`#sg-dl`, shown once there is a file, or to the team):
+  files that are not icons, PSDs included. `POST /api/starlit-file?title=
+  &note=&name=` with the FILE AS THE BODY (base64 JSON would not carry tens
+  of MB), streamed into R2 (`starlit/files/{token}-{name}`) after reading
+  the first bytes: `starlitFileType()` takes PNG, JPEG, WebP, GIF, PSD/PSB,
+  ZIP and PDF by their magic bytes, never their name, and stores them with
+  `Content-Disposition: attachment`. 95 MB cap (Cloudflare's request limit
+  is 100). Table `starlit_files`; `file {id, title, note}` and
+  `delete-file {id}`. Files with the same title are one row, so a PSD sits
+  beside its PNG; on a computer the rows sit two to a line. The browser
+  sends with XMLHttpRequest for a progress count.
+- **Order**: the team moves packs and download rows up and down (the arrows
+  on each). Stored as names in `settings` `starlit_order` = `{packs: [],
+  files: []}` (`order {what, list}`); GET sorts by it (`byStarlitOrder()`),
+  and a name not on the list sorts after the listed ones in the order it was
+  added, so a new pack or download lands at the end. Renaming a pack or
+  retitling a download carries its place in the list.
+- **The page itself** is the team's: `settings` `starlit_page` = `{synopsis,
+  intro, overview, credits, theme}` (`page {page}`; `page: null` puts the original
+  back). There is no About box any more (the team's call, 2026-11): the
+  synopsis sits above the title logo (`#sg-synopsis`), `intro` is the line
+  under it, and the overview follows in smaller type (`#sg-overview`). All
+  three are wiki text marks, drawn by render-wiki.js (`inlineFormat` for the
+  line, `renderBody` for the other two), so nothing typed becomes HTML; the
+  editor opens on `DEFAULT_SYNOPSIS` / `DEFAULT_INTRO` / `DEFAULT_OVERVIEW`,
+  the original text in marks, and saving one unchanged stores nothing.
+  A fourth piece, `credits`, is the **Credits** section near the bottom
+  (`#sg-credits`, above Settings; the team's ask, 2026-11), also
+  `renderBody`. It has no default: readers see no section until the team
+  writes one, and the team sees a note saying where to write it. The theme is the full theme kit
+  (theme-editor.js, `data-kind="page"`), cleaned by `sanitizeTheme(t,
+  'starlit/page')` and applied in the browser like a creator page's
+  (`applyTheme()`, custom CSS framing the hero and the gallery). Its
+  background and stickers are fixed slots `starlit/page-bg.*` and
+  `starlit/page-st{n}.*` (`page-image {kind, n, data}`). Readers load
+  render-wiki/render-page/custom-css only when something is stored.
+- **Storage**: lazy tables `starlit_icons`, `starlit_textures` and `starlit_files`; files in R2
+  under `starlit/`, keys minted by `/api/starlit`. `starlit/` is not in
+  `R2_PREFIXES`, so `/api/upload` cannot reach it. A replaced layer gets a new
+  key and the old file is deleted. Layers are PNG/WebP (re-encoded to PNG in
+  the browser, 1200px at most), textures PNG/JPEG/WebP, bytes sniffed.
+  The one exception is what came from the team's own Photoshop template: the
+  first icon, Goat Skull, whose files are committed under `assets/starlit/`
+  and whose row was written to D1 by hand, so the
+  preview could show it before anyone had uploaded anything. A file missing
+  from R2 falls back to the committed copy, as for `art/`.
+- **Who can upload**: admins and the accounts in `settings` `starlit_uploaders`
+  (`[{id, username}]` via `sanitizeEditors()`), set by an admin in the
+  gallery's team panel: the list with a Remove per artist, and a box that
+  only ADDS. It was one comma-separated box that replaced the whole list,
+  and saving it with one new name twice took the other artist off. Any of them can change or delete anything there. No
+  public submissions and no mass upload, on purpose: vetting for copyright and
+  AI is the team's job, and two-layer uploads do not batch well.
+- `starlit-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
+  reads the gallery, so it must not roll the feed caches). `/api/starlit` and
+  `/api/starlit-file` are in the wiki-lock list.
+- **Hand-offs**: "Open in Icon Forge" leaves the flattened icon in
+  localStorage for `iconforge?from=starlit`; the editors' "Browse the Starlit
+  Gallery" (`assets/starlit-picker.js`) opens `/starlit?pick=1` in an iframe
+  and "Use this icon" posts the PNG back. "Save to one of your characters"
+  in the icon window puts the icon, as shown, on a character the reader owns
+  (drafts too) through `assets/char-icon-save.js`, Icon Forge's save, and
+  fills "Icon by" unless the page credits somebody else; it asks before
+  replacing an icon. `?icon={id}` opens one icon. Not
+  built: a Token Tool hand-off (an icon reaches it through its character).
 
 ## Fancy Scripts (`/fancyscripts`)
 
@@ -5277,7 +5435,7 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   that mark to the account with that username (else that `discord_username`),
   setting `u` on the legacy entry, so it is drawn on their comments and is
   theirs to claim — live, so a handle links the day they sign up. Shared
-  marks (The Bazaar, Harry & Co. & Bendan) stay the name's.
+  marks (The Bazaar, Harry & Co & Bendan) stay the name's.
 - **The registry is two parallel queries** (`buildMarkRegistry()`), because the SSR read
   path must not grow: each row stores `names`, the credit names it is drawn
   beside (`markNamesFor()`: what the /creators list gives that account, plus
@@ -5292,6 +5450,11 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   the page degraded. Browser pages call `CreatorSymbols.load()`
   (`/api/creator-marks`); comments and the search index carry `markHTML`
   drawn by the Worker.
+- **Drawn as text**: `markHTML()` adds U+FE0E after any pictographic code
+  point without a variation selector, so a mark like Harry & Co & Bendan's
+  Gemini sign (U+264A) draws in the wiki's colours, where a phone would paint
+  a coloured emoji. The stored glyph and the export (`nameWithMarks()`) are
+  unchanged.
 - **Routes**: `GET /api/creator-marks` (public), `GET/POST /api/account/mark`
   (own mark; POST `{glyph, show}` or `{remove:true}`),
   `POST /api/admin/creator-mark` — `{username}` clears an account's mark,
@@ -5361,8 +5524,8 @@ and the Worker (which stamps `classification` + `curata` onto every row in
 - **Partial** — characters only: anything short of `STANDARD_REQUIREMENTS`.
   **Listed everywhere** — All Characters, Recently Added on the homepage,
   the team and tag pages, creator pages, /search, the Script Builder —
-  and taken out only when the *reader* ticks the **"Hide Partial"** chip
-  (both filter boxes, off by default, `hidePartial` in their state). It
+  and taken out only when the *reader* strikes the **"Partial"** chip
+  (tapped twice; off by default, `partial: -1` in the state). It
   used to be the other way round, hidden until a "Show Partial" chip was
   ticked, and the owner asked for it turned around (2026-10). What still
   leaves Partial pages out is the wiki's own picks: Featured Character and
@@ -5988,7 +6151,7 @@ seeded with whole collections whose characters all arrived unowned.
   `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
   `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/index/author/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
-  `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
+  `create.html`/`edit.html`/`grimforge.html`, `TEAM_ALIAS` in `worker/bloodstar.js` and `TEAMS` in `assets/importer.js`
   and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
   one solid colour per team, for the `theme-color` on a `/c/` page — see "The
   character link unfurl"). **Adding a team means editing every one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
@@ -6437,8 +6600,8 @@ save that came with a new icon was refused as somebody else's edit. So
 `/api/upload` takes `baseUpdatedAt` too — checked through `artRowStamp()`
 BEFORE the bytes land, since a stale tab's icon must not overwrite the live
 one either — and answers with the row's new `updatedAt`, which `edit.html`'s
-`apiUpload()` and `mass-upload.html`'s adopt as the base for the save that
-follows. A client that sends no stamp (Icon Forge, the standardizer, the
+`apiUpload()` adopts as the base for the save that follows (`mass-upload.html`
+re-reads the page instead). A client that sends no stamp (Icon Forge, the standardizer, the
 thumbnail backfill, Bloodstar) is left alone, exactly as the save handlers
 leave one. Canonical row addresses
 and versions override old roster JSON. Remote image URLs and exported script
@@ -6725,7 +6888,7 @@ keeps `content-visibility: auto`.
    official character, and a homebrew page sharing a name (there is more than
    one "Sculptor") must not steal their link. Don't rename icon files.
    Code that MATCHES a jinx without drawing it (the Worker's jinx index —
-   mirroring and /jinxes — `findScriptJinxes`, `jinxTargetCheck`) asks
+   mirroring and /jinxes — `findScriptJinxes`) asks
    `Render.jinxOfficialId()` for the same step; the index once skipped it, and
    a homebrew "Atheist*" with identity `atheist` collected every jinx written
    with the official Atheist.
