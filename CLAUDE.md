@@ -288,8 +288,7 @@ assets/
                        list late is tall enough. A page that keeps its own
                        place (all-characters, /search: filters too) sets
                        history.scrollRestoration = 'manual' and is skipped.
-                       The homepage is the opposite: Back to it always opens
-                       at the top (owner's call), bfcache restores included.
+                       The homepage is kept like any other page.
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
                        change it here and every page's top bar and hamburger
                        follow, because no page hardcodes it.
@@ -334,8 +333,10 @@ assets/
                        by every page that uploads art (create, edit,
                        mass-upload, normalize-icons, iconforge,
                        publish-script/-collection) and by the dashboard's
-                       backfill card. Fire and forget; WebP or nothing. See
-                       "Caching", part 3.
+                       backfill card. Fire and forget; WebP or nothing,
+                       except the thumbnail, which a browser that cannot
+                       encode WebP (Safari, so every iPhone) sends as a
+                       PNG under the same name. See "Caching", part 3.
   thumb/               The committed thumbnails of the committed art
                        (assets/art/x.png -> assets/thumb/x.png.webp) plus
                        manifest.json. Generated, never hand-edited:
@@ -379,7 +380,14 @@ assets/
                        small spring layout, no library and no CDN. Positions are
                        seeded from a hash of the node id so the map looks the
                        same every visit, and the simulation runs a fixed number
-                       of ticks and STOPS rather than animating forever. Read the
+                       of ticks and STOPS rather than animating forever. The
+                       simulation (computeLayout) runs in a worker, from its
+                       own source text, so it may use nothing outside itself;
+                       the result is kept in localStorage (botc_jinx_layout)
+                       against a hash of its input, and jinxes.html draws the
+                       list first and the map when layout() resolves. A node's
+                       icon is fetched when it comes on screen (loadIcons),
+                       never all 800 at once. Read the
                        header before touching the physics: REPEL_CAP, the
                        DRAG_SLOP threshold and MIN_ICON_PX all exist because of
                        specific bugs. NODE_GAP/LINK_REST set how far apart the
@@ -5134,7 +5142,12 @@ JSON retain their original URLs.
 Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
 (under 512 bytes) fall back to the original; versioned thumbnail fallbacks
 keep their existing one-hour limit. Writing original art retires its thumb,
-and the browser uploader regenerates it. The homepage featured image loads
+and the browser uploader regenerates it. Safari cannot encode WebP in a
+canvas, so its thumbnail is a 192px PNG stored under the same `.webp` name
+(~25 KB; `/api/upload` allows that mismatch for `thumb/` only) and it makes
+no display copy: until 2026-11 an icon uploaded from an iPhone had neither,
+and every card drew its ~180 KB original (about 150 icons; the dashboard
+backfill, run from Chrome or Firefox, makes the ones still missing). The homepage featured image loads
 lazily below the fold; secondary gallery images load on approach or interaction, respecting Save-Data.
 
 **The display copy.** What draws ONE icon large — the `/c/` emblem (every

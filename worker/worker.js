@@ -14334,8 +14334,14 @@ const app = {
         // The extension has to agree with the bytes, or /assets/ hands back a
         // file whose name promises one thing and whose Content-Type says
         // another — exactly the confusion nosniff exists to stop.
+        // One exception: a PNG thumbnail under its usual thumb/{file}.webp
+        // name. Safari's canvas cannot encode WebP, so every icon uploaded
+        // from an iPhone had no thumbnail at all and cards drew the ~180 KB
+        // original. That URL already answers image/png whenever it falls
+        // back to the original, so this is no new kind of response.
         const keyExt = key.split('.').pop().toLowerCase();
-        if (!uploadExt.exts.includes(keyExt)) {
+        const pngThumb = contentType === 'image/png' && key.startsWith(THUMB_PREFIX);
+        if (!uploadExt.exts.includes(keyExt) && !pngThumb) {
           return jsonResponse({
             error: `A ${contentType} image must be saved as .${uploadExt.exts[0]} (got .${keyExt}).`
           }, { status: 400 });

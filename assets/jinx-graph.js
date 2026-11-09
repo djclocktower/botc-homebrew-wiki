@@ -23,7 +23,19 @@
       leave open is a battery cost for no benefit, and dragging re-heats
       only the neighbourhood being dragged.
 
-   mountJinxGraph({mount, data, onSelect, onPair, onLinkStep}) -> api:
+   3. The layout is worked out OFF the main thread and remembered. At 800
+      nodes the simulation is seconds of solid CPU on a phone, with the whole
+      page frozen. mountJinxGraph.layout(data) runs computeLayout() in a
+      worker and keeps the answer in localStorage against a hash of its
+      input, so the next visit draws at once. computeLayout() is posted to
+      the worker as its own source text: it may use nothing from outside
+      itself.
+   4. An icon is fetched when its node comes on screen (loadIcons), never
+      all at once: every icon on the map was 800 requests and 15 MB.
+
+   mountJinxGraph.layout(data) -> Promise of positions, to pass on as
+   `positions` (without them the layout is computed on the spot).
+   mountJinxGraph({mount, data, positions, onSelect, onPair, onLinkStep}) -> api:
      focus(id), filter(fn), fit(), fitAll(), resetLayout(), hasMoved(),
      setBaseLayer(on), setLinkMode(on), select(id), destroy(). */
 (function () {
@@ -57,6 +69,170 @@
     return h >>> 0;
   }
 
+  /* What the layout depends on, as plain numbers: each node's seed and
+     radius, and the jinx lines as pairs of node indexes. */
+  function layoutInput(data) {
+    var index = {}, deg = [];
+    data.nodes.forEach(function (n, i) { index[n.id] = i; deg.push(0); });
+    var links = [];
+    (data.edges || []).forEach(function (e) {
+      var a = index[e.a], b = index[e.b];
+      if (a === undefined || b === undefined || a === b) return;
+      deg[a]++; deg[b]++;
+      links.push(a, b);
+    });
+    return {
+      seeds: data.nodes.map(function (n) { return hash(n.id); }),
+      // A node's pull grows with how connected it is, but slowly: the busiest
+      // character has an order of magnitude more jinxes than the median and
+      // would otherwise sit in a hole with everything else on the rim.
+      r: deg.map(function (d) { return 11 + Math.sqrt(d) * 3.4; }),
+      links: links
+    };
+  }
+
+  /* The spring layout: input from layoutInput(), output [x0, y0, x1, y1, …].
+     SELF-CONTAINED: this function's source is what the worker runs. */
+  function computeLayout(input) {
+    /* Repulsion is an inverse-square term, so two nodes that happen to seed
+       almost on top of each other produce an enormous first-tick force and
+       fling the whole map apart, and gravity never gets it back.
+       REPEL_CAP is what keeps the opening tick sane; do not remove it. */
+    var REPEL = 26000;
+    var REPEL_CAP = 58;
+    var REPEL_RANGE2 = 1440000;  // beyond 1200px apart, ignore each other
+    var LINK_REST = 175;         // slack in a jinx line, on top of both radii
+    var NODE_GAP = 52;           // clear parchment between two icons
+
+    var nodes = input.seeds.map(function (h, idx) {
+      // Spread the seed over a disc rather than a square: a square start
+      // leaves visible corners in the finished layout.
+      var ang = (h % 3600) / 3600 * Math.PI * 2;
+      var rad = 60 + ((h >> 12) % 1000) / 1000 * 340;
+      return { x: Math.cos(ang) * rad, y: Math.sin(ang) * rad, vx: 0, vy: 0, r: input.r[idx] };
+    });
+    var links = [];
+    for (var q = 0; q < input.links.length; q += 2) {
+      links.push({ a: nodes[input.links[q]], b: nodes[input.links[q + 1]] });
+    }
+    /* The two O(n^2) passes per tick are the whole cost of this, and the map
+       grows with the wiki. Trade ticks for size past 150 nodes: a bigger map
+       needs fewer of them anyway, because there is more room to spread into. */
+    var ticks = nodes.length > 150
+      ? Math.max(180, Math.round(560 * Math.pow(150 / nodes.length, 1.5)))
+      : 560;
+
+    var i, j, k, n, m, dx, dy, d2, len, force, ux, uy;
+    for (k = 0; k < ticks; k++) {
+      // Cooling: big moves early, fine adjustment late.
+      var a = Math.max(1 - k / ticks, 0.03);
+
+      // repulsion, every pair
+      for (i = 0; i < nodes.length; i++) {
+        n = nodes[i];
+        for (j = i + 1; j < nodes.length; j++) {
+          m = nodes[j];
+          dx = m.x - n.x; dy = m.y - n.y;
+          d2 = dx * dx + dy * dy;
+          if (d2 > REPEL_RANGE2) continue;
+          if (d2 < 1) {
+            // Exactly coincident: push apart along a fixed axis so the
+            // pair separates instead of dividing by zero.
+            dx = ((i * 7 + j) % 13) - 6; dy = ((i * 5 + j) % 11) - 5;
+            d2 = dx * dx + dy * dy || 1;
+          }
+          len = Math.sqrt(d2);
+          force = REPEL / d2;
+          if (force > REPEL_CAP) force = REPEL_CAP;
+          ux = dx / len; uy = dy / len;
+          n.vx -= ux * force; n.vy -= uy * force;
+          m.vx += ux * force; m.vy += uy * force;
+        }
+      }
+
+      // springs
+      for (i = 0; i < links.length; i++) {
+        var l = links[i];
+        dx = l.b.x - l.a.x; dy = l.b.y - l.a.y;
+        len = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        var rest = LINK_REST + l.a.r + l.b.r;
+        force = (len - rest) * 0.09;
+        if (force > 12) force = 12;
+        var sx = (dx / len) * force, sy = (dy / len) * force;
+        l.a.vx += sx; l.a.vy += sy;
+        l.b.vx -= sx; l.b.vy -= sy;
+      }
+
+      // gravity towards the middle, and integrate
+      for (i = 0; i < nodes.length; i++) {
+        n = nodes[i];
+        n.vx -= n.x * 0.022;
+        n.vy -= n.y * 0.022;
+        n.x += n.vx * a;
+        n.y += n.vy * a;
+        n.vx *= 0.72;
+        n.vy *= 0.72;
+      }
+
+      // Hard separation, so icons do not sit on top of one another. The
+      // spring/repulsion balance alone leaves the densest clusters
+      // overlapping, and an unreadable pile is worse than a wider map.
+      for (i = 0; i < nodes.length; i++) {
+        n = nodes[i];
+        for (j = i + 1; j < nodes.length; j++) {
+          m = nodes[j];
+          var want = n.r + m.r + NODE_GAP;
+          dx = m.x - n.x; dy = m.y - n.y;
+          d2 = dx * dx + dy * dy;
+          if (d2 >= want * want || d2 === 0) continue;
+          len = Math.sqrt(d2) || 0.01;
+          var push = (want - len) / 2;
+          ux = dx / len; uy = dy / len;
+          n.x -= ux * push; n.y -= uy * push;
+          m.x += ux * push; m.y += uy * push;
+        }
+      }
+    }
+    // Rounded, so a remembered layout and a fresh one are the same numbers.
+    var out = [];
+    for (i = 0; i < nodes.length; i++) {
+      out.push(Math.round(nodes[i].x * 100) / 100, Math.round(nodes[i].y * 100) / 100);
+    }
+    return out;
+  }
+
+  var LAYOUT_KEY = 'botc_jinx_layout';
+  /* Positions for `data`, without holding the page: the remembered ones when
+     the input (and this code) has not changed, else computed in a worker,
+     else (no worker) computed here as before. Never rejects. */
+  function layout(data) {
+    var input = layoutInput(data);
+    var want = input.seeds.length * 2;
+    var sig = hash(JSON.stringify(input) + computeLayout) + '.' + want;
+    try {
+      var kept = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null');
+      if (kept && kept.sig === sig && kept.pos && kept.pos.length === want) return Promise.resolve(kept.pos);
+    } catch (e) { /* no storage: compute */ }
+    return new Promise(function (resolve) {
+      var w = null, url = '';
+      function done(pos) {
+        if (w) w.terminate();
+        if (url) URL.revokeObjectURL(url);
+        if (!pos || pos.length !== want) pos = computeLayout(input);
+        try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ sig: sig, pos: pos })); } catch (e) { /* full or off */ }
+        resolve(pos);
+      }
+      try {
+        url = URL.createObjectURL(new Blob(
+          ['onmessage=function(e){postMessage((' + computeLayout + ')(e.data))}'], { type: 'text/javascript' }));
+        w = new Worker(url);
+        w.onmessage = function (e) { done(e.data); };
+        w.onerror = function () { done(null); };
+        w.postMessage(input);
+      } catch (e) { done(null); }
+    });
+  }
+
   function mountJinxGraph(opts) {
     opts = opts || {};
     var mount = typeof opts.mount === 'string' ? document.getElementById(opts.mount) : opts.mount;
@@ -66,16 +242,7 @@
 
     // ---- model -------------------------------------------------------
     var nodes = data.nodes.map(function (n) {
-      var h = hash(n.id);
-      // Spread the seed over a disc rather than a square: a square start
-      // leaves visible corners in the finished layout.
-      var ang = (h % 3600) / 3600 * Math.PI * 2;
-      var rad = 60 + ((h >> 12) % 1000) / 1000 * 340;
-      return {
-        d: n, id: n.id,
-        x: Math.cos(ang) * rad, y: Math.sin(ang) * rad,
-        vx: 0, vy: 0, deg: 0, on: true
-      };
+      return { d: n, id: n.id, x: 0, y: 0, deg: 0, on: true };
     });
     var byId = {};
     nodes.forEach(function (n) { byId[n.id] = n; });
@@ -103,98 +270,9 @@
     nodes.forEach(function (n) { n.r = 11 + Math.sqrt(n.deg) * 3.4; });
 
     // ---- layout ------------------------------------------------------
-    /* Repulsion is an inverse-square term, so two nodes that happen to seed
-       almost on top of each other produce an enormous first-tick force and
-       fling the whole map apart, and gravity never gets it back.
-       REPEL_CAP is what keeps the opening tick sane; do not remove it. */
-    var REPEL = 26000;
-    var REPEL_CAP = 58;
-    var REPEL_RANGE2 = 1440000;  // beyond 1200px apart, ignore each other
-    var LINK_REST = 175;         // slack in a jinx line, on top of both radii
-    var NODE_GAP = 52;           // clear parchment between two icons
-
-    function simulate(ticks) {
-      var i, j, k, n, m, dx, dy, d2, len, force, ux, uy;
-      for (k = 0; k < ticks; k++) {
-        // Cooling: big moves early, fine adjustment late.
-        var a = Math.max(1 - k / ticks, 0.03);
-
-        // repulsion, every pair (n is small enough to afford it)
-        for (i = 0; i < nodes.length; i++) {
-          n = nodes[i];
-          for (j = i + 1; j < nodes.length; j++) {
-            m = nodes[j];
-            dx = m.x - n.x; dy = m.y - n.y;
-            d2 = dx * dx + dy * dy;
-            if (d2 > REPEL_RANGE2) continue;
-            if (d2 < 1) {
-              // Exactly coincident: push apart along a fixed axis so the
-              // pair separates instead of dividing by zero.
-              dx = ((i * 7 + j) % 13) - 6; dy = ((i * 5 + j) % 11) - 5;
-              d2 = dx * dx + dy * dy || 1;
-            }
-            len = Math.sqrt(d2);
-            force = REPEL / d2;
-            if (force > REPEL_CAP) force = REPEL_CAP;
-            ux = dx / len; uy = dy / len;
-            n.vx -= ux * force; n.vy -= uy * force;
-            m.vx += ux * force; m.vy += uy * force;
-          }
-        }
-
-        // springs
-        for (i = 0; i < links.length; i++) {
-          var l = links[i];
-          dx = l.b.x - l.a.x; dy = l.b.y - l.a.y;
-          len = Math.sqrt(dx * dx + dy * dy) || 0.01;
-          var rest = LINK_REST + l.a.r + l.b.r;
-          force = (len - rest) * 0.09;
-          if (force > 12) force = 12;
-          var sx = (dx / len) * force, sy = (dy / len) * force;
-          l.a.vx += sx; l.a.vy += sy;
-          l.b.vx -= sx; l.b.vy -= sy;
-        }
-
-        // gravity towards the middle, and integrate
-        for (i = 0; i < nodes.length; i++) {
-          n = nodes[i];
-          if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
-          n.vx -= n.x * 0.022;
-          n.vy -= n.y * 0.022;
-          n.x += n.vx * a;
-          n.y += n.vy * a;
-          n.vx *= 0.72;
-          n.vy *= 0.72;
-        }
-
-        // Hard separation, so icons do not sit on top of one another. The
-        // spring/repulsion balance alone leaves the densest clusters
-        // overlapping, and an unreadable pile is worse than a wider map.
-        for (i = 0; i < nodes.length; i++) {
-          n = nodes[i];
-          for (j = i + 1; j < nodes.length; j++) {
-            m = nodes[j];
-            var want = n.r + m.r + NODE_GAP;
-            dx = m.x - n.x; dy = m.y - n.y;
-            d2 = dx * dx + dy * dy;
-            if (d2 >= want * want || d2 === 0) continue;
-            len = Math.sqrt(d2) || 0.01;
-            var push = (want - len) / 2;
-            ux = dx / len; uy = dy / len;
-            if (!n.fixed) { n.x -= ux * push; n.y -= uy * push; }
-            if (!m.fixed) { m.x += ux * push; m.y += uy * push; }
-          }
-        }
-      }
-    }
-    /* The two O(n^2) passes per tick are the whole cost of this, and the map
-       grows with the wiki. 560 ticks is comfortable at ~150 nodes and locks a
-       phone's main thread for seconds at several hundred, with nothing on
-       screen until it finishes. Trade ticks for size past that: a bigger map
-       needs fewer of them anyway, because there is more room to spread into. */
-    simulate(nodes.length > 150
-      ? Math.max(180, Math.round(560 * Math.pow(150 / nodes.length, 1.5)))
-      : 560);
+    var pos = opts.positions && opts.positions.length === nodes.length * 2
+      ? opts.positions : computeLayout(layoutInput(data));
+    nodes.forEach(function (n, i) { n.x = pos[i * 2]; n.y = pos[i * 2 + 1]; });
     // Where the simulation left each node. Dragging is meant to be a way to
     // untangle a corner and then put it back, so the computed layout is kept
     // and "Reset layout" restores it.
@@ -252,11 +330,11 @@
           'clip-path': 'url(#' + clipId + ')',
           preserveAspectRatio: 'xMidYMid slice'
         });
-        img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', n.d.icon);
-        img.setAttribute('href', n.d.icon);
+        // No href yet: loadIcons() gives it one when the node is on screen.
         // A missing icon leaves the coloured ring, which still reads as a node.
         img.addEventListener('error', function () { img.remove(); });
         g.appendChild(img);
+        n.img = img;
       }
       n.el = g;
       n.ring = ring;
@@ -273,14 +351,37 @@
       nodes.forEach(function (n) {
         n.el.setAttribute('transform', 'translate(' + n.x + ',' + n.y + ')');
       });
+      queueIcons();
     }
-    place();
+
+    /* Fetch the icons of the nodes in view (and 120px around it), once each.
+       Asked for on every move of the camera or of a node, run once a frame. */
+    var iconsQueued = false;
+    function loadIcons() {
+      iconsQueued = false;
+      var s = size(), pad = 120;
+      var x0 = (-pad - view.x) / view.k, x1 = (s.w + pad - view.x) / view.k;
+      var y0 = (-pad - view.y) / view.k, y1 = (s.h + pad - view.y) / view.k;
+      nodes.forEach(function (n) {
+        if (!n.img || n.x + n.r < x0 || n.x - n.r > x1 || n.y + n.r < y0 || n.y - n.r > y1) return;
+        n.img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', n.d.icon);
+        n.img.setAttribute('href', n.d.icon);
+        n.img = null;
+      });
+    }
+    function queueIcons() {
+      if (iconsQueued) return;
+      iconsQueued = true;
+      requestAnimationFrame(loadIcons);
+    }
 
     // ---- viewport: pan + zoom ----------------------------------------
     var view = { x: 0, y: 0, k: 1 };
+    place();
     function applyView() {
       root.setAttribute('transform',
         'translate(' + view.x + ',' + view.y + ') scale(' + view.k + ')');
+      queueIcons();
     }
     function size() {
       var r = svg.getBoundingClientRect();
@@ -726,7 +827,7 @@
         var moved = 0;
         nodes.forEach(function (n) {
           if (n.x !== n.homeX || n.y !== n.homeY) moved++;
-          n.x = n.homeX; n.y = n.homeY; n.vx = 0; n.vy = 0; n.fixed = false;
+          n.x = n.homeX; n.y = n.homeY; n.fixed = false;
         });
         place();
         return moved;
@@ -753,5 +854,8 @@
     };
   }
 
+  mountJinxGraph.layout = layout;
   if (typeof window !== 'undefined') window.mountJinxGraph = mountJinxGraph;
+  // For the check in migration/tests: the layout must not change by accident.
+  if (typeof module !== 'undefined' && module.exports) module.exports = { layoutInput: layoutInput, computeLayout: computeLayout };
 })();
