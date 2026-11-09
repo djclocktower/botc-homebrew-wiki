@@ -3097,7 +3097,10 @@
     // ── tabs ──
     $('sbx-tabs').addEventListener('click', function (e) {
       var b = e.target.closest('.sbx-tab');
-      if (b) showTab(b.getAttribute('data-tab'));
+      if (!b) return;
+      // The last "tab" is a way out: it hands the script to Fancy Scripts.
+      if (b.getAttribute('data-open') === 'fancy') { doFancy(); return; }
+      showTab(b.getAttribute('data-tab'));
     });
 
     // ── panel: characters vs saved scripts, width, drawer ──

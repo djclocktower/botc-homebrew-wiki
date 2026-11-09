@@ -4873,6 +4873,9 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 .sbx-tab:hover { color: rgba(236,225,200,.85); }
 .sbx-tab.on { color: var(--parch); border-bottom-color: var(--rule); }
 .sbx-tab-n { font-family: 'Oswald', sans-serif; font-size: .72rem; opacity: .7; }
+/* the way out to Fancy Scripts: a link, so it never takes the underline */
+.sbx-tab-out { display: inline-flex; align-items: center; gap: 5px; }
+.sbx-tab-out .sbi { width: .8em; height: .8em; }
 
 .sbx-scroll {
   flex: 1; min-height: 0; overflow-y: auto;

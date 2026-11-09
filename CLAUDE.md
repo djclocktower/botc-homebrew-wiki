@@ -1090,7 +1090,9 @@ script.html            Script Builder — the markup only; the behaviour is
                        fixed-height app shell (.sbx-* in styles.css): the
                        document does not scroll, the character panel and the
                        main column do. Tabs: Script, Night Order, Jinxes,
-                       Analyse, Details & Export. See "The Script Builder".
+                       Analyse, Details & Export, and a last one, Fancy
+                       Scripts (data-open, not data-tab), which opens the
+                       script in Fancy Scripts through doFancy(). See "The Script Builder".
                        Import matches each entry with matchEntry(): a bare id
                        is an official character, and so is an object entry
                        carrying the official ability; any other is matched by
