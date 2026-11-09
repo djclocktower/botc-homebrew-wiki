@@ -29,6 +29,11 @@
   font-size: .8rem; padding: 3px 9px; cursor: pointer; line-height: 1.4;
 }
 .we-box-del:hover { background: #f0caca; }
+.we-box-mv {
+  background: #fff; border: 1px solid #cdbfa0; color: #241a12;
+  font-size: .7rem; padding: 3px 7px; cursor: pointer; line-height: 1.6;
+}
+.we-box-mv:hover { border-color: var(--maroon); color: var(--maroon); }
 .we-info-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 6px; margin-bottom: 6px; }
 .we-info-row input[type=text] {
   font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: #241a12;
