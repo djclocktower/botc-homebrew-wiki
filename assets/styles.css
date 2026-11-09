@@ -2444,7 +2444,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 
 /* ─── All-characters filter bar ──────────────────────────── */
 .filter-bar {
-  display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end;
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
   background: var(--parch);
   border: 2px solid var(--parch-frame);
   padding: 14px 18px; margin-bottom: 26px;
@@ -2460,7 +2460,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   cursor: pointer; user-select: none;
   background: #fffdf8; color: var(--maroon);
   border: 1px solid var(--parch-frame); border-radius: 0;
-  padding: 4px 11px; transition: background .12s, color .12s;
+  padding: 4px 9px; transition: background .12s, color .12s;
 }
 .filter-chip:hover { background: rgba(91,31,33,.08); }
 .filter-chip.active { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
@@ -2468,7 +2468,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .filter-select {
   font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: var(--maroon);
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
-  padding: 6px 10px;
+  padding: 6px 6px;
 }
 /* "Tag [all of / any of / only one of]": the choice sits in the label. */
 .filter-select.filter-tagmode {
@@ -3318,7 +3318,7 @@ a:hover .curata-mark { opacity: .9; }
   .filter-chips-scroll { max-height: 160px; }
 }
 /* All Characters' creator search: a drop-down of matches under the box. */
-.cf-creator-combo { position: relative; width: 260px; max-width: 100%; }
+.cf-creator-combo { position: relative; width: 170px; max-width: 100%; }
 /* The filter's .home-panel is its own layer (z-index 5) and the card list
    after it is another, drawn on top: lift it while the drop-down is open. */
 .home-panel:has(.cf-creator-combo:focus-within) { z-index: 6; }
