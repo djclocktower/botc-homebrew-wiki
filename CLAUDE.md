@@ -4948,10 +4948,19 @@ Cyborg's jinx box.
   last row centred. Each cell is the icon, the name in capitals and the
   ability centred under it in Arial/Helvetica. Fewer columns, bigger type
   (`COLUMN_SHEET.cell`).
-- **Fit**: one page, density solved by `solveFit()`. `needAt(d)` is measured
-  already drawn at `d`, so the ratio handed to `solveFit` is
-  `avail * d / needAt(d)`; spare room goes under the rows (to
-  `FIT.spreadMax`) and the rest above and below.
+- **Fit**: one page, at the largest density whose height fits, found by
+  halving (`needAt(d)` is measured drawn at `d`). Not `solveFit()`: the
+  height here jumps as the density moves (lines re-wrap, the text column
+  narrows while icons grow), and its ratio steps stopped well short of the
+  room, leaving a band of empty page under the header. Spare room goes under
+  the rows and between teams (up to `spreadEm` each) and a small `topShare`
+  of what is left above the first heading, so it starts near the same place
+  on every script. An icon is at most `iconMaxShare` of its cell's width, or
+  a short script squeezed its abilities into a strip a few words wide. Names
+  take up to three lines (`fitNameLines`) before they shrink.
+- A very large script (90 characters) prints its abilities at about 5.6 px,
+  like the other two styles: that is the one-page rule. Page shape (1:2)
+  takes it to about 9 px.
 - The paper is the classic parchment without its garland, its burnt left
   edge squeezed in to meet the narrower column. The footnote sits bottom
   right, so the export's watermark sits bottom left of the paper.

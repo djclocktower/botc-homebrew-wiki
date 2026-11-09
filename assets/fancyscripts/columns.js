@@ -28,10 +28,10 @@
 
 import {
   COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
-  PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxied, smartTypography, fontFamily, elGet, nightLists,
+  PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxied, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
 } from './script.js';
 import {
-  el, img, px, clamp, solveFit, textWidth, wrappedLineCount, normalizeIcons, iconFit, inkTransform, iconFilter,
+  el, img, px, clamp, textWidth, wrappedLineCount, normalizeIcons, iconFit, inkTransform, iconFilter,
   ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import { pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark } from './elements.js';
@@ -73,7 +73,7 @@ function logoArt(script, options) {
    One page, as every script sheet is: each team is a heading band and grid
    rows measured at a density, the density solved to fill the room between
    the header and the footnote, and what is left dealt out as space under
-   the rows (to FIT.spreadMax) with the rest split above and below. */
+   the rows (to spreadEm) with a little of the rest above the first heading. */
 export function layoutColumnsSheet(script, options, requestRender) {
   const groups = groupByTeam(frontCharacters(script, options), options.sortMode);
   const nights = nightLists(script, options.night);
@@ -90,18 +90,23 @@ export function layoutColumnsSheet(script, options, requestRender) {
     const n = g.characters.length;
     const cols = columnsFor(n);
     const [iconB, nameB, textB] = C.cell[cols];
-    const iconEm = iconB * iconSize * d, nameEm = nameB * nameSize * d, textEm = textB * textSize * d;
+    const nameEm = nameB * nameSize * d, textEm = textB * textSize * d;
     const cellW = (cellPct(cols) / 100) * SHEET_W;
+    // the icon grows with the page but never past a share of its cell, or a
+    // short script squeezes its abilities into a strip a few words wide
+    const iconEm = Math.min(iconB * iconSize * d, (cellW * C.iconMaxShare) / U);
     const textW = Math.max(40, cellW - iconEm * U - gapPx * 2);
-    const nameFont = `400 ${(nameEm * U).toFixed(2)}px ${FONT.serif}`;
+    const nameFontAt = (k) => `400 ${(nameEm * U * k).toFixed(2)}px ${FONT.serif}`;
     const textFont = `400 ${(textEm * U).toFixed(2)}px ${FONT.text}`;
     const cells = g.characters.map((c) => {
       const name = smartTypography(c.name).toUpperCase();
-      const nameScale = Math.min(1, textW / Math.max(1, textWidth(name, nameFont)));
+      // a long name takes more lines before it shrinks
+      const nm = fitNameLines(name, textW, textWidth, nameFontAt, { maxLines: 3, minScale: 0.3 });
+      const nameScale = nm.scale;
       const lines = c.ability ? wrappedLineCount(smartTypography(c.ability), textFont, textW) : 0;
-      const nameH = nameEm * nameScale * C.nameLine;
+      const nameH = nameEm * nameScale * C.nameLine * nm.lines.length;
       const textH = lines * textEm * C.abilityLine * lineMul;
-      return { c, name, nameScale, nameH, textH, blockH: nameH + textH, h: Math.max(iconEm, nameH + textH) };
+      return { c, name, nameLines: nm.lines, nameScale, nameH, textH, blockH: nameH + textH, h: Math.max(iconEm, nameH + textH) };
     });
     const rows = [];
     for (let i = 0; i < cells.length; i += cols) {
@@ -122,17 +127,26 @@ export function layoutColumnsSheet(script, options, requestRender) {
   const needAt = (d) => sum(groups.map((g) => measureSection(g, d).need)) + Math.max(0, groups.length - 1) * C.sectionGap * d;
 
   let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
-  // solveFit wants room over the height at density 1; needAt is already
-  // drawn at dd, so it is divided back out
-  if (options.fitToContent && groups.length) d = solveFit((dd) => (avail * dd) / Math.max(0.01, needAt(dd)), 0.01, FIT.growMax);
+  /* The largest density that fits, by halving. Not solveFit: here the
+     height jumps as the density moves (lines re-wrap, and the text column
+     narrows while the icons grow), and its ratio steps settled well short
+     of the room, leaving a band of empty page under the header. */
+  if (options.fitToContent && groups.length) {
+    let lo = 0.01, hi = FIT.growMax;
+    if (needAt(hi) <= avail) lo = hi;
+    else for (let k = 0; k < 22; k++) { const mid = (lo + hi) / 2; if (needAt(mid) <= avail) lo = mid; else hi = mid; }
+    d = lo;
+  }
   const sections = groups.map((g) => measureSection(g, d));
 
   // the space left over: first under the rows, then split above and below
   const slots = sum(sections.map((s) => s.rows.length)) + Math.max(0, sections.length - 1);
   let spare = Math.max(0, avail - needAt(d));
-  const per = slots ? Math.min(spare / slots, C.rowGap * d * (FIT.spreadMax - 1) * 2) : 0;
+  // (generously, and little of it above: the first heading should start
+  // close to the same place on every script, not float half way down)
+  const per = slots ? Math.min(spare / slots, C.spreadEm) : 0;
   spare -= per * slots;
-  let y = top + spare * FIT.topShare;
+  let y = top + spare * C.topShare;
   sections.forEach((s, i) => {
     if (i) y += C.sectionGap * d + per;
     s.topEm = y;
@@ -321,10 +335,12 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     };
     if (centred) rule(ruleL, headX - 0.8);
     rule(headX + wPct + 0.8, ruleR);
-    wrap.append(el('div', {
+    const head = el('div', {
       position: 'absolute', left: headX + '%', top: px(e(ruleY)), transform: 'translateY(-50%)',
       fontFamily: FONT.serif, fontSize: px(fs), lineHeight: '1', whiteSpace: 'nowrap', color,
-    }, s.label));
+    }, s.label);
+    head.dataset.fsHead = s.team;
+    wrap.append(head);
 
     const cellW = cellPct(s.cols);
     for (const r of s.rows) {
@@ -356,7 +372,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
         block.append(el('div', {
           fontFamily: FONT.serif, fontSize: px(e(s.nameEm * m.nameScale)), lineHeight: String(C.nameLine),
           whiteSpace: 'nowrap', color: c.color || ink,
-        }, m.name));
+        }, ...m.nameLines.map((ln) => el('div', null, ln))));
         if (c.ability) {
           block.append(el('div', {
             fontFamily: FONT.text, fontSize: px(e(s.textEm)), lineHeight: String(C.abilityLine * (options.abilityLine || 1)),

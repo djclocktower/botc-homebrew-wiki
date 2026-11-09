@@ -306,8 +306,11 @@ export const COLUMN_SHEET = {
   ruleH: 0.25, // em, the line from the heading to the edge
   sectionGap: 0.8,
   rowGap: 1.1, // em under every grid row
+  spreadEm: 4, // em at most added under a row or between teams when there is room
+  topShare: 0.15, // of the room still left after that, the share above the first heading
   iconGap: 0.6, // % of the width between an icon and its text
   soloW: 66, // % of the width, a lone character's cell
+  iconMaxShare: 0.3, // an icon is at most this share of its cell's width
   // per grid width: icon, name, ability (em) — fewer columns, bigger type
   cell: { 3: [8.2, 2.0, 1.35], 2: [9.4, 2.2, 1.55], 1: [12.5, 3.0, 2.0] },
   abilityLine: 1.2, // × the ability size
