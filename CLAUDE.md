@@ -1669,7 +1669,7 @@ What shapes it:
 Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
-`SBView.SCHEMA` is the whole list, and it is short on purpose: **11
+`SBView.SCHEMA` is the whole list, and it is short on purpose: **10
 settings** in the popover, cut down from 37 plus 6 presets at the owner's
 request (2026-10), then Creator mark added and Look, Team colours and Team
 headings taken out (the roster is always parchment, its headings always
@@ -1683,7 +1683,7 @@ Normal / Large — icons, text, spacing and the panel's rows together; the
 icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
 / 1 / 2, where 2 is the whole script poured down two columns), seven "Show on
 each character" ticks (ability, creator — on the roster and in the panel —
-creator mark, tags, night marks, jinx marks, notes) and the panel's Grouped by. Two more
+creator mark, tags, night marks, jinx marks, notes). Two more
 keys ride the view without being in the popover (`ui: false`): `arrange`,
 the **Arrange** button beside Sort, and `panelScope`, the panel's own Show
 select. There is no display-only order any more (it read like Sort and was
@@ -1773,12 +1773,13 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   draws the team again, ✕ takes the team off — locks survive both.
 - **The empty roster** offers the three ways in: open the panel, a random
   script, or a script published on the wiki.
-- **Grouped by** (View → Character panel): team, creator (the first name on
-  the credit), set (`appearsIn`, else the derived `appearsInFrom`, else the
-  address's set segment) or A to Z. A regrouping redraws the panel and
-  mounts the filter box again over the list, keeping the reader's choices
-  (`ctrl.restore`). Folding is remembered per group key; a folded group
-  draws no rows. **Show** narrows the panel to everyone, those not on the
+- **Group** is the filter box's own select, as on All Characters (it was
+  View → Grouped by, moved at the owner's request): by team, by author (the
+  first name on the credit), by script or collection (`appearsIn`, else the
+  derived `appearsInFrom`, else the address's set segment) or all together.
+  `panelGroups()` reads `filterCtl.state.group`; the choice is kept in
+  `prefs.panelGroup` (an old `view.panelGroup` is carried over). Folding is
+  remembered per group key; a folded group draws no rows. **Show** narrows the panel to everyone, those not on the
   script, or those on it (the select beside Abilities; applied to the list,
   and by CSS off `data-panelscope` so a click hides a row at once), and the
   panel's **Abilities** tick both shows every ability and makes the search

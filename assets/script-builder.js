@@ -142,6 +142,10 @@
 
   // ── preferences ────────────────────────────────────────────────────────
   var prefs = readJSON(PREF_KEY, {}) || {};
+  // The panel's grouping moved from View into the filter box's Group.
+  if (!prefs.panelGroup && prefs.view && prefs.view.panelGroup) {
+    prefs.panelGroup = { creator: 'author', set: 'set', name: 'none' }[prefs.view.panelGroup] || 'team';
+  }
   function savePrefs() { writeJSON(PREF_KEY, prefs); }
 
   // ── the current script ─────────────────────────────────────────────────
@@ -894,12 +898,12 @@
       (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
     '</div>';
   }
-  /* Which group a character files under, for the panel's "Grouped by". */
+  /* Which group a character files under, for the filter box's Group. */
   function titleWords(s) {
     return String(s || '').replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (m) { return m.toUpperCase(); });
   }
   function groupKeyOf(c, how) {
-    if (how === 'creator') {
+    if (how === 'author') {
       if (c.official) return 'Official';
       var names = window.splitCreators ? window.splitCreators(c.creator || '') : String(c.creator || '').split(',');
       var n = (names[0] || '').trim();
@@ -914,10 +918,6 @@
         if (m) set = titleWords(m[1]);
       }
       return set || 'No set';
-    }
-    if (how === 'name') {
-      var ch = String(c.name || '').trim().charAt(0).toUpperCase();
-      return /[A-Z]/.test(ch) ? ch : '#';
     }
     return c.team;
   }
@@ -945,8 +945,9 @@
     return panelShown;
   }
   function panelGroups(list) {
-    var how = (view && view.panelGroup) || 'team';
+    var how = (filterCtl && filterCtl.state.group) || 'team';
     var groups = [];
+    if (how === 'none') return list.length ? [{ team: null, key: 'all', label: 'All characters', chars: list }] : [];
     if (how === 'team') {
       TEAMS.forEach(function (t) {
         var g = list.filter(function (c) { return teamKey(c) === t[0]; });
@@ -961,7 +962,7 @@
     });
     Object.keys(buckets).sort(function (a, b) {
       // Official and the catch-alls sink to the end; the rest alphabetical.
-      var tail = { 'Official': 2, 'Uncredited': 1, 'No set': 1, '#': 1 };
+      var tail = { 'Official': 2, 'Uncredited': 1, 'No set': 1 };
       return (tail[a] || 0) - (tail[b] || 0) || a.localeCompare(b);
     }).forEach(function (k) {
       groups.push({ team: null, key: how + ':' + k, label: k, chars: buckets[k] });
@@ -1018,9 +1019,8 @@
     var g = panelGroups(panelMatches()).filter(function (x) { return x.key === key; })[0];
     return g ? g.chars : [];
   }
-  /* Called when the characters arrive or change, and when the grouping
-     changes. The filter box is put up again over the new list, keeping
-     whatever the reader had chosen in it. */
+  /* Called when the characters arrive or change. The filter box is put up
+     again over the new list, keeping whatever the reader had chosen in it. */
   function buildAddList(done) {
     panelChars = allChars.concat(officialChars);
     panelOrder = {};
@@ -1037,11 +1037,16 @@
       bar: $('sb-filter-bar'), toggle: $('sb-filter-toggle'), list: panelChars, label: 'Filters',
       sourceOf: function (c) { return c.official ? 'official' : 'homebrew'; },
       sourceLabels: [['homebrew', 'Homebrew'], ['official', 'Official']],
-      defaultSort: 'name', groups: ['team'],
+      defaultSort: 'name', groups: ['team', 'author', 'set', 'none'],
       order: function (c) { return panelOrder[c.slug] || 0; },
-      onChange: function () { filterPanel(); }
+      onChange: function () {
+        // The Group choice is remembered between visits.
+        var g = filterCtl.state.group;
+        if (g !== (prefs.panelGroup || 'team')) { prefs.panelGroup = g; savePrefs(); }
+        filterPanel();
+      }
     });
-    if (saved && filterCtl.restore) filterCtl.restore(saved);
+    if (filterCtl.restore) filterCtl.restore(saved || { group: prefs.panelGroup || 'team' });
     var reset = $('sb-filter-bar').querySelector('#fc-reset');
     if (reset) reset.addEventListener('click', function () { $('sb-filter').value = ''; filterPanel(); });
   }
@@ -1307,15 +1312,11 @@
     window.SBView.apply($('sbx'), view);
   }
   function setView(v, key) {
-    var beforeGroup = view && view.panelGroup;
     prefs.view = v;
     savePrefs();
     applyView();
     var rp = key ? window.SBView.repaintFor(key) : 'roster';
     if (rp === 'roster') paintRoster();
-    if (rp === 'panel' || (!key && view.panelGroup !== beforeGroup)) {
-      if (allChars.length) buildAddList(function () { paintJinxHints(); });
-    }
     if (key === 'showMarks') paintPanelMarks();
     if (key === 'arrange') paintArrangeBtn();
     if (key === 'panelScope') { paintScopeSel(); filterPanel(); }

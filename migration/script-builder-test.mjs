@@ -126,7 +126,7 @@ ok(!V.isDefault(V.normalize({ size: 'large' })), 'a changed size is not');
 ok(V.isDefault(V.normalize({ arrange: true, panelScope: 'on' })), 'Arrange and Show are not part of the look');
 eq(V.teamHeading('townsfolk', 'Townsfolk', { teamHeads: false }), 'Townsfolk', 'headings are always on');
 ok(V.SCHEMA.every(s => s.key in V.DEFAULTS), 'every schema row has a default');
-ok(V.SCHEMA.filter(s => s.ui !== false).length === 11, 'eleven settings in the View popover');
+ok(V.SCHEMA.filter(s => s.ui !== false).length === 10, 'ten settings in the View popover');
 // A view stored before the settings were merged keeps what it chose.
 const old = V.normalize({ tone: 'paper', font: 'wiki', pageCols: true, columns: '1', accent: true, rowStripe: true, teamLabel: 'none', panelCreator: true });
 ok(!('look' in old), 'Look is gone');

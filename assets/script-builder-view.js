@@ -35,7 +35,6 @@
     showNight: false,
     showJinx: true,
     showNotes: true,      // the script's own note under a character
-    panelGroup: 'team',   // team | creator | set | name
     // Kept with the view but set elsewhere: Arrange is a button beside Sort,
     // the panel's Show is a select in the panel itself.
     arrange: false,
@@ -65,10 +64,6 @@
     { group: 'Show on each character', key: 'showNight', label: 'Night marks (F / O)', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showJinx', label: 'Jinx marks', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showNotes', label: 'Your notes', type: 'check', repaint: 'roster' },
-
-    { group: 'Character panel', key: 'panelGroup', label: 'Grouped by', type: 'seg', repaint: 'panel',
-      options: [['team', 'Team'], ['creator', 'Creator'], ['set', 'Set'], ['name', 'A to Z']],
-      hint: 'Set is the script or collection a character is filed under.' },
 
     { key: 'arrange', type: 'check', repaint: 'roster', ui: false },
     { key: 'panelScope', type: 'select', repaint: '', ui: false,
