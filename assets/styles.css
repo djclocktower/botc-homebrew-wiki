@@ -722,7 +722,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 /* The homepage: the tiles on the left, the Resources sidebar in a narrow
    column centred in the space between them and the right edge of the
    screen (the gap before it is the page's right padding), and Featured,
-   Rules and About (.home-wide) under both, centred on the page. No
+   Rules and About (.home-wide) under both, centred on the page, 1500px at most. No
    max-width: on a wide screen the tiles take the room rather than the
    page leaving a band of nothing on either side. */
 .home-layout {
@@ -753,7 +753,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   grid-column: 1 / -1;
   grid-row: 2;
   justify-self: center;
-  max-width: 1150px;
+  max-width: 1500px;
   margin-top: 44px;
 }
 /* Scrolls with the page. It used to be pinned (position:sticky) and follow
