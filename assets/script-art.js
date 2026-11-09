@@ -222,6 +222,7 @@
   // ══ the background ══════════════════════════════════════════════════
   var BW = 1920, BH = 1080;
   var BG_PRESETS = [
+    ['Trouble Brewing', '#8a1222', '#2e040a'],
     ['Midnight', '#1f6fa8', '#101a70'],
     ['Crimson', '#8e1b24', '#36060f'],
     ['Emerald', '#1f7a4d', '#0a2f22'],
@@ -292,7 +293,7 @@
     open: function (opts) {
       openMaker({
         title: 'Make a background', key: 'botc_bgmaker', file: 'background', opts: opts,
-        defaults: { c1: '#1f6fa8', c2: '#101a70', dir: 'lr', size: 100, strength: 65, texture: 15, shade: 55 },
+        defaults: { c1: '#8a1222', c2: '#2e040a', dir: 'lr', size: 100, strength: 65, texture: 15, shade: 55 },
         presets: BG_PRESETS,
         colours: [['c1', 'Colour 1'], ['c2', 'Colour 2']],
         preview: { w: 960, h: 540 },
@@ -321,6 +322,7 @@
   var LS = 1200;                 // the square the official app's logos come in
   var LOGO_FONT = 'LHF Unlovable';
   var LOGO_PRESETS = [
+    ['Trouble Brewing', '#9c1230', '#6c0410'],
     ['Sapphire', '#262c8c', '#1e94b8'],
     ['Crimson', '#7a0f1c', '#d0412f'],
     ['Emerald', '#0f4f33', '#3fae6c'],
@@ -428,7 +430,7 @@
     open: function (opts) {
       openMaker({
         title: 'Make a logo', key: 'botc_logomaker', file: 'logo', opts: opts,
-        defaults: { text: '', c1: '#262c8c', c2: '#1e94b8', texture: 40, outline: 30 },
+        defaults: { text: '', c1: '#9c1230', c2: '#6c0410', texture: 40, outline: 30 },
         init: function (o, op) { o.text = op.text || o.text || 'My Script'; },
         presets: LOGO_PRESETS,
         colours: [['c1', 'Top'], ['c2', 'Bottom']],

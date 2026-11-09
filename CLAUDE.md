@@ -1887,7 +1887,9 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   its own (a square, a hue strip and a hex box, like Fancy Scripts', since
   Android's colour input has presets only), Blend, Pattern size, Pattern
   strength, Texture and Shading; the settings are kept per browser
-  (`botc_bgmaker`). Logged out it can only download.
+  (`botc_bgmaker`). Logged out it can only download. Both makers open on
+  Trouble Brewing's reds (the owner's call; the logo's two colours were
+  sampled off the official TB logo) and list them first as a preset.
 - **The peek card closes when the tab changes** (`showTab()` calls
   `hidePeek()`).
 - **Each panel group heading has a die** (add one at random from what that
