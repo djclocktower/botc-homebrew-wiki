@@ -417,93 +417,67 @@
      short pause in the typing, and adding a character repaints one row. */
   function ico(n) { return window.UIIcons ? window.UIIcons.svg(n) : ''; }
   var rowBySlug = {};
-  /* Built in slices, one per frame: 3,700 rows in one go held the page
-     still for half a second on a fast machine, and for seconds on a slow
-     one, right while the engine was downloading. Each row reflects the set
-     as it is when its slice is drawn, and takes the current search. */
-  var sideRun = 0, SIDE_CHUNK = 120;
-  function renderSidebar() {
-    var run = ++sideRun;
+  /* Only a few hundred rows are ever on the page. All 3,700 kept there made
+     the browser re-check every row and every icon on each change, so the
+     sliders and the main panel stopped answering on a slower PC (worst in
+     Brave, whose ad blocker scans every element as well). A team shows its
+     first SIDE_STEP matches and a Show more button; the search runs over
+     the characters in memory and redraws the short list. */
+  var SIDE_STEP = 50, sideGroups = null, sideLimit = {};
+  function sideAll() {
+    if (sideGroups) return sideGroups;
     var known = TEAMS.map(function (t) { return t[0]; });
-    var groups = [];
+    sideGroups = [];
     TEAMS.forEach(function (t) {
       var key = t[0];
       var chars = allChars.filter(function (c) {
         return c.team === key || (key === 'other' && known.indexOf(c.team) < 0);
       }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      if (chars.length) groups.push({ label: t[1], chars: chars, at: 0, el: null });
+      chars.forEach(function (c) { c._q = (c.name || '').toLowerCase(); c._qa = (c.ability || '').toLowerCase(); });
+      if (chars.length) sideGroups.push({ key: key, label: t[1], chars: chars });
     });
-    var list = $('sb-add-list');
-    rowBySlug = {};
-    if (!groups.length) { list.innerHTML = '<p class="sbx-note">No characters found.</p>'; return; }
-    list.innerHTML = '';
-    var TICK = ico('check'), CHEV = ico('down'), gi = 0;
-    function rowHTML(c) {
-      var on = setSlugs.indexOf(c.slug) >= 0;
-      return '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
-        '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
-          '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
-          '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
-          '<span class="sbx-add-tick" aria-hidden="true">' + TICK + '</span>' +
-        '</button>' +
-        (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + CHEV + '</button>' : '') +
-        '</div>' +
-        (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
-        '</div>';
-    }
-    function slice() {
-      if (run !== sideRun) return;   // a newer build replaced this one
-      var budget = SIDE_CHUNK, q = searchQ(), abil = $('tt-abilities').checked;
-      while (budget > 0 && gi < groups.length) {
-        var g = groups[gi];
-        if (!g.el) {
-          var wrap = document.createElement('div');
-          wrap.className = 'sbx-add-group';
-          wrap.innerHTML = '<h3 class="sbx-add-grouphead">' + esc(g.label) +
-            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span></h3><div class="sbx-add-rows"></div>';
-          list.appendChild(wrap);
-          g.el = wrap.lastChild;
-        }
-        var to = Math.min(g.chars.length, g.at + budget), html = '';
-        for (var i = g.at; i < to; i++) html += rowHTML(g.chars[i]);
-        var before = g.el.childElementCount;
-        g.el.insertAdjacentHTML('beforeend', html);
-        for (var k = before; k < g.el.children.length; k++) {
-          var c = g.chars[g.at + k - before], r = g.el.children[k];
-          r._name = (c.name || '').toLowerCase();
-          r._ab = (c.ability || '').toLowerCase();
-          rowBySlug[c.slug] = r;
-          if (q && !rowMatches(r, q, abil)) r.style.display = 'none';
-        }
-        budget -= to - g.at;
-        g.at = to;
-        if (g.at >= g.chars.length) gi++;
-      }
-      if (gi < groups.length) requestAnimationFrame(slice);
-      else filterSidebar();
-    }
-    slice();
+    return sideGroups;
   }
   function searchQ() { return ($('sb-filter').value || '').trim().toLowerCase(); }
-  function rowMatches(r, q, abil) { return !q || r._name.indexOf(q) >= 0 || (abil && r._ab.indexOf(q) >= 0); }
-  function filterSidebar() {
-    var q = searchQ();
-    var abil = $('tt-abilities').checked, shown = 0, total = 0;
-    [].slice.call($('sb-add-list').querySelectorAll('.sbx-add-group')).forEach(function (g) {
-      var n = 0;
-      [].slice.call(g.querySelectorAll('.sbx-add-row')).forEach(function (r) {
-        var vis = rowMatches(r, q, abil);
-        var want = vis ? '' : 'none';
-        if (r.style.display !== want) r.style.display = want;
-        if (vis) n++;
-        total++;
-      });
-      g.style.display = n ? '' : 'none';
-      g.querySelector('.sbx-add-groupcount').textContent = '(' + n + ')';
-      shown += n;
+  function rowHTML(c, TICK, CHEV) {
+    var on = setSlugs.indexOf(c.slug) >= 0;
+    return '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
+      '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
+        '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+        '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+        '<span class="sbx-add-tick" aria-hidden="true">' + TICK + '</span>' +
+      '</button>' +
+      (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + CHEV + '</button>' : '') +
+      '</div>' +
+      (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
+      '</div>';
+  }
+  function renderSidebar() {
+    var q = searchQ(), abil = $('tt-abilities').checked;
+    var TICK = ico('check'), CHEV = ico('down');
+    var html = '', shown = 0, total = 0;
+    sideAll().forEach(function (g) {
+      total += g.chars.length;
+      var hits = q ? g.chars.filter(function (c) { return c._q.indexOf(q) >= 0 || (abil && c._qa.indexOf(q) >= 0); }) : g.chars;
+      if (!hits.length) return;
+      shown += hits.length;
+      var lim = sideLimit[g.key] || SIDE_STEP;
+      html += '<div class="sbx-add-group"><h3 class="sbx-add-grouphead">' + esc(g.label) +
+        ' <span class="sbx-add-groupcount">(' + hits.length + ')</span></h3><div class="sbx-add-rows">';
+      for (var i = 0; i < hits.length && i < lim; i++) html += rowHTML(hits[i], TICK, CHEV);
+      html += '</div>';
+      if (hits.length > lim) {
+        html += '<button type="button" class="tt-btn-sm tt-side-more" data-team="' + esc(g.key) + '">Show more (' + (hits.length - lim) + ')</button>';
+      }
+      html += '</div>';
     });
+    var list = $('sb-add-list');
+    list.innerHTML = html || '<p class="sbx-note">' + (total ? 'Nothing matches that.' : 'No characters found.') + '</p>';
+    rowBySlug = {};
+    [].slice.call(list.querySelectorAll('.sbx-add-row')).forEach(function (r) { rowBySlug[r.dataset.slug] = r; });
     $('tt-side-count').textContent = q ? shown + ' of ' + total + ' characters' : total + ' characters';
   }
+  function filterSidebar() { sideLimit = {}; renderSidebar(); }
   function paintSidebarOn() {
     Object.keys(rowBySlug).forEach(function (sl) {
       var b = rowBySlug[sl].firstChild.firstChild, on = setSlugs.indexOf(sl) >= 0;
@@ -518,6 +492,8 @@
 
   function wireSidebar() {
     $('sb-add-list').addEventListener('click', function (e) {
+      var more = e.target.closest('.tt-side-more');
+      if (more) { sideLimit[more.dataset.team] = (sideLimit[more.dataset.team] || SIDE_STEP) + SIDE_STEP * 4; renderSidebar(); return; }
       var chev = e.target.closest('.sbx-add-chev');
       if (chev) { chev.closest('.sbx-add-row').classList.toggle('open'); return; }
       var item = e.target.closest('.sbx-add-item');
@@ -530,8 +506,8 @@
     $('sb-filter').addEventListener('keydown', function (e) {
       if (e.key !== 'Enter') return;
       clearTimeout(timer); filterSidebar();
-      var first = [].slice.call($('sb-add-list').querySelectorAll('.sbx-add-row')).filter(function (r) { return r.style.display !== 'none'; })[0];
-      if (first) first.querySelector('.sbx-add-item').click();
+      var first = $('sb-add-list').querySelector('.sbx-add-item');
+      if (first) first.click();
     });
     $('tt-abilities').addEventListener('change', function () {
       $('sb-add-list').classList.toggle('abil', this.checked);
