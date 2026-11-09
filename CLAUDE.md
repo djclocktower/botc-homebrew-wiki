@@ -1669,10 +1669,11 @@ What shapes it:
 Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
-`SBView.SCHEMA` is the whole list, and it is short on purpose: **13
+`SBView.SCHEMA` is the whole list, and it is short on purpose: **11
 settings** in the popover, cut down from 37 plus 6 presets at the owner's
-request (2026-10), then Creator mark added and Look taken out (the roster
-is always parchment), both at the owner's request. Layout (sheet, cards,
+request (2026-10), then Creator mark added and Look, Team colours and Team
+headings taken out (the roster is always parchment, its headings always
+on, in plain ink, with no band behind them), all at the owner's request. Layout (sheet, cards,
 list, icon wall, and **Official**: the sheet set as the official script
 tool sets it, bold Trade Gothic names over the ability, team headings with
 a hairline, no "official" badges, on the same parchment panels; it is
@@ -1680,8 +1681,7 @@ a hairline, no "official" badges, on the same parchment panels; it is
 stored with the old Official look opens on it), **Size** (Small /
 Normal / Large — icons, text, spacing and the panel's rows together; the
 icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
-/ 1 / 2, where 2 is the whole script poured down two columns), **Team
-colours** (Off / Headings / Headings and rows), Team headings, seven "Show on
+/ 1 / 2, where 2 is the whole script poured down two columns), seven "Show on
 each character" ticks (ability, creator — on the roster and in the panel —
 creator mark, tags, night marks, jinx marks, notes) and the panel's Grouped by. Two more
 keys ride the view without being in the popover (`ui: false`): `arrange`,
@@ -1689,7 +1689,8 @@ the **Arrange** button beside Sort, and `panelScope`, the panel's own Show
 select. There is no display-only order any more (it read like Sort and was
 not), no presets (four were the layouts again), no bar switches, no
 Animations switch (the CSS follows `prefers-reduced-motion`), no panel side,
-and sticky team headings and the official badge are simply always on.
+and the official badge is simply always on. Team headings are not sticky:
+the dark band that pinned them read as a stray bar.
 **Before adding a setting back, ask the owner.** `normalize()` runs
 `migrate()` first, so a view stored by the 37-setting builder keeps its
 look, columns and colours.

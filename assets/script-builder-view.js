@@ -28,8 +28,6 @@
     layout: 'sheet',      // sheet | cards | list | icons | official (the sheet, set as the official script tool sets it)
     size: 'normal',       // small | normal | large — icons, text, spacing
     columns: 'auto',      // auto | 1 | 2 (the whole script down two columns)
-    teamColour: 'heads',  // off | heads | rows
-    teamHeads: true,
     showAbility: true,
     showCreator: false,   // on the roster AND in the panel
     showMarks: false,     // creator marks beside names, roster and panel
@@ -58,9 +56,6 @@
     { group: 'Roster', key: 'columns', label: 'Columns', type: 'seg', repaint: '',
       options: [['auto', 'Auto'], ['1', '1'], ['2', '2']],
       hint: '2 pours the whole script down two columns, like a printed sheet.' },
-    { group: 'Roster', key: 'teamColour', label: 'Team colours', type: 'seg', repaint: '',
-      options: [['off', 'Off'], ['heads', 'Headings'], ['rows', 'Headings and rows']] },
-    { group: 'Roster', key: 'teamHeads', label: 'Team headings', type: 'check', repaint: 'roster' },
 
     { group: 'Show on each character', key: 'showAbility', label: 'Ability', type: 'check', repaint: '' },
     { group: 'Show on each character', key: 'showCreator', label: 'Creator', type: 'check', repaint: 'roster' },
@@ -109,10 +104,6 @@
     if (v.columns != null && v.pageCols != null) {
       v.columns = v.pageCols ? '2' : (String(v.columns) === '1' ? '1' : 'auto');
     }
-    if (v.teamColour == null && (v.accent != null || v.rowStripe != null)) {
-      v.teamColour = v.accent === false ? 'off' : v.rowStripe ? 'rows' : 'heads';
-    }
-    if (v.teamHeads == null && v.teamLabel != null) v.teamHeads = v.teamLabel !== 'none';
     if (v.showCreator == null && v.panelCreator) v.showCreator = true;
     return v;
   }
@@ -163,18 +154,13 @@
     root.style.setProperty('--sbx-panel-text', String(size.panelText));
     var cls = {
       'sbx-no-ability': !v.showAbility,
-      'sbx-no-accent': v.teamColour === 'off',
-      'sbx-row-stripe': v.teamColour === 'rows',
       'sbx-panel-compact': size.panelCompact,
       'sbx-panel-creator': v.showCreator
     };
     Object.keys(cls).forEach(function (k) { root.classList.toggle(k, !!cls[k]); });
   }
 
-  function teamHeading(team, label, v) {
-    v = v || DEFAULTS;
-    return v.teamHeads === false ? '' : label;
-  }
+  function teamHeading(team, label) { return label; }
 
   /* ── the popover ──────────────────────────────────────────────────── */
   function controlHTML(s, v) {

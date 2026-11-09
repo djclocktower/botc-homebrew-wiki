@@ -124,20 +124,17 @@ ok(!('extra' in v), 'unknown keys are dropped');
 ok(V.isDefault(V.normalize({})), 'an empty view is the default');
 ok(!V.isDefault(V.normalize({ size: 'large' })), 'a changed size is not');
 ok(V.isDefault(V.normalize({ arrange: true, panelScope: 'on' })), 'Arrange and Show are not part of the look');
-eq(V.teamHeading('townsfolk', 'Townsfolk', { teamHeads: false }), '', 'no headings');
-eq(V.teamHeading('townsfolk', 'Townsfolk', {}), 'Townsfolk', 'headings by default');
+eq(V.teamHeading('townsfolk', 'Townsfolk', { teamHeads: false }), 'Townsfolk', 'headings are always on');
 ok(V.SCHEMA.every(s => s.key in V.DEFAULTS), 'every schema row has a default');
-ok(V.SCHEMA.filter(s => s.ui !== false).length === 13, 'thirteen settings in the View popover');
+ok(V.SCHEMA.filter(s => s.ui !== false).length === 11, 'eleven settings in the View popover');
 // A view stored before the settings were merged keeps what it chose.
 const old = V.normalize({ tone: 'paper', font: 'wiki', pageCols: true, columns: '1', accent: true, rowStripe: true, teamLabel: 'none', panelCreator: true });
 ok(!('look' in old), 'Look is gone');
 eq(old.columns, '2', 'Whole script in two columns becomes Columns 2');
-eq(old.teamColour, 'rows', 'the stripe becomes Headings and rows');
-eq(old.teamHeads, false, 'no team headings stays off');
+ok(!('teamColour' in old) && !('teamHeads' in old), 'Team colours and Team headings are gone');
 eq(old.showCreator, true, 'the panel creator line becomes Creator');
 eq(V.normalize({ look: 'official' }).layout, 'official', 'the Official look becomes the Official layout');
 eq(V.normalize({ look: 'dark', layout: 'cards' }).layout, 'cards', 'another look keeps its layout');
-eq(V.normalize({ accent: false }).teamColour, 'off', 'no team colours stays off');
 
 console.log(fails ? '\n' + fails + ' FAILED' : '\nall good');
 process.exit(fails ? 1 : 0);

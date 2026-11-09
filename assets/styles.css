@@ -5099,9 +5099,7 @@ html.sbx-page .nav-dropdown { z-index: 80; }
    less evenly but can never strand a heading — the right way to fail. */
 .sbx-two-col #sb-script .sbx-team { break-inside: avoid; margin-bottom: 10px; }
 .sbx-two-col #sb-script .sbx-team:has(.sbx-sheet > .sbx-ch:nth-child(9)) { break-inside: auto; }
-.sbx-two-col #sb-script .sbx-team-head { break-after: avoid; position: static; }
-/* A column box is not a scroll container, so a sticky heading inside one
-   has nothing to stick to; the setting simply does not apply here. */
+.sbx-two-col #sb-script .sbx-team-head { break-after: avoid; }
 @media (max-width: 700px) {
   .sbx-two-col #sb-script { column-count: 1; }
 }
@@ -5130,18 +5128,6 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 }
 .sbx-ch-n { color: #3d5a8a; border-color: rgba(61,90,138,.45); background: rgba(61,90,138,.08); }
 .sbx-ch-jx { color: #8a3d3d; border-color: rgba(138,61,61,.45); background: rgba(138,61,61,.08); }
-
-/* team colours on the headings — light enough to read on the purple */
-.sbx-team-head { transition: color .12s; }
-.sbx-team[data-team="townsfolk"] .sbx-team-head { color: #7fb4ee; }
-.sbx-team[data-team="outsider"] .sbx-team-head { color: #7fd0e2; }
-.sbx-team[data-team="minion"] .sbx-team-head { color: #f0a070; }
-.sbx-team[data-team="demon"] .sbx-team-head { color: #ef6b6b; }
-.sbx-team[data-team="traveller"] .sbx-team-head { color: #c9a0e6; }
-.sbx-team[data-team="fabled"] .sbx-team-head { color: #e6c766; }
-.sbx-team[data-team="loric"] .sbx-team-head { color: #8fd49e; }
-.sbx-team[data-team="other"] .sbx-team-head { color: #c4a6e8; }
-.sbx-no-accent .sbx-team .sbx-team-head { color: var(--parch); }
 
 /* ── layouts ── */
 /* Cards: the browse grid's tiles, one to a character. */
@@ -5498,22 +5484,6 @@ button.sbx-counts:empty { display: none; }
 .sbx[data-tone="official"][data-layout="sheet"] .sbx-ch { align-items: center; padding: 4px 6px; }
 .sbx[data-tone="official"][data-layout="sheet"] .sbx-ch-img { width: calc(var(--sbx-icon) * 2.2); height: calc(var(--sbx-icon) * 2.2); }
 
-/* a team-coloured edge on every row */
-.sbx-row-stripe .sbx-team[data-team="townsfolk"] .sbx-ch { border-left: 4px solid #2C7BD0; }
-.sbx-row-stripe .sbx-team[data-team="outsider"] .sbx-ch { border-left: 4px solid #1a8aa8; }
-.sbx-row-stripe .sbx-team[data-team="minion"] .sbx-ch { border-left: 4px solid #d4652a; }
-.sbx-row-stripe .sbx-team[data-team="demon"] .sbx-ch { border-left: 4px solid #b8151c; }
-.sbx-row-stripe .sbx-team[data-team="traveller"] .sbx-ch { border-left: 4px solid #8a5bc4; }
-.sbx-row-stripe .sbx-team[data-team="fabled"] .sbx-ch { border-left: 4px solid #c9a227; }
-.sbx-row-stripe .sbx-team[data-team="loric"] .sbx-ch { border-left: 4px solid #3f9a58; }
-.sbx-row-stripe .sbx-team[data-team="other"] .sbx-ch { border-left: 4px solid var(--other, #7b4fae); }
-
-/* headings that stay put while a long roster scrolls under them */
-.sbx .sbx-team-head {
-  position: sticky; top: -12px; z-index: 5;
-  background: #1a0a1f;
-  padding: 8px 10px 6px; margin-top: -8px;
-}
 .sbx-team-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .sbx-team-tools { margin-left: auto; display: flex; gap: 3px; opacity: 0; transition: opacity .12s; }
 .sbx-team:hover .sbx-team-tools, .sbx-team-tools:focus-within { opacity: 1; }
@@ -5551,7 +5521,6 @@ button.sbx-counts:empty { display: none; }
 .sbx-add-row.hi .sbx-add-item { outline: 2px solid var(--maroon); outline-offset: -2px; background: rgba(91,31,33,.07); }
 
 @media (max-width: 900px) {
-  .sbx .sbx-team-head { top: calc(var(--sbx-top, 56px) + 34px); }
 }
 
 /* ── round 7: panel scope and grouping, the bar's own settings, notes ── */
