@@ -2910,6 +2910,17 @@
         if (f) uploadExportImage(f, p[2], $(p[0]));
       });
     });
+    $('sb-logo-make').addEventListener('click', function () {
+      if (!window.LogoMaker) { toast('The logo maker could not be loaded.'); return; }
+      var m = getMeta();
+      window.LogoMaker.open({
+        canUse: !!cloud.user,
+        text: (m.name || '').trim(),
+        backdrop: m.exportBg ? localImg(m.exportBg) : '',
+        onUse: function (data) { uploadExportData(data, 'exportLogo', $('sb-logo-make')); },
+        onLogin: function () { location.href = 'login?next=' + encodeURIComponent(location.pathname + location.search); }
+      });
+    });
     $('sb-bg-make').addEventListener('click', function () {
       if (!window.BgMaker) { toast('The background maker could not be loaded.'); return; }
       window.BgMaker.open({

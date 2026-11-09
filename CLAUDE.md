@@ -639,8 +639,8 @@ assets/
                        on #sbx, so most cost no re-render) and the popover
                        the schema builds. A new setting is one schema row
                        plus the CSS that reads it. See "The Script Builder".
-  bg-maker.js          The Script Builder's background maker (Export ->
-                       Background -> Make one). See "The Script Builder".
+  script-art.js        The Script Builder's logo and background makers
+                       (Export -> Make one). See "The Script Builder".
   script-builder-tools.js  The builder's PURE half: the script's shape and
                        the random fill that reaches it, the Analyse tab's
                        reading, the player-count seating table, the text
@@ -1864,8 +1864,19 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   `/api/my-scripts/image`, and the box takes its address on the live site
   (`https://botchomebrew.wiki/assets/library/…`), which is what the file
   needs; the preview reads it from this site's own copy (`localImg()`).
-  **Make one** opens the background maker (`assets/bg-maker.js`,
-  `BgMaker.open()`): the Fancy Scripts ribbon's damask
+  **Make one** beside each box opens a maker in `assets/script-art.js`
+  (one dialog and one colour picker for both). The **logo maker**
+  (`LogoMaker.open()`) sets the script's name (editable in the dialog) in
+  LHF Unlovable, the Fancy Scripts title face, loaded with `FontFace`,
+  filled top to bottom with two colours plus the texture, inside a white
+  edge over a raised edge in a third colour (Depth), on a transparent
+  1200x1200 square: the ink is measured (`actualBoundingBox*`, the swashes
+  reach past the advance widths) and set to fill 86% of the width, never
+  taller than 30% of the square, and on two lines when one line would be
+  small and the split makes it clearly bigger. Its preview sits on the
+  script's background when there is one. The letters are clipped to ONE
+  mask of every line (clipping line by line kept only their overlap, which
+  is nothing). The **background maker** (`BgMaker.open()`): the Fancy Scripts ribbon's damask
   (`assets/script-bg/damask.webp`, a 654x1650 grey tile cut from
   `fancyscripts/art/sidebar-flat.png` and mirrored both ways so it repeats
   without a seam; light is the motif) laid over a two-colour gradient,
