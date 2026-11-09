@@ -1365,6 +1365,8 @@ function buildLayoutCard() {
     bindPath('columnLayout'));
   makeSelect(styleGroup(box, 'front', 'classic'), 'Split each team', [['count', 'Half and half'], ['balance', 'Balance by text length']],
     bindPath('columnSplit'));
+  makeToggle(styleGroup(box, 'front', 'columns'), 'Balance the columns', bindPath('colBalance')).el.title =
+    'Each team fills its columns top to bottom, and every column ends on the same line.';
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, 'Jinx rules under the characters', bindPath('jinxText'));

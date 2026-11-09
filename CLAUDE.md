@@ -4952,6 +4952,14 @@ Cyborg's jinx box.
   last row centred. Each cell is the icon, the name in capitals and the
   ability centred under it in Arial/Helvetica. Fewer columns, bigger type
   (`COLUMN_SHEET.cell`).
+- **Balance the columns** (`options.colBalance`, a toggle in the Layout card
+  shown only for this style): each team runs DOWN its columns instead of
+  across (13 Townsfolk in threes are 5/4/4, the first columns one longer),
+  and each column deals its spare height evenly between its rows, so every
+  column of a team ends on the same line instead of a short row left at the
+  bottom. `measureSection()` hands back `place(y, per)`, which positions every
+  cell (`{m, left, topEm, slotEm}`) for either arrangement, so the renderer
+  draws both the same way.
 - **Fit**: one page, at the largest density whose height fits, found by
   halving (`needAt(d)` is measured drawn at `d`). Not `solveFit()`: the
   height here jumps as the density moves (lines re-wrap, the text column

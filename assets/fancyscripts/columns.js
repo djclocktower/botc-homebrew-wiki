@@ -108,16 +108,60 @@ export function layoutColumnsSheet(script, options, requestRender) {
       const textH = lines * textEm * C.abilityLine * lineMul;
       return { c, name, nameLines: nm.lines, nameScale, nameH, textH, blockH: nameH + textH, h: Math.max(iconEm, nameH + textH) };
     });
-    const rows = [];
-    for (let i = 0; i < cells.length; i += cols) {
-      const part = cells.slice(i, i + cols);
-      rows.push({ cells: part, h: Math.max(...part.map((x) => x.h)) + C.rowGap * d });
+    const gap = C.rowGap * d, cellPctW = cellPct(cols);
+    let bodyH, slots, place;
+    if (options.colBalance && cols > 1 && n > cols) {
+      /* "Balance the columns": the team runs DOWN each column (the first
+         ones one longer), and each column spreads its rows so every column
+         ends on the same line, rather than rows across with a short one left
+         at the bottom */
+      const lists = [];
+      for (let k = 0, i = 0; k < cols; k++) {
+        const cnt = Math.floor(n / cols) + (k < n % cols ? 1 : 0);
+        lists.push(cells.slice(i, i + cnt));
+        i += cnt;
+      }
+      const colH = lists.map((l) => sum(l.map((x) => x.h + gap)));
+      bodyH = Math.max(...colH);
+      slots = Math.max(...lists.map((l) => l.length));
+      place = (y0, per) => {
+        const H = bodyH + per * slots, out = [];
+        lists.forEach((l, k) => {
+          const extra = (H - colH[k]) / l.length;
+          let y = y0;
+          for (const m of l) {
+            const slot = m.h + gap + extra;
+            out.push({ m, left: C.contentX0 + k * cellPctW, topEm: y, slotEm: slot });
+            y += slot;
+          }
+        });
+        return { placed: out, h: H };
+      };
+    } else {
+      const rows = [];
+      for (let i = 0; i < cells.length; i += cols) {
+        const part = cells.slice(i, i + cols);
+        rows.push({ cells: part, h: Math.max(...part.map((x) => x.h)) + gap });
+      }
+      bodyH = sum(rows.map((r) => r.h));
+      slots = rows.length;
+      place = (y0, per) => {
+        const out = [];
+        let y = y0;
+        for (const r of rows) {
+          // a short last row is centred under the full ones
+          const x0 = C.contentX0 + (C.contentX1 - C.contentX0 - r.cells.length * cellPctW) / 2;
+          r.cells.forEach((m, i) => out.push({ m, left: x0 + i * cellPctW, topEm: y, slotEm: r.h + per }));
+          y += r.h + per;
+        }
+        return { placed: out, h: y - y0 };
+      };
     }
     return {
-      team: g.team, cols, rows, iconEm, nameEm, textEm, textW,
+      team: g.team, cols, slots, place, iconEm, nameEm, textEm, textW,
       label: headingText(options, g.team, n),
       headEm: C.headBand * d,
-      need: C.headBand * d + sum(rows.map((r) => r.h)),
+      need: C.headBand * d + bodyH,
     };
   };
 
@@ -140,7 +184,7 @@ export function layoutColumnsSheet(script, options, requestRender) {
   const sections = groups.map((g) => measureSection(g, d));
 
   // the space left over: first under the rows, then split above and below
-  const slots = sum(sections.map((s) => s.rows.length)) + Math.max(0, sections.length - 1);
+  const slots = sum(sections.map((s) => s.slots)) + Math.max(0, sections.length - 1);
   let spare = Math.max(0, avail - needAt(d));
   // (generously, and little of it above: the first heading should start
   // close to the same place on every script, not float half way down)
@@ -151,7 +195,9 @@ export function layoutColumnsSheet(script, options, requestRender) {
     if (i) y += C.sectionGap * d + per;
     s.topEm = y;
     y += s.headEm;
-    for (const r of s.rows) { r.topEm = y; r.h += per; y += r.h; }
+    const body = s.place(y, per);
+    s.placed = body.placed;
+    y += body.h;
   });
 
   const page = { sections, header, index: 0 };
@@ -361,45 +407,40 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     head.dataset.fsHead = s.team;
     wrap.append(head);
 
-    const cellW = cellPct(s.cols);
-    for (const r of s.rows) {
-      // a short last row is centred under the full ones
-      const x0 = C.contentX0 + (C.contentX1 - C.contentX0 - r.cells.length * cellW) / 2;
-      r.cells.forEach((m, i) => {
-        const c = m.c;
-        const left = x0 + i * cellW;
-        const rowMid = r.topEm + (r.h - C.rowGap * d) / 2;
-        const iconEm = s.iconEm * (c.iconScale || 1);
-        const fit = options.normalizeIcons ? iconFit(c.icon) : ICON_IDENTITY;
-        const icon = iconImg(drawIcon(c.icon), {
-          position: 'absolute',
-          left: (left + C.iconGap + (c.iconDX || 0) + (Number(options.iconShiftX) || 0)) + '%',
-          top: px(e(rowMid - iconEm / 2 + (c.iconDY || 0) + (Number(options.iconShiftY) || 0))),
-          width: px(e(iconEm)), height: px(e(iconEm)), objectFit: 'contain', pointerEvents: 'auto',
-          transform: inkTransform(fit), transformOrigin: 'center',
-          filter: iconFilter(options.iconEffect, options.iconShadow == null ? 1 : options.iconShadow, (em) => e(em)),
-        }, c.name);
-        if (options.iconEffect === 'engraved') icon.style.mixBlendMode = 'multiply';
-        wrap.append(mark(icon, 'char:' + c.id));
+    for (const p of s.placed) {
+      const { m, left } = p;
+      const c = m.c;
+      const rowMid = p.topEm + (p.slotEm - C.rowGap * d) / 2;
+      const iconEm = s.iconEm * (c.iconScale || 1);
+      const fit = options.normalizeIcons ? iconFit(c.icon) : ICON_IDENTITY;
+      const icon = iconImg(drawIcon(c.icon), {
+        position: 'absolute',
+        left: (left + C.iconGap + (c.iconDX || 0) + (Number(options.iconShiftX) || 0)) + '%',
+        top: px(e(rowMid - iconEm / 2 + (c.iconDY || 0) + (Number(options.iconShiftY) || 0))),
+        width: px(e(iconEm)), height: px(e(iconEm)), objectFit: 'contain', pointerEvents: 'auto',
+        transform: inkTransform(fit), transformOrigin: 'center',
+        filter: iconFilter(options.iconEffect, options.iconShadow == null ? 1 : options.iconShadow, (em) => e(em)),
+      }, c.name);
+      if (options.iconEffect === 'engraved') icon.style.mixBlendMode = 'multiply';
+      wrap.append(mark(icon, 'char:' + c.id));
 
-        const textLeftPx = (left / 100) * SHEET_W + e(s.iconEm) + ((C.iconGap * 2) / 100) * SHEET_W;
-        const block = el('div', {
-          position: 'absolute', left: px(textLeftPx), width: px(s.textW),
-          top: px(e(rowMid - m.blockH / 2)), textAlign: 'center', color: ink, pointerEvents: 'auto',
-        });
-        block.dataset.fsChar = c.id;
-        block.append(el('div', {
-          fontFamily: FONT.serif, fontSize: px(e(s.nameEm * m.nameScale)), lineHeight: String(C.nameLine),
-          whiteSpace: 'nowrap', color: c.color || ink,
-        }, ...m.nameLines.map((ln) => el('div', null, ln))));
-        if (c.ability) {
-          block.append(el('div', {
-            fontFamily: FONT.text, fontSize: px(e(s.textEm)), lineHeight: String(C.abilityLine * (options.abilityLine || 1)),
-            whiteSpace: 'pre-line',
-          }, smartTypography(c.ability)));
-        }
-        wrap.append(block);
+      const textLeftPx = (left / 100) * SHEET_W + e(s.iconEm) + ((C.iconGap * 2) / 100) * SHEET_W;
+      const block = el('div', {
+        position: 'absolute', left: px(textLeftPx), width: px(s.textW),
+        top: px(e(rowMid - m.blockH / 2)), textAlign: 'center', color: ink, pointerEvents: 'auto',
       });
+      block.dataset.fsChar = c.id;
+      block.append(el('div', {
+        fontFamily: FONT.serif, fontSize: px(e(s.nameEm * m.nameScale)), lineHeight: String(C.nameLine),
+        whiteSpace: 'nowrap', color: c.color || ink,
+      }, ...m.nameLines.map((ln) => el('div', null, ln))));
+      if (c.ability) {
+        block.append(el('div', {
+          fontFamily: FONT.text, fontSize: px(e(s.textEm)), lineHeight: String(C.abilityLine * (options.abilityLine || 1)),
+          whiteSpace: 'pre-line',
+        }, smartTypography(c.ability)));
+      }
+      wrap.append(block);
     }
   }
   sheet.append(wrap);

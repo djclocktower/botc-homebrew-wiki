@@ -667,6 +667,7 @@ export const DEFAULT_OPTIONS = {
   // which is how the printed edition sheets do it: Bad Moon Rising's six
   // long Townsfolk abilities sit beside seven short ones)
   columnSplit: 'count',
+  colBalance: false, // night columns style: each team runs down its columns, which end level
   showJinxes: true,
   jinxIconSize: 1, // the partner icons beside a name
   jinxText: false, // each jinx's rule printed under the character that carries it
