@@ -197,10 +197,17 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   sheet.dataset.fsDensity = d.toFixed(3);
 
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
-  // the classic paper without its garland (the grid runs to the foot), its
-  // burnt left edge brought in to meet the narrower column
-  const squeezeLeft = C.colW / (SHEET.sidebarX + SHEET.sidebarW);
-  for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: true, squeezeLeft })) sheet.append(n);
+  /* the classic paper without its garland (the grid runs to the foot). Its
+     dark left frame is sized for the classic ribbon, wider than this
+     column, so the whole picture is shifted left until the frame's edge
+     sits under the column. One picture: renderBackground's squeezeLeft
+     overlays a squeezed copy of the left strip, and where the copy ends the
+     texture jumped, a visible seam down the page. */
+  const frameEdge = SHEET.sidebarX + SHEET.sidebarW;
+  const shift = Math.max(0, frameEdge - C.colW - C.colRule);
+  const paper = el('div', { position: 'absolute', top: '0', height: '100%', left: -shift + '%', width: (100 + shift) + '%' });
+  for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: true })) paper.append(n);
+  sheet.append(paper);
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
 
   // the two columns: the sheet's ribbon art (its colour, its mode), with a

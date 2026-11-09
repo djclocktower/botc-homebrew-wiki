@@ -4961,8 +4961,11 @@ Cyborg's jinx box.
 - A very large script (90 characters) prints its abilities at about 5.6 px,
   like the other two styles: that is the one-page rule. Page shape (1:2)
   takes it to about 9 px.
-- The paper is the classic parchment without its garland, its burnt left
-  edge squeezed in to meet the narrower column. The footnote sits bottom
+- The paper is the classic parchment without its garland, shifted left as
+  ONE picture until its dark frame's edge sits under the column. It used
+  `renderBackground`'s `squeezeLeft`, which lays a squeezed copy of the
+  paper's left strip over the original: where the copy ended the texture
+  jumped, a visible seam down the page. The footnote sits bottom
   right, so the export's watermark sits bottom left of the paper.
 - Fonts are the style's own, not the Fonts card's. Rows are not dragged to
   reorder (a grid is not a column); the Characters card orders them.
