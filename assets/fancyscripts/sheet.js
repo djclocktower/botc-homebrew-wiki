@@ -38,7 +38,7 @@ import {
   keywordParts, jinxNotes,
 } from './script.js';
 import {
-  el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
+  el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount, textWidth,
   normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import {
@@ -397,10 +397,25 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
   }, el('span', { flexShrink: '0' }, smartTypography(char.name)));
 
+  /* the jinx and mark icons share the name's line: when there are more
+     than fit beside the name (a character jinxed with the whole script),
+     they get smaller rather than run off the page */
+  const jinxCount = (options.showJinxes ? char.jinxIcons.length : 0) + (char.marks || []).length;
+  let jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
+  if (jinxCount) {
+    const namePx = ed(SHEET.nameSize * nameSize);
+    const nameText = smartTypography(char.name);
+    const sp = options.nameSpacing == null ? 0.02 : options.nameSpacing;
+    const nameW = textWidth(options.nameCase === 'upper' ? nameText.toUpperCase() : nameText, `700 ${namePx.toFixed(2)}px ${fonts.name}`) +
+      sp * namePx * [...nameText].length;
+    const gap = ed(0.14);
+    const notesW = (char.marks || []).some((m) => m.note) ? namePx * 3 : 0;
+    const room = ((SHEET.textWidth * widthMul) / 100) * SHEET_W - nameW - notesW - gap * (jinxCount + 1);
+    jsz = Math.max(jsz * 0.4, Math.min(jsz, room / jinxCount));
+  }
   if (options.showJinxes) {
     for (const j of char.jinxIcons) {
       const jf = options.normalizeIcons ? iconFit(j.icon) : ICON_IDENTITY;
-      const jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
       const ji = iconImg(drawIcon(j.icon), {
         height: px(jsz),
         width: px(jsz),
@@ -417,7 +432,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
   // marks: another character's icon, and a short note in small italic
   for (const m of char.marks || []) {
     const mf = options.normalizeIcons ? iconFit(m.icon) : ICON_IDENTITY;
-    const msz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
+    const msz = jsz;
     const mi = iconImg(drawIcon(m.icon), {
       height: px(msz), width: px(msz), objectFit: 'contain', flexShrink: '0',
       transform: inkTransform(mf), transformOrigin: 'center',

@@ -157,8 +157,10 @@ export function layoutColumnsSheet(script, options, requestRender) {
       const icons = [...(options.showJinxes ? c.jinxIcons : []), ...marks.filter((m) => !m.note)];
       const noteList = [...((notes && notes.get(c.id)) || []).map((j) => ({ icon: j.icon, name: j.name, text: j.reason })),
         ...marks.filter((m) => m.note).map((m) => ({ icon: m.icon, name: m.name, text: m.note }))];
-      const iconsH = icons.length ? jinxPx / U + 0.25 * d : 0;
-      const noteLines = noteList.map((n) => wrappedLineCount(smartTypography(n.text), noteFont, textW - noteEm * U * 1.3));
+      // the icons wrap onto as many rows as they need under the ability
+      const perRow = Math.max(1, Math.floor(textW / (jinxPx * 1.12)));
+      const iconsH = icons.length ? Math.ceil(icons.length / perRow) * jinxPx / U + 0.25 * d : 0;
+      const noteLines = noteList.map((n) => wrappedLineCount(smartTypography(n.text), noteFont, textW - noteEm * U * C.abilityLine * lineMul * 0.95 * 1.12));
       const notesH = sum(noteLines) * noteEm * C.abilityLine * lineMul + (noteList.length ? 0.25 * d : 0);
       const blockH = nameH + textH + iconsH + notesH;
       return { c, name, nameLines: nm.lines, nameScale, nameH, textH, icons, iconsH, noteList, blockH, h: Math.max(iconEm, blockH) };
@@ -204,7 +206,7 @@ export function layoutColumnsSheet(script, options, requestRender) {
           // read across, a short last row is centred under the full ones;
           // read down, every cell stays in its own column
           const x0 = G.x0 + (G.x1 - G.x0 - r.cells.length * cellPctW) / 2;
-          r.cells.forEach((x, i) => out.push({ m: x.m, left: down ? colX(x.k) : x0 + i * cellPctW, topEm: y, slotEm: r.h + per }));
+          r.cells.forEach((x, i) => out.push({ m: x.m, left: down && cols > 1 ? colX(x.k) : x0 + i * cellPctW, topEm: y, slotEm: r.h + per }));
           y += r.h + per;
         }
         return { placed: out, h: y - y0 };
@@ -510,25 +512,30 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
           whiteSpace: 'pre-line', textAlign: align,
         }, ...abilityNodes(c.ability, options.bracketStyle, kw, true)));
       }
-      const tiny = (src, w, name) => {
+      const tiny = (src, w, name, va) => {
         const f = options.normalizeIcons ? iconFit(src) : ICON_IDENTITY;
         const n = iconImg(drawIcon(src), {
-          display: 'inline-block', width: px(w), height: px(w), verticalAlign: 'middle', objectFit: 'contain',
+          display: 'inline-block', width: px(w), height: px(w), verticalAlign: va || 'middle', objectFit: 'contain', flexShrink: '0',
           transform: inkTransform(f), margin: `0 ${px(w * 0.06)}`,
         }, name);
         n.title = name;
         return n;
       };
       if (m.icons.length) {
-        block.append(el('div', { height: px(e(m.iconsH)), lineHeight: '0', paddingTop: px(e(0.25 * d)), boxSizing: 'border-box' },
-          ...m.icons.map((j) => tiny(j.icon, s.jinxPx, j.name))));
+        block.append(el('div', {
+          height: px(e(m.iconsH)), paddingTop: px(e(0.25 * d)), boxSizing: 'border-box',
+          display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start',
+          justifyContent: align === 'center' ? 'center' : 'flex-start',
+        }, ...m.icons.map((j) => tiny(j.icon, s.jinxPx, j.name))));
       }
       if (m.noteList.length) {
-        const nw = e(s.noteEm) * 1.3;
+        // the partner's icon no taller than the line, so a note keeps the
+        // line height it was measured at
+        const nw = e(s.noteEm) * C.abilityLine * (options.abilityLine || 1) * 0.95;
         block.append(el('div', {
           fontFamily: FONT.text, fontStyle: 'italic', fontSize: px(e(s.noteEm)), lineHeight: lh,
           paddingTop: px(e(0.25 * d)), textAlign: align,
-        }, ...m.noteList.map((n) => el('div', null, tiny(n.icon, nw * 0.88, n.name), smartTypography(n.text)))));
+        }, ...m.noteList.map((n) => el('div', null, tiny(n.icon, nw, n.name, 'top'), smartTypography(n.text)))));
       }
       wrap.append(block);
     }
