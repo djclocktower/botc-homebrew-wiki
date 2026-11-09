@@ -557,8 +557,11 @@ export function layoutSheet(script, options, requestRender) {
   const widthMul = (options.columnWidth || 1) *
     (single ? (SHEET.col2IconX - SHEET.col1IconX + SHEET.textWidth) / SHEET.textWidth : 1);
   const maxTextW = ((SHEET.textWidth * widthMul) / 100) * SHEET_W;
-  const availableEm = footEm(SHEET.contentBottom) - SHEET.contentTop;
-  const bareAvailEm = footEm(SHEET.contentBottom) - SHEET.bareTop;
+  // with no garland at the foot the rows may run down to the footnote
+  const gaT0 = elGet(options, 'garland');
+  const bottomEm = footEm(gaT0.src === NO_ART || gaT0.hidden ? SHEET.bottomNoGarland : SHEET.contentBottom);
+  const availableEm = bottomEm - SHEET.contentTop;
+  const bareAvailEm = bottomEm - SHEET.bareTop;
   // the icon must never spill into the text gutter, whatever the density
   const gutterEm = ((SHEET.textOffsetX - 0.05) / 100) * (SHEET_W / U);
   const iconEmFor = (density) => Math.min(SHEET.rowIcon * iconSize, gutterEm / density);

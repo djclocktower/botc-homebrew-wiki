@@ -31,6 +31,7 @@ export const SHEET = {
   // vertical grid
   contentTop: 9.36, // first row top
   contentBottom: 86.23, // content must end above this (garland starts 89.25)
+  bottomNoGarland: 92.4, // …or, with the garland set to None, above the footnote
   rowPitch: 5.734,
   rowIcon: 4.9,
   sectionGap: 0.763,
@@ -229,6 +230,7 @@ export const APP_SHEET = {
   contentTop: 6.98, // first row top under the title
   bareTop: 3.2, // first row top on a page without the title
   contentBottom: 88.6, // the parchment's garland starts at 89.25
+  bottomNoGarland: 92.6, // with the garland set to None: above the footnote
   footnoteCX: 53.21, // inside the garland's oval, where the classic sheet sets it
   footnoteTop: 95.0, // the paper sits 4% higher in the app view (elements.js)
   footnoteSize: 1.22,
@@ -1216,7 +1218,8 @@ export const ART_CHOICES = {
   nightDecorOther: [{ label: 'None', src: '' },
     ...EDITIONS.map(([d, label]) => ({ label, src: DECOR + 'botc-app/' + d + '/othernight.webp' }))],
 };
-ART_CHOICES.appGarland = ART_CHOICES.garland.filter((c) => c.src !== NO_ART).map((c) => (c.src ? c : { label: 'None', src: '' }));
+// the app view's garland: the same list, built in (the parchment's own), a pack garland, or None
+ART_CHOICES.appGarland = ART_CHOICES.garland;
 const CHOICE_BY_SRC = new Map(Object.values(ART_CHOICES).flat().filter((c) => c.src).map((c) => [c.src, c]));
 export function artChoice(src) { return CHOICE_BY_SRC.get(src) || null; }
 

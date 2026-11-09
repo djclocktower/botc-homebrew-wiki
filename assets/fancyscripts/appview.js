@@ -34,7 +34,7 @@
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
   groupByTeam, frontCharacters, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
-  breakRuns, fitNameLines, keywordParts, jinxNotes,
+  breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt, artAspectOf, shade,
@@ -259,7 +259,9 @@ export function layoutAppSheet(script, options, requestRender) {
   const hm = headerMetrics(script, options);
   const pageHasHeader = () => options.showHeader !== false;
   const topFor = (i) => (pageHasHeader(i) ? hm.top : A.bareTop);
-  const availFor = (i) => footEm(A.contentBottom) - topFor(i);
+  // with the garland set to None the rows may run down to the footnote
+  const noGarland = elGet(options, 'appGarland').src === NO_ART;
+  const availFor = (i) => footEm(noGarland ? A.bottomNoGarland : A.contentBottom) - topFor(i);
   const gapEm = A.sectionGap;
 
   // every section on the one page: the script sheet is always one page
@@ -510,7 +512,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   // the garland across the foot: only when one has been picked or uploaded,
   // which also takes the aged parchment's own off the paper
   const gT = elGet(options, 'appGarland');
-  const garland = resolveSrc(gT.src);
+  const garland = gT.src === NO_ART ? '' : resolveSrc(gT.src);
   if (garland && !gT.hidden && isLastPage) {
     const gEl = img(garland, {
       position: 'absolute',

@@ -840,7 +840,7 @@ function makeArtPicker(parent, label, key) {
     btn.type = 'button';
     btn.className = 'fs-art';
     btn.title = c.label;
-    const thumb = c.src === NO_ART ? '' : c.src || (key.startsWith('night') || key === 'appGarland' ? '' : STOCK_THUMB[key]);
+    const thumb = c.src === NO_ART ? '' : c.src || (key.startsWith('night') ? '' : STOCK_THUMB[key === 'appGarland' ? 'garland' : key]);
     if (thumb) {
       const im = document.createElement('img');
       im.src = thumb; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
@@ -1375,7 +1375,7 @@ function buildTitleCard() {
   makeColor(colors, 'Gradient 2nd', bindPath('titleColor2'));
   makeColor(colors, 'Bronze offset', bindPath('titleShadowColor'));
   makeSlider(tc, 'Offset shadow strength', 0, 3, 0.05, fmtNum(2), bindPath('titleShadow'), { reset: 1 });
-  makeArtPicker(styleGroup(box, 'front', 'app'), 'Flowers at the foot', 'appGarland');
+  makeArtPicker(styleGroup(box, 'front', 'app'), 'Garland at the foot', 'appGarland');
   makeText(box, 'Footnote text (blank = “*Not the first night”)', bindPath('footnoteText'));
   endCard(box);
 }

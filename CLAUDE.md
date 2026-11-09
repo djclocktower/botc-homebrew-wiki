@@ -5295,6 +5295,11 @@ of the cut-out `.png` files beside them (see that folder's README): a skull's
 `ratio` in `LOGO_SKULLS` is its webp's height over width, so a re-made file
 needs its ratio re-measured or it is picked at the wrong size.
 
+- **Garland "None" gives its room to the rows**: with the garland set to
+  None the content runs down to just above the footnote
+  (`SHEET.bottomNoGarland` 92.4, `APP_SHEET.bottomNoGarland` 92.6, instead of
+  `contentBottom`). The app view's garland list is the classic one (built in,
+  the pack, None); its "None" used to keep the parchment's painted garland.
 - **The classic sheet's garland is painted into `parchment.jpg`.** Picking
   another (or "None", `NO_ART`) switches the paper to
   `art/parchment-nogarland.jpg`, the same file with the garland painted out:
