@@ -198,14 +198,16 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
 
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   /* the classic paper without its garland (the grid runs to the foot). Its
-     dark left frame is sized for the classic ribbon, wider than this
-     column, so the whole picture is shifted left until the frame's edge
-     sits under the column. One picture: renderBackground's squeezeLeft
+     dark left frame and the gold edge beside it are sized for the classic
+     ribbon, wider than this column, so the whole picture is zoomed in a
+     little until both sit under the column. One picture: renderBackground's squeezeLeft
      overlays a squeezed copy of the left strip, and where the copy ends the
      texture jumped, a visible seam down the page. */
-  const frameEdge = SHEET.sidebarX + SHEET.sidebarW;
-  const shift = Math.max(0, frameEdge - C.colW - C.colRule);
-  const paper = el('div', { position: 'absolute', top: '0', height: '100%', left: -shift + '%', width: (100 + shift) + '%' });
+  // zoomed in evenly, from the point that puts the frame and its gold edge
+  // just under the column: x' = ox + (x - ox) * z, solved for ox
+  const z = C.paperZoom, artEdge = SHEET.sidebarX + SHEET.sidebarW + C.paperBand;
+  const ox = (C.colW + C.colRule - 0.2 - artEdge * z) / (1 - z);
+  const paper = el('div', { position: 'absolute', inset: '0', transform: `scale(${z})`, transformOrigin: `${ox}% 50%` });
   for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: true })) paper.append(n);
   sheet.append(paper);
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
@@ -268,16 +270,28 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     sheet.append(mark(box, 'el:colNight'));
   }
 
-  // the header: title, logo beside it, author under it
+  /* the header: title, logo beside it, author under it. It sits on the
+     content, not the top of the page: the author line just above the first
+     heading and the title right on top of the author, so there is no empty
+     band inside the header or between it and the grid (and on a short
+     script, whose grid starts lower, the header comes down with it). */
   if (page.header) {
     const title = (options.titleOverride || '').trim() || script.meta.name || '';
     const logo = logoArt(script, options);
     const tx0 = C.titleX0, tx1 = logo ? C.titleX1 : 100 - C.titleX0;
+    const first = page.sections[0];
+    const headerBottom = (first ? first.topEm : C.contentTop) - C.headerGap;
+    const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
+    const aT = elGet(options, 'colAuthor');
+    const authorOn = !!(options.showAuthor && author && !aT.hidden);
+    const authorTop = headerBottom - C.authorSize * 1.2;
+    const titleBottom = authorOn ? authorTop - C.authorGap : headerBottom;
     if (logo) {
       const lT = elGet(options, 'colLogo');
+      const logoH = Math.min(C.logoBottom - C.titleTop, headerBottom - C.titleTop);
       const lg = img(logo, {
-        position: 'absolute', left: C.logoX0 + '%', top: px(e(C.titleTop)),
-        width: (C.logoX1 - C.logoX0) + '%', height: px(e(C.logoBottom - C.titleTop)), objectFit: 'contain',
+        position: 'absolute', left: C.logoX0 + '%', top: px(e(headerBottom - logoH)),
+        width: (C.logoX1 - C.logoX0) + '%', height: px(e(logoH)), objectFit: 'contain', objectPosition: '50% 100%',
       }, title);
       lg.crossOrigin = 'anonymous';
       lg.addEventListener('error', () => { failedArt.add(logo); if (ctx.requestRender) ctx.requestRender(); });
@@ -286,12 +300,12 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     }
     const tT = elGet(options, 'colTitle');
     if (title && !tT.hidden) {
-      const boxW = ((tx1 - tx0) / 100) * SHEET_W, boxH = e(C.titleBottom - C.titleTop);
+      const boxW = ((tx1 - tx0) / 100) * SHEET_W, boxH = e(titleBottom - C.titleTop);
       const fit = titleLines(title, boxW, boxH);
       const size = Math.min(fit.size, e(C.titleSize));
       const t = el('div', {
         position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%',
-        top: px(e(C.titleTop) + (boxH - size * 0.92 * fit.lines.length) / 2),
+        top: px(e(titleBottom) - size * 0.92 * fit.lines.length),
         textAlign: 'center', fontFamily: FONT.title, fontSize: px(size), lineHeight: '0.92', whiteSpace: 'nowrap',
         color: options.titleColor || '#10102e',
         textShadow: `0 ${e(0.12)}px ${e(0.25)}px rgba(0,0,0,0.35)`,
@@ -300,12 +314,10 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
       applyEl(t, tT, '', U, SHEET_W);
       sheet.append(mark(t, 'el:colTitle'));
     }
-    const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
-    const aT = elGet(options, 'colAuthor');
-    if (options.showAuthor && author && !aT.hidden) {
+    if (authorOn) {
       const a = el('div', {
-        position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%', top: px(e(C.titleBottom + 0.3)),
-        textAlign: 'center', fontFamily: FONT.serif, fontSize: px(e(C.authorSize)), whiteSpace: 'nowrap', color: ink,
+        position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%', top: px(e(authorTop)),
+        textAlign: 'center', fontFamily: FONT.serif, fontSize: px(e(C.authorSize)), lineHeight: '1.2', whiteSpace: 'nowrap', color: ink,
       }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(author));
       applyEl(a, aT, '', U, SHEET_W);
       sheet.append(mark(a, 'el:colAuthor'));

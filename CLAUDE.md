@@ -4936,7 +4936,11 @@ Cyborg's jinx box.
   edge. `appendRibbon()` copies its cached canvas when the same colour is
   already on the page, or the second column took the first one's canvas.
 - **Header**: one fixed, small band on every script (the owner's call: the
-  same sheet every time beats the biggest title). The title in LHF Unlovable
+  same sheet every time beats the biggest title), sitting ON the content:
+  the author line `headerGap` above the first heading, the title right on top
+  of the author, the logo's foot level with the author's. So there is no
+  empty band inside the header or under it, and on a short script, whose
+  grid starts lower, the header comes down with it. The title in LHF Unlovable
   on one to three lines, whichever is largest in its box (`titleLines()`),
   the logo beside it when the script has one (a logo that fails to load gives
   the title the whole width), the author under it.
@@ -4961,8 +4965,9 @@ Cyborg's jinx box.
 - A very large script (90 characters) prints its abilities at about 5.6 px,
   like the other two styles: that is the one-page rule. Page shape (1:2)
   takes it to about 9 px.
-- The paper is the classic parchment without its garland, shifted left as
-  ONE picture until its dark frame's edge sits under the column. It used
+- The paper is the classic parchment without its garland, zoomed in as ONE
+  picture (`paperZoom`, from the point that lands the frame and the gold edge
+  past it, `paperBand`, just under the column). It used
   `renderBackground`'s `squeezeLeft`, which lays a squeezed copy of the
   paper's left strip over the original: where the copy ended the texture
   jumped, a visible seam down the page. The footnote sits bottom

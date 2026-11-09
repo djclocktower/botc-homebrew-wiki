@@ -288,7 +288,6 @@ export const COLUMN_SHEET = {
   // the same sheet every time beats the biggest title), and the grid gets
   // the room the PSDs gave it
   titleTop: 0.9,
-  titleBottom: 8.4, // the title's foot; the author sits under it
   titleX0: 9, // the title's box when there is a logo beside it…
   titleX1: 60,
   logoX0: 62, // …and the logo's
@@ -296,6 +295,10 @@ export const COLUMN_SHEET = {
   logoBottom: 10.6,
   titleSize: 6, // em, the title at most this big
   authorSize: 1.3,
+  authorGap: 0.2, // em between the title's foot and the author line
+  headerGap: 0.4, // em between the header's foot and the first heading
+  paperZoom: 1.04, // the parchment, zoomed so its left frame and gold edge sit under the column
+  paperBand: 1, // % of the width: the gold edge past the frame, also hidden
   contentTop: 11.6, // the first heading's top
   contentBottom: 95.6, // above the footnote
   contentX0: 7.6, // the grid, between the columns
