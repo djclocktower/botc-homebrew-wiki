@@ -35,10 +35,10 @@ import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, frontCharacters, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
-  keywordParts, jinxNotes,
+  keywordParts, jinxNotes, contentFloor,
 } from './script.js';
 import {
-  el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount,
+  el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount, textWidth,
   normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import {
@@ -116,8 +116,9 @@ function authorCYEm(script, options) {
 /* ability text with typographic punctuation and the ornamental asterisk of
    the official sheets. `kw` ({good, evil} inks) colours the keywords;
    colour only, never weight, so the measured wraps stay true. */
-function abilityNodes(text, bracketStyle, kw) {
-  const parts = smartTypography(text).split('*');
+export function abilityNodes(text, bracketStyle, kw, plainStar) {
+  // plainStar: the asterisk stays a typed one (the night columns style)
+  const parts = plainStar ? [smartTypography(text)] : smartTypography(text).split('*');
   const out = [];
   const words = (s) => (kw
     ? keywordParts(s).map((k) => (k.side ? el('span', { color: kw[k.side] }, k.s) : document.createTextNode(k.s)))
@@ -278,7 +279,9 @@ export function appendRibbon(sheet, r, ctx) {
     // Its style is wiped first: a left strip and a right one are not laid
     // out alike, and one colour can be both in one design.
     let node = tinted;
-    if (tinted.parentNode && ctx.forExport) {
+    // a second strip of the same colour on one page (the night columns
+    // style has one down each edge) needs its own copy too
+    if (tinted.parentNode && (ctx.forExport || tinted.parentNode === sheet)) {
       node = document.createElement('canvas');
       node.width = tinted.width; node.height = tinted.height;
       node.getContext('2d').drawImage(tinted, 0, 0);
@@ -394,10 +397,25 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
   }, el('span', { flexShrink: '0' }, smartTypography(char.name)));
 
+  /* the jinx and mark icons share the name's line: when there are more
+     than fit beside the name (a character jinxed with the whole script),
+     they get smaller rather than run off the page */
+  const jinxCount = (options.showJinxes ? char.jinxIcons.length : 0) + (char.marks || []).length;
+  let jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
+  if (jinxCount) {
+    const namePx = ed(SHEET.nameSize * nameSize);
+    const nameText = smartTypography(char.name);
+    const sp = options.nameSpacing == null ? 0.02 : options.nameSpacing;
+    const nameW = textWidth(options.nameCase === 'upper' ? nameText.toUpperCase() : nameText, `700 ${namePx.toFixed(2)}px ${fonts.name}`) +
+      sp * namePx * [...nameText].length;
+    const gap = ed(0.14);
+    const notesW = (char.marks || []).some((m) => m.note) ? namePx * 3 : 0;
+    const room = ((SHEET.textWidth * widthMul) / 100) * SHEET_W - nameW - notesW - gap * (jinxCount + 1);
+    jsz = Math.max(jsz * 0.4, Math.min(jsz, room / jinxCount));
+  }
   if (options.showJinxes) {
     for (const j of char.jinxIcons) {
       const jf = options.normalizeIcons ? iconFit(j.icon) : ICON_IDENTITY;
-      const jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
       const ji = iconImg(drawIcon(j.icon), {
         height: px(jsz),
         width: px(jsz),
@@ -414,7 +432,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
   // marks: another character's icon, and a short note in small italic
   for (const m of char.marks || []) {
     const mf = options.normalizeIcons ? iconFit(m.icon) : ICON_IDENTITY;
-    const msz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
+    const msz = jsz;
     const mi = iconImg(drawIcon(m.icon), {
       height: px(msz), width: px(msz), objectFit: 'contain', flexShrink: '0',
       transform: inkTransform(mf), transformOrigin: 'center',
@@ -444,7 +462,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     lineHeight: String((SHEET.abilityLine / SHEET.abilitySize) * (options.abilityLine || 1)),
     color: options.inkColor || '#222222',
     mixBlendMode: 'multiply',
-    textAlign: options.abilityAlign === 'justify' ? 'justify' : 'left',
+    textAlign: options.abilityAlign === 'justify' || options.abilityAlign === 'center' ? options.abilityAlign : 'left',
     whiteSpace: 'pre-line', // a line break typed in the ability is kept, as the printed sheets break them
   }, ...abilityNodes(char.ability, options.bracketStyle, keywordInks(options)),
   ...((notes && notes.get(char.id)) || []).map((j) => jinxNote(j, options, ed))));
@@ -507,7 +525,7 @@ function headerExtraEm(script, options) {
   const author0 = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
   if (options.showAuthor && author0 && !a.hidden) bottoms.push(authorCYEm(script, options) + 0.75 * a.scale);
   if (!bottoms.length) return 0;
-  return Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.35);
+  return Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.175);
 }
 
 /* ── layout ─────────────────────────────────────────────────────────────
@@ -539,25 +557,30 @@ export function layoutSheet(script, options, requestRender) {
   const widthMul = (options.columnWidth || 1) *
     (single ? (SHEET.col2IconX - SHEET.col1IconX + SHEET.textWidth) / SHEET.textWidth : 1);
   const maxTextW = ((SHEET.textWidth * widthMul) / 100) * SHEET_W;
-  const availableEm = footEm(SHEET.contentBottom) - SHEET.contentTop;
-  const bareAvailEm = footEm(SHEET.contentBottom) - SHEET.bareTop;
+  // with no garland at the foot the rows may run down to the footnote
+  const gaT0 = elGet(options, 'garland');
+  const bottomEm = contentFloor(gaT0.src, gaT0.hidden, SHEET.contentBottom, SHEET.bottomNoGarland, 88, gaT0.scale, gaT0.dy);
+  const availableEm = bottomEm - SHEET.contentTop;
+  const bareAvailEm = bottomEm - SHEET.bareTop;
   // the icon must never spill into the text gutter, whatever the density
   const gutterEm = ((SHEET.textOffsetX - 0.05) / 100) * (SHEET_W / U);
   const iconEmFor = (density) => Math.min(SHEET.rowIcon * iconSize, gutterEm / density);
   const lineMul = options.abilityLine || 1;
   const notes = options.jinxText ? jinxNotes(script.characters) : null;
+  // extra space under every row (Space between characters), as the app view
+  const rowExtra = (clamp(Number(options.rowGap) || 1, 0.5, 3) - 1) * 1.6;
 
   const rowHeightEm = (char, density) => {
     /* A row is as tall as its icon or its text, whichever is taller. The
        reference keeps one pitch for every row (rowPitch), which left a
        band of paper under every two-line ability and held the auto fit's
        type small; hugging the content lets the fit set it larger. */
-    let need = iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + 0.35;
+    let need = iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + SHEET.rowIconPad;
     if (char) {
       const fontPx = SHEET.abilitySize * textSize * U * density;
       const lines = wrappedLineCount(smartTypography(char.ability), `400 ${fontPx}px ${fonts.ability}`, maxTextW);
       // room under the last line, so the next name does not sit on it
-      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + 1.05);
+      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + SHEET.rowTail);
       for (const j of (notes && notes.get(char.id)) || []) {
         // a jinx rule under the ability: measured exactly as jinxNote draws it
         const nLine = noteLineEm(options);
@@ -566,7 +589,7 @@ export function layoutSheet(script, options, requestRender) {
         need += NOTE.gap + nl * nLine;
       }
     }
-    return need;
+    return Math.max(0.5, need + rowExtra);
   };
 
   const layoutEven = options.columnLayout !== 'shared';

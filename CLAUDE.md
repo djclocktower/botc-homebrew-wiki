@@ -994,7 +994,10 @@ assets/
                        night-order and jinx pages, back.js the back cover —
                        all three captured by the export; appview.js the
                        second style of the sheet and the night sheets (the
-                       official app's own view); elements.js is what
+                       official app's own view); columns.js the third
+                       style of the script sheet (the night order down
+                       both edges, from the owner's own PSD sheets);
+                       elements.js is what
                        they share (page frame + backgrounds, text/image
                        stickers, the asset resolver); util.js the DOM/colour/
                        measure helpers; drag.js the one pointer layer that
@@ -4950,6 +4953,135 @@ not reach the foot of, centring it on that run walked the word away from
 the rows it names, and a three-character script printed OUTSIDER halfway
 down a blank sheet.
 
+### The night columns style (`columns.js`)
+
+A third style for the script sheet (`options.sheetStyle = 'columns'`, "Night
+order down the sides" in the Pages card), built from the owner's own
+Photoshop sheets (Axiom of Logic, No Greater Joy, Laissez Un Where?, Golden
+Dawn). The owner asked for the layout only, not their colours or Clockwork
+Cyborg's jinx box.
+
+- **The night order is on the sheet**: a column down each edge, first night
+  on the left and other nights on the right, each a label and a stack of
+  icons in wake order (`nightLists()`, so the night settings and a
+  hand-arranged order apply). Both stacks share one pitch and one top, so
+  the labels always sit level, and the taller stack is centred between the
+  top and foot of the page; the pitch shrinks to fit a long night.
+  The columns are the classic sheet's ribbon art, drawn twice
+  (`sidebarColor` / `sidebarMode` / `sidebarContrast`), with a black inner
+  edge. `appendRibbon()` copies its cached canvas when the same colour is
+  already on the page, or the second column took the first one's canvas.
+- **Header**: one fixed, small band on every script (the owner's call: the
+  same sheet every time beats the biggest title), sitting ON the content:
+  the author line `headerGap` above the first heading, the title right on top
+  of the author, the logo's foot level with the author's. So there is no
+  empty band inside the header or under it, and on a short script, whose
+  grid starts lower, the header comes down with it. The title in LHF Unlovable
+  on one to three lines, whichever is largest in its box (`titleLines()`),
+  the logo beside it when the script has one (a logo that fails to load gives
+  the title the whole width), the author under it.
+- **Teams**: a heading in Optimus Princeps in the team's ink
+  (`COLUMN_HEAD_INK`), with the classic sheet's divider art (`divider-taper.png`,
+  `ruleH` 0.62 em against the classic 0.5) running from it toward the column,
+  its knot against the heading (both sides for the Demon, whose heading is
+  centred, the left one mirrored). Characters are a grid: `columnsFor(n)`
+  puts a lone character full width (capped at `soloW`, so its text stays
+  beside its icon), two or four in pairs, the rest in threes, with a short
+  last row centred. Each cell is the icon, the name in capitals and the
+  ability centred under it in Arial/Helvetica. Fewer columns, bigger type
+  (`COLUMN_SHEET.cell`).
+- **Reading order** (`options.colOrder`, `'across'` | `'down'`) and
+  **Balance the columns** (`options.colBalance`, one tick per team), both in
+  the Layout card, shown only for this style. The character order (Sort: SAO
+  and the rest) is the SEQUENCE; reading order is how it flows into a team's
+  columns (`columnLists()` in script.js: across fills row by row, down column
+  by column with the first columns one longer, so 13 in threes is 5/4/4).
+  A balanced team deals each column's spare height between its rows so every
+  column ends on the same line; an unbalanced one keeps its rows level
+  (across, a short last row is centred; down, each cell stays in its column).
+  `balancedTeam()` is the one reading of the setting: a design saved when it
+  was a single switch stored `true`, which means every team.
+  `measureSection()` hands back `place(y, per)`, which positions every cell
+  (`{m, left, topEm, slotEm}`) for any of the four arrangements, so the
+  renderer draws them all the same way.
+- **Team sizes** (`options.colTeamSize`, one slider per team, 50% to 160%,
+  `teamSize()` in script.js clamps it): multiplies that team's icon, name
+  and ability sizes. The fit is still one density for the page, so a bigger
+  team shrinks the rest to keep it on one page.
+- **Name size reaches every name.** A name used to be capped at the column
+  beside its icon, so on a short script raising Name size did nothing to the
+  names already filling it. A team's icons now give up width (down to
+  `iconYield`, 70% of themselves) when the team's longest word of a name
+  would not fit beside them.
+- **Fit**: one page, at the largest density whose height fits, found by
+  halving (`needAt(d)` is measured drawn at `d`). Not `solveFit()`: the
+  height here jumps as the density moves (lines re-wrap, the text column
+  narrows while icons grow), and its ratio steps stopped well short of the
+  room, leaving a band of empty page under the header. Spare room goes under
+  the rows and between teams (up to `spreadEm` each) and a small `topShare`
+  of what is left above the first heading, so it starts near the same place
+  on every script. An icon is at most `iconMaxShare` of its cell's width, or
+  a short script squeezed its abilities into a strip a few words wide. Names
+  take up to three lines (`fitNameLines`) before they shrink.
+- A very large script (90 characters) prints its abilities at about 5.6 px,
+  like the other two styles: that is the one-page rule. Page shape (1:2)
+  takes it to about 9 px.
+- The paper is the classic parchment without its garland, zoomed in as ONE
+  picture (`paperZoom`, from the point that lands the frame and the gold edge
+  past it, `paperBand`, just under the column). It used
+  `renderBackground`'s `squeezeLeft`, which lays a squeezed copy of the
+  paper's left strip over the original: where the copy ended the texture
+  jumped, a visible seam down the page. The footnote sits bottom
+  right, so the export's watermark sits bottom left of the paper.
+- Its look is `options.cols` (`DEFAULT_COLS`: Optimus Princeps names,
+  headings and labels, centred Helvetica abilities, names in capitals and in
+  ink); the shared cards edit it (see "One set of controls" below). Jinx
+  icons and marks sit in a row under the ability, jinx rules and mark notes
+  in small italic under that, all measured. Ribbon width moves the grid,
+  title and footnote in with the column (`geom()`). Rows are not dragged to
+  reorder (a grid is not a column); the Characters card orders them.
+  Elements: `colTitle`, `colAuthor`, `colLogo`, `colNight`, plus the shared
+  `content` and `footnote`.
+
+### One set of controls for the three script sheet styles
+
+The owner asked for the controls to work the same in every style (2026-11).
+So the Title, Layout, Colours, Fonts and Background cards are ONE set for
+classic, app and columns, and every control shown does something in the
+style on screen:
+
+- **A look setting is stored per style.** `STYLE_LOOK` in script.js names
+  where a style keeps a shared key when it is not the classic top-level one
+  (`app.fontText` for the app's ability font, `cols.nameCase` for the night
+  columns'); `lookPath(style, key)` answers it and `withLook(options, style)`
+  lays a style's look over the options for a renderer. In app.js
+  `bindLook(key)` binds a control to the path of the style being shown
+  (`lookStyle()`: the script sheet's style on the script sheet, classic on
+  any other page), so switching style keeps each style's own fonts, inks,
+  ribbon and paper. A slider's double-click reset can be a function
+  (`lookDefault(key)`), for a key whose default differs by style.
+- **Only what cannot mean anything in a style is hidden**, by a
+  `styleGroup(parent, page, styles)` that shows on its own page in the
+  listed styles: the classic sheet's skull, title effects, columns/split,
+  label placement, ribbon shading and gold edge; the app's bar and text
+  shift (Layout); the night columns' reading order, balance and team sizes
+  (Layout). Each style's own structure sits in the same place, the top of
+  the Layout card.
+- **Shared now, that were one style's before**: Space between characters
+  (`rowGap`: `app.rowGap`, the top-level key for the other two, extra rows
+  of 1.6 em per step), Section dividers and Divider strength (the app's
+  lines, the columns' heading rules), Name and Team label spacing, Name
+  style, Setup notes, jinx icons and rules, keyword colours, character
+  counts, every ink and font, Pattern strength, and the paper (the
+  Background card follows the style; the app's is `app.bg`). Ability
+  alignment (left, centred, justified) is classic and columns.
+- **The App view card is the app NIGHT sheets' look only.** On the script
+  sheet the shared cards edit the same `app.*` keys.
+- `tools/parity.js` in the session scratchpad flips every visible control
+  in each style and lists the ones that change nothing on the sheet; on a
+  script without a logo, Bootlegger rules or a team, those controls are
+  the only ones it lists.
+
 ### The app view (`appview.js`)
 
 A second style for the script sheet (`options.sheetStyle`, `'classic'` or
@@ -4969,13 +5101,12 @@ text title's 5.39) and the header grows to its real height
 (`headerMetrics()`, from `artAspectOf()`). The
 jinx page and the back cover have one style.
 
-- **The App view card opens with the script sheet's rows**: "Space between
-  characters" (`app.rowGap`, extra em under every row, so a full page sets its
-  type smaller to fit), "Move the ability toward the icons" (`app.textShift`,
-  % width: the bar and the text slide, the name column gives up the room,
-  `appColumns()`) and the bar toggle (`app.showBars`). The owner asked for
-  all three on the app sheet and did not find the bar toggle where it was.
-  The night sheets have their own pair under "Night sheet rows"
+- **The app sheet's rows**: "Space between characters" (`app.rowGap`, extra
+  em under every row, so a full page sets its type smaller to fit; the shared
+  Layout slider), and in the Layout card's app group "Move the ability toward
+  the icons" (`app.textShift`, % width: the bar and the text slide, the name
+  column gives up the room, `appColumns()`) and the bar toggle
+  (`app.showBars`). The night sheets have their own pair under "Night sheet rows"
   (`app.nightRowGap`, `app.nightTextShift`: `nightCols(n, shift)` moves the
   bar, the text and the names' right edge together); the bar toggle serves
   every app page. The older "Space between steps" in the Night order card
@@ -4987,11 +5118,10 @@ jinx page and the back cover have one style.
 - **`options.app` (`DEFAULT_APP`) is the style's own look**, shared by both
   app pages: ribbon mode and colour (`#670818`, the app's red), fonts (Trade
   Gothic Bold Condensed names, Trade Gothic text, Goudy team names), bars,
-  lines, colours and the paper. It has its own card (`data-fs-style="app"`).
-  The name colours, sizes, density, pagination, sort, footnote and team label
-  text are the classic controls, shared. Inside a shared card, controls that
-  mean something in one style only sit in a `styleGroup()` that hides with the
-  other style; `showCardsFor()` also hides whole cards by `data-fs-style`.
+  lines, colours and the paper. On the script sheet the shared cards edit it
+  (`STYLE_LOOK.app`); on an app night sheet the App view card does. The name
+  colours, sizes, density, sort, footnote and team label text are the classic
+  keys, shared. `showCardsFor()` also hides whole cards by `data-fs-style`.
 - **It sets its own lines** (`breakRuns()` in script.js, pure and tested).
   The bar beside a block must be exactly as tall as the block, and a night
   line carrying a disc is taller than one without, so the layout pass breaks
@@ -5039,6 +5169,22 @@ jinx page and the back cover have one style.
 - The controls column is `min-width: 0`: a select with a long option ("The
   script's own background image") otherwise set its width on a phone and
   pushed the whole page sideways once a card holding one was open.
+
+### Every gap between elements was halved (2026-11)
+
+The owner asked for every space between elements halved on all three script
+sheets, so these are no longer the reference's numbers: the classic sheet's
+`sectionGap` (0.763 → 0.38), the room under a row (`rowTail` 1.05 → 0.75,
+`rowIconPad` 0.35 → 0.175), the name-to-ability offset (`abilityTop` 2.5 →
+2.31) and the icon-to-text gap (`textOffsetX` 7.8 → 7.167, the text column
+widened by the same so it still ends where it did); the app view's
+`sectionGap`, `rowPad`, `authorGap`, the space between icons (`rowMin` 3.55 →
+3.13) and its icon-to-name and bar-to-text gaps (`nameX`, `nameW`, `textX`);
+the night columns' `rowGap`, `sectionGap`, `headBand`'s room under the
+heading, `iconGap`, `headerGap`, `authorGap`, `labelGap` and the night icon
+pitch. Each constant's comment carries its old value. Auto-fit takes the room
+back as larger type, so a full sheet's text grew and its gaps shrank. The
+page margins and the night and jinx pages are unchanged.
 
 ### Bootlegger rules at the top, and the title moved left
 
@@ -5201,6 +5347,16 @@ of the cut-out `.png` files beside them (see that folder's README): a skull's
 `ratio` in `LOGO_SKULLS` is its webp's height over width, so a re-made file
 needs its ratio re-measured or it is picked at the wrong size.
 
+- **Garland "None" gives its room to the rows**: with the garland set to
+  None the content runs down to just above the footnote
+  (`SHEET.bottomNoGarland` 92.4, `APP_SHEET.bottomNoGarland` 92.6, instead of
+  `contentBottom`). The app view's garland list is the classic one (built in,
+  the pack, None); its "None" used to keep the parchment's painted garland.
+  A pack garland that is shrunk or moved down gives back the room it left:
+  `contentFloor()` in script.js puts the floor 0.6 em above the picture's
+  own top (`garlandOval().imgTop`), between `contentBottom` and the None
+  floor. The painted garland and an upload (whose shape is unknown) keep
+  `contentBottom`.
 - **The classic sheet's garland is painted into `parchment.jpg`.** Picking
   another (or "None", `NO_ART`) switches the paper to
   `art/parchment-nogarland.jpg`, the same file with the garland painted out:
@@ -5231,8 +5387,8 @@ needs its ratio re-measured or it is picked at the wrong size.
   `nameSize 1.318` / `abilitySize 1.031` are wrap-fidelity corrections, the
   and the rest of `SHEET` is the reference's. **The rows do not keep the
   reference's constant pitch any more**: a row is as tall as its icon (plus
-  0.35 em) or its text (plus 1.05 em under the last line), whichever is
-  taller. The constant `rowPitch` left a band of paper under every two-line
+  `rowIconPad`, 0.175 em) or its text (plus `rowTail`, 0.75 em under the last
+  line), whichever is taller. The constant `rowPitch` left a band of paper under every two-line
   ability and held the auto fit's type small; the owner asked for the sheet
   filled out with larger type (a 25-character script went from density 0.88
   to 0.91 with three-line abilities, from 0.82 with the Bootlegger). Change
@@ -5492,6 +5648,11 @@ needs its ratio re-measured or it is picked at the wrong size.
     off-site image is `images.weserv.nl/?url=…`, so without it the first
     off-site picture fetched was reused for all of them (a script's logo
     printed as a character's icon).
+  - **Every face a style measures with must be warmed at boot** (the list
+    in app.js whose loads end in `fontsChanged()`). OptimusPrinceps, the
+    night columns style's names and headings, was missing: it arrived after
+    `fonts.ready`, the widths stayed measured in the narrower fallback, and a
+    name sized to fit its column ran past it.
   - **Fitting goes through `solveFit()` (util.js)**, all four layouts.
     Rows re-wrap as the type shrinks, so "density = room ÷ need" can stop
     on the wrong side of a step; it ends by stepping down until it fits.
