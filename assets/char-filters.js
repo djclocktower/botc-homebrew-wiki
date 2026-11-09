@@ -58,6 +58,7 @@
     if (o.splitCreators) deps.splitCreators = o.splitCreators;
     if (o.CardActions) deps.CardActions = o.CardActions;
     if (o.saoCompare) deps.saoCompare = o.saoCompare;
+    if (o.saoGroup) { deps.saoGroup = o.saoGroup; deps.SAO_SEARCH = o.SAO_SEARCH; }
     return api;
   }
 
@@ -178,6 +179,7 @@
     return {
       includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
       includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
+      includeSao: [], excludeSao: [],
       creatorQuery: '', hidePartial: false, curataOnly: false, officialOnly: false, favOnly: false,
       tagMode: 'all',
       sort: cfg.sort, dir: cfg.dir,
@@ -197,8 +199,10 @@
     var tagSet = Object.create(null), creatorSet = Object.create(null),
       teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0, nOfficial = 0;
     var isPartial = dep('isPartial'), isCurata = dep('isCurata');
+    var saoGroup = dep('saoGroup'), saoSet = Object.create(null);
     list.forEach(function (c) {
       teamSet[c.team] = 1;
+      if (saoGroup) saoSet[saoGroup(c.ability)] = 1;
       splitTags(c).forEach(function (t) { tagSet[titleCase(t)] = 1; });
       // Co-credited pages ("Taiyi (太一), Saki") give every name its own chip.
       splitCreators(c.creator).forEach(function (n) { creatorSet[n] = 1; });
@@ -214,6 +218,8 @@
       // Source (From Collection / From Script) — collection takes precedence.
       // Only offer the chips whose source actually appears in the list.
       sources: SOURCE_LABELS.filter(function (s) { return srcSet[s[0]]; }),
+      // The SAO Search openings any ability here starts with, in sheet order.
+      sao: saoGroup ? dep('SAO_SEARCH').filter(function (o) { return saoSet[o]; }) : [],
       nPartial: nPartial, nCurata: nCurata, nOfficial: nOfficial
     };
   }
@@ -280,6 +286,16 @@
         '<div class="cf-creator-drop" id="fc-creator-list" role="listbox" hidden></div></div>' +
         '</div>';
     }
+    // SAO Search: the same drop-down, over the openings on the SAO sheet.
+    if (model.sao && model.sao.length > 1) {
+      html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">SAO</span>' +
+        '<div class="filter-chip-selected-row" id="fc-sao-selected"></div>' +
+        '<div class="cf-creator-combo"><input type="search" class="filter-search" id="fc-sao-search" ' +
+          'placeholder="SAO Search…" autocomplete="off" aria-label="SAO Search" ' +
+          'role="combobox" aria-expanded="false" aria-controls="fc-sao-list">' +
+        '<div class="cf-creator-drop" id="fc-sao-list" role="listbox" hidden></div></div>' +
+        '</div>';
+    }
     // Sort
     html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="fc-sort">' +
       cfg.sorts.map(function (s) {
@@ -311,19 +327,22 @@
     var mark = C ? C.markHTMLFor(name, { noFocus: true }) : '';
     return esc(name) + (mark ? ' ' + mark : '');
   }
-  function creatorChipHTML(name, cls) {
-    return '<button type="button" class="filter-chip' + (cls ? ' ' + cls : '') +
-      '" data-creator="' + esc(name) + '">' + creatorLabel(name) + '</button>';
+  // A picked chip above a search box (creators, SAO openings).
+  function comboChipHTML(attr, v, cls, label) {
+    return '<button type="button" class="filter-chip ' + cls + '" ' + attr + '="' + esc(v) + '">' + label(v) + '</button>';
   }
-  /* The drop-down under the search box: every match, scrolling inside
-     itself. Picked creators are drawn separately, above. */
-  function creatorListHTML(matches, query) {
+  /* The drop-down under a search box: every match, scrolling inside
+     itself. Picked ones are drawn separately, above. */
+  function comboListHTML(attr, matches, query, label, noun) {
     var q = String(query || '').trim();
-    if (!matches.length) return q ? '<p class="cf-creator-none">No creator matches “' + esc(q) + '”</p>' : '';
+    if (!matches.length) return q ? '<p class="cf-creator-none">No ' + noun + ' matches “' + esc(q) + '”</p>' : '';
     return matches.map(function (c, i) {
-      return '<button type="button" class="cf-creator-opt' + (i ? '' : ' on') + '" role="option" data-creator="' +
-        esc(c) + '">' + creatorLabel(c) + '</button>';
+      return '<button type="button" class="cf-creator-opt' + (i ? '' : ' on') + '" role="option" ' + attr + '="' +
+        esc(c) + '">' + label(c) + '</button>';
     }).join('');
+  }
+  function creatorListHTML(matches, query) {
+    return comboListHTML('data-creator', matches, query, creatorLabel, 'creator');
   }
 
   /* The list a state asks for: filtered, then sorted. ctx carries what the
@@ -360,6 +379,11 @@
     });
     if (st.excludeCreators.length) out = out.filter(function (c) {
       return !splitCreators(c.creator).some(function (n) { return st.excludeCreators.indexOf(n) !== -1; });
+    });
+    // SAO Search: the opening the ability falls under (sao.js saoGroup()).
+    if ((st.includeSao.length || st.excludeSao.length) && dep('saoGroup')) out = out.filter(function (c) {
+      var g = dep('saoGroup')(c.ability);
+      return (!st.includeSao.length || st.includeSao.indexOf(g) !== -1) && st.excludeSao.indexOf(g) === -1;
     });
     // sort ('relevance' keeps the order it was handed, best match first)
     var flip = st.dir === 'desc' ? -1 : 1;
@@ -529,78 +553,69 @@
       root.Favorites.onChange(function () { favLoad(); });
     }
 
-    // ── Creator search + 3-state chips ──
-    function matchingCreators() {
-      var q = ctrl.state.creatorQuery.trim().toLowerCase();
-      return ALL_CREATORS.filter(function (c) {
-        if (ctrl.state.includeCreators.indexOf(c) !== -1) return false;
-        if (ctrl.state.excludeCreators.indexOf(c) !== -1) return false;
-        return !q || c.toLowerCase().indexOf(q) !== -1;
-      });
-    }
-    function cycleCreator(name) {
-      var st = ctrl.state;
-      var ii = st.includeCreators.indexOf(name);
-      var ei = st.excludeCreators.indexOf(name);
-      if (ii === -1 && ei === -1) st.includeCreators.push(name);
-      else if (ii !== -1) { st.includeCreators.splice(ii, 1); st.excludeCreators.push(name); }
-      else st.excludeCreators.splice(ei, 1);
-    }
-    var crSearch = byId('fc-creator-search');
-    var crDrop = byId('fc-creator-list');
-    var dropOpen = false;
-    function renderCreatorChips() {
-      var selected = byId('fc-creator-selected');
-      if (!selected || !crDrop) return;
-      var st = ctrl.state;
-      selected.innerHTML =
-        st.includeCreators.map(function (c) { return creatorChipHTML(c, 'active'); }).join('') +
-        st.excludeCreators.map(function (c) { return creatorChipHTML(c, 'active-exclude'); }).join('');
-      var body = dropOpen ? creatorListHTML(matchingCreators(), st.creatorQuery) : '';
-      crDrop.innerHTML = body;
-      crDrop.hidden = !body;
-      crSearch.setAttribute('aria-expanded', body ? 'true' : 'false');
-    }
-    function openDrop(on) {
-      if (dropOpen === on) return;
-      dropOpen = on;
-      renderCreatorChips();
-    }
-    function pickCreator(name) {
-      cycleCreator(name);
-      crSearch.value = ctrl.state.creatorQuery = '';
-      renderCreatorChips();
-      changed();
-    }
-    if (crSearch && crDrop) {
+    // ── Search box + drop-down + 3-state chips (creators, SAO) ──
+    // Picking from the drop-down includes; the chip above then cycles
+    // include -> exclude -> off. K names the state arrays (include{K}).
+    function wireCombo(id, K, attr, all, label, noun, onQuery, onFocus) {
+      var search = byId('fc-' + id + '-search'), drop = byId('fc-' + id + '-list'), selected = byId('fc-' + id + '-selected');
+      if (!search || !drop || !selected) return function () {};
+      var open = false;
+      function inc() { return ctrl.state['include' + K]; }
+      function exc() { return ctrl.state['exclude' + K]; }
+      function matching() {
+        var q = search.value.trim().toLowerCase();
+        return all.filter(function (v) {
+          return inc().indexOf(v) === -1 && exc().indexOf(v) === -1 && (!q || v.toLowerCase().indexOf(q) !== -1);
+        });
+      }
+      // The picked row is only redrawn when the picks change: rebuilt on the
+      // box's blur, a chip was gone before the click on it could land.
+      function render() {
+        selected.innerHTML =
+          inc().map(function (v) { return comboChipHTML(attr, v, 'active', label); }).join('') +
+          exc().map(function (v) { return comboChipHTML(attr, v, 'active-exclude', label); }).join('');
+        renderDrop();
+      }
+      function renderDrop() {
+        var body = open ? comboListHTML(attr, matching(), search.value, label, noun) : '';
+        drop.innerHTML = body;
+        drop.hidden = !body;
+        search.setAttribute('aria-expanded', body ? 'true' : 'false');
+      }
+      function setOpen(on) { if (open !== on) { open = on; renderDrop(); } }
+      function pick(v) {
+        var i = inc(), e = exc(), ii = i.indexOf(v), ei = e.indexOf(v);
+        if (ii === -1 && ei === -1) i.push(v);
+        else if (ii !== -1) { i.splice(ii, 1); e.push(v); }
+        else e.splice(ei, 1);
+        search.value = '';
+        if (onQuery) onQuery('');
+        render();
+        changed();
+      }
       // One listener for both rows: they are rebuilt on every keystroke.
-      bar.querySelector('.filter-group-creators').addEventListener('click', function (e) {
-        var btn = e.target.closest && e.target.closest('[data-creator]');
+      search.closest('.filter-group').addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('[' + attr + ']');
         if (!btn) return;
-        var inDrop = crDrop.contains(btn);
-        pickCreator(btn.getAttribute('data-creator'));
-        if (inDrop) crSearch.focus();
+        var inDrop = drop.contains(btn);
+        pick(btn.getAttribute(attr));
+        if (inDrop) search.focus();
       });
       // Keep the focus in the box while an option is pressed, so blur does
       // not close the list before the click lands.
-      crDrop.addEventListener('mousedown', function (e) { e.preventDefault(); });
-      crSearch.addEventListener('focus', function () {
-        openDrop(true);
-        // Account marks come from the live registry; redraw once it is in.
-        var C = dep('CreatorSymbols');
-        if (C && C.load) C.load().then(function (r) { if (r) renderCreatorChips(); });
+      drop.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      search.addEventListener('focus', function () { setOpen(true); if (onFocus) onFocus(render); });
+      search.addEventListener('blur', function () { setOpen(false); });
+      search.addEventListener('input', function () {
+        if (onQuery) onQuery(search.value);
+        open = document.activeElement === search;
+        renderDrop();
       });
-      crSearch.addEventListener('blur', function () { openDrop(false); });
-      crSearch.addEventListener('input', function () {
-        ctrl.state.creatorQuery = crSearch.value;
-        dropOpen = document.activeElement === crSearch;
-        renderCreatorChips();
-      });
-      crSearch.addEventListener('keydown', function (e) {
-        var opts = [].slice.call(crDrop.querySelectorAll('.cf-creator-opt'));
+      search.addEventListener('keydown', function (e) {
+        var opts = [].slice.call(drop.querySelectorAll('.cf-creator-opt'));
         var cur = opts.findIndex(function (o) { return o.classList.contains('on'); });
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          if (!opts.length) { openDrop(true); return; }
+          if (!opts.length) { setOpen(true); return; }
           e.preventDefault();
           var next = Math.max(0, Math.min(opts.length - 1, cur + (e.key === 'ArrowDown' ? 1 : -1)));
           if (cur !== -1) opts[cur].classList.remove('on');
@@ -608,13 +623,23 @@
           opts[next].scrollIntoView({ block: 'nearest' });
         } else if (e.key === 'Enter') {
           e.preventDefault();
-          if (cur !== -1) pickCreator(opts[cur].getAttribute('data-creator'));
+          if (cur !== -1) pick(opts[cur].getAttribute(attr));
         } else if (e.key === 'Escape') {
-          openDrop(false);
+          setOpen(false);
         }
       });
-      renderCreatorChips();
+      render();
+      return render;
     }
+    var crSearch = byId('fc-creator-search'), saoSearch = byId('fc-sao-search');
+    var renderCreatorChips = wireCombo('creator', 'Creators', 'data-creator', ALL_CREATORS, creatorLabel, 'creator',
+      function (q) { ctrl.state.creatorQuery = q; },
+      // Account marks come from the live registry; redraw once it is in.
+      function (render) {
+        var C = dep('CreatorSymbols');
+        if (C && C.load) C.load().then(function (r) { if (r) render(); });
+      });
+    var renderSaoChips = wireCombo('sao', 'Sao', 'data-sao', model.sao || [], esc, 'opening');
 
     var sortSel = byId('fc-sort'), groupSel = byId('fc-group'), dirSel = byId('fc-dir');
     sortSel.addEventListener('change', function (e) {
@@ -630,8 +655,10 @@
       ctrl.state = blankState(cfg);
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
       if (crSearch) crSearch.value = '';
+      if (saoSearch) saoSearch.value = '';
       if (tagModeSel) tagModeSel.value = 'all';
       renderCreatorChips();
+      renderSaoChips();
       sortSel.value = DEFAULT_SORT;
       dirSel.value = DEFAULT_DIR;
       dirSel.disabled = DEFAULT_SORT === 'relevance';
@@ -661,6 +688,7 @@
       if (favBtn) favBtn.classList.toggle('active', st.favOnly);
       if (crSearch) crSearch.value = st.creatorQuery;
       renderCreatorChips();
+      renderSaoChips();
       sortSel.value = st.sort;
       dirSel.value = st.dir;
       dirSel.disabled = st.sort === 'relevance';
@@ -674,6 +702,7 @@
         st.includeTags.length + st.excludeTags.length +
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
+        st.includeSao.length + st.excludeSao.length +
         (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.officialOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {

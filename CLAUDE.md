@@ -520,6 +520,10 @@ assets/
                        Sort also offers **SAO** wherever sao.js is loaded
                        (all-characters, /search; the Worker hands
                        saoCompare to init()).
+                       **SAO Search** is a search box like Creator's, over
+                       sao.js's SAO_SEARCH (the openings on the SAO sheet);
+                       saoGroup() files an ability under the longest one it
+                       starts with. Picked openings are 3-state chips.
                        Sort is TWO boxes in both filter boxes: what (Name,
                        Date added, Ability length — plus Best match, Page
                        order, SAO where they apply) and an Order box,
