@@ -2435,7 +2435,9 @@
   }
   /* A picture (a promise of its data URL) to the account, and its address
      into the box: Upload's file, or the background maker's picture. */
-  function uploadExportData(dataP, key, btn) {
+  // `made` marks a logo from the maker: it carries the script's name, so
+  // the app's own title is switched off in the same step.
+  function uploadExportData(dataP, key, btn, made) {
     var label = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Uploading…';
@@ -2451,7 +2453,8 @@
         done();
         if (!res.ok || !res.j.path) { toast((res.j && res.j.error) || 'The upload failed.', 4000); return; }
         var url = SITE_ASSETS + res.j.path;
-        patchMeta(function (m) { m[key] = url; }, null, key === 'exportLogo' ? 'set the logo' : 'set the background');
+        patchMeta(function (m) { m[key] = url; if (made) m.hideTitle = true; }, null, key === 'exportLogo' ? 'set the logo' : 'set the background');
+        if (made) $('sb-hidetitle').checked = true;
         paintExportImages();
         paintJsonPreview();
       })
@@ -2917,7 +2920,7 @@
         canUse: !!cloud.user,
         text: (m.name || '').trim(),
         backdrop: m.exportBg ? localImg(m.exportBg) : '',
-        onUse: function (data) { uploadExportData(data, 'exportLogo', $('sb-logo-make')); },
+        onUse: function (data) { uploadExportData(data, 'exportLogo', $('sb-logo-make'), true); },
         onLogin: function () { location.href = 'login?next=' + encodeURIComponent(location.pathname + location.search); }
       });
     });

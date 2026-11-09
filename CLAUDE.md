@@ -1874,7 +1874,8 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   reach past the advance widths) and set to fill 86% of the width, never
   taller than 30% of the square, and on two lines when one line would be
   small and the split makes it clearly bigger. Its preview sits on the
-  script's background when there is one. The letters are clipped to ONE
+  script's background when there is one. Using one also ticks "Hide the
+  title" (`meta.hideTitle`), since the logo already says the name. The letters are clipped to ONE
   mask of every line (clipping line by line kept only their overlap, which
   is nothing). The **background maker** (`BgMaker.open()`): the Fancy
   Scripts back cover's swirl pattern (`assets/script-bg/swirl.webp`,
