@@ -1624,7 +1624,7 @@ What shapes it:
   clicking stops. Anything new that a click has to do belongs in that pass
   unless it must be immediate. Every picture on the page is a **192px
   thumbnail** (`PageRender.thumbSrc`), never a 150 KB original: both lists,
-  the picks strip, the bag, the Analyse candidates and the peek card too,
+  the picks strip, the Analyse candidates and the peek card too,
   whose 72px box is inside what 192px covers on a 2x phone and which now
   paints from the thumbnail the hovered row already fetched. An official row
   draws the bundled painted WebP rather than the app's CDN copy (see
@@ -1742,10 +1742,8 @@ as it does in the JS-built markup) are the whole of the CSS.
 ### Analyse
 
 `SBTools.analyse(chars, ctx)` reads the roster and the controller draws it:
-the shape against its targets, who acts on which night, information /
-misinformation / kills / protection by tag, setup-changers and Outsider
-modifiers, tags and creators, the official player-count table with the counts
-the script cannot seat (`SBTools.setups`), warnings (no Demon, no Minion,
+who acts on which night, information / misinformation / kills / protection
+by tag, setup-changers and Outsider modifiers, tags and creators, warnings (no Demon, no Minion,
 duplicate names, unfinished pages, no icon, nothing learns anything…) and
 **the characters jinxed with someone on the script but not on it**, each with
 an Add button. The jinx suggestions need the registries `start()` sets:
@@ -1805,27 +1803,28 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   of a character on the script, shown under its row (View → Your notes),
   carried into Copy as text and along share links.
   Never in the export.
-- **The bar** shows the script's name and author (typed in Details &
-  Export, the one place they are typed; a tap on them goes there), the
-  counts, Undo/redo, View, Random, Sort, Arrange, More and Publish. More holds
-  "Export, share or print…" (which opens Details & Export, where Download,
-  Copy, Share and Fancy Sheet live), Import, Tonight's bag and the library
-  actions.
+- **The bar** has the script's name and author as two boxes typed in
+  place (`#sb-name`, `#sb-author`, sized to their text by `fitBarBox()`; the
+  Details boxes are the same two fields), the counts, Undo/redo, View,
+  Random, Sort, Arrange, More and Publish. More holds "Export, share or
+  print…" (which opens Details & Export, where Download, Copy, Share and
+  Fancy Sheet live), Import and the library actions. The Analyse tab's Shape
+  and "Players it can seat" boxes and Tonight's bag were taken out at the
+  owner's request; the counts strip is the shape now.
+- **Export** carries what was the "In the Official App" panel (hide the
+  title, creator marks, almanac link, Bootlegger rules) plus a **Logo** and
+  a **Background**: an https image link each (`meta.exportLogo` /
+  `meta.exportBg`), shown under the box, written to `_meta.logo` /
+  `_meta.background` ahead of a published page's own, carried in share
+  links, and read back off an imported file's `_meta`. Links, not uploads:
+  a builder script has no page whose R2 slot an upload could go in.
+- **The peek card closes when the tab changes** (`showTab()` calls
+  `hidePeek()`).
 - **Each panel group heading has a die** (add one at random from what that
   group is showing) and, grouped by team, says how many more the shape wants
   (`paintPanelNeeds`). Roster teams **fold** with a click on the heading
   (`prefs.rosterFolded`). The keys **1–5** switch tabs when nothing is being
   typed.
-- **Tonight's bag** (More → Tonight's bag, or the button under the seating
-  table in Analyse): the Storyteller's setup for one game — a player count,
-  travellers, an Outsider ± for a Baron-like in play — with the roster
-  listed per team as ticks, a die per team and for the whole bag, and the
-  list to copy, plus three Demon bluffs drawn from the good characters left
-  out. It is not the script: `prefs.bag` in the browser, ticks pruned to
-  the roster when drawn, nothing in the export or the library. While a bag
-  exists the Night Order tab offers **Tonight's bag only** — the night lists
-  for the characters in play, the sheet to run the game from — through the
-  widget's `getEntries` (`nightEntries()`), so the arrangement still holds.
 - **The undo stack labels its steps** (`mark('add Zhen')`, `replaceOrder(list,
   quiet, label)`, `patchMeta(fn, how, label)`): the buttons' titles and the
   Undone/Redone toasts say what moved.

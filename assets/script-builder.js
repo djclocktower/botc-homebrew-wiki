@@ -1056,6 +1056,7 @@
   // ══════════════════════════════════════════════════════════════════════
   function showTab(name) {
     activeTab = name;
+    hidePeek();
     [].slice.call(document.querySelectorAll('.sbx-tab')).forEach(function (b) {
       var on = b.getAttribute('data-tab') === name;
       b.classList.toggle('on', on);
@@ -1106,10 +1107,9 @@
      adding a character feel broken. */
   function ensurePane() {
     if (activeTab === 'night') {
-      paintBagOnly();
       if (!nightUI && window.NightOrderEditor) {
         nightUI = window.NightOrderEditor.mount($('sbx-night-body'), {
-          getEntries: nightEntries,
+          getEntries: rosterChars,
           getOrder: getNightOrder,
           setOrder: setNightOrder,
           getView: nightView,
@@ -1147,21 +1147,7 @@
   }
   function nightView() {
     var o = prefs.night || {};
-    return { reminders: o.reminders !== false, icons: true, bagOnly: !!o.bagOnly };
-  }
-  /* The night lists for the characters in tonight's bag alone, when asked
-     — the sheet to run the game from. The arrangement still applies. */
-  function nightEntries() {
-    if (!nightView().bagOnly) return rosterChars();
-    var b = bagState();
-    if (!Object.keys(b.picks).length) return rosterChars();
-    return rosterChars().filter(function (c) { return b.picks[c.slug]; });
-  }
-  /* The "tonight's bag only" switch is only offered while a bag exists. */
-  function paintBagOnly() {
-    var wrap = $('sb-night-bagwrap');
-    if (!wrap) return;
-    wrap.hidden = !bagHasPicks();
+    return { reminders: o.reminders !== false, icons: true };
   }
   /* The jinxes as text, for a Discord post or a storyteller's notes. */
   function jinxText() {
@@ -1195,20 +1181,6 @@
     function chip(n, label) { return '<span class="sbx-an-chip"><b>' + n + '</b>' + esc(label) + '</span>'; }
     var html = '<div class="sbx-an">';
 
-    // shape
-    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Shape</h3>';
-    a.teams.forEach(function (t) {
-      if (!t.have && !t.want) return;
-      var pct = t.want ? Math.min(100, Math.round(100 * t.have / t.want)) : (t.have ? 100 : 0);
-      html += '<div class="sbx-an-row"><span class="sbx-shape-label">' + esc(t.label) + '</span>' +
-        '<span class="sbx-shape-bar"><span class="' + (t.want && t.have > t.want ? 'over' : (t.want && t.have === t.want ? 'ok' : '')) +
-        '" style="width:' + pct + '%"></span></span>' +
-        '<span class="sbx-shape-have">' + t.have + (t.want ? ' / ' + t.want : '') + '</span></div>';
-    });
-    html += '<p class="sbx-an-fact" style="margin-top:6px"><b>' + a.total + '</b> character' + (a.total === 1 ? '' : 's') +
-      (a.shapeTotal ? ' of ' + a.shapeTotal : '') + ' &middot; ' + a.homebrew + ' homebrew, ' + a.official + ' official</p>';
-    html += '</div>';
-
     // warnings
     html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Things to check</h3>';
     if (!a.warnings.length) html += '<p class="sbx-an-empty">Nothing to flag.</p>';
@@ -1227,26 +1199,6 @@
       '</div>';
     if (a.setup.length) html += '<p class="sbx-an-fact" style="margin-top:8px"><b>Change the setup:</b> ' + esc(a.setup.join(', ')) + '</p>';
     if (a.outsiderMods.length) html += '<p class="sbx-an-fact"><b>Change the Outsider count:</b> ' + esc(a.outsiderMods.join(', ')) + '</p>';
-    html += '</div>';
-
-    // seating
-    var st = a.seats;
-    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Players it can seat</h3>';
-    if (st.maxOk) {
-      html += '<p class="sbx-an-fact"><b>' + st.minOk + ' to ' + st.maxOk + ' players</b>' +
-        (st.maxOk < 15 ? '. More would need ' + st.rows.filter(function (r) { return !r.ok && r.players > st.maxOk; })[0].short.map(function (t) { return 'more ' + T.TEAM_LABEL[t]; }).join(', ') : '') + '</p>';
-    } else {
-      html += '<p class="sbx-an-fact">No player count yet: a table needs a Demon, a Minion and Townsfolk.</p>';
-    }
-    html += '<table class="sbx-an-seats"><thead><tr><th>Players</th><th>TF</th><th>Out</th><th>Min</th><th>Dem</th></tr></thead><tbody>' +
-      st.rows.map(function (r) {
-        return '<tr class="' + (r.ok ? 'ok' : 'no') + '"><th>' + r.players + '</th>' + r.need.map(function (n, i) {
-          var t = ['townsfolk', 'outsider', 'minion', 'demon'][i];
-          return '<td class="' + (r.short.indexOf(t) !== -1 ? 'short' : '') + '">' + n + '</td>';
-        }).join('') + '</tr>';
-      }).join('') + '</tbody></table>' +
-      '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count shift the first two columns.</p>' +
-      '<p style="margin:8px 0 0"><button type="button" class="sbx-b-sm" data-open-bag data-pop-keep>' + ico('bag') + ' Pick tonight&rsquo;s bag</button></p>';
     html += '</div>';
 
     // tags
@@ -1482,7 +1434,6 @@
     hidePeek();
     if (openPopId === id) { closePops(); return; }
     if (id === 'sbx-shape') paintShape();
-    if (id === 'sbx-bag') paintBag();
     openPop(id, anchor);
   }
 
@@ -1510,122 +1461,6 @@
       out.push(row);
     });
     return out;
-  }
-
-  // ══════════════════════════════════════════════════════════════════════
-  //  Tonight's bag: which characters go in for a player count
-  // ══════════════════════════════════════════════════════════════════════
-  /* The Storyteller's setup for one game, off the official player-count
-     table (SBTools.PLAYER_TABLE), ticked by hand or drawn at random. It is
-     not the script — nothing here reaches the export or the library — so
-     it lives in the browser's prefs (prefs.bag) and its ticks are pruned to
-     whatever is on the roster when it is drawn. */
-  function bagState() {
-    var b = prefs.bag && typeof prefs.bag === 'object' ? prefs.bag : {};
-    var picks = {};
-    Object.keys(b.picks || {}).forEach(function (sl) { if (sel[sl]) picks[sl] = 1; });
-    var T = window.SBTools;
-    var dflt = T ? T.setups(rosterChars()).maxOk || 8 : 8;
-    var bluffs = (Array.isArray(b.bluffs) ? b.bluffs : []).filter(function (sl) { return sel[sl] && !picks[sl]; });
-    return {
-      players: Math.min(15, Math.max(5, Number(b.players) || dflt)),
-      travellers: Math.min(5, Math.max(0, Number(b.travellers) || 0)),
-      outMod: Math.min(3, Math.max(-3, Number(b.outMod) || 0)),
-      picks: picks,
-      bluffs: bluffs
-    };
-  }
-  /* Three good characters NOT in the bag, for the Demon to bluff with. */
-  function bagBluffs(b) {
-    var pool = rosterChars().filter(function (c) {
-      return (c.team === 'townsfolk' || c.team === 'outsider') && !b.picks[c.slug];
-    });
-    for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
-    return pool.slice(0, 3).map(function (c) { return c.slug; });
-  }
-  function bagHasPicks() { return Object.keys(bagState().picks).length > 0; }
-  function saveBag(b) { prefs.bag = b; savePrefs(); }
-  function bagNeeds(b) {
-    var T = window.SBTools;
-    var row = (T && T.PLAYER_TABLE[b.players]) || [3, 0, 1, 1];
-    var need = { townsfolk: row[0] - b.outMod, outsider: row[1] + b.outMod, minion: row[2], demon: row[3], traveller: b.travellers };
-    if (need.outsider < 0) { need.townsfolk += need.outsider; need.outsider = 0; }
-    if (need.townsfolk < 0) need.townsfolk = 0;
-    return need;
-  }
-  function paintBag() {
-    var host = $('sbx-bag-body');
-    if (!host) return;
-    var chars = rosterChars();
-    if (!chars.length) { host.innerHTML = '<p class="sbx-empty-in">Add characters to the script first.</p>'; paintBagOnly(); return; }
-    var b = bagState();
-    var need = bagNeeds(b);
-    var opts = '';
-    for (var n = 5; n <= 15; n++) opts += '<option value="' + n + '"' + (n === b.players ? ' selected' : '') + '>' + n + ' players</option>';
-    var trav = '';
-    for (var t = 0; t <= 5; t++) trav += '<option value="' + t + '"' + (t === b.travellers ? ' selected' : '') + '>' + t + '</option>';
-    var html = '<div class="sbx-bag-row">' +
-      '<label>Table <select data-bag="players">' + opts + '</select></label>' +
-      '<label>Travellers <select data-bag="travellers">' + trav + '</select></label>' +
-      '<label title="The change to the Outsider count, for a Baron-like character in play">Outsiders &plusmn; <input type="number" min="-3" max="3" data-bag="outMod" value="' + b.outMod + '"></label>' +
-      '</div>' +
-      '<p class="sbx-bag-need">Needs ' + need.townsfolk + ' Townsfolk &middot; ' + need.outsider + ' Outsider' + (need.outsider === 1 ? '' : 's') +
-      ' &middot; ' + need.minion + ' Minion' + (need.minion === 1 ? '' : 's') + ' &middot; ' + need.demon + ' Demon' +
-      (need.traveller ? ' &middot; ' + need.traveller + ' Traveller' + (need.traveller === 1 ? '' : 's') : '') + '</p>';
-    TEAMS.forEach(function (tm) {
-      var group = chars.filter(function (c) { return teamKey(c) === tm[0]; });
-      if (!group.length) return;
-      var want = need[tm[0]];
-      var have = group.filter(function (c) { return b.picks[c.slug]; }).length;
-      var counted = want != null;
-      var cls = counted ? (have === want ? 'ok' : (have > want || (have < want)) ? 'bad' : '') : '';
-      html += '<div class="sbx-bag-team" data-team="' + esc(tm[0]) + '"><div class="sbx-bag-head">' +
-        '<span class="sbx-shape-label">' + esc(tm[1]) + '</span>' +
-        '<span class="sbx-bag-count ' + cls + '">' + have + (counted ? ' of ' + want : ' (optional)') + '</span>' +
-        (counted ? '<button type="button" class="sbx-shape-die" data-bag-draw="' + esc(tm[0]) + '" title="Draw the ' + esc(tm[1]) + ' at random">' + ico('dice') + '</button>' : '') +
-        '</div><div class="sbx-bag-list">' +
-        group.map(function (c) {
-          return '<label><input type="checkbox" data-bag-pick="' + esc(c.slug) + '"' + (b.picks[c.slug] ? ' checked' : '') + '>' +
-            '<img loading="lazy" decoding="async" src="' + esc(artOf(c)) + '" alt="" onerror="this.style.visibility=\'hidden\'"><span>' + esc(c.name) + '</span></label>';
-        }).join('') + '</div></div>';
-    });
-    var picked = chars.filter(function (c) { return b.picks[c.slug]; });
-    html += '<div class="sbx-bag-foot">' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="draw">' + ico('dice') + ' Draw the whole bag</button>' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="bluffs"' + (picked.length ? '' : ' disabled') + ' title="Three good characters not in the bag, for the Demon">' + ico('dice') + ' Bluffs</button>' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="clear"' + (picked.length ? '' : ' disabled') + '>Clear</button>' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="copy"' + (picked.length ? '' : ' disabled') + '>' + ico('copy') + ' Copy the list</button>' +
-      '</div>';
-    if (picked.length) html += '<div class="sbx-bag-out">' + esc(bagText()) + '</div>';
-    host.innerHTML = html;
-    paintBagOnly();
-  }
-  function bagText() {
-    var b = bagState(), chars = rosterChars(), lines = [];
-    lines.push('Bag for ' + b.players + ' players' + (b.travellers ? ' + ' + b.travellers + ' travellers' : ''));
-    TEAMS.forEach(function (tm) {
-      var names = chars.filter(function (c) { return teamKey(c) === tm[0] && b.picks[c.slug]; }).map(function (c) { return c.name; });
-      if (names.length) lines.push(tm[1] + ': ' + names.join(', '));
-    });
-    if (b.bluffs.length) lines.push('Demon bluffs: ' + b.bluffs.map(function (sl) { return bySlug[sl] ? bySlug[sl].name : sl; }).join(', '));
-    return lines.join('\n');
-  }
-  function bagDraw(team) {
-    var b = bagState(), need = bagNeeds(b), chars = rosterChars();
-    var teams = team ? [team] : TEAMS.map(function (t) { return t[0]; });
-    teams.forEach(function (tm) {
-      var want = need[tm];
-      if (want == null) return;
-      var group = chars.filter(function (c) { return teamKey(c) === tm; });
-      group.forEach(function (c) { delete b.picks[c.slug]; });
-      var pool = group.slice();
-      for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
-      pool.slice(0, want).forEach(function (c) { b.picks[c.slug] = 1; });
-    });
-    b.bluffs = bagBluffs(b);
-    saveBag(b);
-    paintBag();
-    if (nightUI && nightView().bagOnly) { nightDirty = true; if (activeTab === 'night') ensurePane(); }
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1906,9 +1741,11 @@
      script and never carries the wiki's signature. */
   function buildExport() {
     var m = getMeta();
+    // Logo and background typed in Export win over a published page's own.
+    var sc = m.exportBg ? Object.assign({}, m, { theme: Object.assign({}, m.theme, { background: m.exportBg }) }) : m;
     return window.PageRender.buildPageExport(
       (m.name || '').trim() || 'My Homebrew Script',
-      (m.author || '').trim(), m.logo || m.header || '', withAbilities(rosterChars()), m,
+      (m.author || '').trim(), m.exportLogo || m.logo || m.header || '', withAbilities(rosterChars()), sc,
       { credits: creditsFabled() });
   }
   /* What Download and Copy write. */
@@ -1981,7 +1818,7 @@
   function encodeShare() {
     var m = getMeta();
     var extra = {};
-    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
+    ['hideTitle', 'almanac', 'bootlegger', 'exportLogo', 'exportBg', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
       if (m[k] != null && m[k] !== '' && m[k] !== false) extra[k] = m[k];
     });
     var payload = { n: m.name || '', a: m.author || '', c: order.slice() };
@@ -2142,6 +1979,8 @@
           if (meta.author) m.author = String(meta.author).slice(0, 70);
           if (meta.hideTitle) m.hideTitle = true;
           if (meta.almanac) m.almanac = String(meta.almanac).slice(0, 300);
+          if (/^https:\/\//i.test(meta.logo || '')) m.exportLogo = String(meta.logo).slice(0, 500);
+          if (/^https:\/\//i.test(meta.background || '')) m.exportBg = String(meta.background).slice(0, 500);
           if (Array.isArray(meta.bootlegger)) m.bootlegger = meta.bootlegger.slice(0, 20).map(String);
         }
         // A new script may keep the file itself as its JSON: publish-script's
@@ -2413,18 +2252,40 @@
   // ══════════════════════════════════════════════════════════════════════
   //  The details form
   // ══════════════════════════════════════════════════════════════════════
-  /* The bar shows the script's name and author; they are typed in Details. */
+  /* The name and author are typed in the bar or in Details; each box
+     follows the other, and the bar's boxes are as wide as their text. */
   function paintBarName() {
     var m = getMeta();
-    $('sb-name').textContent = (m.name || '').trim() || 'Untitled Script';
-    $('sb-name').classList.toggle('empty', !(m.name || '').trim());
-    $('sb-author').textContent = (m.author || '').trim() ? 'by ' + m.author.trim() : '';
+    [['sb-name', 'name'], ['sb-author', 'author'], ['sb-name2', 'name'], ['sb-author2', 'author']].forEach(function (p) {
+      var el = $(p[0]);
+      if (el && el !== document.activeElement) el.value = m[p[1]] || '';
+    });
+    ['sb-name', 'sb-author'].forEach(fitBarBox);
+  }
+  var fitCtx = null;
+  function fitBarBox(id) {
+    var el = $(id);
+    if (!el) return;
+    fitCtx = fitCtx || document.createElement('canvas').getContext('2d');
+    var cs = getComputedStyle(el);
+    fitCtx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    el.style.width = Math.ceil(fitCtx.measureText(el.value || el.placeholder).width + 14) + 'px';
+  }
+  /* Export's logo and background: an image link each, shown under its box. */
+  function paintExportImages() {
+    var m = getMeta();
+    [['sb-logo', 'sb-logo-prev', 'exportLogo'], ['sb-bg', 'sb-bg-prev', 'exportBg']].forEach(function (p) {
+      var v = m[p[2]] || '';
+      if ($(p[0]) !== document.activeElement) $(p[0]).value = v;
+      var img = $(p[1]);
+      img.hidden = !v;
+      if (v && img.getAttribute('src') !== v) img.src = v;
+    });
   }
   function primeForm() {
     var m = getMeta();
-    $('sb-name2').value = m.name || '';
-    $('sb-author2').value = m.author || '';
     paintBarName();
+    paintExportImages();
     $('sb-hidetitle').checked = !!m.hideTitle;
     $('sb-marks').checked = !!m.creatorMarks;
     $('sb-almanac').value = m.almanac || '';
@@ -2688,7 +2549,6 @@
       if (mv) moveInTeam(mv.getAttribute('data-slug'), mv.getAttribute('data-move'));
     });
     $('sbx-analyse-body').addEventListener('click', function (e) {
-      if (e.target.closest('button[data-open-bag]')) { togglePop('sbx-bag', $('sbx-more')); return; }
       var b = e.target.closest('button[data-add]');
       if (!b) return;
       var slug = b.getAttribute('data-add');
@@ -2708,35 +2568,6 @@
     });
     $('sbx-shape-body').addEventListener('change', function (e) {
       if (e.target.matches && e.target.matches('input[data-team]')) setShape(readShapeInputs());
-    });
-    // the bag
-    $('sbx-bag-body').addEventListener('change', function (e) {
-      var t = e.target;
-      var b = bagState();
-      if (t.hasAttribute('data-bag')) {
-        b[t.getAttribute('data-bag')] = Number(t.value);
-        saveBag(b);
-        paintBag();
-        return;
-      }
-      if (t.hasAttribute('data-bag-pick')) {
-        var sl = t.getAttribute('data-bag-pick');
-        if (t.checked) b.picks[sl] = 1; else delete b.picks[sl];
-        saveBag(b);
-        paintBag();
-        if (nightUI && nightView().bagOnly) { nightDirty = true; if (activeTab === 'night') ensurePane(); }
-      }
-    });
-    $('sbx-bag-body').addEventListener('click', function (e) {
-      var d = e.target.closest('button[data-bag-draw]');
-      if (d) { bagDraw(d.getAttribute('data-bag-draw')); return; }
-      var a = e.target.closest('button[data-bag-act]');
-      if (!a) return;
-      var act = a.getAttribute('data-bag-act');
-      if (act === 'draw') bagDraw(null);
-      else if (act === 'bluffs') { var bb = bagState(); bb.bluffs = bagBluffs(bb); saveBag(bb); paintBag(); }
-      else if (act === 'clear') { var b = bagState(); b.picks = {}; b.bluffs = []; saveBag(b); paintBag(); if (nightUI && nightView().bagOnly) { nightDirty = true; if (activeTab === 'night') ensurePane(); } }
-      else if (act === 'copy') copyPlain(bagText(), a, 'nothing is in the bag');
     });
     // notes
     $('sb-notes').addEventListener('input', debounce(function () {
@@ -2851,12 +2682,26 @@
         paintBarName();
       });
     }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitBarBox('sb-name'); fitBarBox('sb-author'); });
+    bindName('sb-name', 'name', 90);
+    bindName('sb-author', 'author', 70);
     bindName('sb-name2', 'name', 90);
     bindName('sb-author2', 'author', 70);
-    $('sbx-names').addEventListener('click', function () {
-      showTab('meta');
-      $('sb-name2').focus();
+    ['sb-name', 'sb-author'].forEach(function (id) {
+      $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === 'Escape') this.blur(); });
+      $(id).addEventListener('input', function () { fitBarBox(id); });
     });
+    [['sb-logo', 'exportLogo'], ['sb-bg', 'exportBg']].forEach(function (p) {
+      $(p[0]).addEventListener('input', debounce(function () {
+        var v = $(p[0]).value.trim().slice(0, 500);
+        if (v && !/^https:\/\//i.test(v)) return;
+        patchMeta(function (m) { if (v) m[p[1]] = v; else delete m[p[1]]; }, 'typed');
+        paintExportImages();
+        paintJsonPreview();
+      }, 400));
+    });
+    $('sb-logo-prev').addEventListener('error', function () { this.hidden = true; });
+    $('sb-bg-prev').addEventListener('error', function () { this.hidden = true; });
 
     // ── official-app options ──
     $('sb-hidetitle').addEventListener('change', function () {
@@ -3014,8 +2859,7 @@
     // ── the night and jinx tabs' own options ──
     var nv = nightView();
     $('sb-night-rem').checked = nv.reminders;
-    $('sb-night-bag').checked = nv.bagOnly;
-    [['sb-night-rem', 'reminders'], ['sb-night-bag', 'bagOnly']].forEach(function (pair) {
+    [['sb-night-rem', 'reminders']].forEach(function (pair) {
       $(pair[0]).addEventListener('change', function () {
         prefs.night = prefs.night || {};
         prefs.night[pair[1]] = this.checked;
@@ -3078,7 +2922,6 @@
     redo: function () { redo(); },
     publish: function () { location.href = $('sb-publish-link').getAttribute('href') || 'publish-script'; },
     details: function () { showTab('meta'); },
-    bag: function () { if (notEmpty()) togglePop('sbx-bag', $('sbx-more')); },
     'import': function () { $('sb-import-file').click(); },
     save: function () { saveCurrentToLibrary(); },
     'new': function () { newScript(); },
@@ -3447,7 +3290,7 @@
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);
         if (sh.m && typeof sh.m === 'object') {
-          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
+          ['hideTitle', 'almanac', 'bootlegger', 'exportLogo', 'exportBg', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
             if (sh.m[k] != null) m[k] = sh.m[k];
           });
           if (m.charNotes && typeof m.charNotes !== 'object') delete m.charNotes;

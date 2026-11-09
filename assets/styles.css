@@ -4755,15 +4755,21 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 }
 .sbx-tool-ico { width: 30px; height: auto; flex: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.5)); }
 .sbx-names {
-  display: flex; align-items: baseline; gap: 8px; flex: 1 1 260px; min-width: 0;
-  background: none; border: none; padding: 3px 3px 2px; cursor: pointer; text-align: left;
-  color: var(--parch);
+  display: flex; align-items: baseline; gap: 2px 6px; flex: 1 1 260px; min-width: 0; flex-wrap: wrap;
+  padding: 3px 3px 2px; color: var(--parch);
 }
-.sbx-names:hover .sbx-title, .sbx-names:focus-visible .sbx-title { text-decoration: underline dotted rgba(214,196,150,.6); }
-.sbx-title, .sbx-author { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbx-title, .sbx-author {
+  min-width: 0; max-width: 100%; text-overflow: ellipsis;
+  background: none; border: none; border-bottom: 1px solid transparent; padding: 1px 2px; color: inherit;
+}
+.sbx-title:hover, .sbx-author:hover { border-bottom-color: rgba(214,196,150,.4); }
+.sbx-title:focus, .sbx-author:focus { outline: none; border-bottom-color: rgba(214,196,150,.8); background: rgba(255,255,255,.05); }
+.sbx-title::placeholder, .sbx-author::placeholder { color: rgba(236,225,200,.5); opacity: 1; }
 .sbx-title { flex: 0 1 auto; font-family: 'Dumbledor2', serif; font-size: 1.12rem; letter-spacing: .02em; }
-.sbx-title.empty { color: rgba(236,225,200,.5); }
-.sbx-author { flex: 0 1 auto; font-size: .84rem; color: rgba(236,225,200,.82); font-family: 'Libre Franklin', sans-serif; font-style: italic; }
+.sbx-by { flex: none; font-size: .84rem; color: rgba(236,225,200,.6); font-family: 'Libre Franklin', sans-serif; font-style: italic; }
+.sbx-author { flex: none; font-size: .84rem; color: rgba(236,225,200,.82); font-family: 'Libre Franklin', sans-serif; font-style: italic; }
+.sbx-img-prev[hidden] { display: none; }
+.sbx-img-prev { display: block; max-width: 160px; max-height: 80px; object-fit: contain; margin-top: 6px; border: 1px solid var(--parch-frame); background: #3a1e40; }
 #sbx-arrange.on { background: var(--parch); color: var(--maroon); }
 .sbx-scope { font-size: .78rem; padding: 3px 4px; max-width: 9.5em; }
 .sbx-counts { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
@@ -5560,29 +5566,6 @@ button.sbx-counts:empty { display: none; }
 .sbx-pick:focus-visible, .sbx-ch-x:focus-visible, .sbx-seg:focus-visible {
   outline: 2px solid #f2c46f; outline-offset: -2px;
 }
-
-/* ── tonight's bag ── */
-.sbx-bag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0 8px; font-size: .8rem; color: var(--ink); }
-.sbx-bag-row label { display: inline-flex; align-items: center; gap: 5px; }
-.sbx-bag-row select, .sbx-bag-row input[type=number] {
-  font-family: 'Libre Franklin', sans-serif; font-size: .82rem; padding: 3px 6px;
-  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
-}
-.sbx-bag-row input[type=number] { width: 54px; text-align: center; }
-.sbx-bag-need { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); margin: 0 0 8px; }
-.sbx-bag-team { border: 1px solid rgba(180,160,120,.55); background: rgba(255,253,248,.55); padding: 6px 9px 7px; margin-bottom: 7px; }
-.sbx-bag-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.sbx-bag-head .sbx-shape-label { flex: 1; }
-.sbx-bag-count { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em; color: #6b5d49; }
-.sbx-bag-count.ok { color: #2f7a3a; }
-.sbx-bag-count.bad { color: var(--evil); }
-.sbx-bag-list { display: grid; gap: 1px 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-.sbx-bag-list label { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--ink); cursor: pointer; padding: 2px 0; min-width: 0; }
-.sbx-bag-list label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sbx-bag-list input { accent-color: var(--maroon); margin: 0; flex: none; }
-.sbx-bag-list img { width: 20px; height: 20px; object-fit: contain; flex: none; }
-.sbx-bag-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.sbx-bag-out { margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .74rem; white-space: pre-wrap; background: rgba(255,253,248,.8); border: 1px solid rgba(180,160,120,.5); padding: 6px 8px; color: var(--ink); max-height: 140px; overflow: auto; }
 
 /* ── toasts ── */
 .sbx-toast {
