@@ -231,5 +231,22 @@ check('columns: a team size is clamped, and 1 when unset',
     S.teamSize({ colTeamSize: { demon: 0.1 } }, 'demon'), S.teamSize(S.normalizeOptions({}), 'minion')], [1.4, 1.6, 0.5, 1]);
 check('columns: every grid width has its sizes', [1, 2, 3].every((n) => S.COLUMN_SHEET.cell[n].length === 3), true);
 
+// one set of controls, a look per style
+check('look: a style keeps a shared setting at its own path',
+  [S.lookPath('classic', 'fontName'), S.lookPath('app', 'fontAbility'), S.lookPath('columns', 'teamColors.demon'),
+    S.lookPath('app', 'bg.mode'), S.lookPath('columns', 'iconSize')],
+  ['fontName', 'app.fontText', 'cols.teamColors.demon', 'app.bg.mode', 'iconSize']);
+{
+  const o = S.normalizeOptions({});
+  const c = S.withLook(o, 'columns'), a = S.withLook(o, 'app');
+  check('look: each style reads its own defaults, the rest shared',
+    [c.fontName, c.nameCase, c.abilityAlign, c.goodColor, c.sidebarColor === o.sidebarColor, a.fontAbility, a.inkColor, a.rowGap, o.rowGap,
+      S.withLook(o, 'classic').fontName],
+    ['optimus', 'upper', 'center', '#222222', true, 'trade', '#271d17', 1, 1, 'goudy']);
+  // every look path a style names exists in a fresh design
+  const get = (p) => p.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o);
+  check('look: every mapped path has a default', Object.values(S.STYLE_LOOK).flatMap((m) => Object.values(m)).filter((p) => get(p) === undefined), []);
+}
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

@@ -591,8 +591,68 @@ export const DEFAULT_APP = {
   nightTextShift: 0,
   showDividers: true,
   dividerStrength: 1,
+  nameSpacing: 0, // em
+  sidebarContrast: 1,
+  fontFootnote: 'trade',
   bg: { ...DEFAULT_BG, mode: 'parchment' },
 };
+
+/* the night columns style's own look: the owner's sheets set names, headings
+   and labels in Optimus Princeps and the abilities centred in Helvetica, with
+   black names. Everything else it shares with the classic sheet (its paper,
+   its ribbon colour, its ink). */
+export const DEFAULT_COLS = {
+  fontTitle: 'unlovable',
+  fontName: 'optimus',
+  fontAbility: 'arial',
+  fontLabel: 'optimus',
+  fontAuthor: 'optimus',
+  fontFootnote: 'optimus',
+  nameCase: 'upper',
+  nameSpacing: 0, // em
+  labelSpacing: 0, // em, the team headings
+  abilityAlign: 'center',
+  labelColor: '#ffffff', // the night labels on the columns
+  authorColor: '#222222',
+  footnoteColor: '#222222',
+  goodColor: '#222222',
+  evilColor: '#222222',
+  neutralColor: '#222222',
+  teamColors: { townsfolk: '', outsider: '', minion: '', demon: '', traveller: '', fabled: '', loric: '' },
+  sidebarWidth: 1,
+};
+
+/* One set of controls edits whichever script sheet style is showing; each
+   style keeps its own look. STYLE_LOOK names where a style stores a shared
+   setting when it is not the top-level key (the classic sheet's). */
+export const STYLE_LOOK = {
+  classic: {},
+  app: {
+    sidebarMode: 'app.sidebarMode', sidebarColor: 'app.sidebarColor', sidebarContrast: 'app.sidebarContrast',
+    labelColor: 'app.labelColor', labelSpacing: 'app.labelSpacing', nameSpacing: 'app.nameSpacing',
+    fontLabel: 'app.fontLabel', fontName: 'app.fontName', fontAbility: 'app.fontText', fontFootnote: 'app.fontFootnote',
+    inkColor: 'app.inkColor', titleColor: 'app.titleColor', authorColor: 'app.authorColor', footnoteColor: 'app.footnoteColor',
+    showDividers: 'app.showDividers', dividerOpacity: 'app.dividerStrength', rowGap: 'app.rowGap', bg: 'app.bg',
+  },
+  columns: Object.fromEntries(Object.keys(DEFAULT_COLS).map((k) => [k, 'cols.' + k])),
+};
+/* the path a style keeps `key` at ('bg.mode', 'teamColors.demon' work too) */
+export function lookPath(style, key) {
+  const map = STYLE_LOOK[style] || {};
+  const head = key.split('.')[0];
+  return map[head] ? map[head] + key.slice(head.length) : key;
+}
+/* the classic options with a style's own look laid over them, so a renderer
+   can read options.fontName and the rest whatever the style */
+export function withLook(options, style) {
+  const map = STYLE_LOOK[style] || {};
+  const out = { ...options };
+  for (const [k, path] of Object.entries(map)) {
+    const v = path.split('.').reduce((o, p) => (o == null ? undefined : o[p]), options);
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
 
 export const DEFAULT_NIGHT = {
   first: false, // the tick boxes — a night page exists only when it is ticked
@@ -692,6 +752,8 @@ export const DEFAULT_OPTIONS = {
   pageRatio: 4 / 3, // every page's height / width (PAGE_SHAPES)
   sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view) | columns (night order down the sides)
   app: { ...DEFAULT_APP, bg: { ...DEFAULT_APP.bg } },
+  cols: { ...DEFAULT_COLS, teamColors: { ...DEFAULT_COLS.teamColors } },
+  rowGap: 1, // space between characters (1 = the style's own)
   sortMode: 'script', // 'script' (as in the JSON) | 'official' | 'sao' | 'alpha'
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
   //                       | 'shared' (classic: col 2 staggered under the title)
@@ -770,7 +832,7 @@ export const DEFAULT_OPTIONS = {
   dividerOpacity: 1,
   columnWidth: 1, // multiplier on the text column width
   nameCase: 'normal', // normal | upper | smallcaps
-  abilityAlign: 'left', // left | justify
+  abilityAlign: 'left', // left | center | justify
   bracketStyle: 'plain', // how "[+2 Outsiders]" setup notes print: plain | italic | bold | muted
   iconShadow: 1,
   iconShiftX: 0, // every icon on the sheet, % of the width

@@ -116,8 +116,9 @@ function authorCYEm(script, options) {
 /* ability text with typographic punctuation and the ornamental asterisk of
    the official sheets. `kw` ({good, evil} inks) colours the keywords;
    colour only, never weight, so the measured wraps stay true. */
-function abilityNodes(text, bracketStyle, kw) {
-  const parts = smartTypography(text).split('*');
+export function abilityNodes(text, bracketStyle, kw, plainStar) {
+  // plainStar: the asterisk stays a typed one (the night columns style)
+  const parts = plainStar ? [smartTypography(text)] : smartTypography(text).split('*');
   const out = [];
   const words = (s) => (kw
     ? keywordParts(s).map((k) => (k.side ? el('span', { color: kw[k.side] }, k.s) : document.createTextNode(k.s)))
@@ -446,7 +447,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     lineHeight: String((SHEET.abilityLine / SHEET.abilitySize) * (options.abilityLine || 1)),
     color: options.inkColor || '#222222',
     mixBlendMode: 'multiply',
-    textAlign: options.abilityAlign === 'justify' ? 'justify' : 'left',
+    textAlign: options.abilityAlign === 'justify' || options.abilityAlign === 'center' ? options.abilityAlign : 'left',
     whiteSpace: 'pre-line', // a line break typed in the ability is kept, as the printed sheets break them
   }, ...abilityNodes(char.ability, options.bracketStyle, keywordInks(options)),
   ...((notes && notes.get(char.id)) || []).map((j) => jinxNote(j, options, ed))));
@@ -548,6 +549,8 @@ export function layoutSheet(script, options, requestRender) {
   const iconEmFor = (density) => Math.min(SHEET.rowIcon * iconSize, gutterEm / density);
   const lineMul = options.abilityLine || 1;
   const notes = options.jinxText ? jinxNotes(script.characters) : null;
+  // extra space under every row (Space between characters), as the app view
+  const rowExtra = (clamp(Number(options.rowGap) || 1, 0.5, 3) - 1) * 1.6;
 
   const rowHeightEm = (char, density) => {
     /* A row is as tall as its icon or its text, whichever is taller. The
@@ -568,7 +571,7 @@ export function layoutSheet(script, options, requestRender) {
         need += NOTE.gap + nl * nLine;
       }
     }
-    return need;
+    return Math.max(0.5, need + rowExtra);
   };
 
   const layoutEven = options.columnLayout !== 'shared';

@@ -69,6 +69,7 @@ function fontsOf(options, cfg) {
     text: fontFamily(a.fontText || 'trade'),
     label: fontFamily(a.fontLabel || 'goudy'),
     token: fontFamily((cfg && cfg.fontToken) || 'tradebold'),
+    foot: fontFamily(a.fontFootnote || 'trade'),
     title: fontFamily(options.fontTitle || 'unlovable'),
     author: fontFamily(options.fontAuthor || 'goudy'),
   };
@@ -82,6 +83,7 @@ function drawRibbon(sheet, options, widthPct, ctx) {
   appendRibbon(sheet, {
     mode: a.sidebarMode || 'damask',
     color: a.sidebarColor,
+    contrast: a.sidebarContrast,
     src: resolveSrc(t.src),
     opacity: t.opacity,
     shade: 0,
@@ -176,10 +178,31 @@ export function layoutAppSheet(script, options, requestRender) {
 
   const kw = options.colorKeywords ? { good: teamColor(options, 'townsfolk'), evil: teamColor(options, 'demon') } : null;
   const notes = options.jinxText ? jinxNotes(script.characters) : null;
-  // ability text as runs, the keywords carrying their ink when asked
-  const textRuns = (s, font) => (kw
-    ? keywordParts(smartTypography(s)).map((k) => ({ s: k.s, font, kind: 'text', ...(k.side ? { color: kw[k.side] } : {}) }))
-    : [{ s: smartTypography(s), font, kind: 'text' }]);
+  // ability text as runs, the keywords carrying their ink when asked and
+  // "[+2 Outsiders]" setup notes in the Setup notes style
+  const words = (s, font, style) => (kw
+    ? keywordParts(s).map((k) => ({ s: k.s, font, kind: 'text', ...(style ? { style } : {}), ...(k.side ? { color: kw[k.side] } : {}) }))
+    : [{ s, font, kind: 'text', ...(style ? { style } : {}) }]);
+  const bs = options.bracketStyle;
+  const textRuns = (raw, font) => {
+    const s = smartTypography(raw);
+    if (!bs || bs === 'plain') return words(s, font);
+    const bFont = bs === 'bold' ? font.replace(/^400 /, '700 ') : 'italic ' + font;
+    const bStyle = bs === 'bold' ? { fontWeight: '700' } : bs === 'italic' ? { fontStyle: 'italic' } : { fontStyle: 'italic', opacity: '0.72' };
+    const out = [];
+    const re = /\[[^\]\n]{1,60}\]/g;
+    let last = 0, m;
+    while ((m = re.exec(s))) {
+      if (m.index > last) out.push(...words(s.slice(last, m.index), font));
+      out.push(...words(m[0], bFont, bStyle));
+      last = m.index + m[0].length;
+    }
+    if (last < s.length || !out.length) out.push(...words(s.slice(last), font));
+    return out;
+  };
+  // names with Name letter spacing, measured as drawn
+  const nameSp = Number(a.nameSpacing) || 0;
+  const nameMeasure = (t, f) => textWidth(t, f) + (nameSp ? nameSp * Number((/([\d.]+)px/.exec(f) || [0, 16])[1]) * [...t].length : 0);
 
   const measureRow = (c, d) => {
     const textPx = A.textSize * textSize * U * d;
@@ -209,7 +232,7 @@ export function layoutAppSheet(script, options, requestRender) {
       const nRuns = [{ kind: 'icon', src: j.icon, name: j.name, w: textPx * 1.1, font: nFont }, ...textRuns(j.reason, nFont)];
       for (const ln of breakRuns(nRuns, textW, textWidth, { baseFont: nFont })) lines.push({ ...ln, note: true });
     }
-    const nm = fitNameLines(caseName(smartTypography(c.name)), nameW, textWidth, nameFont(d));
+    const nm = fitNameLines(caseName(smartTypography(c.name)), nameW, nameMeasure, nameFont(d));
     const textH = lines.length * lineEm;
     const nameH = nm.lines.length * nameLineEm(nm.scale);
     const blockH = Math.max(textH, nameH);
@@ -410,6 +433,7 @@ function sheetRow(c, m, h, options, layout, ed, e, mark) {
       fontWeight: '700',
       fontSize: px(ed(A.nameSize * (options.nameSize || 1) * m.name.scale)),
       fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
+      letterSpacing: (Number(a.nameSpacing) || 0) + 'em',
       color,
     }, ln));
   });
@@ -616,7 +640,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
       transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
       transformOrigin: '50% 0',
       textAlign: 'center',
-      fontFamily: fonts.text,
+      fontFamily: fonts.foot,
       fontSize: px(e(A.footnoteSize)),
       lineHeight: px(e(A.footnoteLine)),
       color: a.footnoteColor || '#8b786b',

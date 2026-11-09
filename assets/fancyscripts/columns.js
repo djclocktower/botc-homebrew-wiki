@@ -29,21 +29,48 @@
 import {
   COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, columnLists, balancedTeam, teamSize, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
   PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxied, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
+  withLook, teamColor, jinxNotes,
 } from './script.js';
 import {
   el, img, px, clamp, textWidth, wrappedLineCount, normalizeIcons, iconFit, inkTransform, iconFilter,
   ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import { pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark } from './elements.js';
-import { appendRibbon } from './sheet.js';
+import { appendRibbon, abilityNodes } from './sheet.js';
 
 const C = COLUMN_SHEET;
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 /* one cell's width, % of the page: the grid's width over its columns, but a
    lone character (the Demon) keeps its text beside its icon rather than
    stretched across the page */
-const cellPct = (cols) => Math.min(C.soloW, (C.contentX1 - C.contentX0) / cols);
-const FONT = { title: fontFamily('unlovable'), serif: fontFamily('optimus'), text: fontFamily('arial') };
+const cellPct = (cols, G) => Math.min(C.soloW, (G.x1 - G.x0) / cols);
+
+/* the controls every script sheet style shares, read through this style's
+   own look (DEFAULT_COLS): fonts, name case, inks */
+function lookOf(options) {
+  const o = withLook(options, 'columns');
+  return {
+    o,
+    font: {
+      title: fontFamily(o.fontTitle), name: fontFamily(o.fontName), text: fontFamily(o.fontAbility),
+      label: fontFamily(o.fontLabel), author: fontFamily(o.fontAuthor), foot: fontFamily(o.fontFootnote),
+    },
+    nameCase: (n) => (o.nameCase === 'upper' ? n.toUpperCase() : n),
+    variant: o.nameCase === 'smallcaps' ? 'small-caps ' : '',
+    spacing: Number(o.nameSpacing) || 0,
+    rowGap: (C.rowGap + (clamp(Number(o.rowGap) || 1, 0.5, 3) - 1) * 1.6),
+  };
+}
+/* the column's width follows Ribbon width, and the grid, title and
+   footnote move in with its edge */
+function geom(o) {
+  const colW = C.colW * clamp(Number(o.sidebarWidth) || 1, 0.6, 1.4);
+  const dx = colW - C.colW;
+  return { colW, x0: C.contentX0 + dx, x1: C.contentX1 - dx, headX: C.headX + dx, titleX0: C.titleX0 + dx, logoX1: C.logoX1 - dx, footRight: C.footnoteRight + dx };
+}
+// a width with letter spacing (em of the font's own size) added
+const fontPx = (f) => Number((/([\d.]+)px/.exec(f) || [0, 16])[1]);
+const spaced = (em) => (s, f) => textWidth(s, f) + (em ? em * fontPx(f) * [...s].length : 0);
 
 function iconImg(src, style, alt) {
   const n = img(src, style, alt);
@@ -55,7 +82,7 @@ function iconImg(src, style, alt) {
 
 function headingText(options, team, n) {
   const own = (options.teamLabels && options.teamLabels[team] || '').trim();
-  return (own || (n === 1 ? TEAM_LABELS_SINGULAR : TEAM_LABELS)[team]).toUpperCase();
+  return (own || (n === 1 ? TEAM_LABELS_SINGULAR : TEAM_LABELS)[team]).toUpperCase() + (options.labelCounts ? ' · ' + n : '');
 }
 
 /* logos that failed to load: the title takes the whole width instead */
@@ -82,9 +109,13 @@ export function layoutColumnsSheet(script, options, requestRender) {
     for (const it of [...nights.first, ...nights.other]) urls.add(it.icon);
     normalizeIcons([...urls], requestRender);
   }
+  const L = lookOf(options), o = L.o, G = geom(o);
   const iconSize = options.iconSize || 1, nameSize = options.nameSize || 1, textSize = options.textSize || 1;
   const lineMul = options.abilityLine || 1;
   const gapPx = (C.iconGap / 100) * SHEET_W;
+  const nameW = spaced(L.spacing);
+  const notes = options.jinxText ? jinxNotes(script.characters) : null;
+  const labelsOn = options.showLabels !== false;
 
   const measureSection = (g, d) => {
     const n = g.characters.length;
@@ -92,8 +123,8 @@ export function layoutColumnsSheet(script, options, requestRender) {
     const [iconB, nameB, textB] = C.cell[cols];
     const k = teamSize(options, g.team); // this team's own size slider
     const nameEm = nameB * nameSize * k * d, textEm = textB * textSize * k * d;
-    const cellW = (cellPct(cols) / 100) * SHEET_W;
-    const nameFontAt = (s) => `400 ${(nameEm * U * s).toFixed(2)}px ${FONT.serif}`;
+    const cellW = (cellPct(cols, G) / 100) * SHEET_W;
+    const nameFontAt = (s) => `${L.variant}400 ${(nameEm * U * s).toFixed(2)}px ${L.font.name}`;
     // the icon grows with the page but never past a share of its cell, or a
     // short script squeezes its abilities into a strip a few words wide
     let iconPx = Math.min(iconB * iconSize * k * d * U, cellW * C.iconMaxShare);
@@ -102,28 +133,42 @@ export function layoutColumnsSheet(script, options, requestRender) {
        already fills its column cannot grow, and the Name size slider did
        nothing on a short script */
     const widest = Math.max(0, ...g.characters.flatMap((c) =>
-      smartTypography(c.name).toUpperCase().split(/\s+/).map((w) => textWidth(w, nameFontAt(1)))));
+      L.nameCase(smartTypography(c.name)).split(/\s+/).map((w) => nameW(w, nameFontAt(1)))));
     const room = cellW - iconPx - gapPx * 2;
     if (widest > room) iconPx = Math.max(iconPx * C.iconYield, cellW - widest - gapPx * 2);
     const iconEm = iconPx / U;
     const textW = Math.max(40, cellW - iconPx - gapPx * 2);
-    const textFont = `400 ${(textEm * U).toFixed(2)}px ${FONT.text}`;
+    const textFont = `400 ${(textEm * U).toFixed(2)}px ${L.font.text}`;
+    const noteEm = textEm * 0.86;
+    const noteFont = `italic 400 ${(noteEm * U).toFixed(2)}px ${L.font.text}`;
+    const jinxPx = textEm * U * 1.5 * (options.jinxIconSize || 1);
     const cells = g.characters.map((c) => {
-      const name = smartTypography(c.name).toUpperCase();
+      const name = L.nameCase(smartTypography(c.name));
       // a long name takes more lines before it shrinks
-      const nm = fitNameLines(name, textW, textWidth, nameFontAt, { maxLines: 3, minScale: 0.3 });
+      const nm = fitNameLines(name, textW, nameW, nameFontAt, { maxLines: 3, minScale: 0.3 });
       const nameScale = nm.scale;
       const lines = c.ability ? wrappedLineCount(smartTypography(c.ability), textFont, textW) : 0;
       const nameH = nameEm * nameScale * C.nameLine * nm.lines.length;
       const textH = lines * textEm * C.abilityLine * lineMul;
-      return { c, name, nameLines: nm.lines, nameScale, nameH, textH, blockH: nameH + textH, h: Math.max(iconEm, nameH + textH) };
+      /* under the ability, as on the other styles: the jinxed partners'
+         icons (and marks), then each jinx rule or mark note in small italic
+         behind its partner's icon */
+      const marks = c.marks || [];
+      const icons = [...(options.showJinxes ? c.jinxIcons : []), ...marks.filter((m) => !m.note)];
+      const noteList = [...((notes && notes.get(c.id)) || []).map((j) => ({ icon: j.icon, name: j.name, text: j.reason })),
+        ...marks.filter((m) => m.note).map((m) => ({ icon: m.icon, name: m.name, text: m.note }))];
+      const iconsH = icons.length ? jinxPx / U + 0.25 * d : 0;
+      const noteLines = noteList.map((n) => wrappedLineCount(smartTypography(n.text), noteFont, textW - noteEm * U * 1.3));
+      const notesH = sum(noteLines) * noteEm * C.abilityLine * lineMul + (noteList.length ? 0.25 * d : 0);
+      const blockH = nameH + textH + iconsH + notesH;
+      return { c, name, nameLines: nm.lines, nameScale, nameH, textH, icons, iconsH, noteList, blockH, h: Math.max(iconEm, blockH) };
     });
-    const gap = C.rowGap * d, cellPctW = cellPct(cols);
+    const gap = L.rowGap * d, cellPctW = cellPct(cols, G);
     let bodyH, slots, place;
     // which column each character goes in, in the reading order asked for
     const down = options.colOrder === 'down';
     const lists = columnLists(n, cols, down ? 'down' : 'across').map((l) => l.map((i) => cells[i]));
-    const colX = (k) => C.contentX0 + k * cellPctW;
+    const colX = (k) => G.x0 + k * cellPctW;
     if (balancedTeam(options, g.team) && cols > 1 && n > cols) {
       /* balanced: each column spreads its rows so every column of the team
          ends on the same line, rather than a short row left at the bottom */
@@ -158,7 +203,7 @@ export function layoutColumnsSheet(script, options, requestRender) {
         for (const r of rows) {
           // read across, a short last row is centred under the full ones;
           // read down, every cell stays in its own column
-          const x0 = C.contentX0 + (C.contentX1 - C.contentX0 - r.cells.length * cellPctW) / 2;
+          const x0 = G.x0 + (G.x1 - G.x0 - r.cells.length * cellPctW) / 2;
           r.cells.forEach((x, i) => out.push({ m: x.m, left: down ? colX(x.k) : x0 + i * cellPctW, topEm: y, slotEm: r.h + per }));
           y += r.h + per;
         }
@@ -166,10 +211,10 @@ export function layoutColumnsSheet(script, options, requestRender) {
       };
     }
     return {
-      team: g.team, cols, slots, place, iconEm, nameEm, textEm, textW,
+      team: g.team, cols, slots, place, iconEm, nameEm, textEm, noteEm, jinxPx, textW, gap,
       label: headingText(options, g.team, n),
-      headEm: C.headBand * d,
-      need: C.headBand * d + bodyH,
+      headEm: labelsOn ? C.headBand * d : 0,
+      need: (labelsOn ? C.headBand * d : 0) + bodyH,
     };
   };
 
@@ -209,12 +254,12 @@ export function layoutColumnsSheet(script, options, requestRender) {
   });
 
   const page = { sections, header, index: 0 };
-  return { style: 'columns', pages: [page], d, nights };
+  return { style: 'columns', pages: [page], d, nights, look: L, G };
 }
 
 /* the title: the script's name in the swash face, on one, two or three
    lines, whichever lets it be largest inside its box */
-function titleLines(title, boxW, boxH) {
+function titleLines(title, boxW, boxH, fam) {
   const words = title.split(/\s+/).filter(Boolean);
   const tries = [];
   for (let n = 1; n <= Math.min(3, words.length); n++) {
@@ -226,7 +271,7 @@ function titleLines(title, boxW, boxH) {
       if (cur && lines.length < n - 1 && (cur + ' ' + w).length > target * 1.15) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;
     }
     lines.push(cur);
-    const widest = Math.max(...lines.map((l) => textWidth(l, `400 100px ${FONT.title}`) / 100));
+    const widest = Math.max(...lines.map((l) => textWidth(l, `400 100px ${fam}`) / 100));
     const size = Math.min(boxW / Math.max(1, widest), boxH / (lines.length * 0.92));
     tries.push({ lines, size });
   }
@@ -244,6 +289,8 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     if (id === selected) markSelected(node);
     return node;
   };
+  const L = layout.look || lookOf(options), o = L.o, G = layout.G || geom(o);
+  const FONT = L.font;
   const ink = options.inkColor || '#222222';
 
   const sheet = pageFrame(SHEET_W, SHEET_H, U, 'script-sheet script-columns');
@@ -260,7 +307,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   // zoomed in evenly, from the point that puts the frame and its gold edge
   // just under the column: x' = ox + (x - ox) * z, solved for ox
   const z = C.paperZoom, artEdge = SHEET.sidebarX + SHEET.sidebarW + C.paperBand;
-  const ox = (C.colW + C.colRule - 0.2 - artEdge * z) / (1 - z);
+  const ox = (G.colW + C.colRule - 0.2 - artEdge * z) / (1 - z);
   const paper = el('div', { position: 'absolute', inset: '0', transform: `scale(${z})`, transformOrigin: `${ox}% 50%` });
   for (const n of renderBackground(options.bg, 'front', { scriptBg, noGarland: true })) paper.append(n);
   sheet.append(paper);
@@ -268,15 +315,16 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
 
   // the two columns: the sheet's ribbon art (its colour, its mode), with a
   // black edge on the inside
-  if (options.sidebarMode !== 'none') {
+  const ribT = elGet(options, 'sidebar');
+  if (options.sidebarMode !== 'none' && !ribT.hidden) {
     for (const side of ['left', 'right']) {
       appendRibbon(sheet, {
         mode: options.sidebarMode || 'damask', color: options.sidebarColor, contrast: options.sidebarContrast,
-        shade: 0, widthPct: C.colW, side,
+        src: resolveSrc(ribT.src), opacity: ribT.opacity, shade: 0, widthPct: G.colW, side,
       }, { requestRender: ctx.requestRender, forExport: ctx.forExport });
       sheet.append(el('div', {
         position: 'absolute', top: '0', height: '100%', width: C.colRule + '%', background: '#000',
-        [side]: C.colW + '%',
+        [side]: G.colW + '%',
       }));
     }
   }
@@ -301,11 +349,11 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     const stackTop = (pageEm - (labelH + C.labelGap + most * pitch)) / 2;
     const iconsTop = stackTop + labelH + C.labelGap;
     lists.forEach(([side, , items], li) => {
-      const cx = side === 'left' ? C.colW / 2 : 100 - C.colW / 2;
+      const cx = side === 'left' ? G.colW / 2 : 100 - G.colW / 2;
       const lab = el('div', {
         position: 'absolute', left: cx + '%', top: px(e(stackTop)), transform: 'translateX(-50%)',
-        width: (C.colW + 1) + '%', textAlign: 'center', fontFamily: FONT.serif, fontSize: px(e(C.labelSize)),
-        lineHeight: '1.15', color: '#ffffff', pointerEvents: 'auto', textShadow: `0 ${e(0.1)}px ${e(0.3)}px rgba(0,0,0,0.9)`,
+        width: (G.colW + 1) + '%', textAlign: 'center', fontFamily: FONT.label, fontSize: px(e(C.labelSize)),
+        lineHeight: '1.15', color: o.labelColor || '#ffffff', pointerEvents: 'auto', textShadow: `0 ${e(0.1)}px ${e(0.3)}px rgba(0,0,0,0.9)`,
       });
       for (const w of words[li]) lab.append(el('div', null, w));
       box.append(lab);
@@ -332,7 +380,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   if (page.header) {
     const title = (options.titleOverride || '').trim() || script.meta.name || '';
     const logo = logoArt(script, options);
-    const tx0 = C.titleX0, tx1 = logo ? C.titleX1 : 100 - C.titleX0;
+    const tx0 = G.titleX0, tx1 = logo ? C.titleX1 : 100 - G.titleX0;
     const first = page.sections[0];
     const headerBottom = (first ? first.topEm : C.contentTop) - C.headerGap;
     const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
@@ -345,7 +393,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
       const logoH = Math.min(C.logoBottom - C.titleTop, headerBottom - C.titleTop);
       const lg = img(logo, {
         position: 'absolute', left: C.logoX0 + '%', top: px(e(headerBottom - logoH)),
-        width: (C.logoX1 - C.logoX0) + '%', height: px(e(logoH)), objectFit: 'contain', objectPosition: '50% 100%',
+        width: (G.logoX1 - C.logoX0) + '%', height: px(e(logoH)), objectFit: 'contain', objectPosition: '50% 100%',
       }, title);
       lg.crossOrigin = 'anonymous';
       lg.addEventListener('error', () => { failedArt.add(logo); if (ctx.requestRender) ctx.requestRender(); });
@@ -355,7 +403,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     const tT = elGet(options, 'colTitle');
     if (title && !tT.hidden) {
       const boxW = ((tx1 - tx0) / 100) * SHEET_W, boxH = e(titleBottom - C.titleTop);
-      const fit = titleLines(title, boxW, boxH);
+      const fit = titleLines(title, boxW, boxH, FONT.title);
       const size = Math.min(fit.size, e(C.titleSize));
       const t = el('div', {
         position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%',
@@ -371,7 +419,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     if (authorOn) {
       const a = el('div', {
         position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%', top: px(e(authorTop)),
-        textAlign: 'center', fontFamily: FONT.serif, fontSize: px(e(C.authorSize)), lineHeight: '1.2', whiteSpace: 'nowrap', color: ink,
+        textAlign: 'center', fontFamily: FONT.author, fontSize: px(e(C.authorSize)), lineHeight: '1.2', whiteSpace: 'nowrap', color: o.authorColor || ink,
       }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(author));
       applyEl(a, aT, '', U, SHEET_W);
       sheet.append(mark(a, 'el:colAuthor'));
@@ -389,36 +437,43 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     wrap.style.transform = (wrap.style.transform || '') + ` scale(${cT.scale})`;
   }
   wrap.dataset.fsEl = 'content';
-  const ruleL = C.colW + C.colRule, ruleR = 100 - C.colW - C.colRule;
+  const ruleL = G.colW + C.colRule, ruleR = 100 - G.colW - C.colRule;
+  const kw = options.colorKeywords ? { good: options.headingColor || COLUMN_HEAD_INK.townsfolk, evil: options.headingColor || COLUMN_HEAD_INK.demon } : null;
+  const align = ['left', 'center', 'justify'].includes(o.abilityAlign) ? o.abilityAlign : 'center';
+  const labelSp = Number(o.labelSpacing) || 0;
   for (const s of page.sections) {
-    // the heading, and the rule from it to the column (both ways for a
-    // Demon, whose heading is centred)
-    const fs = e(C.headSize * d) * (options.labelSize || 1);
-    const headFont = `400 ${fs.toFixed(2)}px ${FONT.serif}`;
-    const wPct = (textWidth(s.label, headFont) / SHEET_W) * 100;
-    const color = options.headingColor || COLUMN_HEAD_INK[s.team] || ink;
-    const centred = s.team === 'demon';
-    const headX = centred ? 50 - wPct / 2 : C.headX;
-    const ruleY = s.topEm + C.headBand * d * 0.42;
-    const rule = (x0, x1) => {
-      if (x1 - x0 > 0.5) wrap.append(el('div', {
-        position: 'absolute', left: x0 + '%', width: (x1 - x0) + '%', top: px(e(ruleY) - e(C.ruleH) / 2),
-        height: px(Math.max(1.5, e(C.ruleH))), background: '#000',
-      }));
-    };
-    if (centred) rule(ruleL, headX - 0.8);
-    rule(headX + wPct + 0.8, ruleR);
-    const head = el('div', {
-      position: 'absolute', left: headX + '%', top: px(e(ruleY)), transform: 'translateY(-50%)',
-      fontFamily: FONT.serif, fontSize: px(fs), lineHeight: '1', whiteSpace: 'nowrap', color,
-    }, s.label);
-    head.dataset.fsHead = s.team;
-    wrap.append(head);
+    if (s.headEm) {
+      // the heading, and the rule from it to the column (both ways for a
+      // Demon, whose heading is centred)
+      const fs = e(C.headSize * d) * (options.labelSize || 1);
+      const headFont = `400 ${fs.toFixed(2)}px ${FONT.label}`;
+      const wPct = (spaced(labelSp)(s.label, headFont) / SHEET_W) * 100;
+      const color = options.headingColor || COLUMN_HEAD_INK[s.team] || ink;
+      const centred = s.team === 'demon';
+      const headX = centred ? 50 - wPct / 2 : G.headX;
+      const ruleY = s.topEm + C.headBand * d * 0.42;
+      const rule = (x0, x1) => {
+        if (options.showDividers !== false && x1 - x0 > 0.5) wrap.append(el('div', {
+          position: 'absolute', left: x0 + '%', width: (x1 - x0) + '%', top: px(e(ruleY) - e(C.ruleH) / 2),
+          height: px(Math.max(1.5, e(C.ruleH))), background: '#000',
+          opacity: String(options.dividerOpacity == null ? 1 : options.dividerOpacity),
+        }));
+      };
+      if (centred) rule(ruleL, headX - 0.8);
+      rule(headX + wPct + 0.8, ruleR);
+      const head = el('div', {
+        position: 'absolute', left: headX + '%', top: px(e(ruleY)), transform: 'translateY(-50%)',
+        fontFamily: FONT.label, fontSize: px(fs), lineHeight: '1', whiteSpace: 'nowrap', color,
+        letterSpacing: labelSp + 'em',
+      }, s.label);
+      head.dataset.fsHead = s.team;
+      wrap.append(head);
+    }
 
     for (const p of s.placed) {
       const { m, left } = p;
       const c = m.c;
-      const rowMid = p.topEm + (p.slotEm - C.rowGap * d) / 2;
+      const rowMid = p.topEm + (p.slotEm - s.gap) / 2;
       const iconEm = s.iconEm * (c.iconScale || 1);
       const fit = options.normalizeIcons ? iconFit(c.icon) : ICON_IDENTITY;
       const icon = iconImg(drawIcon(c.icon), {
@@ -435,18 +490,40 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
       const textLeftPx = (left / 100) * SHEET_W + e(s.iconEm) + ((C.iconGap * 2) / 100) * SHEET_W;
       const block = el('div', {
         position: 'absolute', left: px(textLeftPx), width: px(s.textW),
-        top: px(e(rowMid - m.blockH / 2)), textAlign: 'center', color: ink, pointerEvents: 'auto',
+        top: px(e(rowMid - m.blockH / 2)), textAlign: align === 'justify' ? 'left' : align, color: ink, pointerEvents: 'auto',
       });
       block.dataset.fsChar = c.id;
       block.append(el('div', {
-        fontFamily: FONT.serif, fontSize: px(e(s.nameEm * m.nameScale)), lineHeight: String(C.nameLine),
-        whiteSpace: 'nowrap', color: c.color || ink,
+        fontFamily: FONT.name, fontSize: px(e(s.nameEm * m.nameScale)), lineHeight: String(C.nameLine),
+        fontVariant: o.nameCase === 'smallcaps' ? 'small-caps' : 'normal', letterSpacing: L.spacing + 'em',
+        whiteSpace: 'nowrap', color: c.color || teamColor(o, c.team),
       }, ...m.nameLines.map((ln) => el('div', null, ln))));
+      const lh = String(C.abilityLine * (options.abilityLine || 1));
       if (c.ability) {
         block.append(el('div', {
-          fontFamily: FONT.text, fontSize: px(e(s.textEm)), lineHeight: String(C.abilityLine * (options.abilityLine || 1)),
-          whiteSpace: 'pre-line',
-        }, smartTypography(c.ability)));
+          fontFamily: FONT.text, fontSize: px(e(s.textEm)), lineHeight: lh,
+          whiteSpace: 'pre-line', textAlign: align,
+        }, ...abilityNodes(c.ability, options.bracketStyle, kw, true)));
+      }
+      const tiny = (src, w, name) => {
+        const f = options.normalizeIcons ? iconFit(src) : ICON_IDENTITY;
+        const n = iconImg(drawIcon(src), {
+          display: 'inline-block', width: px(w), height: px(w), verticalAlign: 'middle', objectFit: 'contain',
+          transform: inkTransform(f), margin: `0 ${px(w * 0.06)}`,
+        }, name);
+        n.title = name;
+        return n;
+      };
+      if (m.icons.length) {
+        block.append(el('div', { height: px(e(m.iconsH)), lineHeight: '0', paddingTop: px(e(0.25 * d)), boxSizing: 'border-box' },
+          ...m.icons.map((j) => tiny(j.icon, s.jinxPx, j.name))));
+      }
+      if (m.noteList.length) {
+        const nw = e(s.noteEm) * 1.3;
+        block.append(el('div', {
+          fontFamily: FONT.text, fontStyle: 'italic', fontSize: px(e(s.noteEm)), lineHeight: lh,
+          paddingTop: px(e(0.25 * d)), textAlign: align,
+        }, ...m.noteList.map((n) => el('div', null, tiny(n.icon, nw * 0.88, n.name), smartTypography(n.text)))));
       }
       wrap.append(block);
     }
@@ -459,9 +536,9 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   const hasStar = script.characters.some((c) => (c.ability || '').includes('night*'));
   if (options.showFootnote && (hasStar || custom) && !fT.hidden) {
     const foot = el('div', {
-      position: 'absolute', right: C.footnoteRight + '%', top: px(e(footEm(C.footnoteTop))),
-      fontFamily: FONT.serif, fontSize: px(e(C.footnoteSize)), fontVariant: 'small-caps',
-      whiteSpace: 'nowrap', color: ink,
+      position: 'absolute', right: G.footRight + '%', top: px(e(footEm(C.footnoteTop))),
+      fontFamily: FONT.foot, fontSize: px(e(C.footnoteSize)), fontVariant: 'small-caps',
+      whiteSpace: 'nowrap', color: o.footnoteColor || ink,
     }, custom || '*Not the first night');
     applyEl(foot, fT, '', U, SHEET_W);
     sheet.append(mark(foot, 'el:footnote'));
@@ -471,7 +548,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   // bottom left of the paper, just past the column
   if (ctx.forExport) {
     const wm = watermark(0, 0.5);
-    Object.assign(wm.style, { right: 'auto', left: (C.colW + C.colRule + 1.2) + '%' });
+    Object.assign(wm.style, { right: 'auto', left: (G.colW + C.colRule + 1.2) + '%' });
     sheet.append(wm);
   }
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);

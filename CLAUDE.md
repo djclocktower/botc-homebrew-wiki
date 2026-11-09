@@ -4995,10 +4995,54 @@ Cyborg's jinx box.
   paper's left strip over the original: where the copy ended the texture
   jumped, a visible seam down the page. The footnote sits bottom
   right, so the export's watermark sits bottom left of the paper.
-- Fonts are the style's own, not the Fonts card's. Rows are not dragged to
+- Its look is `options.cols` (`DEFAULT_COLS`: Optimus Princeps names,
+  headings and labels, centred Helvetica abilities, names in capitals and in
+  ink); the shared cards edit it (see "One set of controls" below). Jinx
+  icons and marks sit in a row under the ability, jinx rules and mark notes
+  in small italic under that, all measured. Ribbon width moves the grid,
+  title and footnote in with the column (`geom()`). Rows are not dragged to
   reorder (a grid is not a column); the Characters card orders them.
   Elements: `colTitle`, `colAuthor`, `colLogo`, `colNight`, plus the shared
   `content` and `footnote`.
+
+### One set of controls for the three script sheet styles
+
+The owner asked for the controls to work the same in every style (2026-11).
+So the Title, Layout, Colours, Fonts and Background cards are ONE set for
+classic, app and columns, and every control shown does something in the
+style on screen:
+
+- **A look setting is stored per style.** `STYLE_LOOK` in script.js names
+  where a style keeps a shared key when it is not the classic top-level one
+  (`app.fontText` for the app's ability font, `cols.nameCase` for the night
+  columns'); `lookPath(style, key)` answers it and `withLook(options, style)`
+  lays a style's look over the options for a renderer. In app.js
+  `bindLook(key)` binds a control to the path of the style being shown
+  (`lookStyle()`: the script sheet's style on the script sheet, classic on
+  any other page), so switching style keeps each style's own fonts, inks,
+  ribbon and paper. A slider's double-click reset can be a function
+  (`lookDefault(key)`), for a key whose default differs by style.
+- **Only what cannot mean anything in a style is hidden**, by a
+  `styleGroup(parent, page, styles)` that shows on its own page in the
+  listed styles: the classic sheet's skull, title effects, columns/split,
+  label placement, ribbon shading and gold edge; the app's bar and text
+  shift (Layout); the night columns' reading order, balance and team sizes
+  (Layout). Each style's own structure sits in the same place, the top of
+  the Layout card.
+- **Shared now, that were one style's before**: Space between characters
+  (`rowGap`: `app.rowGap`, the top-level key for the other two, extra rows
+  of 1.6 em per step), Section dividers and Divider strength (the app's
+  lines, the columns' heading rules), Name and Team label spacing, Name
+  style, Setup notes, jinx icons and rules, keyword colours, character
+  counts, every ink and font, Pattern strength, and the paper (the
+  Background card follows the style; the app's is `app.bg`). Ability
+  alignment (left, centred, justified) is classic and columns.
+- **The App view card is the app NIGHT sheets' look only.** On the script
+  sheet the shared cards edit the same `app.*` keys.
+- `tools/parity.js` in the session scratchpad flips every visible control
+  in each style and lists the ones that change nothing on the sheet; on a
+  script without a logo, Bootlegger rules or a team, those controls are
+  the only ones it lists.
 
 ### The app view (`appview.js`)
 
@@ -5019,13 +5063,12 @@ text title's 5.39) and the header grows to its real height
 (`headerMetrics()`, from `artAspectOf()`). The
 jinx page and the back cover have one style.
 
-- **The App view card opens with the script sheet's rows**: "Space between
-  characters" (`app.rowGap`, extra em under every row, so a full page sets its
-  type smaller to fit), "Move the ability toward the icons" (`app.textShift`,
-  % width: the bar and the text slide, the name column gives up the room,
-  `appColumns()`) and the bar toggle (`app.showBars`). The owner asked for
-  all three on the app sheet and did not find the bar toggle where it was.
-  The night sheets have their own pair under "Night sheet rows"
+- **The app sheet's rows**: "Space between characters" (`app.rowGap`, extra
+  em under every row, so a full page sets its type smaller to fit; the shared
+  Layout slider), and in the Layout card's app group "Move the ability toward
+  the icons" (`app.textShift`, % width: the bar and the text slide, the name
+  column gives up the room, `appColumns()`) and the bar toggle
+  (`app.showBars`). The night sheets have their own pair under "Night sheet rows"
   (`app.nightRowGap`, `app.nightTextShift`: `nightCols(n, shift)` moves the
   bar, the text and the names' right edge together); the bar toggle serves
   every app page. The older "Space between steps" in the Night order card
@@ -5037,11 +5080,10 @@ jinx page and the back cover have one style.
 - **`options.app` (`DEFAULT_APP`) is the style's own look**, shared by both
   app pages: ribbon mode and colour (`#670818`, the app's red), fonts (Trade
   Gothic Bold Condensed names, Trade Gothic text, Goudy team names), bars,
-  lines, colours and the paper. It has its own card (`data-fs-style="app"`).
-  The name colours, sizes, density, pagination, sort, footnote and team label
-  text are the classic controls, shared. Inside a shared card, controls that
-  mean something in one style only sit in a `styleGroup()` that hides with the
-  other style; `showCardsFor()` also hides whole cards by `data-fs-style`.
+  lines, colours and the paper. On the script sheet the shared cards edit it
+  (`STYLE_LOOK.app`); on an app night sheet the App view card does. The name
+  colours, sizes, density, sort, footnote and team label text are the classic
+  keys, shared. `showCardsFor()` also hides whole cards by `data-fs-style`.
 - **It sets its own lines** (`breakRuns()` in script.js, pure and tested).
   The bar beside a block must be exactly as tall as the block, and a night
   line carrying a disc is taller than one without, so the layout pass breaks
