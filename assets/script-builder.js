@@ -1646,7 +1646,7 @@
       });
     }
     if (jx.length) facts.push('<b>Jinxed with:</b> ' + esc(jx.join(', ')));
-    var cls = (!c.official && window.isPartial && window.isPartial(c)) ? 'Partial page' : ((window.isCurata && window.isCurata(c)) ? 'Curata' : '');
+    var cls = c.own ? 'this script only' : (!c.official && window.isPartial && window.isPartial(c)) ? 'Partial page' : ((window.isCurata && window.isCurata(c)) ? 'Curata' : '');
     var isOn = !!sel[c.slug];
     return '<button type="button" class="sbx-pop-x sbx-peek-close" data-peek-close aria-label="Close">' + ico('close') + '</button>' +
       '<div class="sbx-peek-top">' +
@@ -2686,6 +2686,32 @@
     if (!cur) q('[data-f=name]').focus();
   }
 
+  /* Publishing a script with characters that only exist on it: the wiki
+     has no page for them, so the published page cannot show them. Say so
+     before leaving, and let the reader go on anyway. */
+  function goPublish(href) {
+    var own = rosterChars().filter(function (c) { return c.own; });
+    if (!own.length) { location.href = href; return; }
+    var d = document.createElement('dialog');
+    d.className = 'sbx-dlg';
+    d.innerHTML = '<h3 class="sbx-pop-title">Characters not on the wiki</h3>' +
+      '<p class="sbx-own-warn">' + (own.length === 1 ? 'This character was' : 'These characters were') +
+        ' made for this script only, so the published page will not show ' + (own.length === 1 ? 'it' : 'them') + ':</p>' +
+      '<p class="sbx-own-list">' + own.map(function (c) { return esc(c.name); }).join(', ') + '</p>' +
+      '<p class="sbx-own-warn">To include ' + (own.length === 1 ? 'it' : 'them') + ', make ' + (own.length === 1 ? 'a page' : 'pages') +
+        ' with <a href="create" target="_blank" rel="noopener">Create a Character</a> first.</p>' +
+      '<div class="sbx-dlg-btns"><button type="button" class="sbx-b-sm" data-v="cancel">Cancel</button>' +
+      '<button type="button" class="sbx-b-sm sbx-dlg-go" data-v="go">Publish anyway</button></div>';
+    document.body.appendChild(d);
+    function done(go) { d.close(); d.remove(); if (go) location.href = href; }
+    d.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-v]');
+      if (b) done(b.getAttribute('data-v') === 'go');
+    });
+    d.addEventListener('cancel', function (e) { e.preventDefault(); done(false); });
+    d.showModal();
+  }
+
   function primeForm() {
     var m = getMeta();
     paintBarName();
@@ -2892,6 +2918,14 @@
     // Add or remove everything the panel is showing — a creator's whole set
     // in one click after filtering to them.
     $('sb-new-char').addEventListener('click', function () { openOwnChar(''); });
+    // Every way to the publish page goes past the script-only check.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="publish-script"]');
+      if (!a || e.defaultPrevented || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      if (!rosterChars().some(function (c) { return c.own; })) return;
+      e.preventDefault();
+      goPublish(a.getAttribute('href'));
+    });
     $('sb-add-all').addEventListener('click', function () {
       var slugs = panelMatches().map(function (c) { return c.slug; })
         .filter(function (x) { return x && bySlug[x] && !sel[x]; });
@@ -3359,7 +3393,7 @@
     sort: function () { if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug), false, 'sort'); },
     undo: function () { undo(); },
     redo: function () { redo(); },
-    publish: function () { location.href = $('sb-publish-link').getAttribute('href') || 'publish-script'; },
+    publish: function () { goPublish($('sb-publish-link').getAttribute('href') || 'publish-script'); },
     details: function () { showTab('meta'); },
     'import': function () { $('sb-import-file').click(); },
     save: function () { saveCurrentToLibrary(); },

@@ -1852,7 +1852,10 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   file's entry that matches nothing here but carries a name and an ability
   into one of these, so an exported script comes back whole. Publishing a
   script with one keeps its slug in the roster, where the published page
-  has no character for it.
+  has no character for it, so every way to `publish-script` from the
+  builder goes through `goPublish()`, which names them and asks first.
+  The peek card labels one "this script only", and Analyse leaves it out
+  of the "unfinished on this wiki" warning.
 - **View → Creator mark** (`view.showMarks`) draws each homebrew
   character's creator marks beside its name in the roster and the panel,
   on screen only. The Details & Export tick (`meta.creatorMarks`) is the

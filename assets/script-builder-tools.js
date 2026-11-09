@@ -217,7 +217,7 @@
     var setup = chars.filter(isSetup);
     var outsiderMods = chars.filter(function (c) { return hasTag(c, ['Outsider Modification']); });
     var partial = chars.filter(function (c) {
-      if (c.official) return false;
+      if (c.official || c.own) return false;   // own: made for this script, no page to finish
       if (typeof global.isPartial === 'function') return global.isPartial(c);
       return c.classification === 'partial';
     });
