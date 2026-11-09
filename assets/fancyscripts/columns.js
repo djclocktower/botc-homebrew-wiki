@@ -27,7 +27,7 @@
  */
 
 import {
-  COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
+  COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, columnLists, balancedTeam, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
   PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxied, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
 } from './script.js';
 import {
@@ -110,17 +110,13 @@ export function layoutColumnsSheet(script, options, requestRender) {
     });
     const gap = C.rowGap * d, cellPctW = cellPct(cols);
     let bodyH, slots, place;
-    if (options.colBalance && cols > 1 && n > cols) {
-      /* "Balance the columns": the team runs DOWN each column (the first
-         ones one longer), and each column spreads its rows so every column
-         ends on the same line, rather than rows across with a short one left
-         at the bottom */
-      const lists = [];
-      for (let k = 0, i = 0; k < cols; k++) {
-        const cnt = Math.floor(n / cols) + (k < n % cols ? 1 : 0);
-        lists.push(cells.slice(i, i + cnt));
-        i += cnt;
-      }
+    // which column each character goes in, in the reading order asked for
+    const down = options.colOrder === 'down';
+    const lists = columnLists(n, cols, down ? 'down' : 'across').map((l) => l.map((i) => cells[i]));
+    const colX = (k) => C.contentX0 + k * cellPctW;
+    if (balancedTeam(options, g.team) && cols > 1 && n > cols) {
+      /* balanced: each column spreads its rows so every column of the team
+         ends on the same line, rather than a short row left at the bottom */
       const colH = lists.map((l) => sum(l.map((x) => x.h + gap)));
       bodyH = Math.max(...colH);
       slots = Math.max(...lists.map((l) => l.length));
@@ -131,17 +127,18 @@ export function layoutColumnsSheet(script, options, requestRender) {
           let y = y0;
           for (const m of l) {
             const slot = m.h + gap + extra;
-            out.push({ m, left: C.contentX0 + k * cellPctW, topEm: y, slotEm: slot });
+            out.push({ m, left: colX(k), topEm: y, slotEm: slot });
             y += slot;
           }
         });
         return { placed: out, h: H };
       };
     } else {
+      // rows: each as tall as its tallest cell, so a row's cells line up
       const rows = [];
-      for (let i = 0; i < cells.length; i += cols) {
-        const part = cells.slice(i, i + cols);
-        rows.push({ cells: part, h: Math.max(...part.map((x) => x.h)) + gap });
+      for (let r = 0; r < lists[0].length; r++) {
+        const part = lists.map((l, k) => (l[r] ? { m: l[r], k } : null)).filter(Boolean);
+        rows.push({ cells: part, h: Math.max(...part.map((x) => x.m.h)) + gap });
       }
       bodyH = sum(rows.map((r) => r.h));
       slots = rows.length;
@@ -149,9 +146,10 @@ export function layoutColumnsSheet(script, options, requestRender) {
         const out = [];
         let y = y0;
         for (const r of rows) {
-          // a short last row is centred under the full ones
+          // read across, a short last row is centred under the full ones;
+          // read down, every cell stays in its own column
           const x0 = C.contentX0 + (C.contentX1 - C.contentX0 - r.cells.length * cellPctW) / 2;
-          r.cells.forEach((m, i) => out.push({ m, left: x0 + i * cellPctW, topEm: y, slotEm: r.h + per }));
+          r.cells.forEach((x, i) => out.push({ m: x.m, left: down ? colX(x.k) : x0 + i * cellPctW, topEm: y, slotEm: r.h + per }));
           y += r.h + per;
         }
         return { placed: out, h: y - y0 };

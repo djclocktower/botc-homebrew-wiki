@@ -331,6 +331,31 @@ export function columnsFor(n) {
   return 3;
 }
 
+/* Which column each of a team's n characters goes in, as lists of their
+   indexes. Five in three columns: 'across' fills row by row, so the
+   columns hold [0 3] [1 4] [2]; 'down' fills column by column, the first
+   columns one longer: [0 1] [2 3] [4]. The character order (sortMode: SAO
+   and the rest) is the sequence; this is how it flows into the grid. */
+export function columnLists(n, cols, order) {
+  const lists = Array.from({ length: cols }, () => []);
+  if (order === 'down') {
+    for (let k = 0, i = 0; k < cols; k++) {
+      const cnt = Math.floor(n / cols) + (k < n % cols ? 1 : 0);
+      for (let j = 0; j < cnt; j++) lists[k].push(i++);
+    }
+  } else {
+    for (let i = 0; i < n; i++) lists[i % cols].push(i);
+  }
+  return lists;
+}
+
+/* is this team's grid balanced (every column ending on one line)? A design
+   saved when it was one switch for the whole sheet stored `true` */
+export function balancedTeam(options, team) {
+  const b = options && options.colBalance;
+  return b === true || !!(b && typeof b === 'object' && b[team]);
+}
+
 /* the team heading inks on the owner's sheets */
 export const COLUMN_HEAD_INK = {
   townsfolk: '#0064ac', outsider: '#0a3e64', minion: '#640a0a', demon: '#d00000',
@@ -667,7 +692,10 @@ export const DEFAULT_OPTIONS = {
   // which is how the printed edition sheets do it: Bad Moon Rising's six
   // long Townsfolk abilities sit beside seven short ones)
   columnSplit: 'count',
-  colBalance: false, // night columns style: each team runs down its columns, which end level
+  // night columns style: how a team flows into its grid, and per team whether
+  // its columns are spread to end on one line
+  colOrder: 'across', // across (row by row) | down (column by column)
+  colBalance: { townsfolk: false, outsider: false, minion: false, demon: false, traveller: false, fabled: false, loric: false },
   showJinxes: true,
   jinxIconSize: 1, // the partner icons beside a name
   jinxText: false, // each jinx's rule printed under the character that carries it

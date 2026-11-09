@@ -220,6 +220,12 @@ check('columns: a lone Demon full width, two or four in pairs, the rest in three
 check('columns: the script sheet style', ['columns', 'app', 'classic', 'nonsense'].map((s) => S.pageStyle({ sheetStyle: s }, 'front')),
   ['columns', 'app', 'classic', 'classic']);
 check('columns: the night sheets keep their own style', S.pageStyle(S.normalizeOptions({ sheetStyle: 'columns' }), 'night'), 'classic');
+check('columns: across fills row by row', S.columnLists(5, 3, 'across'), [[0, 3], [1, 4], [2]]);
+check('columns: down fills column by column, the first ones longer', S.columnLists(5, 3, 'down'), [[0, 1], [2, 3], [4]]);
+check('columns: thirteen down in threes is 5/4/4', S.columnLists(13, 3, 'down').map((l) => l.length), [5, 4, 4]);
+check('columns: balanced per team, and an old one-switch design means every team',
+  [S.balancedTeam({ colBalance: { townsfolk: true } }, 'townsfolk'), S.balancedTeam({ colBalance: { townsfolk: true } }, 'minion'),
+    S.balancedTeam({ colBalance: true }, 'minion'), S.balancedTeam(S.normalizeOptions({}), 'demon')], [true, false, true, false]);
 check('columns: every grid width has its sizes', [1, 2, 3].every((n) => S.COLUMN_SHEET.cell[n].length === 3), true);
 
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');

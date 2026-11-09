@@ -30,7 +30,7 @@ import {
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
   withBootlegger,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
-  pageStyle, ART_CHOICES, DECOR_STICKERS, NO_ART, STICKER_LAYERS, stickerLayer,
+  pageStyle, balancedTeam, ART_CHOICES, DECOR_STICKERS, NO_ART, STICKER_LAYERS, stickerLayer,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle, ribbonReady } from './sheet.js';
 import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage, nightRibbonColor } from './night.js';
@@ -1365,8 +1365,25 @@ function buildLayoutCard() {
     bindPath('columnLayout'));
   makeSelect(styleGroup(box, 'front', 'classic'), 'Split each team', [['count', 'Half and half'], ['balance', 'Balance by text length']],
     bindPath('columnSplit'));
-  makeToggle(styleGroup(box, 'front', 'columns'), 'Balance the columns', bindPath('colBalance')).el.title =
-    'Each team fills its columns top to bottom, and every column ends on the same line.';
+  const colG = styleGroup(box, 'front', 'columns');
+  makeSelect(colG, 'Reading order', [['across', 'Across, row by row'], ['down', 'Down, column by column']], bindPath('colOrder'))
+    .el.title = 'How each team flows into its columns. Character order (SAO and the rest) follows it.';
+  makeLabel(colG, 'Balance the columns');
+  makeHint(colG, 'Every column of a ticked team ends on the same line.');
+  const balRow = makeRow(colG, 'fs-colors');
+  for (const team of TEAM_ORDER) {
+    makeToggle(balRow, TEAM_NAMES[team], {
+      get: () => balancedTeam(options, team),
+      set: (on) => {
+        // a design saved with one switch for the whole sheet stored `true`
+        const was = options.colBalance;
+        const map = {};
+        for (const t of TEAM_ORDER) map[t] = was === true || !!(was && was[t]);
+        map[team] = on;
+        options.colBalance = map;
+      },
+    });
+  }
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, 'Jinx rules under the characters', bindPath('jinxText'));

@@ -4952,14 +4952,20 @@ Cyborg's jinx box.
   last row centred. Each cell is the icon, the name in capitals and the
   ability centred under it in Arial/Helvetica. Fewer columns, bigger type
   (`COLUMN_SHEET.cell`).
-- **Balance the columns** (`options.colBalance`, a toggle in the Layout card
-  shown only for this style): each team runs DOWN its columns instead of
-  across (13 Townsfolk in threes are 5/4/4, the first columns one longer),
-  and each column deals its spare height evenly between its rows, so every
-  column of a team ends on the same line instead of a short row left at the
-  bottom. `measureSection()` hands back `place(y, per)`, which positions every
-  cell (`{m, left, topEm, slotEm}`) for either arrangement, so the renderer
-  draws both the same way.
+- **Reading order** (`options.colOrder`, `'across'` | `'down'`) and
+  **Balance the columns** (`options.colBalance`, one tick per team), both in
+  the Layout card, shown only for this style. The character order (Sort: SAO
+  and the rest) is the SEQUENCE; reading order is how it flows into a team's
+  columns (`columnLists()` in script.js: across fills row by row, down column
+  by column with the first columns one longer, so 13 in threes is 5/4/4).
+  A balanced team deals each column's spare height between its rows so every
+  column ends on the same line; an unbalanced one keeps its rows level
+  (across, a short last row is centred; down, each cell stays in its column).
+  `balancedTeam()` is the one reading of the setting: a design saved when it
+  was a single switch stored `true`, which means every team.
+  `measureSection()` hands back `place(y, per)`, which positions every cell
+  (`{m, left, topEm, slotEm}`) for any of the four arrangements, so the
+  renderer draws them all the same way.
 - **Fit**: one page, at the largest density whose height fits, found by
   halving (`needAt(d)` is measured drawn at `d`). Not `solveFit()`: the
   height here jumps as the density moves (lines re-wrap, the text column
