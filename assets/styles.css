@@ -5483,6 +5483,26 @@ button.sbx-counts:empty { display: none; }
 .sbx[data-tone="paper"] .sbx-sheet > .sbx-ch { border-bottom-color: #e6e1d8; border-right-color: #e6e1d8; }
 .sbx[data-tone="paper"] .sbx-ch-txt, .sbx[data-tone="paper"] .sbx-ch-ab { color: #222; }
 .sbx[data-tone="paper"] .sbx-ch-name { color: #333; }
+/* official: the official script tool's sheet. One light page, no boxes or
+   rules round the rows, brown Dumbledor team headings with a hairline running
+   out to the edge, and Trade Gothic in near-black with the name on its own
+   line above the ability. */
+.sbx[data-tone="official"] #sb-script { background: #f3f1ea; padding: 14px 18px; }
+.sbx[data-tone="official"] .sbx-sheet,
+.sbx[data-tone="official"][data-layout="cards"] .sbx-sheet > .sbx-ch { background: none; border: none; }
+.sbx[data-tone="official"] .sbx-sheet > .sbx-ch { border: none; }
+.sbx[data-tone="official"] .sbx-team-head,
+.sbx[data-tone="official"] .sbx-team-head span { color: #76614b; font-size: 1rem; }
+.sbx[data-tone="official"] .sbx-team-head { flex-wrap: nowrap; align-items: center; background: #f3f1ea; padding-left: 0; padding-right: 0; }
+.sbx[data-tone="official"] .sbx-off { display: none; }
+.sbx[data-tone="official"] .sbx-team-head::after { content: ''; flex: 1; height: 1px; background: currentColor; opacity: .7; }
+.sbx[data-tone="official"] .sbx-team-tools { order: 1; }
+.sbx[data-tone="official"] .sbx-team-tools button { color: #76614b; }
+.sbx[data-font="official"] .sbx-ch-txt { font-family: 'TradeGothicLT', Helvetica, Arial, sans-serif; color: #0f0f0f; line-height: 1.3; font-size: calc(1rem * var(--sbx-text)); }
+.sbx[data-font="official"] .sbx-ch-name { display: block; font-family: inherit; text-transform: none; font-size: inherit; font-weight: 700; color: #0f0f0f; margin: 0; }
+.sbx[data-font="official"] .sbx-ch-ab { color: #0f0f0f; }
+.sbx[data-tone="official"][data-layout="sheet"] .sbx-ch { align-items: center; padding: 4px 6px; }
+.sbx[data-tone="official"][data-layout="sheet"] .sbx-ch-img { width: calc(var(--sbx-icon) * 2.2); height: calc(var(--sbx-icon) * 2.2); }
 
 /* a team-coloured edge on every row */
 .sbx-row-stripe .sbx-team[data-team="townsfolk"] .sbx-ch { border-left: 4px solid #2C7BD0; }

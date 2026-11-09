@@ -1672,7 +1672,7 @@ so it lives in `botc_builder_prefs.view`, never in the meta.
 `SBView.SCHEMA` is the whole list, and it is short on purpose: **14
 settings** in the popover, cut down from 37 plus 6 presets at the owner's
 request (2026-10), then Creator mark added at the owner's request. Layout (sheet, cards, list, icon wall), **Look**
-(Parchment / Dark / Printed — paper tone and type in one), **Size** (Small /
+(Parchment / Dark / Printed / Official — paper tone and type in one; Official is the official script tool's sheet: one light page, brown Dumbledor team headings with a hairline, bold Trade Gothic names over the ability, no "official" badges), **Size** (Small /
 Normal / Large — icons, text, spacing and the panel's rows together; the
 icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
 / 1 / 2, where 2 is the whole script poured down two columns), **Team
