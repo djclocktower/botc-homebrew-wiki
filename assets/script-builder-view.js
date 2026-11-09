@@ -1,7 +1,7 @@
 /* script-builder-view.js — the Script Builder's View settings.
  *
  * Everything about HOW the builder draws a script, as opposed to what is on
- * it: the roster's layout (sheet, cards, list, icon wall), its look, its
+ * it: the roster's layout (sheet, cards, list, icon wall, official), its
  * size, its columns, what each row shows, how the panel is grouped. None of
  * it touches the script — the same roster exports, publishes and shares
  * identically under every one of these — so it is kept in the reader's own browser (botc_builder_prefs.view,
@@ -25,8 +25,7 @@
   'use strict';
 
   var DEFAULTS = {
-    layout: 'sheet',      // sheet | cards | list | icons
-    look: 'parchment',    // parchment | dark | printed | official
+    layout: 'sheet',      // sheet | cards | list | icons | official (the sheet, set as the official script tool sets it)
     size: 'normal',       // small | normal | large — icons, text, spacing
     columns: 'auto',      // auto | 1 | 2 (the whole script down two columns)
     teamColour: 'heads',  // off | heads | rows
@@ -51,10 +50,8 @@
      `ui: false` rows are stored here but drawn by the page, not the popover. */
   var VIEW_SCHEMA = [
     { group: 'Roster', key: 'layout', label: 'Layout', type: 'seg', repaint: '',
-      options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons']],
-      hint: 'Sheet is the character sheet, Cards the browse grid, List one line each, Icons the art alone.' },
-    { group: 'Roster', key: 'look', label: 'Look', type: 'seg', repaint: '',
-      options: [['parchment', 'Parchment'], ['dark', 'Dark'], ['printed', 'Printed'], ['official', 'Official']] },
+      options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons'], ['official', 'Official']],
+      hint: 'Sheet is the character sheet, Cards the browse grid, List one line each, Icons the art alone, Official the official script tool\'s sheet.' },
     { group: 'Roster', key: 'size', label: 'Size', type: 'seg', repaint: '',
       options: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']],
       hint: 'Icons, text and spacing together, in the roster and the panel.' },
@@ -86,17 +83,11 @@
   /* What each Size means, per layout: the icon a layout wants is its own
      (a card is mostly picture, a list row hardly any), and the rest follow
      the size alone. The old sliders' defaults are the Normal row. */
-  var ICON = { sheet: 40, cards: 56, list: 28, icons: 64 };
+  var ICON = { sheet: 40, cards: 56, list: 28, icons: 64, official: 40 };
   var SIZES = {
     small:  { icon: 0.75, text: 0.9,  density: 'compact',     panelIcon: 22, panelText: 0.9,  panelCompact: true },
     normal: { icon: 1,    text: 1,    density: 'comfortable', panelIcon: 26, panelText: 1,    panelCompact: false },
     large:  { icon: 1.4,  text: 1.25, density: 'roomy',       panelIcon: 34, panelText: 1.15, panelCompact: false }
-  };
-  var LOOKS = {
-    parchment: { tone: 'parchment', font: 'wiki' },
-    dark:      { tone: 'dark',      font: 'wiki' },
-    printed:   { tone: 'paper',     font: 'print' },
-    official:  { tone: 'official',  font: 'official' }
   };
 
   var byKey = {};
@@ -108,13 +99,13 @@
   }
 
   /* A view stored by the builder before the settings were merged, read into
-     the merged ones so a reader's choices survive: the paper and type became
-     Look, the two column settings Columns, the two colour switches Team
+     the merged ones so a reader's choices survive: the two column settings
+     Columns, the two colour switches Team
      colours. The sizes start over at Normal. */
   function migrate(v) {
-    if (v.look == null && (v.tone != null || v.font != null)) {
-      v.look = v.tone === 'dark' ? 'dark' : (v.tone === 'paper' || v.font === 'print') ? 'printed' : 'parchment';
-    }
+    // Look is gone (the roster is always parchment); the Official look is
+    // now a layout of its own.
+    if (v.look === 'official') v.layout = 'official';
     if (v.columns != null && v.pageCols != null) {
       v.columns = v.pageCols ? '2' : (String(v.columns) === '1' ? '1' : 'auto');
     }
@@ -152,8 +143,9 @@
   function apply(root, v) {
     if (!root) return;
     v = normalize(v);
-    var size = SIZES[v.size], look = LOOKS[v.look];
-    root.setAttribute('data-layout', v.layout);
+    var size = SIZES[v.size], official = v.layout === 'official';
+    // Official is the sheet layout in the official tool's type.
+    root.setAttribute('data-layout', official ? 'sheet' : v.layout);
     root.setAttribute('data-cols', v.columns === 'auto' ? 'auto' : '1');
     /* The two-column FLOW, not the per-team grid: the whole roster poured
        down two columns of the page, the way a printed script sheet reads.
@@ -162,8 +154,8 @@
        where where a row sits has to be exactly where it looks. */
     root.classList.toggle('sbx-two-col', v.columns === '2' && !v.arrange);
     root.setAttribute('data-density', size.density);
-    root.setAttribute('data-font', look.font);
-    root.setAttribute('data-tone', look.tone);
+    root.setAttribute('data-font', official ? 'official' : 'wiki');
+    root.setAttribute('data-tone', official ? 'official' : 'parchment');
     root.setAttribute('data-panelscope', v.panelScope);
     root.style.setProperty('--sbx-icon', (Math.round(ICON[v.layout] * size.icon / 2) * 2) + 'px');
     root.style.setProperty('--sbx-text', String(size.text));

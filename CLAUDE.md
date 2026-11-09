@@ -565,14 +565,9 @@ assets/
                        order first; filterAttrs() in render-page.js writes
                        the rows' and the cards' data-*). What follows
                        describes what the box does on those pages.
-                       For the Script Builder it also takes the old box down
-                       when mounted again over the same grid
-                       (grid._cfDestroy), lets `searchAbility` (a boolean or
-                       a function) match ability text, waits for a 160 ms
-                       pause in the typing on a grid of 400+ rows (flush()
-                       runs a waiting pass), only writes a display that
-                       changed and re-sorts only when Sort or Group changed,
-                       and returns {apply, flush, destroy, state}.
+                       The Script Builder does NOT use it: its panel mounts
+                       char-filters.js directly over the character list
+                       (see "The Script Builder").
                        The collapsed filter box (3-state team/tag chips, Hide
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
@@ -591,12 +586,7 @@ assets/
                        mounts its own (no page order there — the creator feed is
                        newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
-                       implementation, not one per page. The Script Builder's
-                       Add sidebar mounts it too, over its own compact rows
-                       rather than cards: sectionSel/innerSel/cardSel/
-                       sectionCountSel/abilitySel name the markup, `search`
-                       hands it the name box so the chips and the text box
-                       narrow one list instead of fighting.
+                       implementation, not one per page.
                        A **Group** select (By team / All together) sits beside
                        Sort on the renderRosterCards grids when there is more
                        than one team: All together moves every card into one
@@ -1584,8 +1574,16 @@ What shapes it:
   panel's rows and the roster keep their references. Anything that needs
   card data — export, copy, print, Fancy Sheet, copy as text — goes through
   `withCards()`, which toasts and waits rather than writing half a script.
-  The 1,900-row panel is built in slices of 220 rows, one per frame
-  (`buildAddList`), so the first rows paint within a frame of the data.
+  **The panel keeps only a few hundred rows on the page** (`renderPanel`):
+  the filter box (char-filters.js mounted straight over `panelChars`, the
+  homebrew and official characters), the name search and the Show select
+  run on the list, and each group draws its first `PANEL_STEP` (50)
+  matches with a Show more button (+200). All 3,800 rows on the page made
+  the browser re-check every row and icon on each change: a click cost a
+  tenth of a second and loading could hang the tab in Brave on a PC.
+  `panelMatches()` is every match, drawn or not, and is what Random, Fill,
+  Swap, the group dice and + All / − All shown read; `visibleRows()` is the
+  rows on the page, for the arrow keys and Enter.
   `performance.mark('sb:…')` marks the milestones; `window.ScriptBuilder`
   is a small console handle (order, meta, view, undo/redo, history, ready,
   source).
@@ -1615,8 +1613,8 @@ What shapes it:
   On the local server with a 400 ms feed delay the roster lands at ~460 ms
   from cache against ~950 ms from the network; a headless check that wants
   a cold run has to `caches.delete('botc-sb-feeds-1')` first.
-- **A click touches one row.** Every sidebar row is kept in `rowBySlug` when
-  the list is built, so nothing queries the DOM to repaint a tick. The roster
+- **A click touches one row.** Every sidebar row on the page is kept in
+  `rowBySlug` when the list is drawn, so nothing queries the DOM to repaint a tick. The roster
   is small and is rebuilt whole. The night arranger, the jinx editor and the
   Analyse tab are mounted lazily and only re-rendered for a tab that is on
   screen; off screen they are marked dirty. The jinx count, the credits line
@@ -1669,10 +1667,15 @@ What shapes it:
 Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
-`SBView.SCHEMA` is the whole list, and it is short on purpose: **14
+`SBView.SCHEMA` is the whole list, and it is short on purpose: **13
 settings** in the popover, cut down from 37 plus 6 presets at the owner's
-request (2026-10), then Creator mark added at the owner's request. Layout (sheet, cards, list, icon wall), **Look**
-(Parchment / Dark / Printed / Official — paper tone and type in one; Official is the official script tool's sheet: one light page, brown Dumbledor team headings with a hairline, bold Trade Gothic names over the ability, no "official" badges), **Size** (Small /
+request (2026-10), then Creator mark added and Look taken out (the roster
+is always parchment), both at the owner's request. Layout (sheet, cards,
+list, icon wall, and **Official**: the sheet set as the official script
+tool sets it, bold Trade Gothic names over the ability, team headings with
+a hairline, no "official" badges, on the same parchment panels; it is
+`data-layout="sheet"` with `data-tone`/`data-font` `official`, and a view
+stored with the old Official look opens on it), **Size** (Small /
 Normal / Large — icons, text, spacing and the panel's rows together; the
 icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
 / 1 / 2, where 2 is the whole script poured down two columns), **Team
@@ -1703,7 +1706,7 @@ the default is stored as nothing, exactly as `exportIds` is. The counts strip
 in the bar IS the Shape button and shows `have/want` per team (green at the
 target, dashed under, orange over); the roster headings show the same.
 Random draws to the shape from **whatever the panel is
-showing** (`visibleSidebarChars()` reads the filter box's own DOM state);
+showing** (`visibleSidebarChars()`, every homebrew match in `panelMatches()`);
 **Fill the gaps** adds only what is missing; the die on each team row in the
 Shape popover draws that one team again; **Swap** on the peek card replaces
 one character with another of its team in the same seat. `SBTools.fillPlan`
@@ -1769,16 +1772,14 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   script, or a script published on the wiki.
 - **Grouped by** (View → Character panel): team, creator (the first name on
   the credit), set (`appearsIn`, else the derived `appearsInFrom`, else the
-  address's set segment) or A to Z. A regrouping REBUILDS the panel and
-  re-mounts the filter box, which is why `mountCardFilters()` is idempotent
-  now: it takes the old box down (`grid._cfDestroy`) before building the
-  new one, or the toggle and the search box would answer to two sets of
-  listeners. Folding is remembered per group key. **Show** narrows the panel
-  to everyone, those not on the script, or those on it (the select beside
-  Abilities; pure CSS off `data-panelscope`), and the panel's **Abilities**
-  tick both shows every ability and makes the search box match them
-  (`opts.searchAbility`, a function the box asks at each keystroke, so the
-  tick applies at once through `filterAPI.apply()`).
+  address's set segment) or A to Z. A regrouping redraws the panel and
+  mounts the filter box again over the list, keeping the reader's choices
+  (`ctrl.restore`). Folding is remembered per group key; a folded group
+  draws no rows. **Show** narrows the panel to everyone, those not on the
+  script, or those on it (the select beside Abilities; applied to the list,
+  and by CSS off `data-panelscope` so a click hides a row at once), and the
+  panel's **Abilities** tick both shows every ability and makes the search
+  box match them.
 - **⚯ on a panel row** marks a character jinxed with someone on the script
   but not on it — the Analyse tab's suggestions, painted onto the rows in the
   settle pass (`paintJinxHints`, touching only the rows whose mark changed).

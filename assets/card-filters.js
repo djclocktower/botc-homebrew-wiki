@@ -48,10 +48,6 @@
     var grid = el(opts.grid), bar = el(opts.bar), toggle = el(opts.toggle);
     var countEl = el(opts.count), searchEl = el(opts.search);
     if (!CF || !grid || !bar || !toggle) return false;
-    // Mounting again over the same grid (the Script Builder rebuilds its
-    // panel under a different grouping) takes the old box down first, or
-    // the search box would answer to two sets of listeners.
-    if (typeof grid._cfDestroy === 'function') grid._cfDestroy();
 
     var SEL = {
       section: opts.sectionSel || '.coll-team',
@@ -231,41 +227,18 @@
       });
     }
 
-    // searchAbility (a boolean, or a function asked on each pass) lets the
-    // name box match ability text too.
-    function abilitySearch() {
-      return typeof opts.searchAbility === 'function' ? !!opts.searchAbility() : !!opts.searchAbility;
-    }
-    // Only a change of sort or group moves the cards. Re-appending 3,700
-    // rows on every letter typed was most of the cost of the Script
-    // Builder's search box. A sort made while a filter hid some cards is
-    // done again on the next pass, since the hidden ones were not ranked.
-    var sortedSig = null;
-    function setDisplay(card, vis) {
-      var want = vis ? '' : 'none';
-      if (card.style.display !== want) card.style.display = want;
-    }
     function apply() {
-      clearTimeout(searchTimer); searchTimer = 0;
       var q = searchEl ? searchEl.value.trim().toLowerCase() : '';
-      var ab = q && abilitySearch();
-      var list = q ? rows.filter(function (r) {
-        return r.name.toLowerCase().indexOf(q) !== -1 || (ab && r.ability.toLowerCase().indexOf(q) !== -1);
-      }) : rows;
+      var list = q ? rows.filter(function (r) { return r.name.toLowerCase().indexOf(q) !== -1; }) : rows;
       RANK = new Map();
-      var ranked = ctrl.apply(list);
-      ranked.forEach(function (r, i) { RANK.set(r.el, i); });
-      var sig = ctrl.state.sort + '|' + ctrl.state.dir + '|' + ctrl.state.group;
-      if (sig !== sortedSig) {
-        sortCards();
-        sortedSig = ranked.length === rows.length ? sig : null;
-      }
+      ctrl.apply(list).forEach(function (r, i) { RANK.set(r.el, i); });
+      sortCards();
       var shown = 0;
       sections.forEach(function (sec) {
         var secShown = 0;
         [].slice.call(sec.querySelectorAll(SEL.card)).forEach(function (card) {
           var vis = cardVisible(card);
-          setDisplay(card, vis);
+          card.style.display = vis ? '' : 'none';
           if (vis) { secShown++; shown++; }
         });
         sec.style.display = secShown ? '' : 'none';
@@ -298,31 +271,12 @@
           : shown + ' of ' + total + ' ' + noun + (total === 1 ? '' : 's');
       }
     }
-    // On a long list the name box waits for a pause in the typing: each
-    // pass re-lays out every row, and on the Script Builder's 3,700 the
-    // keystrokes queued up behind each other. flush() runs a waiting pass.
-    var searchTimer = 0;
-    function onSearch() {
-      clearTimeout(searchTimer);
-      if (total < 400) { apply(); return; }
-      searchTimer = setTimeout(apply, 160);
-    }
-    function flush() { if (searchTimer) apply(); }
-    if (searchEl) searchEl.addEventListener('input', onSearch);
+    if (searchEl) searchEl.addEventListener('input', apply);
     var reset = bar.querySelector('#fc-reset');
-    function onReset() { searchEl.value = ''; apply(); }
-    if (reset && searchEl) reset.addEventListener('click', onReset);
-
-    function destroy() {
-      clearTimeout(searchTimer);
-      if (searchEl) searchEl.removeEventListener('input', onSearch);
-      if (reset) reset.removeEventListener('click', onReset);
-      if (grid._cfDestroy === destroy) grid._cfDestroy = null;
-    }
-    grid._cfDestroy = destroy;
+    if (reset && searchEl) reset.addEventListener('click', function () { searchEl.value = ''; apply(); });
 
     apply();
-    return { apply: apply, flush: flush, destroy: destroy, state: ctrl.state };
+    return true;
   }
 
   if (typeof window !== 'undefined') window.mountCardFilters = mountCardFilters;
