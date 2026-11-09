@@ -299,4 +299,17 @@
       if (fc) fc.style.display = 'none';
     }
   }
+  // Script pages: the roster is rows grouped by team, in the author's order.
+  if (typeof document !== 'undefined' && document.getElementById('sv-roster')) {
+    var okS = mountCardFilters({
+      grid: 'sv-roster', bar: 'sv-filter-bar', toggle: 'sv-filter-toggle',
+      sectionSel: '.script-team-group', innerSel: '.script-char-list', cardSel: '.script-char-row',
+      sectionCountSel: '.script-team-count', abilitySel: '.script-char-ability',
+      defaultSort: 'page'
+    });
+    if (!okS) {
+      var fs = document.getElementById('sv-filters');
+      if (fs) fs.style.display = 'none';
+    }
+  }
 })();

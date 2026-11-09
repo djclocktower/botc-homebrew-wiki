@@ -558,7 +558,10 @@ assets/
                        already in the DOM into rows (data-* attributes, the
                        ability's text) and mounts char-filters.js's box over
                        them, then hides, re-orders and regroups the cards.
-                       Pages load char-filters.js before it. What follows
+                       Pages load char-filters.js before it. Script pages
+                       mount it too, over the roster rows (#sv-roster, Page
+                       order first; filterAttrs() in render-page.js writes
+                       the rows' and the cards' data-*). What follows
                        describes what the box does on those pages.
                        The collapsed filter box (3-state team/tag chips, Hide
                        Partial, Curata only, creator, sort). Sort offers Page
