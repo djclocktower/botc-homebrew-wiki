@@ -34,9 +34,11 @@ export const SHEET = {
   bottomNoGarland: 92.4, // …or, with the garland set to None, above the footnote
   rowPitch: 5.734,
   rowIcon: 4.9,
-  sectionGap: 0.763,
+  sectionGap: 0.38, // halved from 0.763 (the owner asked for every gap between elements halved, 2026-11)
+  rowTail: 0.75, // em under a row's last ability line (1.05 before the gaps were halved)
+  rowIconPad: 0.175, // em under a row's icon (0.35 before)
   nameTop: 0.9, // name offset within a row
-  abilityTop: 2.5, // ability first-line offset within a row
+  abilityTop: 2.31, // ability first-line offset within a row (2.5 before the gaps were halved)
   abilityLine: 1.24, // ability line pitch
   nameSize: 1.318, // wrap-fidelity correction: reference names are 5.2% narrower
   abilitySize: 1.031, // wrap-fidelity correction: reference abilities are 3.6% wider
@@ -44,8 +46,8 @@ export const SHEET = {
   // horizontal grid
   col1IconX: 12.25,
   col2IconX: 51.45,
-  textOffsetX: 7.8, // text left, relative to icon x
-  textWidth: 30.64,
+  textOffsetX: 7.167, // text left, relative to icon x (7.8 before the icon-to-text gap was halved)
+  textWidth: 31.273, // 30.64 + what the icon gap gave up, so the column ends where it did
   // sidebar
   sidebarX: 0.967,
   sidebarY: 0.725,
@@ -205,19 +207,19 @@ export const APP_SHEET = {
   labelPad: 0.66, // em at each end: a short team grows to hold its name
   iconCX: 12.5,
   iconSize: 4.54, // em
-  nameX: 16.39,
-  nameW: 12.36, // the name column, to just short of the bar
+  nameX: 15.36, // 16.39 before the icon-to-name gap was halved
+  nameW: 13.87, // the name column, to just short of the bar (gap to the bar halved)
   nameSize: 1.84, // em (Trade Gothic Bold Condensed; the app sets 1.665, larger reads better on paper)
   nameLine: 1.02, // × nameSize, for a name that wraps
   barX: 29.7,
   barW: 0.378,
-  textX: 31.78,
+  textX: 30.93, // 31.78 before the bar-to-text gap was halved
   textRight: 93.02, // bounded by where ten of the app's abilities wrap
   textSize: 1.475, // em (Trade Gothic)
   textLine: 1.655, // em
-  rowMin: 3.55, // em, a one-line row
-  rowPad: 0.47, // em under a taller block
-  sectionGap: 1.14, // em between teams; the rule sits in the middle
+  rowMin: 3.13, // em, a one-line row (3.55 before the space between icons was halved)
+  rowPad: 0.235, // em under a taller block
+  sectionGap: 0.57, // em between teams, halved from 1.14; the rule sits in the middle
   dividerX0: 2.5, // the rule starts on the ribbon…
   dividerX1: 95.5, // …and fades out here
   titleCY: 4.07,
@@ -225,7 +227,7 @@ export const APP_SHEET = {
   titleMaxW: 67,
   logoMaxH: 8.6, // em, a logo (the app's text title is smaller)
   titleSize: 4.6, // em, the text title when the script has no logo
-  authorGap: 0.35, // em between the title and the author credit
+  authorGap: 0.175, // em between the title and the author credit
   authorSize: 1.2,
   contentTop: 6.98, // first row top under the title
   bareTop: 3.2, // first row top on a page without the title
@@ -282,10 +284,10 @@ export const COLUMN_SHEET = {
   colW: 6.4, // each edge column, % of the width
   colRule: 0.45, // the black edge on its inner side, % of the width
   labelSize: 1.2, // FIRST NIGHT / OTHER NIGHTS, em
-  labelGap: 0.8, // em between the label and the first icon
+  labelGap: 0.4, // em between the label and the first icon
   nightMargin: 1.5, // em kept clear at the top and foot of a full column
   nightIcon: 4.1, // em, at most
-  nightPitch: 4.7, // em between icon tops, at most
+  nightPitch: 4.4, // em between icon tops, at most (4.7 before the gaps were halved)
   // the header is one fixed, modest size on every script (the owner's call:
   // the same sheet every time beats the biggest title), and the grid gets
   // the room the PSDs gave it
@@ -297,8 +299,8 @@ export const COLUMN_SHEET = {
   logoBottom: 10.6,
   titleSize: 6, // em, the title at most this big
   authorSize: 1.3,
-  authorGap: 0.2, // em between the title's foot and the author line
-  headerGap: 0.4, // em between the header's foot and the first heading
+  authorGap: 0.1, // em between the title's foot and the author line
+  headerGap: 0.2, // em between the header's foot and the first heading
   paperZoom: 1.04, // the parchment, zoomed so its left frame and gold edge sit under the column
   paperBand: 1, // % of the width: the gold edge past the frame, also hidden
   contentTop: 11.6, // the first heading's top
@@ -307,13 +309,13 @@ export const COLUMN_SHEET = {
   contentX1: 92.4,
   headX: 7.9, // a team heading's left edge
   headSize: 2.5,
-  headBand: 3.2, // em, the heading and the room under it
+  headBand: 2.85, // em, the heading and the room under it (the room halved)
   ruleH: 0.62, // the divider art's height at density 1 (the classic sheet's is 0.5)
-  sectionGap: 0.8,
-  rowGap: 1.1, // em under every grid row
+  sectionGap: 0.4,
+  rowGap: 0.55, // em under every grid row
   spreadEm: 4, // em at most added under a row or between teams when there is room
   topShare: 0.15, // of the room still left after that, the share above the first heading
-  iconGap: 0.6, // % of the width between an icon and its text
+  iconGap: 0.3, // % of the width between an icon and its text
   soloW: 66, // % of the width, a lone character's cell
   iconMaxShare: 0.3, // an icon is at most this share of its cell's width
   iconYield: 0.7, // ...and gives up width down to this share of itself for a long name

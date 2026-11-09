@@ -5134,6 +5134,22 @@ jinx page and the back cover have one style.
   script's own background image") otherwise set its width on a phone and
   pushed the whole page sideways once a card holding one was open.
 
+### Every gap between elements was halved (2026-11)
+
+The owner asked for every space between elements halved on all three script
+sheets, so these are no longer the reference's numbers: the classic sheet's
+`sectionGap` (0.763 → 0.38), the room under a row (`rowTail` 1.05 → 0.75,
+`rowIconPad` 0.35 → 0.175), the name-to-ability offset (`abilityTop` 2.5 →
+2.31) and the icon-to-text gap (`textOffsetX` 7.8 → 7.167, the text column
+widened by the same so it still ends where it did); the app view's
+`sectionGap`, `rowPad`, `authorGap`, the space between icons (`rowMin` 3.55 →
+3.13) and its icon-to-name and bar-to-text gaps (`nameX`, `nameW`, `textX`);
+the night columns' `rowGap`, `sectionGap`, `headBand`'s room under the
+heading, `iconGap`, `headerGap`, `authorGap`, `labelGap` and the night icon
+pitch. Each constant's comment carries its old value. Auto-fit takes the room
+back as larger type, so a full sheet's text grew and its gaps shrank. The
+page margins and the night and jinx pages are unchanged.
+
 ### Bootlegger rules at the top, and the title moved left
 
 Two title-card options on the classic script sheet. **`bootRulesTop`** draws
@@ -5335,8 +5351,8 @@ needs its ratio re-measured or it is picked at the wrong size.
   `nameSize 1.318` / `abilitySize 1.031` are wrap-fidelity corrections, the
   and the rest of `SHEET` is the reference's. **The rows do not keep the
   reference's constant pitch any more**: a row is as tall as its icon (plus
-  0.35 em) or its text (plus 1.05 em under the last line), whichever is
-  taller. The constant `rowPitch` left a band of paper under every two-line
+  `rowIconPad`, 0.175 em) or its text (plus `rowTail`, 0.75 em under the last
+  line), whichever is taller. The constant `rowPitch` left a band of paper under every two-line
   ability and held the auto fit's type small; the owner asked for the sheet
   filled out with larger type (a 25-character script went from density 0.88
   to 0.91 with three-line abilities, from 0.82 with the Bootlegger). Change

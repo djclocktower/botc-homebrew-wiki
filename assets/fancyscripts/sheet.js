@@ -525,7 +525,7 @@ function headerExtraEm(script, options) {
   const author0 = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
   if (options.showAuthor && author0 && !a.hidden) bottoms.push(authorCYEm(script, options) + 0.75 * a.scale);
   if (!bottoms.length) return 0;
-  return Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.35);
+  return Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.175);
 }
 
 /* ── layout ─────────────────────────────────────────────────────────────
@@ -575,12 +575,12 @@ export function layoutSheet(script, options, requestRender) {
        reference keeps one pitch for every row (rowPitch), which left a
        band of paper under every two-line ability and held the auto fit's
        type small; hugging the content lets the fit set it larger. */
-    let need = iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + 0.35;
+    let need = iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + SHEET.rowIconPad;
     if (char) {
       const fontPx = SHEET.abilitySize * textSize * U * density;
       const lines = wrappedLineCount(smartTypography(char.ability), `400 ${fontPx}px ${fonts.ability}`, maxTextW);
       // room under the last line, so the next name does not sit on it
-      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + 1.05);
+      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + SHEET.rowTail);
       for (const j of (notes && notes.get(char.id)) || []) {
         // a jinx rule under the ability: measured exactly as jinxNote draws it
         const nLine = noteLineEm(options);
