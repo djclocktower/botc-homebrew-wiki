@@ -32,6 +32,10 @@ async function decor() {
   const jobs = [
     ['bg.jpg', 'bg.webp', { width: 1920 }, { quality: 70 }],
     ['bg.jpg', 'bg-m.webp', { width: 1080 }, { quality: 68 }],
+    // The same picture turned on its side for wide screens: 3224px across,
+    // so a widescreen monitor shrinks it instead of stretching the 1920px
+    // portrait one (which read as blurry on HD and 1.25x Windows screens).
+    ['bg.jpg', 'bg-wide.webp', null, { quality: 80 }, 90],
     ['parchment.jpg', 'parchment.webp', { width: 1000 }, { quality: 74 }],
     // The top-bar badge and skull at ~3x the height they are drawn at
     // (32px and 54px at most); larger only cost bytes. Since 2026-10 these
@@ -40,8 +44,9 @@ async function decor() {
     ['ccc-parchment.png', 'ccc-parchment.webp', { height: 96 }, { quality: 85, alphaQuality: 90 }],
     ['logo_skull.png', 'logo_skull.webp', { height: 162 }, { quality: 85, alphaQuality: 90 }]
   ];
-  for (const [src, dst, resize, opts] of jobs) {
+  for (const [src, dst, resize, opts, rotate] of jobs) {
     let img = sharp(A + src);
+    if (rotate) img = img.rotate(rotate);
     if (resize) img = img.resize({ ...resize, withoutEnlargement: true });
     await img.webp(opts).toFile(A + dst);
     const a = fs.statSync(A + src).size, b = fs.statSync(A + dst).size;
