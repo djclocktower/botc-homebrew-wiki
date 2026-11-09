@@ -107,6 +107,7 @@
      paints at once instead of after a 150-700 KB download. Official rows
      get the bundled painted WebP (see thumbSrc). */
   function artOf(c) {
+    if (c.own) return c.image ? localImg(c.image) : 'assets/favicon.png';
     var PR = window.PageRender;
     if (PR && PR.thumbSrc) return PR.thumbSrc(c, '');
     if (c.art) return 'assets/' + c.art;
@@ -166,7 +167,7 @@
     if (window.updateScriptBadge) window.updateScriptBadge();
   }
   function getMeta() { return readJSON(META_KEY, {}) || {}; }
-  function setMeta(m) { writeJSON(META_KEY, m || {}); }
+  function setMeta(m) { m = m || {}; writeJSON(META_KEY, m); syncOwnChars(m); }
   /* `how` says what kind of change this is for the undo stack: the default
      is one step; 'typed' coalesces a run of keystrokes into one; 'silent'
      records nothing (a restore, or bookkeeping such as libId). */
@@ -278,6 +279,55 @@
     }, '', (text ? 'edit ' : 'reset ') + c.name + "'s ability");
     paintRoster();
   }
+  /* Characters made for this script alone (`meta.ownChars`, keyed by an
+     "x-" slug): a name, a team, an ability and an icon, and no wiki page.
+     They ride the meta, so My Scripts, the account sync, undo and share
+     links carry them, and setMeta() puts them into bySlug, where the
+     roster, the peek card and the export already look. One that has left
+     the roster is dropped in the settle pass (pruneOwnChars). */
+  var OWN_PREFIX = 'x-';
+  var OWN_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
+  var ownSeen = {};
+  function ownChars(m) {
+    m = m || getMeta();
+    return (m.ownChars && typeof m.ownChars === 'object') ? m.ownChars : {};
+  }
+  function ownEntry(d) {
+    d = d && typeof d === 'object' ? d : {};
+    var img = typeof d.image === 'string' && /^https:\/\//i.test(d.image) ? d.image.slice(0, 500) : '';
+    var out = {
+      name: String(d.name || '').trim().slice(0, 60) || 'New character',
+      team: OWN_TEAMS.indexOf(d.team) !== -1 ? d.team : (d.team === 'traveler' ? 'traveller' : 'townsfolk'),
+      ability: String(d.ability || '').trim().slice(0, 500)
+    };
+    if (img) out.image = img;
+    return out;
+  }
+  function syncOwnChars(m) {
+    var own = ownChars(m), author = String((m && m.author) || '').trim(), changed = false;
+    Object.keys(ownSeen).forEach(function (s) {
+      if (!own[s]) { delete bySlug[s]; delete ownSeen[s]; changed = true; }
+    });
+    Object.keys(own).forEach(function (s) {
+      if (s.indexOf(OWN_PREFIX) !== 0) return;
+      var d = ownEntry(own[s]);
+      var c = ownSeen[s] || (ownSeen[s] = { slug: s, own: true });
+      c.name = d.name; c.team = d.team; c.ability = d.ability; c.image = d.image || '';
+      c.creator = author;
+      bySlug[s] = c;
+      changed = true;
+    });
+    if (changed) rosterCache = null;
+  }
+  function pruneOwnChars() {
+    var m = getMeta(), own = ownChars(m);
+    var gone = Object.keys(own).filter(function (s) { return !sel[s]; });
+    if (!gone.length) return;
+    gone.forEach(function (s) { delete own[s]; });
+    if (Object.keys(own).length) m.ownChars = own; else delete m.ownChars;
+    setMeta(m);
+  }
+
   // The roster with this script's abilities in place, for what leaves the page.
   function withAbilities(chars) {
     var a = abilityEdits();
@@ -420,6 +470,7 @@
   }
 
   var settle = debounce(function () {
+    pruneOwnChars();
     paintJinxCount();
     paintCredits();
     paintJinxHints();
@@ -600,6 +651,7 @@
         esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
       '<p class="sbx-ch-txt">' +
         '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
+          (c.own ? ' data-own-edit="' + esc(c.slug) + '" title="This script only. Edit"' : '') +
           (c.official ? ' target="_blank" rel="noopener" title="Official character. Opens the official wiki"' : '') + '>' +
           nameHTML(c) + '</a>' +
         (c.official ? '<span class="sbx-off">official' + ico('external') + '</span> ' : '') +
@@ -1607,7 +1659,7 @@
           (!c.official && c.creator ? '<p class="sbx-peek-by">by ' + esc(c.creator) + '</p>' : '') +
         '</div>' +
       '</div>' +
-      (edit && isOn && !c.official
+      (edit && isOn && !c.official && !c.own
         ? '<textarea class="sbx-peek-abedit" data-peek-ab="' + esc(c.slug) + '" rows="4" maxlength="1000">' + esc(abilityOf(c)) + '</textarea>' +
           '<p class="sbx-peek-hint">Only this script changes. The wiki page keeps its own text.</p>' +
           '<div class="sbx-peek-acts">' +
@@ -1621,8 +1673,9 @@
       (isOn ? '<textarea class="sbx-peek-note" data-peek-note="' + esc(c.slug) + '" rows="2" maxlength="500" placeholder="A note about ' + esc(c.name) + ' on this script: a bluff, a ruling, a reminder.">' + esc(charNotes()[c.slug] || '') + '</textarea>' : '') +
       '<div class="sbx-peek-acts">' +
         '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? ico('close') + ' Remove from script' : ico('plus') + ' Add to script') + '</button>' +
-        (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">' + ico('dice') + ' Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
-        (isOn && !c.official && !edit ? '<button type="button" class="sbx-b-sm" data-peek-abopen="' + esc(c.slug) + '">' + ico('cog') + ' Edit ability</button>' : '') +
+        (isOn && !c.own ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">' + ico('dice') + ' Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
+        (isOn && c.own ? '<button type="button" class="sbx-b-sm" data-peek-own="' + esc(c.slug) + '">' + ico('cog') + ' Edit</button>' : '') +
+        (isOn && !c.official && !c.own && !edit ? '<button type="button" class="sbx-b-sm" data-peek-abopen="' + esc(c.slug) + '">' + ico('cog') + ' Edit ability</button>' : '') +
         '<button type="button" class="sbx-b-sm" data-peek-pin="' + esc(c.slug) + '">' + (isPinned(c.slug) ? ico('pin', { fill: true }) + ' Unpin' : ico('pin') + ' Pin to the panel') + '</button>' +
         (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page' + ico('external') + '</a>' : '') +
       '</div>';
@@ -1822,7 +1875,7 @@
   function encodeShare() {
     var m = getMeta();
     var extra = {};
-    ['hideTitle', 'almanac', 'bootlegger', 'exportLogo', 'exportBg', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
+    ['hideTitle', 'almanac', 'bootlegger', 'exportLogo', 'exportBg', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities', 'ownChars'].forEach(function (k) {
       if (m[k] != null && m[k] !== '' && m[k] !== false) extra[k] = m[k];
     });
     var payload = { n: m.name || '', a: m.author || '', c: order.slice() };
@@ -1950,7 +2003,7 @@
     var ix = importIndex();
     var meta = data.filter(function (e) { return e && e.id === '_meta'; })[0] || null;
     var setName = meta && meta.name;
-    var slugs = [], missing = [];
+    var slugs = [], missing = [], made = {};
     data.forEach(function (entry) {
       var id = (typeof entry === 'string') ? entry : (entry && entry.id);
       if (!id || id === '_meta') return;
@@ -1959,9 +2012,18 @@
       if (slugify(id) === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
       var slug = matchEntry(entry, ix, setName);
       if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
+      else if (entry && typeof entry === 'object' && entry.name && entry.ability) {
+        // A character the file carries whole and this wiki has no page for:
+        // it comes in as one of this script's own, like the ones made here.
+        var s2 = OWN_PREFIX + uid();
+        made[s2] = ownEntry({ name: entry.name, team: entry.team, ability: entry.ability,
+          image: Array.isArray(entry.image) ? entry.image[0] : entry.image });
+        slugs.push(s2);
+      }
       else { missing.push((entry && entry.name) || id); }
     });
     if (!slugs.length) { alert('None of the characters in that script are on this wiki.'); return; }
+    var madeN = Object.keys(made).length;
 
     importChoices(order.length > 0).then(function (choice) {
       if (!choice) return;
@@ -1991,14 +2053,20 @@
         // Custom JSON box, which the published page's JSON box and download
         // then give instead of the wiki-built one.
         if (choice.keepJson) m.customJson = text;
+        if (madeN) m.ownChars = made;
         setMeta(m);
         primeForm();
+      } else if (madeN) {
+        var m2 = getMeta();
+        m2.ownChars = Object.assign({}, ownChars(m2), made);
+        setMeta(m2);
       }
       replaceOrder(next, true);
 
       var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
       var msg = 'Imported ' + slugs.length + ' character' + (slugs.length === 1 ? '' : 's') +
-        (offCount ? ' (' + offCount + ' official)' : '') + '.';
+        (offCount ? ' (' + offCount + ' official)' : '') + '.' +
+        (madeN ? ' ' + madeN + ' not on the wiki ' + (madeN === 1 ? 'was' : 'were') + ' kept on this script only.' : '');
       if (missing.length) {
         msg += '\n\nNot on this wiki (' + missing.length + '): ' +
           missing.slice(0, 10).join(', ') + (missing.length > 10 ? '…' : '');
@@ -2484,6 +2552,140 @@
       fr.readAsDataURL(file);
     });
   }
+  // ── a character for this script only ────────────────────────────────
+  /* Name, team, ability and an icon: uploaded, or picked from the Starlit
+     Gallery through the same picker the character editors use
+     (starlit-picker.js puts the PNG into the file box with a change event).
+     The icon goes to the account like the logo (/api/my-scripts/image), so
+     it needs a login; the rest does not. */
+  function openOwnChar(slug) {
+    var cur = slug ? ownChars()[slug] : null;
+    if (slug && !cur) return;
+    var d = ownEntry(cur || { name: '', team: 'townsfolk' });
+    var img = d.image || '', busy = false;
+    var dlg = document.createElement('dialog');
+    dlg.className = 'sbx-dlg sbx-own';
+    dlg.innerHTML = '<h3 class="sbx-pop-title">' + (cur ? 'Edit character' : 'New character') + '</h3>' +
+      '<p class="sbx-own-hint">Only on this script. It is not added to the wiki.</p>' +
+      '<div class="sbx-own-top">' +
+        '<img class="sbx-own-img" alt="">' +
+        '<div class="sbx-own-pick">' +
+          '<button type="button" class="sbx-b-sm" data-v="up">' + ico('upload') + ' Upload icon</button>' +
+          '<button type="button" class="sbx-b-sm" data-v="starlit" data-starlit-into="sbx-own-file" disabled>Starlit Gallery</button>' +
+          '<button type="button" class="sbx-b-sm" data-v="noimg"' + (img ? '' : ' hidden') + '>Remove icon</button>' +
+          '<input type="file" id="sbx-own-file" accept="image/png,image/jpeg,image/webp" hidden>' +
+        '</div>' +
+      '</div>' +
+      '<label class="bgm-row">Name <input type="text" data-f="name" maxlength="60" autocomplete="off"></label>' +
+      '<label class="bgm-row">Team <select data-f="team">' + OWN_TEAMS.map(function (t) {
+        return '<option value="' + t + '">' + TEAMS[TEAM_INDEX[t]][1] + '</option>';
+      }).join('') + '</select></label>' +
+      '<label class="sbx-own-ab">Ability<textarea data-f="ability" rows="3" maxlength="500"></textarea></label>' +
+      '<p class="bgm-note" hidden></p>' +
+      '<div class="sbx-dlg-btns">' +
+        (cur ? '<button type="button" class="sbx-b-sm" data-v="remove">Remove from script</button>' : '') +
+        '<button type="button" class="sbx-b-sm" data-v="close">Cancel</button>' +
+        '<button type="button" class="sbx-b-sm sbx-dlg-go" data-v="save">' + (cur ? 'Save' : 'Add to script') + '</button>' +
+      '</div>';
+    document.body.appendChild(dlg);
+    var q = function (sel) { return dlg.querySelector(sel); };
+    var pic = q('.sbx-own-img'), file = q('#sbx-own-file');
+    pic.onerror = function () { if (pic.src.indexOf('favicon') === -1) pic.src = 'assets/favicon.png'; };
+    q('[data-f=name]').value = cur ? d.name : '';
+    q('[data-f=team]').value = d.team;
+    q('[data-f=ability]').value = d.ability;
+    function note(t) { var n = q('.bgm-note'); n.textContent = t || ''; n.hidden = !t; }
+    function paintPic() {
+      pic.src = img ? localImg(img) : 'assets/favicon.png';
+      q('[data-v=noimg]').hidden = !img;
+    }
+    paintPic();
+    if (!cloud.user) note('Log in to add an icon.');
+    if (window.BotcData) {
+      window.BotcData.script('starlit-picker.js').then(function () { q('[data-v=starlit]').disabled = false; }, function () {});
+    }
+
+    // The gallery opens over the page, and a modal dialog is drawn above
+    // everything, so it steps aside until the gallery closes.
+    var watch = null;
+    function stepAside() {
+      dlg.close();
+      watch = new MutationObserver(function () {
+        if (document.querySelector('.starlit-picker')) return;
+        watch.disconnect(); watch = null;
+        if (dlg.isConnected && !dlg.open) dlg.showModal();
+      });
+      watch.observe(document.body, { childList: true });
+    }
+    function setBusy(on, label) {
+      busy = on;
+      ['up', 'starlit', 'save'].forEach(function (v) { var b = q('[data-v=' + v + ']'); if (b) b.disabled = on; });
+      note(on ? label : '');
+    }
+    file.addEventListener('change', function () {
+      var f = file.files && file.files[0];
+      file.value = '';
+      if (!f) return;
+      if (!cloud.user) { note('Log in to add an icon.'); return; }
+      if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { note('Pick a PNG, JPEG or WebP.'); return; }
+      setBusy(true, 'Uploading…');
+      var fit = window.BotcData ? window.BotcData.script('art-normalize.js').catch(function () {}) : Promise.resolve();
+      Promise.all([shrinkImage(f, 1200), fit]).then(function (r) {
+        var src = r[0];
+        return typeof window.normalizeArtDataURL === 'function'
+          ? window.normalizeArtDataURL(src).catch(function () { return src; }) : src;
+      }).then(function (data) {
+        return fetch('/api/my-scripts/image', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: data })
+        });
+      }).then(function (res) { return res.json().then(function (j) { return { ok: res.ok, j: j }; }); })
+        .then(function (res) {
+          setBusy(false);
+          if (!res.ok || !res.j.path) { note((res.j && res.j.error) || 'The upload failed.'); return; }
+          img = SITE_ASSETS + res.j.path;
+          paintPic();
+        })
+        .catch(function () { setBusy(false); note('The upload failed. Check your connection and try again.'); });
+    });
+    function close() { if (watch) watch.disconnect(); dlg.close(); dlg.remove(); }
+    function save() {
+      var name = q('[data-f=name]').value.trim();
+      if (!name) { note('Give it a name.'); q('[data-f=name]').focus(); return; }
+      var next = ownEntry({ name: name, team: q('[data-f=team]').value, ability: q('[data-f=ability]').value, image: img });
+      var s = slug || (OWN_PREFIX + uid());
+      mark((cur ? 'edit ' : 'add ') + name);
+      var m = getMeta();
+      var own = Object.assign({}, ownChars(m));
+      own[s] = next;
+      m.ownChars = own;
+      setMeta(m);
+      if (!sel[s]) { sel[s] = 1; order.push(s); }
+      commitOrder();
+      afterChange();
+      close();
+      toast((cur ? 'Saved ' : 'Added ') + name);
+    }
+    dlg.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-v]');
+      if (!b || b.disabled) return;
+      var v = b.getAttribute('data-v');
+      if (v === 'close') close();
+      else if (v === 'save') { if (!busy) save(); }
+      else if (v === 'up') { if (cloud.user) file.click(); else note('Log in to add an icon.'); }
+      else if (v === 'starlit') {
+        if (!cloud.user) { e.stopPropagation(); note('Log in to add an icon.'); return; }
+        stepAside();   // the picker's own listener on the document opens it
+      }
+      else if (v === 'noimg') { img = ''; paintPic(); }
+      else if (v === 'remove') { close(); removeSlug(slug); }
+    });
+    dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+    dlg.showModal();
+    if (!cur) q('[data-f=name]').focus();
+  }
+
   function primeForm() {
     var m = getMeta();
     paintBarName();
@@ -2689,6 +2891,7 @@
     wirePeek($('sbx-picks'));
     // Add or remove everything the panel is showing — a creator's whole set
     // in one click after filtering to them.
+    $('sb-new-char').addEventListener('click', function () { openOwnChar(''); });
     $('sb-add-all').addEventListener('click', function () {
       var slugs = panelMatches().map(function (c) { return c.slug; })
         .filter(function (x) { return x && bySlug[x] && !sel[x]; });
@@ -2726,6 +2929,8 @@
         }
         return;
       }
+      var oe = e.target.closest('[data-own-edit]');
+      if (oe) { e.preventDefault(); openOwnChar(oe.getAttribute('data-own-edit')); return; }
       var ta = e.target.closest('button[data-team-act]');
       if (ta) { teamAction(ta.getAttribute('data-team-act'), ta.getAttribute('data-team')); return; }
       var tf = e.target.closest('[data-team-fold]');
@@ -2808,6 +3013,8 @@
     wirePeek($('sb-script'));
     $('sbx-peek').addEventListener('click', function (e) {
       if (e.target.closest('[data-peek-close]')) { hidePeek(); return; }
+      var oe = e.target.closest('button[data-peek-own]');
+      if (oe) { var os = oe.getAttribute('data-peek-own'); hidePeek(); openOwnChar(os); return; }
       var ao = e.target.closest('button[data-peek-abopen]');
       if (ao) { var rr = $('sbx-peek').getBoundingClientRect(), s0 = ao.getAttribute('data-peek-abopen'); hidePeek(); showPeek(s0, rr.left - 18, rr.top - 14, true); peekSticky = true; return; }
       if (e.target.closest('button[data-peek-absave]')) { hidePeek(); return; }
@@ -3316,6 +3523,7 @@
       // first). The official roster sits under everything homebrew.
       allChars.forEach(function (c, i) { bySlug[c.slug] = c; c._ord = i + 1; });
       officialChars.forEach(function (c, i) { c._ord = -1000 + i; });
+      syncOwnChars(getMeta());
       registries();
 
       var params = new URLSearchParams(location.search);
@@ -3522,7 +3730,7 @@
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);
         if (sh.m && typeof sh.m === 'object') {
-          ['hideTitle', 'almanac', 'bootlegger', 'exportLogo', 'exportBg', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities'].forEach(function (k) {
+          ['hideTitle', 'almanac', 'bootlegger', 'exportLogo', 'exportBg', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes', 'abilities', 'ownChars'].forEach(function (k) {
             if (sh.m[k] != null) m[k] = sh.m[k];
           });
           if (m.charNotes && typeof m.charNotes !== 'object') delete m.charNotes;

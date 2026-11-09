@@ -1836,6 +1836,23 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   and the export (`withAbilities()`), carried in share links, and never
   written to the character. An official character has no gear, because it
   exports as a bare id.
+- **New character** (the panel's button, `openOwnChar()`): a character
+  for this script only, never a wiki page. Name, team, ability and an icon,
+  uploaded or picked from the Starlit Gallery through the editors' own
+  picker (`starlit-picker.js`, loaded on first open; the modal dialog steps
+  aside while the gallery is up, since a modal is drawn above everything).
+  The icon is fitted with `art-normalize.js` and goes to
+  `/api/my-scripts/image`, so it needs a login. Stored as
+  `meta.ownChars[slug]` (`x-` + a random id, `ownEntry()` cleans it);
+  `setMeta()` puts them into `bySlug` (`syncOwnChars()`), so the roster, the
+  peek card (Edit, no Swap), Copy as text and the export treat them like
+  any character, and My Scripts, the account sync, undo and share links
+  carry them with the meta. One taken off the roster is dropped in the
+  settle pass (`pruneOwnChars()`); undo brings it back. Import turns a
+  file's entry that matches nothing here but carries a name and an ability
+  into one of these, so an exported script comes back whole. Publishing a
+  script with one keeps its slug in the roster, where the published page
+  has no character for it.
 - **View → Creator mark** (`view.showMarks`) draws each homebrew
   character's creator marks beside its name in the roster and the panel,
   on screen only. The Details & Export tick (`meta.creatorMarks`) is the
