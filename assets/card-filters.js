@@ -1,16 +1,16 @@
-/* Shared on-page card filtering — the collapsed "Filter characters" box.
+/* The filter box on pages whose cards are already drawn: collection pages
+   (/collection/{id}), creator pages (/u/, /author), /favorites, /drafts and
+   the Script Builder's Add sidebar.
 
-   Used by SSR collection pages (/collection/{id}) and by creator pages
-   (/u/{username}, /author?a=Name). Both render the same .char-card markup via
-   renderRosterCards() in render-page.js, so both can be filtered by the same
-   code: no data is re-fetched, every card carries data-team / data-tags /
-   data-creator / data-name / data-order / data-partial / data-curata, and
-   the page still works with JavaScript off (all cards shown).
+   It is the All Characters box (assets/char-filters.js), one box with one
+   set of rules everywhere: this file reads each card's data-* attributes
+   into a row, hands the rows to CharFilters.mount(), and lays the cards it
+   gets back out in the DOM (hidden, re-ordered, regrouped). No data is
+   re-fetched, and with JavaScript off every card still shows.
 
-   mountCardFilters({grid, bar, toggle, count, ...}) wires one filter box to one
-   grid. The auto-init at the bottom mounts the collection page's box when it is
-   present, so collection pages need no changes of their own; creator pages call
-   it themselves once their cards are in the DOM. */
+   mountCardFilters({grid, bar, toggle, count, ...}) wires one box to one
+   grid. Load char-filters.js first. The auto-init at the bottom mounts the
+   collection page's box; the other pages call it once their cards are in. */
 (function () {
   'use strict';
 
@@ -24,14 +24,6 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
       .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function titleCase(s) {
-    return String(s || '').trim().toLowerCase()
-      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
-  }
-  function cardTags(card) {
-    return (card.getAttribute('data-tags') || '').split(',')
-      .map(function (t) { return titleCase(t); }).filter(Boolean);
-  }
   // data-creator holds the whole credit string, which may name several people.
   function cardCredits(card) {
     return (card.getAttribute('data-creator') || '').split(',')
@@ -40,30 +32,22 @@
   function el(x) { return typeof x === 'string' ? document.getElementById(x) : x; }
 
   /* opts: {grid, bar, toggle, count} — elements or element ids — plus optional
-     {label, noun, partialChip, curataChip, favChip, minCards}.
+     {label, noun, minCards, defaultSort: 'page', groupChoice: false,
+      sourceChips: [[value, label]] over data-source, search: a name box}.
 
-     favChip adds a "Favorites" chip over the reader's saved list
-     (assets/favorites.js — the saved characters plus every character on a
-     saved script or collection). The list arrives after the bar is built, so
-     the chip starts hidden and shows once something on the page is in it;
-     a logged-out reader never sees it. Cards must carry data-slug.
-
-     The markup it filters is described by four selectors, defaulting to the
-     card grid renderRosterCards() produces. The Script Builder's Add sidebar
-     is a compact list of rows rather than a grid of cards, so it passes its
-     own. One filter implementation, not one per page; anything it drives has
-     to carry the same data-* attributes the cards do.
-
-     opts.search is an optional text input: a name box that narrows the same
-     list the chips do, so the two can't fight over what is on screen.
+     The markup it filters is described by five selectors, defaulting to the
+     card grid renderRosterCards() produces; the Script Builder's sidebar is a
+     list of rows and passes its own. Anything it drives carries the same
+     data-* attributes the cards do.
 
      Returns false when there is nothing worth filtering, so the caller can
      hide its filter box. */
   function mountCardFilters(opts) {
     opts = opts || {};
+    var CF = window.CharFilters;
     var grid = el(opts.grid), bar = el(opts.bar), toggle = el(opts.toggle);
-    var countEl = el(opts.count);
-    if (!grid || !bar || !toggle) return false;
+    var countEl = el(opts.count), searchEl = el(opts.search);
+    if (!CF || !grid || !bar || !toggle) return false;
 
     var SEL = {
       section: opts.sectionSel || '.coll-team',
@@ -72,360 +56,75 @@
       count: opts.sectionCountSel || '.coll-team-count',
       ability: opts.abilitySel || '.char-card-ability'
     };
-    var searchEl = el(opts.search);
-
-    var label = opts.label || 'Filter characters';
     var noun = opts.noun || 'character';
     var sections = [].slice.call(grid.querySelectorAll(SEL.section));
     var cards = [].slice.call(grid.querySelectorAll(SEL.card));
     var total = cards.length;
     if (!total || total < (opts.minCards || 1)) return false;
 
-    // Remember each team grid's original card order for the "recently added"
-    // and default sorts (cards are laid out team-by-team, name A–Z).
+    // Each team grid's original card order: page order, and where a card
+    // goes back to when grouped by team.
     sections.forEach(function (sec) {
       var g = sec.querySelector(SEL.inner);
       if (g) sec._origOrder = [].slice.call(g.querySelectorAll(SEL.card));
     });
 
-    // Where the page itself has an order worth keeping — a collection whose
-    // author arranged its roster by hand — the caller asks for 'page' and the
-    // box leaves the server's order alone until a reader picks something else.
-    // A creator page has no such order (the feed is newest-first), so it stays
-    // on A–Z and never offers Page order at all.
-    var DEFAULT_SORT = opts.defaultSort === 'page' ? 'page' : 'name';
-    // Sort is two boxes: what to sort by, and Ascending / Descending. Picking
-    // a sort puts the direction on the way it is usually read (names A–Z,
-    // newest first, shortest ability first, page order as arranged); the
-    // second box flips it. Same rule as char-filters.js.
-    var NATURAL_DIR = { page: 'asc', name: 'asc', recent: 'desc', ability: 'asc', sao: 'asc' };
-    // SAO needs assets/sao.js. Every page that offers the option loads it, but
-    // the option is only built when the function is actually there.
-    var HAS_SAO = typeof window !== 'undefined' && typeof window.saoCompare === 'function';
-
-    // Partial pages are shown like any other; the Status group's "Hide
-    // Partial" chip takes them out for a reader who wants only finished
-    // pages. (It used to be the other way round — hidden until a "Show
-    // Partial" chip was ticked — and the owner asked for it turned around.)
-    // Optional extra chip group over data-source, for a list that mixes two
-    // kinds of thing. The Script Builder's sidebar holds homebrew characters
-    // and the official roster, and "show me only one of those" is the first
-    // thing anyone wants of it.
-    var SOURCES = Array.isArray(opts.sourceChips) ? opts.sourceChips : [];
-    // "Group: By team / All together". The cards arrive in one section per
-    // team; All together lifts every card into one grid of its own so the
-    // chosen sort runs across the whole roster instead of within each team.
-    // Offered on the card grids renderRosterCards() draws (the flat grid is
-    // built in that markup) and only when there is more than one team to
-    // lump together. The Script Builder's rows pass their own selectors and
-    // do without it. opts.groupChoice: false switches it off.
-    //
-    // "By author" files each card under the FIRST name its credit gives (a
-    // card can only be in one grid, and one card per character keeps the
-    // counts honest) — the same rule as char-filters.js. Offered when the
-    // cards have more than one author between them.
-    //
-    // "By script or collection" files each card under data-set — the set its
-    // own page's "Appears in" row names (render-page.js writes it). Offered
-    // when the cards fall into more than one; on a collection page they
-    // almost never do, so the option is simply not there.
+    function teamOf(card) {
+      var ct = card.getAttribute('data-team') || 'other';
+      return TEAMS.some(function (x) { return x[0] === ct; }) ? ct : 'other';
+    }
     function authorKey(card) { return (cardCredits(card)[0] || '').toLowerCase(); }
     function setKey(card) { return (card.getAttribute('data-set') || '').trim().toLowerCase(); }
     function distinct(fn) { var seen = {}; cards.forEach(function (c) { seen[fn(c)] = 1; }); return Object.keys(seen).length; }
-    var MANY_AUTHORS = distinct(authorKey) > 1;
-    var MANY_SETS = distinct(setKey) > 1;
-    var GROUP_CHOICE = opts.groupChoice !== false && !opts.sectionSel && (sections.length > 1 || MANY_AUTHORS || MANY_SETS);
-    function freshState() {
-      return { inTeams: [], exTeams: [], inTags: [], exTags: [],
-               inSources: [], exSources: [], creator: '',
-               hidePartial: false, curataOnly: false, favOnly: false, tagMode: 'all',
-               sort: DEFAULT_SORT, dir: NATURAL_DIR[DEFAULT_SORT],
-               group: 'team',
-               q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
-    }
-    // The reader's saved characters, once known (a Set), or null: logged out,
-    // still loading, or nothing here is saved.
-    var FAV_SET = null;
-    var wantFav = !!opts.favChip && !!window.Favorites &&
-      cards.some(function (c) { return c.getAttribute('data-slug'); });
-    var STATE = freshState();
 
-    function teamOf(card) {
-      var ct = card.getAttribute('data-team') || 'other';
-      var known = TEAMS.some(function (x) { return x[0] !== 'other' && x[0] === ct; });
-      return known ? ct : 'other';
-    }
-
-    // ── build the filter bar from what is actually present ──
-    var teamsPresent = TEAMS.filter(function (t) {
-      return cards.some(function (c) { return teamOf(c) === t[0]; });
-    });
-    var tagSet = {}, creatorSet = {}, nPartial = 0, nCurata = 0;
-    cards.forEach(function (c) {
-      cardTags(c).forEach(function (t) { tagSet[t] = 1; });
-      // Co-credited cards offer each of their creators as its own option.
-      cardCredits(c).forEach(function (n) { if (n) creatorSet[n] = 1; });
-      if (c.getAttribute('data-partial') === '1') nPartial++;
-      if (c.getAttribute('data-curata') === '1') nCurata++;
-    });
-    var tags = Object.keys(tagSet).sort();
-    var creators = Object.keys(creatorSet).sort(function (a, b) {
-      return a.toLowerCase() < b.toLowerCase() ? -1 : 1;
-    });
-
-    var html = '';
-    html += '<div class="filter-group"><span class="filter-group-label">Team</span><div class="filter-chips" id="cf-teams">';
-    teamsPresent.forEach(function (t) {
-      html += '<button type="button" class="filter-chip" data-team="' + t[0] + '">' + esc(t[1]) + '</button>';
-    });
-    html += '</div></div>';
-    var sourcesPresent = SOURCES.filter(function (sc) {
-      return cards.some(function (c) { return c.getAttribute('data-source') === sc[0]; });
-    });
-    if (sourcesPresent.length > 1) {
-      html += '<div class="filter-group"><span class="filter-group-label">Source</span><div class="filter-chips" id="cf-sources">';
-      sourcesPresent.forEach(function (sc) {
-        html += '<button type="button" class="filter-chip" data-source="' + esc(sc[0]) + '">' + esc(sc[1]) + '</button>';
-      });
-      html += '</div></div>';
-    }
-    if (tags.length) {
-      // How the picked tags combine; the same choice as All Characters'.
-      html += '<div class="filter-group"><span class="filter-group-label">Tag ' +
-        '<select class="filter-select filter-tagmode" id="cf-tagmode" aria-label="How picked tags combine" ' +
-        'title="All of: every picked tag. Any of: at least one. Only one of: exactly one of them.">' +
-        '<option value="all">all of</option><option value="any">any of</option><option value="one">only one of</option>' +
-        '</select></span><div class="filter-chips" id="cf-tags">';
-      tags.forEach(function (t) { html += '<button type="button" class="filter-chip" data-tag="' + esc(t) + '">' + esc(t) + '</button>'; });
-      html += '</div></div>';
-    }
-    // Status chips are opt-in, and only appear when there is something for them
-    // to do. See "Page classification" in CLAUDE.md.
-    var wantPartial = !!opts.partialChip && nPartial > 0;
-    var wantCurata = !!opts.curataChip && nCurata > 0;
-    if (wantPartial || wantCurata || wantFav) {
-      // The group itself is hidden when the Favorites chip is its only
-      // occupant, until that chip has something to show.
-      html += '<div class="filter-group" id="cf-status-group"' + (wantPartial || wantCurata ? '' : ' hidden') +
-        '><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
-      if (wantPartial) {
-        html += '<button type="button" class="filter-chip" id="cf-partial"' +
-          ' title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
-      }
-      if (wantCurata) {
-        html += '<button type="button" class="filter-chip filter-chip-curata" id="cf-curata" title="Pages the wiki admins have marked as Curata.">Curata only (' + nCurata + ')</button>';
-      }
-      if (wantFav) {
-        html += '<button type="button" class="filter-chip filter-chip-fav" id="cf-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' +
-          window.Favorites.heartSVG() + ' Favorites</button>';
-      }
-      html += '</div></div>';
-    }
-    if (creators.length > 1) {
-      html += '<div class="filter-group"><span class="filter-group-label">Creator</span><select class="filter-select" id="cf-creator"><option value="">All creators</option>';
-      creators.forEach(function (c) { html += '<option value="' + esc(c) + '">' + esc(c) + '</option>'; });
-      html += '</select></div>';
-    }
-    html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="cf-sort">' +
-      (DEFAULT_SORT === 'page' ? '<option value="page">Page order</option>' : '') +
-      '<option value="name">Name</option>' +
-      '<option value="recent">Date added</option>' +
-      '<option value="ability">Ability length</option>' +
-      (HAS_SAO ? '<option value="sao">Steven Approved Order</option>' : '') +
-      '</select></div>';
-    html += '<div class="filter-group"><span class="filter-group-label">Order</span><select class="filter-select" id="cf-dir" aria-label="Sort direction">' +
-      '<option value="asc">Ascending</option><option value="desc">Descending</option></select></div>';
-    if (GROUP_CHOICE) {
-      html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="cf-group">' +
-        '<option value="team">By team</option>' +
-        (MANY_AUTHORS ? '<option value="author">By author</option>' : '') +
-        (MANY_SETS ? '<option value="set">By script or collection</option>' : '') +
-        (sections.length > 1 ? '<option value="none">All together</option>' : '') +
-        '</select></div>';
-    }
-    html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="cf-reset">Reset filters</button></div>';
-    bar.innerHTML = html;
-    // Visibility is governed by the .open class, not the [hidden] attribute
-    // (the [hidden] rule is !important and would beat .open on mobile).
-    bar.hidden = false;
-
-    // ── collapse/expand (collapsed by default, works on every screen size) ──
-    toggle.addEventListener('click', function () {
-      var open = bar.classList.toggle('open');
-      toggle.classList.toggle('open', open);
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-
-    // ── 3-state chip helper (unset → include → exclude → unset) ──
-    // The arrays are read through a getter because Reset swaps STATE wholesale.
-    function wireChips(selector, pick) {
-      bar.querySelectorAll(selector).forEach(function (btn) {
-        var v = btn.getAttribute('data-team') || btn.getAttribute('data-tag') ||
-                btn.getAttribute('data-source');
-        btn.addEventListener('click', function () {
-          var arrs = pick();
-          var ii = arrs.inArr.indexOf(v), ei = arrs.exArr.indexOf(v);
-          if (ii === -1 && ei === -1) { arrs.inArr.push(v); btn.classList.add('active'); btn.classList.remove('active-exclude'); }
-          else if (ii !== -1) { arrs.inArr.splice(ii, 1); arrs.exArr.push(v); btn.classList.remove('active'); btn.classList.add('active-exclude'); }
-          else { arrs.exArr.splice(ei, 1); btn.classList.remove('active-exclude'); }
-          apply();
-        });
-      });
-    }
-    wireChips('[data-team]', function () { return { inArr: STATE.inTeams, exArr: STATE.exTeams }; });
-    wireChips('[data-tag]', function () { return { inArr: STATE.inTags, exArr: STATE.exTags }; });
-    wireChips('[data-source]', function () { return { inArr: STATE.inSources, exArr: STATE.exSources }; });
-
-    var partialBtn = bar.querySelector('#cf-partial');
-    if (partialBtn) partialBtn.addEventListener('click', function () {
-      STATE.hidePartial = !STATE.hidePartial;
-      partialBtn.classList.toggle('active', STATE.hidePartial);
-      apply();
-    });
-    var curataBtn = bar.querySelector('#cf-curata');
-    if (curataBtn) curataBtn.addEventListener('click', function () {
-      STATE.curataOnly = !STATE.curataOnly;
-      curataBtn.classList.toggle('active', STATE.curataOnly);
-      apply();
-    });
-    var favBtn = bar.querySelector('#cf-fav');
-    if (favBtn) {
-      favBtn.addEventListener('click', function () {
-        STATE.favOnly = !STATE.favOnly;
-        favBtn.classList.toggle('active', STATE.favOnly);
-        apply();
-      });
-      // Count what is saved among THESE cards; the chip only shows when that
-      // is more than nothing. Re-counted after every toggle on the page (a
-      // card's own heart, on pages that draw one) through onChange.
-      // Only re-applies when what is shown depends on the answer: every
-      // heart on the cards (assets/card-actions.js) calls this through
-      // onChange, and re-laying out the grid for one of them would move the
-      // card out from under the reader's finger.
-      var favLoad = function () {
-        window.Favorites.characterSlugs().then(function (set) {
-          var wasOn = STATE.favOnly;
-          FAV_SET = set;
-          var n = 0;
-          if (set) cards.forEach(function (c) { if (set.has(c.getAttribute('data-slug'))) n++; });
-          favBtn.hidden = !n;
-          favBtn.innerHTML = window.Favorites.heartSVG() + ' Favorites' + (n ? ' (' + n + ')' : '');
-          var group = bar.querySelector('#cf-status-group');
-          if (group && !(partialBtn || curataBtn)) group.hidden = !n;
-          if (!n && STATE.favOnly) { STATE.favOnly = false; favBtn.classList.remove('active'); }
-          if (wasOn || STATE.favOnly) apply();
-        });
+    // One row per card, in the shape CharFilters filters and sorts.
+    var rows = cards.map(function (card) {
+      var ab = card.querySelector(SEL.ability);
+      return {
+        el: card,
+        slug: card.getAttribute('data-slug') || '',
+        name: card.getAttribute('data-name') || '',
+        team: teamOf(card),
+        tags: card.getAttribute('data-tags') || '',
+        creator: card.getAttribute('data-creator') || '',
+        ability: ab ? ab.textContent.trim() : '',
+        source: card.getAttribute('data-source') || '',
+        official: card.getAttribute('data-official') === '1',
+        order: +card.getAttribute('data-order') || 0,
+        _partial: card.getAttribute('data-partial') === '1',
+        _curata: card.getAttribute('data-curata') === '1'
       };
-      favLoad();
-      window.Favorites.onChange(favLoad);
-    }
-    var crSel = bar.querySelector('#cf-creator');
-    if (crSel) crSel.addEventListener('change', function () { STATE.creator = crSel.value; apply(); });
-    var sortSel = bar.querySelector('#cf-sort'), dirSel = bar.querySelector('#cf-dir');
-    sortSel.value = STATE.sort;
-    dirSel.value = STATE.dir;
-    sortSel.addEventListener('change', function () {
-      STATE.sort = sortSel.value;
-      STATE.dir = NATURAL_DIR[STATE.sort] || 'asc';
-      dirSel.value = STATE.dir;
-      apply();
     });
-    dirSel.addEventListener('change', function () { STATE.dir = dirSel.value; apply(); });
-    var groupSel = bar.querySelector('#cf-group');
-    if (groupSel) groupSel.addEventListener('change', function () { STATE.group = groupSel.value; apply(); });
-    var tagModeSel = bar.querySelector('#cf-tagmode');
-    if (tagModeSel) tagModeSel.addEventListener('change', function () {
-      STATE.tagMode = tagModeSel.value;
-      if (STATE.inTags.length) apply();
+
+    // Group is offered on the card grids renderRosterCards() draws, with
+    // the options that would change anything here.
+    var groups = ['team'];
+    if (opts.groupChoice !== false && !opts.sectionSel) {
+      if (distinct(authorKey) > 1) groups.push('author');
+      if (distinct(setKey) > 1) groups.push('set');
+      if (sections.length > 1) groups.push('none');
+    }
+    var SOURCES = Array.isArray(opts.sourceChips) ? opts.sourceChips : [];
+
+    var ctrl = CF.mount({
+      bar: bar, toggle: toggle, list: rows, label: opts.label || 'Filter characters',
+      sourceOf: SOURCES.length ? function (r) { return r.source || null; } : null,
+      sourceLabels: SOURCES,
+      // Where the page has an order worth keeping (a collection its author
+      // arranged), it is offered and shown first.
+      pageOrder: opts.defaultSort === 'page',
+      defaultSort: opts.defaultSort === 'page' ? 'page' : 'name',
+      groups: groups,
+      order: function (r) { return r.order; },
+      onChange: apply
     });
-    bar.querySelector('#cf-reset').addEventListener('click', function () {
-      if (searchEl) searchEl.value = '';
-      if (tagModeSel) tagModeSel.value = 'all';
-      STATE = freshState();
-      bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
-      if (partialBtn) partialBtn.classList.toggle('active', STATE.hidePartial);
-      if (crSel) crSel.value = '';
-      sortSel.value = STATE.sort;
-      dirSel.value = STATE.dir;
-      if (groupSel) groupSel.value = STATE.group;
-      apply();
-    });
-    if (searchEl) {
-      searchEl.addEventListener('input', function () {
-        STATE.q = searchEl.value.trim().toLowerCase();
-        apply();
-      });
-    }
 
-    function cardVisible(card) {
-      // "Hide Partial" leaves the unfinished pages out.
-      if (STATE.hidePartial && card.getAttribute('data-partial') === '1') return false;
-      if (STATE.curataOnly && card.getAttribute('data-curata') !== '1') return false;
-      if (STATE.favOnly && !(FAV_SET && FAV_SET.has(card.getAttribute('data-slug')))) return false;
-      var team = teamOf(card);
-      if (STATE.inTeams.length && STATE.inTeams.indexOf(team) === -1) return false;
-      if (STATE.exTeams.indexOf(team) !== -1) return false;
-      if (SOURCES.length) {
-        var src = card.getAttribute('data-source') || '';
-        if (STATE.inSources.length && STATE.inSources.indexOf(src) === -1) return false;
-        if (STATE.exSources.indexOf(src) !== -1) return false;
-      }
-      var ctags = cardTags(card);
-      if (STATE.inTags.length) {
-        var hit = STATE.inTags.filter(function (t) { return ctags.indexOf(t) !== -1; }).length;
-        if (STATE.tagMode === 'any' ? !hit : STATE.tagMode === 'one' ? hit !== 1 : hit !== STATE.inTags.length) return false;
-      }
-      if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
-      // A filter on one name matches any card that credits them.
-      if (STATE.creator && cardCredits(card).indexOf(STATE.creator) === -1) return false;
-      if (STATE.q && (card.getAttribute('data-name') || '').toLowerCase().indexOf(STATE.q) === -1) return false;
-      return true;
-    }
-
-    // SAO compares on the ability line, which is already on the card as text —
-    // no need for the server to repeat it in an attribute.
-    function saoSubject(card) {
-      var ab = card.querySelector(SEL.ability);
-      return { ability: ab ? ab.textContent : '', name: card.getAttribute('data-name') || '' };
-    }
-
-    function nameOf(card) { return card.getAttribute('data-name') || ''; }
-    function abilityLen(card) {
-      var ab = card.querySelector(SEL.ability);
-      return ab ? ab.textContent.trim().length : 0;
-    }
-    // Every sort is written ascending; Descending reverses the comparison
-    // (page order: the arrangement read backwards).
-    // Each card's sort key is read ONCE, not on every comparison: a sort of
-    // n cards makes ~n·log n comparisons, and reading the ability meant a
-    // querySelector and a textContent each time — on the Script Builder's
-    // 2,000-row sidebar that was most of a sort's cost. Ties keep the cards'
-    // current order, exactly as the stable sort over the cards did.
-    var collator = (typeof Intl !== 'undefined' && Intl.Collator) ? new Intl.Collator() : null;
-    function cmpText(a, b) { return collator ? collator.compare(a, b) : a.localeCompare(b); }
-    function sortBy(arr, keyOf, cmp) {
-      var keyed = arr.map(function (card, i) { return { card: card, key: keyOf(card), i: i }; });
-      keyed.sort(function (x, y) { return cmp(x.key, y.key) || x.i - y.i; });
-      for (var i = 0; i < keyed.length; i++) arr[i] = keyed[i].card;
-      return arr;
-    }
+    var RANK = new Map();
+    function cardVisible(card) { return RANK.has(card); }
     function sortArr(arr) {
-      var flip = STATE.dir === 'desc' ? -1 : 1;
-      if (STATE.sort === 'name') sortBy(arr, nameOf, function (a, b) { return flip * cmpText(a, b); });
-      // data-order is higher for a newer page, so ascending is oldest first.
-      else if (STATE.sort === 'recent') sortBy(arr, function (c) { return +c.getAttribute('data-order') || 0; }, function (a, b) { return flip * (a - b); });
-      // Ties (and blank abilities) fall back to the name, A–Z.
-      else if (STATE.sort === 'ability') {
-        sortBy(arr, function (c) { return { len: abilityLen(c), name: nameOf(c) }; },
-          function (a, b) { return flip * (a.len - b.len) || cmpText(a.name, b.name); });
-      }
-      // SAO orders within a team, and grouped cards are already one section
-      // per team — so sorting each grid on its own is the whole job there.
-      // All together, it runs across the lot.
-      else if (STATE.sort === 'sao' && HAS_SAO) {
-        sortBy(arr, saoSubject, function (a, b) { return flip * window.saoCompare(a, b); });
-      }
-      else if (STATE.sort === 'page' && flip < 0) arr.reverse();
+      var keyed = arr.map(function (card, i) { return { card: card, i: i, r: RANK.has(card) ? RANK.get(card) : Infinity }; });
+      keyed.sort(function (x, y) { return (x.r - y.r) || (x.i - y.i); });
+      for (var i = 0; i < keyed.length; i++) arr[i] = keyed[i].card;
       return arr;
     }
 
@@ -499,10 +198,10 @@
     }
 
     function sortCards() {
-      if (GROUP_CHOICE && KEYED[STATE.group]) {
+      if (KEYED[ctrl.state.group]) {
         var everyone = [];
         sections.forEach(function (sec) { if (sec._origOrder) everyone = everyone.concat(sec._origOrder); });
-        var secs = keyedGrids(STATE.group), keyOf = KEYED[STATE.group].key;
+        var secs = keyedGrids(ctrl.state.group), keyOf = KEYED[ctrl.state.group].key;
         var byKey = {}, keys = [];
         sortArr(everyone).forEach(function (card) {
           var k = keyOf(card);
@@ -512,7 +211,7 @@
         keys.forEach(function (k) { appendAll(secs[k].querySelector('.char-grid'), byKey[k]); });
         return;
       }
-      if (GROUP_CHOICE && STATE.group === 'none') {
+      if (ctrl.state.group === 'none') {
         // _origOrder is the order the server rendered, which IS "page order";
         // the sections laid end to end keep it.
         var all = [];
@@ -529,6 +228,10 @@
     }
 
     function apply() {
+      var q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      var list = q ? rows.filter(function (r) { return r.name.toLowerCase().indexOf(q) !== -1; }) : rows;
+      RANK = new Map();
+      ctrl.apply(list).forEach(function (r, i) { RANK.set(r.el, i); });
       sortCards();
       var shown = 0;
       sections.forEach(function (sec) {
@@ -561,23 +264,16 @@
         });
         flat.style.display = flatShown ? '' : 'none';
       }
-      var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
-        STATE.exTags.length + STATE.inSources.length + STATE.exSources.length +
-        (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +
-        (STATE.hidePartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0) + (STATE.favOnly ? 1 : 0);
+      var active = ctrl.activeCount() + (q ? 1 : 0);
       if (countEl) {
-        // At rest, count what the reader can actually see: Partial pages are
-        // hidden by default, and "15 of 16" with nothing filtered just reads
-        // like something is broken. "x of y" appears once a chip is on.
         countEl.textContent = (!active || shown === total)
           ? shown + ' ' + noun + (shown === 1 ? '' : 's')
           : shown + ' of ' + total + ' ' + noun + (total === 1 ? '' : 's');
       }
-      // Update only the label text node, keeping the arrow <span> intact.
-      if (toggle.childNodes[0]) {
-        toggle.childNodes[0].nodeValue = label + (active ? ' (' + active + ') ' : ' ');
-      }
     }
+    if (searchEl) searchEl.addEventListener('input', apply);
+    var reset = bar.querySelector('#fc-reset');
+    if (reset && searchEl) reset.addEventListener('click', function () { searchEl.value = ''; apply(); });
 
     apply();
     return true;

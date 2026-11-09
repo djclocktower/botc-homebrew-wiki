@@ -80,28 +80,6 @@
     return SAO_ANYTHING_ELSE_IDX;
   }
 
-  /* The SAO Search filter (char-filters.js): the openings as the SAO sheet
-     lists them, fewer than the sort uses. An ability belongs to the longest
-     one it starts with, so "If you die" never also counts as "If you".
-     "(*)" covers the opening with and without the asterisk. */
-  var SAO_SEARCH = [
-    'You start knowing', 'Each night', 'Each night*', 'Each day',
-    'Once per game, at night(*)', 'Once per game',
-    'On your 1st night', 'On your 1st day',
-    'You think', 'You are', 'You do not know',
-    'When you die', 'When you learn that you died',
-    'If you die', 'If you are "mad"', 'If you', 'If the Demon kills', 'If',
-    'All', 'The 1st time'
-  ];
-  var SAO_SEARCH_SCAN = SAO_SEARCH.slice().sort(function (x, y) { return y.length - x.length; });
-  function saoGroup(ability) {
-    var a = String(ability || '').trim().replace(/[\u201c\u201d]/g, '"');
-    for (var i = 0; i < SAO_SEARCH_SCAN.length; i++) {
-      if (a.indexOf(SAO_SEARCH_SCAN[i].replace('(*)', '')) === 0) return SAO_SEARCH_SCAN[i];
-    }
-    return '';
-  }
-
   function saoCompare(a, b) {
     var ra = saoRank(a.ability), rb = saoRank(b.ability);
     if (ra !== rb) return ra - rb;
@@ -139,16 +117,13 @@
     window.SAO_PREFIXES = SAO_PREFIXES;
     window.saoRank = saoRank;
     window.saoCompare = saoCompare;
-    window.SAO_SEARCH = SAO_SEARCH;
-    window.saoGroup = saoGroup;
     window.sortRosterSAO = sortRosterSAO;
     window.SAO_TEAM_ORDER = TEAM_ORDER;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       SAO_PREFIXES: SAO_PREFIXES, saoRank: saoRank, saoCompare: saoCompare,
-      sortRosterSAO: sortRosterSAO, TEAM_ORDER: TEAM_ORDER,
-      SAO_SEARCH: SAO_SEARCH, saoGroup: saoGroup
+      sortRosterSAO: sortRosterSAO, TEAM_ORDER: TEAM_ORDER
     };
   }
 })();

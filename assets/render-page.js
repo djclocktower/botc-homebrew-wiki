@@ -1007,7 +1007,8 @@
         // by the Hide Partial chip.
         (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
         (hasCurata ? ' data-curata="1"' : '') +
-        ' data-order="' + (Object.prototype.hasOwnProperty.call(orderMap, c.slug) && orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
+        (c.official ? ' data-official="1"' : '') +
+        ' data-order=""' + (Object.prototype.hasOwnProperty.call(orderMap, c.slug) && orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         // The icon and, under it, the two quick actions (Favorites, Add to
         // Script — assets/card-actions.js). A draft gets no slot.
         '<span class="card-side">' +

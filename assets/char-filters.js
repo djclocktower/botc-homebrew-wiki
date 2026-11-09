@@ -58,7 +58,6 @@
     if (o.splitCreators) deps.splitCreators = o.splitCreators;
     if (o.CardActions) deps.CardActions = o.CardActions;
     if (o.saoCompare) deps.saoCompare = o.saoCompare;
-    if (o.saoGroup) { deps.saoGroup = o.saoGroup; deps.SAO_SEARCH = o.SAO_SEARCH; }
     return api;
   }
 
@@ -74,12 +73,41 @@
   // How the picked (included) tags combine.
   var TAG_MODES = [['all', 'all of'], ['any', 'any of'], ['one', 'only one of']];
   var NAME_SORTS = [['name', 'Name'], ['recent', 'Date added'], ['ability', 'Ability length']];
+  var GROUP_LABELS = { team: 'By team', author: 'By author', set: 'By script or collection', none: 'All together' };
+  /* Common Terms: the openings on the SAO sheet, offered in the drop-down;
+     anything else can be typed in. A term matches an ability that has it as
+     a whole phrase, any case: "Each night" is not "Each night*", and "(*)"
+     takes the asterisk or not. A typed term matches from the start of a
+     word ("poison" finds "poisoned"). Picked terms must all be there. */
+  var COMMON_TERMS = [
+    'You start knowing', 'Each night', 'Each night*', 'Each day',
+    'Once per game, at night(*)', 'Once per game',
+    'On your 1st night', 'On your 1st day',
+    'You think', 'You are', 'You do not know',
+    'When you die', 'When you learn that you died',
+    'If you die', 'If you are "mad"', 'If you', 'If the Demon kills', 'If',
+    'All', 'The 1st time'
+  ];
+  var termCache = Object.create(null);
+  function quotes(s) { return String(s || '').replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'"); }
+  function hasTerm(ability, term) {
+    var re = termCache[term];
+    if (!re) {
+      var t = quotes(term).trim();
+      var body = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\(\\\*\\\)$/, '\\*?');
+      re = termCache[term] = new RegExp('(^|[^a-z0-9])' + body + (/\*\)?$/.test(t) ? '(?![a-z0-9])' : COMMON_TERMS.indexOf(term) === -1 ? '(?!\\*)' : '(?![a-z0-9*])'), 'i');
+    }
+    return re.test(quotes(ability));
+  }
   // The direction each sort starts in when it is picked.
-  var NATURAL_DIR = { relevance: 'asc', name: 'asc', recent: 'desc', ability: 'asc', sao: 'asc' };
+  var NATURAL_DIR = { relevance: 'asc', page: 'asc', name: 'asc', recent: 'desc', ability: 'asc', sao: 'asc' };
   // Callers from before the direction box passed the direction inside the
   // sort ('name-desc'); read those as the two halves they now are.
   var LEGACY_SORT = { 'name-asc': ['name', 'asc'], 'name-desc': ['name', 'desc'] };
   function cmpName(a, b) { return (a.name || '').localeCompare(b.name || ''); }
+  // Rows read off cards already drawn (card-filters.js) carry their own flags.
+  function partialOf(c) { return c._partial != null ? c._partial : dep('isPartial')(c); }
+  function curataOf(c) { return c._curata != null ? c._curata : dep('isCurata')(c); }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
@@ -158,6 +186,7 @@
       return LEGACY_SORT[s[0]] ? [LEGACY_SORT[s[0]][0], s[0] === 'name-asc' ? 'Name' : null] : s;
     }).filter(function (s) { return s[1]; });
     if (!sorts.some(function (s) { return s[0] === 'ability'; })) sorts.push(['ability', 'Ability length']);
+    if (opts.pageOrder) sorts.unshift(['page', 'Page order']);
     // Steven Approved Order, wherever sao.js is loaded (or handed to init()).
     if (dep('saoCompare') && !sorts.some(function (s) { return s[0] === 'sao'; })) sorts.push(['sao', 'SAO']);
     var legacyDefault = LEGACY_SORT[opts.defaultSort];
@@ -165,7 +194,9 @@
     return {
       sorts: sorts, sort: sort,
       dir: legacyDefault ? legacyDefault[1] : (NATURAL_DIR[sort] || 'asc'),
-      group: opts.defaultGroup || 'team'
+      group: opts.defaultGroup || 'team',
+      // The Group options offered, in order; one or none means no Group box.
+      groups: opts.groups || ['team', 'author', 'set', 'none']
     };
   }
 
@@ -179,7 +210,7 @@
     return {
       includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
       includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-      includeSao: [], excludeSao: [],
+      includeTerms: [], excludeTerms: [],
       creatorQuery: '', hidePartial: false, curataOnly: false, officialOnly: false, favOnly: false,
       tagMode: 'all',
       sort: cfg.sort, dir: cfg.dir,
@@ -194,21 +225,18 @@
      offered (on a collection view this keeps the bar from being a wall of
      unused chips); the canonical tag list lives in assets/tags.js. Keyed by
      names, so no prototype: a tag or creator called "constructor" is a key. */
-  function barModel(list, sourceOf) {
+  function barModel(list, sourceOf, sourceLabels) {
     sourceOf = sourceOf || function () { return null; };
     var tagSet = Object.create(null), creatorSet = Object.create(null),
       teamSet = Object.create(null), srcSet = Object.create(null), nPartial = 0, nCurata = 0, nOfficial = 0;
-    var isPartial = dep('isPartial'), isCurata = dep('isCurata');
-    var saoGroup = dep('saoGroup'), saoSet = Object.create(null);
     list.forEach(function (c) {
       teamSet[c.team] = 1;
-      if (saoGroup) saoSet[saoGroup(c.ability)] = 1;
       splitTags(c).forEach(function (t) { tagSet[titleCase(t)] = 1; });
       // Co-credited pages ("Taiyi (太一), Saki") give every name its own chip.
       splitCreators(c.creator).forEach(function (n) { creatorSet[n] = 1; });
       var s = sourceOf(c); if (s) srcSet[s] = 1;
-      if (isPartial(c)) nPartial++;
-      if (isCurata(c)) nCurata++;
+      if (partialOf(c)) nPartial++;
+      if (curataOf(c)) nCurata++;
       if (c.official) nOfficial++;
     });
     return {
@@ -217,9 +245,9 @@
       creators: Object.keys(creatorSet).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; }),
       // Source (From Collection / From Script) — collection takes precedence.
       // Only offer the chips whose source actually appears in the list.
-      sources: SOURCE_LABELS.filter(function (s) { return srcSet[s[0]]; }),
-      // The SAO Search openings any ability here starts with, in sheet order.
-      sao: saoGroup ? dep('SAO_SEARCH').filter(function (o) { return saoSet[o]; }) : [],
+      sources: (sourceLabels || SOURCE_LABELS).filter(function (s) { return srcSet[s[0]]; }),
+      // The Common Terms some ability here has.
+      terms: COMMON_TERMS.filter(function (t) { return list.some(function (c) { return hasTerm(c.ability, t); }); }),
       nPartial: nPartial, nCurata: nCurata, nOfficial: nOfficial
     };
   }
@@ -286,16 +314,14 @@
         '<div class="cf-creator-drop" id="fc-creator-list" role="listbox" hidden></div></div>' +
         '</div>';
     }
-    // SAO Search: the same drop-down, over the openings on the SAO sheet.
-    if (model.sao && model.sao.length > 1) {
-      html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">SAO</span>' +
-        '<div class="filter-chip-selected-row" id="fc-sao-selected"></div>' +
-        '<div class="cf-creator-combo"><input type="search" class="filter-search" id="fc-sao-search" ' +
-          'placeholder="SAO Search…" autocomplete="off" aria-label="SAO Search" ' +
-          'role="combobox" aria-expanded="false" aria-controls="fc-sao-list">' +
-        '<div class="cf-creator-drop" id="fc-sao-list" role="listbox" hidden></div></div>' +
-        '</div>';
-    }
+    // Common Terms: the same drop-down, and anything typed can be picked.
+    html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">Common Terms</span>' +
+      '<div class="filter-chip-selected-row" id="fc-terms-selected"></div>' +
+      '<div class="cf-creator-combo"><input type="search" class="filter-search" id="fc-terms-search" ' +
+        'placeholder="Type or pick a term…" autocomplete="off" aria-label="Common Terms" ' +
+        'role="combobox" aria-expanded="false" aria-controls="fc-terms-list">' +
+      '<div class="cf-creator-drop" id="fc-terms-list" role="listbox" hidden></div></div>' +
+      '</div>';
     // Sort
     html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="fc-sort">' +
       cfg.sorts.map(function (s) {
@@ -308,13 +334,13 @@
       '<option value="asc"' + (cfg.dir === 'asc' ? ' selected' : '') + '>Ascending</option>' +
       '<option value="desc"' + (cfg.dir === 'desc' ? ' selected' : '') + '>Descending</option>' +
       '</select></div>';
-    // Group — by team (a section each), all together in one grid, or by author.
-    html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="fc-group">' +
-      '<option value="team"' + (cfg.group === 'team' ? ' selected' : '') + '>By team</option>' +
-      '<option value="author"' + (cfg.group === 'author' ? ' selected' : '') + '>By author</option>' +
-      '<option value="set"' + (cfg.group === 'set' ? ' selected' : '') + '>By script or collection</option>' +
-      '<option value="none"' + (cfg.group === 'none' ? ' selected' : '') + '>All together</option>' +
-      '</select></div>';
+    // Group — by team (a section each), by author, by set, or all together.
+    if (cfg.groups.length > 1) {
+      html += '<div class="filter-group"><span class="filter-group-label">Group</span><select class="filter-select" id="fc-group">' +
+        cfg.groups.map(function (g) {
+          return '<option value="' + g + '"' + (cfg.group === g ? ' selected' : '') + '>' + GROUP_LABELS[g] + '</option>';
+        }).join('') + '</select></div>';
+    }
     // Reset
     html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="fc-reset">Reset filters</button></div>';
     return html;
@@ -350,14 +376,13 @@
   function applyState(input, st, ctx) {
     ctx = ctx || {};
     var sourceOf = ctx.sourceOf || function () { return null; };
-    var isPartial = dep('isPartial'), isCurata = dep('isCurata');
     var out = input.slice();
     // "Hide Partial" leaves the unfinished pages out.
-    if (st.hidePartial) out = out.filter(function (c) { return !isPartial(c); });
+    if (st.hidePartial) out = out.filter(function (c) { return !partialOf(c); });
     // Curata only and Official each keep their own; on together they keep
     // either ("Curata or Official").
     if (st.curataOnly || st.officialOnly) out = out.filter(function (c) {
-      return (st.curataOnly && isCurata(c)) || (st.officialOnly && !!c.official);
+      return (st.curataOnly && curataOf(c)) || (st.officialOnly && !!c.official);
     });
     if (st.favOnly) out = out.filter(function (c) { return !!(ctx.favSet && ctx.favSet.has(c.slug)); });
     if (st.includeTeams.length) out = out.filter(function (c) { return st.includeTeams.indexOf(c.team) !== -1; });
@@ -380,10 +405,10 @@
     if (st.excludeCreators.length) out = out.filter(function (c) {
       return !splitCreators(c.creator).some(function (n) { return st.excludeCreators.indexOf(n) !== -1; });
     });
-    // SAO Search: the opening the ability falls under (sao.js saoGroup()).
-    if ((st.includeSao.length || st.excludeSao.length) && dep('saoGroup')) out = out.filter(function (c) {
-      var g = dep('saoGroup')(c.ability);
-      return (!st.includeSao.length || st.includeSao.indexOf(g) !== -1) && st.excludeSao.indexOf(g) === -1;
+    // Common Terms: every picked term, and none of the left-out ones.
+    if (st.includeTerms.length || st.excludeTerms.length) out = out.filter(function (c) {
+      return st.includeTerms.every(function (t) { return hasTerm(c.ability, t); }) &&
+        !st.excludeTerms.some(function (t) { return hasTerm(c.ability, t); });
     });
     // sort ('relevance' keeps the order it was handed, best match first)
     var flip = st.dir === 'desc' ? -1 : 1;
@@ -393,6 +418,7 @@
       return flip * ((a.ability || '').length - (b.ability || '').length) || cmpName(a, b);
     });
     else if (st.sort === 'sao' && dep('saoCompare')) out.sort(function (a, b) { return flip * dep('saoCompare')(a, b); });
+    else if (st.sort === 'page' || st.sort === 'relevance') { if (st.sort === 'page' && flip < 0) out.reverse(); }
     else if (st.sort === 'recent') {
       // The feed is oldest first. Without a position function every step
       // above was a filter, which keeps that order, so ascending is the
@@ -420,7 +446,7 @@
     // is saved — and then the chip is simply not shown.
     var FAV_SET = null;
 
-    var model = barModel(list, sourceOf);
+    var model = barModel(list, sourceOf, opts.sourceLabels);
     var ALL_CREATORS = model.creators;
     var html = barHTML(model, cfg, {
       favHeart: root.Favorites ? root.Favorites.heartSVG() : ''
@@ -556,17 +582,19 @@
     // ── Search box + drop-down + 3-state chips (creators, SAO) ──
     // Picking from the drop-down includes; the chip above then cycles
     // include -> exclude -> off. K names the state arrays (include{K}).
-    function wireCombo(id, K, attr, all, label, noun, onQuery, onFocus) {
+    // free: whatever is typed is offered first, so it can be picked too.
+    function wireCombo(id, K, attr, all, label, noun, onQuery, onFocus, free) {
       var search = byId('fc-' + id + '-search'), drop = byId('fc-' + id + '-list'), selected = byId('fc-' + id + '-selected');
       if (!search || !drop || !selected) return function () {};
       var open = false;
       function inc() { return ctrl.state['include' + K]; }
       function exc() { return ctrl.state['exclude' + K]; }
       function matching() {
-        var q = search.value.trim().toLowerCase();
-        return all.filter(function (v) {
-          return inc().indexOf(v) === -1 && exc().indexOf(v) === -1 && (!q || v.toLowerCase().indexOf(q) !== -1);
-        });
+        var typed = search.value.trim(), q = typed.toLowerCase();
+        function unpicked(v) { return inc().indexOf(v) === -1 && exc().indexOf(v) === -1; }
+        var out = all.filter(function (v) { return unpicked(v) && (!q || v.toLowerCase().indexOf(q) !== -1); });
+        if (free && q && unpicked(typed) && !all.some(function (v) { return v.toLowerCase() === q; })) out.unshift(typed);
+        return out;
       }
       // The picked row is only redrawn when the picks change: rebuilt on the
       // box's blur, a chip was gone before the click on it could land.
@@ -631,7 +659,7 @@
       render();
       return render;
     }
-    var crSearch = byId('fc-creator-search'), saoSearch = byId('fc-sao-search');
+    var crSearch = byId('fc-creator-search'), termSearch = byId('fc-terms-search');
     var renderCreatorChips = wireCombo('creator', 'Creators', 'data-creator', ALL_CREATORS, creatorLabel, 'creator',
       function (q) { ctrl.state.creatorQuery = q; },
       // Account marks come from the live registry; redraw once it is in.
@@ -639,7 +667,7 @@
         var C = dep('CreatorSymbols');
         if (C && C.load) C.load().then(function (r) { if (r) render(); });
       });
-    var renderSaoChips = wireCombo('sao', 'Sao', 'data-sao', model.sao || [], esc, 'opening');
+    var renderTermChips = wireCombo('terms', 'Terms', 'data-term', model.terms, esc, 'term', null, null, true);
 
     var sortSel = byId('fc-sort'), groupSel = byId('fc-group'), dirSel = byId('fc-dir');
     sortSel.addEventListener('change', function (e) {
@@ -650,19 +678,19 @@
       changed();
     });
     dirSel.addEventListener('change', function (e) { ctrl.state.dir = e.target.value; changed(); });
-    groupSel.addEventListener('change', function (e) { ctrl.state.group = e.target.value; changed(); });
+    if (groupSel) groupSel.addEventListener('change', function (e) { ctrl.state.group = e.target.value; changed(); });
     ctrl.reset = function () {
       ctrl.state = blankState(cfg);
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
       if (crSearch) crSearch.value = '';
-      if (saoSearch) saoSearch.value = '';
+      if (termSearch) termSearch.value = '';
       if (tagModeSel) tagModeSel.value = 'all';
       renderCreatorChips();
-      renderSaoChips();
+      renderTermChips();
       sortSel.value = DEFAULT_SORT;
       dirSel.value = DEFAULT_DIR;
       dirSel.disabled = DEFAULT_SORT === 'relevance';
-      groupSel.value = DEFAULT_GROUP;
+      if (groupSel) groupSel.value = DEFAULT_GROUP;
       changed();
     };
     byId('fc-reset').addEventListener('click', ctrl.reset);
@@ -688,11 +716,11 @@
       if (favBtn) favBtn.classList.toggle('active', st.favOnly);
       if (crSearch) crSearch.value = st.creatorQuery;
       renderCreatorChips();
-      renderSaoChips();
+      renderTermChips();
       sortSel.value = st.sort;
       dirSel.value = st.dir;
       dirSel.disabled = st.sort === 'relevance';
-      groupSel.value = st.group;
+      if (groupSel) groupSel.value = st.group;
       updateToggle();
     };
 
@@ -702,13 +730,13 @@
         st.includeTags.length + st.excludeTags.length +
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
-        st.includeSao.length + st.excludeSao.length +
+        st.includeTerms.length + st.excludeTerms.length +
         (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.officialOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {
       if (!toggle) return;
       var n = ctrl.activeCount();
-      toggle.innerHTML = 'Filters' + (n ? ' (' + n + ')' : '') +
+      toggle.innerHTML = esc(opts.label || 'Filters') + (n ? ' (' + n + ')' : '') +
         ' <span class="filter-toggle-arrow">&#9662;</span>';
     }
 
@@ -721,8 +749,8 @@
     // jump around while somebody types.
     ctrl.counts = function (next) {
       countList = next;
-      if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(function (c) { return dep('isPartial')(c); }).length + ')';
-      if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(function (c) { return dep('isCurata')(c); }).length + ')';
+      if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(partialOf).length + ')';
+      if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(curataOf).length + ')';
       if (officialBtn) officialBtn.textContent = 'Official (' + next.filter(function (c) { return !!c.official; }).length + ')';
       if (favBtn && FAV_SET) favLoad(true);
     };
@@ -915,7 +943,7 @@
     init: init, config: config, blankState: blankState, applyState: applyState,
     barModel: barModel, barHTML: barHTML, creatorListHTML: creatorListHTML,
     batchedHTML: batchedHTML, layoutSig: layoutSig, singleGrid: singleGrid, loadMoreLabel: loadMoreLabel,
-    wireToggle: wireToggle, splitTags: splitTags, titleCase: titleCase
+    wireToggle: wireToggle, splitTags: splitTags, titleCase: titleCase, hasTerm: hasTerm, COMMON_TERMS: COMMON_TERMS
   };
   if (typeof window !== 'undefined') window.CharFilters = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

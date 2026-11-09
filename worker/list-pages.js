@@ -27,7 +27,7 @@ import OFFICIAL_TAGS from '../assets/official-tags.js';
 import OfficialRoles from '../assets/official-roles.js';
 import Sao from '../assets/sao.js';
 
-CharFilters.init({ Classify, CardActions, splitCreators: Creators.splitCreators, saoCompare: Sao.saoCompare, saoGroup: Sao.saoGroup, SAO_SEARCH: Sao.SAO_SEARCH });
+CharFilters.init({ Classify, CardActions, splitCreators: Creators.splitCreators, saoCompare: Sao.saoCompare });
 
 export const LIST_PAGES = { '/all-characters': 'all', '/team': 'team', '/tag': 'tag' };
 // The feeds each page is drawn from. All Characters' Source chips need the
