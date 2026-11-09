@@ -2041,11 +2041,23 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .landing-hero h1 {
   font-family: 'Dumbledor2', serif; font-weight: 400;
-  font-size: clamp(1.7rem, 4.2vw, 2.8rem);
+  font-size: clamp(1.85rem, 5vw, 3.6rem);
   color: var(--parch); letter-spacing: .04em; line-height: 1.15;
   margin: 0 0 .55em;
   text-shadow: 0 3px 12px rgba(0,0,0,.5);
+  /* The wiki skull (from the owner's wikiskull1.psd) stands to the left of
+     the title. */
+  display: flex; align-items: center; justify-content: center; gap: .35em;
 }
+/* Two lines beside the skull, as one lockup: the cap is what stops a
+   wrapped title stretching to the full width and leaving the skull at the
+   far left of the page. */
+.landing-hero h1 > span { min-width: 0; max-width: 13.5em; text-align: left; text-wrap: balance; }
+.hero-skull {
+  flex: none; height: 2.2em; width: auto;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.45));
+}
+@media (max-width: 640px) { .hero-skull { height: 3.1em; } }
 .landing-intro {
   font-size: clamp(1rem, 1.6vw, 1.12rem);
   color: rgba(236,225,200,.85); line-height: 1.55;
