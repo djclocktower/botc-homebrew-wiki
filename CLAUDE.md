@@ -4279,7 +4279,12 @@ uploaded — except for the one opt-in save described below.
   project and do **not** apply to this repo.
 - **The page owns the UI.** `iconforge.html` carries the markup and all
   page-local CSS (sliders, switches, segmented pickers and the preview stage,
-  all rebuilt in wiki furniture). Every control declares
+  all rebuilt in wiki furniture). It sits in the Script Builder's frame
+  (`.sbx-*`): the settings are the side panel, one card per group, Open
+  artwork / size / Download PNG are the bar, and the icon is a square as
+  large as the main column and the screen allow. On a phone the settings
+  open as a sheet over the lower half and the icon is pinned above it
+  (`html.if-split`, toggled by `side()` in app.js), as on Fancy Scripts. Every control declares
   `data-opt="<option name>"` and `assets/iconforge/app.js` binds them
   generically — state is the truth, the DOM is a view of it, so a new knob is
   one markup block plus (if it needs one) a formatter in `FORMAT`.

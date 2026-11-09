@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="redesign-on">
+<html lang="en" class="redesign-on sbx-page">
 <head>
 <meta charset="UTF-8">
 <script src="assets/data.js"></script>
@@ -26,74 +26,78 @@
    hidden attribute, which a display rule would otherwise win against. */
 [hidden] { display: none !important; }
 
-/* Hero: the forge mark beside the title, as on Grimoire Forge, so the
-   heading still reads as a page title on a phone. */
-.if-hero { padding-bottom: 10px; }
-.if-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 22px); }
-.if-hero h1 { margin: 0; }
-.if-credit {
-  font-family: 'Roboto',sans-serif; font-size: .78rem; letter-spacing: .06em;
-  text-transform: uppercase; color: rgba(236,225,200,.55); margin: 14px 0 0;
+/* The page sits in the Script Builder's app frame (styles.css: .sbx,
+   .sbx-side, .sbx-bar, .sbx-scroll, .sbx-b): the settings are the side
+   panel, Download is in the bar, and the icon fills the main column. On a
+   phone the settings are a sheet over the lower half and the icon stays in
+   view above it (html.if-split, set by app.js). Square and flat. */
+.if-side-title {
+  flex: 1; min-width: 0; font-family: 'Dumbledor2', serif; font-size: 1.1rem;
+  letter-spacing: .03em; color: var(--maroon); padding: 2px 2px 0;
 }
-.if-credit a { color: rgba(236,225,200,.82); text-decoration: none; border-bottom: 1px solid rgba(236,225,200,.3); }
-.if-credit a:hover { color: var(--parch); }
+.if-names { cursor: default; }
+.sbx-b .sbi { width: 1.05em; height: 1.05em; }
+.sbx-b:disabled { opacity: .45; cursor: default; }
+.if-b-go { background: var(--maroon); border-color: rgba(214,196,150,.55); }
+.if-b-go:hover:not(:disabled) { background: #6d2628; }
+.if-bar-select {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; color: var(--parch);
+  background: rgba(255,255,255,.07); border: 1px solid rgba(214,196,150,.3);
+  border-radius: 0; padding: 4px 6px; max-width: 13em;
+}
+.if-bar-select option { color: var(--ink); background: #fffdf8; }
 
-/* ── Layout: controls column + preview column ───────────────────── */
-.if-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
-}
-.if-stage-col { position: sticky; top: 14px; }
-/* The icon is a square as wide as the stage, so a stage wider than the
-   screen is tall pushes its bottom off screen. 938px is the widest it was
-   when pages stopped at 1440px; past that it only grows while it fits. */
-@media (min-width: 1001px) {
-  .if-stage-col { width: 100%; max-width: max(938px, calc(100vh - 80px)); justify-self: center; }
-}
-@media (max-width: 1000px) {
-  .if-layout { grid-template-columns: minmax(0, 1fr); }
-  /* On a phone the icon comes first — it is the thing being judged. */
-  .if-stage-col { position: static; order: -1; }
-}
+/* the preview: a square as big as the column and the screen allow */
+#if-scroll { display: flex; flex-direction: column; align-items: center; }
+.if-stage-col { width: min(100%, calc(100dvh - 190px)); min-width: min(100%, 280px); }
+.if-side-foot { padding: 4px 0 10px; }
+.if-side-foot .sb-btn { width: 100%; }
+.if-credits { margin: 10px 0 0; font-size: .74rem; line-height: 1.45; color: rgba(0,0,0,.55); }
+.if-credits a { color: var(--good-name); }
 
-/* ── Parchment panels ───────────────────────────────────────────── */
+/* ── Setting cards: a header bar over the controls ──────────────── */
 .if-card {
-  background-color: var(--parch);
-  background-image: url('assets/parchment.webp');
-  background-size: cover;
-  border: 2px solid var(--parch-frame);
-  color: var(--ink);
-  padding: 16px 18px;
-  margin-bottom: 14px;
+  border: 1px solid var(--parch-frame); background: rgba(255,253,248,.55);
+  margin: 0 0 8px; padding: 0; color: var(--ink);
 }
-.if-card > :last-child { margin-bottom: 0; }
-.if-card-title {
-  font-family: 'Dumbledor2', serif; font-size: 1.12rem; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--maroon); margin: 0 0 12px;
+.if-card-title, details.if-sec > summary {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--maroon);
+  padding: 8px 10px; background: #fffdf8;
 }
-
-/* Collapsible control groups. All the knobs at once is a wall on a phone, so
-   each group folds; the ones people touch first start open. */
-details.if-sec { border-bottom: 1px solid rgba(180,160,120,.55); }
-details.if-sec:last-of-type { border-bottom: 0; }
-details.if-sec > summary {
-  list-style: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 12px 0;
-  font-family: 'Dumbledor2', serif; font-size: 1.05rem; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--maroon);
-}
+.if-card-title { border-bottom: 1px solid var(--parch-frame); }
+.if-card-body, .if-sec-body { padding: 10px; }
+.if-card-body > :last-child, .if-sec-body > :last-child { margin-bottom: 0; }
+details.if-sec { border: 1px solid var(--parch-frame); background: rgba(255,253,248,.55); margin: 0 0 8px; color: var(--ink); }
+details.if-sec > summary { cursor: pointer; list-style: none; user-select: none; }
 details.if-sec > summary::-webkit-details-marker { display: none; }
 details.if-sec > summary::after {
-  content: '▾'; font-family: 'Roboto',sans-serif; font-size: .9rem;
-  color: rgba(91,31,33,.55); transition: transform .15s ease;
+  content: ''; margin-left: auto; width: 6px; height: 6px; flex: none;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg); transition: transform .15s;
 }
-details.if-sec[open] > summary::after { transform: rotate(180deg); }
-details.if-sec > summary:hover { color: #8a3526; }
-.if-sec-body { padding: 0 0 16px; }
-.if-sec-body > :last-child { margin-bottom: 0; }
+details.if-sec[open] > summary::after { transform: translateY(1px) rotate(225deg); }
+details.if-sec[open] > summary { border-bottom: 1px solid var(--parch-frame); }
+details.if-sec > summary:hover { background: #fff; }
+
+@media (max-width: 900px) {
+  .sbx-bar .sbx-b-txt { display: none; }
+  .if-stage-col { width: 100%; }
+  .sbx-side {
+    top: auto; bottom: 0; width: 100%; height: 56dvh;
+    border-right: 0; border-top: 2px solid var(--parch-frame);
+    transform: translateY(100%);
+  }
+  .sbx-side.on { box-shadow: 0 -6px 26px rgba(0,0,0,.55); }
+  #sbx-scrim { display: none !important; }
+  html.if-split #if-scroll {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 56dvh; z-index: 55;
+    overflow: auto; padding: 8px; background: #1f0c25;
+  }
+  html.if-split .if-stage-col { width: min(100%, calc(44dvh - 64px)); }
+  html.if-split .if-zoom .if-label { display: none; }
+}
 
 /* ── Controls ───────────────────────────────────────────────────── */
 .if-label {
@@ -131,12 +135,12 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-row input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 17px; height: 17px; margin-top: -6px;
-  background: linear-gradient(180deg, #8a3526, var(--maroon));
+  background: var(--maroon);
   border: 2px solid #e8ddc2; box-shadow: 0 1px 3px rgba(0,0,0,.4);
 }
 .if-row input[type=range]::-moz-range-thumb {
   width: 15px; height: 15px; border-radius: 0;
-  background: linear-gradient(180deg, #8a3526, var(--maroon));
+  background: var(--maroon);
   border: 2px solid #e8ddc2; box-shadow: 0 1px 3px rgba(0,0,0,.4);
 }
 .if-row input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid #8a5a12; outline-offset: 1px; }
@@ -154,11 +158,11 @@ details.if-sec > summary:hover { color: #8a3526; }
 }
 .if-track::after {
   content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
-  background: linear-gradient(180deg, #b0977a, #8a7457);
+  background: #8a7457;
   transition: transform .15s ease, background .15s;
 }
 .if-switch input:checked + .if-track { background: #d8c9a4; }
-.if-switch input:checked + .if-track::after { transform: translateX(20px); background: linear-gradient(180deg, #8a3526, var(--maroon)); }
+.if-switch input:checked + .if-track::after { transform: translateX(20px); background: var(--maroon); }
 .if-switch input:focus-visible + .if-track { outline: 2px solid #8a5a12; outline-offset: 2px; }
 
 /* Segmented pickers — the wiki's chip row, one choice at a time. */
@@ -245,15 +249,25 @@ details.if-sec > summary:hover { color: #8a3526; }
 /* The export dialog's Save button is an <a download>, not a <button>. */
 .if-btn-row a.sb-btn { text-decoration: none; }
 .if-btn-row .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
-.sb-btn.if-btn-quiet { background: linear-gradient(180deg, #6b573d, #4a3c2a); }
-.sb-btn.if-btn-go { background: linear-gradient(180deg, #8a3526, #5B1F21); }
+.sb-btn.if-btn-quiet, .sb-btn.if-btn-go {
+  font-family: 'Oswald', sans-serif; font-weight: 400; font-size: .78rem; letter-spacing: .04em;
+  padding: 6px 11px; border-radius: 0; box-shadow: none; text-shadow: none;
+}
+.sb-btn.if-btn-quiet { background: #fffdf8; color: var(--maroon); border: 1px solid var(--parch-frame); }
+.sb-btn.if-btn-quiet:hover { background: #fff; filter: none; }
+.sb-btn.if-btn-go { background: var(--maroon); color: #fffdf8; border: 1px solid var(--maroon); }
+.sb-btn.if-btn-go:hover { background: #6d2628; filter: none; }
+/* on the dark editor bar and the progress card */
+.if-editor-bar .sb-btn.if-btn-quiet, .if-busy .sb-btn.if-btn-quiet {
+  background: rgba(255,255,255,.07); color: var(--parch); border-color: rgba(214,196,150,.4);
+}
 
 /* ── Preview stage ──────────────────────────────────────────────── */
 .if-stage {
   position: relative; display: flex; align-items: center; justify-content: center;
-  min-height: 380px; padding: 18px;
-  border: 2px solid var(--parch-frame);
-  background: radial-gradient(circle at 50% 35%, #3a1d42, #170a1c 78%);
+  aspect-ratio: 1; padding: 18px;
+  border: 1px solid var(--parch-frame);
+  background: #1d0a1a;
 }
 .if-stage.is-checker {
   background-color: #ded3bd;
@@ -269,7 +283,6 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-token-ring {
   position: absolute; z-index: 1; border-radius: 50%;
   border: 2px dashed rgba(214,196,150,.45);
-  background: radial-gradient(circle, rgba(240,232,213,.09), transparent 70%);
   pointer-events: none;
 }
 .if-stage-empty { text-align: center; color: rgba(236,225,200,.6); padding: 30px 16px; }
@@ -293,8 +306,8 @@ details.if-sec > summary:hover { color: #8a3526; }
   width: min(460px, calc(100vw - 24px));
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
-  background: linear-gradient(180deg, #2c1333, #1a0820);
-  border: 2px solid var(--parch-frame); box-shadow: 0 6px 24px rgba(0,0,0,.55);
+  background: #241028;
+  border: 1px solid var(--parch-frame); box-shadow: 0 6px 24px rgba(0,0,0,.55);
 }
 .if-busy-text { flex: 1; min-width: 0; }
 .if-busy p { margin: 0; font-family: 'Roboto',sans-serif; font-size: .84rem; letter-spacing: .04em; color: rgba(236,225,200,.92); }
@@ -325,11 +338,6 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-zoom input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; background: #d6c496; border: 0; }
 .if-zoom input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 0; background: #d6c496; }
 
-.if-stage-note {
-  margin: 12px 0 0; text-align: center; font-size: .8rem; line-height: 1.5;
-  color: rgba(236,225,200,.42);
-}
-.if-stage-note a { color: rgba(236,225,200,.62); }
 
 /* ── Fills list (paint bucket) ──────────────────────────────────── */
 .if-fills { list-style: none; margin: 0 0 10px; padding: 0; }
@@ -376,7 +384,9 @@ details.if-sec > summary:hover { color: #8a3526; }
 
 /* ── Export dialog ──────────────────────────────────────────────── */
 .if-modal { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(16,6,20,.8); }
-.if-modal-card { max-width: 440px; width: 100%; max-height: 90vh; overflow: auto; }
+.if-modal-card { max-width: 440px; width: 100%; max-height: 90vh; overflow: auto; padding: 0 0 12px; background: var(--parch); border-width: 2px; }
+.if-modal-card > :not(.if-card-title) { margin-left: 12px; margin-right: 12px; }
+.if-modal-card > .if-card-title { margin-bottom: 12px; }
 .if-modal-card .if-shot {
   display: flex; align-items: center; justify-content: center; padding: 12px; margin-bottom: 12px;
   border: 1px solid var(--parch-frame);
@@ -388,9 +398,6 @@ details.if-sec > summary:hover { color: #8a3526; }
 }
 .if-modal-card .if-shot img { max-width: 100%; max-height: 260px; }
 
-/* Tips block at the foot of the page, on parchment like the About cards. */
-.if-tips ul { margin: 0 0 12px; padding-left: 20px; }
-.if-tips li { margin-bottom: 6px; line-height: 1.5; }
 
 /* Toast: the one place the tool talks back (a tap that cannot be filled, a
    file it cannot read). Bottom-centre so it never covers the controls. */
@@ -446,472 +453,442 @@ details.if-sec > summary:hover { color: #8a3526; }
     <a href="script">Script Builder</a>
   </nav>
 
-  <div class="home-hero if-hero">
-    <div class="if-hero-row">
-      <img class="tool-hero-icon" src="assets/tool-icons/iconforge.webp" width="300" height="246" alt="">
-      <h1>Icon Forge</h1>
-    </div>
-    <p>Turn your own line art, a scan or a photo into a character icon in the official style — textured body, parchment details, white border, transparent PNG.</p>
-    <p class="if-credit">Everything runs in your browser · Nothing is uploaded unless you choose to save it</p>
-  </div>
-
-  <main class="home-panel" id="content">
-    <div class="if-layout">
-
-      <!-- ══ CONTROLS ══════════════════════════════════════════ -->
-      <div class="if-controls-col">
-
-        <!-- Source -->
+  <div class="sbx" id="sbx">
+    <aside class="sbx-side" id="sbx-side" aria-label="Settings">
+      <div class="sbx-side-head">
+        <span class="if-side-title">Icon Forge</span>
+        <button type="button" class="sbx-icon sbx-close-mob" id="sbx-close" aria-label="Close settings"><i class="sbi-i" data-icon="close"></i></button>
+      </div>
+      <div class="sbx-side-scroll" id="if-side-scroll">
         <section class="if-card">
           <h2 class="if-card-title">Your artwork</h2>
-
-          <div id="if-loaded" class="if-loaded" hidden>
-            <img id="if-loaded-thumb" alt="Your artwork before the forge">
-            <div class="if-loaded-meta">
-              <div class="if-loaded-name" id="if-loaded-name">—</div>
-              <div class="if-loaded-sub" id="if-loaded-sub">—</div>
-            </div>
-          </div>
-
-          <button type="button" class="if-drop" id="if-drop">
-            <b>Drop artwork here, tap to browse, or paste</b>
-            <span>SVG, PNG, JPG or WebP · paste with Ctrl+V (Cmd+V on a Mac) · black line art on white works best</span>
-          </button>
-          <input type="file" id="if-file" accept="image/*,.svg" hidden>
-
-          <div class="if-btn-row">
-            <button type="button" class="sb-btn if-btn-quiet" id="if-paste" hidden>Paste image</button>
-            <button type="button" class="sb-btn if-btn-quiet" id="if-edit" hidden>Edit artwork</button>
-            <button type="button" class="sb-btn if-btn-quiet" id="if-draw">Draw your own</button>
-          </div>
-
-        </section>
-
-        <!-- Knobs -->
-        <section class="if-card">
-          <h2 class="if-card-title">The forge</h2>
-
-          <details class="if-sec" open>
-            <summary>Artwork</summary>
-            <div class="if-sec-body">
-              <div class="if-modes" role="group" aria-label="How to read the artwork">
-                <button type="button" class="if-mode" data-mode="auto" aria-pressed="true">
-                  <b>Ink &amp; paper</b><span>Dark ink becomes the colour fill, light areas become white details.</span>
-                </button>
-                <button type="button" class="if-mode" data-mode="silhouette" aria-pressed="false">
-                  <b>Silhouette</b><span>The whole shape becomes one solid colour fill.</span>
-                </button>
-              </div>
-
-              <label class="if-row" data-opt="threshold" data-only-mode="auto">
-                <span class="if-row-head"><span class="if-label">Ink threshold</span><output class="if-val"></output></span>
-                <input type="range" min="40" max="220" step="1">
-              </label>
-              <label class="if-row" data-opt="edgeOuter">
-                <span class="if-row-head"><span class="if-label">Outer edge</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="3" step="0.1">
-              </label>
-              <label class="if-row" data-opt="edgeInner">
-                <span class="if-row-head"><span class="if-label">Inner edge</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="3" step="0.1">
-              </label>
-              <p class="if-hint">Softens the outline and the white details. 0px is sharp.</p>
-              <label class="if-row" data-opt="lineThicken">
-                <span class="if-row-head"><span class="if-label">Colour line thickness</span><output class="if-val"></output></span>
-                <input type="range" min="-10" max="10" step="0.5">
-              </label>
-              <label class="if-row" data-opt="padding">
-                <span class="if-row-head"><span class="if-label">Canvas margin</span><output class="if-val"></output></span>
-                <input type="range" min="0.02" max="0.3" step="0.01">
-              </label>
-              <label class="if-switch" data-opt="invert">
-                <span class="if-switch-text"><span class="if-label">Invert ink</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-            </div>
-          </details>
-
-          <details class="if-sec" open>
-            <summary>Background</summary>
-            <div class="if-sec-body">
-              <div class="if-seg" id="if-bgmode" role="group" aria-label="Background removal">
-                <button type="button" data-value="keep" aria-pressed="true">Keep</button>
-                <button type="button" data-value="ai" aria-pressed="false">Smart remove</button>
-                <button type="button" data-value="key" aria-pressed="false">White key</button>
-                <button type="button" data-value="chroma" aria-pressed="false">Chroma</button>
-              </div>
-
-              <div id="if-bg-ai" hidden>
-                <p class="if-hint">Cuts your subject out of a photo or messy scan. The first run downloads about 45&nbsp;MB.</p>
-                <label class="if-row" data-opt="aiTolerance">
-                  <span class="if-row-head"><span class="if-label">Cleanup tolerance</span><output class="if-val"></output></span>
-                  <input type="range" min="0" max="100" step="1">
-                </label>
-                <p class="if-hint">Lower keeps faint lines; higher removes more smudges.</p>
-              </div>
-
-              <div id="if-bg-key" hidden>
-                <p class="if-hint">For black line art on white paper.</p>
-              </div>
-
-              <div id="if-bg-chroma" hidden>
-                <p class="if-hint">Pick the background colour from your artwork to make it transparent.</p>
-                <div class="if-btn-row" style="margin-bottom:10px">
-                  <button type="button" class="sb-btn if-btn-quiet" id="if-chroma-pick">Pick colour from artwork</button>
-                  <span id="if-chroma-swatch" class="if-swatch" hidden></span>
-                </div>
-              </div>
-
-              <label class="if-row" data-opt="bgTolerance" hidden>
-                <span class="if-row-head"><span class="if-label">Background tolerance</span><output class="if-val"></output></span>
-                <input type="range" min="5" max="100" step="1">
-              </label>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Detail &amp; depth</summary>
-            <div class="if-sec-body">
-              <label class="if-switch" data-opt="innerDetails">
-                <span class="if-switch-text"><span class="if-label">Keep enclosed whites</span>
-                  <span class="if-hint">White areas fully surrounded by ink (hands, cuffs, swooshes) become white detail instead of holes — like the official icons.</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-              <label class="if-switch" data-opt="fillHoles">
-                <span class="if-switch-text"><span class="if-label">Fill enclosed spaces</span>
-                  <span class="if-hint">Every fully enclosed space (handle loops, rings, eyes) is filled with the parchment texture, whatever colour it was in your art.</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-              <label class="if-switch" data-opt="whiteUnderlay">
-                <span class="if-switch-text"><span class="if-label">White underlay</span>
-                  <span class="if-hint">Parchment under the whole shape, so soft edges have white behind them.</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-
-              <label class="if-row" data-opt="highlights">
-                <span class="if-row-head"><span class="if-label">Rim highlights</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <p class="if-hint">White swoosh strokes along the lit edges of the shape — the hand-drawn look, worked out from the silhouette itself.</p>
-              <label class="if-row" data-opt="highlightAngle" data-needs="highlights">
-                <span class="if-row-head"><span class="if-label">Highlight angle</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="360" step="5">
-              </label>
-              <label class="if-row" data-opt="highlightWidth" data-needs="highlights">
-                <span class="if-row-head"><span class="if-label">Highlight width</span><output class="if-val"></output></span>
-                <input type="range" min="1" max="10" step="0.5">
-              </label>
-
-              <label class="if-row" data-opt="bevel">
-                <span class="if-row-head"><span class="if-label">Auto shading (3D)</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <p class="if-hint">Lights the silhouette like a rounded shape — depth for completely flat art. Follows the highlight angle.</p>
-              <label class="if-row" data-opt="bevelSize" data-needs="bevel">
-                <span class="if-row-head"><span class="if-label">Shading width</span><output class="if-val"></output></span>
-                <input type="range" min="2" max="40" step="1">
-              </label>
-
-              <label class="if-row" data-opt="lineDetails">
-                <span class="if-row-head"><span class="if-label">Line details</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <p class="if-hint">Finds anything much darker or brighter than its surroundings — handle wraps, stitching, hatching — and draws it as a white detail line. Works in Silhouette, White key and Smart remove modes.</p>
-              <div class="if-seg" id="if-linemode" data-opt="lineMode" data-needs="lineDetails" role="group" aria-label="Which lines to catch">
-                <button type="button" data-value="dark" aria-pressed="true">Dark lines</button>
-                <button type="button" data-value="both" aria-pressed="false">Both</button>
-                <button type="button" data-value="bright" aria-pressed="false">Bright lines</button>
-              </div>
-              <label class="if-row" data-opt="lineRadius" data-needs="lineDetails">
-                <span class="if-row-head"><span class="if-label">Line scale</span><output class="if-val"></output></span>
-                <input type="range" min="2" max="20" step="1">
-              </label>
-
-              <label class="if-row" data-opt="colorEdges">
-                <span class="if-row-head"><span class="if-label">Colour edges</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <p class="if-hint">Draws a thin white line where neighbouring colours differ — handle against cord, sleeve against skin — even when they are equally bright.</p>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Character type</summary>
-            <div class="if-sec-body">
-              <div class="if-tex-grid" id="if-textures" role="group" aria-label="Character type"></div>
-              <div id="if-split" hidden>
-                <label class="if-row" data-opt="splitPosition">
-                  <span class="if-row-head"><span class="if-label">Divider position</span><output class="if-val"></output></span>
-                  <input type="range" min="0" max="100" step="1">
-                </label>
-                <label class="if-row" data-opt="splitThickness">
-                  <span class="if-row-head"><span class="if-label">Divider thickness</span><output class="if-val"></output></span>
-                  <input type="range" min="0" max="30" step="0.5">
-                </label>
-                <p class="if-hint">Good texture on the left, evil on the right.</p>
-              </div>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Paint bucket</summary>
-            <div class="if-sec-body">
-              <div class="if-seg" id="if-bucket" role="group" aria-label="Paint bucket">
-                <button type="button" data-value="off" aria-pressed="true">Off</button>
-                <button type="button" data-value="color" aria-pressed="false">Colour</button>
-                <button type="button" data-value="white" aria-pressed="false">Parchment</button>
-                <button type="button" data-value="hatch" aria-pressed="false">Hatch</button>
-              </div>
-              <p class="if-hint" id="if-bucket-hint">Fill enclosed spaces by hand: pick Colour or Parchment, then tap a space in the preview. Unlike “Fill enclosed spaces”, you choose each region and its fill. Hatch adds shading lines to whatever you tap instead.</p>
-              <ul class="if-fills" id="if-fills"></ul>
-              <button type="button" class="sb-btn if-btn-quiet" id="if-fills-clear" hidden>Clear all fills</button>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Hatching</summary>
-            <div class="if-sec-body">
-              <label class="if-row" data-opt="hatchIntensity">
-                <span class="if-row-head"><span class="if-label">Intensity</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <label class="if-row" data-opt="hatchAngle" data-needs="hatchIntensity">
-                <span class="if-row-head"><span class="if-label">Line angle</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="180" step="1">
-              </label>
-              <p class="if-hint">Hand-drawn shading lines, like the ink hatching on the official icons. With no regions picked in the paint bucket, the whole colour body is hatched.</p>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Texture grade</summary>
-            <div class="if-sec-body">
-              <p class="if-label" style="display:block;margin-bottom:8px">Colour texture</p>
-              <label class="if-row" data-opt="colorSat">
-                <span class="if-row-head"><span class="if-label">Saturation</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="2" step="0.05">
-              </label>
-              <label class="if-row" data-opt="colorBright">
-                <span class="if-row-head"><span class="if-label">Brightness</span><output class="if-val"></output></span>
-                <input type="range" min="0.4" max="1.6" step="0.05">
-              </label>
-              <label class="if-row" data-opt="colorVib">
-                <span class="if-row-head"><span class="if-label">Vibrance</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <label class="if-row" data-opt="colorGrad">
-                <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <p class="if-hint">Vibrance lifts dull tones; gradient darkens toward the bottom.</p>
-
-              <p class="if-label" style="display:block;margin:16px 0 8px">Parchment texture</p>
-              <label class="if-row" data-opt="whiteSat">
-                <span class="if-row-head"><span class="if-label">Saturation</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="2" step="0.05">
-              </label>
-              <label class="if-row" data-opt="whiteBright">
-                <span class="if-row-head"><span class="if-label">Brightness</span><output class="if-val"></output></span>
-                <input type="range" min="0.4" max="1.6" step="0.05">
-              </label>
-              <label class="if-row" data-opt="whiteVib">
-                <span class="if-row-head"><span class="if-label">Vibrance</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <label class="if-row" data-opt="whiteGrad">
-                <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <p class="if-hint">Adjusts the parchment in the details, and in a cream border.</p>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Texture placement</summary>
-            <div class="if-sec-body">
-              <p class="if-hint">Official icons are each a random crop of one big texture sheet — pan, zoom and spin until the grain sits right. The dice take a fresh crop.</p>
-              <div class="if-place">
-                <div class="if-pad">
-                  <span></span>
-                  <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up"><span class="ico ico-right if-ico-up" aria-hidden="true"></span></button>
-                  <span></span>
-                  <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left"><span class="ico ico-left" aria-hidden="true"></span></button>
-                  <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop"><span class="ico ico-dice" aria-hidden="true"></span></button>
-                  <button type="button" data-nudge="0.03,0" aria-label="Pan texture right"><span class="ico ico-right" aria-hidden="true"></span></button>
-                  <span></span>
-                  <button type="button" data-nudge="0,0.03" aria-label="Pan texture down"><span class="ico ico-right if-ico-down" aria-hidden="true"></span></button>
-                  <span></span>
-                </div>
-                <div class="if-place-sliders">
-                  <label class="if-row" data-opt="texScale">
-                    <span class="if-row-head"><span class="if-label">Zoom</span><output class="if-val"></output></span>
-                    <input type="range" min="0.4" max="2.6" step="0.01">
-                  </label>
-                  <label class="if-row" data-opt="texRotation">
-                    <span class="if-row-head"><span class="if-label">Rotation</span><output class="if-val"></output></span>
-                    <input type="range" min="-180" max="180" step="1">
-                  </label>
-                </div>
-              </div>
-              <label class="if-row" data-opt="texOffsetX">
-                <span class="if-row-head"><span class="if-label">Horizontal pan</span><output class="if-val"></output></span>
-                <input type="range" min="-1" max="1" step="0.005">
-              </label>
-              <label class="if-row" data-opt="texOffsetY">
-                <span class="if-row-head"><span class="if-label">Vertical pan</span><output class="if-val"></output></span>
-                <input type="range" min="-1" max="1" step="0.005">
-              </label>
-              <label class="if-switch" data-opt="texTile">
-                <span class="if-switch-text"><span class="if-label">Original tiled texture</span>
-                  <span class="if-hint">The small texture sheet repeated edge to edge, mirrored at each join, as Icon Forge first drew it.</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-              <button type="button" class="sb-btn if-btn-quiet" id="if-tex-reset">Reset placement</button>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Border &amp; shadow</summary>
-            <div class="if-sec-body">
-              <label class="if-switch" data-opt="borderStyle" data-on="white" data-off="cream">
-                <span class="if-switch-text"><span class="if-label">Pure white border</span>
-                  <span class="if-hint">Turn off for a cream, paper-textured border.</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-              <label class="if-row" data-opt="borderWidth">
-                <span class="if-row-head"><span class="if-label">Border width</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="32" step="0.5">
-              </label>
-              <label class="if-row" data-opt="borderEdge">
-                <span class="if-row-head"><span class="if-label">Border edge</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="3" step="0.1">
-              </label>
-
-              <label class="if-row" data-opt="shadowOpacity">
-                <span class="if-row-head"><span class="if-label">Shadow opacity</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="1" step="0.05">
-              </label>
-              <label class="if-row" data-opt="shadowAngle" data-needs="shadowOpacity">
-                <span class="if-row-head"><span class="if-label">Shadow angle</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="360" step="5">
-              </label>
-              <label class="if-row" data-opt="shadowDistance" data-needs="shadowOpacity">
-                <span class="if-row-head"><span class="if-label">Shadow distance</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="40" step="1">
-              </label>
-              <label class="if-row" data-opt="shadowBlur" data-needs="shadowOpacity">
-                <span class="if-row-head"><span class="if-label">Shadow blur</span><output class="if-val"></output></span>
-                <input type="range" min="0" max="40" step="1">
-              </label>
-              <p class="if-hint">A soft shadow behind the whole sticker. Wiki icons are usually flat, so leave it low unless you are making a preview image.</p>
-            </div>
-          </details>
-
-          <details class="if-sec">
-            <summary>Orientation</summary>
-            <div class="if-sec-body">
-              <label class="if-switch" data-opt="flipH">
-                <span class="if-switch-text"><span class="if-label">Flip horizontally</span></span>
-                <input type="checkbox"><span class="if-track"></span>
-              </label>
-              <label class="if-row" data-opt="rotate">
-                <span class="if-row-head"><span class="if-label">Rotate</span><output class="if-val"></output></span>
-                <input type="range" min="-180" max="180" step="1">
-              </label>
-              <p class="if-hint">Rotating shrinks the icon slightly so nothing is cropped.</p>
-            </div>
-          </details>
-
-          <div style="padding-top:14px;border-top:1px solid rgba(180,160,120,.55)">
-            <button type="button" class="sb-btn if-btn-quiet" id="if-reset-all">Reset every setting</button>
-          </div>
-        </section>
-
-        <!-- Export -->
-        <section class="if-card">
-          <h2 class="if-card-title">Download</h2>
-          <div class="if-export-row">
-            <select id="if-size" aria-label="Icon size">
-              <option value="591">591 px (wiki size)</option>
-              <option value="0">Match my artwork</option>
-              <option value="400">400 px</option>
-              <option value="1024">1024 px</option>
-              <option value="2048">2048 px</option>
-            </select>
-            <button type="button" class="sb-btn if-btn-go" id="if-export" disabled>Download PNG</button>
-          </div>
-          <p class="if-hint">591&nbsp;px matches the official icons exactly, and is what the character editor expects. The background stays transparent.</p>
-        </section>
-
-        <!-- Save straight to one of your characters -->
-        <section class="if-card" id="if-save-card">
-          <h2 class="if-card-title">Save to a character</h2>
-          <div id="if-save-body" hidden>
-            <p class="if-hint">Put this icon straight onto one of your own character pages — no download, no re-upload. It replaces that page's current art.</p>
-            <div class="if-save-row">
-              <select id="if-save-pick" aria-label="Which of your characters"><option value="">Loading your characters…</option></select>
-              <button type="button" class="sb-btn if-btn-go" id="if-save" disabled>Save as its icon</button>
-            </div>
-          </div>
-          <p class="if-msg" id="if-save-msg">Checking whether you are signed in…</p>
-        </section>
-
-      </div>
-
-      <!-- ══ PREVIEW ═══════════════════════════════════════════ -->
-      <div class="if-stage-col">
-        <div class="if-stage" id="if-stage">
-          <div class="if-token-ring" id="if-ring" hidden></div>
-          <div class="if-stage-empty" id="if-stage-empty">
-            <b>The forge is cold</b>
-            <span>Drop in a drawing, or start one yourself — your icon appears here.</span>
-          </div>
-          <div class="if-stage-inner" id="if-stage-inner" hidden>
-            <canvas id="if-canvas" width="591" height="591" aria-label="Icon preview"></canvas>
+          <div class="if-card-body">
+        <div id="if-loaded" class="if-loaded" hidden>
+          <img id="if-loaded-thumb" alt="Your artwork before the forge">
+          <div class="if-loaded-meta">
+            <div class="if-loaded-name" id="if-loaded-name">—</div>
+            <div class="if-loaded-sub" id="if-loaded-sub">—</div>
           </div>
         </div>
 
-        <div class="if-stage-bar">
-          <div class="if-seg" id="if-backdrop" role="group" aria-label="Preview backdrop">
-            <button type="button" data-value="dark" aria-pressed="true">Night</button>
-            <button type="button" data-value="checker" aria-pressed="false">Transparency</button>
-            <button type="button" data-value="token" aria-pressed="false">Token</button>
+        <button type="button" class="if-drop" id="if-drop">
+          <b>Drop artwork here, tap to browse, or paste</b>
+          <span>SVG, PNG, JPG or WebP · paste with Ctrl+V (Cmd+V on a Mac) · black line art on white works best</span>
+        </button>
+        <input type="file" id="if-file" accept="image/*,.svg" hidden>
+
+        <div class="if-btn-row">
+          <button type="button" class="sb-btn if-btn-quiet" id="if-paste" hidden>Paste image</button>
+          <button type="button" class="sb-btn if-btn-quiet" id="if-edit" hidden>Edit artwork</button>
+          <button type="button" class="sb-btn if-btn-quiet" id="if-draw">Draw your own</button>
+        </div>
           </div>
-          <label class="if-zoom">
-            <span class="if-label">Zoom</span>
-            <input type="range" id="if-zoom" min="0.5" max="1" step="0.02" value="0.86" aria-label="Preview zoom">
+        </section>
+
+      <details class="if-sec" open>
+        <summary>Artwork</summary>
+        <div class="if-sec-body">
+          <div class="if-modes" role="group" aria-label="How to read the artwork">
+            <button type="button" class="if-mode" data-mode="auto" aria-pressed="true">
+              <b>Ink &amp; paper</b><span>Dark ink becomes the colour fill, light areas become white details.</span>
+            </button>
+            <button type="button" class="if-mode" data-mode="silhouette" aria-pressed="false">
+              <b>Silhouette</b><span>The whole shape becomes one solid colour fill.</span>
+            </button>
+          </div>
+
+          <label class="if-row" data-opt="threshold" data-only-mode="auto">
+            <span class="if-row-head"><span class="if-label">Ink threshold</span><output class="if-val"></output></span>
+            <input type="range" min="40" max="220" step="1">
+          </label>
+          <label class="if-row" data-opt="edgeOuter">
+            <span class="if-row-head"><span class="if-label">Outer edge</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="3" step="0.1">
+          </label>
+          <label class="if-row" data-opt="edgeInner">
+            <span class="if-row-head"><span class="if-label">Inner edge</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="3" step="0.1">
+          </label>
+          <p class="if-hint">Softens the outline and the white details. 0px is sharp.</p>
+          <label class="if-row" data-opt="lineThicken">
+            <span class="if-row-head"><span class="if-label">Colour line thickness</span><output class="if-val"></output></span>
+            <input type="range" min="-10" max="10" step="0.5">
+          </label>
+          <label class="if-row" data-opt="padding">
+            <span class="if-row-head"><span class="if-label">Canvas margin</span><output class="if-val"></output></span>
+            <input type="range" min="0.02" max="0.3" step="0.01">
+          </label>
+          <label class="if-switch" data-opt="invert">
+            <span class="if-switch-text"><span class="if-label">Invert ink</span></span>
+            <input type="checkbox"><span class="if-track"></span>
           </label>
         </div>
+      </details>
 
-        <p class="if-stage-note" id="if-stage-note">
+      <details class="if-sec" open>
+        <summary>Background</summary>
+        <div class="if-sec-body">
+          <div class="if-seg" id="if-bgmode" role="group" aria-label="Background removal">
+            <button type="button" data-value="keep" aria-pressed="true">Keep</button>
+            <button type="button" data-value="ai" aria-pressed="false">Smart remove</button>
+            <button type="button" data-value="key" aria-pressed="false">White key</button>
+            <button type="button" data-value="chroma" aria-pressed="false">Chroma</button>
+          </div>
+
+          <div id="if-bg-ai" hidden>
+            <p class="if-hint">Cuts your subject out of a photo or messy scan. The first run downloads about 45&nbsp;MB.</p>
+            <label class="if-row" data-opt="aiTolerance">
+              <span class="if-row-head"><span class="if-label">Cleanup tolerance</span><output class="if-val"></output></span>
+              <input type="range" min="0" max="100" step="1">
+            </label>
+            <p class="if-hint">Lower keeps faint lines; higher removes more smudges.</p>
+          </div>
+
+          <div id="if-bg-key" hidden>
+            <p class="if-hint">For black line art on white paper.</p>
+          </div>
+
+          <div id="if-bg-chroma" hidden>
+            <p class="if-hint">Pick the background colour from your artwork to make it transparent.</p>
+            <div class="if-btn-row" style="margin-bottom:10px">
+              <button type="button" class="sb-btn if-btn-quiet" id="if-chroma-pick">Pick colour from artwork</button>
+              <span id="if-chroma-swatch" class="if-swatch" hidden></span>
+            </div>
+          </div>
+
+          <label class="if-row" data-opt="bgTolerance" hidden>
+            <span class="if-row-head"><span class="if-label">Background tolerance</span><output class="if-val"></output></span>
+            <input type="range" min="5" max="100" step="1">
+          </label>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Detail &amp; depth</summary>
+        <div class="if-sec-body">
+          <label class="if-switch" data-opt="innerDetails">
+            <span class="if-switch-text"><span class="if-label">Keep enclosed whites</span>
+              <span class="if-hint">White areas surrounded by ink become white detail, not holes.</span></span>
+            <input type="checkbox"><span class="if-track"></span>
+          </label>
+          <label class="if-switch" data-opt="fillHoles">
+            <span class="if-switch-text"><span class="if-label">Fill enclosed spaces</span>
+              <span class="if-hint">Every enclosed space is filled with parchment.</span></span>
+            <input type="checkbox"><span class="if-track"></span>
+          </label>
+          <label class="if-switch" data-opt="whiteUnderlay">
+            <span class="if-switch-text"><span class="if-label">White underlay</span>
+              <span class="if-hint">Parchment under the whole shape, so soft edges have white behind them.</span></span>
+            <input type="checkbox"><span class="if-track"></span>
+          </label>
+
+          <label class="if-row" data-opt="highlights">
+            <span class="if-row-head"><span class="if-label">Rim highlights</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <p class="if-hint">White strokes along the lit edges of the shape.</p>
+          <label class="if-row" data-opt="highlightAngle" data-needs="highlights">
+            <span class="if-row-head"><span class="if-label">Highlight angle</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="360" step="5">
+          </label>
+          <label class="if-row" data-opt="highlightWidth" data-needs="highlights">
+            <span class="if-row-head"><span class="if-label">Highlight width</span><output class="if-val"></output></span>
+            <input type="range" min="1" max="10" step="0.5">
+          </label>
+
+          <label class="if-row" data-opt="bevel">
+            <span class="if-row-head"><span class="if-label">Auto shading (3D)</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <p class="if-hint">Shades the shape as if rounded. Follows the highlight angle.</p>
+          <label class="if-row" data-opt="bevelSize" data-needs="bevel">
+            <span class="if-row-head"><span class="if-label">Shading width</span><output class="if-val"></output></span>
+            <input type="range" min="2" max="40" step="1">
+          </label>
+
+          <label class="if-row" data-opt="lineDetails">
+            <span class="if-row-head"><span class="if-label">Line details</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <p class="if-hint">Draws lines much darker or brighter than their surroundings as white detail.</p>
+          <div class="if-seg" id="if-linemode" data-opt="lineMode" data-needs="lineDetails" role="group" aria-label="Which lines to catch">
+            <button type="button" data-value="dark" aria-pressed="true">Dark lines</button>
+            <button type="button" data-value="both" aria-pressed="false">Both</button>
+            <button type="button" data-value="bright" aria-pressed="false">Bright lines</button>
+          </div>
+          <label class="if-row" data-opt="lineRadius" data-needs="lineDetails">
+            <span class="if-row-head"><span class="if-label">Line scale</span><output class="if-val"></output></span>
+            <input type="range" min="2" max="20" step="1">
+          </label>
+
+          <label class="if-row" data-opt="colorEdges">
+            <span class="if-row-head"><span class="if-label">Colour edges</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <p class="if-hint">A thin white line where neighbouring colours differ.</p>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Character type</summary>
+        <div class="if-sec-body">
+          <div class="if-tex-grid" id="if-textures" role="group" aria-label="Character type"></div>
+          <div id="if-split" hidden>
+            <label class="if-row" data-opt="splitPosition">
+              <span class="if-row-head"><span class="if-label">Divider position</span><output class="if-val"></output></span>
+              <input type="range" min="0" max="100" step="1">
+            </label>
+            <label class="if-row" data-opt="splitThickness">
+              <span class="if-row-head"><span class="if-label">Divider thickness</span><output class="if-val"></output></span>
+              <input type="range" min="0" max="30" step="0.5">
+            </label>
+            <p class="if-hint">Good texture on the left, evil on the right.</p>
+          </div>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Paint bucket</summary>
+        <div class="if-sec-body">
+          <div class="if-seg" id="if-bucket" role="group" aria-label="Paint bucket">
+            <button type="button" data-value="off" aria-pressed="true">Off</button>
+            <button type="button" data-value="color" aria-pressed="false">Colour</button>
+            <button type="button" data-value="white" aria-pressed="false">Parchment</button>
+            <button type="button" data-value="hatch" aria-pressed="false">Hatch</button>
+          </div>
+          <p class="if-hint" id="if-bucket-hint">Pick a fill, then tap a space in the preview. Hatch adds shading lines instead.</p>
+          <ul class="if-fills" id="if-fills"></ul>
+          <button type="button" class="sb-btn if-btn-quiet" id="if-fills-clear" hidden>Clear all fills</button>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Hatching</summary>
+        <div class="if-sec-body">
+          <label class="if-row" data-opt="hatchIntensity">
+            <span class="if-row-head"><span class="if-label">Intensity</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <label class="if-row" data-opt="hatchAngle" data-needs="hatchIntensity">
+            <span class="if-row-head"><span class="if-label">Line angle</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="180" step="1">
+          </label>
+          <p class="if-hint">Shading lines. With no spaces picked in the paint bucket, the whole colour body is hatched.</p>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Texture grade</summary>
+        <div class="if-sec-body">
+          <p class="if-label" style="display:block;margin-bottom:8px">Colour texture</p>
+          <label class="if-row" data-opt="colorSat">
+            <span class="if-row-head"><span class="if-label">Saturation</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="2" step="0.05">
+          </label>
+          <label class="if-row" data-opt="colorBright">
+            <span class="if-row-head"><span class="if-label">Brightness</span><output class="if-val"></output></span>
+            <input type="range" min="0.4" max="1.6" step="0.05">
+          </label>
+          <label class="if-row" data-opt="colorVib">
+            <span class="if-row-head"><span class="if-label">Vibrance</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <label class="if-row" data-opt="colorGrad">
+            <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <p class="if-hint">Vibrance lifts dull tones; gradient darkens toward the bottom.</p>
+
+          <p class="if-label" style="display:block;margin:16px 0 8px">Parchment texture</p>
+          <label class="if-row" data-opt="whiteSat">
+            <span class="if-row-head"><span class="if-label">Saturation</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="2" step="0.05">
+          </label>
+          <label class="if-row" data-opt="whiteBright">
+            <span class="if-row-head"><span class="if-label">Brightness</span><output class="if-val"></output></span>
+            <input type="range" min="0.4" max="1.6" step="0.05">
+          </label>
+          <label class="if-row" data-opt="whiteVib">
+            <span class="if-row-head"><span class="if-label">Vibrance</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <label class="if-row" data-opt="whiteGrad">
+            <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <p class="if-hint">Adjusts the parchment in the details, and in a cream border.</p>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Texture placement</summary>
+        <div class="if-sec-body">
+          <p class="if-hint">Pan, zoom and turn the texture. The dice take a new crop.</p>
+          <div class="if-place">
+            <div class="if-pad">
+              <span></span>
+              <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up"><span class="ico ico-right if-ico-up" aria-hidden="true"></span></button>
+              <span></span>
+              <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left"><span class="ico ico-left" aria-hidden="true"></span></button>
+              <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop"><span class="ico ico-dice" aria-hidden="true"></span></button>
+              <button type="button" data-nudge="0.03,0" aria-label="Pan texture right"><span class="ico ico-right" aria-hidden="true"></span></button>
+              <span></span>
+              <button type="button" data-nudge="0,0.03" aria-label="Pan texture down"><span class="ico ico-right if-ico-down" aria-hidden="true"></span></button>
+              <span></span>
+            </div>
+            <div class="if-place-sliders">
+              <label class="if-row" data-opt="texScale">
+                <span class="if-row-head"><span class="if-label">Zoom</span><output class="if-val"></output></span>
+                <input type="range" min="0.4" max="2.6" step="0.01">
+              </label>
+              <label class="if-row" data-opt="texRotation">
+                <span class="if-row-head"><span class="if-label">Rotation</span><output class="if-val"></output></span>
+                <input type="range" min="-180" max="180" step="1">
+              </label>
+            </div>
+          </div>
+          <label class="if-row" data-opt="texOffsetX">
+            <span class="if-row-head"><span class="if-label">Horizontal pan</span><output class="if-val"></output></span>
+            <input type="range" min="-1" max="1" step="0.005">
+          </label>
+          <label class="if-row" data-opt="texOffsetY">
+            <span class="if-row-head"><span class="if-label">Vertical pan</span><output class="if-val"></output></span>
+            <input type="range" min="-1" max="1" step="0.005">
+          </label>
+          <label class="if-switch" data-opt="texTile">
+            <span class="if-switch-text"><span class="if-label">Original tiled texture</span>
+              <span class="if-hint">The small texture sheet repeated edge to edge, mirrored at each join, as Icon Forge first drew it.</span></span>
+            <input type="checkbox"><span class="if-track"></span>
+          </label>
+          <button type="button" class="sb-btn if-btn-quiet" id="if-tex-reset">Reset placement</button>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Border &amp; shadow</summary>
+        <div class="if-sec-body">
+          <label class="if-switch" data-opt="borderStyle" data-on="white" data-off="cream">
+            <span class="if-switch-text"><span class="if-label">Pure white border</span>
+              <span class="if-hint">Turn off for a cream, paper-textured border.</span></span>
+            <input type="checkbox"><span class="if-track"></span>
+          </label>
+          <label class="if-row" data-opt="borderWidth">
+            <span class="if-row-head"><span class="if-label">Border width</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="32" step="0.5">
+          </label>
+          <label class="if-row" data-opt="borderEdge">
+            <span class="if-row-head"><span class="if-label">Border edge</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="3" step="0.1">
+          </label>
+
+          <label class="if-row" data-opt="shadowOpacity">
+            <span class="if-row-head"><span class="if-label">Shadow opacity</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="1" step="0.05">
+          </label>
+          <label class="if-row" data-opt="shadowAngle" data-needs="shadowOpacity">
+            <span class="if-row-head"><span class="if-label">Shadow angle</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="360" step="5">
+          </label>
+          <label class="if-row" data-opt="shadowDistance" data-needs="shadowOpacity">
+            <span class="if-row-head"><span class="if-label">Shadow distance</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="40" step="1">
+          </label>
+          <label class="if-row" data-opt="shadowBlur" data-needs="shadowOpacity">
+            <span class="if-row-head"><span class="if-label">Shadow blur</span><output class="if-val"></output></span>
+            <input type="range" min="0" max="40" step="1">
+          </label>
+          <p class="if-hint">A soft shadow behind the icon. Wiki icons are usually flat.</p>
+        </div>
+      </details>
+
+      <details class="if-sec">
+        <summary>Orientation</summary>
+        <div class="if-sec-body">
+          <label class="if-switch" data-opt="flipH">
+            <span class="if-switch-text"><span class="if-label">Flip horizontally</span></span>
+            <input type="checkbox"><span class="if-track"></span>
+          </label>
+          <label class="if-row" data-opt="rotate">
+            <span class="if-row-head"><span class="if-label">Rotate</span><output class="if-val"></output></span>
+            <input type="range" min="-180" max="180" step="1">
+          </label>
+          <p class="if-hint">Rotating shrinks the icon slightly so nothing is cropped.</p>
+        </div>
+      </details>
+
+        <section class="if-card" id="if-save-card">
+          <h2 class="if-card-title">Save to a character</h2>
+          <div class="if-card-body">
+        <div id="if-save-body" hidden>
+          <p class="if-hint">Replaces the icon on one of your character pages.</p>
+          <div class="if-save-row">
+            <select id="if-save-pick" aria-label="Which of your characters"><option value="">Loading your characters…</option></select>
+            <button type="button" class="sb-btn if-btn-go" id="if-save" disabled>Save as its icon</button>
+          </div>
+        </div>
+        <p class="if-msg" id="if-save-msg">Checking whether you are signed in…</p>
+          </div>
+        </section>
+
+        <div class="if-side-foot">
+          <button type="button" class="sb-btn if-btn-quiet" id="if-reset-all">Reset every setting</button>
+          <p class="if-credits" id="if-stage-note">
           Big thanks to Matteipis for reverse engineering the textures! You can find the Github
           <a href="https://github.com/matteipis/Reverse-engineered-BotC-textures" target="_blank" rel="noopener">here</a>!
           In the spirit of JohnForster's original generator. Drawing surface:
           <a href="https://github.com/viliusle/miniPaint" target="_blank" rel="noopener">miniPaint</a> (MIT) by Vilius L.
           Fan-made, like the rest of the wiki.
         </p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="sbx-main" id="content">
+      <div class="sbx-bar">
+        <button type="button" class="sbx-b sbx-b-open" id="sbx-open"><i class="sbi-i" data-icon="menu"></i> Settings</button>
+        <img class="sbx-tool-ico" src="assets/tool-icons/iconforge.webp" width="300" height="246" alt="">
+        <span class="sbx-names if-names"><span class="sbx-title">Icon Forge</span></span>
+        <div class="sbx-acts">
+          <button type="button" class="sbx-b" id="if-bar-upload" title="Open an image" aria-label="Open artwork"><i class="sbi-i" data-icon="upload"></i> <span class="sbx-b-txt">Artwork</span></button>
+          <select class="if-bar-select" id="if-size" title="591 px is the official icon size" aria-label="Icon size">
+              <option value="591">591 px (wiki size)</option>
+              <option value="0">Match my artwork</option>
+              <option value="400">400 px</option>
+              <option value="1024">1024 px</option>
+              <option value="2048">2048 px</option>
+            </select>
+          <button type="button" class="sbx-b if-b-go" id="if-export" disabled><i class="sbi-i" data-icon="download"></i> PNG</button>
+        </div>
+      </div>
+      <div class="sbx-scroll" id="if-scroll">
+        <div class="if-stage-col">
+      <div class="if-stage" id="if-stage">
+        <div class="if-token-ring" id="if-ring" hidden></div>
+        <div class="if-stage-empty" id="if-stage-empty">
+          <b>The forge is cold</b>
+          <span>Open artwork or draw one. Your icon appears here.</span>
+        </div>
+        <div class="if-stage-inner" id="if-stage-inner" hidden>
+          <canvas id="if-canvas" width="591" height="591" aria-label="Icon preview"></canvas>
+        </div>
       </div>
 
-    </div>
-
-    <section class="landing-section" style="margin-top:34px">
-      <h2 class="type-header">Getting a good icon</h2>
-      <div class="type-rule"></div>
-      <div class="about-card if-tips">
-        <ul>
-          <li><b>Bold, closed shapes read best.</b> The forge decides what is body and what is detail — thin grey pencil lines give it nothing to hold onto.</li>
-          <li><b>Line art on white paper?</b> Set Background to <em>White key</em>. A photo, or coloured paper? Use <em>Smart remove</em>.</li>
-          <li><b>Something filled that should be hollow</b>? Turn off <em>Fill enclosed spaces</em> and use the paint bucket.</li>
-          <li><b>Every icon is a different crop</b> of the same texture. Roll the dice under Texture placement for a new one.</li>
-          <li><b>Save at 591&nbsp;px</b> and add it in the <a href="create">character editor</a>, or use “Save to a character” above.</li>
-        </ul>
-        <p class="about-disclaimer">Fan-made tools. Not affiliated with The Pandemonium Institute.</p>
+      <div class="if-stage-bar">
+        <div class="if-seg" id="if-backdrop" role="group" aria-label="Preview backdrop">
+          <button type="button" data-value="dark" aria-pressed="true">Night</button>
+          <button type="button" data-value="checker" aria-pressed="false">Transparency</button>
+          <button type="button" data-value="token" aria-pressed="false">Token</button>
+        </div>
+        <label class="if-zoom">
+          <span class="if-label">Zoom</span>
+          <input type="range" id="if-zoom" min="0.5" max="1" step="0.02" value="0.86" aria-label="Preview zoom">
+        </label>
       </div>
-    </section>
-
-  </main>
-
-  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="sbx-scrim" id="sbx-scrim"></div>
 
   <div class="if-toast" id="if-toast" role="status" aria-live="polite" hidden></div>
 
@@ -932,6 +909,7 @@ details.if-sec > summary:hover { color: #8a3526; }
   <script src="assets/art-thumb.js"></script>
   <script src="assets/char-icon-save.js"></script>
   <script src="assets/site.js"></script>
+  <script src="assets/ui-icons.js"></script>
   <script type="module" src="assets/iconforge/app.js"></script>
 </body>
 </html>

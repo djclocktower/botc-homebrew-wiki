@@ -807,6 +807,24 @@ $('if-zoom').addEventListener('input', (e) => {
 });
 window.addEventListener('resize', sizeStage);
 
+/* ── the frame (iconforge.html sits in the Script Builder's .sbx frame) ──
+   On a phone the settings open as a sheet over the lower half and the icon
+   is pinned above it (html.if-split), so every change shows as it is made. */
+function side(on) {
+  $('sbx-side').classList.toggle('on', on);
+  $('sbx-scrim').classList.toggle('on', on);
+  document.documentElement.classList.toggle('if-split', on && window.innerWidth <= 900);
+  sizeStage();
+}
+$('sbx-open').addEventListener('click', () => side(true));
+$('sbx-close').addEventListener('click', () => side(false));
+$('sbx-scrim').addEventListener('click', () => side(false));
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 900) document.documentElement.classList.remove('if-split');
+  else if ($('sbx-side').classList.contains('on')) document.documentElement.classList.add('if-split');
+});
+$('if-bar-upload').addEventListener('click', () => $('if-file').click());
+
 /* ── export ─────────────────────────────────────────────────────── */
 /** Render the finished icon at full quality. size 0 = match the artwork. */
 function renderFinal(size) {
