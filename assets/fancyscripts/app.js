@@ -748,6 +748,7 @@ function makeSlider(parent, label, min, max, step, format, b, extra) {
   const input = document.createElement('input');
   input.type = 'range';
   input.min = min; input.max = max; input.step = step;
+  input.rtFmt = format; // range-type.js maps a typed number back through it
   const refresh = () => {
     const v = b.get();
     input.value = v == null ? (extra && extra.fallback != null ? extra.fallback : min) : v;

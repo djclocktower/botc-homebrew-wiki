@@ -156,6 +156,7 @@ const switchRows = Array.from(document.querySelectorAll('.if-switch[data-opt]'))
 sliderRows.forEach((row) => {
   const key = row.dataset.opt;
   const input = row.querySelector('input[type=range]');
+  input.rtFmt = FORMAT[key]; // range-type.js maps a typed number back through it
   input.addEventListener('input', () => {
     setOpts({ [key]: parseFloat(input.value) });
   });

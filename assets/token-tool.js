@@ -729,6 +729,7 @@
         });
       } else {
         var r = $(prefix + f.k);
+        r.rtFmt = f.fmt; // range-type.js maps a typed number back through it
         r.oninput = function () { $(prefix + f.k + '-out').innerHTML = f.fmt(Number(r.value)); setVal(f.k, Number(r.value)); };
       }
     });

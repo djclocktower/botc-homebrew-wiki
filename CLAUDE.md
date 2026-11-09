@@ -344,6 +344,17 @@ assets/
                        `node migration/optimize-images.js thumbs`.
   fonts/README.md      Which fonts are self-hosted and why there is no Google
                        Fonts @import any more; how to refresh the woff2 files.
+  range-type.js        A typed number for every slider: loaded (defer) by
+                       the tool and editor pages, it finds each range input
+                       (a MutationObserver catches ones built later) and
+                       hides its readout behind a text box showing the same
+                       words, or adds a box where there is none. Enter sets
+                       the slider and fires input + change, so the tools'
+                       own listeners run. A tool whose readout is not the
+                       raw value (96% for 0.96) sets `rtFmt` on the slider
+                       to its formatter and the typed number is mapped back
+                       through it (Fancy Scripts, Icon Forge, Token Tool).
+                       Colour hue strips are skipped (`data-no-type` too).
   art-labels.js        Names the three art slots for the team being written:
                        a traveller's are its unaligned, good and evil tokens,
                        and slot three is drawn for a traveller alone. Mounted
