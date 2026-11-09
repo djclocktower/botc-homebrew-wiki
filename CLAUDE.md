@@ -520,6 +520,15 @@ assets/
                        Sort also offers **SAO** wherever sao.js is loaded
                        (all-characters, /search; the Worker hands
                        saoCompare to init()).
+                       **Common Terms** is a search box like Creator's:
+                       COMMON_TERMS (the SAO sheet's openings) in the
+                       drop-down, anything typed can be picked too.
+                       hasTerm(): a listed term is a whole phrase ("Each
+                       night" is not "Each night*", "(*)" takes either), a
+                       typed one matches from a word's start. Picked terms
+                       must all be in the ability. 3-state chips.
+                       **There is one filter box.** card-filters.js is only
+                       an adapter over this one (see its entry).
                        Sort is TWO boxes in both filter boxes: what (Name,
                        Date added, Ability length — plus Best match, Page
                        order, SAO where they apply) and an Order box,
@@ -545,7 +554,16 @@ assets/
                        CharFilters.sections(list, group, setOf) is the one
                        layout both all-characters.html and /search draw
                        through.
-  card-filters.js      The collapsed filter box (3-state team/tag chips, Hide
+  card-filters.js      NOT a second filter box any more: it reads cards
+                       already in the DOM into rows (data-* attributes, the
+                       ability's text) and mounts char-filters.js's box over
+                       them, then hides, re-orders and regroups the cards.
+                       Pages load char-filters.js before it. Script pages
+                       mount it too, over the roster rows (#sv-roster, Page
+                       order first; filterAttrs() in render-page.js writes
+                       the rows' and the cards' data-*). What follows
+                       describes what the box does on those pages.
+                       The collapsed filter box (3-state team/tag chips, Hide
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not

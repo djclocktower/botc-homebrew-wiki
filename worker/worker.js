@@ -9121,8 +9121,8 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
     // button) and card-filters.js (whose Favorites chip asks it for the list),
     // and before card-actions.js, which fills the roster's quick actions.
     scripts: isScript
-      ? ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
-      : ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      ? ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'char-filters.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      : ['reader.js', 'favorites.js', 'card-actions.js', 'pageview.js', 'sao.js', 'char-filters.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug), degraded);
 }

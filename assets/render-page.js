@@ -910,8 +910,32 @@
     return esc(nm || c.name) + (html ? ' ' + html : '');
   }
 
+  /* What the filter box (card-filters.js) reads off a card or a script
+     roster row. Curata wins over Partial, as in Classify.isPartial(): a
+     character can be stamped 'partial' and then inherit the wreath from a
+     Curata collection, and an admin-blessed page is never taken out by the
+     Hide Partial chip. */
+  function filterAttrs(c, order) {
+    var cls = c.classification || '';
+    var hasCurata = !!(c.curata || cls === 'curata');
+    return ' data-team="' + esc(c.team || '') + '"' +
+      ' data-tags="' + esc(c.tags || '') + '"' +
+      ' data-creator="' + esc((c.creator || '').trim()) + '"' +
+      ' data-name="' + esc(c.name || '') + '"' +
+      // The set this character's own "Appears in" row names — the typed
+      // line, else a collection that lists it by hand — for "Group: By
+      // script or collection".
+      ' data-set="' + esc(String(c.appearsIn || '').split(',')[0].trim() ||
+        (c.appearsInFrom && c.appearsInFrom[0] && c.appearsInFrom[0].name) || '') + '"' +
+      (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
+      (hasCurata ? ' data-curata="1"' : '') +
+      (c.official ? ' data-official="1"' : '') +
+      ' data-order="' + (+order || 0) + '"';
+  }
+
   /* ── page sections ── */
-  function renderRoster(entries, root, marks) {
+  function renderRoster(entries, root, marks, orderMap) {
+    orderMap = orderMap || {};
     if (!entries.length) {
       return '<p style="color:var(--ink);opacity:.7;padding:8px 0">No characters on this page yet.</p>';
     }
@@ -923,7 +947,8 @@
         esc(groupLabel(t[0], t[1], grp)) + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' + offsite(c) + '>' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' +
+          filterAttrs(c, orderMap[c.slug]) + offsite(c) + '>' +
           '<span class="card-side">' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
           quickSlot(c) + '</span>' +
@@ -992,22 +1017,7 @@
         // The identity, for the Favorites chip in card-filters.js: a saved
         // character is keyed on it, never on the address the link goes to.
         ' data-slug="' + esc(c.slug || '') + '"' +
-        ' data-team="' + esc(c.team || '') + '"' +
-        ' data-tags="' + esc(c.tags || '') + '"' +
-        ' data-creator="' + esc((c.creator || '').trim()) + '"' +
-        ' data-name="' + esc(c.name || '') + '"' +
-        // The set this character's own "Appears in" row names — the typed
-        // line, else a collection that lists it by hand — for "Group: By
-        // script or collection" in card-filters.js.
-        ' data-set="' + esc(String(c.appearsIn || '').split(',')[0].trim() ||
-          (c.appearsInFrom && c.appearsInFrom[0] && c.appearsInFrom[0].name) || '') + '"' +
-        // Curata wins over Partial (same rule as Classify.isPartial): a
-        // character can be stamped 'partial' and then inherit the wreath from a
-        // Curata collection, and an admin-blessed page is never taken out
-        // by the Hide Partial chip.
-        (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
-        (hasCurata ? ' data-curata="1"' : '') +
-        ' data-order="' + (Object.prototype.hasOwnProperty.call(orderMap, c.slug) && orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
+        filterAttrs(c, Object.prototype.hasOwnProperty.call(orderMap, c.slug) ? orderMap[c.slug] : 0) + '>' +
         // The icon and, under it, the two quick actions (Favorites, Add to
         // Script — assets/card-actions.js). A draft gets no slot.
         '<span class="card-side">' +
@@ -1616,7 +1626,9 @@
 
     main += '<div class="sv-section sv-s-characters">' +
       (main ? sech('sec-characters', 'Characters') : '') +
-      renderRoster(cfg.entries, root, cfg.creatorMarks) +
+      // Collapsed filter box; card-filters.js fills the bar in the browser.
+      (cfg.entries.length > 1 ? filterBoxHTML('sv') : '') +
+      '<div id="sv-roster">' + renderRoster(cfg.entries, root, cfg.creatorMarks, cfg.orderMap) + '</div>' +
       renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits) + '</div>';
     if (!cfg.bootleggerAt) main += boot;
     main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
@@ -1708,6 +1720,9 @@
     (allChars || []).forEach(function (c) { bySlug[c.slug] = c; });
     var entries = (sc.characters || []).map(function (s) { return bySlug[s]; }).filter(Boolean);
     var missing = (sc.characters || []).filter(function (s) { return !bySlug[s]; });
+    // Each slug's index in the full character list, for "Date added".
+    var orderMap = Object.create(null);
+    (allChars || []).forEach(function (c, i) { orderMap[c.slug] = i; });
     var jsonText = customExport(sc.customJson) || buildPageExport(sc.name, sc.author, sc.logo || sc.header, entries, sc);
 
     var share = b64url(JSON.stringify({ n: sc.name || '', a: sc.author || '', c: (sc.characters || []) }));
@@ -1727,7 +1742,7 @@
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
-      entries: entries, missing: missing, jsonText: jsonText, actions: actions,
+      entries: entries, orderMap: orderMap, missing: missing, jsonText: jsonText, actions: actions,
       jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
       jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger, bootleggerAt: sc.bootleggerAt, creatorMarks: !!sc.creatorMarks,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
