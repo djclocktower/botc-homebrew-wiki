@@ -1578,7 +1578,9 @@ What shapes it:
   the filter box (char-filters.js mounted straight over `panelChars`, the
   homebrew and official characters), the name search and the Show select
   run on the list, and each group draws its first `PANEL_STEP` (50)
-  matches with a Show more button (+200). All 3,800 rows on the page made
+  matches with a Show more button (+200), within `PANEL_BUDGET` (400) rows
+  for the whole panel: grouped by creator there are 200-odd groups, so a
+  group past the budget shows its heading and a Show button only. All 3,800 rows on the page made
   the browser re-check every row and icon on each change: a click cost a
   tenth of a second and loading could hang the tab in Brave on a PC.
   `panelMatches()` is every match, drawn or not, and is what Random, Fill,

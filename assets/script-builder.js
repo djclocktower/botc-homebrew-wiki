@@ -851,7 +851,9 @@
      PANEL_STEP matches with a Show more button. Everything that means "what
      the panel is showing" (Random, Fill, Swap, the dice, + All shown) reads
      panelMatches(), so it still means every match, drawn or not. */
-  var PANEL_STEP = 50, PANEL_MORE = 200;
+  // PANEL_BUDGET caps the whole panel, not just each group: grouped by
+  // creator there are 200-odd groups, and 50 each was 2,800 rows again.
+  var PANEL_STEP = 50, PANEL_MORE = 200, PANEL_BUDGET = 400;
   var panelLimit = {};      // group key -> rows to draw
   var panelChars = [];      // every character the panel can offer
   var panelShown = null;    // the matches, filtered and sorted, or null before the box is up
@@ -976,10 +978,12 @@
       list.innerHTML = '<p class="sbx-note">' + (panelChars.length ? 'Nothing matches that.' : 'No characters found.') + '</p>';
       return;
     }
-    var html = '';
+    var html = '', drawn = 0;
     groups.forEach(function (g) {
       var folded = !!(prefs.collapsed && prefs.collapsed[g.key]);
-      var lim = panelLimit[g.key] || PANEL_STEP;
+      // A group past the budget shows its heading and a Show button only,
+      // until the reader asks for it.
+      var lim = panelLimit[g.key] || Math.max(0, Math.min(PANEL_STEP, PANEL_BUDGET - drawn));
       html += '<div class="sbx-add-group' + (folded ? ' collapsed' : '') + '" data-group="' + esc(g.key) + '"' +
         (g.team ? ' data-team="' + esc(g.team[0]) + '"' : '') + '>' +
         '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
@@ -988,11 +992,11 @@
           '<span class="sbx-add-fold" aria-hidden="true">' + ico('down') + '</span></h3>' +
         '<div class="sbx-add-rows">';
       if (!folded) {
-        for (var i = 0; i < g.chars.length && i < lim; i++) html += rowMarkup(g.chars[i], i);
+        for (var i = 0; i < g.chars.length && i < lim; i++) { html += rowMarkup(g.chars[i], i); drawn++; }
       }
       html += '</div>';
       if (!folded && g.chars.length > lim) {
-        html += '<button type="button" class="sbx-b-sm sbx-add-more" data-more="' + esc(g.key) + '">Show more (' + (g.chars.length - lim) + ')</button>';
+        html += '<button type="button" class="sbx-b-sm sbx-add-more" data-more="' + esc(g.key) + '">' + (lim ? 'Show more' : 'Show') + ' (' + (g.chars.length - lim) + ')</button>';
       }
       html += '</div>';
     });
