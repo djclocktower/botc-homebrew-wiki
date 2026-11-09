@@ -515,8 +515,10 @@ assets/
                        Tags combine by the "Tag [all of / any of / only
                        one of]" select in the Tag label (`tagMode`, both
                        filter boxes). **Official is a Status chip**, not a
-                       Source one, so it ORs with "Curata only": both on
-                       keeps Curata pages and official characters.
+                       Source one. The Status chips (Partial, Curata,
+                       Official) are 3-state like Team: once = only these
+                       (two on keep either), twice = struck out, three
+                       times = off (`partial`/`curata`/`official` 1/-1/0).
                        Sort also offers **SAO** wherever sao.js is loaded
                        (all-characters, /search; the Worker hands
                        saoCompare to init()).
@@ -4075,8 +4077,8 @@ and the Worker (which stamps `classification` + `curata` onto every row in
 - **Partial** — characters only: anything short of `STANDARD_REQUIREMENTS`.
   **Listed everywhere** — All Characters, Recently Added on the homepage,
   the team and tag pages, creator pages, /search, the Script Builder —
-  and taken out only when the *reader* ticks the **"Hide Partial"** chip
-  (both filter boxes, off by default, `hidePartial` in their state). It
+  and taken out only when the *reader* strikes the **"Partial"** chip
+  (tapped twice; off by default, `partial: -1` in the state). It
   used to be the other way round, hidden until a "Show Partial" chip was
   ticked, and the owner asked for it turned around (2026-10). What still
   leaves Partial pages out is the wiki's own picks: Featured Character and

@@ -108,6 +108,7 @@
   // Rows read off cards already drawn (card-filters.js) carry their own flags.
   function partialOf(c) { return c._partial != null ? c._partial : dep('isPartial')(c); }
   function curataOf(c) { return c._curata != null ? c._curata : dep('isCurata')(c); }
+  var STATUS = [['partial', partialOf], ['curata', curataOf], ['official', function (c) { return !!c.official; }]];
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
@@ -203,15 +204,16 @@
   // Creators use the same 3-state include/exclude model as tags and teams
   // (click = include, click again = exclude, third click = off) — there are
   // far too many creators for a dropdown, so they get a search box instead
-  // of a chip wall. `hidePartial` leaves unfinished pages out (they are
-  // shown by default); `curataOnly` narrows to admin-picked pages.
+  // of a chip wall. The Status chips cycle the same way, as numbers:
+  // `partial`, `curata`, `official` are 1 (only these), -1 (leave these
+  // out) or 0 (off).
   function blankState(cfg) {
     cfg = cfg || config();
     return {
       includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
       includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
       includeTerms: [], excludeTerms: [],
-      creatorQuery: '', hidePartial: false, curataOnly: false, officialOnly: false, favOnly: false,
+      creatorQuery: '', partial: 0, curata: 0, official: 0, favOnly: false,
       tagMode: 'all',
       sort: cfg.sort, dir: cfg.dir,
       // 'team': one section per team; 'none': every card in one grid, so
@@ -279,8 +281,7 @@
       model.sources.forEach(function (s) { html += '<button type="button" class="filter-chip" data-source="' + esc(s[0]) + '">' + esc(s[1]) + '</button>'; });
       html += '</div></div>';
     }
-    // Status (Partial / Curata). Both are narrowing filters: "Hide Partial"
-    // leaves the unfinished pages out, "Curata only" keeps the picked ones.
+    // Status (Partial / Curata / Official): 3-state like the team chips.
     var nPartial = model.nPartial, nCurata = model.nCurata, nOfficial = model.nOfficial || 0;
     // The Favorites chip is built hidden: the saved list arrives after the
     // bar does, and the chip shows once something on the page is in it.
@@ -288,13 +289,13 @@
     if (nPartial || nCurata || nOfficial || wantFav) {
       html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata || nOfficial ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
       if (nPartial) {
-        html += '<button type="button" class="filter-chip" id="fc-partial" title="Leave out unfinished pages: those missing tags or almanac text.">Hide Partial (' + nPartial + ')</button>';
+        html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: missing tags or almanac text.">Partial (' + nPartial + ')</button>';
       }
       if (nCurata) {
-        html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata: pages the wiki admins have picked out. With Official on too, shows both.">Curata only (' + nCurata + ')</button>';
+        html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Pages the wiki admins have picked out.">Curata (' + nCurata + ')</button>';
       }
       if (nOfficial) {
-        html += '<button type="button" class="filter-chip" id="fc-official" title="The official characters. With Curata only on too, shows both.">Official (' + nOfficial + ')</button>';
+        html += '<button type="button" class="filter-chip" id="fc-official" title="The official characters.">Official (' + nOfficial + ')</button>';
       }
       if (wantFav) {
         html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, plus those on scripts and collections you saved.">' + o.favHeart + ' Favorites</button>';
@@ -377,12 +378,13 @@
     ctx = ctx || {};
     var sourceOf = ctx.sourceOf || function () { return null; };
     var out = input.slice();
-    // "Hide Partial" leaves the unfinished pages out.
-    if (st.hidePartial) out = out.filter(function (c) { return !partialOf(c); });
-    // Curata only and Official each keep their own; on together they keep
-    // either ("Curata or Official").
-    if (st.curataOnly || st.officialOnly) out = out.filter(function (c) {
-      return (st.curataOnly && curataOf(c)) || (st.officialOnly && !!c.official);
+    // Status: the ones on keep any of their kinds; the struck ones leave
+    // theirs out.
+    var on = STATUS.filter(function (f) { return st[f[0]] > 0; });
+    var off = STATUS.filter(function (f) { return st[f[0]] < 0; });
+    if (on.length || off.length) out = out.filter(function (c) {
+      return (!on.length || on.some(function (f) { return f[1](c); })) &&
+        !off.some(function (f) { return f[1](c); });
     });
     if (st.favOnly) out = out.filter(function (c) { return !!(ctx.favSet && ctx.favSet.has(c.slug)); });
     if (st.includeTeams.length) out = out.filter(function (c) { return st.includeTeams.indexOf(c.team) !== -1; });
@@ -510,24 +512,24 @@
       });
     });
     // ── Status chips ──
-    var partialBtn = byId('fc-partial');
-    if (partialBtn) partialBtn.addEventListener('click', function () {
-      ctrl.state.hidePartial = !ctrl.state.hidePartial;
-      partialBtn.classList.toggle('active', ctrl.state.hidePartial);
-      changed();
-    });
-    var curataBtn = byId('fc-curata');
-    if (curataBtn) curataBtn.addEventListener('click', function () {
-      ctrl.state.curataOnly = !ctrl.state.curataOnly;
-      curataBtn.classList.toggle('active', ctrl.state.curataOnly);
-      changed();
-    });
-    var officialBtn = byId('fc-official');
-    if (officialBtn) officialBtn.addEventListener('click', function () {
-      ctrl.state.officialOnly = !ctrl.state.officialOnly;
-      officialBtn.classList.toggle('active', ctrl.state.officialOnly);
-      changed();
-    });
+    // Status chips: off -> only these -> leave these out -> off.
+    function paintFlag(btn, v) {
+      btn.classList.toggle('active', v > 0);
+      btn.classList.toggle('active-exclude', v < 0);
+    }
+    function wireFlag(id, key) {
+      var btn = byId(id);
+      if (btn) btn.addEventListener('click', function () {
+        var v = ctrl.state[key];
+        ctrl.state[key] = v === 0 ? 1 : v > 0 ? -1 : 0;
+        paintFlag(btn, ctrl.state[key]);
+        changed();
+      });
+      return btn;
+    }
+    var partialBtn = wireFlag('fc-partial', 'partial');
+    var curataBtn = wireFlag('fc-curata', 'curata');
+    var officialBtn = wireFlag('fc-official', 'official');
     var tagModeSel = byId('fc-tagmode');
     if (tagModeSel) tagModeSel.addEventListener('change', function () {
       ctrl.state.tagMode = tagModeSel.value;
@@ -709,9 +711,9 @@
           b.classList.toggle('active-exclude', st['exclude' + p[1]].indexOf(v) !== -1);
         });
       });
-      if (partialBtn) partialBtn.classList.toggle('active', st.hidePartial);
-      if (curataBtn) curataBtn.classList.toggle('active', st.curataOnly);
-      if (officialBtn) officialBtn.classList.toggle('active', st.officialOnly);
+      if (partialBtn) paintFlag(partialBtn, st.partial);
+      if (curataBtn) paintFlag(curataBtn, st.curata);
+      if (officialBtn) paintFlag(officialBtn, st.official);
       if (tagModeSel) tagModeSel.value = st.tagMode;
       if (favBtn) favBtn.classList.toggle('active', st.favOnly);
       if (crSearch) crSearch.value = st.creatorQuery;
@@ -731,7 +733,7 @@
         st.includeSources.length + st.excludeSources.length +
         st.includeCreators.length + st.excludeCreators.length +
         st.includeTerms.length + st.excludeTerms.length +
-        (st.hidePartial ? 1 : 0) + (st.curataOnly ? 1 : 0) + (st.officialOnly ? 1 : 0) + (st.favOnly ? 1 : 0);
+        (st.partial ? 1 : 0) + (st.curata ? 1 : 0) + (st.official ? 1 : 0) + (st.favOnly ? 1 : 0);
     };
     function updateToggle() {
       if (!toggle) return;
@@ -749,8 +751,8 @@
     // jump around while somebody types.
     ctrl.counts = function (next) {
       countList = next;
-      if (partialBtn) partialBtn.textContent = 'Hide Partial (' + next.filter(partialOf).length + ')';
-      if (curataBtn) curataBtn.textContent = 'Curata only (' + next.filter(curataOf).length + ')';
+      if (partialBtn) partialBtn.textContent = 'Partial (' + next.filter(partialOf).length + ')';
+      if (curataBtn) curataBtn.textContent = 'Curata (' + next.filter(curataOf).length + ')';
       if (officialBtn) officialBtn.textContent = 'Official (' + next.filter(function (c) { return !!c.official; }).length + ')';
       if (favBtn && FAV_SET) favLoad(true);
     };
