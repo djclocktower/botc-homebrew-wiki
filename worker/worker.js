@@ -216,6 +216,12 @@
  *                                Published pages only, capped per account,
  *                                and not a content write (no feed changes,
  *                                nothing logged — a bookmark is not an edit)
+ *   GET  /api/my-scripts      -> the Script Builder's My Scripts for this account
+ *   POST /api/my-scripts      -> {put:[{id, chars, meta, updated, base}], remove:[id]}:
+ *                                save or delete saved scripts (50 per account);
+ *                                a save over a newer one keeps both
+ *   POST /api/my-scripts/image -> {data}: a logo or background for a saved
+ *                                script, to library/{userId}/; key minted here
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -612,7 +618,7 @@ const THUMB_MIN_BYTES = 512;
 // conversation images only through /api/attachment, and the Starlit Gallery's
 // files only through /api/starlit, both of which NAME the key themselves (see
 // ATTACH_PREFIX and STARLIT_PREFIX).
-const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'starlit/']);
+const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'starlit/', 'library/']);
 
 /* ---- conversation images (comments + modmail) ----
    Every other R2 prefix names the PAGE an image belongs to, so who may write
@@ -665,7 +671,7 @@ function packAttachments(list) {
    banner key and are orphaned exactly when their original is (imageOrphaned);
    attachments/ are referenced from the images column of comments, modmail
    messages and modmail replies. */
-const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_PREFIX, 'media/', ATTACH_PREFIX];
+const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_PREFIX, 'media/', ATTACH_PREFIX, 'library/'];
 
 /* An image path written anywhere in a row: from its folder to the first image
    extension after it. Deliberately loose about the file name — a key can hold
@@ -673,7 +679,7 @@ const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_P
    file the sweep offers to delete out from under a page. Matching too much
    only ever keeps a file. Bounded by a quote, a backslash, a line break or a
    tag bracket, so a scan never runs past the string it started in. */
-const IMAGE_REF_RE = /(?:art|scripts|collections|attachments)\/[^"\\\n\r<>]*?\.(?:png|jpe?g|webp|gif|svg)/gi;
+const IMAGE_REF_RE = /(?:art|scripts|collections|attachments|library)\/[^"\\\n\r<>]*?\.(?:png|jpe?g|webp|gif|svg)/gi;
 
 /* Every image key something on the wiki refers to (lower-cased), and the
    account ids — what imageOrphaned() judges by. Every page's JSON counts, all
@@ -686,7 +692,8 @@ async function imageReferences(env) {
   await ensureNewsTable(env);
   const refs = new Set();
   const sources = [['characters', 'data'], ['collections', 'data'], ['scripts', 'data'], ['pages', 'data'],
-    ['news', 'data'], ['settings', 'value'], ['comments', 'images'], ['messages', 'images'], ['modmail_replies', 'images']];
+    ['news', 'data'], ['settings', 'value'], ['comments', 'images'], ['messages', 'images'], ['modmail_replies', 'images'],
+    ['script_library', 'data']];
   for (const [tbl, col] of sources) {
     let results;
     try { ({ results } = await env.DB.prepare(`SELECT ${col} AS v FROM ${tbl}`).all()); }
@@ -1217,7 +1224,8 @@ async function accountBackup(env, u, keepPages) {
     pageComments: keepPages ? [] : await rows(`SELECT * FROM comments WHERE ${onPages}`, u.id),
     pageRevisions: keepPages ? [] : await rows(`SELECT * FROM revisions WHERE ${onPages}`, u.id),
     creatorMarks: await rows('SELECT * FROM creator_marks WHERE user_id=?', u.id),
-    favorites: await rows('SELECT * FROM favorites WHERE user_id=?', u.id)
+    favorites: await rows('SELECT * FROM favorites WHERE user_id=?', u.id),
+    myScripts: await rows('SELECT * FROM script_library WHERE user_id=?', u.id)
   };
   const pages = data.characters.length + data.scripts.length + data.collections.length + data.pages.length;
   const key = ACCOUNT_BACKUP_PREFIX + u.id + '-' + Date.now() + '.json';
@@ -2432,6 +2440,61 @@ async function ensureFavoritesTable(env) {
   _favoritesReady = true;
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* ---- My Scripts on the account (the Script Builder's saved scripts) ----
+   One row per (account, script). `data` is {chars, meta} exactly as the
+   builder keeps it in the browser; nothing public reads it. `updated` is when
+   the script was last edited (the browser's clock, for "newest wins"),
+   `saved` when this table last took a version (the server's, for "has
+   anything changed since you last looked"). See "My Scripts on the account"
+   in CLAUDE.md. Images are minted under LIBRARY_PREFIX like attachments. */
+const MY_SCRIPTS_MAX = 50;
+const MY_SCRIPT_BYTES = 300 * 1024;
+const LIBRARY_PREFIX = 'library/';
+let _myScriptsReady = false;
+async function ensureMyScriptsTable(env) {
+  if (_myScriptsReady) return;
+  if (await schemaHas(env, { tables: { script_library: ['saved'] } })) { _myScriptsReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS script_library (
+       user_id INTEGER NOT NULL,
+       id      TEXT NOT NULL,
+       data    TEXT NOT NULL,
+       updated INTEGER NOT NULL DEFAULT 0,
+       saved   INTEGER NOT NULL DEFAULT 0,
+       PRIMARY KEY (user_id, id)
+     )`
+  ).run();
+  _myScriptsReady = true;
+}
+function myScriptId() {
+  return 'c' + randomToken().replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 12);
+}
+/* One entry as the browser sent it, cleaned: an id, up to 200 character
+   slugs, the meta object, and the edit time. null when it is not one. */
+function cleanMyScript(e) {
+  if (!e || typeof e !== 'object') return null;
+  const id = String(e.id || '');
+  if (!/^[a-z0-9_-]{1,40}$/i.test(id)) return null;
+  const chars = (Array.isArray(e.chars) ? e.chars : []).filter(x => typeof x === 'string' && x.length <= 200).slice(0, 200);
+  const meta = e.meta && typeof e.meta === 'object' && !Array.isArray(e.meta) ? e.meta : {};
+  const data = JSON.stringify({ chars, meta });
+  if (data.length > MY_SCRIPT_BYTES) return { id, tooBig: true };
+  const updated = Math.max(0, Math.min(Number(e.updated) || 0, Date.now() + 86400000));
+  return { id, data, updated, base: Number(e.base) || 0 };
+}
+/* A losing version kept as its own entry: "newest save wins, the other is
+   kept as a copy". Copies do not count against the limit, or a conflict on
+   a full account would lose the work it exists to keep. */
+function myScriptCopyData(data) {
+  try {
+    const d = JSON.parse(data);
+    d.meta = d.meta && typeof d.meta === 'object' ? d.meta : {};
+    delete d.meta.libId;
+    d.meta.name = (String(d.meta.name || 'Untitled Script') + ' (older copy)').slice(0, 90);
+    return JSON.stringify(d);
+  } catch { return data; }
+}
 
 /* ---- the Starlit Gallery (/starlit) ----
    Icons by Harry & Co & Bendan, stored as a black layer, a white layer and a
@@ -12714,6 +12777,23 @@ const app = {
       return jsonResponse(await favoritesPayload(env, sess.userId, expand, url.origin));
     }
 
+    // ---------- MY SCRIPTS (the Script Builder's saved scripts) ----------
+    if (method === 'GET' && path === '/api/my-scripts') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      await ensureMyScriptsTable(env);
+      const { results } = await env.DB.prepare(
+        'SELECT id, data, updated, saved FROM script_library WHERE user_id=? ORDER BY updated DESC'
+      ).bind(sess.userId).all();
+      const scripts = [];
+      for (const r of results || []) {
+        let d;
+        try { d = JSON.parse(r.data); } catch { continue; }
+        scripts.push({ id: r.id, chars: d.chars || [], meta: d.meta || {}, updated: r.updated, saved: r.saved });
+      }
+      return jsonResponse({ scripts, max: MY_SCRIPTS_MAX });
+    }
+
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
     // Discord sign-in has two failure modes nothing on the wiki can see on its
     // own, because both happen outside the repo: a Git deploy wiping a
@@ -14203,6 +14283,7 @@ const app = {
           await run("UPDATE comments SET status='removed' WHERE user_id=? AND status='visible'", id);
         }
         await run('DELETE FROM favorites WHERE user_id=?', id);
+        await run('DELETE FROM script_library WHERE user_id=?', id);
         await run('DELETE FROM creator_marks WHERE user_id=?', id);
         await run('DELETE FROM dm_blocks WHERE user_id=? OR blocked_id=?', id, id);
         // An admin link from a creator name to this handle would hand those
@@ -15812,6 +15893,104 @@ const app = {
             .bind(sess.userId, b.type, target.slug).run();
         }
         return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
+      }
+
+      /* ---- My Scripts: {put: [...], remove: [ids]} ----
+         A put whose `base` is the `saved` stamp the browser last saw is an
+         ordinary save. Anything else means another device saved in between:
+         the newer edit (`updated`) takes the id and the other is kept as an
+         "(older copy)". The answer gives every id's new `saved` stamp, and
+         `conflicts` tells the browser to read the list again. Not a content
+         write: nothing public changes. */
+      if (path === '/api/my-scripts') {
+        if (await rateLimited(env, request, 'mylib', 900, 3600, { sess })) {
+          return tooManyResponse('Too many saves in the last hour. Your scripts are still kept in this browser.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        await ensureMyScriptsTable(env);
+        const now = Date.now();
+        const saved = {};
+        let conflicts = 0, full = 0, tooBig = 0;
+        const removes = (Array.isArray(b.remove) ? b.remove : []).map(String).filter(id => /^[a-z0-9_-]{1,40}$/i.test(id)).slice(0, 100);
+        for (const id of removes) {
+          await env.DB.prepare('DELETE FROM script_library WHERE user_id=? AND id=?').bind(sess.userId, id).run();
+        }
+        const puts = (Array.isArray(b.put) ? b.put : []).slice(0, MY_SCRIPTS_MAX + 10);
+        let count = (await env.DB.prepare('SELECT COUNT(*) AS n FROM script_library WHERE user_id=?').bind(sess.userId).first()).n || 0;
+        for (const raw of puts) {
+          const e = cleanMyScript(raw);
+          if (!e) continue;
+          if (e.tooBig) { tooBig++; continue; }
+          const row = await env.DB.prepare('SELECT data, updated, saved FROM script_library WHERE user_id=? AND id=?')
+            .bind(sess.userId, e.id).first();
+          if (!row) {
+            if (count >= MY_SCRIPTS_MAX) { full++; continue; }
+            await env.DB.prepare('INSERT INTO script_library (user_id, id, data, updated, saved) VALUES (?,?,?,?,?)')
+              .bind(sess.userId, e.id, e.data, e.updated, now).run();
+            count++;
+            saved[e.id] = now;
+            continue;
+          }
+          if (row.data === e.data) { saved[e.id] = row.saved; continue; }
+          if (row.saved === e.base) {
+            await env.DB.prepare('UPDATE script_library SET data=?, updated=?, saved=? WHERE user_id=? AND id=?')
+              .bind(e.data, e.updated, now, sess.userId, e.id).run();
+            saved[e.id] = now;
+            continue;
+          }
+          // Saved somewhere else since this browser last looked.
+          conflicts++;
+          const copyId = myScriptId();
+          if (e.updated >= row.updated) {
+            await env.DB.prepare('INSERT INTO script_library (user_id, id, data, updated, saved) VALUES (?,?,?,?,?)')
+              .bind(sess.userId, copyId, myScriptCopyData(row.data), row.updated, now).run();
+            await env.DB.prepare('UPDATE script_library SET data=?, updated=?, saved=? WHERE user_id=? AND id=?')
+              .bind(e.data, e.updated, now, sess.userId, e.id).run();
+            saved[e.id] = now;
+          } else {
+            await env.DB.prepare('INSERT INTO script_library (user_id, id, data, updated, saved) VALUES (?,?,?,?,?)')
+              .bind(sess.userId, copyId, myScriptCopyData(e.data), e.updated, now).run();
+            saved[e.id] = row.saved;
+          }
+          count++;
+        }
+        return jsonResponse({ ok: true, saved, conflicts, full, tooBig, max: MY_SCRIPTS_MAX });
+      }
+
+      /* A logo or background for a saved script. The key is minted here
+         (library/{account}/{token}.{ext}), as for /api/attachment, so nothing
+         a client sends decides where the bytes land; the same type whitelist
+         and byte sniffing. The path comes back without /assets/, which is
+         how the export writes it out as an absolute link. */
+      if (path === '/api/my-scripts/image') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
+        if (await rateLimited(env, request, 'mylibimg', 60, 3600, { sess })) {
+          return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        let data = String(b.data || '');
+        let declared = '';
+        if (data.startsWith('data:')) {
+          declared = data.slice(5, data.indexOf(';'));
+          data = data.slice(data.indexOf(',') + 1);
+        }
+        const kind = UPLOAD_CONTENT_TYPES[declared.toLowerCase().split(';')[0].trim()];
+        if (!kind) return jsonResponse({ error: 'Images must be PNG, JPEG, WebP, or GIF.' }, { status: 400 });
+        let bytes;
+        try { bytes = base64ToBytes(data); }
+        catch { return jsonResponse({ error: 'That image could not be read.' }, { status: 400 }); }
+        if (!bytes.length) return jsonResponse({ error: 'That image is empty.' }, { status: 400 });
+        if (bytes.length > ATTACH_BYTES) return jsonResponse({ error: 'Image is too large (5 MB max).' }, { status: 413 });
+        if (sniffImageType(bytes) !== kind.type) {
+          return jsonResponse({ error: 'That file is not the kind of image it says it is. Images must be PNG, JPEG, WebP, or GIF.' }, { status: 400 });
+        }
+        const rand = randomToken().replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 16) || 'x';
+        const key = LIBRARY_PREFIX + sess.userId + '/' + rand + '.' + kind.exts[0];
+        await env.ART.put(key, bytes, {
+          httpMetadata: { contentType: kind.type },
+          customMetadata: { owner: String(sess.userId) }
+        });
+        return jsonResponse({ ok: true, path: key });
       }
 
       /* ---------- TAG SUGGESTIONS (worker/autotag.js) ----------

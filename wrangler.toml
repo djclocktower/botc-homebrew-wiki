@@ -52,7 +52,9 @@ run_worker_first = [
   # Images posted on comments and modmail messages (see ATTACH_PREFIX).
   "/assets/attachments/*",
   # The Starlit Gallery's icon layers and textures (see STARLIT_PREFIX).
-  "/assets/starlit/*"
+  "/assets/starlit/*",
+  # Logos and backgrounds uploaded for a saved script (see LIBRARY_PREFIX).
+  "/assets/library/*"
 ]
 
 # ---- D1 database (the source of truth) ----

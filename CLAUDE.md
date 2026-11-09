@@ -99,7 +99,9 @@ Key dynamic behavior:
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
   pictures, uploaded via `/api/account/avatar`, never via `/api/upload`; so is
-  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`).
+  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`,
+  and `library/`, a saved script's logo and background, written only by
+  `/api/my-scripts/image`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
@@ -1418,6 +1420,8 @@ a renamed page used to live at — for characters `to_slug` is the page's
 `tag_checks` (the tag suggester's answer key, one row per character an
 admin checked by hand) and `tag_feedback` (what writers kept, removed and
 added after pressing Suggest tags) — see "Tag suggestions",
+`script_library` (the Script Builder's My Scripts on an account — see
+"My Scripts on the account"),
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
@@ -1645,7 +1649,8 @@ What shapes it:
   and the next script built here exported under the previous one's name. The
   bar now shows both, and a meta still carrying `editSlug` says which page it
   will publish over and offers to detach.
-- **Up to 15 scripts, in `botc_script_library`.** Each entry is
+- **Up to 50 scripts, in `botc_script_library`**, and on the account when
+  logged in (see "My Scripts on the account" below). Each entry is
   `{id, chars, meta}`; the open one is pointed at by `meta.libId` and is
   written back as it changes (the bar flashes *Saved*), so switching scripts
   loses nothing. Nothing outside this page reads that key — `botc_script` and
@@ -1655,6 +1660,42 @@ What shapes it:
   clears `libId`, so replacing a script never overwrites its saved copy. The
   panel's My Scripts side sorts (newest / name / size), backs the lot up to
   one file and restores from one — a **merge** by id, never an overwrite.
+
+### My Scripts on the account (`/api/my-scripts`)
+
+Logged in, My Scripts is kept on the account as well as in the browser, so
+it is the same list on every device; logged out it is the browser's list,
+as it always was. The browser's copy is still what the page works from.
+
+- **The table is `script_library`** (`user_id`, `id`, `data` = `{chars,
+  meta}`, `updated` = the browser's edit time, `saved` = the server's stamp
+  for the version it holds), created lazily. 50 per account
+  (`MY_SCRIPTS_MAX`), 300 KB an entry. Nothing public reads it; account
+  deletion backs it up and deletes it.
+- **A save names the version it was made on** (`base`, the `saved` stamp the
+  browser last had). If the account has moved on since, another device
+  saved in between: the newer EDIT (`updated`) takes the id and the other is
+  stored as "(older copy)", outside the limit, and the browser reads the list
+  again. Nothing is ever dropped.
+- **The browser's side** (`cloudStart` / `cloudPull` / `cloudPush` in
+  script-builder.js): each entry carries `saved` and `syncedUpdated`, and one
+  whose `updated` has moved is sent 2.5 s after the change (and on
+  `pagehide`). `setLib()` is the one writer and keeps the stamps across a
+  rebuilt entry; `syncLibrary()` gives an entry a new edit time only when its
+  roster or meta really changed, or opening a script would outrank an edit
+  made on another device. On load the account's list is folded in: new
+  entries added, an unchanged local entry replaced by a newer one (and the
+  open script redrawn), one deleted elsewhere removed, and anything only
+  here sent up, so the first login adds the browser's scripts to the
+  account. Deletes wait in `botc_script_library_gone` until sent.
+  `botc_script_library_owner` names the account the list last synced with;
+  a different account signing in on that browser gets its own list, never
+  the previous one's scripts.
+- **Images**: `POST /api/my-scripts/image` mints `library/{userId}/{token}`
+  like `/api/attachment` (type whitelist, byte sniffing, 5 MB). `library/` is
+  in `R2_SERVE_PREFIXES`, `run_worker_first` and the orphan sweep, whose
+  references now include `script_library.data`.
+
 - **The roster is drawn as the character SHEET** by default, not as cards:
   one parchment per team, two columns of rows, the name opening the line and
   the ability running on from it. Two columns comes from a **container
@@ -1816,8 +1857,11 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   a **Background**: an https image link each (`meta.exportLogo` /
   `meta.exportBg`), shown under the box, written to `_meta.logo` /
   `_meta.background` ahead of a published page's own, carried in share
-  links, and read back off an imported file's `_meta`. Links, not uploads:
-  a builder script has no page whose R2 slot an upload could go in.
+  links, and read back off an imported file's `_meta`. **Upload** (logged
+  in only) shrinks the picture to 1600px and posts it to
+  `/api/my-scripts/image`, and the box takes its address on the live site
+  (`https://botchomebrew.wiki/assets/library/…`), which is what the file
+  needs; the preview reads it from this site's own copy (`localImg()`).
 - **The peek card closes when the tab changes** (`showTab()` calls
   `hidePeek()`).
 - **Each panel group heading has a die** (add one at random from what that
@@ -6022,8 +6066,8 @@ open. Two-factor login is not built yet.
   and the comments and history of wiki pages about to go. Not DMs: admins
   only read reported conversations. Then every page loses its owner; without
   `keepPages`, characters/scripts/collections are soft-deleted, wiki pages
-  removed, and comments `removed` (replies `hidden`). Favorites, mark,
-  blocks and alias rows go, the handle stays parked, `activity_log.user_id`
+  removed, and comments `removed` (replies `hidden`). Favorites, saved
+  scripts (`script_library`, in the backup), mark, blocks and alias rows go, the handle stays parked, `activity_log.user_id`
   is nulled (a foreign key D1 enforces), and the users row is deleted. Ids
   are AUTOINCREMENT, so none is reused.
 - **Restoring**: Dashboard -> Content -> "Deleted accounts".

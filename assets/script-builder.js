@@ -33,8 +33,10 @@
  *                        order, jinx edits, the official-app options, and
  *                        editSlug when it is an edit of a published page.
  *                        publish-script.html reads all of it.
- *   botc_script_library  up to 15 saved scripts, each {id, chars, meta}.
- *                        Purely this page's; nothing else reads it.
+ *   botc_script_library  up to 50 saved scripts, each {id, chars, meta}.
+ *                        Purely this page's; nothing else reads it. When
+ *                        logged in it is also kept on the account
+ *                        (/api/my-scripts; see "My Scripts on the account").
  *   botc_builder_prefs   panel width, inline abilities, which tab was open.
  *   caches 'botc-sb-feeds-1'  the last visit's copy of every feed this page
  *                        reads, so a return visit paints at once and the
@@ -48,7 +50,9 @@
   var LIB_KEY = 'botc_script_library';
   var PREF_KEY = 'botc_builder_prefs';
   var CREDITS_KEY = 'botc_script_credits_detail';
-  var LIB_MAX = 15;
+  var LIB_MAX = 50;
+  var LIB_GONE_KEY = 'botc_script_library_gone';   // deleted here, not yet on the account
+  var LIB_OWNER_KEY = 'botc_script_library_owner'; // the account this list last synced with
 
   var TEAMS = [['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
                ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'],
@@ -2006,13 +2010,134 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  //  My Scripts — up to 15, kept in this browser
+  //  My Scripts — up to 50, kept in this browser and on the account
   // ══════════════════════════════════════════════════════════════════════
   function getLib() {
     var a = readJSON(LIB_KEY, []);
     return Array.isArray(a) ? a : [];
   }
-  function setLib(a) { writeJSON(LIB_KEY, a.slice(0, LIB_MAX)); }
+  /* Every write goes through here. An entry rebuilt from scratch (snapshot)
+     keeps the account's stamps of the entry it replaces, and a logged-in
+     list is sent to the account a moment after it changes. */
+  function setLib(a) {
+    var before = {};
+    getLib().forEach(function (e) { if (e && e.id) before[e.id] = e; });
+    a.forEach(function (e) {
+      var o = e && before[e.id];
+      if (o && e.saved == null && o.saved != null) { e.saved = o.saved; e.syncedUpdated = o.syncedUpdated; }
+    });
+    writeJSON(LIB_KEY, a.slice(0, LIB_MAX + 10));
+    cloudSoon();
+  }
+
+  /* ── the account copy (/api/my-scripts) ──
+     The browser's list is still what the page works from, so it is quick and
+     works logged out. Logged in, each entry also carries `saved` (the
+     account's stamp for the version it last agreed on) and `syncedUpdated`
+     (the edit time that version had); an entry whose `updated` has moved
+     since is sent. The server keeps both when two devices disagree, and says
+     so, and the list is read again. */
+  var cloud = { user: '', timer: 0, busy: false, again: false, warned: false };
+  function cloudSoon() {
+    if (!cloud.user) return;
+    clearTimeout(cloud.timer);
+    cloud.timer = setTimeout(cloudPush, 2500);
+  }
+  function libDirty(e) { return e.updated !== e.syncedUpdated; }
+  function cloudPush() {
+    if (!cloud.user) return;
+    if (cloud.busy) { cloud.again = true; return; }
+    var put = getLib().filter(libDirty).map(function (e) {
+      return { id: e.id, chars: e.chars || [], meta: e.meta || {}, updated: e.updated || 0, base: e.saved || 0 };
+    });
+    var gone = readJSON(LIB_GONE_KEY, []);
+    if (!put.length && !gone.length) return;
+    cloud.busy = true;
+    fetch('/api/my-scripts', {
+      method: 'POST', credentials: 'same-origin', keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ put: put, remove: gone })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      cloud.busy = false;
+      if (!j) return;
+      var sentAt = {};
+      put.forEach(function (e) { sentAt[e.id] = e.updated; });
+      var lib = getLib();
+      lib.forEach(function (e) {
+        if (j.saved && j.saved[e.id] != null) {
+          e.saved = j.saved[e.id];
+          // Edited again while this was in flight: still dirty.
+          if (e.updated === sentAt[e.id]) e.syncedUpdated = e.updated;
+        }
+      });
+      writeJSON(LIB_KEY, lib);
+      var left = readJSON(LIB_GONE_KEY, []).filter(function (id) { return gone.indexOf(id) === -1; });
+      writeJSON(LIB_GONE_KEY, left);
+      if ((j.full || j.tooBig) && !cloud.warned) {
+        cloud.warned = true;
+        toast(j.full ? 'Your account holds ' + (j.max || LIB_MAX) + ' scripts. Delete one to save more there.'
+                     : 'A script is too large to save to your account. It is still kept in this browser.', 4500);
+      }
+      if (j.conflicts) cloudPull();
+      else if (cloud.again) { cloud.again = false; cloudPush(); }
+    }).catch(function () { cloud.busy = false; });
+  }
+  /* Read the account's list and fold it into this browser's. */
+  function cloudPull() {
+    return fetch('/api/my-scripts', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !Array.isArray(j.scripts)) return;
+        var owner = readJSON(LIB_OWNER_KEY, '');
+        // Another account's list in this browser is not this account's to
+        // keep: it is replaced, never added to the account signed in now.
+        var local = owner && owner !== cloud.user ? [] : getLib();
+        if (owner && owner !== cloud.user) writeJSON(LIB_GONE_KEY, []);
+        var byId = {};
+        local.forEach(function (e) { byId[e.id] = e; });
+        var srvIds = {}, out = [], openId = getMeta().libId, reopen = null;
+        j.scripts.forEach(function (sv) {
+          srvIds[sv.id] = 1;
+          var e = byId[sv.id];
+          var fresh = { id: sv.id, chars: sv.chars || [], meta: sv.meta || {}, updated: sv.updated, saved: sv.saved, syncedUpdated: sv.updated };
+          if (!e) { out.push(fresh); return; }
+          if (e.saved === sv.saved || libDirty(e)) { out.push(e); return; }
+          out.push(fresh);
+          if (sv.id === openId) reopen = fresh;
+        });
+        local.forEach(function (e) {
+          if (srvIds[e.id]) return;
+          // Agreed with the account once and unchanged since: deleted there.
+          if (e.saved != null && !libDirty(e)) { if (e.id === openId) patchMeta(function (m) { delete m.libId; }, 'silent'); return; }
+          out.push(e);
+        });
+        if (owner && owner !== cloud.user && openId) patchMeta(function (m) { delete m.libId; }, 'silent');
+        out.sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
+        writeJSON(LIB_KEY, out);
+        writeJSON(LIB_OWNER_KEY, cloud.user);
+        // The open script changed on another device and not here: show it.
+        if (reopen) {
+          var m = JSON.parse(JSON.stringify(reopen.meta || {}));
+          m.libId = reopen.id;
+          setMeta(m);
+          primeForm();
+          replaceOrder(reopen.chars.slice(), true);
+        }
+        paintLibrary();
+        cloudPush();
+      }).catch(function () { /* the browser's copy carries on */ });
+  }
+  function cloudStart() {
+    if (!window.BotcData || !window.BotcData.me) { paintLibrary(); return; }
+    window.BotcData.me().then(function (me) {
+      if (!me || !me.loggedIn || !me.username) { paintLibrary(); return; }
+      cloud.user = String(me.username).toLowerCase();
+      paintLibrary();
+      cloudPull();
+    }).catch(function () { /* stays a browser list */ });
+    // Leaving with a change not sent yet: send it now.
+    window.addEventListener('pagehide', function () { if (cloud.user) { clearTimeout(cloud.timer); cloudPush(); } });
+  }
   function libEntry(id) {
     var lib = getLib();
     for (var i = 0; i < lib.length; i++) if (lib[i].id === id) return lib[i];
@@ -2040,7 +2165,11 @@
     if (m.libId) {
       for (var i = 0; i < lib.length; i++) {
         if (lib[i].id === m.libId) {
-          lib[i] = snapshot(m.libId);
+          var snap = snapshot(m.libId);
+          // Nothing changed: no new edit time, so opening a script is never
+          // an edit that could outrank one made on another device.
+          if (JSON.stringify([lib[i].chars, lib[i].meta]) === JSON.stringify([snap.chars, snap.meta])) return;
+          lib[i] = snap;
           setLib(lib);
           paintLibrary();
           flashSaved();
@@ -2077,7 +2206,7 @@
       return;
     }
     if (!m.libId && getLib().length >= LIB_MAX) {
-      alert('This browser keeps ' + LIB_MAX + ' scripts. Delete one from My Scripts to save another.');
+      alert('My Scripts holds ' + LIB_MAX + '. Delete one to save another.');
       return;
     }
     syncLibrary();
@@ -2121,6 +2250,10 @@
     if (!e) return;
     var name = (e.meta && e.meta.name) || 'this script';
     if (!confirm('Delete "' + name + '" from My Scripts?\n\nThis cannot be undone.')) return;
+    if (e.saved != null) {
+      var gone = readJSON(LIB_GONE_KEY, []);
+      if (gone.indexOf(id) === -1) { gone.push(id); writeJSON(LIB_GONE_KEY, gone); }
+    }
     setLib(getLib().filter(function (x) { return x.id !== id; }));
     if (getMeta().libId === id) patchMeta(function (m) { delete m.libId; }, 'silent');
     paintLibrary();
@@ -2149,7 +2282,7 @@
     if (!e) return;
     var lib = getLib();
     if (lib.length >= LIB_MAX) {
-      alert('This browser keeps ' + LIB_MAX + ' scripts. Delete one to make room for a copy.');
+      alert('My Scripts holds ' + LIB_MAX + '. Delete one to make room for a copy.');
       return;
     }
     var copy = {
@@ -2170,7 +2303,7 @@
 
   /* Every saved script as one file, and the way back. A restore MERGES:
      entries already here (by id) are left alone, new ones are added until
-     the browser's fifteen are full, and it says what it did. */
+     My Scripts is full, and it says what it did. */
   function backupLibrary() {
     syncLibrary();
     var lib = getLib();
@@ -2205,7 +2338,7 @@
     paintLibrary();
     toast('Restored ' + added + ' script' + (added === 1 ? '' : 's') +
       (skipped ? ', ' + skipped + ' already here' : '') +
-      (full ? ', ' + full + ' left out (this browser keeps ' + LIB_MAX + ')' : '') + '.', 3600);
+      (full ? ', ' + full + ' left out (My Scripts holds ' + LIB_MAX + ')' : '') + '.', 3600);
   }
 
   function paintLibrary() {
@@ -2213,7 +2346,12 @@
     var q = ($('sbx-lib-q').value || '').trim().toLowerCase();
     var cur = getMeta().libId;
     $('sbx-lib-n').textContent = lib.length ? '(' + lib.length + ')' : '';
-    $('sbx-lib-count').textContent = lib.length + ' of ' + LIB_MAX + ' saved in this browser';
+    $('sbx-lib-count').textContent = lib.length + ' of ' + LIB_MAX + (cloud.user ? ' saved to your account' : ' saved in this browser');
+    var login = $('sbx-lib-login');
+    if (login) {
+      login.hidden = !!cloud.user;
+      login.href = 'login?next=' + encodeURIComponent(location.pathname + location.search);
+    }
     $('sbx-lib-full').hidden = lib.length < LIB_MAX;
 
     var shown = lib.filter(function (e) {
@@ -2271,7 +2409,12 @@
     fitCtx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
     el.style.width = Math.ceil(fitCtx.measureText(el.value || el.placeholder).width + 14) + 'px';
   }
-  /* Export's logo and background: an image link each, shown under its box. */
+  /* Export's logo and background: an uploaded image or an image link, shown
+     under its box. An upload is stored as its address on the live site,
+     which is what the exported file needs; the preview reads it from
+     whichever copy of the site this page is on. */
+  var SITE_ASSETS = 'https://botchomebrew.wiki/assets/';
+  function localImg(v) { return v.indexOf(SITE_ASSETS) === 0 ? SITE_ROOT + 'assets/' + v.slice(SITE_ASSETS.length) : v; }
   function paintExportImages() {
     var m = getMeta();
     [['sb-logo', 'sb-logo-prev', 'exportLogo'], ['sb-bg', 'sb-bg-prev', 'exportBg']].forEach(function (p) {
@@ -2279,7 +2422,58 @@
       if ($(p[0]) !== document.activeElement) $(p[0]).value = v;
       var img = $(p[1]);
       img.hidden = !v;
-      if (v && img.getAttribute('src') !== v) img.src = v;
+      if (v && img.getAttribute('src') !== localImg(v)) img.src = localImg(v);
+    });
+  }
+  /* An image picked for the logo or background: made no larger than 1600px
+     (a GIF is sent as it is), uploaded to the account, and its address put
+     in the box. */
+  function uploadExportImage(file, key, btn) {
+    if (!cloud.user) { toast('Log in to upload an image, or paste an image link.'); return; }
+    if (!file || !/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { toast('Pick a PNG, JPEG, WebP or GIF.'); return; }
+    var label = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+    function done() { btn.disabled = false; btn.innerHTML = label; }
+    shrinkImage(file, 1600).then(function (data) {
+      return fetch('/api/my-scripts/image', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: data })
+      });
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        done();
+        if (!res.ok || !res.j.path) { toast((res.j && res.j.error) || 'The upload failed.', 4000); return; }
+        var url = SITE_ASSETS + res.j.path;
+        patchMeta(function (m) { m[key] = url; }, null, key === 'exportLogo' ? 'set the logo' : 'set the background');
+        paintExportImages();
+        paintJsonPreview();
+      })
+      .catch(function () { done(); toast('The upload failed. Check your connection and try again.', 4000); });
+  }
+  function shrinkImage(file, max) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onerror = reject;
+      fr.onload = function () {
+        var src = fr.result;
+        if (file.type === 'image/gif') { resolve(src); return; }
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function () {
+          var k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+          if (k === 1 && file.size < 1.5 * 1024 * 1024) { resolve(src); return; }
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * k);
+          c.height = Math.round(img.naturalHeight * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          var out = c.toDataURL('image/webp', 0.9);
+          resolve(out.indexOf('data:image/webp') === 0 ? out : c.toDataURL('image/png'));
+        };
+        img.src = src;
+      };
+      fr.readAsDataURL(file);
     });
   }
   function primeForm() {
@@ -2699,6 +2893,17 @@
         paintExportImages();
         paintJsonPreview();
       }, 400));
+    });
+    [['sb-logo-up', 'sb-logo-file', 'exportLogo'], ['sb-bg-up', 'sb-bg-file', 'exportBg']].forEach(function (p) {
+      $(p[0]).addEventListener('click', function () {
+        if (!cloud.user) { toast('Log in to upload an image, or paste an image link.'); return; }
+        $(p[1]).click();
+      });
+      $(p[1]).addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        if (f) uploadExportImage(f, p[2], $(p[0]));
+      });
     });
     $('sb-logo-prev').addEventListener('error', function () { this.hidden = true; });
     $('sb-bg-prev').addEventListener('error', function () { this.hidden = true; });
@@ -3343,4 +3548,5 @@
   window.addEventListener('load', syncTopbarHeight);
   restoreLayout();
   start();
+  cloudStart();
 })();
