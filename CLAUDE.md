@@ -288,8 +288,7 @@ assets/
                        list late is tall enough. A page that keeps its own
                        place (all-characters, /search: filters too) sets
                        history.scrollRestoration = 'manual' and is skipped.
-                       The homepage is the opposite: Back to it always opens
-                       at the top (owner's call), bfcache restores included.
+                       The homepage is kept like any other page.
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
                        change it here and every page's top bar and hamburger
                        follow, because no page hardcodes it.
