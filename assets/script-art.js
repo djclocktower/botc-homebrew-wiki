@@ -321,6 +321,7 @@
   // ══ the logo ════════════════════════════════════════════════════════
   var LS = 1200;                 // the square the official app's logos come in
   var LOGO_FONT = 'LHF Unlovable';
+  var LOGO_ASC = 0.36;           // the tallest a capital may be, as a share of the square
   var LOGO_PRESETS = [
     ['Trouble Brewing', '#9c1230', '#6c0410'],
     ['Sapphire', '#262c8c', '#1e94b8'],
@@ -357,7 +358,7 @@
   /* Set the lines as large as fits the box, measuring the ink (this face's
      swashes reach well past its advance widths). */
   function logoLayout(x, w, lines) {
-    var boxW = w * 0.86, boxH = w * 0.62;
+    var boxW = w * 0.94, boxH = w * 0.76;
     var size = 100;
     x.font = size + 'px "' + LOGO_FONT + '"';
     var ms = lines.map(function (l) { return x.measureText(l); });
@@ -369,7 +370,7 @@
     var k = Math.min(boxW / wide, boxH / tall);
     // Never taller than the face's own size on the example (a short name
     // would otherwise fill the whole square).
-    k = Math.min(k, (w * 0.30) / asc);
+    k = Math.min(k, (w * LOGO_ASC) / asc);
     return {
       size: size * k, asc: asc * k, desc: desc * k, lineH: lineH * k,
       top: (w - tall * k) / 2,
@@ -382,7 +383,7 @@
     // Two lines only when one line comes out well under the largest the
     // face is set, and the split makes it clearly bigger.
     var sets = logoLines(o.text), lines = sets[0], L = logoLayout(x, w, lines);
-    if (sets[1] && L.asc < w * 0.30 * 0.75) {
+    if (sets[1] && L.asc < w * LOGO_ASC * 0.75) {
       var two = logoLayout(x, w, sets[1]);
       if (two.size > L.size * 1.2) { L = two; lines = sets[1]; }
     }

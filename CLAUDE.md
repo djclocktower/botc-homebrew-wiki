@@ -1871,8 +1871,8 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   filled top to bottom with two colours plus the texture, inside a thin
   white outline (Outline; the owner had the raised edge taken off), on a transparent
   1200x1200 square: the ink is measured (`actualBoundingBox*`, the swashes
-  reach past the advance widths) and set to fill 86% of the width, never
-  taller than 30% of the square, and on two lines when one line would be
+  reach past the advance widths) and set to fill 94% of the width, never
+  taller than 36% of the square, and on two lines when one line would be
   small and the split makes it clearly bigger. Its preview sits on the
   script's background when there is one. Using one also ticks "Hide the
   title" (`meta.hideTitle`), since the logo already says the name. The letters are clipped to ONE
