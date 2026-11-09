@@ -278,7 +278,9 @@ export function appendRibbon(sheet, r, ctx) {
     // Its style is wiped first: a left strip and a right one are not laid
     // out alike, and one colour can be both in one design.
     let node = tinted;
-    if (tinted.parentNode && ctx.forExport) {
+    // a second strip of the same colour on one page (the night columns
+    // style has one down each edge) needs its own copy too
+    if (tinted.parentNode && (ctx.forExport || tinted.parentNode === sheet)) {
       node = document.createElement('canvas');
       node.width = tinted.width; node.height = tinted.height;
       node.getContext('2d').drawImage(tinted, 0, 0);

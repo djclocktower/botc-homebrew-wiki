@@ -35,6 +35,7 @@ import {
 import { layoutSheet, renderSheetPage, fitTitle, ribbonReady } from './sheet.js';
 import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage, nightRibbonColor } from './night.js';
 import { layoutAppSheet, renderAppSheetPage, layoutAppList, renderAppListPage } from './appview.js';
+import { layoutColumnsSheet, renderColumnsSheetPage } from './columns.js';
 import { renderBack, backCanvas, backReady } from './back.js';
 import { setAssetResolver, ART } from './elements.js';
 import { mountDrag, snapTo } from './drag.js';
@@ -235,8 +236,9 @@ function computeLayouts() {
   setPageRatio(options.pageRatio);
   derived = deriveScript(parsed, options, resolveAsset);
   layouts = {};
-  layouts.front = pageStyle(options, 'front') === 'app'
-    ? layoutAppSheet(derived, options, requestRender)
+  const frontStyle = pageStyle(options, 'front');
+  layouts.front = frontStyle === 'app' ? layoutAppSheet(derived, options, requestRender)
+    : frontStyle === 'columns' ? layoutColumnsSheet(derived, options, requestRender)
     : layoutSheet(derived, options, requestRender);
   // the night sheets have a style of their own; the jinx page is classic
   const nightLayout = (spec) => (pageStyle(options, 'night') === 'app'
@@ -283,9 +285,9 @@ function renderPageNode(p, ctx) {
   setHiresIcons(!!ctx.forExport);
   try {
     if (p.kind === 'front') {
-      return layouts.front.style === 'app'
-        ? renderAppSheetPage(derived, options, layouts.front, p.index, ctx)
-        : renderSheetPage(derived, options, layouts.front, p.index, ctx);
+      if (layouts.front.style === 'app') return renderAppSheetPage(derived, options, layouts.front, p.index, ctx);
+      if (layouts.front.style === 'columns') return renderColumnsSheetPage(derived, options, layouts.front, p.index, ctx);
+      return renderSheetPage(derived, options, layouts.front, p.index, ctx);
     }
     if (p.kind === 'jinx') return renderListPage(derived, layouts.jinxSpec, options, layouts.jinx, p.index, ctx);
     if (p.kind === 'night') {
@@ -303,7 +305,7 @@ function renderPageNode(p, ctx) {
 /* the steps that need a page in the document: the classic title's width
    and the decor that hugs it, a long script name on a night page */
 function fitPage(node, p) {
-  if (p.kind === 'front') { if (layouts.front.style !== 'app') fitTitle(node, options); }
+  if (p.kind === 'front') { if (!layouts.front.style) fitTitle(node, options); }
   else if (p.kind !== 'back' && pageStyle(options, p.kind) !== 'app') fitListPage(node);
 }
 
@@ -1235,7 +1237,7 @@ function buildScriptOpts() {
 
 function buildPagesCard() {
   const box = $('fs-pages-box');
-  const styles = [['classic', 'Printed sheet'], ['app', 'App view']];
+  const styles = [['classic', 'Printed sheet'], ['app', 'App view'], ['columns', 'Night order down the sides']];
   makeSelect(box, 'Script sheet style', styles, bindPath('sheetStyle'), { onChange: styleChanged });
   makeSelect(box, 'Night sheet style', [['ribbon', 'Ribbon (name beside a colour bar)'], ['classic', 'Printed sheet (name over the reminder)'], ['app', 'App view']],
     bindPath('night.style'), { onChange: styleChanged });

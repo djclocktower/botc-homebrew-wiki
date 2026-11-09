@@ -268,6 +268,67 @@ export const APP_NIGHT = {
   colGap: 2.4,
 };
 
+/* The night columns style (columns.js): the owner's own Photoshop sheets
+   (Axiom of Logic, No Greater Joy, Laissez Un Where?, Golden Dawn). A damask
+   column down each edge carries the night order, first night on the left
+   and other nights on the right, as a stack of icons under its label; the
+   title and logo across the top; then each team under a heading with a rule
+   running from it, its characters in a grid of icon + name + centred
+   ability. Measured off the 1500x2100 files: x in % of width (px / 15),
+   y in em (px / 21), sizes in em (px / 20). */
+export const COLUMN_SHEET = {
+  colW: 6.4, // each edge column, % of the width
+  colRule: 0.45, // the black edge on its inner side, % of the width
+  labelTop: 31, // FIRST NIGHT / OTHER NIGHTS, em
+  labelSize: 1.2,
+  nightTop: 34.2, // the first icon's top
+  nightBottom: 98, // the last icon's foot
+  nightIcon: 4.1, // em, at most
+  nightPitch: 4.7, // em between icon tops, at most
+  titleTop: 0.7,
+  titleBottom: 20.4, // the title's foot; the author sits under it
+  titleX0: 9, // the title's box when there is a logo beside it…
+  titleX1: 53,
+  logoX0: 54.5, // …and the logo's
+  logoX1: 91,
+  logoBottom: 23,
+  titleSize: 9.4, // em, a two-line title at most this big
+  authorSize: 1.5,
+  contentTop: 23.4, // the first heading's top
+  contentBottom: 95.6, // above the footnote
+  contentX0: 7.6, // the grid, between the columns
+  contentX1: 92.4,
+  headX: 7.9, // a team heading's left edge
+  headSize: 2.5,
+  headBand: 3.2, // em, the heading and the room under it
+  ruleH: 0.25, // em, the line from the heading to the edge
+  sectionGap: 0.8,
+  rowGap: 1.1, // em under every grid row
+  iconGap: 0.6, // % of the width between an icon and its text
+  soloW: 66, // % of the width, a lone character's cell
+  // per grid width: icon, name, ability (em) — fewer columns, bigger type
+  cell: { 3: [8.2, 2.0, 1.35], 2: [9.4, 2.2, 1.55], 1: [12.5, 3.0, 2.0] },
+  abilityLine: 1.2, // × the ability size
+  nameLine: 1.15,
+  footnoteRight: 8, // % in from the right edge
+  footnoteTop: 97.1,
+  footnoteSize: 2.0,
+};
+
+/* how many characters across a team's grid is: the sheets put a lone
+   Demon full width, two or four in pairs, everything else in threes */
+export function columnsFor(n) {
+  if (n <= 1) return 1;
+  if (n === 2 || n === 4) return 2;
+  return 3;
+}
+
+/* the team heading inks on the owner's sheets */
+export const COLUMN_HEAD_INK = {
+  townsfolk: '#0064ac', outsider: '#0a3e64', minion: '#640a0a', demon: '#d00000',
+  traveller: '#5a3e88', fabled: '#8a6d1f', loric: '#3d6b35',
+};
+
 /* The ribbon style, the default night sheet: measured off the owner's
    second set of reference sheets ("Valley of Shadows", 1414×2000, A4) and
    carried onto this 3:4 page as fractions of the width (x) and of the
@@ -419,6 +480,10 @@ export const ELEMENTS = [
   { key: 'appAuthor', label: 'Author credit', page: 'front', kind: 'text', only: 'app' },
   { key: 'appSidebar', label: 'Ribbon', page: 'front night', kind: 'image', fixed: true, only: 'app' },
   { key: 'appLabels', label: 'Team names', page: 'front', kind: 'text', fixed: true, only: 'app' },
+  { key: 'colTitle', label: 'Title', page: 'front', kind: 'text', only: 'columns' },
+  { key: 'colAuthor', label: 'Author credit', page: 'front', kind: 'text', only: 'columns' },
+  { key: 'colLogo', label: 'Logo', page: 'front', kind: 'image', only: 'columns' },
+  { key: 'colNight', label: 'Night order columns', page: 'front', kind: 'block', fixed: true, only: 'columns' },
   { key: 'content', label: 'Character grid', page: 'front', kind: 'block' },
   { key: 'col1', label: 'Left column', page: 'front', kind: 'block', only: 'classic' },
   { key: 'col2', label: 'Right column', page: 'front', kind: 'block', only: 'classic' },
@@ -584,7 +649,7 @@ export const DEFAULT_EXPORT = {
 
 export const DEFAULT_OPTIONS = {
   pageRatio: 4 / 3, // every page's height / width (PAGE_SHAPES)
-  sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view)
+  sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view) | columns (night order down the sides)
   app: { ...DEFAULT_APP, bg: { ...DEFAULT_APP.bg } },
   sortMode: 'script', // 'script' (as in the JSON) | 'official' | 'sao' | 'alpha'
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
@@ -1647,7 +1712,7 @@ export const PRESETS = [
    night sheets 'classic' means the printed family night.js draws, the
    ribbon style included: night.js reads night.style itself. */
 export function pageStyle(options, kind) {
-  if (kind === 'front') return options.sheetStyle === 'app' ? 'app' : 'classic';
+  if (kind === 'front') return options.sheetStyle === 'app' || options.sheetStyle === 'columns' ? options.sheetStyle : 'classic';
   if (kind === 'night') return options.night && options.night.style === 'app' ? 'app' : 'classic';
   return 'classic';
 }

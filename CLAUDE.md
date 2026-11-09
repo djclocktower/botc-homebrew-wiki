@@ -983,7 +983,10 @@ assets/
                        night-order and jinx pages, back.js the back cover —
                        all three captured by the export; appview.js the
                        second style of the sheet and the night sheets (the
-                       official app's own view); elements.js is what
+                       official app's own view); columns.js the third
+                       style of the script sheet (the night order down
+                       both edges, from the owner's own PSD sheets);
+                       elements.js is what
                        they share (page frame + backgrounds, text/image
                        stickers, the asset resolver); util.js the DOM/colour/
                        measure helpers; drag.js the one pointer layer that
@@ -4913,6 +4916,46 @@ garland is now capped at twice its own height — on a page the content does
 not reach the foot of, centring it on that run walked the word away from
 the rows it names, and a three-character script printed OUTSIDER halfway
 down a blank sheet.
+
+### The night columns style (`columns.js`)
+
+A third style for the script sheet (`options.sheetStyle = 'columns'`, "Night
+order down the sides" in the Pages card), built from the owner's own
+Photoshop sheets (Axiom of Logic, No Greater Joy, Laissez Un Where?, Golden
+Dawn). The owner asked for the layout only, not their colours or Clockwork
+Cyborg's jinx box.
+
+- **The night order is on the sheet**: a column down each edge, first night
+  on the left and other nights on the right, each a label and a stack of
+  icons in wake order (`nightLists()`, so the night settings and a
+  hand-arranged order apply). The stack's pitch shrinks to fit a long night.
+  The columns are the classic sheet's ribbon art, drawn twice
+  (`sidebarColor` / `sidebarMode` / `sidebarContrast`), with a black inner
+  edge. `appendRibbon()` copies its cached canvas when the same colour is
+  already on the page, or the second column took the first one's canvas.
+- **Header**: the title in LHF Unlovable on one to three lines, whichever is
+  largest in its box (`titleLines()`), the logo beside it when the script has
+  one (a logo that fails to load gives the title the whole width), the author
+  under it.
+- **Teams**: a heading in Optimus Princeps in the team's ink
+  (`COLUMN_HEAD_INK`), with a rule from it to the column (both sides for the
+  Demon, whose heading is centred). Characters are a grid: `columnsFor(n)`
+  puts a lone character full width (capped at `soloW`, so its text stays
+  beside its icon), two or four in pairs, the rest in threes, with a short
+  last row centred. Each cell is the icon, the name in capitals and the
+  ability centred under it in Arial/Helvetica. Fewer columns, bigger type
+  (`COLUMN_SHEET.cell`).
+- **Fit**: one page, density solved by `solveFit()`. `needAt(d)` is measured
+  already drawn at `d`, so the ratio handed to `solveFit` is
+  `avail * d / needAt(d)`; spare room goes under the rows (to
+  `FIT.spreadMax`) and the rest above and below.
+- The paper is the classic parchment without its garland, its burnt left
+  edge squeezed in to meet the narrower column. The footnote sits bottom
+  right, so the export's watermark sits bottom left of the paper.
+- Fonts are the style's own, not the Fonts card's. Rows are not dragged to
+  reorder (a grid is not a column); the Characters card orders them.
+  Elements: `colTitle`, `colAuthor`, `colLogo`, `colNight`, plus the shared
+  `content` and `footnote`.
 
 ### The app view (`appview.js`)
 
