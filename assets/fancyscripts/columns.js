@@ -35,7 +35,7 @@ import {
   el, img, px, clamp, textWidth, wrappedLineCount, normalizeIcons, iconFit, inkTransform, iconFilter,
   ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
-import { pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark } from './elements.js';
+import { pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark, ART } from './elements.js';
 import { appendRibbon, abilityNodes } from './sheet.js';
 
 const C = COLUMN_SHEET;
@@ -452,15 +452,20 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
       const centred = s.team === 'demon';
       const headX = centred ? 50 - wPct / 2 : G.headX;
       const ruleY = s.topEm + C.headBand * d * 0.42;
-      const rule = (x0, x1) => {
-        if (options.showDividers !== false && x1 - x0 > 0.5) wrap.append(el('div', {
-          position: 'absolute', left: x0 + '%', width: (x1 - x0) + '%', top: px(e(ruleY) - e(C.ruleH) / 2),
-          height: px(Math.max(1.5, e(C.ruleH))), background: '#000',
-          opacity: String(options.dividerOpacity == null ? 1 : options.dividerOpacity),
+      /* the classic and app sheets' divider: a line with a knot at one
+         end, fading out along it. Here the knot sits against the heading
+         (mirrored on the Demon's left side), drawn a little thicker. */
+      const ruleH = Math.max(6, e(C.ruleH * d));
+      const rule = (x0, x1, mirror) => {
+        if (options.showDividers !== false && x1 - x0 > 0.5) wrap.append(img(ART + 'divider-taper.png', {
+          position: 'absolute', left: x0 + '%', width: (x1 - x0) + '%', top: px(e(ruleY) - ruleH / 2),
+          height: px(ruleH), objectFit: 'fill', mixBlendMode: 'multiply',
+          transform: mirror ? 'scaleX(-1)' : 'none',
+          opacity: String(clamp(options.dividerOpacity == null ? 1 : options.dividerOpacity, 0, 1)),
         }));
       };
-      if (centred) rule(ruleL, headX - 0.8);
-      rule(headX + wPct + 0.8, ruleR);
+      if (centred) rule(ruleL, headX - 0.4, true);
+      rule(headX + wPct + 0.4, ruleR, false);
       const head = el('div', {
         position: 'absolute', left: headX + '%', top: px(e(ruleY)), transform: 'translateY(-50%)',
         fontFamily: FONT.label, fontSize: px(fs), lineHeight: '1', whiteSpace: 'nowrap', color,

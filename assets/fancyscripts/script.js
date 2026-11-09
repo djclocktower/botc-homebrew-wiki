@@ -306,7 +306,7 @@ export const COLUMN_SHEET = {
   headX: 7.9, // a team heading's left edge
   headSize: 2.5,
   headBand: 3.2, // em, the heading and the room under it
-  ruleH: 0.25, // em, the line from the heading to the edge
+  ruleH: 0.62, // the divider art's height at density 1 (the classic sheet's is 0.5)
   sectionGap: 0.8,
   rowGap: 1.1, // em under every grid row
   spreadEm: 4, // em at most added under a row or between teams when there is room

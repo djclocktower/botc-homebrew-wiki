@@ -4945,8 +4945,10 @@ Cyborg's jinx box.
   the logo beside it when the script has one (a logo that fails to load gives
   the title the whole width), the author under it.
 - **Teams**: a heading in Optimus Princeps in the team's ink
-  (`COLUMN_HEAD_INK`), with a rule from it to the column (both sides for the
-  Demon, whose heading is centred). Characters are a grid: `columnsFor(n)`
+  (`COLUMN_HEAD_INK`), with the classic sheet's divider art (`divider-taper.png`,
+  `ruleH` 0.62 em against the classic 0.5) running from it toward the column,
+  its knot against the heading (both sides for the Demon, whose heading is
+  centred, the left one mirrored). Characters are a grid: `columnsFor(n)`
   puts a lone character full width (capped at `soloW`, so its text stays
   beside its icon), two or four in pairs, the rest in threes, with a short
   last row centred. Each cell is the icon, the name in capitals and the
