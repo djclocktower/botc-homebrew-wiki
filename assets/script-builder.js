@@ -2431,11 +2431,16 @@
   function uploadExportImage(file, key, btn) {
     if (!cloud.user) { toast('Log in to upload an image, or paste an image link.'); return; }
     if (!file || !/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { toast('Pick a PNG, JPEG, WebP or GIF.'); return; }
+    uploadExportData(shrinkImage(file, 1600), key, btn);
+  }
+  /* A picture (a promise of its data URL) to the account, and its address
+     into the box: Upload's file, or the background maker's picture. */
+  function uploadExportData(dataP, key, btn) {
     var label = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Uploading…';
     function done() { btn.disabled = false; btn.innerHTML = label; }
-    shrinkImage(file, 1600).then(function (data) {
+    Promise.resolve(dataP).then(function (data) {
       return fetch('/api/my-scripts/image', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -2903,6 +2908,14 @@
         var f = this.files && this.files[0];
         this.value = '';
         if (f) uploadExportImage(f, p[2], $(p[0]));
+      });
+    });
+    $('sb-bg-make').addEventListener('click', function () {
+      if (!window.BgMaker) { toast('The background maker could not be loaded.'); return; }
+      window.BgMaker.open({
+        canUse: !!cloud.user,
+        onUse: function (data) { uploadExportData(data, 'exportBg', $('sb-bg-make')); },
+        onLogin: function () { location.href = 'login?next=' + encodeURIComponent(location.pathname + location.search); }
       });
     });
     $('sb-logo-prev').addEventListener('error', function () { this.hidden = true; });

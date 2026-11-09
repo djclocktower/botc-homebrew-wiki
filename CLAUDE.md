@@ -639,6 +639,8 @@ assets/
                        on #sbx, so most cost no re-render) and the popover
                        the schema builds. A new setting is one schema row
                        plus the CSS that reads it. See "The Script Builder".
+  bg-maker.js          The Script Builder's background maker (Export ->
+                       Background -> Make one). See "The Script Builder".
   script-builder-tools.js  The builder's PURE half: the script's shape and
                        the random fill that reaches it, the Analyse tab's
                        reading, the player-count seating table, the text
@@ -1862,6 +1864,18 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   `/api/my-scripts/image`, and the box takes its address on the live site
   (`https://botchomebrew.wiki/assets/library/…`), which is what the file
   needs; the preview reads it from this site's own copy (`localImg()`).
+  **Make one** opens the background maker (`assets/bg-maker.js`,
+  `BgMaker.open()`): the Fancy Scripts ribbon's damask
+  (`assets/script-bg/damask.webp`, a 654x1650 grey tile cut from
+  `fancyscripts/art/sidebar-flat.png` and mirrored both ways so it repeats
+  without a seam; light is the motif) laid over a two-colour gradient,
+  then a mottled texture and shading round the edges, drawn on a canvas at
+  1920x1080 and uploaded through the same route as Upload (WebP, or JPEG
+  where the browser cannot write WebP). Presets, two colours on a picker of
+  its own (a square, a hue strip and a hex box, like Fancy Scripts', since
+  Android's colour input has presets only), Blend, Pattern size, Pattern
+  strength, Texture and Shading; the settings are kept per browser
+  (`botc_bgmaker`). Logged out it can only download.
 - **The peek card closes when the tab changes** (`showTab()` calls
   `hidePeek()`).
 - **Each panel group heading has a die** (add one at random from what that
