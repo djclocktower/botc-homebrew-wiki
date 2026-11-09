@@ -10,8 +10,9 @@
  * night-order arranger, the jinx editor, and a querySelectorAll over all
  * ~1,900 sidebar rows to repaint their ticks. So the rules here are:
  *
- *   1. A click touches ONE sidebar row. Every row is kept in `rowBySlug`
- *      when the list is built, so there is no query to run.
+ *   1. A click touches ONE sidebar row. Every row on the page is kept in
+ *      `rowBySlug` when the list is drawn, so there is no query to run, and
+ *      only a few hundred are ever on the page (see renderPanel).
  *   2. The roster is small (a script is 25-ish characters), so it is rebuilt
  *      whole — that is genuinely cheap, and nothing else is.
  *   3. The night order and the jinx list are only built when their tab is
@@ -841,20 +842,21 @@
   // ══════════════════════════════════════════════════════════════════════
   //  The add panel
   // ══════════════════════════════════════════════════════════════════════
-  /* Built once, then filtered in place by the shared filter box
-     (assets/card-filters.js), which is why every row carries the same data-*
-     attributes the browse cards do. Rebuilding it on every add would throw
-     away whatever the reader had filtered to — and cost far more than the
-     one class toggle a click actually needs. */
-  /* The list is built in slices of a few hundred rows, one slice per
-     frame: the first slice is on screen within a frame of the data
-     arriving and the rest fill in below the fold while the reader is
-     already looking at their script. One innerHTML of 1,900 rows was a
-     single 300–500 ms block on a phone, and nothing could paint until it
-     ended. `done` runs after the last slice (the filter box mounts then —
-     it walks the whole list once). */
-  var CHUNK = 220;
-  var buildRun = 0;
+  /* Only a few hundred rows are ever on the page. With all 3,800 the
+     browser re-checked every row and icon on each change (content-visibility
+     and lazy images both watch every element), and a click cost a tenth of
+     a second; in Brave on a PC loading the page could hang the tab. So the
+     filter box, the search and the Show select run on the character list
+     (CharFilters over panelChars), and each group draws its first
+     PANEL_STEP matches with a Show more button. Everything that means "what
+     the panel is showing" (Random, Fill, Swap, the dice, + All shown) reads
+     panelMatches(), so it still means every match, drawn or not. */
+  var PANEL_STEP = 50, PANEL_MORE = 200;
+  var panelLimit = {};      // group key -> rows to draw
+  var panelChars = [];      // every character the panel can offer
+  var panelShown = null;    // the matches, filtered and sorted, or null before the box is up
+  var filterCtl = null;     // the CharFilters controller
+  var panelOrder = {};      // slug -> feed position, for "Date added"
   function rowMarkup(c, i) {
     var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
     var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
@@ -867,7 +869,7 @@
       ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
       ' data-partial="' + partial + '" data-curata="' + star + '">' +
       '<div class="sbx-add-head-row">' +
-        '<button type="button" class="sbx-add-item' + (sel[c.slug] ? ' on' : '') +
+        '<button type="button" class="sbx-add-item' + (sel[c.slug] ? ' on' : '') + (hinted[c.slug] ? ' jx' : '') +
           '" data-slug="' + esc(c.slug) + '" aria-pressed="' + (sel[c.slug] ? 'true' : 'false') + '">' +
           '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' +
             esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
@@ -917,92 +919,127 @@
     }
     return c.team;
   }
-  function buildAddList(done) {
-    var run = ++buildRun;
-    var browsable = allChars.concat(officialChars);
-    var groups = [];
+  function panelMatches() {
+    if (!panelShown) return panelChars.slice();
+    return panelShown;
+  }
+  function computeMatches() {
+    var q = ($('sb-filter').value || '').trim().toLowerCase();
+    var ab = q && !!prefs.abilities;
+    var scope = view ? view.panelScope : 'all';
+    var list = panelChars.filter(function (c) {
+      if (scope === 'on' && !sel[c.slug]) return false;
+      if (scope === 'off' && sel[c.slug]) return false;
+      if (!q) return true;
+      return (c.name || '').toLowerCase().indexOf(q) !== -1 ||
+        (ab && (c.ability || '').toLowerCase().indexOf(q) !== -1);
+    });
+    panelShown = filterCtl ? filterCtl.apply(list) : list;
+    var n = panelShown.length, total = panelChars.length;
+    var active = (filterCtl ? filterCtl.activeCount() : 0) + (q ? 1 : 0) + (scope !== 'all' ? 1 : 0);
+    var cnt = $('sb-add-count');
+    if (cnt) cnt.textContent = (!active || n === total) ? n + ' character' + (n === 1 ? '' : 's')
+      : n + ' of ' + total + ' character' + (total === 1 ? '' : 's');
+    return panelShown;
+  }
+  function panelGroups(list) {
     var how = (view && view.panelGroup) || 'team';
-    function byName(a, b) { return (a.name || '').localeCompare(b.name || ''); }
+    var groups = [];
     if (how === 'team') {
       TEAMS.forEach(function (t) {
-        var group = browsable.filter(function (c) { return teamKey(c) === t[0]; }).sort(byName);
-        if (group.length) groups.push({ team: t, key: t[0], label: t[1], chars: group, rowsEl: null, at: 0 });
+        var g = list.filter(function (c) { return teamKey(c) === t[0]; });
+        if (g.length) groups.push({ team: t, key: t[0], label: t[1], chars: g });
       });
-    } else {
-      var buckets = {};
-      browsable.forEach(function (c) {
-        var k = groupKeyOf(c, how);
-        (buckets[k] = buckets[k] || []).push(c);
-      });
-      Object.keys(buckets).sort(function (a, b) {
-        // Official and the catch-alls sink to the end; the rest alphabetical.
-        var tail = { 'Official': 2, 'Uncredited': 1, 'No set': 1, '#': 1 };
-        return (tail[a] || 0) - (tail[b] || 0) || a.localeCompare(b);
-      }).forEach(function (k) {
-        groups.push({ team: null, key: how + ':' + k, label: k, chars: buckets[k].sort(byName), rowsEl: null, at: 0 });
-      });
+      return groups;
     }
+    var buckets = Object.create(null);
+    list.forEach(function (c) {
+      var k = groupKeyOf(c, how);
+      (buckets[k] = buckets[k] || []).push(c);
+    });
+    Object.keys(buckets).sort(function (a, b) {
+      // Official and the catch-alls sink to the end; the rest alphabetical.
+      var tail = { 'Official': 2, 'Uncredited': 1, 'No set': 1, '#': 1 };
+      return (tail[a] || 0) - (tail[b] || 0) || a.localeCompare(b);
+    }).forEach(function (k) {
+      groups.push({ team: null, key: how + ':' + k, label: k, chars: buckets[k] });
+    });
+    return groups;
+  }
+  function renderPanel() {
     var list = $('sb-add-list');
+    if (!list) return;
+    var groups = panelGroups(computeMatches());
     rowBySlug = {};
+    highlight(null);
     if (!groups.length) {
-      list.innerHTML = '<p class="sbx-note">No characters found.</p>';
-      if (done) done();
+      list.innerHTML = '<p class="sbx-note">' + (panelChars.length ? 'Nothing matches that.' : 'No characters found.') + '</p>';
       return;
     }
-    list.innerHTML = '';
-    var gi = 0;
-    function slice() {
-      if (run !== buildRun) return;   // a newer build replaced this one
-      var budget = CHUNK;
-      while (budget > 0 && gi < groups.length) {
-        var g = groups[gi];
-        if (!g.rowsEl) {
-          var wrap = document.createElement('div');
-          wrap.className = 'sbx-add-group' + (prefs.collapsed && prefs.collapsed[g.key] ? ' collapsed' : '');
-          wrap.setAttribute('data-group', g.key);
-          if (g.team) wrap.setAttribute('data-team', g.team[0]);
-          wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
-            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-groupneed"></span>' +
-            '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from this group" aria-label="Add a random ' + esc(g.label) + '">' + ico('dice') + '</button>' +
-            '<span class="sbx-add-fold" aria-hidden="true">' + ico('down') + '</span></h3>' +
-            '<div class="sbx-add-rows"></div>';
-          list.appendChild(wrap);
-          g.rowsEl = wrap.lastChild;
-        }
-        var to = Math.min(g.chars.length, g.at + budget);
-        var html = '';
-        for (var i = g.at; i < to; i++) html += rowMarkup(g.chars[i], i);
-        var before = g.rowsEl.childElementCount;
-        g.rowsEl.insertAdjacentHTML('beforeend', html);
-        var kids = g.rowsEl.children;
-        for (var k = before; k < kids.length; k++) {
-          var btn = kids[k].querySelector('.sbx-add-item');
-          if (btn) rowBySlug[btn.getAttribute('data-slug')] = btn;
-        }
-        budget -= (to - g.at);
-        g.at = to;
-        if (g.at >= g.chars.length) gi++;
+    var html = '';
+    groups.forEach(function (g) {
+      var folded = !!(prefs.collapsed && prefs.collapsed[g.key]);
+      var lim = panelLimit[g.key] || PANEL_STEP;
+      html += '<div class="sbx-add-group' + (folded ? ' collapsed' : '') + '" data-group="' + esc(g.key) + '"' +
+        (g.team ? ' data-team="' + esc(g.team[0]) + '"' : '') + '>' +
+        '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
+          ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-groupneed"></span>' +
+          '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from this group" aria-label="Add a random ' + esc(g.label) + '">' + ico('dice') + '</button>' +
+          '<span class="sbx-add-fold" aria-hidden="true">' + ico('down') + '</span></h3>' +
+        '<div class="sbx-add-rows">';
+      if (!folded) {
+        for (var i = 0; i < g.chars.length && i < lim; i++) html += rowMarkup(g.chars[i], i);
       }
-      if (gi < groups.length) requestAnimationFrame(slice);
-      else if (done) done();
-    }
-    slice();
+      html += '</div>';
+      if (!folded && g.chars.length > lim) {
+        html += '<button type="button" class="sbx-b-sm sbx-add-more" data-more="' + esc(g.key) + '">Show more (' + (g.chars.length - lim) + ')</button>';
+      }
+      html += '</div>';
+    });
+    list.innerHTML = html;
+    [].slice.call(list.querySelectorAll('.sbx-add-item')).forEach(function (btn) {
+      rowBySlug[btn.getAttribute('data-slug')] = btn;
+    });
+    paintPanelNeeds();
   }
-
+  // A new search, filter or Show starts every group at its first rows again.
+  var panelTimer = 0;
+  function filterPanel(now) {
+    panelLimit = {};
+    cancelAnimationFrame(panelTimer);
+    if (now) { renderPanel(); return; }
+    panelTimer = requestAnimationFrame(renderPanel);
+  }
+  function groupMatches(key) {
+    var g = panelGroups(panelMatches()).filter(function (x) { return x.key === key; })[0];
+    return g ? g.chars : [];
+  }
+  /* Called when the characters arrive or change, and when the grouping
+     changes. The filter box is put up again over the new list, keeping
+     whatever the reader had chosen in it. */
+  function buildAddList(done) {
+    panelChars = allChars.concat(officialChars);
+    panelOrder = {};
+    panelChars.forEach(function (c, i) { panelOrder[c.slug] = i; });
+    mountAddFilters();
+    filterPanel(true);
+    if (done) done();
+  }
   function mountAddFilters() {
-    if (!window.mountCardFilters) return;
-    filterAPI = window.mountCardFilters({
-      grid: 'sb-add-list', bar: 'sb-filter-bar', toggle: 'sb-filter-toggle',
-      count: 'sb-add-count', search: 'sb-filter',
-      sectionSel: '.sbx-add-group', innerSel: '.sbx-add-rows', cardSel: '.sbx-add-row',
-      sectionCountSel: '.sbx-add-groupcount', abilitySel: '.sbx-add-ab',
-      label: 'Filters', partialChip: true, curataChip: true,
-      // The reader's saved characters, and everyone on a saved script or
-      // collection (assets/favorites.js). Hidden until one is in the list.
-      favChip: true,
-      sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']],
-      searchAbility: function () { return !!prefs.abilities; }
-    }) || null;
+    var CF = window.CharFilters;
+    if (!CF || !$('sb-filter-bar')) return;
+    var saved = filterCtl ? filterCtl.state : null;
+    filterCtl = CF.mount({
+      bar: $('sb-filter-bar'), toggle: $('sb-filter-toggle'), list: panelChars, label: 'Filters',
+      sourceOf: function (c) { return c.official ? 'official' : 'homebrew'; },
+      sourceLabels: [['homebrew', 'Homebrew'], ['official', 'Official']],
+      defaultSort: 'name', groups: ['team'],
+      order: function (c) { return panelOrder[c.slug] || 0; },
+      onChange: function () { filterPanel(); }
+    });
+    if (saved && filterCtl.restore) filterCtl.restore(saved);
+    var reset = $('sb-filter-bar').querySelector('#fc-reset');
+    if (reset) reset.addEventListener('click', function () { $('sb-filter').value = ''; filterPanel(); });
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1265,7 +1302,6 @@
     view = window.SBView.normalize(prefs.view);
     window.SBView.apply($('sbx'), view);
   }
-  var filterAPI = null;
   function setView(v, key) {
     var beforeGroup = view && view.panelGroup;
     prefs.view = v;
@@ -1274,11 +1310,11 @@
     var rp = key ? window.SBView.repaintFor(key) : 'roster';
     if (rp === 'roster') paintRoster();
     if (rp === 'panel' || (!key && view.panelGroup !== beforeGroup)) {
-      if (allChars.length) buildAddList(function () { mountAddFilters(); paintJinxHints(); paintPanelNeeds(); });
+      if (allChars.length) buildAddList(function () { paintJinxHints(); });
     }
     if (key === 'showMarks') paintPanelMarks();
     if (key === 'arrange') paintArrangeBtn();
-    if (key === 'panelScope') paintScopeSel();
+    if (key === 'panelScope') { paintScopeSel(); filterPanel(); }
   }
   /* Arrange by hand is an editing mode, so it is a button beside Sort rather
      than a View setting; the panel's Show is a select in the panel. Both are
@@ -1453,12 +1489,9 @@
     f.select();
   }
 
-  /* The panel rows the filter box is currently showing, in list order.
-     Read straight off the DOM the filter box maintains (card-filters.js
-     toggles each row's inline display), so this can never disagree with
-     what the panel shows. */
+  /* The panel rows ON THE PAGE, in list order: what the arrow keys walk
+     and Enter takes. panelMatches() is every match, drawn or not. */
   function visibleRows(homebrewOnly) {
-    if (filterAPI && filterAPI.flush) filterAPI.flush();   // a search still waiting on a typing pause
     var q = '#sb-add-list .sbx-add-row' + (homebrewOnly ? '[data-source="homebrew"]' : '');
     var scope = view ? view.panelScope : 'all';
     var out = [];
@@ -2526,14 +2559,17 @@
       var die = e.target.closest('[data-group-random]');
       if (die) {
         var grpEl = die.closest('.sbx-add-group');
-        var cands = [].slice.call(grpEl.querySelectorAll('.sbx-add-row')).filter(function (r) {
-          return r.style.display !== 'none' && !r.classList.contains('on') && getComputedStyle(r).display !== 'none';
-        });
+        var cands = groupMatches(grpEl.getAttribute('data-group')).filter(function (c) { return !sel[c.slug]; });
         if (!cands.length) { toast('Nothing left to draw from in that group.'); return; }
-        var pickRow = cands[Math.floor(Math.random() * cands.length)];
-        var pb = pickRow.querySelector('.sbx-add-item');
-        var ps = pb && pb.getAttribute('data-slug');
+        var ps = cands[Math.floor(Math.random() * cands.length)].slug;
         if (ps && bySlug[ps] && !toggle(ps)) toast('Added ' + bySlug[ps].name + '.');
+        return;
+      }
+      var more = e.target.closest('[data-more]');
+      if (more) {
+        var mk = more.getAttribute('data-more');
+        panelLimit[mk] = (panelLimit[mk] || PANEL_STEP) + PANEL_MORE;
+        renderPanel();
         return;
       }
       var head = e.target.closest('.sbx-add-grouphead');
@@ -2544,6 +2580,8 @@
         prefs.collapsed = prefs.collapsed || {};
         if (folded) prefs.collapsed[gk] = true; else delete prefs.collapsed[gk];
         savePrefs();
+        // A folded group draws no rows, so opening one draws them.
+        if (!folded) renderPanel();
         return;
       }
       var chev = e.target.closest('.sbx-add-chev');
@@ -2570,7 +2608,7 @@
       if (!slug || !bySlug[slug]) return;
       if (!toggle(slug)) toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
     });
-    $('sb-filter').addEventListener('input', function () { highlight(null); });
+    $('sb-filter').addEventListener('input', function () { highlight(null); filterPanel(); });
     $('sb-filter').addEventListener('blur', function () { highlight(null); });
     $('sbx-picks').addEventListener('click', function (e) {
       if (Date.now() < suppressClickUntil) { e.preventDefault(); return; }
@@ -2584,7 +2622,7 @@
     // Add or remove everything the panel is showing — a creator's whole set
     // in one click after filtering to them.
     $('sb-add-all').addEventListener('click', function () {
-      var slugs = visibleRows(false).map(function (r) { var b = r.querySelector('.sbx-add-item'); return b && b.getAttribute('data-slug'); })
+      var slugs = panelMatches().map(function (c) { return c.slug; })
         .filter(function (x) { return x && bySlug[x] && !sel[x]; });
       if (!slugs.length) { toast('Everything shown is already on the script.'); return; }
       if (slugs.length > 30 && !confirm('Add all ' + slugs.length + ' characters the panel is showing?')) return;
@@ -2594,7 +2632,7 @@
     });
     $('sb-remove-all').addEventListener('click', function () {
       var shown = {};
-      visibleRows(false).forEach(function (r) { var b = r.querySelector('.sbx-add-item'); if (b) shown[b.getAttribute('data-slug')] = 1; });
+      panelMatches().forEach(function (c) { shown[c.slug] = 1; });
       var keep = order.filter(function (x) { return !shown[x]; });
       var n = order.length - keep.length;
       if (!n) { toast('Nothing shown is on the script.'); return; }
@@ -2774,7 +2812,7 @@
       savePrefs();
       $('sb-add-list').classList.toggle('abil', this.checked);
       // The same tick shows the abilities and searches them.
-      if (filterAPI && filterAPI.apply) filterAPI.apply();
+      if ($('sb-filter').value) filterPanel();
     });
 
     // ── tabs ──
@@ -3049,19 +3087,13 @@
   /* Randomize draws from whatever the panel's own filter box currently
      shows — a reader who ticked a tag, a creator or a team chip expects it to
      pick from that narrowed pool, not silently reach past it into the whole
-     roster. Read straight off the DOM the filter box maintains
-     (card-filters.js toggles each row's inline display), so this can never
-     disagree with what the panel is showing. Before the panel is built,
-     every homebrew character is the pool. */
+     roster. It is panelMatches(), the list the panel draws from, so it
+     cannot disagree with the panel, and it counts the matches no Show more
+     has drawn yet. Before the panel is built, every homebrew character is
+     the pool. */
   function visibleSidebarChars() {
-    if (!document.querySelector('#sb-add-list .sbx-add-row')) return allChars.slice();
-    var out = [];
-    visibleRows(true).forEach(function (row) {
-      var btn = row.querySelector('.sbx-add-item');
-      var c = btn && bySlug[btn.getAttribute('data-slug')];
-      if (c) out.push(c);
-    });
-    return out;
+    if (!panelChars.length) return allChars.slice();
+    return panelMatches().filter(function (c) { return !c.official; });
   }
 
   /* Homebrew only, deliberately: 180-odd official characters in the pool
@@ -3248,9 +3280,7 @@
           buildAddList(function () {
             perfMark('panel-done');
             panelState = 'done';
-            mountAddFilters();
             paintJinxHints();
-            paintPanelNeeds();
             perfMark('filters');
           });
         }, 0);
@@ -3314,9 +3344,7 @@
         panelState = 'building';
         buildAddList(function () {
           panelState = 'done';
-          mountAddFilters();
           paintJinxHints();
-          paintPanelNeeds();
         });
       }
       if (added.length || removed.length) {

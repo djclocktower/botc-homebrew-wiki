@@ -5446,6 +5446,7 @@ button.sbx-counts:empty { display: none; }
 .sbx-add-fold { margin-left: auto; font-size: .7rem; opacity: .6; transition: transform .15s; }
 .sbx-add-group.collapsed .sbx-add-fold { transform: rotate(-90deg); }
 .sbx-add-group.collapsed .sbx-add-rows { display: none; }
+.sbx-add-more { display: block; width: 100%; margin: 4px 0 6px; }
 
 /* ── round 6: paper tones, stripes, sticky headings, the picks strip, team tools ── */
 .sbx { --sbx-panel-text: 1; }
