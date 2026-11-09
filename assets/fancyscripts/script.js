@@ -279,22 +279,24 @@ export const APP_NIGHT = {
 export const COLUMN_SHEET = {
   colW: 6.4, // each edge column, % of the width
   colRule: 0.45, // the black edge on its inner side, % of the width
-  labelTop: 31, // FIRST NIGHT / OTHER NIGHTS, em
-  labelSize: 1.2,
-  nightTop: 34.2, // the first icon's top
-  nightBottom: 98, // the last icon's foot
+  labelSize: 1.2, // FIRST NIGHT / OTHER NIGHTS, em
+  labelGap: 0.8, // em between the label and the first icon
+  nightMargin: 1.5, // em kept clear at the top and foot of a full column
   nightIcon: 4.1, // em, at most
   nightPitch: 4.7, // em between icon tops, at most
-  titleTop: 0.7,
-  titleBottom: 20.4, // the title's foot; the author sits under it
+  // the header is one fixed, modest size on every script (the owner's call:
+  // the same sheet every time beats the biggest title), and the grid gets
+  // the room the PSDs gave it
+  titleTop: 0.9,
+  titleBottom: 8.4, // the title's foot; the author sits under it
   titleX0: 9, // the title's box when there is a logo beside it…
-  titleX1: 53,
-  logoX0: 54.5, // …and the logo's
+  titleX1: 60,
+  logoX0: 62, // …and the logo's
   logoX1: 91,
-  logoBottom: 23,
-  titleSize: 9.4, // em, a two-line title at most this big
-  authorSize: 1.5,
-  contentTop: 23.4, // the first heading's top
+  logoBottom: 10.6,
+  titleSize: 6, // em, the title at most this big
+  authorSize: 1.3,
+  contentTop: 11.6, // the first heading's top
   contentBottom: 95.6, // above the footnote
   contentX0: 7.6, // the grid, between the columns
   contentX1: 92.4,

@@ -4928,15 +4928,18 @@ Cyborg's jinx box.
 - **The night order is on the sheet**: a column down each edge, first night
   on the left and other nights on the right, each a label and a stack of
   icons in wake order (`nightLists()`, so the night settings and a
-  hand-arranged order apply). The stack's pitch shrinks to fit a long night.
+  hand-arranged order apply). Both stacks share one pitch and one top, so
+  the labels always sit level, and the taller stack is centred between the
+  top and foot of the page; the pitch shrinks to fit a long night.
   The columns are the classic sheet's ribbon art, drawn twice
   (`sidebarColor` / `sidebarMode` / `sidebarContrast`), with a black inner
   edge. `appendRibbon()` copies its cached canvas when the same colour is
   already on the page, or the second column took the first one's canvas.
-- **Header**: the title in LHF Unlovable on one to three lines, whichever is
-  largest in its box (`titleLines()`), the logo beside it when the script has
-  one (a logo that fails to load gives the title the whole width), the author
-  under it.
+- **Header**: one fixed, small band on every script (the owner's call: the
+  same sheet every time beats the biggest title). The title in LHF Unlovable
+  on one to three lines, whichever is largest in its box (`titleLines()`),
+  the logo beside it when the script has one (a logo that fails to load gives
+  the title the whole width), the author under it.
 - **Teams**: a heading in Optimus Princeps in the team's ink
   (`COLUMN_HEAD_INK`), with a rule from it to the column (both sides for the
   Demon, whose heading is centred). Characters are a grid: `columnsFor(n)`

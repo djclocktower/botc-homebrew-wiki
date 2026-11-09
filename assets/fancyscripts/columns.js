@@ -212,30 +212,37 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     const night = options.night || {};
     const lists = [['left', night.titleFirst || 'First Night', layout.nights.first],
       ['right', night.titleOther || 'Other Nights', layout.nights.other]];
-    for (const [side, label, items] of lists) {
+    /* Both stacks share one pitch and one top, so the two labels always sit
+       level; the taller stack (label, gap, icons) is centred on the page. */
+    const words = lists.map(([, label]) => String(label).toUpperCase().split(/\s+/));
+    const labelH = Math.max(...words.map((w) => w.length)) * C.labelSize * 1.15;
+    const most = Math.max(1, ...lists.map((l) => l[2].length));
+    const pageEm = footEm(100);
+    const room = pageEm - 2 * C.nightMargin - labelH - C.labelGap;
+    const pitch = Math.min(C.nightPitch, room / most);
+    const size = Math.min(C.nightIcon, pitch * 0.9);
+    const stackTop = (pageEm - (labelH + C.labelGap + most * pitch)) / 2;
+    const iconsTop = stackTop + labelH + C.labelGap;
+    lists.forEach(([side, , items], li) => {
       const cx = side === 'left' ? C.colW / 2 : 100 - C.colW / 2;
       const lab = el('div', {
-        position: 'absolute', left: cx + '%', top: px(e(C.labelTop)), transform: 'translateX(-50%)',
+        position: 'absolute', left: cx + '%', top: px(e(stackTop)), transform: 'translateX(-50%)',
         width: (C.colW + 1) + '%', textAlign: 'center', fontFamily: FONT.serif, fontSize: px(e(C.labelSize)),
         lineHeight: '1.15', color: '#ffffff', pointerEvents: 'auto', textShadow: `0 ${e(0.1)}px ${e(0.3)}px rgba(0,0,0,0.9)`,
       });
-      for (const w of String(label).toUpperCase().split(/\s+/)) lab.append(el('div', null, w));
+      for (const w of words[li]) lab.append(el('div', null, w));
       box.append(lab);
-      if (!items.length) continue;
-      const room = footEm(C.nightBottom) - C.nightTop;
-      const pitch = Math.min(C.nightPitch, room / items.length);
-      const size = Math.min(C.nightIcon, pitch * 0.9);
       items.forEach((it, i) => {
         const fit = options.normalizeIcons ? iconFit(it.icon) : ICON_IDENTITY;
         const ic = iconImg(drawIcon(it.icon), {
-          position: 'absolute', left: `calc(${cx}% - ${px(e(size) / 2)})`, top: px(e(C.nightTop + i * pitch + (pitch - size) / 2)),
+          position: 'absolute', left: `calc(${cx}% - ${px(e(size) / 2)})`, top: px(e(iconsTop + i * pitch + (pitch - size) / 2)),
           width: px(e(size)), height: px(e(size)), objectFit: 'contain', pointerEvents: 'auto',
           transform: inkTransform(fit), filter: `drop-shadow(0 ${e(0.08)}px ${e(0.25)}px rgba(0,0,0,0.6))`,
         }, it.name);
         ic.title = it.name;
         box.append(ic);
       });
-    }
+    });
     applyEl(box, { ...nT, hidden: false }, '', U, SHEET_W);
     sheet.append(mark(box, 'el:colNight'));
   }
