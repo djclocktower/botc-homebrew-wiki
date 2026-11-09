@@ -35,7 +35,7 @@ import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, frontCharacters, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
-  keywordParts, jinxNotes,
+  keywordParts, jinxNotes, contentFloor,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount, textWidth,
@@ -559,7 +559,7 @@ export function layoutSheet(script, options, requestRender) {
   const maxTextW = ((SHEET.textWidth * widthMul) / 100) * SHEET_W;
   // with no garland at the foot the rows may run down to the footnote
   const gaT0 = elGet(options, 'garland');
-  const bottomEm = footEm(gaT0.src === NO_ART || gaT0.hidden ? SHEET.bottomNoGarland : SHEET.contentBottom);
+  const bottomEm = contentFloor(gaT0.src, gaT0.hidden, SHEET.contentBottom, SHEET.bottomNoGarland, 88, gaT0.scale, gaT0.dy);
   const availableEm = bottomEm - SHEET.contentTop;
   const bareAvailEm = bottomEm - SHEET.bareTop;
   // the icon must never spill into the text gutter, whatever the density

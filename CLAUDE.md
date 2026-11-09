@@ -5300,6 +5300,11 @@ needs its ratio re-measured or it is picked at the wrong size.
   (`SHEET.bottomNoGarland` 92.4, `APP_SHEET.bottomNoGarland` 92.6, instead of
   `contentBottom`). The app view's garland list is the classic one (built in,
   the pack, None); its "None" used to keep the parchment's painted garland.
+  A pack garland that is shrunk or moved down gives back the room it left:
+  `contentFloor()` in script.js puts the floor 0.6 em above the picture's
+  own top (`garlandOval().imgTop`), between `contentBottom` and the None
+  floor. The painted garland and an upload (whose shape is unknown) keep
+  `contentBottom`.
 - **The classic sheet's garland is painted into `parchment.jpg`.** Picking
   another (or "None", `NO_ART`) switches the paper to
   `art/parchment-nogarland.jpg`, the same file with the garland painted out:

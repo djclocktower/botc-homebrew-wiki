@@ -34,7 +34,7 @@
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
   groupByTeam, frontCharacters, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
-  breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART,
+  breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART, contentFloor,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt, artAspectOf, shade,
@@ -260,8 +260,9 @@ export function layoutAppSheet(script, options, requestRender) {
   const pageHasHeader = () => options.showHeader !== false;
   const topFor = (i) => (pageHasHeader(i) ? hm.top : A.bareTop);
   // with the garland set to None the rows may run down to the footnote
-  const noGarland = elGet(options, 'appGarland').src === NO_ART;
-  const availFor = (i) => footEm(noGarland ? A.bottomNoGarland : A.contentBottom) - topFor(i);
+  const gT0 = elGet(options, 'appGarland');
+  const floorEm = contentFloor(gT0.src, false, A.contentBottom, A.bottomNoGarland, A.garlandW, gT0.scale, gT0.dy, A.garlandH);
+  const availFor = (i) => floorEm - topFor(i);
   const gapEm = A.sectionGap;
 
   // every section on the one page: the script sheet is always one page

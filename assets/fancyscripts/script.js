@@ -1182,7 +1182,18 @@ export function garlandOval(src, widthPct, scale, dyEm, maxHEm) {
   let h = widthPct * scale / SHEET.ratio * ratio;
   if (maxHEm) h = Math.min(h, maxHEm * scale);
   const bottom = PAGE_EM + dyEm;
-  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, PAGE_EM) };
+  // imgTop: the picture's own top edge (its leaf tips), em
+  return { top: bottom - h * (1 - top), bottom: Math.min(bottom, PAGE_EM), imgTop: bottom - h };
+}
+/* How far down the rows may run above the garland, em. The painted garland
+   and an upload keep the sheet's fixed bottom; a pack garland that has been
+   shrunk or moved down gives the room it left (up to where no garland would
+   stop them); no garland gives it all. */
+export function contentFloor(src, hidden, fixedEm, noneEm, widthPct, scale, dyEm, maxHEm) {
+  if (hidden || src === NO_ART) return footEm(noneEm);
+  const ov = garlandOval(src, widthPct, scale, dyEm, maxHEm);
+  if (!ov) return footEm(fixedEm);
+  return Math.max(footEm(fixedEm), Math.min(footEm(noneEm), ov.imgTop - 0.6));
 }
 /* the footnote's top (em) for its lines to sit in the middle of the oval */
 export function footInOval(oval, text, lineEm) {
