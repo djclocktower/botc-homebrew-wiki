@@ -1368,6 +1368,7 @@ function buildLayoutCard() {
   const colG = styleGroup(box, 'front', 'columns');
   makeSelect(colG, 'Reading order', [['across', 'Across, row by row'], ['down', 'Down, column by column']], bindPath('colOrder'))
     .el.title = 'How each team flows into its columns. Character order (SAO and the rest) follows it.';
+  if (cardPaths) cardPaths.add('colBalance'); // so "Reset this card" puts the ticks back too
   makeLabel(colG, 'Balance the columns');
   makeHint(colG, 'Every column of a ticked team ends on the same line.');
   const balRow = makeRow(colG, 'fs-colors');
@@ -1383,6 +1384,10 @@ function buildLayoutCard() {
         options.colBalance = map;
       },
     });
+  }
+  makeLabel(colG, 'Team sizes');
+  for (const team of TEAM_ORDER) {
+    makeSlider(colG, TEAM_NAMES[team], 0.5, 1.6, 0.01, pct, bindPath('colTeamSize.' + team), { reset: 1 });
   }
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
@@ -2988,10 +2993,14 @@ async function boot() {
   });
   // wraps and the title width both change once the real fonts arrive
   document.fonts.ready.then(() => { fontsChanged(); reparse(); requestRender(); });
-  // and warm the sheet's faces so the first render already measures right
-  for (const f of ['LHF Unlovable', 'Dumbledor', 'Goudy Old Style', 'Trade Gothic', 'Trade Gothic Bold Condensed']) {
-    document.fonts.load(`16px "${f}"`).catch(() => {});
-  }
+  // and warm the sheet's faces so the first render already measures right.
+  // OptimusPrinceps is the night columns style's names and headings: missed
+  // here, it arrived after fonts.ready and every name stayed measured in the
+  // narrower fallback, so a name sized to fit ran past its column. Once they
+  // are all in, the widths are measured again.
+  Promise.all(['LHF Unlovable', 'Dumbledor', 'Goudy Old Style', 'Trade Gothic', 'Trade Gothic Bold Condensed', 'OptimusPrinceps']
+    .map((f) => document.fonts.load(`16px "${f}"`).catch(() => {})))
+    .then(() => { fontsChanged(); requestRender(); });
 
   // ?s={slug} / ?c={id} deep links — the "Fancy Sheet" buttons on /s/ and
   // /collection/ pages — and ?from=builder, the Script Builder's hand-off

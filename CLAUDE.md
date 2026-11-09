@@ -4966,6 +4966,15 @@ Cyborg's jinx box.
   `measureSection()` hands back `place(y, per)`, which positions every cell
   (`{m, left, topEm, slotEm}`) for any of the four arrangements, so the
   renderer draws them all the same way.
+- **Team sizes** (`options.colTeamSize`, one slider per team, 50% to 160%,
+  `teamSize()` in script.js clamps it): multiplies that team's icon, name
+  and ability sizes. The fit is still one density for the page, so a bigger
+  team shrinks the rest to keep it on one page.
+- **Name size reaches every name.** A name used to be capped at the column
+  beside its icon, so on a short script raising Name size did nothing to the
+  names already filling it. A team's icons now give up width (down to
+  `iconYield`, 70% of themselves) when the team's longest word of a name
+  would not fit beside them.
 - **Fit**: one page, at the largest density whose height fits, found by
   halving (`needAt(d)` is measured drawn at `d`). Not `solveFit()`: the
   height here jumps as the density moves (lines re-wrap, the text column
@@ -5533,6 +5542,11 @@ needs its ratio re-measured or it is picked at the wrong size.
     off-site image is `images.weserv.nl/?url=…`, so without it the first
     off-site picture fetched was reused for all of them (a script's logo
     printed as a character's icon).
+  - **Every face a style measures with must be warmed at boot** (the list
+    in app.js whose loads end in `fontsChanged()`). OptimusPrinceps, the
+    night columns style's names and headings, was missing: it arrived after
+    `fonts.ready`, the widths stayed measured in the narrower fallback, and a
+    name sized to fit its column ran past it.
   - **Fitting goes through `solveFit()` (util.js)**, all four layouts.
     Rows re-wrap as the type shrinks, so "density = room ÷ need" can stop
     on the wrong side of a step; it ends by stepping down until it fits.

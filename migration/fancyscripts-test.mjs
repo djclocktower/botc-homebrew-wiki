@@ -226,6 +226,9 @@ check('columns: thirteen down in threes is 5/4/4', S.columnLists(13, 3, 'down').
 check('columns: balanced per team, and an old one-switch design means every team',
   [S.balancedTeam({ colBalance: { townsfolk: true } }, 'townsfolk'), S.balancedTeam({ colBalance: { townsfolk: true } }, 'minion'),
     S.balancedTeam({ colBalance: true }, 'minion'), S.balancedTeam(S.normalizeOptions({}), 'demon')], [true, false, true, false]);
+check('columns: a team size is clamped, and 1 when unset',
+  [S.teamSize({ colTeamSize: { demon: 1.4 } }, 'demon'), S.teamSize({ colTeamSize: { demon: 9 } }, 'demon'),
+    S.teamSize({ colTeamSize: { demon: 0.1 } }, 'demon'), S.teamSize(S.normalizeOptions({}), 'minion')], [1.4, 1.6, 0.5, 1]);
 check('columns: every grid width has its sizes', [1, 2, 3].every((n) => S.COLUMN_SHEET.cell[n].length === 3), true);
 
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');

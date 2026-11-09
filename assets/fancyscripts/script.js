@@ -314,6 +314,7 @@ export const COLUMN_SHEET = {
   iconGap: 0.6, // % of the width between an icon and its text
   soloW: 66, // % of the width, a lone character's cell
   iconMaxShare: 0.3, // an icon is at most this share of its cell's width
+  iconYield: 0.7, // ...and gives up width down to this share of itself for a long name
   // per grid width: icon, name, ability (em) — fewer columns, bigger type
   cell: { 3: [8.2, 2.0, 1.35], 2: [9.4, 2.2, 1.55], 1: [12.5, 3.0, 2.0] },
   abilityLine: 1.2, // × the ability size
@@ -354,6 +355,13 @@ export function columnLists(n, cols, order) {
 export function balancedTeam(options, team) {
   const b = options && options.colBalance;
   return b === true || !!(b && typeof b === 'object' && b[team]);
+}
+
+/* a team's own size (icons, names and abilities together), 0.5 to 1.6;
+   1 for a team with no slider set */
+export function teamSize(options, team) {
+  const v = Number(options && options.colTeamSize && options.colTeamSize[team]);
+  return v > 0 ? Math.min(1.6, Math.max(0.5, v)) : 1;
 }
 
 /* the team heading inks on the owner's sheets */
@@ -696,6 +704,7 @@ export const DEFAULT_OPTIONS = {
   // its columns are spread to end on one line
   colOrder: 'across', // across (row by row) | down (column by column)
   colBalance: { townsfolk: false, outsider: false, minion: false, demon: false, traveller: false, fabled: false, loric: false },
+  colTeamSize: { townsfolk: 1, outsider: 1, minion: 1, demon: 1, traveller: 1, fabled: 1, loric: 1 }, // night columns style: each team's size
   showJinxes: true,
   jinxIconSize: 1, // the partner icons beside a name
   jinxText: false, // each jinx's rule printed under the character that carries it

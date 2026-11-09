@@ -27,7 +27,7 @@
  */
 
 import {
-  COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, columnLists, balancedTeam, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
+  COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, columnLists, balancedTeam, teamSize, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
   PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxied, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
 } from './script.js';
 import {
@@ -90,13 +90,23 @@ export function layoutColumnsSheet(script, options, requestRender) {
     const n = g.characters.length;
     const cols = columnsFor(n);
     const [iconB, nameB, textB] = C.cell[cols];
-    const nameEm = nameB * nameSize * d, textEm = textB * textSize * d;
+    const k = teamSize(options, g.team); // this team's own size slider
+    const nameEm = nameB * nameSize * k * d, textEm = textB * textSize * k * d;
     const cellW = (cellPct(cols) / 100) * SHEET_W;
+    const nameFontAt = (s) => `400 ${(nameEm * U * s).toFixed(2)}px ${FONT.serif}`;
     // the icon grows with the page but never past a share of its cell, or a
     // short script squeezes its abilities into a strip a few words wide
-    const iconEm = Math.min(iconB * iconSize * d, (cellW * C.iconMaxShare) / U);
-    const textW = Math.max(40, cellW - iconEm * U - gapPx * 2);
-    const nameFontAt = (k) => `400 ${(nameEm * U * k).toFixed(2)}px ${FONT.serif}`;
+    let iconPx = Math.min(iconB * iconSize * k * d * U, cellW * C.iconMaxShare);
+    /* and it gives up width (to C.iconYield of itself) when the team's
+       longest word of a name would not fit beside it: otherwise a name that
+       already fills its column cannot grow, and the Name size slider did
+       nothing on a short script */
+    const widest = Math.max(0, ...g.characters.flatMap((c) =>
+      smartTypography(c.name).toUpperCase().split(/\s+/).map((w) => textWidth(w, nameFontAt(1)))));
+    const room = cellW - iconPx - gapPx * 2;
+    if (widest > room) iconPx = Math.max(iconPx * C.iconYield, cellW - widest - gapPx * 2);
+    const iconEm = iconPx / U;
+    const textW = Math.max(40, cellW - iconPx - gapPx * 2);
     const textFont = `400 ${(textEm * U).toFixed(2)}px ${FONT.text}`;
     const cells = g.characters.map((c) => {
       const name = smartTypography(c.name).toUpperCase();
