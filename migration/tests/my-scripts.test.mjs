@@ -92,7 +92,7 @@ test('a logo upload is stored under a key the server mints', async t => {
   const f = await setup();
   t.after(() => f.finish());
   const store = new Map();
-  f.env.ART = { async put(k, body, o) { store.set(k, { body, o }); }, async get() { return null; }, async delete() {} };
+  f.env.ART = { async put(k, body, o) { store.set(k, { body, o }); }, async get() { return null; }, async delete() {}, async list() { return { objects: [] }; } };
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6364f8ff1f0003030200ef9c5d4b0000000049454e44ae426082', 'hex');
   assert.equal((await post(f, 0, '/api/my-scripts/image', { data: 'data:image/png;base64,' + png.toString('base64') })).status, 401);
   let r = await post(f, 1, '/api/my-scripts/image', { data: 'data:image/png;base64,' + png.toString('base64') });
@@ -102,4 +102,41 @@ test('a logo upload is stored under a key the server mints', async t => {
   assert.ok(store.has(j.path));
   r = await post(f, 1, '/api/my-scripts/image', { data: 'data:image/png;base64,' + Buffer.from('<html>').toString('base64') });
   assert.equal(r.status, 400, 'bytes that are not the declared image are refused');
+});
+
+test('conflict copies are bounded, and the losing browser is told', async t => {
+  const f = await setup();
+  t.after(() => f.finish());
+  const first = (await (await post(f, 1, '/api/my-scripts', {
+    put: [{ id: 's1', chars: ['a'], meta: { name: 'Mire' }, updated: 5000, base: 0 }]
+  })).json()).saved.s1;
+  // an older edit on a stale stamp loses: the account's stays, and the reply says so
+  let j = await (await post(f, 1, '/api/my-scripts', {
+    put: [{ id: 's1', chars: ['old'], meta: { name: 'Mire' }, updated: 1000, base: first - 1 }]
+  })).json();
+  assert.deepEqual(j.lost, ['s1']);
+  assert.equal(j.saved.s1, undefined, 'a losing save is not reported as saved');
+  // stale saves cannot grow the account without end
+  const put = [];
+  for (let i = 0; i < 60; i++) put.push({ id: 's1', chars: ['x' + i], meta: { name: 'Mire' }, updated: 100 + i, base: 1 });
+  await post(f, 1, '/api/my-scripts', { put });
+  j = await (await post(f, 1, '/api/my-scripts', { put })).json();
+  assert.ok((await list(f, 1)).length <= 70, 'copies stop at the ceiling');
+  assert.ok(j.full > 0);
+  assert.deepEqual((await list(f, 1)).find(x => x.id === 's1').chars, ['a'], 'the account\'s newer version is untouched');
+});
+
+test('two saves on the same stamp at once: one wins, the other is kept as a copy', async t => {
+  const f = await setup();
+  t.after(() => f.finish());
+  const first = (await (await post(f, 1, '/api/my-scripts', {
+    put: [{ id: 's1', chars: ['a'], meta: { name: 'Mire' }, updated: 1000, base: 0 }]
+  })).json()).saved.s1;
+  const save = (c, at) => post(f, 1, '/api/my-scripts', { put: [{ id: 's1', chars: [c], meta: { name: 'Mire' }, updated: at, base: first }] }).then(r => r.json());
+  await Promise.all([save('b', 2000), save('c', 3000), save('d', 4000)]);
+  const rows = await list(f, 1);
+  const kept = rows.map(x => x.chars[0]).sort().join('');
+  assert.equal(rows.length, 3, 'nothing is dropped');
+  assert.equal(kept, 'bcd');
+  assert.deepEqual(rows.find(x => x.id === 's1').chars, ['d'], 'the newest edit keeps the script');
 });

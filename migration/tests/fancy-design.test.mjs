@@ -57,3 +57,34 @@ test('a script\'s owner saves its Fancy Scripts design, readers get it, others c
   assert.equal((await (await get(f, 1, 'type=script&slug=night-set')).json()).design, null);
   assert.equal((await get(f, 1, 'type=script&slug=nowhere')).status, 404);
 });
+
+test('a suspended account or a locked wiki cannot save a design, and only plain uploads are stored', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  const store = new Map();
+  f.env.ART = {
+    async get(k) { const v = store.get(k); return v ? { customMetadata: v.meta, async json() { return JSON.parse(v.body); } } : null; },
+    async put(k, body, o) { store.set(k, { body, meta: (o && o.customMetadata) || {} }); },
+    async delete(k) { store.delete(k); },
+  };
+  f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(1,'user-1','')").run();
+  f.state.sessions.set('sess:user-1', { userId: 1, username: 'user-1' });
+  f.insert('scripts', 'night-set', { slug: 'night-set', name: 'Night Set', author: 'x', characters: ['off-imp'] });
+  f.db.prepare('UPDATE scripts SET owner_id=1 WHERE slug=?').run('night-set');
+  const body = { type: 'script', slug: 'night-set', design: { ...design,
+    assets: { a1: 'data:image/png;base64,AAAA', bad: 'https://example.com/x.png', 'no"key': 'data:image/png;base64,AAAA' },
+    fonts: { 'My Font': 'data:font/ttf;base64,AAAA', Evil: 'data:font/ttf;base64,AA"); } body{display:none} @font-face{src:url("x' } } };
+
+  f.db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('wiki_locked','1')").run();
+  assert.equal((await post(f, 1, body)).status, 423);
+  f.db.prepare("DELETE FROM settings WHERE key='wiki_locked'").run();
+
+  assert.equal((await post(f, 1, body)).status, 200);
+  const saved = (await (await get(f, 0, 'type=script&slug=night-set')).json()).design;
+  assert.deepEqual(Object.keys(saved.assets), ['a1']);
+  assert.deepEqual(Object.keys(saved.fonts), ['My Font']);
+
+  try { f.db.exec('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0'); } catch { /* already there */ }
+  f.db.prepare('UPDATE users SET banned=1 WHERE id=1').run();
+  assert.equal((await post(f, 1, body)).status, 403);
+});

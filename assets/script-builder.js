@@ -2115,16 +2115,24 @@
   function cloudPush() {
     if (!cloud.user) return;
     if (cloud.busy) { cloud.again = true; return; }
-    var put = getLib().filter(libDirty).map(function (e) {
-      return { id: e.id, chars: e.chars || [], meta: e.meta || {}, updated: e.updated || 0, base: e.saved || 0 };
+    // About 2 MB a request: the rest of a long list follows in the next.
+    var put = [], size = 0;
+    getLib().filter(libDirty).forEach(function (e) {
+      var one = { id: e.id, chars: e.chars || [], meta: e.meta || {}, updated: e.updated || 0, base: e.saved || 0 };
+      var n = JSON.stringify(one).length;
+      if (put.length && size + n > 2e6) { cloud.again = true; return; }
+      put.push(one); size += n;
     });
     var gone = readJSON(LIB_GONE_KEY, []);
     if (!put.length && !gone.length) return;
     cloud.busy = true;
+    var body = JSON.stringify({ put: put, remove: gone });
     fetch('/api/my-scripts', {
-      method: 'POST', credentials: 'same-origin', keepalive: true,
+      // keepalive lets a save finish while the page is closing, but the
+      // browser refuses one over 64 KB outright.
+      method: 'POST', credentials: 'same-origin', keepalive: body.length < 60000,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ put: put, remove: gone })
+      body: body
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       cloud.busy = false;
       if (!j) return;
@@ -2136,6 +2144,10 @@
           e.saved = j.saved[e.id];
           // Edited again while this was in flight: still dirty.
           if (e.updated === sentAt[e.id]) e.syncedUpdated = e.updated;
+        } else if (j.lost && j.lost.indexOf(e.id) !== -1 && e.updated === sentAt[e.id]) {
+          // The account's copy was newer and stays (this one is kept there
+          // as "(older copy)"): the list read below replaces it.
+          e.saved = -1; e.syncedUpdated = e.updated;
         }
       });
       writeJSON(LIB_KEY, lib);

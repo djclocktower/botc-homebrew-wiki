@@ -2450,6 +2450,10 @@ const FAVORITE_TYPES = ['character', 'script', 'collection'];
    in CLAUDE.md. Images are minted under LIBRARY_PREFIX like attachments. */
 const MY_SCRIPTS_MAX = 50;
 const MY_SCRIPT_BYTES = 300 * 1024;
+// Entries kept from a conflict may pass the limit, but not without end.
+const MY_SCRIPT_COPIES = 20;
+const MY_SCRIPTS_BODY_MAX = 8 * 1024 * 1024;
+const MY_SCRIPT_IMAGES_MAX = 200;
 const LIBRARY_PREFIX = 'library/';
 let _myScriptsReady = false;
 async function ensureMyScriptsTable(env) {
@@ -2479,13 +2483,14 @@ function cleanMyScript(e) {
   const chars = (Array.isArray(e.chars) ? e.chars : []).filter(x => typeof x === 'string' && x.length <= 200).slice(0, 200);
   const meta = e.meta && typeof e.meta === 'object' && !Array.isArray(e.meta) ? e.meta : {};
   const data = JSON.stringify({ chars, meta });
-  if (data.length > MY_SCRIPT_BYTES) return { id, tooBig: true };
-  const updated = Math.max(0, Math.min(Number(e.updated) || 0, Date.now() + 86400000));
+  if (new TextEncoder().encode(data).length > MY_SCRIPT_BYTES) return { id, tooBig: true };
+  // A clock that runs ahead must not win every conflict from then on.
+  const updated = Math.max(0, Math.min(Number(e.updated) || 0, Date.now() + 300000));
   return { id, data, updated, base: Number(e.base) || 0 };
 }
 /* A losing version kept as its own entry: "newest save wins, the other is
-   kept as a copy". Copies do not count against the limit, or a conflict on
-   a full account would lose the work it exists to keep. */
+   kept as a copy". Copies may pass the limit (by MY_SCRIPT_COPIES), or a
+   conflict on a full account would lose the work it exists to keep. */
 function myScriptCopyData(data) {
   try {
     const d = JSON.parse(data);
@@ -9072,6 +9077,7 @@ async function charsBySlug(env, slugs) {
    admins; not a protected page's owner) can save it. The prefix is not in
    R2_SERVE_PREFIXES, so a draft's design is only reachable through here. */
 const FANCY_DESIGN_MAX = 8 * 1024 * 1024;
+const FANCY_DATA_URL = /^data:[\w.+\/-]*;base64,[A-Za-z0-9+\/=]+$/;
 
 async function fancyDesignRow(env, type, slug) {
   if (!slug) return null;
@@ -9126,6 +9132,12 @@ async function fancyDesignRoute(env, request, url, method) {
   }
   delete d.script;
   delete d.sourceLabel;
+  // Uploaded images and fonts end up inside CSS in every reader's browser:
+  // only plain base64 data: URLs (and plain font names) are stored.
+  const dataUrls = (map, kind, keyRe) => Object.fromEntries(Object.entries(map && typeof map === 'object' ? map : {})
+    .filter(([k, v]) => keyRe.test(k) && typeof v === 'string' && v.startsWith('data:' + kind) && FANCY_DATA_URL.test(v)));
+  d.assets = dataUrls(d.assets, 'image/', /^[\w-]{1,40}$/);
+  d.fonts = dataUrls(d.fonts, '', /^[\w \-]{1,60}$/);
   const at = new Date().toISOString();
   await env.ART.put(key, JSON.stringify(d), {
     httpMetadata: { contentType: 'application/json' },
@@ -11632,7 +11644,9 @@ const app = {
       return pageJsonResponse(env, ctx, request, url);
     }
 
-    if (path === '/api/fancy-design' && (method === 'GET' || method === 'POST')) {
+    // The save is answered inside the POST gate below, after the suspended
+    // account and wiki lock checks.
+    if (path === '/api/fancy-design' && method === 'GET') {
       return fancyDesignRoute(env, request, url, method);
     }
 
@@ -14109,6 +14123,8 @@ const app = {
         return jsonResponse({ error: 'The wiki is locked. Editing and page creation are temporarily disabled.' }, { status: 423 });
       }
 
+      if (path === '/api/fancy-design') return fancyDesignRoute(env, request, url, method);
+
       // ---- account settings ----
       if (path === '/api/account/profile') {
         const b = await request.json().catch(() => ({}));
@@ -14284,6 +14300,11 @@ const app = {
         }
         await run('DELETE FROM favorites WHERE user_id=?', id);
         await run('DELETE FROM script_library WHERE user_id=?', id);
+        // The logos and backgrounds uploaded for those scripts go with them.
+        try {
+          const up = env.ART && await env.ART.list({ prefix: LIBRARY_PREFIX + id + '/', limit: 1000 });
+          if (up && up.objects.length) await env.ART.delete(up.objects.map(o => o.key));
+        } catch { /* the orphan sweep finds what is left */ }
         await run('DELETE FROM creator_marks WHERE user_id=?', id);
         await run('DELETE FROM dm_blocks WHERE user_id=? OR blocked_id=?', id, id);
         // An admin link from a creator name to this handle would hand those
@@ -15906,6 +15927,9 @@ const app = {
         if (await rateLimited(env, request, 'mylib', 900, 3600, { sess })) {
           return tooManyResponse('Too many saves in the last hour. Your scripts are still kept in this browser.', 3600);
         }
+        if (Number(request.headers.get('content-length') || 0) > MY_SCRIPTS_BODY_MAX) {
+          return jsonResponse({ error: 'Too much to save at once.' }, { status: 413 });
+        }
         const b = await request.json().catch(() => ({}));
         await ensureMyScriptsTable(env);
         const now = Date.now();
@@ -15916,45 +15940,54 @@ const app = {
           await env.DB.prepare('DELETE FROM script_library WHERE user_id=? AND id=?').bind(sess.userId, id).run();
         }
         const puts = (Array.isArray(b.put) ? b.put : []).slice(0, MY_SCRIPTS_MAX + 10);
-        let count = (await env.DB.prepare('SELECT COUNT(*) AS n FROM script_library WHERE user_id=?').bind(sess.userId).first()).n || 0;
+        const uid = sess.userId, lost = [];
+        const countRows = async () => (await env.DB.prepare('SELECT COUNT(*) AS n FROM script_library WHERE user_id=?').bind(uid).first()).n || 0;
+        const rowOf = id => env.DB.prepare('SELECT data, updated, saved FROM script_library WHERE user_id=? AND id=?').bind(uid, id).first();
+        // The limit is part of the INSERT itself, so two saves arriving
+        // together cannot both pass a count that was read beforehand.
+        const insertUnder = async (id, data, updated, limit) => {
+          const r = await env.DB.prepare(
+            'INSERT OR IGNORE INTO script_library (user_id, id, data, updated, saved) SELECT ?,?,?,?,? ' +
+            'WHERE (SELECT COUNT(*) FROM script_library WHERE user_id=?) < ?').bind(uid, id, data, updated, now, uid, limit).run();
+          return !!(r.meta && r.meta.changes);
+        };
         for (const raw of puts) {
           const e = cleanMyScript(raw);
           if (!e) continue;
           if (e.tooBig) { tooBig++; continue; }
-          const row = await env.DB.prepare('SELECT data, updated, saved FROM script_library WHERE user_id=? AND id=?')
-            .bind(sess.userId, e.id).first();
-          if (!row) {
-            if (count >= MY_SCRIPTS_MAX) { full++; continue; }
-            await env.DB.prepare('INSERT INTO script_library (user_id, id, data, updated, saved) VALUES (?,?,?,?,?)')
-              .bind(sess.userId, e.id, e.data, e.updated, now).run();
-            count++;
-            saved[e.id] = now;
-            continue;
+          // Read, then write only if the row is still the one that was read;
+          // a save that landed in between is looked at again.
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const row = await rowOf(e.id);
+            if (!row) {
+              if (await insertUnder(e.id, e.data, e.updated, MY_SCRIPTS_MAX)) { saved[e.id] = now; break; }
+              if (!(await rowOf(e.id))) { full++; break; }
+              continue;
+            }
+            if (row.data === e.data) { saved[e.id] = row.saved; break; }
+            const agreed = row.saved === e.base;
+            const wins = agreed || e.updated >= row.updated;
+            // Saved somewhere else since this browser last looked: the newer
+            // edit keeps the script and the older is kept as its own entry.
+            if (!agreed && (await countRows()) >= MY_SCRIPTS_MAX + MY_SCRIPT_COPIES) { full++; break; }
+            if (!wins) {
+              await insertUnder(myScriptId(), myScriptCopyData(e.data), e.updated, MY_SCRIPTS_MAX + MY_SCRIPT_COPIES);
+              conflicts++; lost.push(e.id);
+              break;
+            }
+            const stamp = Math.max(now, row.saved + 1);
+            const r = await env.DB.prepare('UPDATE script_library SET data=?, updated=?, saved=? WHERE user_id=? AND id=? AND saved=?')
+              .bind(e.data, e.updated, stamp, uid, e.id, row.saved).run();
+            if (!(r.meta && r.meta.changes)) continue;
+            saved[e.id] = stamp;
+            if (!agreed) {
+              conflicts++;
+              await insertUnder(myScriptId(), myScriptCopyData(row.data), row.updated, MY_SCRIPTS_MAX + MY_SCRIPT_COPIES + 1);
+            }
+            break;
           }
-          if (row.data === e.data) { saved[e.id] = row.saved; continue; }
-          if (row.saved === e.base) {
-            await env.DB.prepare('UPDATE script_library SET data=?, updated=?, saved=? WHERE user_id=? AND id=?')
-              .bind(e.data, e.updated, now, sess.userId, e.id).run();
-            saved[e.id] = now;
-            continue;
-          }
-          // Saved somewhere else since this browser last looked.
-          conflicts++;
-          const copyId = myScriptId();
-          if (e.updated >= row.updated) {
-            await env.DB.prepare('INSERT INTO script_library (user_id, id, data, updated, saved) VALUES (?,?,?,?,?)')
-              .bind(sess.userId, copyId, myScriptCopyData(row.data), row.updated, now).run();
-            await env.DB.prepare('UPDATE script_library SET data=?, updated=?, saved=? WHERE user_id=? AND id=?')
-              .bind(e.data, e.updated, now, sess.userId, e.id).run();
-            saved[e.id] = now;
-          } else {
-            await env.DB.prepare('INSERT INTO script_library (user_id, id, data, updated, saved) VALUES (?,?,?,?,?)')
-              .bind(sess.userId, copyId, myScriptCopyData(e.data), e.updated, now).run();
-            saved[e.id] = row.saved;
-          }
-          count++;
         }
-        return jsonResponse({ ok: true, saved, conflicts, full, tooBig, max: MY_SCRIPTS_MAX });
+        return jsonResponse({ ok: true, saved, lost, conflicts, full, tooBig, max: MY_SCRIPTS_MAX });
       }
 
       /* A logo or background for a saved script. The key is minted here
@@ -15966,6 +15999,13 @@ const app = {
         if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
         if (await rateLimited(env, request, 'mylibimg', 60, 3600, { sess })) {
           return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
+        }
+        if (Number(request.headers.get('content-length') || 0) > ATTACH_BYTES * 1.4 + 1024) {
+          return jsonResponse({ error: 'Image is too large (5 MB max).' }, { status: 413 });
+        }
+        const held = await env.ART.list({ prefix: LIBRARY_PREFIX + sess.userId + '/', limit: MY_SCRIPT_IMAGES_MAX + 1 }).catch(() => null);
+        if (held && held.objects && held.objects.length > MY_SCRIPT_IMAGES_MAX) {
+          return jsonResponse({ error: 'Your account holds ' + MY_SCRIPT_IMAGES_MAX + ' uploaded images. Use an image link instead.' }, { status: 409 });
         }
         const b = await request.json().catch(() => ({}));
         let data = String(b.data || '');

@@ -78,7 +78,13 @@ setAssetResolver(resolveAsset);
    <style>, which is what lets html-to-image embed them in an export —
    a FontFace object added by script is invisible to it) */
 const uploadedFonts = new Map();
+/* A design can come from anywhere (a file, or one saved with a published
+   script and shown to every reader), and both of these end up inside CSS:
+   only a plain base64 data: URL and a plain family name are let through. */
+const DATA_URL = /^data:[\w.+\/-]*;base64,[A-Za-z0-9+\/=]+$/;
+const isDataUrl = (v, kind) => typeof v === 'string' && DATA_URL.test(v) && (!kind || v.startsWith('data:' + kind));
 function registerFont(family, dataUrl) {
+  if (!/^[\w \-]{1,60}$/.test(family) || !isDataUrl(dataUrl)) return;
   if (uploadedFonts.has(family)) return;
   uploadedFonts.set(family, dataUrl);
   const st = document.createElement('style');
@@ -703,7 +709,7 @@ function clearAutosave() {
 /* ── design files ── */
 function applyDesignData(d) {
   assets.clear();
-  for (const [k, v] of Object.entries(d.assets || {})) assets.set(k, v);
+  for (const [k, v] of Object.entries(d.assets || {})) if (isDataUrl(v, 'image/')) assets.set(k, v);
   for (const [fam, url] of Object.entries(d.fonts || {})) registerFont(fam, url);
   options = normalizeOptions(d.options || {});
 }
@@ -2945,7 +2951,6 @@ async function boot() {
   $('fs-zoom-out').addEventListener('click', () => setZoom(Math.max(0.15, (zoom === 'fit' ? lastScale : zoom) / 1.25)));
   $('fs-zoom-fit').addEventListener('click', () => setZoom('fit'));
   $('fs-zoom-width').addEventListener('click', () => setZoom(Math.min(1, ($('fs-preview').clientWidth - 12) / SHEET_W)));
-  $('fs-zoom-100').addEventListener('click', () => setZoom(1));
   // ctrl+wheel and pinch zoom the preview
   $('fs-preview').addEventListener('wheel', (ev) => {
     if (!ev.ctrlKey && !ev.metaKey) return;
@@ -2973,7 +2978,19 @@ async function boot() {
     $('sbx-scrim').classList.toggle('on', on);
     document.documentElement.classList.toggle('sbx-locked', on);
     // on a phone the page moves above the settings sheet (fancyscripts.html)
-    document.documentElement.classList.toggle('fs-split', on && window.innerWidth <= 900);
+    split(on && window.innerWidth <= 900);
+  };
+  // In the split the preview covers the bar, so the page tabs and undo/redo
+  // move to a strip between the page and the sheet, and back again after.
+  const split = (on) => {
+    document.documentElement.classList.toggle('fs-split', on);
+    const bar = $('fs-splitbar');
+    bar.hidden = !on;
+    if (on) bar.append($('fs-tabs'), $('fs-undo'), $('fs-redo'));
+    else if (bar.firstChild) {
+      document.querySelector('.fs-tabrow').prepend($('fs-tabs'));
+      document.querySelector('.sbx-bar .sbx-acts').prepend($('fs-undo'), $('fs-redo'));
+    }
     fitPreview();
   };
   // the bar's More menu (the builder's .sbx-menu)
@@ -2984,9 +3001,7 @@ async function boot() {
   $('sbx-close').addEventListener('click', () => side(false));
   $('sbx-scrim').addEventListener('click', () => side(false));
   window.addEventListener('resize', () => {
-    if (window.innerWidth > 900) document.documentElement.classList.remove('fs-split');
-    else if ($('sbx-side').classList.contains('on')) document.documentElement.classList.add('fs-split');
-    fitPreview();
+    split(window.innerWidth <= 900 && $('sbx-side').classList.contains('on'));
   });
 
   // drop a file anywhere: a script or design JSON loads, an image becomes

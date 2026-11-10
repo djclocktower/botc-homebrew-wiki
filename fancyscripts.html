@@ -234,9 +234,16 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .86rem; }
   .sbx-side.on { box-shadow: 0 -6px 26px rgba(0,0,0,.55); }
   #sbx-scrim { display: none !important; }
   html.fs-split #fs-scroll {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 56dvh; z-index: 55;
+    position: fixed; top: 0; left: 0; right: 0; bottom: calc(56dvh + 40px); z-index: 55;
     overflow: auto; padding: 8px; background: #1f0c25;
   }
+  /* the page tabs and undo stay in reach, on a strip between the two */
+  html.fs-split #fs-splitbar {
+    display: flex; align-items: center; gap: 4px; position: fixed; left: 0; right: 0;
+    bottom: 56dvh; height: 40px; z-index: 56; padding: 0 6px; background: #1f0c25;
+    border-top: 1px solid rgba(201,169,97,.25);
+  }
+  #fs-splitbar .sbx-tabs { flex: 1; min-width: 0; position: static; background: none; backdrop-filter: none; border-bottom: none; }
   html.fs-split #fs-sel-info { display: none; }
 }
 </style>
@@ -438,9 +445,9 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .86rem; }
             <button class="sbx-b sbx-b-icon" id="fs-zoom-in" type="button" aria-label="Zoom in"><i class="sbi-i" data-icon="plus"></i></button>
             <button class="sbx-b" id="fs-zoom-fit" type="button" title="Whole page in view">Fit</button>
             <button class="sbx-b" id="fs-zoom-width" type="button" title="Fill the width">Width</button>
-            <button class="sbx-b" id="fs-zoom-100" type="button">1:1</button>
           </div>
         </div>
+        <div id="fs-splitbar" hidden></div>
         <div class="sbx-scroll" id="fs-scroll">
           <div id="fs-preview">
             <div id="fs-scale-box">
