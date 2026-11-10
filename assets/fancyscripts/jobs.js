@@ -11,6 +11,7 @@ import { tintHSL, colorizeBack } from './pixel.js';
 
 let worker = null;
 let workerDead = false;
+let proven = false;
 let nextId = 1;
 const pending = new Map();
 
@@ -21,6 +22,7 @@ function startWorker() {
     worker = new Worker('/assets/fancyscripts/pixel-worker.js', { type: 'module' });
     worker.onmessage = (e) => {
       const m = e.data || {};
+      proven = true;
       const p = pending.get(m.id);
       if (!p) return;
       pending.delete(m.id);
@@ -67,12 +69,13 @@ export function runPixelJob(msg, transfer) {
   if (!worker) return runInline(msg);
   return new Promise((resolve, reject) => {
     const id = nextId++;
-    // keep a copy of the message shape (not the buffers, which are about
-    // to be transferred) so a dead worker can rerun it — the buffers are
-    // handed back untouched by a worker that never started
+    // kept so a worker that dies can have its jobs rerun inline
     pending.set(id, { resolve, reject, msg });
     try {
-      worker.postMessage({ ...msg, id }, transfer || []);
+      // Until the worker has answered once the buffers are copied, not
+      // handed over: a worker that never started would take them with it,
+      // and the inline rerun would be left with empty ones.
+      worker.postMessage({ ...msg, id }, proven ? transfer || [] : []);
     } catch (err) {
       pending.delete(id);
       runInline(msg).then(resolve, reject);

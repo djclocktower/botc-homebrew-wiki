@@ -42,7 +42,7 @@
 @media (max-width: 1180px) {
   .tt-work { grid-template-columns: minmax(0, 1fr); }
   .tt-preview-col { order: -1; z-index: 10; }
-  .tt-preview img { max-height: 42vh; }
+  .tt-work .tt-preview img { max-height: 42vh; }
   /* the list of tokens and the print options do not need the picture
      beside them; adjusting does, so there it stays pinned */
   .tt-work[data-tab="set"] .tt-preview-col, .tt-work[data-tab="print"] .tt-preview-col { display: none; }
@@ -304,10 +304,13 @@
   .tt-preview-col .sbx-panel-head { display: none; }
   .tt-preview-col .tt-tf-bar { margin-bottom: 6px; }
   .tt-preview { min-height: 110px; padding: 6px; }
-  .tt-preview img { max-height: 34vh; }
+  .tt-work .tt-preview img { max-height: 34vh; }
   .tte-preview { min-height: 110px; padding: 6px; }
   .tte-preview img { max-height: 34vh; }
   #tt-adj-panel { columns: 1; }
+  /* big enough for a thumb */
+  .tt-step button, .sbx-icon { min-width: 36px; min-height: 36px; }
+  .tt-seg button, .tt-btn-sm { min-height: 36px; }
 }
 </style>
 </head>

@@ -47,14 +47,11 @@
      `ui: false` rows are stored here but drawn by the page, not the popover. */
   var VIEW_SCHEMA = [
     { group: 'Roster', key: 'layout', label: 'Layout', type: 'seg', repaint: '',
-      options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons'], ['official', 'Official']],
-      hint: 'Sheet is the character sheet, Cards the browse grid, List one line each, Icons the art alone, Official the official script tool\'s sheet.' },
+      options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons'], ['official', 'Official']] },
     { group: 'Roster', key: 'size', label: 'Size', type: 'seg', repaint: '',
-      options: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']],
-      hint: 'Icons, text and spacing together, in the roster and the panel.' },
+      options: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] },
     { group: 'Roster', key: 'columns', label: 'Columns', type: 'seg', repaint: '',
-      options: [['auto', 'Auto'], ['1', '1'], ['2', '2']],
-      hint: '2 pours the whole script down two columns, like a printed sheet.' },
+      options: [['auto', 'Auto'], ['1', '1'], ['2', '2']] },
 
     { group: 'Show on each character', key: 'showAbility', label: 'Ability', type: 'check', repaint: '' },
     { group: 'Show on each character', key: 'showCreator', label: 'Creator', type: 'check', repaint: 'roster' },

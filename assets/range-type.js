@@ -87,7 +87,10 @@
     box.autocomplete = 'off';
     box.spellcheck = false;
     box.setAttribute('inputmode', attr(r, 'min', 0) < 0 ? 'text' : 'decimal');
-    box.setAttribute('aria-label', (r.getAttribute('aria-label') || 'Value') + ', type a number');
+    // named after the slider: its own label, else the row's
+    var row = r.closest('.tt-row, .if-row, .fs-row, label');
+    var named = r.getAttribute('aria-label') || (row && (row.querySelector('label, .if-label, .fs-lab') || row).textContent.trim().slice(0, 60)) || 'Value';
+    box.setAttribute('aria-label', named + ', type a number');
     r.rtBox = box;
 
     function text() { return out ? out.textContent.trim() : VALUE.get.call(r); }

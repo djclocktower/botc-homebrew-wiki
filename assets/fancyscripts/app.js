@@ -117,7 +117,7 @@ function showWarnings(list) {
   box.hidden = !list.length;
   for (const w of list) {
     const p = document.createElement('p');
-    p.textContent = '• ' + w;
+    p.textContent = w;
     box.append(p);
   }
 }
@@ -348,7 +348,8 @@ function render() {
   placeGrips();
   // pictures and fonts can still change the selected element's box
   requestAnimationFrame(placeGrips);
-  setTimeout(placeGrips, 400);
+  clearTimeout(gripTimer);
+  gripTimer = setTimeout(placeGrips, 400);
 }
 
 /* ── corner grips ──
@@ -359,6 +360,7 @@ function render() {
 function resizable(id) {
   return /^(el|back|custom|char):/.test(id || '') && id !== 'el:sidebar' && id !== 'el:appSidebar';
 }
+let gripTimer = 0;
 function placeGrips() {
   const wrap = $('fs-sheet-wrap');
   let box = wrap.querySelector('[data-fs-grips]');
@@ -521,6 +523,7 @@ function loadJson(json, label, slug, keepDesign) {
   rawJson = json;
   sourceLabel = label || '';
   scriptKey = keyFor(json, slug);
+  if (!slug && $('fs-wiki-script')) $('fs-wiki-script').value = '';
   /* The Bootlegger tick answers for the script in front of it, so a fresh
      load starts it at whether THIS file carries the Fabled already — and it
      has to be settled before the parse, which is what applies it. A design
@@ -557,12 +560,15 @@ function loadJson(json, label, slug, keepDesign) {
 function loadFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
+    let json;
+    try { json = JSON.parse(String(reader.result)); }
+    catch { note('That file is not valid JSON.', 'err'); return; }
     try {
-      const json = JSON.parse(String(reader.result));
-      if (json && json.app === 'fancyscripts' && json.options) { loadDesign(json); return; }
-      loadJson(json, file.name);
-    } catch {
-      note('That file is not valid JSON.', 'err');
+      if (json && json.app === 'fancyscripts' && json.options) loadDesign(json);
+      else loadJson(json, file.name);
+    } catch (e) {
+      console.error(e);
+      note('That file could not be loaded.', 'err');
     }
   };
   reader.readAsText(file);
@@ -676,11 +682,16 @@ function scheduleAutosave() {
   autosaveTimer = setTimeout(autosave, 900);
 }
 function designObject(includeScript) {
-  const o = { v: 2, app: 'fancyscripts', key: scriptKey, options, assets: Object.fromEntries(assets), fonts: Object.fromEntries(uploadedFonts) };
+  // only the uploads this design still uses: a replaced or removed one
+  // stays in memory for Undo, but is not written out again
+  const used = JSON.stringify(options);
+  const o = { v: 2, app: 'fancyscripts', key: scriptKey, options,
+    assets: Object.fromEntries([...assets].filter(([id]) => used.includes('asset:' + id))), fonts: Object.fromEntries(uploadedFonts) };
   if (wikiSaved.key && wikiSaved.key === scriptKey) o.serverAt = wikiSaved.at;
   if (includeScript) { o.script = rawJson; o.sourceLabel = sourceLabel; }
   return o;
 }
+let autosaveWarned = false;
 function autosave() {
   if (rawJson == null) return;
   const full = designObject(true);
@@ -691,6 +702,7 @@ function autosave() {
     try {
       const slim = { ...full, assets: {}, fonts: {} };
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(slim));
+      if (!autosaveWarned) { autosaveWarned = true; toast('Uploads are too large to keep in this browser. Save a design file to keep them.'); }
     } catch { /* storage unavailable — nothing to do */ }
   }
 }
@@ -1309,10 +1321,9 @@ function buildPagesCard() {
   makeButton(r2, 'Save design file', saveDesign);
   makeUpload(r2, 'Load design file', '.json,application/json', (_, file) => loadFile(file));
   makeButton(r2, 'Reset everything', () => {
-    if (!confirm('Reset every setting for this script? Uploads are removed too.')) return;
+    if (!confirm('Reset every setting for this script?')) return;
     options = normalizeOptions({});
     options.back.texts = seedBackTexts(parsed.meta.name);
-    assets.clear();
     backColorSeeded = false;
     commit();
     afterOptionsReplaced();
@@ -1601,7 +1612,7 @@ function buildNightCard() {
   makeSlider(box, 'Icon shadow', 0, 2, 0.05, fmtNum(2), bindPath('night.iconShadow'), { reset: 1 });
   makeSlider(box, 'Move every icon left / right', -5, 5, 0.05, signed(2, '%'), bindPath('night.iconShiftX'), { reset: 0 });
   makeSlider(box, 'Move every icon up / down', -3, 3, 0.05, signed(2), bindPath('night.iconShiftY'), { reset: 0 });
-  makeSelect(box, 'Reminder token mark', [['dot', 'Dot ●'], ['token', 'Little token with the icon'], ['none', 'None']], bindPath('night.dotStyle'));
+  makeSelect(box, 'Reminder token mark', [['dot', 'Dot'], ['token', 'Little token with the icon'], ['none', 'None']], bindPath('night.dotStyle'));
   makeSelect(box, 'Info tokens (YOU ARE)', [['caps', 'Bold condensed caps'], ['bold', 'Bold'], ['plain', 'Plain']], bindPath('night.tokenStyle'));
   makeLabel(box, 'Colours (× = follow the sheet)');
   const colors = makeRow(box, 'fs-colors');
@@ -1765,6 +1776,7 @@ function findSticker(id) {
 
 let elementPanelBindings = [];
 function buildElementPanel() {
+  if (openPickerClose) openPickerClose();
   const box = $('fs-elements-box');
   if (!box) return;
   for (const b of elementPanelBindings) bindings.delete(b);
@@ -1918,8 +1930,8 @@ function buildElementPanel() {
     });
     const al = makeRow(box);
     al.style.marginTop = '8px';
-    makeButton(al, 'Centre ↔', () => { get().x = 50; commit(); syncControls(); });
-    makeButton(al, 'Centre ↕', () => { get().y = 50; commit(); syncControls(); });
+    makeButton(al, 'Centre across', () => { get().x = 50; commit(); syncControls(); });
+    makeButton(al, 'Centre down', () => { get().y = 50; commit(); syncControls(); });
     const swap = (dir) => {
       // step past the stickers in other layers: swapping with one of those changes nothing on screen
       const list = options.custom;
@@ -2223,7 +2235,7 @@ function mountPreviewDrag() {
       if (m && m.reorder) {
         if (id.startsWith('crow:')) reorderFront(id.slice(5), d);
         else { const parts = id.split(':'); reorderNight(parts[1], parts.slice(2).join(':'), d); }
-        selectedId = '';
+        setSelected('');
       }
       commit();
     },
@@ -2246,6 +2258,7 @@ function syncElementPanel() {
 }
 
 /* keyboard: nudge, delete, undo/redo */
+let nudgeTimer = 0;
 function onKey(ev) {
   const tag = (ev.target && ev.target.tagName) || '';
   const typing = /INPUT|TEXTAREA|SELECT/.test(tag) && ev.target.type !== 'range' && ev.target.type !== 'checkbox';
@@ -2276,23 +2289,29 @@ function onKey(ev) {
     }
     return;
   }
-  if (typing) return;
+  if (typing || /INPUT|TEXTAREA|SELECT/.test(tag)) return;
   if (!selectedId) return;
+  if (ev.key === 'Escape') { setSelected(''); return; }
   const m = elementModel(selectedId);
   if (!m || m.reorder) return;
   const step = ev.shiftKey ? 1 : 0.2;
   const cur = m.get();
-  if (ev.key === 'ArrowLeft') { m.set(cur.x - step, cur.y); }
-  else if (ev.key === 'ArrowRight') { m.set(cur.x + step, cur.y); }
-  else if (ev.key === 'ArrowUp') { m.set(cur.x, cur.y - step); }
-  else if (ev.key === 'ArrowDown') { m.set(cur.x, cur.y + step); }
-  else if (ev.key === 'Delete' || ev.key === 'Backspace') {
+  const arrow = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
+  if (arrow) {
+    ev.preventDefault();
+    m.set(cur.x + arrow[0], cur.y + arrow[1]);
+    syncElementPanel();
+    requestRender();
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(pushHistory, 400);
+    return;
+  }
+  if (ev.key === 'Delete' || ev.key === 'Backspace') {
     if (selectedId.startsWith('custom:')) options.custom = options.custom.filter((s) => 'custom:' + s.id !== selectedId);
     else if (selectedId.startsWith('back:')) options.back.texts.splice(Number(selectedId.slice(5)), 1);
     else return;
     setSelected('');
-  } else if (ev.key === 'Escape') { setSelected(''); return; }
-  else return;
+  } else return;
   ev.preventDefault();
   syncElementPanel();
   commit();
@@ -2301,6 +2320,7 @@ function onKey(ev) {
 /* ── the Characters panel ─────────────────────────────────────────────── */
 let charPanelBindings = [];
 function buildCharPanel() {
+  if (openPickerClose) openPickerClose();
   const box = $('fs-chars-box');
   if (!box) return;
   for (const b of charPanelBindings) bindings.delete(b);
@@ -2391,8 +2411,8 @@ function buildCharPanel() {
   }
   const order = makeRow(box);
   order.style.marginTop = '8px';
-  makeButton(order, '▲ Move up', () => moveChar(c.id, -1));
-  makeButton(order, '▼ Move down', () => moveChar(c.id, 1));
+  makeButton(order, 'Move up', () => moveChar(c.id, -1));
+  makeButton(order, 'Move down', () => moveChar(c.id, 1));
   makeLabel(box, 'Night order (blank = the script’s)');
   track(makeText(box, 'First night position (0 = does not wake), now ' + (c.firstNight || 0), { get: () => g('firstNight', ''), set: (v) => { ov().firstNight = v; } }));
   track(makeText(box, 'First night reminder', { get: () => g('firstNightReminder', ''), set: (v) => { ov().firstNightReminder = v; } }, { multiline: true, rows: 2 }));
@@ -2498,7 +2518,7 @@ function loadScriptOnce(src, ready) {
 }
 
 function exportName(ext, suffix) {
-  return (parsed.meta.name || 'script').replace(/[^\w\d]+/g, '_') + (suffix != null ? suffix : '_script') + '.' + ext;
+  return ((parsed.meta.name || '').replace(/[\\/:*?"<>|\s.]+/g, '_').replace(/^_+|_+$/g, '') || 'script') + (suffix != null ? suffix : '_script') + '.' + ext;
 }
 
 const EXPORT_BUTTONS = ['fs-export-share', 'fs-export-png', 'fs-export-pdf', 'fs-export-all', 'fs-export-copy'];
@@ -2519,7 +2539,7 @@ async function withExport(btn, fn) {
     await fn();
   } catch (e) {
     console.error(e);
-    note('Export failed. If the script uses off-site icon images, tick the proxy option and try again.', 'err');
+    note('Export failed. An icon hosted on another site may be blocking it.', 'err');
   } finally {
     exporting = false;
     btn.innerHTML = old;

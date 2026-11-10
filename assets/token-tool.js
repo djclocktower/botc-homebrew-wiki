@@ -83,7 +83,13 @@
   /* ---- loading bar + messages ---- */
   function showLoad(text) { var el = $('tt-load'); el.classList.remove('done'); $('tt-load-text').textContent = text || 'Loading…'; }
   function hideLoad() { $('tt-load').classList.add('done'); }
-  function showMsg(kind, html) { var el = $('tt-msg'); el.className = 'tt-msg ' + kind; el.innerHTML = html; }
+  var msgTimer = 0;
+  function showMsg(kind, html) {
+    var el = $('tt-msg'); el.className = 'tt-msg ' + kind; el.innerHTML = html;
+    // good news does not need to stay on the page
+    clearTimeout(msgTimer);
+    if (kind === 'ok') msgTimer = setTimeout(clearMsg, 6000);
+  }
   function clearMsg() { var el = $('tt-msg'); el.className = 'tt-msg'; el.innerHTML = ''; }
 
   /* ---- state ---- */

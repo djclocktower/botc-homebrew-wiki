@@ -129,7 +129,11 @@
     } catch (e) { return fallback; }
   }
   function writeJSON(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode / full */ }
+    try { localStorage.setItem(key, JSON.stringify(value)); }
+    catch (e) {
+      // private mode, or the browser's storage is full: say so, once
+      if (!writeJSON.warned) { writeJSON.warned = true; setTimeout(function () { toast('This browser could not save. Download the JSON to keep your script.', 6000); }, 0); }
+    }
   }
   function slugify(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
   function uid() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -286,6 +290,8 @@
      roster, the peek card and the export already look. One that has left
      the roster is dropped in the settle pass (pruneOwnChars). */
   var OWN_PREFIX = 'x-';
+  // what a published script may hold (the Worker's SCRIPT_CHARACTERS_MAX)
+  var SCRIPT_MAX = 200;
   var OWN_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
   var ownSeen = {};
   function ownChars(m) {
@@ -301,8 +307,23 @@
       ability: String(d.ability || '').trim().slice(0, 500)
     };
     if (img) out.image = img;
+    // How it plays comes along too: a character imported from a file keeps
+    // its place in the night, its reminders and its setup flag.
+    var num = function (v) { v = Number(v); return v > 0 && isFinite(v) ? v : 0; };
+    var list = function (v) {
+      return (Array.isArray(v) ? v : []).filter(function (x) { return typeof x === 'string' && x.trim(); })
+        .slice(0, 20).map(function (x) { return x.trim().slice(0, 60); });
+    };
+    ['firstNight', 'otherNight'].forEach(function (k) { if (num(d[k])) out[k] = num(d[k]); });
+    ['firstNightReminder', 'otherNightReminder'].forEach(function (k) {
+      if (typeof d[k] === 'string' && d[k].trim()) out[k] = d[k].trim().slice(0, 500);
+    });
+    ['reminders', 'remindersGlobal'].forEach(function (k) { if (list(d[k]).length) out[k] = list(d[k]); });
+    if (d.setup === true) out.setup = true;
+    if (Array.isArray(d.special) && d.special.length && JSON.stringify(d.special).length <= 2000) out.special = d.special;
     return out;
   }
+  var OWN_PLAY = ['firstNight', 'otherNight', 'firstNightReminder', 'otherNightReminder', 'reminders', 'remindersGlobal', 'setup', 'special'];
   function syncOwnChars(m) {
     var own = ownChars(m), author = String((m && m.author) || '').trim(), changed = false;
     Object.keys(ownSeen).forEach(function (s) {
@@ -313,6 +334,7 @@
       var d = ownEntry(own[s]);
       var c = ownSeen[s] || (ownSeen[s] = { slug: s, own: true });
       c.name = d.name; c.team = d.team; c.ability = d.ability; c.image = d.image || '';
+      OWN_PLAY.forEach(function (k) { if (d[k] === undefined) delete c[k]; else c[k] = d[k]; });
       c.creator = author;
       bySlug[s] = c;
       changed = true;
@@ -355,6 +377,7 @@
      warning), so a caller with a toast of its own can hold it. */
   function toggle(slug) {
     var c = bySlug[slug];
+    if (!sel[slug] && order.length >= SCRIPT_MAX) { toast('A script holds ' + SCRIPT_MAX + ' characters.'); return true; }
     mark((sel[slug] ? 'remove ' : 'add ') + (c ? c.name : slug));
     var spoke = false;
     if (sel[slug]) {
@@ -1382,7 +1405,10 @@
      button can say what it takes back. */
   function mark(label) {
     var s = snap();
-    if (s === hist.last) return;
+    // Not hist.last: after an undo that IS the state on screen, and the
+    // step before the next change would never be recorded.
+    var top = hist.undo[hist.undo.length - 1];
+    if (top && top.s === s) return;
     hist.undo.push({ s: s, label: label || '' });
     if (hist.undo.length > HIST_MAX) hist.undo.shift();
     hist.redo.length = 0;
@@ -2016,8 +2042,7 @@
         // A character the file carries whole and this wiki has no page for:
         // it comes in as one of this script's own, like the ones made here.
         var s2 = OWN_PREFIX + uid();
-        made[s2] = ownEntry({ name: entry.name, team: entry.team, ability: entry.ability,
-          image: Array.isArray(entry.image) ? entry.image[0] : entry.image });
+        made[s2] = ownEntry(Object.assign({}, entry, { image: Array.isArray(entry.image) ? entry.image[0] : entry.image }));
         slugs.push(s2);
       }
       else { missing.push((entry && entry.name) || id); }
@@ -2029,7 +2054,7 @@
       if (!choice) return;
       var replace = !choice.add;
       var next = replace ? [] : order.slice();
-      slugs.forEach(function (s) { if (next.indexOf(s) === -1) next.push(s); });
+      slugs.forEach(function (s) { if (next.indexOf(s) === -1 && next.length < SCRIPT_MAX) next.push(s); });
 
       mark('import');
       if (replace) {
@@ -2135,7 +2160,8 @@
       body: body
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       cloud.busy = false;
-      if (!j) return;
+      if (!j) { cloudRetry(); return; }
+      cloud.tries = 0;
       var sentAt = {};
       put.forEach(function (e) { sentAt[e.id] = e.updated; });
       var lib = getLib();
@@ -2160,7 +2186,13 @@
       }
       if (j.conflicts) cloudPull();
       else if (cloud.again) { cloud.again = false; cloudPush(); }
-    }).catch(function () { cloud.busy = false; });
+    }).catch(function () { cloud.busy = false; cloudRetry(); });
+  }
+  function cloudRetry() {
+    cloud.tries = (cloud.tries || 0) + 1;
+    if (cloud.tries > 4) return;
+    clearTimeout(cloud.timer);
+    cloud.timer = setTimeout(cloudPush, 20000 * cloud.tries);
   }
   /* Read the account's list and fold it into this browser's. */
   function cloudPull() {
@@ -2239,6 +2271,14 @@
     if (savedTimer) clearTimeout(savedTimer);
     savedTimer = setTimeout(function () { el.classList.remove('on'); }, 1600);
   }
+  /* What a confirm says happens to the open script: with My Scripts full
+     and this one not in it yet, it is NOT kept, and saying it was loses it. */
+  function keptNote() {
+    var id = getMeta().libId, lib = getLib();
+    var kept = lib.length < LIB_MAX || lib.some(function (e) { return e.id === id; });
+    return kept ? 'What you have open is kept in My Scripts.'
+                : 'My Scripts is full (' + LIB_MAX + '), so what you have open will not be kept. Undo brings it back.';
+  }
   function syncLibrary() {
     var m = getMeta();
     var lib = getLib();
@@ -2313,7 +2353,7 @@
 
   function newScript() {
     if (order.length || (getMeta().name || '').trim()) {
-      if (!confirm('Start a new, empty script?\n\nWhat you have open is kept in My Scripts.')) return;
+      if (!confirm('Start a new, empty script?\n\n' + keptNote())) return;
       syncLibrary();
     }
     mark('new script');
@@ -2335,7 +2375,14 @@
       if (gone.indexOf(id) === -1) { gone.push(id); writeJSON(LIB_GONE_KEY, gone); }
     }
     setLib(getLib().filter(function (x) { return x.id !== id; }));
-    if (getMeta().libId === id) patchMeta(function (m) { delete m.libId; }, 'silent');
+    // The open script: close it too, or the next autosave puts it straight
+    // back. Undo still reopens it.
+    if (getMeta().libId === id) {
+      mark('delete script');
+      setMeta({});
+      primeForm();
+      replaceOrder([], true);
+    }
     paintLibrary();
   }
   function renameEntry(id) {
@@ -2665,7 +2712,8 @@
     function save() {
       var name = q('[data-f=name]').value.trim();
       if (!name) { note('Give it a name.'); q('[data-f=name]').focus(); return; }
-      var next = ownEntry({ name: name, team: q('[data-f=team]').value, ability: q('[data-f=ability]').value, image: img });
+      // on top of what it already carries (an imported one's night order and reminders)
+      var next = ownEntry(Object.assign({}, cur, { name: name, team: q('[data-f=team]').value, ability: q('[data-f=ability]').value, image: img }));
       var s = slug || (OWN_PREFIX + uid());
       mark((cur ? 'edit ' : 'add ') + name);
       var m = getMeta();
@@ -2942,6 +2990,8 @@
       var slugs = panelMatches().map(function (c) { return c.slug; })
         .filter(function (x) { return x && bySlug[x] && !sel[x]; });
       if (!slugs.length) { toast('Everything shown is already on the script.'); return; }
+      slugs = slugs.slice(0, Math.max(0, SCRIPT_MAX - order.length));
+      if (!slugs.length) { toast('A script holds ' + SCRIPT_MAX + ' characters.'); return; }
       if (slugs.length > 30 && !confirm('Add all ' + slugs.length + ' characters the panel is showing?')) return;
       replaceOrder(order.concat(slugs), false, 'add all shown');
       slugs.slice(0, 3).forEach(noteRecent);
@@ -3251,7 +3301,8 @@
 
     document.addEventListener('keydown', function (e) {
       var t = e.target;
-      var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      // a ticked box or a dragged slider is not typing: Ctrl+Z still undoes
+      var typing = t && ((t.tagName === 'INPUT' && !/^(checkbox|radio|range|button)$/.test(t.type)) || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
       var mod = e.ctrlKey || e.metaKey;
       if (e.key === 'Escape') {
         if (peekSlug) { hidePeek(); return; }
@@ -3404,11 +3455,6 @@
   }
 
   var ACTIONS = {
-    random: function () { randomize(); },
-    sort: function () { if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug), false, 'sort'); },
-    undo: function () { undo(); },
-    redo: function () { redo(); },
-    publish: function () { goPublish($('sb-publish-link').getAttribute('href') || 'publish-script'); },
     details: function () { showTab('meta'); },
     'import': function () { $('sb-import-file').click(); },
     save: function () { saveCurrentToLibrary(); },
@@ -3769,10 +3815,16 @@
   function applyShare(raw) {
     try {
       var sh = decodeShare(raw);
-      var incoming = (sh.c || []).filter(function (slug) { return bySlug[slug]; });
+      // The link's own script-only characters first, cleaned like any made
+      // here, so their slugs count as known below.
+      var shOwn = {}, rawOwn = sh.m && sh.m.ownChars && typeof sh.m.ownChars === 'object' ? sh.m.ownChars : {};
+      Object.keys(rawOwn).slice(0, SCRIPT_MAX).forEach(function (k) {
+        if (k.indexOf(OWN_PREFIX) === 0 && /^[\w-]{1,40}$/.test(k)) shOwn[k] = ownEntry(rawOwn[k]);
+      });
+      var incoming = (sh.c || []).filter(function (slug) { return bySlug[slug] || shOwn[slug]; }).slice(0, SCRIPT_MAX);
       if (incoming.length &&
           (!order.length ||
-           confirm('Load the shared script (' + incoming.length + ' characters)?\n\nWhat you have open is kept in My Scripts.'))) {
+           confirm('Load the shared script (' + incoming.length + ' characters)?\n\n' + keptNote()))) {
         if (order.length) syncLibrary();
         mark('load the shared script');
         var m = {};
@@ -3784,6 +3836,10 @@
           });
           if (m.charNotes && typeof m.charNotes !== 'object') delete m.charNotes;
           if (m.abilities && typeof m.abilities !== 'object') delete m.abilities;
+          if (Object.keys(shOwn).length) m.ownChars = shOwn; else delete m.ownChars;
+          ['exportLogo', 'exportBg', 'almanac'].forEach(function (k) {
+            if (typeof m[k] !== 'string' || !/^https:\/\//i.test(m[k])) delete m[k]; else m[k] = m[k].slice(0, 500);
+          });
           if (typeof m.notes === 'string') m.notes = m.notes.slice(0, 4000); else delete m.notes;
         }
         setMeta(m);

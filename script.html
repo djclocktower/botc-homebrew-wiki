@@ -5,10 +5,10 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script Builder — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, save up to 15 scripts, and export, share or publish them.">
+<meta name="description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, save your scripts, and export, print, share or publish them.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Script Builder">
-<meta property="og:description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, save up to 15 scripts, and export, share or publish them.">
+<meta property="og:description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, save your scripts, and export, print, share or publish them.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -160,7 +160,7 @@
         <button type="button" class="sbx-tab" data-tab="night" role="tab" aria-selected="false">Night Order</button>
         <button type="button" class="sbx-tab" data-tab="jinx" role="tab" aria-selected="false">Jinxes <span class="sbx-tab-n" id="sbx-tab-jinx-n"></span></button>
         <button type="button" class="sbx-tab" data-tab="analyse" role="tab" aria-selected="false">Analyse <span class="sbx-tab-n" id="sbx-tab-an-n"></span></button>
-        <button type="button" class="sbx-tab" data-tab="meta" role="tab" aria-selected="false">Details &amp; Export</button>
+        <button type="button" class="sbx-tab" data-tab="meta" role="tab" aria-selected="false">Export</button>
         <button type="button" class="sbx-tab sbx-tab-out" data-open="fancy" title="Open this script in Fancy Scripts">Fancy Scripts <i class="sbi-i" data-icon="external"></i></button>
       </nav>
 
@@ -175,7 +175,7 @@
         <section class="sbx-pane" data-tab="night">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Night Order</h2>
-            <p class="sbx-panel-sub">Drag a row, or use &#9650;&#9660;. The published page and the exported JSON use this order.</p>
+            <p class="sbx-panel-sub">Drag a row, or use the arrows. The page and the export use this order.</p>
             <div class="sbx-tab-opts">
               <label class="sbx-check"><input type="checkbox" id="sb-night-rem" checked> Reminders</label>
             </div>
@@ -188,7 +188,7 @@
         <section class="sbx-pane" data-tab="jinx">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Jinxes</h2>
-            <p class="sbx-panel-sub">Switch off a jinx, or add one that applies to this script only. The character pages are not changed.</p>
+            <p class="sbx-panel-sub">Switch one off, or add one for this script only.</p>
             <div class="sbx-tab-opts">
               <label class="sbx-check"><input type="checkbox" id="sb-jinx-icons" checked> Icons</label>
               <button type="button" class="sbx-b-sm" id="sb-jinx-copy"><i class="sbi-i" data-icon="copy"></i> Copy as text</button>
@@ -202,8 +202,7 @@
         <section class="sbx-pane" data-tab="analyse">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Analysis</h2>
-            <p class="sbx-panel-sub">The script&rsquo;s shape, who acts at night, its tags, and anything to check.</p>
-            <div id="sbx-analyse-body"></div>
+                        <div id="sbx-analyse-body"></div>
           </div>
         </section>
 
@@ -214,7 +213,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Details</h2>
-            <p class="sbx-panel-sub">The name and author go into the exported JSON. The description and colours are set on <a href="publish-script">Publish to Wiki</a>.</p>
+            <p class="sbx-panel-sub">The description and colours are set on <a href="publish-script">Publish to Wiki</a>.</p>
             <div class="sbx-fields">
               <div class="sbx-field">
                 <label for="sb-name2">Script name</label>
@@ -233,8 +232,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Export</h2>
-            <p class="sbx-panel-sub">The official script JSON, as the app and other script tools read it.</p>
-            <div class="sbx-fields" style="margin-bottom:10px">
+                        <div class="sbx-fields" style="margin-bottom:10px">
               <div class="sbx-field">
                 <label for="sb-logo">Logo</label>
                 <div class="sbx-img-row">
@@ -322,7 +320,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Import</h2>
-            <p class="sbx-panel-sub">Load a file, paste JSON, or pick a page published on this wiki. Characters are matched by id, and any the wiki does not have are listed. For a whole Bloodstar project, with its art and almanac text, use <a href="bloodstar">the Bloodstar importer</a>.</p>
+            <p class="sbx-panel-sub">A character the wiki has no page for stays on this script only. To make wiki pages from a file or a Bloodstar project, use <a href="mass-upload">Mass Import</a>.</p>
             <div class="sbx-field" style="margin-bottom:10px">
               <label for="sb-wiki-pick">From this wiki</label>
               <div class="sbx-tool-row">
@@ -344,7 +342,7 @@
         </section>
       </div>
 
-      <p class="sbx-foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in this browser only &middot; Not affiliated with The Pandemonium Institute</p>
+      <p class="sbx-foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
     </main>
   </div>
 
