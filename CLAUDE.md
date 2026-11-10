@@ -5186,6 +5186,34 @@ pitch. Each constant's comment carries its old value. Auto-fit takes the room
 back as larger type, so a full sheet's text grew and its gaps shrank. The
 page margins and the night and jinx pages are unchanged.
 
+### A character in a top corner, and the skull on every style
+
+**`topChar`** (a character's id) takes that character off its team and draws
+it, icon, name and ability, in a top corner of the script sheet in every
+style; **`topCharSide`** is `left` (the default) or `right`. It is an element
+(`el.topChar`): moved, sized, and hidden, which puts the character back in its
+team. `topCorners()` in script.js is the one answer to what each corner holds,
+and `frontCharacters()` leaves the picked character out. The Bootlegger rules
+(below) now work in every style too, top right, under the character when it
+is on the right as well. The box is `cornerBox()` in sheet.js for all three
+styles, sized in em of one font size: the classic sheet shrinks it in the page
+(`fitCorners()`, from `fitTitle()`), the app view and night columns by measure
+(`cornerScale()`). On the classic sheet a left corner hides the left flourish,
+moves the title right (`titleShift()`) and turns off "Move the title left".
+
+**The skull and the flourishes are look settings** (`STYLE_LOOK`): the classic
+sheet's `showSkull`, `app.showSkull`, `cols.showSkull` and `cols.showFlourishes`
+(off by default on the two newer styles). One skull element (`el.skull`, its
+art picker) serves all three; the app view and night columns draw it with
+`skullSpec()` / `drawSkull()` in sheet.js, in front of the title, the built-in
+one feathered into the paper as on the classic sheet. Night columns size the
+decor to the header band, never more than 45% of the title's box.
+
+**Night columns can have a garland** (`el.colGarland`, the pack's garlands or
+None, the default): drawn centred between the columns, the rows kept above its
+leaves (`contentFloor()`), and the footnote then set in its oval on two lines,
+as the classic sheet sets it. With no garland the footnote stays bottom right.
+
 ### Bootlegger rules at the top, and the title moved left
 
 Two title-card options on the classic script sheet. **`bootRulesTop`** draws

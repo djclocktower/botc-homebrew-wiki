@@ -238,6 +238,7 @@ export const APP_SHEET = {
   footnoteSize: 1.22,
   footnoteLine: 1.3,
   garlandW: 72, // an uploaded garland across the foot of the sheet
+  cornerW: 24, // % of the width, a top corner's box (a character or the Bootlegger rules)
   garlandH: 9.5, // em
 };
 
@@ -326,6 +327,11 @@ export const COLUMN_SHEET = {
   footnoteRight: 8, // % in from the right edge
   footnoteTop: 97.1,
   footnoteSize: 2.0,
+  garlandW: 76, // % of the width, a garland picked for the foot
+  garlandBottom: 86, // the rows' floor over an uploaded garland (its shape is unknown)
+  ovalFootSize: 1.2, // the footnote in a garland's oval, as the classic sheet sets it
+  ovalFootLine: 1.15,
+  cornerW: 22, // % of the width, a top corner's box (a character or the Bootlegger rules)
 };
 
 /* how many characters across a team's grid is: the sheets put a lone
@@ -515,10 +521,11 @@ export const EL_DEFAULT = { dx: 0, dy: 0, scale: 1, rot: 0, opacity: 1, hidden: 
 export const ELEMENTS = [
   { key: 'title', label: 'Title', page: 'front', kind: 'text', only: 'classic' },
   { key: 'author', label: 'Author credit', page: 'front', kind: 'text', only: 'classic' },
-  { key: 'skull', label: 'Skull', page: 'front', kind: 'image', only: 'classic' },
+  { key: 'skull', label: 'Skull', page: 'front', kind: 'image' },
   { key: 'fll', label: 'Left flourish', page: 'front', kind: 'image', only: 'classic' },
   { key: 'flr', label: 'Right flourish', page: 'front', kind: 'image', only: 'classic' },
-  { key: 'bootRules', label: 'Bootlegger rules', page: 'front', kind: 'block', only: 'classic' },
+  { key: 'bootRules', label: 'Bootlegger rules', page: 'front', kind: 'block' },
+  { key: 'topChar', label: 'Character at the top', page: 'front', kind: 'block' },
   { key: 'sidebar', label: 'Sidebar ribbon', page: 'front', kind: 'image', fixed: true, only: 'classic' },
   { key: 'labels', label: 'Team labels', page: 'front', kind: 'text', fixed: true, only: 'classic' },
   { key: 'appTitle', label: 'Title', page: 'front', kind: 'text', only: 'app' },
@@ -537,6 +544,7 @@ export const ELEMENTS = [
   { key: 'footnote', label: 'Footnote', page: 'front', kind: 'text' },
   { key: 'garland', label: 'Garland at the foot', page: 'front', kind: 'image', only: 'classic' },
   { key: 'appGarland', label: 'Flowers at the foot', page: 'front', kind: 'image', only: 'app' },
+  { key: 'colGarland', label: 'Garland at the foot', page: 'front', kind: 'image', only: 'columns' },
   { key: 'nightTitle', label: 'Night title', page: 'night', kind: 'text' },
   { key: 'nightLogo', label: 'Script logo', page: 'night', kind: 'image' },
   { key: 'nightList', label: 'Night list', page: 'night', kind: 'block' },
@@ -598,6 +606,7 @@ export const DEFAULT_APP = {
   nameSpacing: 0, // em
   sidebarContrast: 1,
   fontFootnote: 'trade',
+  showSkull: false,
   bg: { ...DEFAULT_BG, mode: 'parchment' },
 };
 
@@ -624,6 +633,8 @@ export const DEFAULT_COLS = {
   neutralColor: '#222222',
   teamColors: { townsfolk: '', outsider: '', minion: '', demon: '', traveller: '', fabled: '', loric: '' },
   sidebarWidth: 1,
+  showSkull: false, // off on this style until asked for: its header is a tight band
+  showFlourishes: false,
 };
 
 /* One set of controls edits whichever script sheet style is showing; each
@@ -637,6 +648,7 @@ export const STYLE_LOOK = {
     fontLabel: 'app.fontLabel', fontName: 'app.fontName', fontAbility: 'app.fontText', fontFootnote: 'app.fontFootnote',
     inkColor: 'app.inkColor', titleColor: 'app.titleColor', authorColor: 'app.authorColor', footnoteColor: 'app.footnoteColor',
     showDividers: 'app.showDividers', dividerOpacity: 'app.dividerStrength', rowGap: 'app.rowGap', bg: 'app.bg',
+    showSkull: 'app.showSkull',
   },
   columns: Object.fromEntries(Object.keys(DEFAULT_COLS).map((k) => [k, 'cols.' + k])),
 };
@@ -854,6 +866,8 @@ export const DEFAULT_OPTIONS = {
   bootRulesIcon: 'bootlegger', // the icon beside them: bootlegger | djinn | none
   bootRulesFont: 'dumbledor2', // the token tool's character name face
   bootRulesColor: '', // '' = the sheet's ink
+  topChar: '', // a character's id: drawn with its ability in a top corner instead of in its team
+  topCharSide: 'left', // left | right
   // background
   bg: { ...DEFAULT_BG },
   // movable elements: key -> partial EL_DEFAULT
@@ -1013,7 +1027,28 @@ export function movedTeams(options) {
 }
 export function frontCharacters(script, options) {
   const moved = movedTeams(options);
-  return moved.length ? script.characters.filter((c) => !moved.includes(c.team)) : script.characters;
+  const top = topCharOf(script, options);
+  return moved.length || top ? script.characters.filter((c) => !moved.includes(c.team) && c !== top) : script.characters;
+}
+// the character picked to sit in a top corner (hiding its element puts it back in its team)
+function topCharOf(script, options) {
+  if (!options.topChar || elGet(options, 'topChar').hidden) return null;
+  return script.characters.find((c) => c.id === options.topChar) || null;
+}
+/* What the top corners of a script sheet carry, in every style: the picked
+   character (icon, name, ability) on its side, and the Bootlegger rules top
+   right, under the character's ability when it is on that side too. Each is
+   null or {icon, name, team, color, ability, rules[]}. */
+export function topCorners(script, options) {
+  const out = { left: null, right: null };
+  const c = topCharOf(script, options);
+  if (c) out[options.topCharSide === 'right' ? 'right' : 'left'] = { icon: c.icon, name: c.name, team: c.team, color: c.color, ability: c.ability || '', rules: [] };
+  const rules = options.bootRulesTop && !elGet(options, 'bootRules').hidden ? (script.meta.bootlegger || []) : [];
+  if (rules.length) {
+    if (out.right) out.right.rules = rules;
+    else out.right = { icon: BOOT_ICONS[options.bootRulesIcon] || '', name: '', ability: '', rules };
+  }
+  return out;
 }
 
 export const TEAM_LABELS = {
@@ -1233,6 +1268,8 @@ export const ART_CHOICES = {
 };
 // the app view's garland: the same list, built in (the parchment's own), a pack garland, or None
 ART_CHOICES.appGarland = ART_CHOICES.garland;
+// the night columns' paper has no garland of its own: none, or one from the pack
+ART_CHOICES.colGarland = [{ label: 'None', src: '' }, ...ART_CHOICES.garland.filter((c) => c.oval)];
 const CHOICE_BY_SRC = new Map(Object.values(ART_CHOICES).flat().filter((c) => c.src).map((c) => [c.src, c]));
 export function artChoice(src) { return CHOICE_BY_SRC.get(src) || null; }
 

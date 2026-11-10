@@ -845,7 +845,7 @@ function makeArtPicker(parent, label, key) {
     if (thumb) {
       const im = document.createElement('img');
       im.src = thumb; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async';
-      if (key === 'garland' || key === 'appGarland') im.className = 'fs-art-crop';
+      if (key === 'garland' || key === 'appGarland' || key === 'colGarland') im.className = 'fs-art-crop';
       btn.append(im);
     }
     const cap = document.createElement('span');
@@ -1351,23 +1351,29 @@ function buildTitleCard() {
   makeToggle(box, 'Show the title band (title, author, skull, flourishes)', bindPath('showHeader'));
   makeToggle(box, 'Use the script’s logo image as the title', bindPath('useLogo'));
   makeToggle(box, 'Author credit under the title', bindPath('showAuthor'));
-  makeToggle(styleGroup(box, 'front', 'classic'), 'Skull', bindPath('showSkull'));
-  makeToggle(styleGroup(box, 'front', ['classic', 'app']), 'Flourishes', bindPath('showFlourishes'));
+  makeToggle(box, 'Skull', bindLook('showSkull'));
+  makeToggle(box, 'Flourishes', bindLook('showFlourishes'));
+  makeArtPicker(box, 'Skull art', 'skull');
   makeColor(makeRow(box, 'fs-colors'), 'Title colour', bindLook('titleColor'));
   makeFont(box, 'Title font', bindLook('fontTitle'));
   const tc = styleGroup(box, 'front', 'classic');
   makeToggle(tc, 'Slide the skull and flourishes in to meet a short title', bindPath('hugDecor'));
   makeToggle(tc, 'Move the title and skull to the left', bindPath('titleLeft'));
-  makeToggle(tc, 'Bootlegger rules in the top right', bindPath('bootRulesTop'));
-  makeSelect(tc, 'Icon beside the rules', [['bootlegger', 'Bootlegger'], ['djinn', 'Djinn'], ['none', 'No icon']],
+  // a top corner: any character with its ability, and the Bootlegger rules
+  makeSelect(box, 'Character at the top', () => [['', 'None'],
+    ...(derived ? derived.characters : []).map((c) => [c.id, c.name])], bindPath('topChar'), { dynamic: true });
+  makeSelect(box, 'Its corner', [['left', 'Top left'], ['right', 'Top right']], bindPath('topCharSide'));
+  if (cardPaths) cardPaths.add('el.topChar');
+  makeSlider(box, 'Character size', 0.5, 2, 0.05, pct,
+    { get: () => elGet(options, 'topChar').scale, set: (v) => elSet(options, 'topChar', { scale: v }) }, { reset: 1 });
+  makeToggle(box, 'Bootlegger rules in the top right', bindPath('bootRulesTop'));
+  makeSelect(box, 'Icon beside the rules', [['bootlegger', 'Bootlegger'], ['djinn', 'Djinn'], ['none', 'No icon']],
     bindPath('bootRulesIcon'));
   if (cardPaths) cardPaths.add('el.bootRules');
-  makeSlider(tc, 'Rules size', 0.5, 2, 0.05, pct,
+  makeSlider(box, 'Rules size', 0.5, 2, 0.05, pct,
     { get: () => elGet(options, 'bootRules').scale, set: (v) => elSet(options, 'bootRules', { scale: v }) }, { reset: 1 });
-  makeFont(tc, 'Rules font', bindPath('bootRulesFont'));
-  makeColor(makeRow(tc, 'fs-colors'), 'Rules colour', bindPath('bootRulesColor'));
-  makeHint(tc, 'The script’s Bootlegger rules, top right.');
-  makeArtPicker(tc, 'Skull art', 'skull');
+  makeFont(box, 'Rules font', bindPath('bootRulesFont'));
+  makeColor(makeRow(box, 'fs-colors'), 'Rules colour', bindPath('bootRulesColor'));
   makeArtPicker(tc, 'Section dividers', 'dividers');
   makeArtPicker(tc, 'Garland at the foot', 'garland');
   makeSelect(tc, 'Title style', [['classic', 'Classic (indigo emboss)'], ['emboss', 'Emboss from the title colour'],
@@ -1377,6 +1383,7 @@ function buildTitleCard() {
   makeColor(colors, 'Bronze offset', bindPath('titleShadowColor'));
   makeSlider(tc, 'Offset shadow strength', 0, 3, 0.05, fmtNum(2), bindPath('titleShadow'), { reset: 1 });
   makeArtPicker(styleGroup(box, 'front', 'app'), 'Garland at the foot', 'appGarland');
+  makeArtPicker(styleGroup(box, 'front', 'columns'), 'Garland at the foot', 'colGarland');
   makeText(box, 'Footnote text (blank = “*Not the first night”)', bindPath('footnoteText'));
   endCard(box);
 }

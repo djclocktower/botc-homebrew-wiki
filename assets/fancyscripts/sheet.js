@@ -35,7 +35,7 @@ import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, frontCharacters, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
-  keywordParts, jinxNotes, contentFloor,
+  keywordParts, jinxNotes, contentFloor, topCorners,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, isDark, hexHsl, shade, wrappedLineCount, textWidth,
@@ -857,9 +857,10 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     const flRW = SHEET.flRW * flRT.scale;
     const flRLeft = SHEET.flRX + flRT.dx;
     const flRTop = SHEET.flRY + (SHEET.flRH * (1 - flRT.scale)) / 2 + flRT.dy;
-    // the script's Bootlegger rules, when asked for, take the right flourish's place
-    const brT = elGet(options, 'bootRules');
-    const rules = options.bootRulesTop && !brT.hidden ? (script.meta.bootlegger || []) : [];
+    // a top corner (a character, the Bootlegger rules) takes that side's flourish's place
+    const corners = topCorners(script, options);
+    const cornerL = !!corners.left, cornerR = !!corners.right;
+    const shiftX = titleShift(cornerL, cornerR);
 
     if (options.showSkull && !skT.hidden) {
       /* The stock skull is cut from the reference sheet WITH its patch of
@@ -878,7 +879,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       sheet.append(mark(skullEl, 'el:skull'));
     }
     if (options.showFlourishes) {
-      if (!flLT.hidden) {
+      if (!flLT.hidden && !cornerL) {
         const flLEl = img(resolveSrc(flLT.src) || ART + 'flourish-left.png', {
           position: 'absolute', left: flLLeft + '%', top: px(e(flLTop)), width: flLW + '%',
           opacity: String(flLT.opacity), transform: flLT.rot ? `rotate(${flLT.rot}deg)` : '',
@@ -886,7 +887,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
         flLEl.dataset.fsDecor = 'fll';
         sheet.append(mark(flLEl, 'el:fll'));
       }
-      if (!flRT.hidden && !rules.length) {
+      if (!flRT.hidden && !cornerR) {
         const flREl = img(resolveSrc(flRT.src) || ART + 'flourish-right.png', {
           position: 'absolute', left: flRLeft + '%', top: px(e(flRTop)), width: flRW + '%',
           opacity: String(flRT.opacity), transform: flRT.rot ? `rotate(${flRT.rot}deg)` : '',
@@ -903,10 +904,10 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       if (titleArt) {
         const logoEl = img(titleArt, {
           position: 'absolute',
-          left: (SHEET.titleCX + tT.dx) + '%',
+          left: (SHEET.titleCX + shiftX + tT.dx) + '%',
           top: px(e(SHEET.titleCY + tT.dy)),
           transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
-          maxWidth: px(titleBandW(rules.length) * SHEET_W * tT.scale),
+          maxWidth: px(titleBandW(cornerL, cornerR) * SHEET_W * tT.scale),
           maxHeight: px(e(artMaxHEm(options, tT))),
           objectFit: 'contain',
           opacity: String(tT.opacity),
@@ -931,7 +932,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       } else {
         const titleEl = el('div', {
           position: 'absolute',
-          left: (SHEET.titleCX + tT.dx) + '%',
+          left: (SHEET.titleCX + shiftX + tT.dx) + '%',
           top: px(e(SHEET.titleCY + tT.dy)),
           transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
           fontFamily: fonts.title,
@@ -952,7 +953,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     if (options.showAuthor && author && !aT.hidden) {
       const authorEl = el('div', {
         position: 'absolute',
-        left: (SHEET.titleCX + tT.dx + aT.dx) + '%',
+        left: (SHEET.titleCX + shiftX + tT.dx + aT.dx) + '%',
         top: px(e(authorCYEm(script, options))),
         transform: `translate(-50%, -50%)${aT.rot ? ` rotate(${aT.rot}deg)` : ''}`,
         fontFamily: fonts.author,
@@ -968,65 +969,33 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       sheet.append(mark(authorEl, 'el:author'));
     }
 
-    /* the Bootlegger rules, top right beside the title. The box runs from the
-       top of the band down to the first row of the right column; its left
-       edge and its type size are settled by fitTitle(), which knows how wide
-       the title came out. */
-    if (rules.length) {
-      const first = page.sections[0];
-      const topEm = 2.6 + brT.dy;
-      const bottomEm = (first ? first.rightTopPx / U : SHEET.contentTop) - 0.6 + brT.dy;
-      const box = el('div', {
-        position: 'absolute',
-        left: (64 + brT.dx) + '%',
-        right: (6.4 - brT.dx) + '%', // clear of the burnt right edge
-        top: px(e(topEm)),
-        height: px(e(Math.max(2, bottomEm - topEm))),
-        display: 'flex',
-        alignItems: 'center',
-        gap: px(e(0.6)),
-        opacity: String(brT.opacity),
-      });
-      const iconSrc = BOOT_ICONS[options.bootRulesIcon];
-      const ink = options.bootRulesColor || options.inkColor || '#2a1d14';
-      // the gold of the ribbon's edge: a hairline between the icon and the rules,
-      // and between one rule and the next, fading out at the ends
-      const gold = 'rgba(138, 106, 52, 0.75)';
-      if (iconSrc) {
-        const iconEl = img(iconSrc, {
-          flex: '0 0 auto', width: px(e(4.2 * brT.scale)), maxHeight: '100%', objectFit: 'contain',
-          filter: iconFilter(options.iconEffect, options.iconShadow, e),
-        }, '');
-        iconEl.dataset.fsBootIcon = String(e(4.2 * brT.scale));
-        box.append(iconEl);
-      }
-      const text = el('div', {
-        flex: '1 1 auto', minWidth: '0', fontFamily: fontFamily(options.bootRulesFont || 'dumbledor2'),
-        lineHeight: '1.18', letterSpacing: '0.01em', color: ink, mixBlendMode: 'multiply',
-        fontSize: px(e(1.3 * brT.scale)), textWrap: 'pretty',
-      });
-      if (iconSrc) {
-        // the hairline runs the height of the rules themselves, however few
-        Object.assign(text.style, {
-          paddingLeft: px(e(0.8)),
-          backgroundImage: `linear-gradient(180deg, transparent, ${gold} 15%, ${gold} 85%, transparent)`,
-          backgroundRepeat: 'no-repeat', backgroundPosition: 'left center',
-          backgroundSize: `${px(Math.max(1, e(0.09)))} 100%`,
-        });
-      }
-      text.dataset.fsBootText = String(e(1.3 * brT.scale));
-      rules.forEach((r, i) => {
-        if (i) {
-          text.append(el('div', {
-            height: px(Math.max(1, e(0.07))), width: '70%', margin: `${px(e(0.42))} 0`,
-            background: `linear-gradient(90deg, ${gold}, transparent)`,
-          }));
-        }
-        text.append(el('div', null, smartTypography(r)));
-      });
-      box.append(text);
-      box.dataset.fsBoot = String(brT.dx);
-      sheet.append(mark(box, 'el:bootRules'));
+    /* the top corners, beside the title. Each box runs from the top of the
+       band down to its column's first row; fitTitle() settles its inner
+       edge against the title (and the skull) and shrinks its type to fit. */
+    const look = {
+      name: fonts.name, text: fonts.ability, rules: fontFamily(options.bootRulesFont || 'dumbledor2'),
+      ink: options.inkColor || '#2a1d14', rulesInk: options.bootRulesColor || options.inkColor || '#2a1d14',
+      nameColor: (cn) => cn.color || teamColor(options, cn.team), nameWeight: '700',
+      iconFilter: iconFilter(options.iconEffect, options.iconShadow, e), blend: 'multiply',
+    };
+    const first = page.sections[0];
+    for (const side of ['left', 'right']) {
+      const cn = corners[side];
+      if (!cn) continue;
+      const key = cn.name ? 'topChar' : 'bootRules';
+      const T = elGet(options, key);
+      const topEm = 2.6 + T.dy;
+      const rowTop = first ? (side === 'left' ? first.topPx : first.rightTopPx) / U : SHEET.contentTop;
+      const bottomEm = rowTop - 0.6 + T.dy;
+      const box = cornerBox(cn, look, e, T.scale, 1);
+      Object.assign(box.style, {
+        position: 'absolute', top: px(e(topEm)), height: px(e(Math.max(2, bottomEm - topEm))), opacity: String(T.opacity),
+      }, side === 'right'
+        ? { left: (64 + T.dx) + '%', right: (6.4 - T.dx) + '%' } // clear of the burnt right edge
+        : { left: (RIB + 0.9 + T.dx) + '%', width: (30 - RIB) + '%' });
+      box.dataset.fsCorner = side;
+      box.dataset.fsCornerDx = String(T.dx);
+      sheet.append(mark(box, 'el:' + key));
     }
   }
 
@@ -1303,10 +1272,15 @@ export function renderSheet(script, options, requestRender, ctx) {
       (plus whatever it was dragged by). */
 export function fitTitle(sheet, options) {
   const titleEl = sheet.querySelector('[data-fs-title]');
-  const bootEl = sheet.querySelector('[data-fs-boot]');
+  const cornerL = sheet.querySelector('[data-fs-corner="left"]');
+  const cornerR = sheet.querySelector('[data-fs-corner="right"]');
+  fitTitleBand(sheet, options, titleEl, cornerL, cornerR);
+  fitCorners(sheet, cornerL, cornerR);
+}
+function fitTitleBand(sheet, options, titleEl, cornerL, cornerR) {
   if (titleEl) {
     const naturalFs = Number(titleEl.dataset.fsTitle);
-    const bandW = titleBandW(!!bootEl) * SHEET_W;
+    const bandW = titleBandW(!!cornerL, !!cornerR) * SHEET_W;
     titleEl.style.fontSize = px(naturalFs);
     const trueW = titleEl.scrollWidth;
     if (trueW > bandW) titleEl.style.fontSize = px(naturalFs * (bandW / trueW));
@@ -1314,7 +1288,7 @@ export function fitTitle(sheet, options) {
   // "Move the title to the left": its left edge goes to the ribbon's side
   // (after the skull), and the author line follows it
   const tbox0 = sheet.querySelector('[data-fs-tbox]');
-  if (options && options.titleLeft && tbox0) {
+  if (options && options.titleLeft && !cornerL && tbox0) {
     const sr = sheet.getBoundingClientRect(), tr = tbox0.getBoundingClientRect();
     if (sr.width && tr.width) {
       const tT = elGet(options, 'title'), aT = elGet(options, 'author');
@@ -1338,8 +1312,7 @@ export function fitTitle(sheet, options) {
       authorEl.style.left = (parseFloat(authorEl.style.left) + Math.min(over, Math.max(0, room))) + '%';
     }
   }
-  if (bootEl) fitBootRules(sheet, bootEl, tbox0);
-  if (!options || (options.hugDecor === false && !options.titleLeft)) return;
+  if (!options || (options.hugDecor === false && !(options.titleLeft && !cornerL))) return;
 
   const tbox = sheet.querySelector('[data-fs-tbox]');
   const skullEl = sheet.querySelector('[data-fs-decor="skull"]');
@@ -1355,7 +1328,7 @@ export function fitTitle(sheet, options) {
   const flRT = elGet(options, 'flr');
   // rects survive the preview's scale transform because both are scaled alike
   const wPct = (tRect.width / sheetRect.width) * 100;
-  const centerPct = options.titleLeft ? parseFloat(tbox.style.left) : SHEET.titleCX + tT.dx;
+  const centerPct = options.titleLeft && !cornerL ? parseFloat(tbox.style.left) : SHEET.titleCX + titleShift(!!cornerL, !!cornerR) + tT.dx;
   const leftPct = centerPct - wPct / 2;
   const rightPct = centerPct + wPct / 2;
 
@@ -1381,9 +1354,10 @@ export function fitTitle(sheet, options) {
 }
 
 /* how wide the title may be, as a share of the sheet: the reference's ink
-   width (skull to right swirl), a little less when the Bootlegger rules
-   take the top right */
-function titleBandW(withRules) { return withRules ? 0.42 : 0.4911; }
+   width (skull to right swirl), less when a top corner takes a side; and
+   how far right of its calibrated centre it moves, to make room on the left */
+function titleBandW(left, right) { return left && right ? 0.36 : left ? 0.38 : right ? 0.42 : 0.4911; }
+function titleShift(left, right) { return left && right ? 3 : left ? 6 : 0; }
 
 /* where a title moved to the left starts, in % of the sheet: just past the
    ribbon, and past the skull when there is one (the same tuck fitTitle's
@@ -1397,20 +1371,27 @@ function titleLeftEdge(options, skullEl, isImg) {
   return start + SHEET.skullW * skT.scale - skullIn;
 }
 
-/* the Bootlegger rules box: starts a little right of the title, and its
-   type shrinks until every rule fits the box. The icon shrinks with it, so
-   a large size on a long set of rules keeps the two in proportion rather
-   than growing the icon into the text's room. */
-function fitBootRules(sheet, box, tbox) {
+/* the top corners: the right one starts a little right of the title, the
+   left one ends a little left of the skull (or the title), and each one's
+   type shrinks until it fits its box. The icon shrinks with it, so a large
+   size on a long text keeps the two in proportion. */
+function fitCorners(sheet, cornerL, cornerR) {
   const sr = sheet.getBoundingClientRect();
-  if (tbox && sr.width) {
-    const tr = tbox.getBoundingClientRect();
-    if (tr.width) {
-      const dx = Number(box.dataset.fsBoot) || 0;
-      const right = ((tr.right - sr.left) / sr.width) * 100;
-      box.style.left = Math.min(78, right + 2) + dx + '%';
-    }
+  const tbox = sheet.querySelector('[data-fs-tbox]');
+  const tr = tbox && tbox.getBoundingClientRect();
+  const pct = (x) => ((x - sr.left) / sr.width) * 100;
+  if (cornerR && tr && tr.width && sr.width) {
+    cornerR.style.left = Math.min(78, pct(tr.right) + 2) + (Number(cornerR.dataset.fsCornerDx) || 0) + '%';
   }
+  if (cornerL && tr && tr.width && sr.width) {
+    const skull = sheet.querySelector('[data-fs-decor="skull"]');
+    const sk = skull && skull.getBoundingClientRect();
+    const edge = (sk && sk.width ? pct(sk.left) + 1.2 : pct(tr.left)) - 1.5 + (Number(cornerL.dataset.fsCornerDx) || 0);
+    cornerL.style.width = Math.max(8, edge - parseFloat(cornerL.style.left)) + '%';
+  }
+  for (const box of [cornerL, cornerR]) if (box) shrinkCorner(box);
+}
+function shrinkCorner(box) {
   const text = box.querySelector('[data-fs-boot-text]');
   if (!text) return;
   const icon = box.querySelector('[data-fs-boot-icon]');
@@ -1426,4 +1407,98 @@ function fitBootRules(sheet, box, tbox) {
     k *= 0.94;
     size();
   }
+}
+
+/* ── a top corner's box, in every style: a character (icon, name, ability)
+   or the Bootlegger rules, or the character with the rules under it. Every
+   size is in em of the text block's own size, so one font size scales the
+   lot: the classic sheet shrinks it in the page (shrinkCorner), the other
+   styles by measure (cornerScale), which is also right in an export. ── */
+const CORNER = { base: 1.3, icon: 4.2, name: 1.15, ability: 0.92, line: 1.18, sep: 0.7, gap: 0.6, pad: 0.8 };
+const GOLD = 'rgba(138, 106, 52, 0.75)'; // the ribbon edge's gold, for the hairlines
+export function cornerBox(cn, look, e, scale, k) {
+  const box = el('div', { display: 'flex', alignItems: 'center', gap: px(e(CORNER.gap)) });
+  const fs = e(CORNER.base * scale);
+  if (cn.icon) {
+    const iconEl = img(drawIcon(cn.icon), {
+      flex: '0 0 auto', width: px(e(CORNER.icon * scale) * Math.max(k, 0.45)), maxHeight: '100%', objectFit: 'contain',
+      filter: look.iconFilter,
+    }, cn.name || '');
+    iconEl.crossOrigin = 'anonymous';
+    iconEl.dataset.fsBootIcon = String(e(CORNER.icon * scale));
+    box.append(iconEl);
+  }
+  const text = el('div', {
+    flex: '1 1 auto', minWidth: '0', lineHeight: String(CORNER.line), letterSpacing: '0.01em',
+    color: look.ink, mixBlendMode: look.blend || 'normal', fontSize: px(fs * k), textWrap: 'pretty',
+  });
+  if (cn.icon) {
+    // the hairline runs the height of the text itself, however short
+    Object.assign(text.style, {
+      paddingLeft: px(e(CORNER.pad)),
+      backgroundImage: `linear-gradient(180deg, transparent, ${GOLD} 15%, ${GOLD} 85%, transparent)`,
+      backgroundRepeat: 'no-repeat', backgroundPosition: 'left center',
+      backgroundSize: `${px(Math.max(1, e(0.09)))} 100%`,
+    });
+  }
+  text.dataset.fsBootText = String(fs);
+  if (cn.name) {
+    text.append(el('div', {
+      fontFamily: look.name, fontWeight: look.nameWeight || '400', fontSize: CORNER.name + 'em', color: look.nameColor(cn),
+      fontVariant: look.variant || 'normal', letterSpacing: (look.spacing || 0) + 'em',
+    }, look.nameCase ? look.nameCase(smartTypography(cn.name)) : smartTypography(cn.name)));
+  }
+  if (cn.ability) text.append(el('div', { fontFamily: look.text, fontSize: CORNER.ability + 'em', whiteSpace: 'pre-line', textAlign: look.align || 'left' }, smartTypography(cn.ability)));
+  cn.rules.forEach((r, i) => {
+    if (i || cn.name || cn.ability) {
+      text.append(el('div', { height: px(Math.max(1, e(0.07))), width: '70%', margin: '0.32em 0', background: `linear-gradient(90deg, ${GOLD}, transparent)` }));
+    }
+    text.append(el('div', { fontFamily: look.rules, color: look.rulesInk || look.ink }, smartTypography(r)));
+  });
+  box.append(text);
+  return box;
+}
+/* the skull in the app view's and the night columns' headers: its width
+   (% of the sheet) beside a title of k times the classic one's size, and
+   how far it tucks into the swash title's left bearing (a picked or
+   uploaded skull gets a gap) */
+export function skullSpec(on, options, k) {
+  const skT = elGet(options, 'skull');
+  if (!on || skT.hidden) return null;
+  return { w: SHEET.skullW * k * skT.scale, k, tuck: (resolveSrc(skT.src) ? -1.4 : 1.49) * k };
+}
+/* drawn at `left` (% width), centred on `cy` (em); the built-in skull's
+   baked patch of parchment fades into the paper, as on the classic sheet */
+export function drawSkull(sheet, options, sk, left, cy, mark, e) {
+  const skT = elGet(options, 'skull');
+  const own = resolveSrc(skT.src);
+  const feather = own ? '' : 'radial-gradient(ellipse 50% 50% at 50% 54%, #000 62%, transparent 100%)';
+  const n = img(own || ART + 'skull.png', {
+    position: 'absolute', left: (left + skT.dx) + '%', top: px(e(cy + skT.dy) - e(SHEET.skullH * sk.k * skT.scale) / 2),
+    width: sk.w + '%', opacity: String(skT.opacity), transform: skT.rot ? `rotate(${skT.rot}deg)` : '',
+    maskImage: feather, webkitMaskImage: feather,
+  });
+  if (own) n.crossOrigin = 'anonymous';
+  sheet.append(mark(n, 'el:skull'));
+}
+
+/* the type scale (0..1) at which a corner fits wPx × hPx, by measure */
+export function cornerScale(cn, look, e, scale, wPx, hPx) {
+  const fs0 = e(CORNER.base * scale), iw0 = cn.icon ? e(CORNER.icon * scale) : 0;
+  const need = (k) => {
+    const fs = fs0 * k;
+    const w = Math.max(20, wPx - (iw0 ? iw0 * Math.max(k, 0.45) + e(CORNER.gap) + e(CORNER.pad) : 0));
+    const lines = (t, font) => (t ? wrappedLineCount(smartTypography(t), font, w) : 0);
+    let h = 0;
+    if (cn.name) h += lines(look.nameCase ? look.nameCase(cn.name) : cn.name, `${look.nameWeight || 400} ${fs * CORNER.name}px ${look.name}`) * fs * CORNER.name * CORNER.line;
+    if (cn.ability) h += lines(cn.ability, `400 ${fs * CORNER.ability}px ${look.text}`) * fs * CORNER.ability * CORNER.line;
+    cn.rules.forEach((r, i) => {
+      if (i || cn.name || cn.ability) h += fs * CORNER.sep;
+      h += lines(r, `400 ${fs}px ${look.rules}`) * fs * CORNER.line;
+    });
+    return h;
+  };
+  let k = 1;
+  for (let i = 0; i < 40 && need(k) > hPx * 0.95 && fs0 * k > 3; i++) k *= 0.94;
+  return k;
 }
