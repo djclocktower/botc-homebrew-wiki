@@ -28,7 +28,7 @@
 
 import {
   COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, columnLists, balancedTeam, teamSize, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
-  PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxied, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
+  PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxiedArt, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
   withLook, teamColor, jinxNotes,
 } from './script.js';
 import {
@@ -92,7 +92,7 @@ const failedArt = new Set();
 function logoArt(script, options) {
   const t = elGet(options, 'colLogo');
   if (t.hidden) return '';
-  const art = resolveSrc(t.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+  const art = resolveSrc(t.src) || (script.meta.logo && options.useLogo ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
   return art && !failedArt.has(art) ? trimmedArt(art) : '';
 }
 
@@ -299,7 +299,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   sheet.dataset.fsPage = String(pageIndex);
   sheet.dataset.fsDensity = d.toFixed(3);
 
-  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
   /* the classic paper without its garland (the grid runs to the foot). Its
      dark left frame and the gold edge beside it are sized for the classic
      ribbon, wider than this column, so the whole picture is zoomed in a
@@ -509,7 +509,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
       if (c.ability) {
         block.append(el('div', {
           fontFamily: FONT.text, fontSize: px(e(s.textEm)), lineHeight: lh,
-          whiteSpace: 'pre-line', textAlign: align,
+          whiteSpace: 'pre-line', overflowWrap: 'anywhere', textAlign: align,
         }, ...abilityNodes(c.ability, options.bracketStyle, kw, true)));
       }
       const tiny = (src, w, name, va) => {

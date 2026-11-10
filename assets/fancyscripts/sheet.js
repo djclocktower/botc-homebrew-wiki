@@ -34,7 +34,7 @@
 import {
   SHEET, FIT, SHEET_W, SHEET_H, U, SIDEBAR_BASE, footEm, BOOT_ICONS,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
-  groupByTeam, frontCharacters, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
+  groupByTeam, frontCharacters, splitColumns, proxiedArt, smartTypography, teamColor, fontFamily, elGet, NO_ART, artChoice, garlandOval, garlandShift, footInOval,
   keywordParts, jinxNotes, contentFloor,
 } from './script.js';
 import {
@@ -81,7 +81,7 @@ const failedArt = new Set();
 const artAspect = new Map();
 function titleArtOf(script, options) {
   const t = elGet(options, 'title');
-  const art = resolveSrc(t.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+  const art = resolveSrc(t.src) || (script.meta.logo && options.useLogo ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
   return art && !failedArt.has(art) ? trimmedArt(art) : '';
 }
 /* The tallest the title image may be drawn, in em. In the 'shared' column
@@ -189,7 +189,7 @@ function sidebarTintCanvas(color, requestRender) {
   if (!st.img) {
     st.img = new Image();
     st.img.onload = () => { st.imgReady = true; pumpSidebarTint(); };
-    st.img.src = ART + 'sidebar-flat.png';
+    st.img.src = ART + 'sidebar-flat.webp';
   } else {
     pumpSidebarTint();
   }
@@ -290,7 +290,7 @@ export function appendRibbon(sheet, r, ctx) {
     Object.assign(node.style, style, { opacity });
     sheet.append(node);
   } else {
-    sheet.append(img(ART + 'sidebar-flat.png', { ...style, opacity }));
+    sheet.append(img(ART + 'sidebar-flat.webp', { ...style, opacity }));
   }
   // softer pattern: a wash of the ribbon's own colour over the damask
   const soften = 1 - clamp(r.contrast == null ? 1 : Number(r.contrast), 0, 1);
@@ -378,6 +378,17 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
   if (mark) mark(icon, 'char:' + char.id); // drag an icon to nudge it
   row.append(icon);
 
+  /* a name too long for its column is set smaller rather than run into
+     the next column (the names never wrap) */
+  const nameSp = options.nameSpacing == null ? 0.02 : options.nameSpacing;
+  const nameFit = (() => {
+    const size = ed(SHEET.nameSize * nameSize);
+    const text = smartTypography(char.name);
+    const w = textWidth(options.nameCase === 'upper' ? text.toUpperCase() : text, `700 ${size.toFixed(2)}px ${fonts.name}`) +
+      nameSp * size * [...text].length;
+    const room = ((SHEET.textWidth * widthMul) / 100) * SHEET_W;
+    return w > room ? Math.max(0.5, room / w) : 1;
+  })();
   const nameRow = el('div', {
     position: 'absolute',
     left: textLeftPct + '%',
@@ -388,10 +399,10 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     gap: px(ed(0.14)),
     fontFamily: fonts.name,
     fontWeight: '700',
-    fontSize: px(ed(SHEET.nameSize * nameSize)),
+    fontSize: px(ed(SHEET.nameSize * nameSize) * nameFit),
     lineHeight: '1',
     color,
-    letterSpacing: (options.nameSpacing == null ? 0.02 : options.nameSpacing) + 'em',
+    letterSpacing: nameSp + 'em',
     whiteSpace: 'nowrap',
     textTransform: options.nameCase === 'upper' ? 'uppercase' : 'none',
     fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
@@ -403,7 +414,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
   const jinxCount = (options.showJinxes ? char.jinxIcons.length : 0) + (char.marks || []).length;
   let jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
   if (jinxCount) {
-    const namePx = ed(SHEET.nameSize * nameSize);
+    const namePx = ed(SHEET.nameSize * nameSize) * nameFit;
     const nameText = smartTypography(char.name);
     const sp = options.nameSpacing == null ? 0.02 : options.nameSpacing;
     const nameW = textWidth(options.nameCase === 'upper' ? nameText.toUpperCase() : nameText, `700 ${namePx.toFixed(2)}px ${fonts.name}`) +
@@ -463,7 +474,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     color: options.inkColor || '#222222',
     mixBlendMode: 'multiply',
     textAlign: options.abilityAlign === 'justify' || options.abilityAlign === 'center' ? options.abilityAlign : 'left',
-    whiteSpace: 'pre-line', // a line break typed in the ability is kept, as the printed sheets break them
+    whiteSpace: 'pre-line', overflowWrap: 'anywhere', // a line break typed in the ability is kept, as the printed sheets break them
   }, ...abilityNodes(char.ability, options.bracketStyle, keywordInks(options)),
   ...((notes && notes.get(char.id)) || []).map((j) => jinxNote(j, options, ed))));
 
@@ -767,7 +778,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   };
 
   // background: the baked parchment (texture + garland), or what was chosen
-  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
   const gaT = elGet(options, 'garland');
   // the ribbon's right edge (% of width): everything that sits on the ribbon
   // or meets it follows this rather than the reference's fixed numbers
@@ -1275,12 +1286,6 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
 
   return sheet;
-}
-
-/* convenience: layout + first page, for callers that only want one sheet */
-export function renderSheet(script, options, requestRender, ctx) {
-  const layout = layoutSheet(script, options, requestRender);
-  return renderSheetPage(script, options, layout, (ctx && ctx.pageIndex) || 0, { ...(ctx || {}), requestRender });
 }
 
 /* Two jobs that both need real layout, so the caller runs this AFTER the

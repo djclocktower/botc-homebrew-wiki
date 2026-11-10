@@ -1281,7 +1281,7 @@ export const BOOT_ICONS = {
 };
 
 export function normalizeTeam(t) {
-  const s = String(t || '').toLowerCase().trim();
+  const s = String(t || '').toLowerCase().trim().replace(/s$/, ''); // "minions" is a minion
   if (s === 'traveler' || s === 'traveller') return 'traveller';
   if (s === 'fabled') return 'fabled';
   if (s === 'loric') return 'loric';
@@ -1325,7 +1325,9 @@ export function previewIcon(url) {
    images cannot taint a canvas, and proxying them would break drafts (the
    proxy cannot see an unpublished page's art) for zero gain. Data URLs
    (uploads) never need it either. */
-export function proxied(url, enabled) {
+export function proxied(url, enabled, size) {
+  url = String(url || '');
+  if (/^\/\//.test(url)) url = 'https:' + url; // //host/x.png is another site too
   if (!enabled) return url;
   if (!/^https?:\/\//i.test(url)) return url; // relative or data: = safe
   if (/^https?:\/\/(www\.)?botchomebrew\.wiki\//i.test(url)) {
@@ -1333,8 +1335,10 @@ export function proxied(url, enabled) {
   }
   const stripped = url.replace(/^https?:\/\//i, '');
   return 'https://images.weserv.nl/?url=' + encodeURIComponent(stripped) +
-    '&w=256&h=256&fit=inside&output=png';
+    '&w=' + (size || 256) + '&h=' + (size || 256) + '&fit=inside&output=png';
 }
+/* a logo or a background: drawn far larger than an icon, so asked for larger */
+export const proxiedArt = (url, enabled) => proxied(url, enabled, 1600);
 
 /* ── official roster ─────────────────────────────────────────────────────
    Handed in once by the page: roles.json rows, this tool's
@@ -1373,16 +1377,10 @@ export function setOfficialRoster(roles, jinxMap, nightOrder) {
   nightMeta = (nightOrder && Array.isArray(nightOrder.meta)) ? nightOrder.meta : null;
 }
 
-export function officialRole(id) {
-  return officialById.get(String(id || '').toLowerCase().trim()) || null;
-}
-
-export function officialRosterSize() { return officialById.size; }
-
 function firstImage(img) {
-  if (!img) return null;
-  if (Array.isArray(img)) return img[0] || null;
-  return img;
+  const ok = (s) => typeof s === 'string' && s.trim();
+  if (Array.isArray(img)) return img.find(ok) || null;
+  return ok(img) ? img : null;
 }
 
 const num = (v) => { const n = Number(v); return isFinite(n) ? n : 0; };
@@ -1444,11 +1442,12 @@ export function parseScript(json, proxyIcons) {
   /* pre-scan: every id and slugified name on the script, for jinx pairing.
      Wiki exports write a jinx partner as a page slug or a slugified name,
      so both are indexed. */
+  const isMeta = (e) => String(e.id).toLowerCase().trim() === '_meta';
   const present = new Map(); // key -> raw entry object (or null for strings)
   const keysOf = (e) => {
     const ks = [];
     if (typeof e === 'string') ks.push(e.toLowerCase().trim());
-    else if (e && typeof e === 'object' && e.id && e.id !== '_meta') {
+    else if (e && typeof e === 'object' && e.id && !isMeta(e)) {
       ks.push(String(e.id).toLowerCase().trim());
       if (e.name) ks.push(slugId(e.name));
     }
@@ -1459,11 +1458,12 @@ export function parseScript(json, proxyIcons) {
   }
 
   const characters = [];
+  const seen = new Set();
 
   for (const raw of json) {
-    if (typeof raw === 'object' && raw !== null && raw.id === '_meta') {
-      meta.name = raw.name || meta.name;
-      meta.author = raw.author || '';
+    if (typeof raw === 'object' && raw !== null && raw.id != null && isMeta(raw)) {
+      if (typeof raw.name === 'string' && raw.name.trim()) meta.name = raw.name;
+      meta.author = typeof raw.author === 'string' ? raw.author : '';
       meta.logo = firstImage(raw.logo) || undefined;
       meta.background = typeof raw.background === 'string' ? raw.background : undefined;
       meta.almanac = typeof raw.almanac === 'string' ? raw.almanac : undefined;
@@ -1489,8 +1489,12 @@ export function parseScript(json, proxyIcons) {
     const official = officialById.get(id);
 
     const team = normalizeTeam(entry.team || (official && official.team) || 'townsfolk');
-    const name = entry.name || (official && official.name) || entry.id;
-    const ability = entry.ability != null ? entry.ability : ((official && official.ability) || '');
+    const name = String(entry.name || (official && official.name) || entry.id);
+    const ability = String(entry.ability != null ? entry.ability : ((official && official.ability) || ''));
+    // listed twice: drawn once
+    const dupKey = id + '|' + team + '|' + name;
+    if (seen.has(dupKey)) { warnings.push('"' + name + '" is on the script twice. Shown once.'); continue; }
+    seen.add(dupKey);
     if (!official && typeof raw === 'string') {
       warnings.push('"' + raw + '" is not a known official character id. Shown as written.');
     }
@@ -1767,13 +1771,6 @@ export function reminderParts(text) {
   return out;
 }
 
-/* the same text with the markers taken out, for measuring and for plain
-   surfaces (a dot is a token-sized gap, a token is its own words) */
-export function reminderPlain(text, dotStyle) {
-  return reminderParts(text).map((p) => (p.t === 'dot' ? (dotStyle === 'none' ? '' : '●') : p.s))
-    .join('').replace(/\s{2,}/g, ' ').trim();
-}
-
 /* ── presets ────────────────────────────────────────────────────────────
    Each is a patch deep-merged over the current options (applyPreset in
    app.js), so a preset changes the look and leaves the layout, the
@@ -2036,16 +2033,6 @@ export function elSet(options, key, patch) {
   return options.el[key];
 }
 
-/* the CSS transform an element gets for its offsets, rotation and scale;
-   `extra` is any transform the element already carries (translate(-50%…)) */
-export function elTransform(t, extra) {
-  const parts = [];
-  if (extra) parts.push(extra);
-  if (t.rot) parts.push(`rotate(${t.rot}deg)`);
-  if (t.scale !== 1) parts.push(`scale(${t.scale})`);
-  return parts.join(' ');
-}
-
 /* the CSS filter for a background's adjustments ('' when untouched) */
 export function bgFilter(bg) {
   const f = [];
@@ -2075,11 +2062,12 @@ export function pageList(options, counts) {
       pages.push({ kind: 'night', which, index: i, of: n, label: label + (n > 1 ? ' ' + (i + 1) : '') });
     }
   };
-  if (ni.combined && (ni.first || ni.other)) {
+  // c.split: the two nights were too long to share a page (app.js)
+  if (ni.combined && (ni.first || ni.other) && !c.split) {
     nightPages('both', 'Night Order');
   } else {
-    if (ni.first) nightPages('first', ni.titleFirst || 'First Night');
-    if (ni.other) nightPages('other', ni.titleOther || 'Other Nights');
+    if (ni.first || c.split) nightPages('first', ni.titleFirst || 'First Night');
+    if (ni.other || c.split) nightPages('other', ni.titleOther || 'Other Nights');
   }
   // a jinx page with nothing on it (counts.jinx === 0) is no page at all
   if (options.jinxPage && options.jinxPage.enabled && c.jinx !== 0) {

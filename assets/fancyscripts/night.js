@@ -36,7 +36,7 @@
 
 import {
   NIGHT, NIGHT_RIBBON, FIT, SHEET_W, SHEET_H, U, PAGE_EM, PLACEHOLDER_ICON, STEP_ICONS, footEm,
-  nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
+  nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxiedArt,
   movedTeams, TEAM_LABELS,
 } from './script.js';
 import {
@@ -371,7 +371,7 @@ function logoPlan(spec, options, geo, requestRender) {
   if (lT.hidden) return null;
   const custom = resolveSrc(lT.src);
   let src = custom || (cfg.showLogo !== false && spec.meta.logo && options.useLogo
-    ? proxied(spec.meta.logo, options.proxyIcons) : '');
+    ? proxiedArt(spec.meta.logo, options.proxyIcons) : '');
   if (src && failedArt.has(src)) src = '';
   src = trimmedArt(src);
   const right = geo.edge + G.logoRight - lT.dx; // % from the sheet's right edge
@@ -835,6 +835,7 @@ function barRowNode(u, ci, layout, cfg, options, ed, mark, rowIndex) {
       fontSize: px(ed(m.textSize)),
       lineHeight: px(ed(m.line)),
       color: cfg.textColor || '#2b2b2b',
+      overflowWrap: 'anywhere',
     }, ...reminderNodes(row, cfg, fonts, ed)));
   }
   return node;
@@ -878,6 +879,7 @@ function stackedRowNode(u, ci, layout, cfg, options, ed, mark, rowIndex) {
       fontSize: px(ed(m.textSize)),
       lineHeight: px(ed(m.line)),
       color: cfg.textColor || '#2b2b2b',
+      overflowWrap: 'anywhere',
     }, ...reminderNodes(row, cfg, fonts, ed)));
   }
   return node;
@@ -1095,7 +1097,7 @@ function classicHead(script, spec, options, layout, pageIndex, ctx, mark, e) {
   if (!lT.hidden) {
     const custom = resolveSrc(lT.src);
     let logoSrc = custom || (cfg.showLogo !== false && script.meta.logo && options.useLogo
-      ? proxied(script.meta.logo, options.proxyIcons) : '');
+      ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
     if (logoSrc && failedArt.has(logoSrc)) logoSrc = '';
     logoSrc = trimmedArt(logoSrc);
     if (logoSrc) {
@@ -1164,7 +1166,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
   const sheet = pageFrame(SHEET_W, SHEET_H, U, spec.kind === 'jinx' ? 'script-jinx' : 'script-night');
   sheet.dataset.fsPage = String(pageIndex);
   sheet.dataset.fsDensity = d.toFixed(3);
-  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(cfg.bg, 'list', { scriptBg })) sheet.append(n);
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
 

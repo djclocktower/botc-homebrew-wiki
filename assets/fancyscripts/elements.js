@@ -177,11 +177,7 @@ export function renderBackground(bg, page, extra) {
   return nodes;
 }
 
-/* ── stickers ────────────────────────────────────────────────────────── */
-export const TEXT_ELEMENT_KEYS = ['text', 'x', 'y', 'size', 'font', 'fill', 'fillGrad', 'fill2', 'gradAngle',
-  'strokeW', 'strokeColor', 'shadowX', 'shadowY', 'shadowBlur', 'shadowColor', 'rotate', 'spacing',
-  'opacity', 'align', 'lineHeight', 'blend'];
-
+/* ── stickers ── */
 function anchorTranslate(align) {
   if (align === 'left') return 'translate(0, -50%)';
   if (align === 'right') return 'translate(-100%, -50%)';

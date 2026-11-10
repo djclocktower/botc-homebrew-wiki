@@ -159,6 +159,17 @@ export function textWidth(text, font) {
   return w;
 }
 
+/* Where a word may break besides its spaces: between Chinese, Japanese and
+   Korean characters, which are written without any. A browser wraps them
+   one character at a time, so the counters below must too, or a row is
+   sized for one line and drawn on five. */
+const CJK = '\\u2E80-\\u9FFF\\uAC00-\\uD7AF\\uF900-\\uFAFF\\uFF00-\\uFFEF';
+const CJK_ANY = new RegExp('[' + CJK + ']');
+const CJK_PIECES = new RegExp('[' + CJK + ']|[^' + CJK + ']+', 'g');
+export function breakPieces(word) {
+  return CJK_ANY.test(word) ? word.match(CJK_PIECES) : [word];
+}
+
 /* how many lines `text` takes at `maxW` px in `font` (a CSS font shorthand) */
 export function wrappedLineCount(text, font, maxW) {
   if (!text || !text.trim()) return 1;
@@ -170,13 +181,27 @@ export function wrappedLineCount(text, font, maxW) {
   const words = text.split(/\s+/).filter(Boolean);
   let lines = 1;
   let line = '';
-  for (const w of words) {
-    const trial = line ? line + ' ' + w : w;
-    if (line && textWidth(trial, font) > maxW) {
-      lines++;
-      line = w;
-    } else {
-      line = trial;
+  for (const word of words) {
+    const pieces = breakPieces(word);
+    for (let i = 0; i < pieces.length; i++) {
+      const w = pieces[i];
+      const trial = line ? line + (i ? '' : ' ') + w : w;
+      if (line && textWidth(trial, font) > maxW) {
+        lines++;
+        line = w;
+      } else {
+        line = trial;
+      }
+      // alone on its line and still too wide (a link, a run of letters
+      // with no space): it breaks inside itself, as the sheet draws it
+      if (line === w) {
+        const ww = textWidth(w, font);
+        if (ww > maxW) {
+          const extra = Math.ceil(ww / maxW) - 1;
+          lines += extra;
+          line = w.slice(Math.floor(w.length * extra * maxW / ww));
+        }
+      }
     }
   }
   if (wrapCache.size > WRAP_CACHE_MAX) wrapCache = new Map();
@@ -209,6 +234,13 @@ export function wrappedRunLineCount(runs, maxW, baseFont, restW) {
     } else {
       x += need;
     }
+    // wider than a whole line by itself: it breaks inside itself
+    const full = lines === 1 ? maxW : rest;
+    if (x === w && w > full && rest > 0) {
+      const extra = Math.ceil((w - full) / rest);
+      lines += extra;
+      x = Math.max(0, w - full - (extra - 1) * rest);
+    }
     pendingSpace = false;
   };
   for (const r of runs) {
@@ -217,7 +249,7 @@ export function wrappedRunLineCount(runs, maxW, baseFont, restW) {
     for (const p of parts) {
       if (!p) continue;
       if (/^\s+$/.test(p)) { pendingSpace = true; continue; }
-      place(textWidth(p, r.font) + (r.ls || 0) * p.length);
+      for (const q of breakPieces(p)) place(textWidth(q, r.font) + (r.ls || 0) * q.length);
     }
   }
   if (wrapCache.size > WRAP_CACHE_MAX) wrapCache = new Map();
@@ -317,16 +349,6 @@ export function iconFilter(effect, strength, ed) {
     f.push(`drop-shadow(${ed(0.05)}px ${ed(0.13 * strength)}px ${ed(0.2 * strength)}px rgba(32, 20, 8, ${a.toFixed(2)}))`);
   }
   return f.join(' ') || 'none';
-}
-
-/* a stable 32-bit hash for cache keys */
-export function hashStr(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(36);
 }
 
 /* ── logos, trimmed to their ink ────────────────────────────────────────

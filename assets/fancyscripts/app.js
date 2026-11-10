@@ -260,17 +260,22 @@ function computeLayouts() {
   // a ticked jinx page with nothing to show has no tab, so the tick says why
   if ($('fs-jinx-empty')) $('fs-jinx-empty').hidden = !(options.jinxPage.enabled && layouts.jinxSpec && layouts.jinxSpec.empty);
   const ni = options.night;
-  if (ni.combined && (ni.first || ni.other)) {
+  const both = ni.combined && (ni.first || ni.other);
+  if (both) {
     layouts.bothSpec = buildNightSpec(derived, options, 'both');
     layouts.both = nightLayout(layouts.bothSpec);
-    counts.both = 1;
-  } else {
-    if (ni.first) {
+    // Two columns never run onto a second page, so a long night shrinks
+    // until it cannot be read: each night then gets its own page instead.
+    if (layouts.bothSpec.cfg.fit !== false && layouts.both.d < NIGHT_SPLIT_BELOW) counts.split = true;
+    else counts.both = 1;
+  }
+  if (!both || counts.split) {
+    if (ni.first || counts.split) {
       layouts.firstSpec = buildNightSpec(derived, options, 'first');
       layouts.first = nightLayout(layouts.firstSpec);
       counts.first = layouts.first.pages.length;
     }
-    if (ni.other) {
+    if (ni.other || counts.split) {
       layouts.otherSpec = buildNightSpec(derived, options, 'other');
       layouts.other = nightLayout(layouts.otherSpec);
       counts.other = layouts.other.pages.length;
@@ -279,6 +284,7 @@ function computeLayouts() {
   pages = pageList(options, counts);
 }
 
+const NIGHT_SPLIT_BELOW = 0.6;
 function currentPage() {
   return pages.find((p) => pageKey(p) === currentKey) || pages[0];
 }
@@ -3101,6 +3107,9 @@ async function boot() {
   // and build it once the page is idle, so the first tab switch (and the
   // PDF, which always needs it) does not wait on it
   setTimeout(() => {
+    // not on a metered or data-saving connection: the tab fetches it when opened
+    const conn = navigator.connection || {};
+    if (conn.saveData || /2g/.test(conn.effectiveType || '')) return;
     const warm = () => { if (options.exportOpts.pages.back) { seedBackColor(); backCanvas(options.back, requestRender); } };
     if (window.requestIdleCallback) window.requestIdleCallback(warm, { timeout: 4000 }); else warm();
   }, 3500);

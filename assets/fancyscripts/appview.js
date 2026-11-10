@@ -33,7 +33,7 @@
 
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
-  groupByTeam, frontCharacters, proxied, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
+  groupByTeam, frontCharacters, proxiedArt, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
   breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART, contentFloor,
 } from './script.js';
 import {
@@ -138,7 +138,7 @@ function headerMetrics(script, options) {
 // the title image: an upload, else the script's logo (trimmed to its ink)
 function titleArt(script, options) {
   const tT = elGet(options, 'appTitle');
-  let art = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+  let art = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
   if (art && failedArt.has(art)) art = '';
   return trimmedArt(art);
 }
@@ -504,7 +504,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
     return node;
   };
 
-  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(a.bg, 'appfront', { scriptBg, noGarland: !!elGet(options, 'appGarland').src })) sheet.append(n);
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
   drawRibbon(sheet, options, A.sidebarW, ctx);
@@ -969,7 +969,7 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
   const sheet = pageFrame(SHEET_W, SHEET_H, U, 'script-night script-app');
   sheet.dataset.fsPage = String(pageIndex);
   sheet.dataset.fsDensity = d.toFixed(3);
-  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(a.bg, 'applist', { scriptBg })) sheet.append(n);
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
   drawRibbon(sheet, options, A.sidebarW, ctx);
@@ -1063,7 +1063,7 @@ export function renderAppListPage(script, spec, options, layout, pageIndex, ctx)
   if (isLast && layout.logoOn) {
     const lT = elGet(options, P + 'Logo');
     const top = listTop + (page.naturalEm || 0) * d + A.logoGap + A.logoMaxH / 2;
-    let logoSrc = resolveSrc(lT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+    let logoSrc = resolveSrc(lT.src) || (script.meta.logo && options.useLogo ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
     if (logoSrc && failedArt.has(logoSrc)) logoSrc = '';
     logoSrc = trimmedArt(logoSrc);
     if (logoSrc) {
