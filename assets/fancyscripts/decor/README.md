@@ -3,14 +3,15 @@
 Collected 2026-10-24 from botc.app, script.bloodontheclocktower.com and
 bloodontheclocktower.com. All artwork belongs to The Pandemonium Institute. Fancy Scripts
 offers them as art choices and stickers: ART_CHOICES and DECOR_STICKERS in ../script.js
-are the list. The six images over 1 MB have a .webp copy at 1600px beside them, and the
-copy is what the tool loads.
+are the list. The images that were over 1 MB as collected (the logo skulls and the
+monstera leaf) are kept only as .webp copies at 1600px, which is what the tool loads;
+the PNG originals (45 MB) are in git history before the release-prep commits.
 
 ```
 
 skulls/cut-from-logos/   The edition skulls with the title lettering cut out
-                         of the official logos. The .png files are the cut-outs
-                         as collected: The Tomb has a gap at the jaw where the
+                         of the official logos. The cut-outs as collected (PNG,
+                         now only in git history): The Tomb has a gap at the jaw where the
                          word "The" was painted over it, and the others have
                          clipped leaves and stray scraps of lettering.
                          Trouble Brewing, Bad Moon Rising and Travellers &

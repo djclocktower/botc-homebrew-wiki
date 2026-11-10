@@ -1104,7 +1104,7 @@ script.html            Script Builder — the markup only; the behaviour is
                        fixed-height app shell (.sbx-* in styles.css): the
                        document does not scroll, the character panel and the
                        main column do. Tabs: Script, Night Order, Jinxes,
-                       Analyse, Details & Export, and a last one, Fancy
+                       Analyse, Export, and a last one, Fancy
                        Scripts (data-open, not data-tab), which opens the
                        script in Fancy Scripts through doFancy(). See "The Script Builder".
                        Import matches each entry with matchEntry(): a bare id
@@ -1181,7 +1181,10 @@ tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        and assets/tool-icons/{script,tokens,iconforge,starlit,
                        bloodstar,jinxes,creators}.webp (the Starlit team's
                        art, trimmed to the drawing, 300px; bloodstar.webp is
-                       Mass Import's, which took the Bloodstar importer in). The same picture
+                       Mass Import's, which took the Bloodstar importer in;
+                       fancyscripts.webp is a small picture of a finished
+                       sheet, taken from the tool itself, not Starlit art).
+                       The same picture
                        sits beside each tool page's title (.tool-hero-row /
                        .tool-hero-icon in styles.css; Grimoire Forge keeps its
                        own .gf-hero-* copy), except /starlit, whose title is
@@ -1263,6 +1266,17 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        preview pinned beside them (above them on a narrow
                        screen, and only on Adjust and Custom Art there).
                        Generating opens the Print tab, where the sheets land.
+                       The panel lists the 181 official characters beside
+                       the wiki's (marked Official): a light row until it is
+                       added, when addSlug() makes its record with
+                       officialExt() and fetches its art. A roster's
+                       `off-{id}` slugs (?script=, ?chars=) are made the same
+                       way in ingestUrl(); they used to be dropped, so Print
+                       Tokens on a mostly official script printed one or two
+                       tokens. loadData() merges night-order.json into the
+                       roster, or an official token has no night leaves.
+                       `?chars=a,b&replace=1` replaces the set (the Script
+                       Builder's More > Print tokens).
                        On a phone the preview is pinned under the tab strip
                        on Adjust and Custom Art, and the token editor's
                        preview (`.tte-stick`) stays at the top of its window
@@ -1660,7 +1674,21 @@ What shapes it:
   passes `'silent'`. **`mark` is the undo stack's name — do not declare
   another function called that in the file** (a duplicate declaration
   silently won once and the stack recorded nothing; the perf marks are
-  `perfMark`).
+  `perfMark`). `mark()` skips a step only when it equals the TOP OF THE
+  STACK, never `hist.last`: after an undo `hist.last` is the state on
+  screen, and the step before the next change was never recorded.
+- **A script holds 200 characters** (`SCRIPT_MAX`, the Worker's
+  `SCRIPT_CHARACTERS_MAX`): `toggle`, "+ All", import and a share link stop
+  there and say so.
+- **Deleting the open script closes it** (`deleteEntry`): only dropping its
+  `libId` let the next autosave put it straight back. Undo reopens it.
+- **A confirm never promises a copy it will not keep**: `keptNote()` says
+  the open script is NOT kept when My Scripts is full and it is not in it.
+- **A share link's script-only characters are cleaned first** (`applyShare`:
+  `ownEntry()` over each, slugs checked) and counted as known, or the link
+  loaded without them; its logo, background and almanac must be https.
+- More > **Print tokens** opens the roster in the Token Tool
+  (`tokens?replace=1&chars=`), without characters made for this script.
 - **The name and the author are on the page.** They were not, and
   `botc_script_meta` is shared with publish-script.html — so a script edited
   from its published page left its name, its author and its `editSlug` behind,
@@ -1693,8 +1721,18 @@ as it always was. The browser's copy is still what the page works from.
 - **A save names the version it was made on** (`base`, the `saved` stamp the
   browser last had). If the account has moved on since, another device
   saved in between: the newer EDIT (`updated`) takes the id and the other is
-  stored as "(older copy)", outside the limit, and the browser reads the list
-  again. Nothing is ever dropped.
+  stored as "(older copy)", and the browser reads the list again. Copies may
+  pass the limit by `MY_SCRIPT_COPIES` (20) and no further: past that the
+  save is counted in `full` and the text stays in the browser. When the
+  account's version is the newer one the reply names the id in `lost` (never
+  in `saved`), so the browser takes the account's version instead of marking
+  its own losing text as synced.
+- **Every write is conditional.** The UPDATE carries `AND saved=?` (the row
+  that was read) and is looked at again when it changed nothing; the INSERT
+  carries the limit in its own WHERE (`insertUnder`). Two saves arriving
+  together used to both pass a count read beforehand, and the later one won
+  in silence. `updated` is clamped to five minutes ahead, so a clock that
+  runs fast cannot win every conflict. The body is capped at 8 MB.
 - **The browser's side** (`cloudStart` / `cloudPull` / `cloudPush` in
   script-builder.js): each entry carries `saved` and `syncedUpdated`, and one
   whose `updated` has moved is sent 2.5 s after the change (and on
@@ -1708,11 +1746,15 @@ as it always was. The browser's copy is still what the page works from.
   account. Deletes wait in `botc_script_library_gone` until sent.
   `botc_script_library_owner` names the account the list last synced with;
   a different account signing in on that browser gets its own list, never
-  the previous one's scripts.
+  the previous one's scripts. A push is about 2 MB at most (the rest
+  follows in the next) and uses `keepalive` only under 60 KB: the browser
+  refuses a larger keepalive body outright, which used to make every big
+  save fail without a word. A failed push retries up to four times.
 - **Images**: `POST /api/my-scripts/image` mints `library/{userId}/{token}`
   like `/api/attachment` (type whitelist, byte sniffing, 5 MB). `library/` is
   in `R2_SERVE_PREFIXES`, `run_worker_first` and the orphan sweep, whose
-  references now include `script_library.data`.
+  references now include `script_library.data`. 200 images an account
+  (`MY_SCRIPT_IMAGES_MAX`), and account deletion deletes them.
 
 - **The roster is drawn as the character SHEET** by default, not as cards:
   one parchment per team, two columns of rows, the name opening the line and
@@ -1859,7 +1901,10 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   aside while the gallery is up, since a modal is drawn above everything).
   The icon is fitted with `art-normalize.js` and goes to
   `/api/my-scripts/image`, so it needs a login. Stored as
-  `meta.ownChars[slug]` (`x-` + a random id, `ownEntry()` cleans it);
+  `meta.ownChars[slug]` (`x-` + a random id, `ownEntry()` cleans it, and
+  keeps how the character plays: `firstNight`, `otherNight`, the two night
+  reminders, `reminders`, `remindersGlobal`, `setup`, `special`, so one that
+  came in from a file is on the Night Order tab and exports whole);
   `setMeta()` puts them into `bySlug` (`syncOwnChars()`), so the roster, the
   peek card (Edit, no Swap), Copy as text and the export treat them like
   any character, and My Scripts, the account sync, undo and share links
@@ -1874,7 +1919,7 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   of the "unfinished on this wiki" warning.
 - **View → Creator mark** (`view.showMarks`) draws each homebrew
   character's creator marks beside its name in the roster and the panel,
-  on screen only. The Details & Export tick (`meta.creatorMarks`) is the
+  on screen only. The Export tab's tick (`meta.creatorMarks`) is the
   other one: it puts them in the export and on the published page too, and
   the roster shows them for either. The panel's names are repainted in
   place (`paintPanelMarks()`), never rebuilt.
@@ -1886,7 +1931,7 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   place (`#sb-name`, `#sb-author`, sized to their text by `fitBarBox()`; the
   Details boxes are the same two fields), the counts, Undo/redo, View,
   Random, Sort, Arrange, More and Publish. More holds "Export, share or
-  print…" (which opens Details & Export, where Download, Copy, Share and
+  print…" (which opens the Export tab, where Download, Copy, Share and
   Fancy Sheet live), Import and the library actions. The Analyse tab's Shape
   and "Players it can seat" boxes and Tonight's bag were taken out at the
   owner's request; the counts strip is the shape now.
@@ -2005,7 +2050,7 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   Fancy Sheet button hands the roster over (`doFancy`). Do not add a second
   one. What the print sheet could do that nothing on screen could is now
   **View → Columns → 2**.
-- **Details & Export** also carries a JSON preview and
+- **The Export tab** also carries a JSON preview and
   the **Character ids** widget (`export-ids-editor.js`, the same one
   publish-script mounts) writing `meta.exportIds`, which `buildPageExport`
   already reads. **The credits Fabled is not optional** — see below.
@@ -2018,7 +2063,7 @@ id `botchomebrewwiki`), whose ability reads "This script was made on
 botchomebrew.wiki and contains characters by: …". The "Name each creator's
 characters" tick (localStorage `botc_script_credits_detail`) swaps the plain
 name list for one naming each creator's characters, and the exact line is
-shown under a disclosure in Details & Export. `buildCreditsFabled()` in
+shown under a disclosure in the Export tab. `buildCreditsFabled()` in
 render.js builds the object and `buildPageExport` takes it as `opts.credits`,
 which ONLY this page passes — a published `/s/` or `/collection/` JSON box is
 the author's own script and must never carry the wiki's signature. The
@@ -4640,7 +4685,20 @@ replaced with an upload, and free text/image stickers go anywhere.
 Downloadable as a share JPEG, a print PNG, all pages as PNGs, or one PDF.
 Client-side, except one route: a design can be saved with a script or
 collection (see "Saved with the script" below); otherwise the autosave is
-localStorage and a design file is a download. The script sheet
+localStorage and a design file is a download. Both carry only the uploads
+the design still uses (`designObject()`); a replaced one stays in memory
+for Undo.
+
+Text without spaces (Chinese, a long link) is counted the way a browser
+wraps it: `breakPieces()` in util.js lets a word break between CJK
+characters, a piece wider than the line counts `ceil(w / line)` lines, and
+the ability and reminder nodes carry `overflow-wrap: anywhere` so the
+measure and the page agree. Ordinary words are measured exactly as before.
+A name too long for its column on the printed sheet is set smaller
+(`nameFit` in sheet.js). `parseScript()` draws a character listed twice
+once (same id, team and name), reads `_meta` in any case, and makes a
+non-text name or ability text. `proxiedArt()` asks the image proxy for a
+logo or background at 1600px (an icon gets 256). The script sheet
 comes in two styles, the printed sheet above and the **app view** (see
 below); the night sheets in three: the ribbon style (the default), the
 classic printed sheet and the app view.
@@ -4794,7 +4852,10 @@ or nothing).
 
 The pages are ticked on in the Pages card (`night.first` / `night.other`;
 `night.combined` puts both nights on one page in two columns, and is ON by
-default (the owner's call), so ticking either night gives that page;
+default (the owner's call), so ticking either night gives that page. Two
+columns never run onto a second page, so when they would have to shrink
+below `NIGHT_SPLIT_BELOW` (0.6, app.js) each night gets its own page
+instead (`counts.split`, read by `pageList()`);
 `night.twoColumns` splits one night over two columns by weight). Each
 carries its own colours, fonts and background; `''` for a night colour
 means "follow the sheet". The list auto-fits down to `night.minFit` and then
@@ -5229,6 +5290,13 @@ design only to someone who can edit the draft.
   next save reaches them.
 - Capped at `FANCY_DESIGN_MAX` (8 MB: uploads ride inside). Purging the page
   deletes the file, or a new page on the slug would open with it.
+- **A saved design is shown to every reader, and its uploads end up inside
+  CSS** (`@font-face … url()`). So the save keeps only `assets` and `fonts`
+  values that are plain base64 `data:` URLs (`FANCY_DATA_URL`) under plain
+  keys, and the page refuses anything else again when a design is loaded
+  (`isDataUrl()` / `registerFont()` in app.js). The POST is answered inside
+  the POST gate, after the suspended-account and wiki-lock checks; only the
+  GET is dispatched early.
 
 ### Three ticks from the comparison with botc.letshare.fun
 
@@ -5285,6 +5353,9 @@ sheet, not a side drawer**: opening them sets `html.fs-split`, which fixes
 `#fs-scroll` to the top 44% of the screen and fits the whole page into it
 (`fitPreview()`), so every change is seen as it is made. There is no scrim
 there, so the page above stays touchable (tap an element to select it).
+The preview covers the bar there, so the page tabs and undo/redo are moved
+into `#fs-splitbar`, a strip between the page and the sheet, and back when
+the sheet closes (`split()` in app.js).
 
 ### The watermark
 
@@ -5476,7 +5547,8 @@ needs its ratio re-measured or it is picked at the wrong size.
   sidebar, skull, flourishes and dividers in `art/` are the sealed payload
   (immutable-cached in `_headers`) — the skull is a feathered opaque patch
   cut from the same parchment source, so "optimizing" images here breaks the
-  blend. The ribbon is TWO files: `sidebar-flat.png` (the damask stretched
+  blend. The ribbon is TWO files: `sidebar-flat.webp` (q95, 357 KB; it was a
+  2.6 MB PNG and is recoloured through pixel.js either way: the damask stretched
   full-bleed over the whole ribbon column — sheet edge to sidebarX+sidebarW,
   full height) and `sidebar-shade.png`, the parchment frame's shading as a
   black overlay whose alpha is 1 minus that column's normalized luminance.
@@ -5501,7 +5573,7 @@ needs its ratio re-measured or it is picked at the wrong size.
   `sidebarX`/`sidebarW` still place the labels. The pre-composite strip is
   in git history (commit df66f84, as `sidebar.png`) if either file ever
   needs rebaking. Changed art gets a NEW filename (`sidebar.png` →
-  `sidebar-full.png` → `sidebar-flat.png`): `art/*` is immutable-cached, so
+  `sidebar-full.png` → `sidebar-flat.png` → `sidebar-flat.webp`): `art/*` is immutable-cached, so
   replacing content under an old name strands anyone who already fetched it
   on the stale copy for a year.
 - **Official roster data is the wiki's own** (`assets/roles.json`, handed to
