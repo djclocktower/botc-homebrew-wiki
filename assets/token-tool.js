@@ -179,7 +179,7 @@
      every character on the wiki, and drawing it with full art (and no lazy
      loading) had a phone downloading hundreds of MB alongside the engine. */
   function thumbSrc(c) {
-    if (c.ext) return c.image || 'assets/favicon.png';
+    if (c.ext || c.panelOnly) return c.image || 'assets/favicon.png';
     var a = c.art || ('art/' + c.slug + '.png');
     if (/^art\/[^/]+$/.test(a)) return 'assets/thumb/' + a.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
     return artRel(c);
@@ -321,9 +321,20 @@
     });
     // Official BotC roles (bundled) so bare official ids in imported scripts resolve.
     // Non-fatal: if it fails, official ids just stay unrecognised as before.
-    var official = fetch('assets/roles.json').then(function (r) { return r.json(); }).then(function (roles) {
-      (roles || []).forEach(function (role) {
+    // roles.json has no night order; night-order.json does, by name. Without
+    // it an official token would be drawn with no first-night or
+    // other-nights leaf.
+    var night = fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; });
+    var official = Promise.all([fetch('assets/roles.json').then(function (r) { return r.json(); }), night]).then(function (got) {
+      var pos = {};
+      ((got[1] && got[1].characters) || []).forEach(function (c) { pos[norm(c.name)] = c; });
+      (got[0] || []).forEach(function (role) {
         if (!role || !role.id) return;
+        var p = pos[norm(role.name)];
+        if (p) {
+          if (!role.firstNight) role.firstNight = p.firstNight || 0;
+          if (!role.otherNight) role.otherNight = p.otherNight || 0;
+        }
         officialById[norm(role.id)] = role;
         if (role.name) officialById[norm(role.name)] = role;
       });
@@ -351,7 +362,8 @@
     return (coll.match || []).indexOf(norm(c.appearsIn)) !== -1;
   }
 
-  /* ?script / ?collection -> REPLACE the set; ?chars -> ADD to the set */
+  /* ?script / ?collection -> REPLACE the set; ?chars -> ADD to the set
+     (or replace it, with &replace=1: the Script Builder's Print tokens) */
   function ingestUrl() {
     var q = new URLSearchParams(location.search);
     var hasScript = !!q.get('script'), hasColl = !!q.get('collection');
@@ -402,8 +414,18 @@
         }).catch(function () {}));
     }
     return Promise.all(jobs).then(function () {
+      // A roster names an official character `off-{id}`. The feed has no
+      // row for those, so they are made here as an imported file makes
+      // them; without this a published script printed its homebrew alone.
+      var madeOff = false;
+      incoming.forEach(function (sl) {
+        if (charBySlug[sl] || sl.indexOf('off-') !== 0) return;
+        var rec = officialExt(sl.slice(4), {});
+        if (rec) { charBySlug[rec.slug] = rec; madeOff = true; }
+      });
+      if (madeOff) saveExt();
       var valid = incoming.filter(function (sl) { return charBySlug[sl]; });
-      if (hasScript || hasColl) setSlugs = [];
+      if (hasScript || hasColl || q.get('replace')) setSlugs = [];
       valid.forEach(function (sl) { if (setSlugs.indexOf(sl) < 0) setSlugs.push(sl); });
       // ADDS to the set (never replaces — the reader may be mid-sheet) and
       // opens the per-token editor once everything is wired.
@@ -434,9 +456,21 @@
     if (sideGroups) return sideGroups;
     var known = TEAMS.map(function (t) { return t[0]; });
     sideGroups = [];
+    // The game's own characters beside the wiki's, as in the Script Builder.
+    // Each is a light row here and becomes a full record when it is added.
+    var officials = [], seenRole = {};
+    Object.keys(officialById).forEach(function (k) {
+      var role = officialById[k], id = norm(role.id);
+      if (seenRole[id]) return;
+      seenRole[id] = 1;
+      officials.push(charBySlug['off-' + id] || {
+        slug: 'off-' + id, official: true, panelOnly: true, name: String(role.name || role.id),
+        ability: String(role.ability || ''), team: normTeam(role.team), image: 'assets/icons-sm/' + id + '.webp'
+      });
+    });
     TEAMS.forEach(function (t) {
       var key = t[0];
-      var chars = allChars.filter(function (c) {
+      var chars = allChars.concat(officials).filter(function (c) {
         return c.team === key || (key === 'other' && known.indexOf(c.team) < 0);
       }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
       chars.forEach(function (c) { c._q = (c.name || '').toLowerCase(); c._qa = (c.ability || '').toLowerCase(); });
@@ -451,6 +485,7 @@
       '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
         '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
         '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+        (c.official ? '<span class="sbx-off">official</span>' : '') +
         '<span class="sbx-add-tick" aria-hidden="true">' + TICK + '</span>' +
       '</button>' +
       (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + CHEV + '</button>' : '') +
@@ -558,8 +593,16 @@
 
   /* ---- working set (main column, Script Builder rows + stepper + edit) ---- */
   function addSlug(sl) {
+    // an official character picked in the panel gets its record now
+    if (!charBySlug[sl] && sl.indexOf('off-') === 0) {
+      var rec = officialExt(sl.slice(4), {});
+      if (rec) { charBySlug[sl] = rec; saveExt(); }
+    }
     if (!charBySlug[sl] || setSlugs.indexOf(sl) >= 0) return;
     setSlugs.push(sl); saveSet(); renderAll(); schedulePreview(); refreshGenerate();
+    // art hosted elsewhere is fetched into the engine the first time it is needed
+    var c = charBySlug[sl];
+    if (c.ext && extArtStatus[sl] !== 'ok') fetchExtArt([c]).then(function () { schedulePreview(); });
   }
   function removeSlug(sl) {
     setSlugs = setSlugs.filter(function (x) { return x !== sl; });

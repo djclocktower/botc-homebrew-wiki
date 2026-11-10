@@ -3456,6 +3456,13 @@
 
   var ACTIONS = {
     details: function () { showTab('meta'); },
+    // the open script, in the Token Tool (characters made for this script
+    // alone have no page there to draw from)
+    tokens: function () {
+      var slugs = order.filter(function (x) { return x.indexOf(OWN_PREFIX) !== 0; });
+      if (!slugs.length) { toast('Add characters first.'); return; }
+      window.open('tokens?replace=1&chars=' + slugs.map(encodeURIComponent).join(','), '_blank');
+    },
     'import': function () { $('sb-import-file').click(); },
     save: function () { saveCurrentToLibrary(); },
     'new': function () { newScript(); },
