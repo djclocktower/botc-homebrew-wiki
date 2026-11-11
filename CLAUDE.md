@@ -3526,6 +3526,12 @@ looked broken. Nobody ticks it meaning "this one page isn't mine but those
 three are"; somebody genuinely credited alongside a name on some pages and not
 others writes a different credit, which is what the credit string is for.
 
+- **A tick on a credit naming several people spares the owner's own name.**
+  "Luis S, TheDarkArtist" ticked once took "Luis S" off the account behind 82
+  "Luis S" pages. `disownTally()` is the one rule every ownership query feeds
+  its rows through: a ticked single-name credit gives that name up; a ticked
+  multi-name credit gives up each name EXCEPT one the account also publishes
+  under by itself on an unticked page.
 - **`CREDIT_UNLINKED_SQL` is the per-row test and `CREDIT_DISOWNED_COUNT` is
   what the ownership queries group by** — an owner whose count is above zero
   is skipped for that name. Every one of them carries it:
@@ -6051,7 +6057,10 @@ later. `/api/character` refuses a *publish* with no name or ability outright
 quietly unpublish it. create.html gives a nameless draft a fresh
 `untitled-{random}` identity (never the slug check, which would land it on an
 "untitled" draft the account already has) and claims the `art/` slot only
-when there is art; naming it later is an ordinary rename. edit.html only asks
+when there is art; naming it later is an ordinary rename. A later save in
+the same tab goes back to the page the first one made (`savedSlug`), unless
+that page is published and the name has changed: that is the next character
+typed over the form, and it gets a page of its own. edit.html only asks
 for a name and ability when the save is a publish or a suggestion. The
 account page and /drafts show a nameless one as "Untitled character".
 `POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages

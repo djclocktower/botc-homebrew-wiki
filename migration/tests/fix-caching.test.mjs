@@ -132,6 +132,26 @@ test('the creators list follows resolveCreatorAccount: scripts count, and a diso
   assert.equal((await f.request('/author?a=Penname')).status, 200, 'and /author agrees: no redirect');
 });
 
+test('a tick on a co-credit keeps the name its owner also publishes under alone', async t => {
+  const f = await fixture(); t.after(() => f.finish()); accounts(f);
+  f.insert('characters', 'solo', { name: 'Solo', creator: 'Penname', ability: 'x' });
+  f.insert('characters', 'duo', { name: 'Duo', creator: 'Penname, Guest', ability: 'x', creditUnlinked: true });
+  f.db.prepare("UPDATE characters SET creator='Penname', owner_id=2 WHERE slug='solo'").run();
+  f.db.prepare("UPDATE characters SET creator='Penname, Guest', owner_id=2 WHERE slug='duo'").run();
+  await f.hooks.bumpContentVersion(f.env, 'character');
+  const creators = (await json(f, '/api/creators')).creators;
+  assert.equal(creators.find(c => c.name === 'Penname').username, 'maker');
+  assert.equal(creators.find(c => c.name === 'Guest').username, null);
+  assert.equal((await f.request('/author?a=Penname')).status, 302, 'the owner\'s own name still links');
+  assert.equal((await f.request('/author?a=Guest')).status, 200, 'the co-credited name does not');
+  const profile = await json(f, '/api/user?u=maker');
+  assert.deepEqual(profile.characters.map(c => c.slug).sort(), ['duo', 'solo']);
+  // With no page under the name alone, the tick still gives both names up.
+  f.db.prepare("DELETE FROM characters WHERE slug='solo'").run();
+  await f.hooks.bumpContentVersion(f.env, 'character');
+  assert.equal((await f.request('/author?a=Penname')).status, 200);
+});
+
 test('a creator\'s Curata opt-out holds on script rosters and their creator page', async t => {
   const f = await fixture(); t.after(() => f.finish()); accounts(f);
   f.insert('characters', 'shy', { name: 'Shy', creator: 'maker', ability: 'x', curata: true, curataOptOut: true });
