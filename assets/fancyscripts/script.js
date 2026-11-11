@@ -867,7 +867,7 @@ export const DEFAULT_OPTIONS = {
   bootRulesFont: 'dumbledor2', // the token tool's character name face
   bootRulesColor: '', // '' = the sheet's ink
   topChar: '', // a character's id: drawn with its ability in a top corner instead of in its team
-  topCharSide: 'left', // left | right
+  topCharSide: 'right', // right | left
   // background
   bg: { ...DEFAULT_BG },
   // movable elements: key -> partial EL_DEFAULT
@@ -1042,7 +1042,7 @@ function topCharOf(script, options) {
 export function topCorners(script, options) {
   const out = { left: null, right: null };
   const c = topCharOf(script, options);
-  if (c) out[options.topCharSide === 'right' ? 'right' : 'left'] = { icon: c.icon, name: c.name, team: c.team, color: c.color, ability: c.ability || '', rules: [] };
+  if (c) out[options.topCharSide === 'left' ? 'left' : 'right'] = { icon: c.icon, name: c.name, team: c.team, color: c.color, ability: c.ability || '', rules: [] };
   const rules = options.bootRulesTop && !elGet(options, 'bootRules').hidden ? (script.meta.bootlegger || []) : [];
   if (rules.length) {
     if (out.right) out.right.rules = rules;
