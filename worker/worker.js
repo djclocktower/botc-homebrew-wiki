@@ -4039,7 +4039,35 @@ const CREDIT_DISOWNED_COUNT = `SUM(CASE WHEN ${CREDIT_UNLINKED_SQL} THEN 1 ELSE 
    per-name fix above looked broken for half an hour after it went live.
    Bump this whenever the rule changes and the old answers die with the
    deploy. */
-const CREDIT_RULE_V = 3;
+const CREDIT_RULE_V = 4;
+
+/* Which names a tick gives up. On a credit naming one person it is that name.
+   On a credit naming several ("Luis S, TheDarkArtist") the tick cannot say
+   which of them is not the uploader, so it leaves alone any name the account
+   also publishes under BY ITSELF on a page nobody ticked: ticking that
+   co-credit once took "Luis S" off the account behind 82 "Luis S" pages.
+   Every ownership query feeds its rows through one of these, so they cannot
+   disagree. add(owner, credit, ticked, plain): the row (or group of rows)
+   carries a ticked page / an unticked page under this credit. */
+function disownTally() {
+  const seen = new Map();   // "owner|name" -> { hard, weak, solo }
+  return {
+    add(ownerId, credit, ticked, plain) {
+      const ns = creditNames(credit);
+      for (const n of ns) {
+        const k = Number(ownerId) + '|' + n;
+        const f = seen.get(k) || { hard: false, weak: false, solo: false };
+        if (ticked) f[ns.length === 1 ? 'hard' : 'weak'] = true;
+        if (plain && ns.length === 1) f.solo = true;
+        seen.set(k, f);
+      }
+    },
+    has(ownerId, name) {
+      const f = seen.get(Number(ownerId) + '|' + name);
+      return !!f && (f.hard || (f.weak && !f.solo));
+    }
+  };
+}
 
 // The same narrowing against a list of names: bind creditProbe() of each.
 function creditAnyProbeSQL(col, n) {
@@ -4099,9 +4127,8 @@ async function resolveCreatorAccount(env, name) {
       const by = new Map();
       for (const r of rows || []) {
         if (!creditHas(r.c, [key])) continue;
-        const o = by.get(r.owner_id) || { owner_id: r.owner_id, n: 0, dis: 0 };
+        const o = by.get(r.owner_id) || { owner_id: r.owner_id, n: 0 };
         o.n++;
-        if (Number(r.dis)) o.dis++;
         by.set(r.owner_id, o);
       }
       return [...by.values()];
@@ -4118,14 +4145,14 @@ async function resolveCreatorAccount(env, name) {
     ]);
     const charRows = tally(chars.results), scriptRows = tally(scripts.results);
     // One disown anywhere takes the account out of the running for this name.
-    const disowned = new Set();
-    for (const r of [...charRows, ...scriptRows]) {
-      if (Number(r.dis) > 0) disowned.add(Number(r.owner_id));
+    const dis = disownTally();
+    for (const r of [...(chars.results || []), ...(scripts.results || [])]) {
+      dis.add(r.owner_id, r.c, Number(r.dis), !Number(r.dis));
     }
     const pick = rows => {
       let best = null;
       for (const r of rows) {
-        if (disowned.has(Number(r.owner_id))) continue;
+        if (dis.has(r.owner_id, key)) continue;
         if (!best || r.n > best.n || (r.n === best.n && r.owner_id < best.owner_id)) best = r;
       }
       return best ? best.owner_id : null;
@@ -4178,11 +4205,14 @@ async function creatorNamesFor(env, userId, username) {
     ]);
     // Split each credit: co-authoring a page claims the name you were credited
     // under, not the whole "Taiyi (太一), Saki" string.
+    const dis = disownTally(), seen = new Set();
     for (const r of [...(chars.results || []), ...(scripts.results || [])]) {
-      for (const n of creditNames(r.n)) (Number(r.dis) ? disowned : names).add(n);
+      const ticked = !!Number(r.dis);
+      dis.add(userId, r.n, ticked, !ticked);
+      for (const n of creditNames(r.n)) { seen.add(n); if (!ticked) names.add(n); }
     }
     // A disown beats any number of pages that did not tick it.
-    for (const n of disowned) names.delete(n);
+    for (const n of seen) if (dis.has(userId, n)) { disowned.add(n); names.delete(n); }
   } catch { /* leave whatever we got */ }
   try {
     const { results } = await env.DB.prepare(
@@ -6856,15 +6886,12 @@ async function buildCreatorsList(env, flags = {}) {
           GROUP BY author, owner_id`
       ).all()
     ]);
-    const off = new Map();       // name -> Set(owner_id that disowned it)
+    const dis = disownTally();
     function count(results) {
       const perName = new Map(); // name -> Map(owner_id -> count)
       for (const r of results || []) {
+        dis.add(r.owner_id, r.n, Number(r.dis) > 0, r.c > Number(r.dis));
         for (const key of creditNames(r.n)) {
-          if (Number(r.dis) > 0) {
-            if (!off.has(key)) off.set(key, new Set());
-            off.get(key).add(Number(r.owner_id));
-          }
           if (!perName.has(key)) perName.set(key, new Map());
           const m = perName.get(key);
           m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
@@ -6873,17 +6900,16 @@ async function buildCreatorsList(env, flags = {}) {
       return perName;
     }
     const byChars = count(chars.results), byScripts = count(scripts.results);
-    function best(m, dis) {
+    function best(m, key) {
       let pick = null, pickN = 0;
       for (const [ownerId, n] of m || []) {
-        if (dis && dis.has(Number(ownerId))) continue;
+        if (dis.has(ownerId, key)) continue;
         if (n > pickN || (n === pickN && pick != null && ownerId < pick)) { pick = ownerId; pickN = n; }
       }
       return pick;
     }
     for (const key of new Set([...byChars.keys(), ...byScripts.keys()])) {
-      const dis = off.get(key);
-      const ownerId = best(byChars.get(key), dis) ?? best(byScripts.get(key), dis);
+      const ownerId = best(byChars.get(key), key) ?? best(byScripts.get(key), key);
       if (ownerId != null) owners.set(key, ownerId);
     }
   } catch { flags.degraded = true; /* no owned pages */ }

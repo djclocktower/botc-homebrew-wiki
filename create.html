@@ -1355,8 +1355,12 @@
     // NEXT free address — so Save Draft then Publish made a second page and
     // left the first behind as an orphaned draft. Identity never changes, so
     // a name edited after the first save is a rename of that page, not a new
-    // one.
-    var savedSlug = '';
+    // one. Except once it is PUBLISHED: a different name then is the next
+    // character, written over this form. It used to rename the page just
+    // published and put the new art in its slot (Brainbox became Winemaker).
+    // ponytail: a typo fixed in the name after publishing makes a second page
+    // and leaves the first; ask (rename or new page) if that gets reported.
+    var savedSlug = '', savedName = '', savedLive = false;
 
     // A draft saved before it has a name still needs an identity (the
     // primary key and its art slot). It gets a fresh one of its own rather
@@ -1387,6 +1391,7 @@
       $('publish').disabled = true;
       $('save-draft').disabled = true;
       setStatus('work', verb + '&hellip;');
+      if (savedLive && slugify(d.name) !== slugify(savedName)) savedSlug = '';
       (savedSlug ? Promise.resolve(savedSlug) : d.name ? resolveSlug(d) : Promise.resolve(untitledSlug())).then(function (slug) {
         saveCharacter(d, slug, saveStatus);
       });
@@ -1497,6 +1502,8 @@
         })
         .then(function (saved) {
           savedSlug = (saved && saved.slug) || slug;
+          savedName = d.name;
+          savedLive = !(saved && saved.status === 'draft');
           // The Worker decides the address (/c/{set}/{character}) and hands
           // it back; `slug` is only the page's identity and its art slot.
           var url = SITE_ROOT + ((saved && saved.page) || ('c/' + slug));
