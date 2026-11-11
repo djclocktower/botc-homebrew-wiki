@@ -1361,7 +1361,7 @@ function buildTitleCard() {
   // a top corner: any character with its ability, and the Bootlegger rules
   makeSelect(box, 'Character at the top', () => [['', 'None'],
     ...(derived ? derived.characters : []).map((c) => [c.id, c.name])], bindPath('topChar'), { dynamic: true });
-  makeSelect(box, 'Its corner', [['left', 'Top left'], ['right', 'Top right']], bindPath('topCharSide'));
+  makeSelect(box, 'Its corner', [['right', 'Top right'], ['left', 'Top left']], bindPath('topCharSide'));
   if (cardPaths) cardPaths.add('el.topChar');
   makeSlider(box, 'Character size', 0.5, 2, 0.05, pct,
     { get: () => elGet(options, 'topChar').scale, set: (v) => elSet(options, 'topChar', { scale: v }) }, { reset: 1 });

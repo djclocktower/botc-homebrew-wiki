@@ -252,14 +252,14 @@ check('look: a style keeps a shared setting at its own path',
 // Bootlegger rules go top right, under the character when it is there too
 {
   const sc = S.deriveScript(S.parseScript([{ id: '_meta', name: 'T', bootlegger: ['Rule one.'] }, 'imp', 'washerwoman', 'poisoner'], true), S.normalizeOptions({}));
-  const o = S.normalizeOptions({ topChar: 'washerwoman', bootRulesTop: true });
+  const o = S.normalizeOptions({ topChar: 'washerwoman', topCharSide: 'left', bootRulesTop: true });
   check('corner: picked character leaves the grid', S.frontCharacters(sc, o).map((c) => c.id).includes('washerwoman'), false);
   const c = S.topCorners(sc, o);
   check('corner: left holds the character, right the rules', [c.left && c.left.name, c.right && c.right.rules.length], ['Washerwoman', 1]);
-  const r = S.topCorners(sc, S.normalizeOptions({ topChar: 'imp', topCharSide: 'right', bootRulesTop: true }));
+  const r = S.topCorners(sc, S.normalizeOptions({ topChar: 'imp', bootRulesTop: true })); // top right is the default
   check('corner: rules under a character on the right', [r.left, r.right.name, r.right.rules[0]], [null, 'Imp', 'Rule one.']);
   const h = S.normalizeOptions({ topChar: 'imp', el: { topChar: { hidden: true } } });
-  check('corner: hiding it puts the character back', [S.topCorners(sc, h).left, S.frontCharacters(sc, h).length], [null, 3]);
+  check('corner: hiding it puts the character back', [S.topCorners(sc, h).right, S.frontCharacters(sc, h).length], [null, 3]);
 }
 
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');

@@ -5154,7 +5154,7 @@ page margins and the night and jinx pages are unchanged.
 
 **`topChar`** (a character's id) takes that character off its team and draws
 it, icon, name and ability, in a top corner of the script sheet in every
-style; **`topCharSide`** is `left` (the default) or `right`. It is an element
+style; **`topCharSide`** is `right` (the default, the owner's call) or `left`. It is an element
 (`el.topChar`): moved, sized, and hidden, which puts the character back in its
 team. `topCorners()` in script.js is the one answer to what each corner holds,
 and `frontCharacters()` leaves the picked character out. The Bootlegger rules
