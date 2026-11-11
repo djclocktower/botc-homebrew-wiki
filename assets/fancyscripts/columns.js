@@ -29,14 +29,14 @@
 import {
   COLUMN_SHEET, COLUMN_HEAD_INK, columnsFor, columnLists, balancedTeam, teamSize, FIT, SHEET, SHEET_W, SHEET_H, U, TEAM_LABELS, TEAM_LABELS_SINGULAR,
   PLACEHOLDER_ICON, footEm, groupByTeam, frontCharacters, proxiedArt, smartTypography, fontFamily, elGet, nightLists, fitNameLines,
-  withLook, teamColor, jinxNotes,
+  withLook, teamColor, jinxNotes, garlandOval, garlandShift, footInOval, contentFloor, NO_ART, topCorners,
 } from './script.js';
 import {
   el, img, px, clamp, textWidth, wrappedLineCount, normalizeIcons, iconFit, inkTransform, iconFilter,
   ICON_IDENTITY, drawIcon, trimmedArt,
 } from './util.js';
 import { pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark, ART } from './elements.js';
-import { appendRibbon, abilityNodes } from './sheet.js';
+import { appendRibbon, abilityNodes, cornerBox, cornerScale, skullSpec, drawSkull } from './sheet.js';
 
 const C = COLUMN_SHEET;
 const sum = (a) => a.reduce((x, y) => x + y, 0);
@@ -222,7 +222,12 @@ export function layoutColumnsSheet(script, options, requestRender) {
 
   const header = options.showHeader !== false;
   const top = header ? C.contentTop : 2.5;
-  const avail = footEm(C.contentBottom) - top;
+  // a garland at the foot keeps the rows above its leaves
+  const gT0 = elGet(options, 'colGarland');
+  const floor = gT0.src && gT0.src !== NO_ART && !gT0.hidden
+    ? Math.min(footEm(C.contentBottom), contentFloor(gT0.src, false, C.garlandBottom, C.contentBottom, C.garlandW, gT0.scale, gT0.dy))
+    : footEm(C.contentBottom);
+  const avail = floor - top;
   const needAt = (d) => sum(groups.map((g) => measureSection(g, d).need)) + Math.max(0, groups.length - 1) * C.sectionGap * d;
 
   let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
@@ -315,6 +320,19 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   sheet.append(paper);
   for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
 
+  // a garland from the pack across the foot, its oval centred between the columns
+  const gT = elGet(options, 'colGarland');
+  const garland = gT.src && gT.src !== NO_ART && !gT.hidden ? resolveSrc(gT.src) : '';
+  if (garland) {
+    const gEl = img(garland, {
+      position: 'absolute', left: (50 + gT.dx) + '%', bottom: px(-e(gT.dy)), width: (C.garlandW * gT.scale) + '%',
+      transform: `translateX(-${garlandShift(gT.src)}%)${gT.rot ? ` rotate(${gT.rot}deg)` : ''}`,
+      opacity: String(gT.opacity),
+    });
+    gEl.crossOrigin = 'anonymous';
+    sheet.append(mark(gEl, 'el:colGarland'));
+  }
+
   // the two columns: the sheet's ribbon art (its colour, its mode), with a
   // black edge on the inside
   const ribT = elGet(options, 'sidebar');
@@ -382,7 +400,14 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   if (page.header) {
     const title = (options.titleOverride || '').trim() || script.meta.name || '';
     const logo = logoArt(script, options);
-    const tx0 = G.titleX0, tx1 = logo ? C.titleX1 : 100 - G.titleX0;
+    /* a top corner (a character, the Bootlegger rules) takes a side of the
+       band; the logo and the title share what is left */
+    const corners = topCorners(script, options);
+    const W = C.cornerW;
+    const tx0 = G.titleX0 + (corners.left ? W + 1 : 0);
+    const R = G.logoX1 - (corners.right ? W + 1 : 0);
+    const logoW = Math.min(G.logoX1 - C.logoX0, (R - tx0) * 0.45);
+    const tx1 = logo ? R - logoW - 2 : R;
     const first = page.sections[0];
     const headerBottom = (first ? first.topEm : C.contentTop) - C.headerGap;
     const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
@@ -394,21 +419,80 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
       const lT = elGet(options, 'colLogo');
       const logoH = Math.min(C.logoBottom - C.titleTop, headerBottom - C.titleTop);
       const lg = img(logo, {
-        position: 'absolute', left: C.logoX0 + '%', top: px(e(headerBottom - logoH)),
-        width: (G.logoX1 - C.logoX0) + '%', height: px(e(logoH)), objectFit: 'contain', objectPosition: '50% 100%',
+        position: 'absolute', left: (R - logoW) + '%', top: px(e(headerBottom - logoH)),
+        width: logoW + '%', height: px(e(logoH)), objectFit: 'contain', objectPosition: '50% 100%',
       }, title);
       lg.crossOrigin = 'anonymous';
       lg.addEventListener('error', () => { failedArt.add(logo); if (ctx.requestRender) ctx.requestRender(); });
       applyEl(lg, lT, '', U, SHEET_W);
       sheet.append(mark(lg, 'el:colLogo'));
     }
+    for (const side of ['left', 'right']) {
+      const cn = corners[side];
+      if (!cn) continue;
+      const key = cn.name ? 'topChar' : 'bootRules';
+      const T = elGet(options, key);
+      const look = {
+        name: FONT.name, text: FONT.text, rules: fontFamily(options.bootRulesFont || 'dumbledor2'),
+        ink, rulesInk: options.bootRulesColor || ink, nameColor: (x) => x.color || teamColor(o, x.team),
+        nameCase: L.nameCase, variant: L.variant ? 'small-caps' : 'normal', spacing: L.spacing,
+        iconFilter: iconFilter(options.iconEffect, options.iconShadow == null ? 1 : options.iconShadow, e),
+      };
+      const hEm = Math.max(2, headerBottom - C.titleTop);
+      const k = cornerScale(cn, look, e, T.scale, (W / 100) * SHEET_W, e(hEm));
+      const box = cornerBox(cn, look, e, T.scale, k);
+      Object.assign(box.style, {
+        position: 'absolute', left: ((side === 'left' ? G.titleX0 : G.logoX1 - W) + T.dx) + '%', width: W + '%',
+        top: px(e(C.titleTop + T.dy)), height: px(e(hEm)), opacity: String(T.opacity),
+      });
+      sheet.append(mark(box, 'el:' + key));
+    }
     const tT = elGet(options, 'colTitle');
+    let off = 0; // how far the title's centre sits off its box's, for the author to follow
     if (title && !tT.hidden) {
       const boxW = ((tx1 - tx0) / 100) * SHEET_W, boxH = e(titleBottom - C.titleTop);
-      const fit = titleLines(title, boxW, boxH, FONT.title);
-      const size = Math.min(fit.size, e(C.titleSize));
+      /* the classic sheet's decor, when asked for: the flourishes either side
+         and the skull in front, sized to the title's block */
+      const fl = o.showFlourishes;
+      // sized to the band, not the title, so a title that re-wraps to make room keeps its decor
+      const decor = (k) => {
+        const sk = skullSpec(o.showSkull, options, k);
+        const flLW = fl ? 9.956 * k : 0, flRW = fl ? 17.453 * k : 0, gap = 0.9 * k;
+        const leftW = sk ? (flLW ? flLW - 1.24 * k : 0) + sk.w - sk.tuck : (flLW ? flLW + gap : 0);
+        return { k, sk, flLW, flRW, gap, leftW, rightW: flRW ? flRW + gap : 0 };
+      };
+      let fit = titleLines(title, boxW, boxH, FONT.title);
+      let size = Math.min(fit.size, e(C.titleSize));
+      // (and never more than 45% of the title's box, or a crowded header leaves the title no room)
+      let dc = decor(Math.min(0.8, (boxH * 0.75) / e(8.35)));
+      const most = 0.45 * (tx1 - tx0);
+      if (dc.leftW + dc.rightW > most) dc = decor(dc.k * most / (dc.leftW + dc.rightW));
+      if (dc.leftW + dc.rightW) {
+        fit = titleLines(title, Math.max(40, boxW - ((dc.leftW + dc.rightW) / 100) * SHEET_W), boxH, FONT.title);
+        size = Math.min(fit.size, e(C.titleSize));
+      }
+      const wPct = (Math.max(...fit.lines.map((l) => textWidth(l, `400 ${size}px ${FONT.title}`))) / SHEET_W) * 100;
+      const start = (tx0 + tx1) / 2 - (dc.leftW + wPct + dc.rightW) / 2;
+      const tLeft = start + dc.leftW;
+      off = tLeft + wPct / 2 - (tx0 + tx1) / 2;
+      const blockH = size * 0.92 * fit.lines.length;
+      const cy = (e(titleBottom) - blockH / 2) / U + tT.dy;
+      if (dc.sk) drawSkull(sheet, options, dc.sk, tLeft + dc.sk.tuck - dc.sk.w + tT.dx, cy, mark, e);
+      const k = dc.k;
+      if (dc.flLW) {
+        sheet.append(img(ART + 'flourish-left.png', {
+          position: 'absolute', left: (start + tT.dx) + '%', top: px(e(cy) - e(3.204 * k) / 2 + e(0.26 * k)), width: dc.flLW + '%',
+          opacity: String(tT.opacity),
+        }));
+      }
+      if (dc.flRW) {
+        sheet.append(img(ART + 'flourish-right.png', {
+          position: 'absolute', left: (tLeft + wPct + dc.gap + tT.dx) + '%', top: px(e(cy) - e(3.295 * k) / 2 + e(0.26 * k)),
+          width: dc.flRW + '%', opacity: String(tT.opacity),
+        }));
+      }
       const t = el('div', {
-        position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%',
+        position: 'absolute', left: (tLeft - 1) + '%', width: (wPct + 2) + '%',
         top: px(e(titleBottom) - size * 0.92 * fit.lines.length),
         textAlign: 'center', fontFamily: FONT.title, fontSize: px(size), lineHeight: '0.92', whiteSpace: 'nowrap',
         color: options.titleColor || '#10102e',
@@ -420,7 +504,7 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
     }
     if (authorOn) {
       const a = el('div', {
-        position: 'absolute', left: tx0 + '%', width: (tx1 - tx0) + '%', top: px(e(authorTop)),
+        position: 'absolute', left: (tx0 + off) + '%', width: (tx1 - tx0) + '%', top: px(e(authorTop)),
         textAlign: 'center', fontFamily: FONT.author, fontSize: px(e(C.authorSize)), lineHeight: '1.2', whiteSpace: 'nowrap', color: o.authorColor || ink,
       }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(author));
       applyEl(a, aT, '', U, SHEET_W);
@@ -546,7 +630,18 @@ export function renderColumnsSheetPage(script, options, layout, pageIndex, ctx) 
   const fT = elGet(options, 'footnote');
   const custom = (options.footnoteText || '').trim();
   const hasStar = script.characters.some((c) => (c.ability || '').includes('night*'));
-  if (options.showFootnote && (hasStar || custom) && !fT.hidden) {
+  // (in a pack garland's oval, centred, on two lines, as the classic sheet sets it)
+  const oval = garland && garlandOval(gT.src, C.garlandW, gT.scale, gT.dy);
+  if (options.showFootnote && (hasStar || custom) && !fT.hidden && oval) {
+    const foot = el('div', {
+      position: 'absolute', left: (50 + gT.dx + fT.dx) + '%', top: px(e(fT.dy + footInOval(oval, custom, C.ovalFootLine))),
+      transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
+      transformOrigin: '50% 0', textAlign: 'center', opacity: String(fT.opacity),
+      fontFamily: FONT.foot, fontSize: px(e(C.ovalFootSize)), lineHeight: px(e(C.ovalFootLine)),
+      whiteSpace: 'nowrap', color: o.footnoteColor || ink,
+    }, ...(custom ? custom.split('\n') : ['*Not the', 'first night']).map((ln) => el('div', null, ln)));
+    sheet.append(mark(foot, 'el:footnote'));
+  } else if (options.showFootnote && (hasStar || custom) && !fT.hidden) {
     const foot = el('div', {
       position: 'absolute', right: G.footRight + '%', top: px(e(footEm(C.footnoteTop))),
       fontFamily: FONT.foot, fontSize: px(e(C.footnoteSize)), fontVariant: 'small-caps',

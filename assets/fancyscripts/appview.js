@@ -34,13 +34,13 @@
 import {
   APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
   groupByTeam, frontCharacters, proxiedArt, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
-  breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART, contentFloor,
+  breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART, contentFloor, topCorners, SHEET,
 } from './script.js';
 import {
   el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt, artAspectOf, shade,
 } from './util.js';
 import { ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark } from './elements.js';
-import { appendRibbon } from './sheet.js';
+import { appendRibbon, cornerBox, cornerScale, skullSpec, drawSkull } from './sheet.js';
 
 function iconImg(src, style, alt) {
   const n = img(src, style, alt);
@@ -331,10 +331,10 @@ function appColumns(a) {
 }
 
 /* the text title: the script's name between the tool's own flourishes,
-   the way the official logos set it, sized to the band. No skull: its art
-   carries a patch of the classic sheet's parchment, cut to vanish where
-   that sheet puts it, and anywhere else it shows as a pale box. */
-function textTitle(sheet, title, options, cx, mark, e) {
+   the way the official logos set it, sized to the band, with the skull in
+   front of it when asked for (the classic sheet's order: flourish, skull,
+   title, flourish) */
+function textTitle(sheet, title, options, cx, mark, e, band) {
   const A = APP_SHEET;
   const a = appCfg(options);
   const tT = elGet(options, 'appTitle');
@@ -350,8 +350,10 @@ function textTitle(sheet, title, options, cx, mark, e) {
   const flLW = options.showFlourishes !== false ? 9.956 * k : 0; // % width
   const flRW = options.showFlourishes !== false ? 17.453 * k : 0;
   const gap = 0.9 * k; // clear air between each flourish and the words
-  const decorW = (flLW ? flLW + gap : 0) + (flRW ? flRW + gap : 0);
-  const band = A.titleMaxW + 18; // the logo's width plus the flourishes'
+  const sk = skullSpec(appCfg(options).showSkull, options, k);
+  // the left side: flourish then words, or flourish tucked under the skull then words
+  const leftW = sk ? (flLW ? flLW - 1.24 * k : 0) + sk.w - sk.tuck : (flLW ? flLW + gap : 0);
+  const decorW = leftW + (flRW ? flRW + gap : 0);
   let w = (measure(fs) / SHEET_W) * 100;
   if (w + decorW > band) {
     const s = clamp((band - decorW) / w, 0.35, 1);
@@ -361,7 +363,8 @@ function textTitle(sheet, title, options, cx, mark, e) {
   const total = w + decorW;
   const left = cx + tT.dx - total / 2;
   const cy = A.titleCY + tT.dy;
-  const titleLeft = left + (flLW ? flLW + gap : 0);
+  const titleLeft = left + leftW;
+  if (sk) drawSkull(sheet, options, sk, titleLeft + sk.tuck - sk.w, cy - 0.76 * k, mark, e);
   if (flLW) {
     sheet.append(img(ART + 'flourish-left.png', {
       position: 'absolute', left: left + '%', top: px(e(cy) - e(3.204 * k) / 2 + e(0.26 * k)), width: flLW + '%',
@@ -493,7 +496,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
   const e = (em) => em * U;
   const isLastPage = pageIndex === layout.pages.length - 1;
   const title = (options.titleOverride || '').trim() || script.meta.name;
-  const cx = paperCX(A.sidebarW);
+  let cx = paperCX(A.sidebarW);
 
   const sheet = pageFrame(SHEET_W, SHEET_H, U, 'script-sheet script-app');
   sheet.dataset.fsPage = String(pageIndex);
@@ -533,16 +536,54 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
 
   // the title: an uploaded title image, the script's logo, or the name
   if (page.header) {
+    /* a top corner (a character, the Bootlegger rules) takes a side of the
+       band, and the title centres in what is left */
+    const corners = topCorners(script, options);
+    const x0 = A.sidebarW + 1.5, x1 = 95, W = A.cornerW; // clear of the burnt right edge
+    const freeL = corners.left ? x0 + W + 1 : corners.right ? x0 : null;
+    const freeR = corners.right ? x1 - W - 1 : x1;
+    let band = A.titleMaxW + 18; // the logo's width plus the flourishes'
+    if (freeL != null) { cx = (freeL + freeR) / 2; band = freeR - freeL; }
+    const cTop = 1.2, cBottom = hm.top - 0.6;
+    const look = {
+      name: fonts.name, text: fonts.text, rules: fontFamily(options.bootRulesFont || 'dumbledor2'),
+      ink: a.inkColor || '#271d17', rulesInk: options.bootRulesColor || a.inkColor || '#271d17',
+      nameColor: (cn) => cn.color || teamColor(options, cn.team), nameWeight: '700',
+      iconFilter: iconFilter(options.iconEffect, options.iconShadow == null ? 1 : options.iconShadow, e),
+    };
+    for (const side of ['left', 'right']) {
+      const cn = corners[side];
+      if (!cn) continue;
+      const key = cn.name ? 'topChar' : 'bootRules';
+      const T = elGet(options, key);
+      const left = side === 'left' ? x0 : x1 - W;
+      const hEm = Math.max(2, cBottom - cTop);
+      const k = cornerScale(cn, look, e, T.scale, (W / 100) * SHEET_W, e(hEm));
+      const box = cornerBox(cn, look, e, T.scale, k);
+      Object.assign(box.style, {
+        position: 'absolute', left: (left + T.dx) + '%', width: W + '%', top: px(e(cTop + T.dy)), height: px(e(hEm)),
+        opacity: String(T.opacity),
+      });
+      sheet.append(mark(box, 'el:' + key));
+    }
     const tT = elGet(options, 'appTitle');
     if (!tT.hidden) {
       const art = titleArt(script, options);
+      // the skull in front of a logo, once the logo's shape is known
+      const aspect = art && artAspectOf(art);
+      const sk = aspect ? skullSpec(a.showSkull, options, Math.min(1, hm.titleH / SHEET.skullH)) : null;
+      const logoW = aspect ? Math.min(A.titleMaxW * tT.scale, band, (hm.titleH * U * aspect / SHEET_W) * 100) : 0;
+      if (sk) {
+        cx += (sk.w + 0.6) / 2;
+        drawSkull(sheet, options, sk, cx + tT.dx - logoW / 2 - 0.6 - sk.w, hm.titleCY + tT.dy, mark, e);
+      }
       if (art) {
         const logoEl = img(art, {
           position: 'absolute',
           left: (cx + tT.dx) + '%',
           top: px(e(hm.titleCY + tT.dy)),
           transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
-          maxWidth: (A.titleMaxW * tT.scale) + '%',
+          maxWidth: Math.min(A.titleMaxW * tT.scale, band) + '%',
           maxHeight: px(e(A.logoMaxH) * tT.scale),
           objectFit: 'contain',
           opacity: String(tT.opacity),
@@ -551,7 +592,7 @@ export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
         logoEl.addEventListener('error', () => { failedArt.add(art); if (ctx.requestRender) ctx.requestRender(); });
         sheet.append(mark(logoEl, 'el:appTitle'));
       } else {
-        textTitle(sheet, title, options, cx, mark, e);
+        textTitle(sheet, title, options, cx, mark, e, band);
       }
     }
     if (hm.withAuthor) {

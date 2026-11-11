@@ -248,5 +248,19 @@ check('look: a style keeps a shared setting at its own path',
   check('look: every mapped path has a default', Object.values(S.STYLE_LOOK).flatMap((m) => Object.values(m)).filter((p) => get(p) === undefined), []);
 }
 
+// a character picked for a top corner leaves its team and takes the corner; the
+// Bootlegger rules go top right, under the character when it is there too
+{
+  const sc = S.deriveScript(S.parseScript([{ id: '_meta', name: 'T', bootlegger: ['Rule one.'] }, 'imp', 'washerwoman', 'poisoner'], true), S.normalizeOptions({}));
+  const o = S.normalizeOptions({ topChar: 'washerwoman', bootRulesTop: true });
+  check('corner: picked character leaves the grid', S.frontCharacters(sc, o).map((c) => c.id).includes('washerwoman'), false);
+  const c = S.topCorners(sc, o);
+  check('corner: left holds the character, right the rules', [c.left && c.left.name, c.right && c.right.rules.length], ['Washerwoman', 1]);
+  const r = S.topCorners(sc, S.normalizeOptions({ topChar: 'imp', topCharSide: 'right', bootRulesTop: true }));
+  check('corner: rules under a character on the right', [r.left, r.right.name, r.right.rules[0]], [null, 'Imp', 'Rule one.']);
+  const h = S.normalizeOptions({ topChar: 'imp', el: { topChar: { hidden: true } } });
+  check('corner: hiding it puts the character back', [S.topCorners(sc, h).left, S.frontCharacters(sc, h).length], [null, 3]);
+}
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);
