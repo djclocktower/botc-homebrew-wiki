@@ -83,7 +83,13 @@
   /* ---- loading bar + messages ---- */
   function showLoad(text) { var el = $('tt-load'); el.classList.remove('done'); $('tt-load-text').textContent = text || 'Loading…'; }
   function hideLoad() { $('tt-load').classList.add('done'); }
-  function showMsg(kind, html) { var el = $('tt-msg'); el.className = 'tt-msg ' + kind; el.innerHTML = html; }
+  var msgTimer = 0;
+  function showMsg(kind, html) {
+    var el = $('tt-msg'); el.className = 'tt-msg ' + kind; el.innerHTML = html;
+    // good news does not need to stay on the page
+    clearTimeout(msgTimer);
+    if (kind === 'ok') msgTimer = setTimeout(clearMsg, 6000);
+  }
   function clearMsg() { var el = $('tt-msg'); el.className = 'tt-msg'; el.innerHTML = ''; }
 
   /* ---- state ---- */
@@ -97,7 +103,7 @@
     paper: 'A4', format: 'png', layout: 'grid',
     char_margin: 1.05, rem_margin: 1.10, pad_mm: 2,
     dpi: 400, want_char: true, want_rem: true, want_official: true,
-    preview_scale: (window.matchMedia && matchMedia('(max-width: 820px)').matches) ? 0.32 : 0.42
+    preview_scale: (window.matchMedia && matchMedia('(max-width: 820px)').matches) ? 0.5 : 0.8
   };
 
   /* Official characters (from imported scripts / roles.json) are printed only
@@ -173,10 +179,9 @@
      every character on the wiki, and drawing it with full art (and no lazy
      loading) had a phone downloading hundreds of MB alongside the engine. */
   function thumbSrc(c) {
-    if (c.ext) return c.image || 'assets/favicon.png';
-    if (c.art && /^art\/[^/]+$/.test(c.art)) {
-      return 'assets/thumb/' + c.art.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
-    }
+    if (c.ext || c.panelOnly) return c.image || 'assets/favicon.png';
+    var a = c.art || ('art/' + c.slug + '.png');
+    if (/^art\/[^/]+$/.test(a)) return 'assets/thumb/' + a.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
     return artRel(c);
   }
   /* The character's SAVED token — art/{identity}-token.png, written by this
@@ -316,9 +321,20 @@
     });
     // Official BotC roles (bundled) so bare official ids in imported scripts resolve.
     // Non-fatal: if it fails, official ids just stay unrecognised as before.
-    var official = fetch('assets/roles.json').then(function (r) { return r.json(); }).then(function (roles) {
-      (roles || []).forEach(function (role) {
+    // roles.json has no night order; night-order.json does, by name. Without
+    // it an official token would be drawn with no first-night or
+    // other-nights leaf.
+    var night = fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; });
+    var official = Promise.all([fetch('assets/roles.json').then(function (r) { return r.json(); }), night]).then(function (got) {
+      var pos = {};
+      ((got[1] && got[1].characters) || []).forEach(function (c) { pos[norm(c.name)] = c; });
+      (got[0] || []).forEach(function (role) {
         if (!role || !role.id) return;
+        var p = pos[norm(role.name)];
+        if (p) {
+          if (!role.firstNight) role.firstNight = p.firstNight || 0;
+          if (!role.otherNight) role.otherNight = p.otherNight || 0;
+        }
         officialById[norm(role.id)] = role;
         if (role.name) officialById[norm(role.name)] = role;
       });
@@ -346,7 +362,8 @@
     return (coll.match || []).indexOf(norm(c.appearsIn)) !== -1;
   }
 
-  /* ?script / ?collection -> REPLACE the set; ?chars -> ADD to the set */
+  /* ?script / ?collection -> REPLACE the set; ?chars -> ADD to the set
+     (or replace it, with &replace=1: the Script Builder's Print tokens) */
   function ingestUrl() {
     var q = new URLSearchParams(location.search);
     var hasScript = !!q.get('script'), hasColl = !!q.get('collection');
@@ -397,8 +414,18 @@
         }).catch(function () {}));
     }
     return Promise.all(jobs).then(function () {
+      // A roster names an official character `off-{id}`. The feed has no
+      // row for those, so they are made here as an imported file makes
+      // them; without this a published script printed its homebrew alone.
+      var madeOff = false;
+      incoming.forEach(function (sl) {
+        if (charBySlug[sl] || sl.indexOf('off-') !== 0) return;
+        var rec = officialExt(sl.slice(4), {});
+        if (rec) { charBySlug[rec.slug] = rec; madeOff = true; }
+      });
+      if (madeOff) saveExt();
       var valid = incoming.filter(function (sl) { return charBySlug[sl]; });
-      if (hasScript || hasColl) setSlugs = [];
+      if (hasScript || hasColl || q.get('replace')) setSlugs = [];
       valid.forEach(function (sl) { if (setSlugs.indexOf(sl) < 0) setSlugs.push(sl); });
       // ADDS to the set (never replaces — the reader may be mid-sheet) and
       // opens the per-token editor once everything is wired.
@@ -412,60 +439,170 @@
   }
   var pendingEdit = null;
 
-  /* ---- LEFT SIDEBAR: all characters, grouped by team (Script Builder style) ---- */
-  function renderSidebar(filter) {
-    filter = (filter || '').trim().toLowerCase();
-    var html = '';
-    TEAMS.forEach(function (t) {
-      var key = t[0], label = t[1];
-      var group = allChars.filter(function (c) {
-        if (c.team !== key) return false;
-        if (filter && (c.name || '').toLowerCase().indexOf(filter) === -1) return false;
-        return true;
-      }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      if (!group.length) return;
-      html += '<div class="sb-add-group"><h3 class="sb-add-grouphead">' + esc(label) + '</h3>';
-      group.forEach(function (c) {
-        var on = setSlugs.indexOf(c.slug) >= 0;
-        var ability = c.ability || '';
-        html += '<div class="sb-add-row">' +
-          '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-            '<span class="sb-add-name">' + esc(c.name) + '</span>' +
-          '</button>' +
-          (ability
-            ? '<button type="button" class="sb-add-chevron" data-slug="' + esc(c.slug) + '" aria-label="Show ability" aria-expanded="false">&#9662;</button>' +
-              '<div class="sb-add-ability" id="tta-' + esc(c.slug) + '" hidden>' + esc(ability) + '</div>'
-            : '') +
-          '</div>';
+  /* ---- the character panel (the Script Builder's rows) ----
+     Built ONCE: 3,700 rows rebuilt per keystroke, or per character added,
+     was what made this panel slow. A search hides rows in place, after a
+     short pause in the typing, and adding a character repaints one row. */
+  function ico(n) { return window.UIIcons ? window.UIIcons.svg(n) : ''; }
+  var rowBySlug = {};
+  /* Only a few hundred rows are ever on the page. All 3,700 kept there made
+     the browser re-check every row and every icon on each change, so the
+     sliders and the main panel stopped answering on a slower PC (worst in
+     Brave, whose ad blocker scans every element as well). A team shows its
+     first SIDE_STEP matches and a Show more button; the search runs over
+     the characters in memory and redraws the short list. */
+  var SIDE_STEP = 50, sideGroups = null, sideLimit = {};
+  function sideAll() {
+    if (sideGroups) return sideGroups;
+    var known = TEAMS.map(function (t) { return t[0]; });
+    sideGroups = [];
+    // The game's own characters beside the wiki's, as in the Script Builder.
+    // Each is a light row here and becomes a full record when it is added.
+    var officials = [], seenRole = {};
+    Object.keys(officialById).forEach(function (k) {
+      var role = officialById[k], id = norm(role.id);
+      if (seenRole[id]) return;
+      seenRole[id] = 1;
+      officials.push(charBySlug['off-' + id] || {
+        slug: 'off-' + id, official: true, panelOnly: true, name: String(role.name || role.id),
+        ability: String(role.ability || ''), team: normTeam(role.team), image: 'assets/icons-sm/' + id + '.webp'
       });
+    });
+    TEAMS.forEach(function (t) {
+      var key = t[0];
+      var chars = allChars.concat(officials).filter(function (c) {
+        return c.team === key || (key === 'other' && known.indexOf(c.team) < 0);
+      }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+      chars.forEach(function (c) { c._q = (c.name || '').toLowerCase(); c._qa = (c.ability || '').toLowerCase(); });
+      if (chars.length) sideGroups.push({ key: key, label: t[1], chars: chars });
+    });
+    return sideGroups;
+  }
+  function searchQ() { return ($('sb-filter').value || '').trim().toLowerCase(); }
+  function rowHTML(c, TICK, CHEV) {
+    var on = setSlugs.indexOf(c.slug) >= 0;
+    return '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
+      '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
+        '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+        '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+        (c.official ? '<span class="sbx-off">official</span>' : '') +
+        '<span class="sbx-add-tick" aria-hidden="true">' + TICK + '</span>' +
+      '</button>' +
+      (c.ability ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' + esc(c.name) + '">' + CHEV + '</button>' : '') +
+      '</div>' +
+      (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
+      '</div>';
+  }
+  function renderSidebar() {
+    var q = searchQ(), abil = $('tt-abilities').checked;
+    var TICK = ico('check'), CHEV = ico('down');
+    var html = '', shown = 0, total = 0;
+    sideAll().forEach(function (g) {
+      total += g.chars.length;
+      var hits = q ? g.chars.filter(function (c) { return c._q.indexOf(q) >= 0 || (abil && c._qa.indexOf(q) >= 0); }) : g.chars;
+      if (!hits.length) return;
+      shown += hits.length;
+      var lim = sideLimit[g.key] || SIDE_STEP;
+      html += '<div class="sbx-add-group"><h3 class="sbx-add-grouphead">' + esc(g.label) +
+        ' <span class="sbx-add-groupcount">(' + hits.length + ')</span></h3><div class="sbx-add-rows">';
+      for (var i = 0; i < hits.length && i < lim; i++) html += rowHTML(hits[i], TICK, CHEV);
+      html += '</div>';
+      if (hits.length > lim) {
+        html += '<button type="button" class="tt-btn-sm tt-side-more" data-team="' + esc(g.key) + '">Show more (' + (hits.length - lim) + ')</button>';
+      }
       html += '</div>';
     });
-    $('sb-add-list').innerHTML = html || '<p class="sb-loading">No matches.</p>';
+    var list = $('sb-add-list');
+    list.innerHTML = html || '<p class="sbx-note">' + (total ? 'Nothing matches that.' : 'No characters found.') + '</p>';
+    rowBySlug = {};
+    [].slice.call(list.querySelectorAll('.sbx-add-row')).forEach(function (r) { rowBySlug[r.dataset.slug] = r; });
+    $('tt-side-count').textContent = q ? shown + ' of ' + total + ' characters' : total + ' characters';
+  }
+  function filterSidebar() { sideLimit = {}; renderSidebar(); }
+  function paintSidebarOn() {
+    Object.keys(rowBySlug).forEach(function (sl) {
+      var b = rowBySlug[sl].firstChild.firstChild, on = setSlugs.indexOf(sl) >= 0;
+      if (b.classList.contains('on') !== on) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+    });
+  }
+  function sideOpen(on) {
+    $('sbx-side').classList.toggle('on', on);
+    $('sbx-scrim').classList.toggle('on', on);
+    document.documentElement.classList.toggle('sbx-locked', on);
   }
 
   function wireSidebar() {
     $('sb-add-list').addEventListener('click', function (e) {
-      var chev = e.target.closest('.sb-add-chevron');
-      if (chev) {
-        var box = $('tta-' + chev.dataset.slug);
-        if (box) { box.hidden = !box.hidden; chev.classList.toggle('open', !box.hidden); chev.setAttribute('aria-expanded', String(!box.hidden)); }
-        return;
-      }
-      var item = e.target.closest('.sb-add-item');
+      var more = e.target.closest('.tt-side-more');
+      if (more) { sideLimit[more.dataset.team] = (sideLimit[more.dataset.team] || SIDE_STEP) + SIDE_STEP * 4; renderSidebar(); return; }
+      var chev = e.target.closest('.sbx-add-chev');
+      if (chev) { chev.closest('.sbx-add-row').classList.toggle('open'); return; }
+      var item = e.target.closest('.sbx-add-item');
       if (!item) return;
       var sl = item.dataset.slug;
       if (setSlugs.indexOf(sl) >= 0) removeSlug(sl); else addSlug(sl);
     });
-    $('sb-filter').addEventListener('input', function () { renderSidebar(this.value); });
-    $('sb-mobile-toggle').addEventListener('click', function () { $('sb-add-sidebar').classList.add('open'); });
-    $('sb-close-mobile').addEventListener('click', function () { $('sb-add-sidebar').classList.remove('open'); });
+    var timer = 0;
+    $('sb-filter').addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(filterSidebar, 120); });
+    $('sb-filter').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      clearTimeout(timer); filterSidebar();
+      var first = $('sb-add-list').querySelector('.sbx-add-item');
+      if (first) first.click();
+    });
+    $('tt-abilities').addEventListener('change', function () {
+      $('sb-add-list').classList.toggle('abil', this.checked);
+      filterSidebar();
+    });
+    $('sbx-open').addEventListener('click', function () { sideOpen(true); });
+    $('sbx-close').addEventListener('click', function () { sideOpen(false); });
+    $('sbx-scrim').addEventListener('click', function () { sideOpen(false); });
+  }
+
+  /* ---- the tabs ---- */
+  function showTab(name) {
+    [].slice.call(document.querySelectorAll('#tt-tabs .sbx-tab')).forEach(function (b) {
+      var on = b.dataset.tab === name;
+      b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    [].slice.call(document.querySelectorAll('.tt-panes .sbx-pane')).forEach(function (p) {
+      p.classList.toggle('on', p.dataset.tab === name);
+    });
+    $('tt-work').setAttribute('data-tab', name);
+    var sc = $('sbx-scroll'); sc.scrollTop = 0;
+    // a phone scrolls the document: put the tab strip back where it sticks
+    if (getComputedStyle(sc).overflowY === 'visible') {
+      var tb = document.querySelector('.topbar');
+      var target = sc.offsetTop - (tb ? tb.offsetHeight : 56) - $('tt-tabs').offsetHeight;
+      if ((window.pageYOffset || 0) > target) window.scrollTo(0, Math.max(0, target));
+    }
+    try { localStorage.setItem('botc_token_tab', name); } catch (e) {}
+  }
+  function wireTabs() {
+    $('tt-tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('.sbx-tab'); if (b) showTab(b.dataset.tab);
+    });
+    var t = null; try { t = localStorage.getItem('botc_token_tab'); } catch (e) {}
+    if (t && document.querySelector('#tt-tabs .sbx-tab[data-tab="' + t + '"]')) showTab(t);
+    function syncTop() {
+      var tb = document.querySelector('.topbar');
+      document.documentElement.style.setProperty('--sbx-top', (tb ? tb.offsetHeight : 56) + 'px');
+    }
+    syncTop(); window.addEventListener('resize', syncTop);
   }
 
   /* ---- working set (main column, Script Builder rows + stepper + edit) ---- */
   function addSlug(sl) {
+    // an official character picked in the panel gets its record now
+    if (!charBySlug[sl] && sl.indexOf('off-') === 0) {
+      var rec = officialExt(sl.slice(4), {});
+      if (rec) { charBySlug[sl] = rec; saveExt(); }
+    }
     if (!charBySlug[sl] || setSlugs.indexOf(sl) >= 0) return;
     setSlugs.push(sl); saveSet(); renderAll(); schedulePreview(); refreshGenerate();
+    // art hosted elsewhere is fetched into the engine the first time it is needed
+    var c = charBySlug[sl];
+    if (c.ext && extArtStatus[sl] !== 'ok') fetchExtArt([c]).then(function () { schedulePreview(); });
   }
   function removeSlug(sl) {
     setSlugs = setSlugs.filter(function (x) { return x !== sl; });
@@ -496,7 +633,11 @@
     var box = $('tt-set');
     $('tt-count').textContent = setSlugs.length + ' character' + (setSlugs.length === 1 ? '' : 's');
     var chars = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(Boolean);
-    if (!chars.length) { box.innerHTML = '<p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>'; return; }
+    if (!chars.length) {
+      box.innerHTML = '<div class="tt-empty"><p>Add characters from the panel, or import a script.</p>' +
+        '<button type="button" class="tt-btn-sm" id="tt-empty-open">Add characters</button></div>';
+      return;
+    }
     var html = '';
     var known = TEAMS.map(function (t) { return t[0]; });
     TEAMS.forEach(function (t) {
@@ -504,27 +645,29 @@
       // Other also holds any team this list does not know.
       var group = chars.filter(function (c) { return c.team === key || (key === 'other' && known.indexOf(c.team) < 0); });
       if (!group.length) return;
-      html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
+      html += '<div class="sbx-panel tt-team"><h3 class="tt-team-head">' + esc(label) + ' <span>(' + group.length + ')</span></h3><div class="tt-team-rows">';
       group.forEach(function (c) {
         var edited = adjState.per[c.slug] && Object.keys(adjState.per[c.slug].adj || {}).length > 0;
-        html += '<div class="sb-script-item">' +
-          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-          '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
-          '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
+        html += '<div class="tt-item">' +
+          '<img class="tt-item-img" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+          '<div class="tt-item-txt"><span class="tt-item-name">' + esc(c.name) + (edited ? '<span class="tt-edited-dot" title="Has its own adjustments"></span>' : '') + '</span>' +
+          '<span class="tt-item-ab">' + esc(c.ability || '') + '</span>' +
           versionChipsHTML(c) + '</div>' +
+          '<div class="tt-item-btns">' +
           stepperHTML('tt-step-char', c.slug, charCount(c.slug)) +
-          '<button type="button" class="tt-edit-btn" data-slug="' + esc(c.slug) + '" aria-label="Edit token"><span class="ico ico-edit" aria-hidden="true"></span></button>' +
-          '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove"><span class="ico ico-x" aria-hidden="true"></span></button>' +
-          '</div>';
+          '<button type="button" class="sbx-icon tt-edit-btn" data-slug="' + esc(c.slug) + '" title="Edit this token" aria-label="Edit token">' + ico('pencil') + '</button>' +
+          '<button type="button" class="sbx-icon tt-rm" data-slug="' + esc(c.slug) + '" title="Remove" aria-label="Remove">' + ico('close') + '</button>' +
+          '</div></div>';
       });
-      html += '</div>';
+      html += '</div></div>';
     });
     box.innerHTML = html;
   }
-  function renderAll() { renderSet(); renderSidebar($('sb-filter').value); refreshMainTf(); }
+  function renderAll() { renderSet(); paintSidebarOn(); refreshMainTf(); }
   function wireSet() {
     $('tt-set').addEventListener('click', function (e) {
-      var rm = e.target.closest('.sb-script-remove');
+      if (e.target.closest('#tt-empty-open')) { if (window.innerWidth <= 900) sideOpen(true); else $('sb-filter').focus(); return; }
+      var rm = e.target.closest('.tt-rm');
       if (rm) { removeSlug(rm.dataset.slug); return; }
       var ed = e.target.closest('.tt-edit-btn');
       if (ed) { openEditor(ed.dataset.slug); return; }
@@ -618,7 +761,7 @@
         html += '</div></div>';
       } else {
         var gear = (f.k === 'name_kern' && prefix === 'ta-')
-          ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">&#9881;&#xFE0E;</button>' : '';
+          ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">' + ico('gear') + '</button>' : '';
         html += '<div class="tt-row"><label>' + f.label + gear + '</label><div class="tt-range">' +
           '<input type="range" id="' + prefix + f.k + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">' +
           '<output id="' + prefix + f.k + '-out"></output></div></div>';
@@ -635,6 +778,7 @@
         });
       } else {
         var r = $(prefix + f.k);
+        r.rtFmt = f.fmt; // range-type.js maps a typed number back through it
         r.oninput = function () { $(prefix + f.k + '-out').innerHTML = f.fmt(Number(r.value)); setVal(f.k, Number(r.value)); };
       }
     });
@@ -695,12 +839,6 @@
 
   /* global "Adjust All Tokens" card */
   function wireGlobalAdj() {
-    $('tt-adj-toggle').addEventListener('click', function () {
-      var body = $('tt-adj-body');
-      var open = body.style.display !== 'none';
-      body.style.display = open ? 'none' : '';
-      $('tt-adj-caret').innerHTML = open ? '&#9662;' : '&#9652;';
-    });
     buildAdjPanel($('tt-adj-panel'), 'ga-',
       function (k) { return globalVal(k); },
       function (k, v) {
@@ -903,7 +1041,7 @@
     if (!pyReady) { box.innerHTML = '<span class="ph">Preview will appear once loading finishes…</span>'; return; }
     var sl = editorSlug, mySeq = ++edPrevSeq;
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
-    o.preview_scale = 0.34;
+    o.preview_scale = 0.55;
     // The editor edits the GENERATED token; previewing a saved one here
     // would make every slider a no-op.
     o.ignore_premade = true;
@@ -1172,12 +1310,6 @@
     });
   }
   function wireAssets() {
-    $('tt-assets-toggle').addEventListener('click', function () {
-      var body = $('tt-assets-body');
-      var open = body.style.display !== 'none';
-      body.style.display = open ? 'none' : '';
-      $('tt-assets-caret').innerHTML = open ? '&#9662;' : '&#9652;';
-    });
     renderAssets();
     $('tt-assets-panel').addEventListener('click', function (e) {
       var up = e.target.closest('.tt-asset-up');
@@ -1661,6 +1793,7 @@
       if (!pyReady || !slugs.length) return;
       var btn = this; btn.disabled = true;
       $('output').innerHTML = ''; $('thumbs').innerHTML = ''; clearMsg();
+      showTab('print');
       showGenLoad();
       var payloads = [];
       slugs.forEach(function (sl) { payloads = payloads.concat(payloadsFor(sl)); });
@@ -1697,7 +1830,7 @@
     setSlugs = loadSet().filter(function (sl) { return charBySlug[sl]; });
     return ingestUrl();
   }).then(function () {
-    saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
+    saveSet(); renderSidebar(); renderAll(); wireSidebar(); wireTabs(); wireSet(); wireOptions(); wireGenerate();
     wireGlobalAdj(); wireEditor(); wireAssets(); wireStyle(); wireImport(); wireTransform();
     refreshGenerate(); schedulePreview();
     if (pendingEdit) openEditor(pendingEdit);

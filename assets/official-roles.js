@@ -30,7 +30,7 @@
      asterisks are how the official text marks an info token and readers of
      the night order know them. */
   function cleanReminder(s) {
-    return String(s || '').replace(/:reminder:/g, '').replace(/\s{2,}/g, ' ').trim();
+    return String(s || '').replace(/:reminder:/gi, '').replace(/\s{2,}/g, ' ').trim();
   }
 
   /* name/id -> {firstNight, otherNight} from assets/night-order.json. */

@@ -99,7 +99,9 @@ Key dynamic behavior:
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
   pictures, uploaded via `/api/account/avatar`, never via `/api/upload`; so is
-  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`).
+  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`,
+  and `library/`, a saved script's logo and background, written only by
+  `/api/my-scripts/image`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
@@ -342,6 +344,17 @@ assets/
                        `node migration/optimize-images.js thumbs`.
   fonts/README.md      Which fonts are self-hosted and why there is no Google
                        Fonts @import any more; how to refresh the woff2 files.
+  range-type.js        A typed number for every slider: loaded (defer) by
+                       the tool and editor pages, it finds each range input
+                       (a MutationObserver catches ones built later) and
+                       hides its readout behind a text box showing the same
+                       words, or adds a box where there is none. Enter sets
+                       the slider and fires input + change, so the tools'
+                       own listeners run. A tool whose readout is not the
+                       raw value (96% for 0.96) sets `rtFmt` on the slider
+                       to its formatter and the typed number is mapped back
+                       through it (Fancy Scripts, Icon Forge, Token Tool).
+                       Colour hue strips are skipped (`data-no-type` too).
   art-labels.js        Names the three art slots for the team being written:
                        a traveller's are its unaligned, good and evil tokens,
                        and slot three is drawn for a traveller alone. Mounted
@@ -565,24 +578,28 @@ assets/
                        order first; filterAttrs() in render-page.js writes
                        the rows' and the cards' data-*). What follows
                        describes what the box does on those pages.
+                       The Script Builder does NOT use it: its panel mounts
+                       char-filters.js directly over the character list
+                       (see "The Script Builder").
                        The collapsed filter box (3-state team/tag chips, Hide
                        Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not
                        built, and it reads the ability off the card rather than
-                       a repeated data-* attribute. mountCardFilters()
+                       a repeated data-* attribute. On a grid of 400+
+                       cards the search box waits for a 160 ms pause in the
+                       typing before it filters (each pass re-lays out every
+                       row, and on the Script Builder's 3,700 keystrokes
+                       queued behind each other); the returned flush() runs
+                       a waiting pass at once, and apply() always reads the
+                       box. mountCardFilters()
                        wires one box to one grid; auto-mounts on SSR collection
                        pages with defaultSort:'page' so the author's arranged
                        order is what a reader sees first, and profile.html
                        mounts its own (no page order there — the creator feed is
                        newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
-                       implementation, not one per page. The Script Builder's
-                       Add sidebar mounts it too, over its own compact rows
-                       rather than cards: sectionSel/innerSel/cardSel/
-                       sectionCountSel/abilitySel name the markup, `search`
-                       hands it the name box so the chips and the text box
-                       narrow one list instead of fighting.
+                       implementation, not one per page.
                        A **Group** select (By team / All together) sits beside
                        Sort on the renderRosterCards grids when there is more
                        than one team: All together moves every card into one
@@ -609,6 +626,37 @@ assets/
                        every insert and walks the wrong character to the
                        bottom. On a phone the drag starts from the grip so the
                        list can still be scrolled with a finger.
+  ui-icons.js          The interface icons, as inline SVG drawn in
+                       currentColor — so a mark is the colour of the text it
+                       sits in and a new paper tone needs no icon work. Two
+                       doors on one set of path data: UIIcons.svg(name) for
+                       markup built in JS, and UIIcons.paint(root), which
+                       fills the <i class="sbi-i" data-icon="name"> the
+                       static pages write. Used by the Script Builder and
+                       its widgets; the rest of the site uses the CSS
+                       .ico-{name} set in styles.css (see "Frontend
+                       conventions"). NO EMOJI anywhere in the interface.
+  script-builder.js    The Script Builder's controller (script.html is the
+                       markup). Selection, the roster, undo/redo, the shape,
+                       the Analyse tab, the saved-script library,
+                       export/import/share/print, the peek card, the details
+                       form and the panel all live here. Its header explains
+                       the performance rules it is built around — read them
+                       before adding anything to a click path.
+  script-builder-view.js  The builder's VIEW settings: the schema of every
+                       "how it is drawn" setting (layout, columns, sizes, what
+                       a row shows, panel side...), the normaliser, apply()
+                       (settings -> custom properties / attributes / classes
+                       on #sbx, so most cost no re-render) and the popover
+                       the schema builds. A new setting is one schema row
+                       plus the CSS that reads it. See "The Script Builder".
+  script-art.js        The Script Builder's logo and background makers
+                       (Export -> Make one). See "The Script Builder".
+  script-builder-tools.js  The builder's PURE half: the script's shape and
+                       the random fill that reaches it, the Analyse tab's
+                       reading, the player-count seating table, the text
+                       formats. No DOM, no fetch — node --check-able and
+                       tested by migration/script-builder-test.mjs.
   classify.js          Partial / Standard / Curata rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Curata weighting used by
@@ -670,6 +718,13 @@ assets/
                        render-wiki.js; re-exports inlineFormat() because
                        site.js lazy-loads it for links in announcements.
                        In the Worker it gets the engine through init().
+  export-ids-editor.js The "Character IDs in the JSON export" control (mode +
+                       your own prefix/suffix), mounted by publish-script.html
+                       AND publish-collection.html so the two page types cannot
+                       store the setting differently. Its live sample is a
+                       character off the page's OWN roster qualified by that
+                       page, because a mode name means nothing beside the id it
+                       produces. See "The id a character exports under" below.
   approved-editors.js  The "who else may edit this page" list, mounted by all
                        four editors (create/edit/publish-script/-collection) so
                        the three page types cannot drift. Stores what the Worker
@@ -930,6 +985,35 @@ assets/
                        (DOMParser). SEED_PAGES/SEED_ASSETS are the known
                        files; anything newer is found by crawling <a href>
                        and <script src>.
+  fancyscripts/        Fancy Scripts (/fancyscripts) — the whole tool, as ES
+                       modules. script.js is the engine (parsing, sorting, the
+                       night order, the calibrated SHEET + NIGHT geometry, the
+                       OPTION MODEL every page shares, presets, fonts, the
+                       element registry — pure, no DOM, node-testable);
+                       sheet.js renders the script sheet(s), night.js the
+                       night-order and jinx pages, back.js the back cover —
+                       all three captured by the export; appview.js the
+                       second style of the sheet and the night sheets (the
+                       official app's own view); columns.js the third
+                       style of the script sheet (the night order down
+                       both edges, from the owner's own PSD sheets);
+                       elements.js is what
+                       they share (page frame + backgrounds, text/image
+                       stickers, the asset resolver); util.js the DOM/colour/
+                       measure helpers; drag.js the one pointer layer that
+                       moves anything marked data-fs-drag; pixel.js the
+                       per-pixel passes, run in pixel-worker.js through
+                       jobs.js; app.js the page controller. art/, fonts/ and
+                       icons/ (the REAL official painted icons — see the
+                       section below) are the sealed payload, vendor/ the
+                       export libraries. See "Fancy Scripts" below before
+                       touching ANY number in script.js. decor/ is official
+                       decoration art (edition skulls with the logo lettering
+                       cut out, botc.app's token leaves and garlands, the
+                       shop site's cutouts), offered as art choices and as
+                       "+ Decoration" stickers (see "Art from the decoration
+                       pack" below). Its README.md says where each file came
+                       from.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
                        stripped; app.js is the wiki's own UI controller (the
@@ -1015,61 +1099,21 @@ create.html, edit.html Character editor (POSTs to /api/character; R2 uploads).
                        Both carry a Snapshot button in the sticky action bar
                        (char-snapshot.js) — the two are the same form, so a
                        change to one is a change to both.
-script.html            Script Builder — roster only (localStorage botc_script;
-                       randomize/SAO sort/export/copy/share/import/clear). Naming
-                       + publishing live on publish-script.html; links there.
-                       The Add sidebar holds the official roster as well as the
-                       homebrew one, told apart by a Source chip pair;
-                       The sidebar and roster draw from the small GRID feed;
-                       the CARD feed (night positions, reminders, jinxes,
-                       jsonId — what export, import, the jinx and night-order
-                       panels read) starts downloading the moment the grid is
-                       in and is applied only after the first paint
-                       (`cardReady`). Until then those two panels say
-                       "Loading…", the roster lists no jinxes, and Export,
-                       Copy and Import wait for it rather than draw from grid
-                       rows. Its 30/50px thumbs are the 192px card thumbnails
-                       (PageRender.thumbSrc), not the full icons;
-                       Randomize stays homebrew-only on purpose (180 official
-                       characters would swamp the pool). Export goes through
-                       PageRender.buildPageExport, the same call the published
-                       page's JSON box makes, so the two cannot drift.
-                       The Add sidebar carries the shared filter box (team/tag
-                       chips, creator, sort) over the name search, so it is
-                       built ONCE and filtered in place, so adding a character
-                       only repaints the ticks, because re-rendering the list
-                       would throw away whatever the reader filtered to. A
-                       Night Order panel sits under the roster, the same
-                       widget publish-script.html uses.
-                       Jinx and Night Order panels sit under the roster
-                       (shared widgets; see "Jinxes" and "Night order").
-                       Every export/copy from HERE gets one extra entry, and
-                       nowhere else does: the **botchomebrew.wiki credits
-                       Fabled** (the site's pirate skull, id
-                       `botchomebrewwiki`), whose ability reads "This script was
-                       made on botchomebrew.wiki and contains characters by: …".
-                       The "Detailed credits" tick (localStorage
-                       botc_script_credits_detail) swaps the plain name list for
-                       one naming each creator's characters; the page shows the
-                       exact line above the publish CTA. buildCreditsFabled() in
-                       render.js builds the object and buildPageExport takes it
-                       as `opts.credits`, which ONLY this page passes — a
-                       published /s/ or /collection/ JSON box is the author's own
-                       script and must never carry the wiki's signature. The
-                       builder's Import, mass-upload.html and the Token Tool all
-                       skip the id, so a round-trip neither reports it missing,
-                       nor turns it into a character page, nor prints a token
-                       for it.
+script.html            Script Builder — the markup only; the behaviour is
+                       assets/script-builder.js (+ -view.js, -tools.js). A
+                       fixed-height app shell (.sbx-* in styles.css): the
+                       document does not scroll, the character panel and the
+                       main column do. Tabs: Script, Night Order, Jinxes,
+                       Analyse, Export, and a last one, Fancy
+                       Scripts (data-open, not data-tab), which opens the
+                       script in Fancy Scripts through doFancy(). See "The Script Builder".
                        Import matches each entry with matchEntry(): a bare id
                        is an official character, and so is an object entry
-                       carrying the official ability (a page here with that
-                       same ability is a copy of it); any other object entry
-                       is matched by ABILITY among the pages answering to its id or name
-                       (there are five Phantoms, and the export writes the
-                       bare name as the id), then the set the file is named
-                       after. Its questions (replace or add, keep the file as
-                       the script's JSON) are one in-page dialog with real
-                       buttons, never confirm(): Cancel there cancels.
+                       carrying the official ability; any other is matched by
+                       ABILITY among the pages answering to its id or name,
+                       then the set the file is named after. Its questions
+                       (replace or add, keep the file as the JSON) are one
+                       dialog (importChoices), never confirm().
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description (only name and author are
                        required — the description is optional, and on
@@ -1084,13 +1128,16 @@ publish-script.html    Script publishing page: name/author/tagline/version/
                        wiki has no character for are carried along untouched,
                        never dropped. A Night Order panel arranges the two
                        night lists the same way (see "Night order" below).
-                       Publish + Save as
+                       A Character IDs panel sets how the JSON export names
+                       each character (shared widget; see "The id a character
+                       exports under"). Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
                        membership manager (match terms + manual include/exclude)
                        plus roster arranging: ▲▼ per character, a Sort (SAO)
                        button and Reset order, saved as `order[]`.
+                       The same Character IDs panel as publish-script.
                        Publish/Draft via /api/collection; ?c={id} edit mode.
 publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/author,
                        markdown-ish body with toolbar + live preview, banner and
@@ -1127,18 +1174,23 @@ scripts.html           /scripts — the script index. Filter chips for Curata an
                        unreachable on a phone without it.
 script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Starlit Gallery, Mass
-                       Import, Jinxes, Creator Icons. This is what the "Tools"
-                       nav entry points at.
+                       Fancy Scripts, Grimoire Forge, Icon Forge, Starlit
+                       Gallery, Mass Import, Jinxes, Creator Icons. This is
+                       what the "Tools" nav entry points at.
                        Each card carries its tool's icon: assets/grimforge.png
                        and assets/tool-icons/{script,tokens,iconforge,starlit,
                        bloodstar,jinxes,creators}.webp (the Starlit team's
                        art, trimmed to the drawing, 300px; bloodstar.webp is
-                       Mass Import's, which took the Bloodstar importer in). The same picture
+                       Mass Import's, which took the Bloodstar importer in;
+                       fancyscripts.webp is a small picture of a finished
+                       sheet, taken from the tool itself, not Starlit art).
+                       The same picture
                        sits beside each tool page's title (.tool-hero-row /
                        .tool-hero-icon in styles.css; Grimoire Forge keeps its
                        own .gf-hero-* copy), except /starlit, whose title is
-                       the team's lettering.
+                       the team's lettering, and the Script Builder and Token
+                       Tool, which have no hero: theirs is a small one at the
+                       start of the bar (.sbx-tool-ico).
 starlit.html           The Starlit Gallery (/starlit). See that section.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
@@ -1177,6 +1229,20 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        roster comes from render-page.js's
                        resolveCollectionMembers(), not a second copy of the
                        membership rule.
+fancyscripts.html      Fancy Scripts (/fancyscripts) — turns a script into an
+                       official-style print sheet (parchment, engraved
+                       dividers, gold-leaf title), with matching night order
+                       sheets, a jinx page and a back cover, exported as PNG
+                       or a print-ready PDF. Same treatment as the two Forges:
+                       the handoff was a React + Tailwind app ("The Grimoire
+                       Press"), rebuilt in vanilla ES modules on the wiki's
+                       styling — do not reintroduce a framework. The page owns
+                       only the chrome (cards with data-fs-for saying which
+                       preview tab they belong to); the tool lives in
+                       assets/fancyscripts/. Takes a script published here
+                       (the picker, or ?s={slug} — the "Fancy Sheet" action
+                       on /s/ pages), an uploaded/pasted script-tool JSON, a
+                       design file. A first visit shows Trouble Brewing until one is picked. See "Fancy Scripts" below.
 iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        photo into an official-style character icon. Same
                        treatment as Grimoire Forge: the handoff shipped a React
@@ -1186,7 +1252,35 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        page-local CSS; everything else is in assets/iconforge/.
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
-                       token-worker.js, assets/tokens/manifest.json versioning)
+                       token-worker.js, assets/tokens/manifest.json versioning).
+                       Sits in the Script Builder's app frame (.sbx-*): the
+                       characters are the side panel (the builder's .sbx-add-*
+                       rows, but only a few hundred on the page: a team shows
+                       its first 50 matches and a Show more button, and the
+                       search runs over the characters in memory. All 3,700
+                       rows kept in the page made the browser re-check every
+                       row and icon on each change, and in Brave on a PC the
+                       sliders and the main panel stopped answering), Import / Clear
+                       / Generate sheets the bar, and Tokens / Print / Adjust
+                       / Custom Art the tabs (botc_token_tab), with the
+                       preview pinned beside them (above them on a narrow
+                       screen, and only on Adjust and Custom Art there).
+                       Generating opens the Print tab, where the sheets land.
+                       The panel lists the 181 official characters beside
+                       the wiki's (marked Official): a light row until it is
+                       added, when addSlug() makes its record with
+                       officialExt() and fetches its art. A roster's
+                       `off-{id}` slugs (?script=, ?chars=) are made the same
+                       way in ingestUrl(); they used to be dropped, so Print
+                       Tokens on a mostly official script printed one or two
+                       tokens. loadData() merges night-order.json into the
+                       roster, or an official token has no night leaves.
+                       `?chars=a,b&replace=1` replaces the set (the Script
+                       Builder's More > Print tokens).
+                       On a phone the preview is pinned under the tab strip
+                       on Adjust and Custom Art, and the token editor's
+                       preview (`.tte-stick`) stays at the top of its window
+                       while its sliders scroll under it.
                        Adjustments layer defaults -> Custom Style -> All
                        Tokens -> one token; custom art is a slot's own upload,
                        else the style's. "Save as Custom Style" (on the page
@@ -1194,6 +1288,9 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        into localStorage botc_token_style_v1 and clears the
                        layers it absorbed, so nothing counts twice; every
                        reset steps back to the style, Reset Style to stock.
+                       Its two character lists draw the 192px thumbnails
+                       (thumbSrc() in token-tool.js); the tokens themselves
+                       render from the originals (artAbs).
 mass-upload.html       /mass-upload — Mass Import, the one importer: a Bloodstar
                        link or a script JSON (file or paste) in, character
                        pages and optionally a script or collection page out.
@@ -1293,7 +1390,10 @@ migration/             D1 schema reference (schema.sql, accounts_migration.sql,
                        two image/font maintenance scripts: optimize-images.js
                        (the WebP page furniture and the committed thumbnails)
                        and fetch-google-fonts.js (refreshes assets/fonts/*.woff2
-                       and prints the @font-face block for styles.css).
+                       and prints the @font-face block for styles.css), and
+                       ui-strings.py, which lists the user-visible strings of
+                       a page or script that break the wording rule below
+                       (a dash, or over 110 characters).
 ```
 
 ## Database (D1, SQLite)
@@ -1352,6 +1452,8 @@ a renamed page used to live at — for characters `to_slug` is the page's
 `tag_checks` (the tag suggester's answer key, one row per character an
 admin checked by hand) and `tag_feedback` (what writers kept, removed and
 added after pressing Suggest tags) — see "Tag suggestions",
+`script_library` (the Script Builder's My Scripts on an account — see
+"My Scripts on the account"),
 `rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
 unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
@@ -1465,6 +1567,509 @@ ids the widget would have to keep in step. Seeded collections have `owner_id NUL
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit,
 and **that assignment carries the set's characters with it** (see "Assigning an
 owner" below).
+
+## The Script Builder (`/script`)
+
+`script.html` is markup; `assets/script-builder.js` is the controller,
+`assets/script-builder-view.js` the view settings and
+`assets/script-builder-tools.js` the pure rules (shape, fills, analysis,
+text). Read the controller's header before touching a click path — the rules
+there are the reason adding a character costs well under a millisecond
+instead of the two to three seconds it used to.
+
+What shapes it:
+
+- **On a wide screen the document does not scroll.** The shell (`.sbx-*` in
+  styles.css) is a flex column on `<body>` with `overflow: hidden`; the
+  character panel and the main column scroll independently. Height comes from
+  the flex column, not `calc(100vh - 56px)`, so it follows the top bar's real
+  height. This is what removed the band of empty page under the character
+  list, and it is why the night arranger's own `max-height` is unset inside a
+  tab (`.sbx-pane .no-list`) — one scrollbar per pane, never one inside
+  another. The filter box scrolls with the list for the same reason.
+- **Below 900px it is an ordinary scrolling page.** Two panes inside a fixed
+  frame is a desktop idea; on a phone that frame ate the screen — top bar,
+  builder bar, tab strip and footer all pinned, leaving the roster a window a
+  few rows tall to scroll inside. So the media query unwinds the shell
+  (`body` back to `display: block`, `.sbx-scroll` back to
+  `overflow: visible`) and the roster runs the document's full length. The
+  **tab strip** is the one thing that stays, stuck under the top bar at
+  `top: var(--sbx-top)` — a height `syncTopbarHeight()` measures, because it
+  depends on the brand images and the reader's text size. Two consequences to
+  keep in mind: the drawer is fixed over a page that now moves, so opening it
+  puts `.sbx-locked` on `<html>`; and `showTab()` has to scroll the WINDOW
+  (`scrollPaneTop()`), or tapping a tab from half way down a long roster
+  opens a short pane already scrolled past its end. **Every popover is a
+  bottom sheet there** (`.sbx-pop` ignores its inline position below 900px
+  and sits over `#sbx-popscrim`).
+- **Two feeds, whichever lands first draws the page.** `start()` fetches
+  `characters.json?fields=grid` (what a row needs, a third of the bytes) and
+  `?fields=card` (the schema fields the export, the night order and the
+  jinxes need) together. The grid usually paints first on a phone; the card
+  rows are then merged INTO the same objects (`Object.assign`), so the
+  panel's rows and the roster keep their references. Anything that needs
+  card data — export, copy, print, Fancy Sheet, copy as text — goes through
+  `withCards()`, which toasts and waits rather than writing half a script.
+  **The panel keeps only a few hundred rows on the page** (`renderPanel`):
+  the filter box (char-filters.js mounted straight over `panelChars`, the
+  homebrew and official characters), the name search and the Show select
+  run on the list, and each group draws its first `PANEL_STEP` (50)
+  matches with a Show more button (+200), within `PANEL_BUDGET` (400) rows
+  for the whole panel: grouped by creator there are 200-odd groups, so a
+  group past the budget shows its heading and a Show button only. All 3,800 rows on the page made
+  the browser re-check every row and icon on each change: a click cost a
+  tenth of a second and loading could hang the tab in Brave on a PC.
+  `panelMatches()` is every match, drawn or not, and is what Random, Fill,
+  Swap, the group dice and + All / − All shown read; `visibleRows()` is the
+  rows on the page, for the arrow keys and Enter.
+  `performance.mark('sb:…')` marks the milestones; `window.ScriptBuilder`
+  is a small console handle (order, meta, view, undo/redo, history, ready,
+  source).
+- **A return visit paints from the last one.** The feeds are `private,
+  max-age=0`, so the browser revalidates them on every load and even an
+  unchanged feed cost the round trip to the Worker before anything could be
+  drawn. `cachedJSON()` keeps every feed (and `roles.json` /
+  `night-order.json`) in the Cache API as well — `caches.open('botc-sb-feeds-1')`,
+  a plain store the HTTP cache's rules do not reach — and hands back
+  `{fast, fresh}`: the copy from the last visit draws the page at once
+  (`feedSource === 'cache'`, the card copy for choice), the network's is
+  fetched alongside and stored for next time, and `reconcile()` merges what
+  moved into the objects already on screen. Rows are matched by slug and
+  compared by `v` (the seed carries none, so it falls back to the rows
+  themselves); a changed row is replaced IN its object, keys the fresh row
+  no longer carries deleted, so a jinx taken off a page does not live on
+  here. The panel is rebuilt only when something actually changed — a
+  rebuild takes the filter box down with it, and the usual answer on a
+  return visit is that nothing did — and never while the first build is
+  still pending (`panelState`), since that build will read the merged
+  objects anyway. **Nothing is trusted without the fresh feed**: `cardReady`
+  is set by the fresh card feed, or by the cached one only once the network
+  has actually failed (a toast says so, and the page then works offline);
+  the failure verdict waits for the cache read to settle, because a refused
+  connection fails before the cache has even been opened. Without `caches`
+  (an http:// origin that is not localhost) it is plain fetches, as before.
+  On the local server with a 400 ms feed delay the roster lands at ~460 ms
+  from cache against ~950 ms from the network; a headless check that wants
+  a cold run has to `caches.delete('botc-sb-feeds-1')` first.
+- **A click touches one row.** Every sidebar row on the page is kept in
+  `rowBySlug` when the list is drawn, so nothing queries the DOM to repaint a tick. The roster
+  is small and is rebuilt whole. The night arranger, the jinx editor and the
+  Analyse tab are mounted lazily and only re-rendered for a tab that is on
+  screen; off screen they are marked dirty. The jinx count, the credits line
+  and the library save all happen in one debounced pass 200 ms after the
+  clicking stops. Anything new that a click has to do belongs in that pass
+  unless it must be immediate. Every picture on the page is a **192px
+  thumbnail** (`PageRender.thumbSrc`), never a 150 KB original: both lists,
+  the picks strip, the Analyse candidates and the peek card too,
+  whose 72px box is inside what 192px covers on a 2x phone and which now
+  paints from the thumbnail the hovered row already fetched. An official row
+  draws the bundled painted WebP rather than the app's CDN copy (see
+  "Caching", Images).
+- **Undo/redo is one stack over the roster and the details** (`hist`, 80
+  steps, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z outside a text box, and the two
+  buttons in the bar). Every mutation calls `mark()` BEFORE it changes
+  anything: `toggle`, `removeSlug`, `replaceOrder`, `patchMeta`, and the
+  whole-script changes (import, library switch, new, a shared link). Typing
+  coalesces through `patchMeta(fn, 'typed')`; bookkeeping such as `libId`
+  passes `'silent'`. **`mark` is the undo stack's name — do not declare
+  another function called that in the file** (a duplicate declaration
+  silently won once and the stack recorded nothing; the perf marks are
+  `perfMark`). `mark()` skips a step only when it equals the TOP OF THE
+  STACK, never `hist.last`: after an undo `hist.last` is the state on
+  screen, and the step before the next change was never recorded.
+- **A script holds 200 characters** (`SCRIPT_MAX`, the Worker's
+  `SCRIPT_CHARACTERS_MAX`): `toggle`, "+ All", import and a share link stop
+  there and say so.
+- **Deleting the open script closes it** (`deleteEntry`): only dropping its
+  `libId` let the next autosave put it straight back. Undo reopens it.
+- **A confirm never promises a copy it will not keep**: `keptNote()` says
+  the open script is NOT kept when My Scripts is full and it is not in it.
+- **A share link's script-only characters are cleaned first** (`applyShare`:
+  `ownEntry()` over each, slugs checked) and counted as known, or the link
+  loaded without them; its logo, background and almanac must be https.
+- More > **Print tokens** opens the roster in the Token Tool
+  (`tokens?replace=1&chars=`), without characters made for this script.
+- **The name and the author are on the page.** They were not, and
+  `botc_script_meta` is shared with publish-script.html — so a script edited
+  from its published page left its name, its author and its `editSlug` behind,
+  and the next script built here exported under the previous one's name. The
+  bar now shows both, and a meta still carrying `editSlug` says which page it
+  will publish over and offers to detach.
+- **Up to 50 scripts, in `botc_script_library`**, and on the account when
+  logged in (see "My Scripts on the account" below). Each entry is
+  `{id, chars, meta}`; the open one is pointed at by `meta.libId` and is
+  written back as it changes (the bar flashes *Saved*), so switching scripts
+  loses nothing. Nothing outside this page reads that key — `botc_script` and
+  `botc_script_meta` are still the one current script, exactly as
+  publish-script.html and the "+ Add to Script" button on a `/c/` page
+  expect. An import or a shared link saves what was open first and then
+  clears `libId`, so replacing a script never overwrites its saved copy. The
+  panel's My Scripts side sorts (newest / name / size), backs the lot up to
+  one file and restores from one — a **merge** by id, never an overwrite.
+
+### My Scripts on the account (`/api/my-scripts`)
+
+Logged in, My Scripts is kept on the account as well as in the browser, so
+it is the same list on every device; logged out it is the browser's list,
+as it always was. The browser's copy is still what the page works from.
+
+- **The table is `script_library`** (`user_id`, `id`, `data` = `{chars,
+  meta}`, `updated` = the browser's edit time, `saved` = the server's stamp
+  for the version it holds), created lazily. 50 per account
+  (`MY_SCRIPTS_MAX`), 300 KB an entry. Nothing public reads it; account
+  deletion backs it up and deletes it.
+- **A save names the version it was made on** (`base`, the `saved` stamp the
+  browser last had). If the account has moved on since, another device
+  saved in between: the newer EDIT (`updated`) takes the id and the other is
+  stored as "(older copy)", and the browser reads the list again. Copies may
+  pass the limit by `MY_SCRIPT_COPIES` (20) and no further: past that the
+  save is counted in `full` and the text stays in the browser. When the
+  account's version is the newer one the reply names the id in `lost` (never
+  in `saved`), so the browser takes the account's version instead of marking
+  its own losing text as synced.
+- **Every write is conditional.** The UPDATE carries `AND saved=?` (the row
+  that was read) and is looked at again when it changed nothing; the INSERT
+  carries the limit in its own WHERE (`insertUnder`). Two saves arriving
+  together used to both pass a count read beforehand, and the later one won
+  in silence. `updated` is clamped to five minutes ahead, so a clock that
+  runs fast cannot win every conflict. The body is capped at 8 MB.
+- **The browser's side** (`cloudStart` / `cloudPull` / `cloudPush` in
+  script-builder.js): each entry carries `saved` and `syncedUpdated`, and one
+  whose `updated` has moved is sent 2.5 s after the change (and on
+  `pagehide`). `setLib()` is the one writer and keeps the stamps across a
+  rebuilt entry; `syncLibrary()` gives an entry a new edit time only when its
+  roster or meta really changed, or opening a script would outrank an edit
+  made on another device. On load the account's list is folded in: new
+  entries added, an unchanged local entry replaced by a newer one (and the
+  open script redrawn), one deleted elsewhere removed, and anything only
+  here sent up, so the first login adds the browser's scripts to the
+  account. Deletes wait in `botc_script_library_gone` until sent.
+  `botc_script_library_owner` names the account the list last synced with;
+  a different account signing in on that browser gets its own list, never
+  the previous one's scripts. A push is about 2 MB at most (the rest
+  follows in the next) and uses `keepalive` only under 60 KB: the browser
+  refuses a larger keepalive body outright, which used to make every big
+  save fail without a word. A failed push retries up to four times.
+- **Images**: `POST /api/my-scripts/image` mints `library/{userId}/{token}`
+  like `/api/attachment` (type whitelist, byte sniffing, 5 MB). `library/` is
+  in `R2_SERVE_PREFIXES`, `run_worker_first` and the orphan sweep, whose
+  references now include `script_library.data`. 200 images an account
+  (`MY_SCRIPT_IMAGES_MAX`), and account deletion deletes them.
+
+- **The roster is drawn as the character SHEET** by default, not as cards:
+  one parchment per team, two columns of rows, the name opening the line and
+  the ability running on from it. Two columns comes from a **container
+  query** on `#sb-script`, not a media query — the panel's width is the
+  reader's to set, so only the main column's own width can answer "is there
+  room for two". The container is `#sb-script` and never `.sbx-scroll`: size
+  containment re-anchors `position: fixed` descendants, and the night-order
+  drag lifts its row with exactly that.
+
+### The view (`⚙ View`)
+
+Everything about HOW the roster is drawn, and nothing about what is on it:
+the same script exports, publishes and shares identically under every view,
+so it lives in `botc_builder_prefs.view`, never in the meta.
+`SBView.SCHEMA` is the whole list, and it is short on purpose: **10
+settings** in the popover, cut down from 37 plus 6 presets at the owner's
+request (2026-10), then Creator mark added and Look, Team colours and Team
+headings taken out (the roster is always parchment, its headings always
+on, in plain ink, with no band behind them), all at the owner's request. Layout (sheet, cards,
+list, icon wall, and **Official**: the sheet set as the official script
+tool sets it, bold Trade Gothic names over the ability, team headings with
+a hairline, no "official" badges, on the same parchment panels; it is
+`data-layout="sheet"` with `data-tone`/`data-font` `official`, and a view
+stored with the old Official look opens on it), **Size** (Small /
+Normal / Large — icons, text, spacing and the panel's rows together; the
+icon a layout starts from is its own, `ICON` in the file), **Columns** (Auto
+/ 1 / 2, where 2 is the whole script poured down two columns), seven "Show on
+each character" ticks (ability, creator — on the roster and in the panel —
+creator mark, tags, night marks, jinx marks, notes). Two more
+keys ride the view without being in the popover (`ui: false`): `arrange`,
+the **Arrange** button beside Sort, and `panelScope`, the panel's own Show
+select. There is no display-only order any more (it read like Sort and was
+not), no presets (four were the layouts again), no bar switches, no
+Animations switch (the CSS follows `prefers-reduced-motion`), no panel side,
+and the official badge is simply always on. Team headings are not sticky:
+the dark band that pinned them read as a stray bar.
+**Before adding a setting back, ask the owner.** `normalize()` runs
+`migrate()` first, so a view stored by the 37-setting builder keeps its
+look, columns and colours.
+Each row names its `repaint` — `'roster'` when the row markup carries it,
+`''` when CSS alone honours it — and `SBView.apply()` writes the view onto
+`#sbx` as `--sbx-icon` / `--sbx-text` / `--sbx-panel-icon`,
+`data-layout|cols|density|font|tone|panelscope` and a few classes; the
+`.sbx` block in styles.css reads them. **A new setting is one schema row
+plus the CSS that reads it.**
+
+### Shape, Random and Fill
+
+`meta.shape` is how many of each team the script is aiming for (`SBTools`:
+Standard 13/4/4/4, with Travellers, Teensyville, Big, none, or any numbers);
+the default is stored as nothing, exactly as `exportIds` is. The counts strip
+in the bar IS the Shape button and shows `have/want` per team (green at the
+target, dashed under, orange over); the roster headings show the same.
+Random draws to the shape from **whatever the panel is
+showing** (`visibleSidebarChars()`, every homebrew match in `panelMatches()`);
+**Fill the gaps** adds only what is missing; the die on each team row in the
+Shape popover draws that one team again; **Swap** on the peek card replaces
+one character with another of its team in the same seat. `SBTools.fillPlan`
+/ `randomPlan` are the pure versions, seedable for the test. Homebrew only,
+deliberately — official rows never carry `data-source="homebrew"`.
+
+There was a **lock** here — a padlock per row that Random and Clear kept —
+and it is gone. Nobody used it: the reader who wants to keep four characters
+filters the panel to them and draws the rest, or takes the one Random gave
+them back off. It cost a button on every row, a column in three layouts, a
+clause in every confirm and an argument to `randomPlan`. Do not put it back
+without asking; `meta.locks` on an old saved script is simply ignored.
+
+### The icons
+
+Every mark in the builder is an inline SVG from `assets/ui-icons.js`, drawn
+in **currentColor**. The page used to use emoji, and on a phone that is
+exactly the row of little coloured pictures the wiki's own furniture is not:
+an emoji is painted by the reader's font, so on the dark and paper tones it
+was the one thing that did not take the tone's ink. The static markup writes
+`<i class="sbi-i" data-icon="dice"></i>` and the module fills it; the
+generated markup calls `ico('dice')`, a one-line wrapper that returns nothing
+at all when the module is missing, so a failed load costs a button its
+picture and never its label. `.sbi` (the svg) and `.sbi-i` (the placeholder,
+`display: contents`, so the svg lands as a direct child of the button exactly
+as it does in the JS-built markup) are the whole of the CSS.
+**`flash()` therefore saves and restores `innerHTML`** — the old
+`textContent` version would have put a button's words back without its icon.
+
+### Analyse
+
+`SBTools.analyse(chars, ctx)` reads the roster and the controller draws it:
+who acts on which night, information / misinformation / kills / protection
+by tag, setup-changers and Outsider modifiers, tags and creators, warnings (no Demon, no Minion,
+duplicate names, unfinished pages, no icon, nothing learns anything…) and
+**the characters jinxed with someone on the script but not on it**, each with
+an Add button. The jinx suggestions need the registries `start()` sets:
+`setWikiChars(jinxCharIndex(allChars).byKey)` and the official name/icon maps
+from roles.json — without them a jinx typed as a name resolves to nothing.
+The tab is lazy like the night and jinx tabs (`analyseDirty`).
+
+### The panel: picks, keyboard, all shown, team tools
+
+- **The picks strip** above the list (`#sbx-picks`, `paintPicks()`): the
+  characters pinned from the peek card (`prefs.pins`, ★) and then the last
+  sixteen added (`prefs.recent`), one thumbnail each, a tick on the ones on
+  the script. A click adds or removes; a hover peeks. Both lists are the
+  reader's, not the script's.
+- **Keyboard**: `/` or Ctrl+K focus the search box; ↑↓ walk the rows the
+  filter box is showing (`moveHighlight`, `.hi`, `aria-activedescendant`);
+  Enter adds the highlighted row, or the first match; Esc clears the box,
+  then closes things.
+- **+ All shown / − All shown** add or remove everything the filter box is
+  currently showing — filter to a creator or a collection and take the set
+  in one click (a confirm above thirty).
+- **Team tools** on each roster heading (hover, always-on for touch): SAO
+  arranges that one team (writing `order`, and switching the view's
+  display order back to "as arranged" so the result can be seen), the die
+  draws the team again, ✕ takes the team off — locks survive both.
+- **The empty roster** offers the three ways in: open the panel, a random
+  script, or a script published on the wiki.
+- **Group** is the filter box's own select, as on All Characters (it was
+  View → Grouped by, moved at the owner's request): by team, by author (the
+  first name on the credit), by script or collection (`appearsIn`, else the
+  derived `appearsInFrom`, else the address's set segment) or all together.
+  `panelGroups()` reads `filterCtl.state.group`; the choice is kept in
+  `prefs.panelGroup` (an old `view.panelGroup` is carried over). Folding is
+  remembered per group key; a folded group draws no rows. **Show** narrows the panel to everyone, those not on the
+  script, or those on it (the select beside Abilities; applied to the list,
+  and by CSS off `data-panelscope` so a click hides a row at once), and the
+  panel's **Abilities** tick both shows every ability and makes the search
+  box match them.
+- **⚯ on a panel row** marks a character jinxed with someone on the script
+  but not on it — the Analyse tab's suggestions, painted onto the rows in the
+  settle pass (`paintJinxHints`, touching only the rows whose mark changed).
+- **Each roster row** has, under its ✕, a dots button that opens the peek
+  card (the same card a hover or a long press opens, but it stays until
+  closed). On a homebrew character the card's gear button, "Edit ability",
+  turns the ability into a text box. **That ability is the script's, not the wiki's**:
+  `meta.abilities[slug]`, read by the roster, the peek card, Copy as text
+  and the export (`withAbilities()`), carried in share links, and never
+  written to the character. An official character has no gear, because it
+  exports as a bare id.
+- **New character** (the panel's button, `openOwnChar()`): a character
+  for this script only, never a wiki page. Name, team, ability and an icon,
+  uploaded or picked from the Starlit Gallery through the editors' own
+  picker (`starlit-picker.js`, loaded on first open; the modal dialog steps
+  aside while the gallery is up, since a modal is drawn above everything).
+  The icon is fitted with `art-normalize.js` and goes to
+  `/api/my-scripts/image`, so it needs a login. Stored as
+  `meta.ownChars[slug]` (`x-` + a random id, `ownEntry()` cleans it, and
+  keeps how the character plays: `firstNight`, `otherNight`, the two night
+  reminders, `reminders`, `remindersGlobal`, `setup`, `special`, so one that
+  came in from a file is on the Night Order tab and exports whole);
+  `setMeta()` puts them into `bySlug` (`syncOwnChars()`), so the roster, the
+  peek card (Edit, no Swap), Copy as text and the export treat them like
+  any character, and My Scripts, the account sync, undo and share links
+  carry them with the meta. One taken off the roster is dropped in the
+  settle pass (`pruneOwnChars()`); undo brings it back. Import turns a
+  file's entry that matches nothing here but carries a name and an ability
+  into one of these, so an exported script comes back whole. Publishing a
+  script with one keeps its slug in the roster, where the published page
+  has no character for it, so every way to `publish-script` from the
+  builder goes through `goPublish()`, which names them and asks first.
+  The peek card labels one "this script only", and Analyse leaves it out
+  of the "unfinished on this wiki" warning.
+- **View → Creator mark** (`view.showMarks`) draws each homebrew
+  character's creator marks beside its name in the roster and the panel,
+  on screen only. The Export tab's tick (`meta.creatorMarks`) is the
+  other one: it puts them in the export and on the published page too, and
+  the roster shows them for either. The panel's names are repainted in
+  place (`paintPanelMarks()`), never rebuilt.
+- **Notes on a character** (`meta.charNotes[slug]`): typed on the peek card
+  of a character on the script, shown under its row (View → Your notes),
+  carried into Copy as text and along share links.
+  Never in the export.
+- **The bar** has the script's name and author as two boxes typed in
+  place (`#sb-name`, `#sb-author`, sized to their text by `fitBarBox()`; the
+  Details boxes are the same two fields), the counts, Undo/redo, View,
+  Random, Sort, Arrange, More and Publish. More holds "Export, share or
+  print…" (which opens the Export tab, where Download, Copy, Share and
+  Fancy Sheet live), Import and the library actions. The Analyse tab's Shape
+  and "Players it can seat" boxes and Tonight's bag were taken out at the
+  owner's request; the counts strip is the shape now.
+- **Export** carries what was the "In the Official App" panel (hide the
+  title, creator marks, almanac link, Bootlegger rules) plus a **Logo** and
+  a **Background**: an https image link each (`meta.exportLogo` /
+  `meta.exportBg`), shown under the box, written to `_meta.logo` /
+  `_meta.background` ahead of a published page's own, carried in share
+  links, and read back off an imported file's `_meta`. **Upload** (logged
+  in only) shrinks the picture to 1600px and posts it to
+  `/api/my-scripts/image`, and the box takes its address on the live site
+  (`https://botchomebrew.wiki/assets/library/…`), which is what the file
+  needs; the preview reads it from this site's own copy (`localImg()`).
+  **Make one** beside each box opens a maker in `assets/script-art.js`
+  (one dialog and one colour picker for both). The **logo maker**
+  (`LogoMaker.open()`) sets the script's name (editable in the dialog) in
+  LHF Unlovable, the Fancy Scripts title face, loaded with `FontFace`,
+  filled top to bottom with two colours plus the texture and a faint
+  damask (Pattern: the background maker's swirl tile, scaled to the
+  letters), inside a thin
+  white outline (Outline; the owner had the raised edge taken off), on a transparent
+  1200x1200 square: the ink is measured (`actualBoundingBox*`, the swashes
+  reach past the advance widths) and set to fill 94% of the width, never
+  taller than 36% of the square, and on two lines when one line would be
+  small and the split makes it clearly bigger. Its preview sits on the
+  script's background when there is one. Using one also ticks "Hide the
+  title" (`meta.hideTitle`), since the logo already says the name. The letters are clipped to ONE
+  mask of every line (clipping line by line kept only their overlap, which
+  is nothing). The **background maker** (`BgMaker.open()`): the Fancy
+  Scripts back cover's swirl pattern (`assets/script-bg/swirl.webp`,
+  `fancyscripts/art/back-pattern2.png` at half size, which repeats without
+  a seam; light is the motif; the owner chose it over the ribbon's damask)
+  laid over a two-colour gradient,
+  then a mottled texture and shading round the edges, drawn on a canvas at
+  1920x1080 and uploaded through the same route as Upload (WebP, or JPEG
+  where the browser cannot write WebP). Presets, two colours on a picker of
+  its own (a square, a hue strip and a hex box, like Fancy Scripts', since
+  Android's colour input has presets only), Blend, Pattern size, Pattern
+  strength, Texture and Shading; the settings are kept per browser
+  (`botc_bgmaker`). Logged out it can only download. Both makers open on
+  Trouble Brewing's reds (the owner's call; the logo's two colours were
+  sampled off the official TB logo) and list them first as a preset.
+- **The peek card closes when the tab changes** (`showTab()` calls
+  `hidePeek()`).
+- **Each panel group heading has a die** (add one at random from what that
+  group is showing) and, grouped by team, says how many more the shape wants
+  (`paintPanelNeeds`). Roster teams **fold** with a click on the heading
+  (`prefs.rosterFolded`). The keys **1–5** switch tabs when nothing is being
+  typed.
+- **The undo stack labels its steps** (`mark('add Zhen')`, `replaceOrder(list,
+  quiet, label)`, `patchMeta(fn, how, label)`): the buttons' titles and the
+  Undone/Redone toasts say what moved.
+- **Fancy Scripts hands its roster back** (its "Script Builder" button →
+  `botc_builder_incoming` + `/script?from=fancy`, read once), the mirror of
+  the Fancy Sheet hand-off; the Import panel also reads the clipboard in one
+  tap (`navigator.clipboard.readText`, with the box as the fallback).
+- **Analyse → "Nobody on this script…"**: the families a script can lack
+  (learns something, makes information false, kills, protects, changes the
+  setup — `SBTools.FAMILIES`) with a few random candidates from the panel
+  for each (`gapSuggestions`, tag-based, deliberately random rather than
+  ranked). The Jinx tab also lists **official-vs-official jinxes** on the
+  script from `assets/official-jinxes.json`, fetched on first need — for
+  information only, since the app applies those itself and the export never
+  carries them.
+
+### Peek, notes, copy as text, loading from the wiki
+
+- **Peek** (`#sbx-peek`): hover a row for half a second with a mouse, or hold
+  a finger on it, and the character is shown whole — full icon, ability,
+  tags, when it acts, reminders, who it is jinxed with, Add/Remove, Swap,
+  the page link. A click still adds or removes; the card never intercepts it.
+- **Notes** (`meta.notes`): kept with the script in the library and in share
+  links (`shape` rides along too), never in the export.
+- **Copy as text** (`SBTools.textExport`): plain, Discord, Markdown or names
+  only; abilities, jinxes, night order, house rules and notes as options;
+  `.txt` download. The jinx tab has its own copy button; the night tab always
+  shows icons.
+- **From this wiki**: the Import panel's picker lists `scripts.json` and
+  `collections.json` (fetched on first focus) and loads `/api/page-json` —
+  the same export the page's Download JSON button saves — through the
+  ordinary importer; a pasted `/s/{slug}` or `/collection/{id}` link does the
+  same.
+
+### Arrange, columns, export options
+
+- **Two settings say "columns" and they are different things.**
+  **Columns** (auto / 1 / 2 / 3) splits ONE team's own parchment into that
+  many columns of rows, and `auto` is a container query on `#sb-script`.
+  **Columns → 2** is the printed sheet's flow
+  instead: a `column-count: 2` multicol on the whole roster, so Townsfolk
+  fills the left column and the other teams run on down the right, each
+  team's own grid pinned to one column inside it. A team is kept whole and
+  only a long one may break (`:has(.sbx-sheet > .sbx-ch:nth-child(9))`) —
+  letting every team break stranded a four-character team's heading at the
+  foot of a column with an empty parchment under it, because `break-after:
+  avoid` on a heading is honoured patchily in a multicol. It unwinds to one
+  column below 700px, and it is **dropped while Arrange is on**: a row
+  lifted out of a multicol flow lands back in the wrong column.
+- **Arrange** (the button beside Sort): every row gets a grip and two
+  arrows; moves
+  stay inside a team and write straight into `order` (`setTeamOrder`), which
+  is what the export and the published page read. Drag with a mouse anywhere
+  on the row, on a phone from the grip, the same lifted-row-plus-placeholder
+  technique as the night arranger. Undoable like everything else.
+- **Night Order / Jinxes tabs** take `getView` + `artOf` into the shared
+  widgets (reminders, icons; icons on the jinx pairs). The two night lists
+  sit side by side while there is room for both and stack when there is not.
+  The
+  publish page passes neither and gets the plain lists it always had.
+- **There is no print sheet here any more.** The builder used to write its
+  own print window — icons, team colours, one or two columns, the night
+  order and the jinxes — and Fancy Scripts presses the same script into the
+  official parchment sheet with a night sheet, a jinx page and a back cover,
+  and exports it as PNG or PDF. Two answers to "print this" and the worse
+  one was on the button, so **Fancy Scripts is the only visual export**: the
+  Fancy Sheet button hands the roster over (`doFancy`). Do not add a second
+  one. What the print sheet could do that nothing on screen could is now
+  **View → Columns → 2**.
+- **The Export tab** also carries a JSON preview and
+  the **Character ids** widget (`export-ids-editor.js`, the same one
+  publish-script mounts) writing `meta.exportIds`, which `buildPageExport`
+  already reads. **The credits Fabled is not optional** — see below.
+
+### The credits Fabled
+
+Every export and copy from the BUILDER carries one extra entry, and nowhere
+else does: the **botchomebrew.wiki credits Fabled** (the site's pirate skull,
+id `botchomebrewwiki`), whose ability reads "This script was made on
+botchomebrew.wiki and contains characters by: …". The "Name each creator's
+characters" tick (localStorage `botc_script_credits_detail`) swaps the plain
+name list for one naming each creator's characters, and the exact line is
+shown under a disclosure in the Export tab. `buildCreditsFabled()` in
+render.js builds the object and `buildPageExport` takes it as `opts.credits`,
+which ONLY this page passes — a published `/s/` or `/collection/` JSON box is
+the author's own script and must never carry the wiki's signature. The
+builder's Import, mass-upload.html and the Token Tool all skip the id, so a
+round-trip neither reports it missing, nor turns it into a character page, nor
+prints a token for it.
 
 ## Page customization (theme kit, custom CSS, custom URLs)
 
@@ -2606,6 +3211,109 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   `assets/tokens/manifest.json`'s `v`, or the cached toolkit keeps running the
   old code.
 
+## The id a character exports under (`Render.exportId`)
+
+The official schema's `id` is what every tool pairs characters by, and this
+wiki has 166 names more than one page answers to — four Wardens, two
+Changelings. Squashing the name (`slugId('Warden')` -> `warden`) gave all four
+the same id, so loading two of the wiki's scripts into one tool made three of
+them disappear into the first. So an id is qualified:
+
+```
+{name}_{creator}_{set}      warden_djclocktower_odyssey
+```
+
+- **`creator`** is the account that uploaded the page (`ownerName`), falling
+  back to the first name on the free-text credit. Half the wiki was
+  bulk-imported with a credit string and `owner_id NULL`, and that string is
+  the only name those pages have.
+- **`set`** is the script or collection the export is FOR — so the same
+  character exports as `warden_alice_fall_of_rome` out of that script and
+  `warden_alice_odyssey` out of that collection, which is what stops two
+  scripts loaded into one tool from colliding. With no export around it (a
+  character's own JSON box, the Script Builder's ad-hoc roster) it is the set
+  the character's own address files it under, read off `page`.
+- A part that is empty is **left out**, never written as a gap: a page with
+  neither still exports as `warden`.
+
+**`Render.exportId(c, opts)` is the single source of truth**, called by
+`buildSchema()` (render.js) and by `exportId()` in render-page.js, which every
+whole-set export goes through. Two things never take any of it:
+
+- **An official character keeps its official id** (`imp`, `poisoner`). That is
+  the app's own key for a character it already ships; qualifying it would hand
+  the app a Fabled it has never heard of instead of the Imp.
+- The **credits Fabled** is built whole by `buildCreditsFabled()` and never
+  comes through here.
+
+### Jinxes have to follow, and that is the fiddly half
+
+The app reads jinxes off the CHARACTERS and pairs them by id, so a jinx has to
+meet its target inside the file. The stored `j.id` is whatever its writer or an
+import typed years ago, so it is **rewritten to the id its target actually
+exports under**:
+
+- `jinxIdWriter()` in render-page.js builds one index of the export's own
+  roster (`Render.jinxCharIndex`) and resolves each jinx through
+  `Render.jinxTargetCheck` — the same resolver the page's jinx list uses, so
+  the two cannot disagree. A target that is **not** on this script, and any
+  **official** character, keeps the raw id.
+- `schemaJinxId()` in render.js is the same job with no export around it: the
+  `/c/` page's own JSON box resolves through the wiki registries
+  (`setWikiChars` / `setOfficialNames`) instead of a roster.
+- This is why the `/s/`, `/collection/` and `/api/page-json` routes now call
+  `Render.setOfficialNames()`. Without it an official character is not
+  recognised as one and its id would be rewritten to a homebrew page of the
+  same name.
+
+### The owner's setting (`data.exportIds`)
+
+A script or collection may carry `exportIds: {mode, prefix, suffix}`, validated
+by `sanitizeExportIds()` in worker.js. `mode` is one of
+`Render.EXPORT_ID_MODES` — `full` (the default, all three parts), `creator`,
+`set`, or `name`, which is the bare id the wiki wrote before this existed and
+still honours an import's own `jsonId`. `prefix` / `suffix` are the owner's own
+text (letters, digits, spaces, `-`, `_`, 24 chars), wrapped around the finished
+id and never applied to an official character.
+
+**The default is stored as nothing.** An `exportIds` equal to the default is
+dropped on save, so a page nobody has touched keeps following the site's rule
+instead of freezing today's answer into the row — the same reasoning as
+`logoSize`.
+
+`assets/export-ids-editor.js` is the one widget, mounted by
+`publish-script.html` and `publish-collection.html` so the two page types
+cannot store the setting differently. Its sample line is the point of the
+control — a mode name means nothing beside the id it produces — so it asks the
+page for a character off its own roster and shows what that character will
+export as, redrawn as the roster and the page's name change.
+
+### `ownerName` is derived on read, never stored
+
+`ownerNames()` in worker.js is one `users` query memoised per isolate against
+the content version — the same shape as `curataCollections()` — and it stamps
+`ownerName` onto every character row in `buildPublicJSON`, `charsBySlug`, the
+`/c/` SSR route and `/api/page`. The save handler **deletes** any `ownerName` a
+client sends back, exactly as it does `appearsInFrom`: a stored copy could only
+ever be stale, and a forged one would put somebody else's name in this page's
+id. `charsBySlug` also stamps `slug`/`page` off the row now, because the stored
+`page` is whatever an editor wrote there years ago and it is what says which
+set an id is qualified by.
+
+### Reading the new ids back in
+
+- `Render.jinxQualKeys()` registers the exported ids as extra jinx lookup keys
+  (`name+creator`, and `name+creator+set` for each set the page is filed
+  under), so a script this wiki wrote and imported back into it still finds the
+  pages its jinxes name. Strictly extra keys, claimed only where free — the
+  same rule as every other key there.
+- `script.html`'s import map registers every shape this wiki writes, **plus**
+  the `name+creator` stem: a script exported under a set the character is not
+  filed under (`warden_alice_fall_of_rome`) is an id the map has never seen,
+  and it begins with a stem the map has. Longest stem wins, and a stem is only
+  registered when the creator half actually says something — otherwise it
+  would be the bare name and would sweep up every id starting with it.
+
 ## Character identity vs address (`/c/{set}/{character}`)
 
 A character has **two** strings and they do different jobs:
@@ -3737,7 +4445,12 @@ uploaded — except for the one opt-in save described below.
   project and do **not** apply to this repo.
 - **The page owns the UI.** `iconforge.html` carries the markup and all
   page-local CSS (sliders, switches, segmented pickers and the preview stage,
-  all rebuilt in wiki furniture). Every control declares
+  all rebuilt in wiki furniture). It sits in the Script Builder's frame
+  (`.sbx-*`): the settings are the side panel, one card per group, Open
+  artwork / size / Download PNG are the bar, and the icon is a square as
+  large as the main column and the screen allow. On a phone the settings
+  open as a sheet over the lower half and the icon is pinned above it
+  (`html.if-split`, toggled by `side()` in app.js), as on Fancy Scripts. Every control declares
   `data-opt="<option name>"` and `assets/iconforge/app.js` binds them
   generically — state is the truth, the DOM is a view of it, so a new knob is
   one markup block plus (if it needs one) a formatter in `FORMAT`.
@@ -3963,6 +4676,1118 @@ required but a shout-out is appreciated, and no commercial use.
   fills "Icon by" unless the page credits somebody else; it asks before
   replacing an icon. `?icon={id}` opens one icon. Not
   built: a Token Tool hand-off (an icon reaches it through its character).
+
+## Fancy Scripts (`/fancyscripts`)
+
+Official script-tool JSON in, a set of official-style print pages out: the
+classic parchment script sheet (always one page: a long script shrinks to
+fit, or the page is made longer) with the damask sidebar, engraved dividers and the gold-leaf
+swash title; **First Night / Other Nights** sheets in the official night-order
+style (the name beside a team-coloured bar, the title down a ribbon on the
+right, the logo bottom right); an optional **jinx & Bootlegger rules page**; and
+the damask **back cover**.
+Every element on every page can be moved, sized, turned, faded, hidden or
+replaced with an upload, and free text/image stickers go anywhere.
+Downloadable as a share JPEG, a print PNG, all pages as PNGs, or one PDF.
+Client-side, except one route: a design can be saved with a script or
+collection (see "Saved with the script" below); otherwise the autosave is
+localStorage and a design file is a download. Both carry only the uploads
+the design still uses (`designObject()`); a replaced one stays in memory
+for Undo.
+
+Text without spaces (Chinese, a long link) is counted the way a browser
+wraps it: `breakPieces()` in util.js lets a word break between CJK
+characters, a piece wider than the line counts `ceil(w / line)` lines, and
+the ability and reminder nodes carry `overflow-wrap: anywhere` so the
+measure and the page agree. Ordinary words are measured exactly as before.
+A name too long for its column on the printed sheet is set smaller
+(`nameFit` in sheet.js). `parseScript()` draws a character listed twice
+once (same id, team and name), reads `_meta` in any case, and makes a
+non-text name or ability text. `proxiedArt()` asks the image proxy for a
+logo or background at 1600px (an icon gets 256). The script sheet
+comes in two styles, the printed sheet above and the **app view** (see
+below); the night sheets in three: the ribbon style (the default), the
+classic printed sheet and the app view.
+
+### How the modules fit
+
+- **`script.js` is the engine and the option model**, and it is pure: no
+  DOM, `node --input-type=module --check`-able, unit-tested with plain
+  node: **`node migration/fancyscripts-test.mjs`** checks the night order
+  of the owner's reference sheets line for line (the "Blending In" roster
+  in the test file itself), the `_meta` sequences, reminder marks, the option
+  model's legacy folding, page lists, per-character overrides and the
+  ribbon-style night sheet's defaults — run it after touching script.js.
+  `DEFAULT_OPTIONS` (+ `DEFAULT_NIGHT`, `DEFAULT_JINX`, `DEFAULT_BG`,
+  `DEFAULT_EXPORT`, `DEFAULT_BACK`) is the whole state of a design;
+  `normalizeOptions()` deep-merges anything loaded (an autosave, a design
+  file, an older version's options — the first version's `titleDX`/
+  `skullScale`/`flourishSpread` sliders fold into element offsets) over the
+  defaults so every key exists. Renderers read `options`, controls write it,
+  undo snapshots it, autosave and the design file serialise it. **Add a new
+  setting by adding a default** — nothing else has to know.
+- **`sheet.js`** draws the script sheet in two passes: `layoutSheet()`
+  measures every row (word-wrap in the real fonts), solves the density and
+  PACKS the sections onto pages; `renderSheetPage()` draws one page.
+  **`night.js`** is the night-order renderer, written as a general
+  LIST-PAGE renderer (columns → blocks → rows of icon(s) + name + text), so
+  the jinx page is the same code with a different spec (`buildNightSpec` /
+  `buildJinxSpec`, `layoutList`, `renderListPage`). **`back.js`** is the
+  back cover. All three are inline-styled and export-captured.
+- **`elements.js`** is what they share: `pageFrame()` + `renderBackground()`
+  (the baked parchment, the site's light parchment, a plain colour or an
+  upload, with a CSS-filter adjustment and a vignette), the sticker
+  renderers (`renderTextElement` / `renderImageElement` — the back cover's
+  title words ARE text stickers), `applyEl()` and the **asset resolver**.
+- **`drag.js`** is the one pointer layer. Anything a renderer marks
+  `data-fs-drag="<kind>:<id>"` can be picked up; a grip marked
+  `data-fs-handle="<the same id>"` resizes it. app.js draws four corner
+  grips round whatever is selected (`placeGrips()`, an overlay in the
+  preview, since an `<img>` holds no children; rows and the ribbon get
+  none), and a resize scales the element's one size field
+  (`sizeModel()`: an element's scale, a sticker's width or type size, a
+  back-cover word's size, a character's icon scale) by the pointer's
+  distance from the element's centre over where it started. It reports deltas in sheet units (dx in % of
+  width, dy in % of height — which is the same thing as em) and knows
+  nothing about the model; app.js's `elementModel()` maps an id to its
+  getters/setters and snap targets. **Dragging never rebuilds**: the moving
+  node gets a CSS `translate`, the model is patched live (so the panel's
+  sliders follow), and the full re-render happens on release. A click with
+  no movement selects and commits nothing. Arrow keys nudge the selection,
+  Delete removes a sticker, Escape deselects. Three drag kinds are not
+  moves: a character's ICON (`char:`) nudges that character's icon
+  (`chars[id].iconDX/iconDY`); a script-sheet ROW (`crow:`) dropped
+  elsewhere in its team reorders the team (`reorderFront()` renumbers
+  `chars[*].order` from the layout the page was drawn with, and switches
+  the sort to "As in the script", the only order a hand arrangement shows
+  under); a night-sheet ROW (`nrow:`) dropped elsewhere rewrites
+  `night.order[list]` as an id sequence, which `nightLists()` follows above
+  the file's own. Rows keep `touch-action: pan-y` so a finger on the sheet
+  still scrolls a phone; they reorder by mouse, or from the Characters
+  card. The character grid and the night list are therefore NOT grabbed
+  through their rows any more — they move from the Elements card.
+- **`pixel.js` / `pixel-worker.js` / `jobs.js`**: the two per-pixel passes
+  (the ribbon tint, the back-cover colorize — millions of HSL conversions
+  each) run in a **module Web Worker**. The maths lives in pixel.js, which
+  both the worker and the main-thread fallback import, so they cannot
+  disagree by a rounding. jobs.js starts the worker on the first job and,
+  if the browser cannot run module workers or the worker dies, runs every
+  job inline off the current frame instead; callers never know which
+  happened. The main thread still does the canvas work (tiling the pattern,
+  stretching the vignette, `getImageData`) and hands the buffers over as
+  transferables. The old inline passes froze the page for a third of a
+  second on every colour change — that is the whole reason for the worker.
+- **`util.js`** holds the DOM builders, colour maths and the MEMOISED
+  word-wrap measurer: `wrappedLineCount()` and `wrappedRunLineCount()` (the
+  night sheet's reminders mix Trade Gothic with bold-condensed info tokens,
+  so a row is measured as runs in two fonts) cache per font+width+text and
+  are dropped when the fonts arrive (`fontsChanged()`). A slider drag
+  re-measures the same 25 abilities sixty times a second otherwise. The
+  icon-ink measurements ask for ONE re-render per burst (`normalizeIcons`
+  debounces the callback): one per image, a frame apart, rebuilt a fresh
+  script's page twenty times and the re-created `<img>` nodes painted
+  blank while they decoded again — which is also why the renderers' icon
+  images decode synchronously.
+- **`app.js`** is the controller: page tabs, the schema-driven control
+  cards, the Elements / Characters / Back panels (rebuilt around the
+  selection), the drag wiring, uploads, fonts, undo/redo, autosave, design
+  files, zoom, export. `window.FancyScripts` is a small console/harness
+  handle (`options()`, `patch()`, `load()`, `page()`, `select()`,
+  `render()`, `layouts()`, `workerActive()`).
+
+### The element model
+
+`options.el[key]` is a partial `EL_DEFAULT` (`dx` % width, `dy` em, `scale`,
+`rot`, `opacity`, `hidden`, `src`) for every movable piece in `ELEMENTS`
+(title, author, skull, both flourishes, ribbon, team labels, character grid
+and its two columns, dividers, footnote; the night/jinx pages'
+title, logo and list). `elGet()` gives the effective
+transform; renderers add the offsets to the CALIBRATED position, so a
+design with an empty `el` is the reference sheet exactly, and "Reset this
+element" is `delete options.el[key]`. `src` is an upload that replaces the
+built-in art (skull, flourishes, ribbon, dividers, the step icons) — or,
+for the title, an image drawn instead of the text. Stickers
+(`options.custom[]`, `newTextElement()` / `newImageElement()`) carry their
+own x/y in % and a `page` scope (`'all'`, a page kind, or an exact
+`pageKey`), and a `layer` (`STICKER_LAYERS`: `'back'` on the paper under
+everything, `'mid'` over the ribbon and art but under the words, `'front'`
+over it all; `stickerLayer()` reads it and folds the old `behind` switch).
+Each renderer appends each layer at its own point (`renderStickers(...,
+layer)`); back and mid paint in DOM order at z-index 0, front is lifted.
+Bring forward / Send back step within the sticker's own layer.
+Per-character overrides live in `options.chars[id]` (hide,
+rename, ability, team, colour, icon, icon scale/nudge, night positions and
+reminders, hand-arranged `order`) and `deriveScript()` applies them to a
+parse without touching it — clearing an override is a re-derive, never a
+re-parse. `hideTeams` is applied there too, so a hidden team leaves every
+page.
+
+**Uploads never live in the options.** `addAsset()` stores the data URL in
+the app's asset store and the options reference it as `'asset:<id>'`;
+`elements.js`'s `resolveSrc()` turns the reference back. So an undo snapshot
+is a few KB of JSON rather than a megabyte of PNG, and the design file and
+the autosave carry the store alongside (the autosave falls back to a slim
+copy without the files when localStorage's quota refuses it). Images are
+shrunk to 2000 px on the long side before storing. **Uploaded fonts are
+registered as `@font-face` rules with data: URLs in a `<style>`** — not as
+`FontFace` objects — because html-to-image embeds fonts by reading the
+document's stylesheets and a FontFace added by script is invisible to it;
+they are offered as `upload:<family>` in every font menu.
+
+### The night order sheets
+
+Data: `roles.json` carries the official reminder TEXT
+(`firstNightReminder` / `otherNightReminder`, with `*INFO TOKEN*` marks and
+`:reminder:` placements) and `assets/night-order.json` the wake POSITIONS
+plus the non-character steps' positions (`meta`: dusk, minioninfo,
+demoninfo, dawn — their wording is `NIGHT_STEPS` in script.js, as the
+printed official night sheets word it). `setOfficialRoster(roles, jinxes, nightOrder)` merges them per
+id; a custom character's own `firstNight`/`otherNight` numbers and
+reminders win over the official ones (the wiki's night-order picker writes
+numbers on the official scale, e.g. 33.5691 for "after the Poisoner").
+`nightLists()` puts a character on a list when its number is above zero,
+follows a sequence arranged by hand on the sheet (`night.order[list]`,
+written by dragging a row) or else the file's `_meta.firstNight`/
+`otherNight` sequence when there is one (that is what the wiki writes for
+an arranged script) and the option is on, and otherwise sorts by number with each step slotted in front of the
+first character that acts after it — the same rule render-page.js uses to
+write those sequences. `reminderParts()` tokenises a reminder into text,
+`*token*` runs (bold caps, bold condensed caps or plain words, `tokenStyle`)
+and dots (`dotStyle`: a dot, a little token carrying the character's icon,
+or nothing).
+
+The pages are ticked on in the Pages card (`night.first` / `night.other`;
+`night.combined` puts both nights on one page in two columns, and is ON by
+default (the owner's call), so ticking either night gives that page. Two
+columns never run onto a second page, so when they would have to shrink
+below `NIGHT_SPLIT_BELOW` (0.6, app.js) each night gets its own page
+instead (`counts.split`, read by `pageList()`);
+`night.twoColumns` splits one night over two columns by weight). Each
+carries its own colours, fonts and background; `''` for a night colour
+means "follow the sheet". The list auto-fits down to `night.minFit` and then
+continues onto a second page (two-column specs shrink instead); a list that
+needs two pages is dealt out EVENLY between them rather than filling the
+first and leaving a straggler. The step icons are the official painted discs
+(the moon, the sun, the M, the D) bundled as `art/night-{dusk,dawn,minion,
+demon}.webp` and named in `STEP_ICONS`; `night.stepIcons` replaces them
+with uploads. **There is no footer and no Community Created Content badge**
+on the night or jinx pages any more: the owner asked for both off, and
+`normalizeOptions()` drops their old keys (`showFooter`, `footer1/2`,
+`showBadge`, `el.nightFooter` …) from a design saved before.
+
+**Two styles, `night.style`** (the jinx page has `jinxPage.style` too):
+
+- **`'ribbon'`, the default**, measured off the owner's second set of
+  reference sheets ("Valley of Shadows", 1414×2000) into `NIGHT_RIBBON`.
+  Each row is the icon, the name set RIGHT-aligned against a thin bar in
+  the team's colour (khaki for Dusk/Info/Dawn, `META_INK` in night.js), and
+  the reminder beside the bar with its second line indented (`night.hang`).
+  Icon, name, bar and reminder are all centred on the reminder: the name's
+  and the reminder's CAPITALS are centred on the bar (`NAME_TOP` /
+  `TEXT_DROP`, measured off Goudy and Trade Gothic), which is how the
+  reference lines them up. The **name column is sized to the longest name
+  on BOTH night sheets** (`spec.names`, between `nameMin` and `nameMax`),
+  so a page of short names gives the room to the reminders and the first
+  and other nights put the bar in the same place; a longer name is set
+  smaller, never run into the icon. The run from the icon to the reminder
+  scales with the density. The title runs down a **damask ribbon on the
+  right edge** (`night.ribbon`, tinted `night.ribbonColor` or else the
+  script sheet's `sidebarColor`, drawn flat when the script sheet's ribbon
+  is flat, from the same upload when it has one; `appendRibbon()` in
+  sheet.js with `side: 'right'`, so it shares the per-colour recolour
+  cache), in upright Dumbledor in
+  the team-label colour, with a torn paper edge (a fixed seeded clip-path,
+  so every render and export is identical) and a "1/2" under it on a
+  two-page list. The **logo sits at the foot, bottom right** (the script's
+  name in the title face when it has none). Its drawn box comes from the
+  image's own size (`logoSize()`, loaded once and re-laid out), and a row
+  whose reminder would pass it is measured again narrower and wraps short
+  of it; since that moves the rows below, the solve repeats until no new
+  row reaches the logo (rows are only ever added, so it settles). A column
+  that would be left a sliver beside the logo (the right-hand column of
+  two) **stops above it** instead (`floorOf()`). Dots are black circles
+  (`night.dotColor`, the owner's choice over the reference's purple; a
+  design saved with the old purple is folded to black) and the info tokens
+  bold caps in the text face (`tokenStyle: 'bold'`), the reference's look; the wrap measurer
+  counts a dot as a fixed-width box and a token's letter spacing.
+- **`'classic'`**: the earlier look, `NIGHT`, measured off "Blending In"
+  (903×1225): the title at the top left, the logo at the top right, the
+  name over the reminder. The jinx page always draws its rows this way (a
+  pair's two names do not fit a name column), under whichever chrome its
+  style picks.
+
+**Filling the page** follows `FIT`, with night-list numbers of its own on
+the ribbon style: the type may grow to `FIT.listGrowMax` (1.6, against the
+script sheet's 1.25) and the rows spread to `FIT.listSpreadMax`, and what is
+left is split evenly above and below (the list is centred; there is no
+title over it to hold a short one up). A first night of six steps at the
+script sheet's numbers filled its page only with a hand's breadth between
+rows; larger type is the better answer for a sheet read at the table. Every
+unit's drawn position is stored on the layout (`u.yEm`), which is what the
+drag-to-reorder reads, so a drop lands where the row was let go on a spread
+or centred list too.
+
+**Moving every icon at once**: `iconShiftX` (% width) / `iconShiftY` (em)
+on the script sheet (Layout card), on `night` and on `jinxPage`, added to
+each icon's own position (and, on the script sheet, to a character's own
+nudge). On a bar row a name keeps clear of an icon moved right by setting
+itself smaller; nothing else moves.
+
+### The script sheet is always one page
+
+The owner asked for it (2026-10): a long script shrinks to fit rather than
+running onto a second sheet. `layoutSheet()` and `layoutAppSheet()` solve one
+density for every section on the one page (`solveFit`, down to 0.01, so even the whole wiki fits) and
+`pack(d)` puts them all there; there is no split team, no repeated label,
+no page number. `paginate`, `minFit`, `repeatHeader` and `showPageNumbers`
+are gone and `normalizeOptions()` drops them from an old design, as it does
+the retired `pageno` element. The night sheets still continue onto a second
+page (`night.minFit`): that is a different list. **Sections are measured in
+layout em and drawn at `d` of that, so a page holds `availFor / d` of them.**
+`columnLayout: 'single'` is one column the width of both (`widthMul`).
+A script too long for 3:4 is what **Page shape** is for (below).
+
+### Page shape (`options.pageRatio`)
+
+Every page (the sheets, the night and jinx pages, the back) can be made
+longer: the Pages card's **Page shape** offers 3:4 (the default), A4, 2:3,
+9:16 and 1:2 (`PAGE_SHAPES`), stored as height / width and never shorter
+than 3:4. Three rules make it work:
+
+- **The em stays the same size and the page grows more of them.**
+  `setPageRatio()` in script.js moves the LIVE bindings `SHEET_H` and
+  `PAGE_EM` (U stays 16.56px), and app.js calls it at the top of
+  `computeLayouts()`, so every renderer and the export read the shape the
+  design asks for. A longer page holds more rows at the same type size.
+- **Whatever sits at the foot is measured from the foot**: `footEm(em)`
+  is an em on the 3:4 page moved down by the extra length (`contentBottom`,
+  `listBottom`, the footnote, the last ribbon label's run, the night logo's
+  `y0`, `garlandOval()`). Anything new anchored to the bottom goes through it.
+- **The page art is not stretched where it has a shape.**
+  `bandedArt()` in elements.js draws the parchment's top 22% and its bottom
+  26% (frame, garland) at their own size, and stretches only the plain band
+  between. At 3:4 it is one image, exactly as before. The ribbon is
+  `object-fit: cover` and the night pages' clean parchment and the vignette
+  simply stretch. The back cover's canvas is built at the page's own shape
+  (`srcH()`, in its cache key).
+
+Drag offsets: drag.js measures down the page in % of its height, and an
+element's `dy` is in em, which is the same thing only at 3:4, so
+`elementModel()` marks em-based models (`em: true`) and `onMove` converts.
+The PDF's "Sheet size" paper follows the shape.
+
+### A sheet fills its page, at both ends of the range (`FIT`)
+
+The three numbers in `script.js`'s **`FIT`** are the only ones in the
+engine that are policy rather than measurement, and they exist because the
+auto fit on its own went wrong at both ends. They are shared by the sheet
+(`layoutSheet`) and the night lists (`layoutList`), so the two cannot
+drift apart.
+
+- **`growMax` (1.25)** caps how far the fit may grow the reference pitch.
+  It used to be 1.55 on the sheet and 1.0 on the night lists. At 1.55 a
+  teensyville was printed half as big again — a poster, not a script sheet
+  — and it *still* did not fill the page, because `iconEmFor()` caps an
+  icon at the text gutter, so past about 1.2 the icons stop keeping up with
+  the names beside them and the rows go text-heavy.
+- **`spreadMax` (1.7)** is how far what is left over may be dealt out as
+  SPACE. On the sheet the rows and the gaps between sections stretch to it
+  (team *headings* are left out: a heading band is type, not space). On a
+  night list the rows are moved further APART instead of made taller —
+  `rowNode()` reads a row's line count, its zebra band and its rule off its
+  own height, so stretching that would grow the band and drift the icon off
+  its name.
+- **`topShare` (0.42)** splits whatever is still left above and below the
+  block, a little above centre. **`listTopMax` (1.6 em)** caps the top half
+  of that on a night list only: a sheet is a framed page and a block off
+  its centre reads as laid out, but a list is a list under a heading, and a
+  hand's breadth of nothing between "First Night" and Dusk reads as a
+  fault. A first night of four rows (Dusk, the two info steps, Dawn) is an
+  ordinary shape on a script whose roster is fifty.
+
+A page the pack already filled solves stretch 1 and no offset, so **nothing
+about a normal script moves** — the fit and the page count are unchanged
+from 13 characters up.
+
+One thing follows from the stretch: a character's icon is placed against
+the row's **natural** height, not its drawn height (`naturalEm` in
+`characterEntry`, `leftNatural`/`rightNatural` off the layout). It belongs
+beside the NAME, not in the middle of the padding under it. The section
+divider and the ribbon label follow the stretched gaps the same way
+(`gapAboveEm` / `gapBelowEm`), and the last label's band down to the
+garland is now capped at twice its own height — on a page the content does
+not reach the foot of, centring it on that run walked the word away from
+the rows it names, and a three-character script printed OUTSIDER halfway
+down a blank sheet.
+
+### The night columns style (`columns.js`)
+
+A third style for the script sheet (`options.sheetStyle = 'columns'`, "Night
+order down the sides" in the Pages card), built from the owner's own
+Photoshop sheets (Axiom of Logic, No Greater Joy, Laissez Un Where?, Golden
+Dawn). The owner asked for the layout only, not their colours or Clockwork
+Cyborg's jinx box.
+
+- **The night order is on the sheet**: a column down each edge, first night
+  on the left and other nights on the right, each a label and a stack of
+  icons in wake order (`nightLists()`, so the night settings and a
+  hand-arranged order apply). Both stacks share one pitch and one top, so
+  the labels always sit level, and the taller stack is centred between the
+  top and foot of the page; the pitch shrinks to fit a long night.
+  The columns are the classic sheet's ribbon art, drawn twice
+  (`sidebarColor` / `sidebarMode` / `sidebarContrast`), with a black inner
+  edge. `appendRibbon()` copies its cached canvas when the same colour is
+  already on the page, or the second column took the first one's canvas.
+- **Header**: one fixed, small band on every script (the owner's call: the
+  same sheet every time beats the biggest title), sitting ON the content:
+  the author line `headerGap` above the first heading, the title right on top
+  of the author, the logo's foot level with the author's. So there is no
+  empty band inside the header or under it, and on a short script, whose
+  grid starts lower, the header comes down with it. The title in LHF Unlovable
+  on one to three lines, whichever is largest in its box (`titleLines()`),
+  the logo beside it when the script has one (a logo that fails to load gives
+  the title the whole width), the author under it.
+- **Teams**: a heading in Optimus Princeps in the team's ink
+  (`COLUMN_HEAD_INK`), with the classic sheet's divider art (`divider-taper.png`,
+  `ruleH` 0.62 em against the classic 0.5) running from it toward the column,
+  its knot against the heading (both sides for the Demon, whose heading is
+  centred, the left one mirrored). Characters are a grid: `columnsFor(n)`
+  puts a lone character full width (capped at `soloW`, so its text stays
+  beside its icon), two or four in pairs, the rest in threes, with a short
+  last row centred. Each cell is the icon, the name in capitals and the
+  ability centred under it in Arial/Helvetica. Fewer columns, bigger type
+  (`COLUMN_SHEET.cell`).
+- **Reading order** (`options.colOrder`, `'across'` | `'down'`) and
+  **Balance the columns** (`options.colBalance`, one tick per team), both in
+  the Layout card, shown only for this style. The character order (Sort: SAO
+  and the rest) is the SEQUENCE; reading order is how it flows into a team's
+  columns (`columnLists()` in script.js: across fills row by row, down column
+  by column with the first columns one longer, so 13 in threes is 5/4/4).
+  A balanced team deals each column's spare height between its rows so every
+  column ends on the same line; an unbalanced one keeps its rows level
+  (across, a short last row is centred; down, each cell stays in its column).
+  `balancedTeam()` is the one reading of the setting: a design saved when it
+  was a single switch stored `true`, which means every team.
+  `measureSection()` hands back `place(y, per)`, which positions every cell
+  (`{m, left, topEm, slotEm}`) for any of the four arrangements, so the
+  renderer draws them all the same way.
+- **Team sizes** (`options.colTeamSize`, one slider per team, 50% to 160%,
+  `teamSize()` in script.js clamps it): multiplies that team's icon, name
+  and ability sizes. The fit is still one density for the page, so a bigger
+  team shrinks the rest to keep it on one page.
+- **Name size reaches every name.** A name used to be capped at the column
+  beside its icon, so on a short script raising Name size did nothing to the
+  names already filling it. A team's icons now give up width (down to
+  `iconYield`, 70% of themselves) when the team's longest word of a name
+  would not fit beside them.
+- **Fit**: one page, at the largest density whose height fits, found by
+  halving (`needAt(d)` is measured drawn at `d`). Not `solveFit()`: the
+  height here jumps as the density moves (lines re-wrap, the text column
+  narrows while icons grow), and its ratio steps stopped well short of the
+  room, leaving a band of empty page under the header. Spare room goes under
+  the rows and between teams (up to `spreadEm` each) and a small `topShare`
+  of what is left above the first heading, so it starts near the same place
+  on every script. An icon is at most `iconMaxShare` of its cell's width, or
+  a short script squeezed its abilities into a strip a few words wide. Names
+  take up to three lines (`fitNameLines`) before they shrink.
+- A very large script (90 characters) prints its abilities at about 5.6 px,
+  like the other two styles: that is the one-page rule. Page shape (1:2)
+  takes it to about 9 px.
+- The paper is the classic parchment without its garland, zoomed in as ONE
+  picture (`paperZoom`, from the point that lands the frame and the gold edge
+  past it, `paperBand`, just under the column). It used
+  `renderBackground`'s `squeezeLeft`, which lays a squeezed copy of the
+  paper's left strip over the original: where the copy ended the texture
+  jumped, a visible seam down the page. The footnote sits bottom
+  right, so the export's watermark sits bottom left of the paper.
+- Its look is `options.cols` (`DEFAULT_COLS`: Optimus Princeps names,
+  headings and labels, centred Helvetica abilities, names in capitals and in
+  ink); the shared cards edit it (see "One set of controls" below). Jinx
+  icons and marks sit in a row under the ability, jinx rules and mark notes
+  in small italic under that, all measured. Ribbon width moves the grid,
+  title and footnote in with the column (`geom()`). Rows are not dragged to
+  reorder (a grid is not a column); the Characters card orders them.
+  Elements: `colTitle`, `colAuthor`, `colLogo`, `colNight`, plus the shared
+  `content` and `footnote`.
+
+### One set of controls for the three script sheet styles
+
+The owner asked for the controls to work the same in every style (2026-11).
+So the Title, Layout, Colours, Fonts and Background cards are ONE set for
+classic, app and columns, and every control shown does something in the
+style on screen:
+
+- **A look setting is stored per style.** `STYLE_LOOK` in script.js names
+  where a style keeps a shared key when it is not the classic top-level one
+  (`app.fontText` for the app's ability font, `cols.nameCase` for the night
+  columns'); `lookPath(style, key)` answers it and `withLook(options, style)`
+  lays a style's look over the options for a renderer. In app.js
+  `bindLook(key)` binds a control to the path of the style being shown
+  (`lookStyle()`: the script sheet's style on the script sheet, classic on
+  any other page), so switching style keeps each style's own fonts, inks,
+  ribbon and paper. A slider's double-click reset can be a function
+  (`lookDefault(key)`), for a key whose default differs by style.
+- **Only what cannot mean anything in a style is hidden**, by a
+  `styleGroup(parent, page, styles)` that shows on its own page in the
+  listed styles: the classic sheet's skull, title effects, columns/split,
+  label placement, ribbon shading and gold edge; the app's bar and text
+  shift (Layout); the night columns' reading order, balance and team sizes
+  (Layout). Each style's own structure sits in the same place, the top of
+  the Layout card.
+- **Shared now, that were one style's before**: Space between characters
+  (`rowGap`: `app.rowGap`, the top-level key for the other two, extra rows
+  of 1.6 em per step), Section dividers and Divider strength (the app's
+  lines, the columns' heading rules), Name and Team label spacing, Name
+  style, Setup notes, jinx icons and rules, keyword colours, character
+  counts, every ink and font, Pattern strength, and the paper (the
+  Background card follows the style; the app's is `app.bg`). Ability
+  alignment (left, centred, justified) is classic and columns.
+- **The App view card is the app NIGHT sheets' look only.** On the script
+  sheet the shared cards edit the same `app.*` keys.
+- `tools/parity.js` in the session scratchpad flips every visible control
+  in each style and lists the ones that change nothing on the sheet; on a
+  script without a logo, Bootlegger rules or a team, those controls are
+  the only ones it lists.
+
+### The app view (`appview.js`)
+
+A second style for the script sheet (`options.sheetStyle`, `'classic'` or
+`'app'`) and a third for the night sheets (`options.night.style`, `'ribbon'`
+by default, `'classic'` or `'app'`), switched separately from the top of the
+Pages card. `pageStyle()` answers `'app'` or `'classic'`, and for a night
+sheet `'classic'` means the printed family night.js draws, the ribbon style
+included: night.js reads `night.style` itself, so the style groups and
+cards written for "classic" serve both printed night styles. It copies the official app's own
+script view off the owner's screenshots: one column, a red damask ribbon with
+the team names turned up it, then icon, name, a coloured bar and the ability;
+the night sheets set the names flush right against the bar, mark each
+`:reminder:` with a disc in `night.dotColor` (black; the app's is plum) and
+put the script's logo after the list (`APP_NIGHT.logoMaxH`, 8 em). A logo
+on the app sheet is drawn up to `APP_SHEET.logoMaxH` (8.6 em, against the
+text title's 5.39) and the header grows to its real height
+(`headerMetrics()`, from `artAspectOf()`). The
+jinx page and the back cover have one style.
+
+- **The app sheet's rows**: "Space between characters" (`app.rowGap`, extra
+  em under every row, so a full page sets its type smaller to fit; the shared
+  Layout slider), and in the Layout card's app group "Move the ability toward
+  the icons" (`app.textShift`, % width: the bar and the text slide, the name
+  column gives up the room, `appColumns()`) and the bar toggle
+  (`app.showBars`). The night sheets have their own pair under "Night sheet rows"
+  (`app.nightRowGap`, `app.nightTextShift`: `nightCols(n, shift)` moves the
+  bar, the text and the names' right edge together); the bar toggle serves
+  every app page. The older "Space between steps" in the Night order card
+  (`night.rowGap`) belongs to the printed night styles.
+- **`APP_SHEET` / `APP_NIGHT` in script.js are measurements**, like `SHEET`,
+  taken off the screenshots and scaled by WIDTH onto the 3:4 sheet, so the
+  ability column wraps where the app's does (its width is bounded by where
+  ten of the app's abilities wrap). Same rule: one constant at a time.
+- **`options.app` (`DEFAULT_APP`) is the style's own look**, shared by both
+  app pages: ribbon mode and colour (`#670818`, the app's red), fonts (Trade
+  Gothic Bold Condensed names, Trade Gothic text, Goudy team names), bars,
+  lines, colours and the paper. On the script sheet the shared cards edit it
+  (`STYLE_LOOK.app`); on an app night sheet the App view card does. The name
+  colours, sizes, density, sort, footnote and team label text are the classic
+  keys, shared. `showCardsFor()` also hides whole cards by `data-fs-style`.
+- **It sets its own lines** (`breakRuns()` in script.js, pure and tested).
+  The bar beside a block must be exactly as tall as the block, and a night
+  line carrying a disc is taller than one without, so the layout pass breaks
+  every block and the render pass draws each line as its own nowrap div from
+  the same breaks. Runs with no space between them (`(or the RED HERRING).`)
+  wrap as one word.
+- **Names fit their column** (`fitNameLines()`): wrapped at spaces, shrunk only
+  when one word will not fit (the app cuts it off with "…"; the owner asked for
+  shrink). Night names shrink a little first (`shrinkFirst`) because the app
+  never wraps "Scarlet Woman" there.
+- **A short team grows to hold its name** up the ribbon (the lone Imp's band
+  is as tall as DEMONS), and the name is always the plural, as in the app.
+- **The paper is the aged parchment, drawn 4% high** (`'appfront'` /
+  `'applist'` in `renderBackground()`), which crops the dark band along its top
+  where the title and Dusk sit; the night sheet's copy also runs past the foot,
+  which carries the garland off it. Its burnt right edge stands in for the
+  app's torn edge; its garland and oval hold the footnote as on the classic
+  sheet. **No skull in the text title**: `skull.png` carries a patch of the
+  classic parchment cut to vanish exactly where that sheet puts it, and
+  anywhere else it is a pale box. The flourishes frame the name instead.
+- **Three art slots are empty until something is uploaded**: `appGarland`
+  (flowers along the foot of the sheet) and `nightDecorFirst` /
+  `nightDecorOther` (the corner art top right on each night). They are
+  ordinary image elements, so the Elements panel adds and replaces them, and
+  the App view card has a button for each. The ribbon art is `appSidebar`.
+- **The layouts keep the classic shapes** app.js reads: a sheet page's
+  sections carry `left`/`leftHeights`/`topPx`, a night page's columns carry
+  units with `hEm`, so `reorderFront()` and `reorderNight()` need only know
+  the app view is one column. `layout.style === 'app'` is how app.js picks the
+  renderer and skips `fitTitle()`/`fitListPage()`.
+- **The ribbon recolour is cached per colour now** (`sidebarTint.done`, four
+  deep, newest request first), because a navy classic sheet and a red app
+  night sheet can be in one design, and one slot had the two pages recolour
+  over each other on every render. `appendRibbon()` in sheet.js draws the
+  ribbon for every style (`side: 'right'` for the ribbon-style night and
+  jinx pages; it wipes an adopted canvas's style first, because one colour
+  can be a left strip and a right one in the same design); `ribbonReady()`
+  lets an export wait for a page's colour, since the PDF renders pages the
+  preview may never have shown, and app.js asks it for a ribbon-style page's
+  colour too (`nightRibbonColor()`).
+- The app night sheet had an opt-in "Footer lines and badge"; it went with
+  the night sheets' footer and badge when the owner asked for both off.
+  `appFooter` is a retired key like the others. The app view honours the
+  "move every icon" sliders like every other style.
+- The controls column is `min-width: 0`: a select with a long option ("The
+  script's own background image") otherwise set its width on a phone and
+  pushed the whole page sideways once a card holding one was open.
+
+### Every gap between elements was halved (2026-11)
+
+The owner asked for every space between elements halved on all three script
+sheets, so these are no longer the reference's numbers: the classic sheet's
+`sectionGap` (0.763 → 0.38), the room under a row (`rowTail` 1.05 → 0.75,
+`rowIconPad` 0.35 → 0.175), the name-to-ability offset (`abilityTop` 2.5 →
+2.31) and the icon-to-text gap (`textOffsetX` 7.8 → 7.167, the text column
+widened by the same so it still ends where it did); the app view's
+`sectionGap`, `rowPad`, `authorGap`, the space between icons (`rowMin` 3.55 →
+3.13) and its icon-to-name and bar-to-text gaps (`nameX`, `nameW`, `textX`);
+the night columns' `rowGap`, `sectionGap`, `headBand`'s room under the
+heading, `iconGap`, `headerGap`, `authorGap`, `labelGap` and the night icon
+pitch. Each constant's comment carries its old value. Auto-fit takes the room
+back as larger type, so a full sheet's text grew and its gaps shrank. The
+page margins and the night and jinx pages are unchanged.
+
+### A character in a top corner, and the skull on every style
+
+**`topChar`** (a character's id) takes that character off its team and draws
+it, icon, name and ability, in a top corner of the script sheet in every
+style; **`topCharSide`** is `right` (the default, the owner's call) or `left`. It is an element
+(`el.topChar`): moved, sized, and hidden, which puts the character back in its
+team. `topCorners()` in script.js is the one answer to what each corner holds,
+and `frontCharacters()` leaves the picked character out. The Bootlegger rules
+(below) now work in every style too, top right, under the character when it
+is on the right as well. The box is `cornerBox()` in sheet.js for all three
+styles, sized in em of one font size: the classic sheet shrinks it in the page
+(`fitCorners()`, from `fitTitle()`), the app view and night columns by measure
+(`cornerScale()`). On the classic sheet a left corner hides the left flourish,
+moves the title right (`titleShift()`) and turns off "Move the title left".
+
+**The skull and the flourishes are look settings** (`STYLE_LOOK`): the classic
+sheet's `showSkull`, `app.showSkull`, `cols.showSkull` and `cols.showFlourishes`
+(off by default on the two newer styles). One skull element (`el.skull`, its
+art picker) serves all three; the app view and night columns draw it with
+`skullSpec()` / `drawSkull()` in sheet.js, in front of the title, the built-in
+one feathered into the paper as on the classic sheet. Night columns size the
+decor to the header band, never more than 45% of the title's box.
+
+**Night columns can have a garland** (`el.colGarland`, the pack's garlands or
+None, the default): drawn centred between the columns, the rows kept above its
+leaves (`contentFloor()`), and the footnote then set in its oval on two lines,
+as the classic sheet sets it. With no garland the footnote stays bottom right.
+
+### Bootlegger rules at the top, and the title moved left
+
+Two title-card options on the classic script sheet. **`bootRulesTop`** draws
+the script's `_meta.bootlegger` rules in the top right, in the right
+flourish's place (the flourish is not drawn while there are rules), with
+an icon beside them: `bootRulesIcon` is `bootlegger`, `djinn` or `none`
+(`BOOT_ICONS` in script.js). The rules are set in Dumbledor 2, the face
+the Token Tool prints character names in (`bootRulesFont`, with a colour of
+their own, `bootRulesColor`), beside a gold hairline the height of the text
+and with a faded gold rule between one rule and the next; the icon takes the
+sheet's own icon shadow. **Rules size** in the Title card is the element's
+scale (`el.bootRules.scale`, 50% to 200%); the fit shrinks the icon with the
+text, so a size too big for the rules just settles at the largest that fits.
+The box runs from the top of the band to the
+right column's first row; `fitTitle()` → `fitBootRules()` sets its left edge
+just past the title and shrinks its type until every rule fits, so it is
+right in an export too. It is an element (`el.bootRules`), so it can be
+moved, sized and hidden. With rules there the title's band narrows
+(`titleBandW()`). **`titleLeft`** puts the title's left edge just past the
+ribbon and the skull (`titleLeftEdge()`), the author follows, and the left
+flourish is hidden (it would land on the ribbon). They are separate
+options, but rules beside a centred title get a narrow box, so the hint
+suggests both. The app view has neither.
+
+### Saved with the script (`/api/fancy-design`)
+
+A design can be saved WITH a published script or collection, so the page's
+"Fancy Sheet" button (`/fancyscripts?s=` / `?c=`) opens on its owner's
+design for every reader. One JSON file in R2, `fancy/{type}/{PK slug}.json`:
+the same object as "Save design file", minus the roster (that always comes
+from the page). Nothing in D1, no feed bump, no revision. The prefix is not in
+`R2_SERVE_PREFIXES`, so the route is the only door, and it answers a draft's
+design only to someone who can edit the draft.
+
+- **Who may save**: `canEditPage()` (owner, approved editors, admins), and
+  not a protected page's owner. The GET answers `canSave`; the tool shows
+  "Save design to this script" only then (`showWikiSave()`).
+- **Which design opens**: the saved one, unless this browser's autosave was
+  made from that same saved version (`serverAt` in the autosave, compared
+  with `savedAt`), so a reader's own edits survive a reload but the owner's
+  next save reaches them.
+- Capped at `FANCY_DESIGN_MAX` (8 MB: uploads ride inside). Purging the page
+  deletes the file, or a new page on the slug would open with it.
+- **A saved design is shown to every reader, and its uploads end up inside
+  CSS** (`@font-face … url()`). So the save keeps only `assets` and `fonts`
+  values that are plain base64 `data:` URLs (`FANCY_DATA_URL`) under plain
+  keys, and the page refuses anything else again when a design is loaded
+  (`isDataUrl()` / `registerFont()` in app.js). The POST is answered inside
+  the POST gate, after the suspended-account and wiki-lock checks; only the
+  GET is dispatched early.
+
+### Three ticks from the comparison with botc.letshare.fun
+
+- **`colorKeywords`** (Layout card): good, evil and the team words in an
+  ability take the sheet's good and evil inks (`keywordParts()` in
+  script.js). Colour only, never weight, so the measured wraps stay true.
+  Both sheet styles; the app view carries the colour on its runs
+  (`breakRuns` keeps a run's `color`).
+- **`jinxText`** (Layout card): each jinx's rule printed in small italic under
+  the character that carries it, the partner's icon hanging in front
+  (`jinxNotes()`: each pair once, under the first in the list; `jinxNote()` /
+  `NOTE` in sheet.js). Measured in `rowHeightEm` exactly as drawn, so the
+  one-page fit still holds. The jinx page is untouched.
+- **Title words** (Back cover card): font, colour, stroke and shadow set on
+  every back-cover word at once (`all()` in `buildBackPanel()`, reading the
+  first word); one word is still changed on its own from the Elements card.
+  "Re-stack the title words" keeps that look.
+- **Marks** (Characters card, per character): `options.chars[id].marks =
+  [{id, note}]`, another character on the script whose icon is drawn where
+  the jinx icons are (beside the name on the printed sheet, after the
+  ability in the app view), with an optional note in small italic.
+  `deriveScript()` resolves them like the jinx pills: a mark whose character
+  is hidden or off the script is not drawn, and a character never marks
+  itself. On the printed sheet the note sits in the name's one-line row and
+  is cut with an ellipsis rather than pushing past the column.
+- **`playerTable`** (Back cover card): the 5 to 15+ setup table
+  (`PLAYER_TABLE`) on the back cover, in `back.tableColor`. It is an element
+  (`el.backTable`), so it moves and sizes from the Elements card.
+
+### The PDF keeps its text (`exportOpts.pdfMode`)
+
+`'print'`, the default, draws every ticked page into a print-only holder
+(`#fs-print`, `@page` sized to the paper) and opens the browser's print
+window, whose "Save as PDF" keeps the text as text with the fonts embedded.
+`'image'` is the old JPEG-per-page download. Three things make the print one
+right: pages are scaled with `zoom`, not a transform (a transform leaves the
+full-size box in the layout and the print window shrinks every page to fit
+it); canvases are frozen into images (`frozenCanvases()`), because the
+preview takes its singleton canvases back after each page; and gradient
+lettering (`background-clip: text`, the swash title) is laid over with a
+picture of itself (`flattenClippedText()`), because the print path draws a
+hairline box round it.
+
+### The page frame
+
+The tool sits in the Script Builder's app frame (`html.sbx-page`, `.sbx`,
+`.sbx-side`, `.sbx-bar`, `.sbx-tabs`, `.sbx-scroll`, `.sbx-b` in styles.css):
+the settings are the side panel (a sheet under 900px, `#sbx-open`), the
+export buttons the bar (PNG, every page and the builder hand-off in its More
+menu), the pages the tabs with the zoom at the end of the strip. Everything
+page-local in fancyscripts.html is square and flat. Fit is measured against
+the preview pane (`#fs-scroll`). **On a phone the settings are a bottom
+sheet, not a side drawer**: opening them sets `html.fs-split`, which fixes
+`#fs-scroll` to the top 44% of the screen and fits the whole page into it
+(`fitPreview()`), so every change is seen as it is made. There is no scrim
+there, so the page above stays touchable (tap an element to select it).
+The preview covers the bar there, so the page tabs and undo/redo are moved
+into `#fs-splitbar`, a strip between the page and the sheet, and back when
+the sheet closes (`split()` in app.js).
+
+### The watermark
+
+Every EXPORTED page says "botchomebrew.wiki" (`watermark()` in
+elements.js); the preview never does. Each renderer adds it only when
+`ctx.forExport`, so it is in the PNGs, the share JPEG, Copy and the PDF
+alike. White with a dark halo, in Dumbledor 2 on every page (the owner's
+pick, 2026-10; it used to follow each page's name font), in the
+bottom right corner (on a script sheet tucked as far right and down as the
+burnt edge allows, `watermark(1.2, 0.5, …)`, which keeps it off the
+garland; the owner wants it IN the corner, not raised); on a ribbon-style night or jinx page it sits under
+the logo (or the script's name) at the foot, right-aligned with it and a
+little smaller so it clears the title. The owner picked the corner over
+the footnote oval; ask before moving it.
+
+### The Bootlegger tick
+
+The tick sits in the Script card, under the script picker (`buildScriptOpts()`,
+`#fs-script-opts`), where it is seen first. Any options swap (undo, a loaded
+design, `FancyScripts.patch`) reads the script again (`afterOptionsReplaced()`
+calls `reparse()`), since the tick changes the roster.
+
+`options.bootlegger` puts the Bootlegger — the Fabled that says a script
+carries homebrew characters or house rules — on the sheet, or takes it off
+one that came with it. **It starts unticked on every fresh load**, even for
+a file that carries the Bootlegger (the owner's call, 2026-11); a design
+being restored keeps its own answer.
+
+`withBootlegger(json, on)` applies it **at parse time**, on the way into
+`parseScript()`, so the entry goes through the same door as every other
+character and takes its name, ability and icon from the official roster.
+The raw file is never touched, so unticking puts the script back exactly
+as it was loaded. It is filed under **fabled**, which is where the
+official app and the official sheets print it; the wiki's `roles.json` has
+it under `loric` (the edition the release feed it came from puts it in)
+and going by that would print a LORIC band for one character. A file that
+already carries one is filed the same way, so the tick cannot move the
+character from one band to another by being unticked and ticked again — an
+entry that names its own team is left alone. The Script Builder hand-back
+carries it too, or a round trip would come back with the box unticked.
+
+### Art from the decoration pack (`decor/`)
+
+`ART_CHOICES` in script.js lists ready-made art per element: the skull, the
+section dividers, the classic sheet's foot garland (`garland`, new with
+this), the app view's foot flowers (`appGarland`) and its night corner art.
+`makeArtPicker()` in app.js draws each list as a grid of pictures, in the
+header card, the App view card and the Elements panel. A pick just writes the
+path into `el[key].src`, the same field an upload writes an asset id to, so
+the renderers, the design file and the export need nothing new. A skull is
+resized as it is picked to 0.85 of the built-in one's height (`ratio`), and
+the title hug gives a picked or uploaded skull a gap rather than the
+built-in one's tuck (its leaves run to its edge, so the first letter sat on
+them); a divider
+carries its own shape (`fit`, `h`), and only the built-in one gets the cap.
+`DECOR_STICKERS` is the rest of the pack behind "+ Decoration" in the
+Elements card, added as image stickers by path rather than stored as assets.
+The edition skulls (`decor/skulls/cut-from-logos/*.webp`) are REPAIRED copies
+of the cut-out `.png` files beside them (see that folder's README): a skull's
+`ratio` in `LOGO_SKULLS` is its webp's height over width, so a re-made file
+needs its ratio re-measured or it is picked at the wrong size.
+
+- **Garland "None" gives its room to the rows**: with the garland set to
+  None the content runs down to just above the footnote
+  (`SHEET.bottomNoGarland` 92.4, `APP_SHEET.bottomNoGarland` 92.6, instead of
+  `contentBottom`). The app view's garland list is the classic one (built in,
+  the pack, None); its "None" used to keep the parchment's painted garland.
+  A pack garland that is shrunk or moved down gives back the room it left:
+  `contentFloor()` in script.js puts the floor 0.6 em above the picture's
+  own top (`garlandOval().imgTop`), between `contentBottom` and the None
+  floor. The painted garland and an upload (whose shape is unknown) keep
+  `contentBottom`.
+- **The classic sheet's garland is painted into `parchment.jpg`.** Picking
+  another (or "None", `NO_ART`) switches the paper to
+  `art/parchment-nogarland.jpg`, the same file with the garland painted out:
+  the rows below 86% mirrored from above, the top edge's dark band flipped
+  down as the grime. `renderBackground(..., {noGarland})` is the switch, and
+  the app view uses it too when `appGarland` is set.
+- **The footnote is centred in a pack garland's oval by measurement.**
+  `GARLAND_OVALS` in script.js holds each file's oval (centre across, top
+  down, height over width), measured off the art; the ovals sit about 54%
+  across, not the middle, and at different heights. `garlandShift()`
+  translates the garland so its oval sits under the footnote, and
+  `garlandOval()` + `footInOval()` put the footnote in the middle of what
+  shows of the oval, following the garland's own size and nudge. Both
+  styles use them (the app view passes its height cap). An upload's oval
+  is unknown, so it keeps the fixed spot. A new garland needs a row there.
+- The pack's garlands are 800px wide, so they print softer than the painted
+  one at the 3x print scale. Custom script and Homebrew are the same files,
+  so only one is offered.
+
+### Everything else worth knowing
+
+- **Every number in `script.js`'s `SHEET` is calibration, not layout
+  preference.** The geometry was reverse-measured from a reference render of
+  the classic generator family (JohnForster/botc-fancy-script-generator) as
+  *fractions of the sheet* and then re-trued against that project's own CSS.
+  The unit system: 1 em = 1% of sheet height, horizontals in % of sheet
+  width, rendered at 1242×1656. Odd-looking values are load-bearing —
+  `nameSize 1.318` / `abilitySize 1.031` are wrap-fidelity corrections, the
+  and the rest of `SHEET` is the reference's. **The rows do not keep the
+  reference's constant pitch any more**: a row is as tall as its icon (plus
+  `rowIconPad`, 0.175 em) or its text (plus `rowTail`, 0.75 em under the last
+  line), whichever is taller. The constant `rowPitch` left a band of paper under every two-line
+  ability and held the auto fit's type small; the owner asked for the sheet
+  filled out with larger type (a 25-character script went from density 0.88
+  to 0.91 with three-line abilities, from 0.82 with the Bootlegger). Change
+  one constant at a time against a known render.
+  Two two-column layouts (`columnLayout`): **'even'** (default — both
+  columns of a section start together and END together, each column dealing
+  the section's leftover height evenly between its rows, like the official
+  printed sheets; the first section clears the title/author ink instead of
+  giving the title a column slot) and **'shared'** (the classic reference
+  layout — one shared row grid, col 2 staggered one row under the title).
+  Where a team breaks between the two columns is `columnSplit`: `'count'`
+  (the default, the larger half on the left) or `'balance'` (the break
+  that evens out the two columns' measured height, `splitTeam()` in
+  sheet.js). The printed edition sheets do not agree on one rule: Trouble
+  Brewing's Townsfolk are 7/6 by count, Bad Moon Rising's 6/7 by text, so
+  it is a choice per design. A line break typed into a character's ability
+  (the Characters card's Ability box) is kept on the classic sheet
+  (`white-space: pre-line`, and `wrappedLineCount()` counts each line), so
+  an ability can be broken where the official sheets break it.
+  **The ribbon's width is `sidebarWidth`** (a share of the reference's,
+  0.6 to 1.4; the printed edition sheets measure about 0.79), and
+  everything that meets the ribbon follows its edge (`RIB` in
+  renderSheetPage): the labels, the dividers' knot and cap, and the paper.
+  A narrower ribbon draws the parchment's left 14% into the left 14 x
+  width % (`squeezeLeft` in `renderBackground()`), so the paper's burnt
+  edge comes in with it instead of leaving the dark frame showing.
+  `ribbonEdge` (on by default) lays `art/ribbon-edge.png` along that edge
+  top to bottom: the parchment's own gold band, cut where it is brightest,
+  mirrored out to the full height and darkened with the paper's vignette.
+  `sidebarContrast` ("Pattern strength", 1 by default) softens the damask
+  by laying a wash of the ribbon's own colour over it (`appendRibbon`, the
+  classic sheet and the ribbon-style night sheets). The printed sheets'
+  pattern is soft: Trouble Brewing matches at about 0.6, Bad Moon Rising 0.35.
+  **The ribbon labels and the dividers are drawn in `ribbonLayer`, outside
+  the character grid**: they follow the grid's Vertical offset and Size
+  down the page (`cy()`, `cs`) but not across it, because inside the
+  scaled grid a Size above 100% walked the labels off the ribbon.
+  The sidebar ribbon can be recoloured (`sidebarColor`) — **per pixel in
+  real HSL, never with a CSS hue-rotate filter**: hue-rotate is a linear
+  approximation that maps the art's near-black navy (the shadowed edges at
+  the strip's top, bottom and left) to neutral mud, so a red ribbon showed
+  un-tinted bands there. The recolour rotates hue by the offset from the
+  art's measured base (`SIDEBAR_BASE` in script.js) and scales sat/lightness
+  by ratio, runs once per colour in the pixel worker (cached —
+  renderSheetPage shows the newest canvas and re-renders when a fresh one
+  lands, like the icon-ink pass), and the default colour bypasses it
+  entirely. `sidebarMode` swaps the damask for a flat colour or nothing.
+  The colour controls are a HAND-ROLLED picker (SV square + hue slider +
+  hex box + recent swatches in app.js), because `<input type="color">` on
+  Android Chrome is a grid of ~20 preset swatches with no free choice — the
+  one surface the owner reviews from. The density sliders are never
+  disabled — under auto-fit they display the solved density ("auto · 96%")
+  and dragging one unticks auto-fit; a disabled slider just read as broken.
+  Double-clicking a slider's label resets it, and every settings card ends
+  in a "Reset this card" that puts back only the option paths that card
+  bound (`beginCard()` / `endCard()` in app.js collect them through
+  `bindPath`). Team names can be ribbon labels (the official look),
+  headings over each section in the team's ink (`labelStyle`, a band the
+  layout reserves per section), or both.
+- **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
+  LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
+  400 file on purpose, because the reference used Chromium's synthetic bold),
+  Trade Gothic (abilities), Dumbledor (sidebar labels). All `font-display:
+  block`, and the renderer re-measures after `document.fonts.ready`, because
+  ability word-wrap is computed with canvas `measureText` and a fallback font
+  would wrap differently. Do NOT substitute the visually-similar fonts the
+  repo already has (dumbledor2.ttf, trade-gothic otf) — different cuts,
+  different advance widths, every wrap moves. Chromium ignores `line-height`
+  in vertical-rl/upright text, so sidebar letter pitch is compressed with
+  negative `letter-spacing` — that is why the labels carry `-0.15em`.
+  A sidebar label shrinks to fit **its own section plus the trailing gap**,
+  floored at `labelSizeMin`; the LAST section additionally owns the ribbon
+  down to the garland, but only ever as a `Math.max` bonus. That run used to
+  BE its band — measured from a fixed 87.5 em bottom against a top that moves
+  with the density — so the last label shrank as the sheet filled and the
+  span went negative once the rows reached past 87.5 em, i.e. at any density
+  above the auto fit, including the default 1.0 the slider starts on. Every
+  last label then floored: TRAVELLER, FABLED and a five-letter LORIC alike,
+  because the fault is positional, not a long-word problem. A long label in a
+  one-row band is still smaller than its neighbours (TRAVELLERS cannot be
+  10 letters at 4mm in one row) — that part is the band, not a bug.
+- **Every renderer styles itself entirely inline** and must keep doing so:
+  the element is what html-to-image captures for export, and page CSS the capture
+  library has to chase is a source of export-only bugs. The parchment,
+  sidebar, skull, flourishes and dividers in `art/` are the sealed payload
+  (immutable-cached in `_headers`) — the skull is a feathered opaque patch
+  cut from the same parchment source, so "optimizing" images here breaks the
+  blend. The ribbon is TWO files: `sidebar-flat.webp` (q95, 357 KB; it was a
+  2.6 MB PNG and is recoloured through pixel.js either way: the damask stretched
+  full-bleed over the whole ribbon column — sheet edge to sidebarX+sidebarW,
+  full height) and `sidebar-shade.png`, the parchment frame's shading as a
+  black overlay whose alpha is 1 minus that column's normalized luminance.
+  They were one baked composite at first, which pushed a hard left-to-right
+  lightness ramp through the ribbon (measured 9 → 27 luminance): nearly
+  invisible in navy, an obvious band in any other colour. So the shading is
+  now the `sidebarShade` option, **0 by default** (a solid, even strip); at
+  1 it reproduces the old composite exactly, because drawing black at
+  opacity IS the multiply that baked it. The overlay element is only created
+  when the option is above 0 — it is a 1.6 MB image nobody should fetch to
+  see the default. The divider (`divider-taper.png`) is generated to the official
+  sheet's shape — a hairline with a small knot where it meets the ribbon,
+  near-constant thickness, fading to fully transparent by the right end;
+  the handoff's spindle art (thin ends, fat middle) was the wrong shape and
+  is gone. `sidebar-full.png` is a **full-bleed composite**: the damask stretched
+  to the whole ribbon column (sheet edge to sidebarX+sidebarW, full height)
+  with the parchment frame's shading multiplied in (parchment column
+  luminance normalized so its inner backdrop = 1.0). The handoff's inset
+  strip left the parchment's black frame showing as a bare gap along the
+  top/left/bottom — invisible against navy, glaring once the ribbon was
+  recoloured. The renderer therefore draws it at left 0 / top 0;
+  `sidebarX`/`sidebarW` still place the labels. The pre-composite strip is
+  in git history (commit df66f84, as `sidebar.png`) if either file ever
+  needs rebaking. Changed art gets a NEW filename (`sidebar.png` →
+  `sidebar-full.png` → `sidebar-flat.png` → `sidebar-flat.webp`): `art/*` is immutable-cached, so
+  replacing content under an old name strands anyone who already fetched it
+  on the stale copy for a year.
+- **Official roster data is the wiki's own** (`assets/roles.json`, handed to
+  the engine via `setOfficialRoster()`) — but the **icons are the tool's own
+  bundled set** (`assets/fancyscripts/icons/{id}.webp`, the real official
+  painted art, one per roles.json id; `PageRender.thumbSrc` draws the same
+  file for an `off-` row on every card surface, the Script Builder's panel
+  included, instead of the app's CDN copy). The wiki's committed
+  `assets/icons/{id}.png` set is deliberately NOT used on the sheet: those
+  are flat recreations — right at 20px in a jinx pill, visibly wrong on a
+  print sheet the reference renders with the real art (the official Imp
+  trident isn't even red in that set). Jinxes are NOT in roles.json, so the tool carries
+  `assets/fancyscripts/official-jinxes.json` ({id: [{id, reason}]}, from the
+  script-tool dataset) — a per-character map, unlike the pair-based
+  `assets/official-jinxes.json` /jinxes uses. Jinx icons show beside the
+  declaring character when the partner is also on the script; partners are
+  matched by id AND by slugified name, because wiki exports write whichever
+  the jinx row stored.
+- **The preview draws the 192px twin of every wiki icon; an export draws the
+  original.** `previewIcon()` in script.js maps `/assets/art/{file}` (site
+  relative or absolute, `?v=` kept) to `/assets/thumb/{file}.webp`, which the
+  Worker serves as the original where no twin exists; everything else (the
+  bundled official icons, uploads, proxied off-site images) passes through.
+  `drawIcon()` in util.js applies it unless `setHiresIcons(true)`, which
+  `renderPageNode()` sets around a `ctx.forExport` render and clears after,
+  and every export goes through `withPageNode()`, which renders that way and
+  waits for the originals. Ink normalisation measures the twin and `iconFit`
+  is keyed by it whichever copy is drawn, so the two share one fit and an
+  export never waits on, or disagrees with, a measurement of the original.
+  A twenty-character wiki script costs the preview about 160 KB of icons
+  instead of three to eight megabytes. Checked headlessly by
+  `fs-round16.js` in the session scratchpad: twelve thumb requests before an
+  export, only original-art requests during it.
+- **Wiki integration is read-only**: the picker lists `/scripts.json` and
+  `/collections.json` (two optgroups, values `script:{slug}` /
+  `collection:{id}`), and `?s={slug}` / `?c={id}` (the "Fancy Sheet" action
+  on `/s/` and `/collection/` pages, render-page.js) fetch `/api/page-json`
+  — the same export the Download JSON button saves, so the sheet can never
+  disagree with the page. The Script Builder's "✨ Fancy Sheet" button
+  (script.html) hands its roster over through localStorage
+  (`botc_fancy_incoming`, the same JSON its Export button saves) and opens
+  `/fancyscripts?from=builder`, which reads the key once and clears it. The Script Builder's credits
+  Fabled (`botchomebrewwiki`) is skipped like every other importer skips it.
+  Off-site images are routed through a resizing CORS proxy (weserv) so the
+  canvas capture is never tainted; the wiki's own art is deliberately NOT
+  proxied (same-origin can't taint, and the proxy can't see draft art).
+- **The Back Cover tab** is the owner's PSD template ("Clockback", A4
+  2480×3508) rebuilt as a live editor. The background is BUILT per render,
+  not baked: a grayscale pattern tile (`art/back-pattern2.png` — a
+  period-aligned 2134×1067 block of the owner's high-res swirl texture,
+  illumination-flattened and wrap-blended at the seams; the texture's
+  half-drop lattice repeats every 1067px, which is what makes a non-mirrored
+  seamless cut possible — its predecessor, a soft resample of the template's
+  own damask, is in git history) is tiled at the chosen
+  **Pattern size/rotation**, colorized
+  per pixel in HSL — the `CAL` constants in back.js were REGRESSED from
+  the template crop, then NORMALIZED so `lA + lB·L_avg = 1` for the tile:
+  a picked colour paints true to its swatch (the pattern midtone IS the
+  picked lightness) instead of ×3ing into white, with the regression gain
+  folded into `BACK_BASE`'s lightness so the default look is unchanged.
+  **Pattern strength** (`patStrength`, 0–5, default 1) is a gain on that
+  modulation, and `L_avg` is the pivot it turns around: each term's
+  deviation from the tile's mean is scaled, so 0 is the flat picked colour,
+  1 is byte-for-byte the template, and above that the pattern deepens
+  without the cover's overall lightness or saturation moving. It exists
+  because the template's modulation is a small MULTIPLE of the picked
+  lightness (±7%), which on a dark cover works out to a couple of RGB steps
+  and reads as no texture at all — scaling the raw terms instead would have
+  darkened the whole cover as the pattern strengthened.
+  Rebaking the tile changes `L_avg` — re-do that normalization, and
+  re-measure the mean. Then
+  multiplied by `art/back-vignette2.png` (the template's glow/vignette as a
+  luminance ratio, encoded 0..2, glow peak = 1.0) raised to the **Border
+  shading** strength. The vignette map is BLURRED CLEAN of the template's
+  own damask: the first cut carried it, which painted a blurry second
+  pattern layer over the tile — the pattern must come from the tile alone.
+  **The back's colour seeds from the sidebar ONCE**: the first time the
+  back is actually shown (tabbing over, or a PDF export rendering it
+  unseen), `seedBackColor()` in app.js copies `sidebarColor` into
+  `back.bgColor`; later sidebar changes never touch the back again.
+  **Brightness/Saturation** multiply in the same pass, and the background
+  **Gradient** swaps the single target colour for a 256-step two-colour
+  ramp along an angle. One cached async canvas job, keyed on all of it;
+  the source crops those assets were built from are in git history
+  (commit b7c592a, `back-flat.jpg`/`back-shaded.jpg`), and the PSD itself
+  is on the owner's Google Drive as "Clockback copy.psd".
+  Title text is one DRAGGABLE text sticker per word (`seedBackTexts()`
+  builds the stacked official arrangement from the title — connector words
+  small and offset, like the template's Axiom/of/Logic), rendered by the
+  shared `renderTextElement()`: text, font, size, rotation, letter-spacing,
+  fill — solid or a two-colour **gradient fill** (background-clip:text; the
+  span gets `padding:.45em; margin:-.45em` because a background only paints
+  inside the box and LHF's swashes overhang it — without that the overhang
+  showed the stroke layer as bare black) — an outside stroke (a doubled
+  centred `-webkit-text-stroke` on a transparent span UNDER the fill span —
+  that lower span also casts the drop shadow, so the shadow silhouette
+  includes the stroke, matching the PSD's layer styles) and a drop shadow.
+  The template's own treatment (gold #bea881, 1.5px black stroke, soft
+  downward shadow) is the seed. The words are edited from the Elements card
+  like any sticker; `back.bgMode` swaps the built pattern for a plain colour
+  or an uploaded image. Every export re-renders the back offscreen with no
+  selection, and waits for the background canvas (`backReady`) so a
+  recolour in flight can never export stale.
+- **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
+  vendor/, lazy-loaded on first export). Grades: Share Image (JPEG at the
+  share scale, 1.5× by default, ~1 MB — the print PNG is ~30 MB, which no
+  one can post to Discord), Copy (the same as a PNG on the clipboard),
+  Print PNG (lossless at the print scale, 3× by default), All pages (one
+  PNG per page, in order) and Print PDF (every ticked page — sheets, night
+  sheets, jinx page, back — laid on the chosen paper: the sheet's own 3:4
+  trim, A4, Letter or A3, centred with the margin colour around it). Each
+  page is rendered offscreen for export (`withPageNode`) and waits for its
+  images rather than a fixed delay. Downloads go through a Blob + object
+  URL, not a data: href — a 30 MB data URL download fails on some phones.
+  **On iPhone/iPad the print scale is capped at 2.8×** (`printScale()`):
+  Safari refuses a canvas over ~16.7 million pixels and hands back a BLANK
+  image rather than an error, and a 3× sheet is 18.5 MP — the export
+  settings card says so there. **Copy issues its clipboard write inside
+  the click**, with a promise for the bytes (`ClipboardItem` accepts one):
+  Safari only honours a write made in the user gesture, and the render
+  takes longer than that.
+  The PDF pages are embedded as **JPEG, not PNG** — jsPDF stores RGBA PNGs
+  this size as raw pixels and the PDF came out 90 MB; as JPEG five pages
+  land under 10.
+- **Undo/redo, autosave, design files.** Every discrete change (a slider's
+  `change`, a toggle, a drag's release, a text field 500 ms after typing
+  stops) pushes a JSON snapshot of `options` (80 kept); Ctrl+Z / Ctrl+Y and
+  the toolbar buttons walk it. The autosave (`botc_fancy_v2` in
+  localStorage) keeps the script, the options, the asset store and the
+  uploaded fonts under a key for the script (`wiki:{slug}` or the name);
+  on load, a `?s=` deep link restores a saved design for the same slug and
+  a plain visit restores the last session outright. "Save design file"
+  downloads the same object as `{name}.fancy.json`; "Load design file" (or
+  dropping one on the script uploader — it is recognised by `app:
+  'fancyscripts'`) restores it, script included.
+- **Presets** (`PRESETS` in script.js) are patches deep-merged over the
+  current options: they change colours, backgrounds and title style and
+  leave layout, uploads and character edits alone. "Ink Saver" is the
+  plain-paper look. "Shuffle" rolls one hue for the ribbon, title and back.
+- **Things a soak test of 30 random wiki scripts found (2026-10)**, each
+  easy to reintroduce:
+  - **Every html-to-image capture passes `includeQueryParams: true`.** The
+    library caches embedded images by URL with the query stripped, and every
+    off-site image is `images.weserv.nl/?url=…`, so without it the first
+    off-site picture fetched was reused for all of them (a script's logo
+    printed as a character's icon).
+  - **Every face a style measures with must be warmed at boot** (the list
+    in app.js whose loads end in `fontsChanged()`). OptimusPrinceps, the
+    night columns style's names and headings, was missing: it arrived after
+    `fonts.ready`, the widths stayed measured in the narrower fallback, and a
+    name sized to fit its column ran past it.
+  - **Fitting goes through `solveFit()` (util.js)**, all four layouts.
+    Rows re-wrap as the type shrinks, so "density = room ÷ need" can stop
+    on the wrong side of a step; it ends by stepping down until it fits.
+  - **The header is laid out on the title image's real shape**
+    (`artAspect`, learnt on the logo's first load, which re-renders once):
+    the author line sits under the logo's actual bottom, and an image title
+    gets a gap from the skull rather than the tuck a text title gets. A
+    text title with a descender (g j p q y) gets an extra 0.9 em
+    (`titleDropEm`). In the `'shared'` column layout a logo is capped to end
+    above the first row (`artMaxHEm`) and `fitTitle()` nudges the author
+    line clear of the left column.
+  - The stock skull is drawn with an edge-fading mask: its PNG carries a
+    rectangle of baked parchment.
+  - `reminderParts()` matches `:reminder:` in any case (homebrew writes
+    `:Reminder:`); render-page.js's `nightItems()` strips it from the
+    wiki's own night lists the same way.
+  - A jinx page with nothing on it (`spec.empty`) is no page at all: no tab, no export, no "No jinxes" note on a page. The tick in the Pages card says so instead (`#fs-jinx-empty`), or it looked broken. Bootlegger rules on it carry the official Bootlegger icon. Its title (`jinxPage.title`) is blank by default and names the page after what is on it: Jinxes, Bootlegger Rules, Jinxes & Rules, Notes, or the sections joined ("Fabled, Jinxes & Rules"). An old design's stored "Jinxes" is folded to blank.
+  - **The jinx page is sections**, each under a centred heading between two fading hairlines (no heading when there is only one, the page title says it): the Travellers, Fabled and Loric when `jinxPage.extraTeams` moves them there (`movedTeams()` / `frontCharacters()` in script.js take them off the script sheet, only while the jinx page is on, or they would be on no page), then Jinxes, Bootlegger Rules, Notes. Its rows are kept together (`FIT.jinxGrowMax` 1.75, `FIT.jinxSpreadMax` 1.15) and centred, rather than spread down the page. **A sparse ribbon-style jinx page moves the logo to the top**, large: when the rows are as big as they go and more than 22 em is left, `layoutList()` lays out again with `spec.topLogo` (its height), never past twice the picture's own pixels.
+  - **A logo is trimmed to its ink** (`trimmedArt()` in util.js): many sit in a wide transparent margin, which drew them small and left the skull and flourishes standing off the picture. The first render draws the URL as given; once the image has loaded a cropped copy (a data URL, at most 1600 px) replaces it and one re-render is asked for (`onArtTrimmed`, set to `requestRender`). An unreadable (tainted) image or one with no margin is drawn as it is. Every logo goes through it: the classic and app sheets, the night and jinx pages.
+  - **The back cover keeps its words on the page** (`keepOnPage()` in back.js): each word's ink is measured with the canvas (`textInk()`, swashes included, which no DOM box sees), shrunk if wider than the page and moved in from an edge. Only the drawing changes, never the stored word. LHF Unlovable's tail on "Carnival" ran off the right edge.
+  - Ribbon labels glow in the label colour's opposite (`isDark`), and get
+    a halo of it when the ribbon is off: Ink Saver's dark labels were
+    smeared into blots by the shadows made for the stock white ones.
+  - `seedBackTexts()` counts each capital after a word's first letter as
+    wider: an all-caps title ran off both edges of the back cover.
+  - The harness is a scratch script, not in the repo: Playwright routing
+    `/api`, the feeds and uploaded art to the live site and everything else
+    to the checkout, then `FancyScripts.patch()` with random settings and a
+    click on "All pages".
 
 ## Creator marks (a creator's own symbol)
 
@@ -4575,8 +6400,8 @@ open. Two-factor login is not built yet.
   and the comments and history of wiki pages about to go. Not DMs: admins
   only read reported conversations. Then every page loses its owner; without
   `keepPages`, characters/scripts/collections are soft-deleted, wiki pages
-  removed, and comments `removed` (replies `hidden`). Favorites, mark,
-  blocks and alias rows go, the handle stays parked, `activity_log.user_id`
+  removed, and comments `removed` (replies `hidden`). Favorites, saved
+  scripts (`script_library`, in the backup), mark, blocks and alias rows go, the handle stays parked, `activity_log.user_id`
   is nulled (a foreign key D1 enforces), and the users row is deleted. Ids
   are AUTOINCREMENT, so none is reused.
 - **Restoring**: Dashboard -> Content -> "Deleted accounts".
@@ -4730,6 +6555,35 @@ seeded with whole collections whose characters all arrived unowned.
   one is a prefix of the other, so longest-first is always the most specific
   match and the list above can be reordered freely.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Interface text is short and plain.** A hint, a toast, a tooltip or a
+  panel intro says what the control does in one or two short sentences and
+  stops. No em or en dashes anywhere a reader sees them (a full stop, a comma
+  or a colon instead), no explaining why the site is built the way it is, no
+  "polished", "the works", "in one go" or the like. The owner asked for this
+  in so many words on the Script Builder and Fancy Scripts, and it holds for
+  every tool. `python3 migration/ui-strings.py <file>` lists the strings that
+  break it; the page `<title>` separator ("Page — BOTC HomeBrew Wiki") is the
+  one dash left, because forty pages share it.
+- **Interface marks are SVG, never emoji.** An emoji is painted by the
+  reader's font in that font's colours and takes no theme at all; both icon
+  sets below draw in `currentColor`, so an icon is the colour of the text
+  around it on every background the wiki has.
+  - **`.ico ico-{name}` in styles.css** is the site-wide set: an empty
+    `<span class="ico ico-download" aria-hidden="true"></span>`, painted as a
+    mask like the Curata wreath. It needs no script, so it is what markup
+    outside the Script Builder uses, the Worker's renderers included.
+  - **`assets/ui-icons.js`** is the Script Builder's set (it has marks the CSS
+    set lacks: menu, save, plus, up, down, clipboard and more). Static markup
+    writes `<i class="sbi-i" data-icon="download"></i>` and
+    `UIIcons.paint()` fills it; generated markup asks
+    `UIIcons.svg('download')`. It is loaded by `script.html` and
+    `publish-script.html`, and `night-order-editor.js` asks for its up/down
+    arrows through `window.UIIcons ? … : '&#…;'`, so a page without it keeps
+    the old glyph rather than a hole.
+  This is about the furniture only. The creator symbols in `creators.js` and
+  the credit marks inside character names are content (gotcha 7), and the
+  plain text dingbats elsewhere (`&#10003;` on a save, `&#10007;` on a
+  failure) are glyphs in the site's own ink, not emoji.
 - **Never rewrite page markup on every keystroke in a text box.** Chrome
   ends the box's undo step whenever script replaces nodes in the document
   (`textContent`, `innerHTML`, even with the same text), so Ctrl+Z undid
@@ -5145,6 +6999,10 @@ Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
 keep their existing one-hour limit. Writing original art retires its thumb,
 and the browser uploader regenerates it. The homepage featured image loads
 lazily below the fold; secondary gallery images load on approach or interaction, respecting Save-Data.
+An official character has no `thumb/` twin: `thumbSrc()` draws the bundled
+painted WebP (`assets/fancyscripts/icons/{id}.webp`, ~13 KB, immutable, one
+per roles.json id) for an `off-` row instead of the app's ~24 KB CDN copy,
+so a card never leaves this origin for an icon.
 
 **The display copy.** What draws ONE icon large — the `/c/` emblem (every
 version but the printable token) and the homepage's Featured card — loads
@@ -5360,6 +7218,20 @@ keeps `content-visibility: auto`.
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
 - D1 is SQLite, so local `sqlite3` is an accurate way to sanity-check SQL.
+- Two node self-tests cover the pure halves of the two big tools and run in
+  a second: `node migration/fancyscripts-test.mjs` (the Fancy Scripts
+  engine) and `node migration/script-builder-test.mjs` (the Script Builder's
+  shapes, fills, analysis, text formats and view normaliser). Run whichever
+  you touched.
+- The static pages can be driven headlessly without the Worker:
+  `python3 -m http.server 8765` in the repo root serves them (`.html` has to
+  be spelled out — there is no clean-URL rewrite — and `?fields=` on
+  `characters.json` is ignored, so both feeds are the stale seed), and the
+  sandbox's Chromium runs under Playwright
+  (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`). Routes to `/api/*` have
+  to be stubbed; official icons come from release.botc.app and can be
+  aborted. That is how the builder and Fancy Scripts were verified on a
+  desktop and a 390px phone viewport.
 - `node migration/qr-selftest.js` checks `assets/qr.js` end to end: it
   decodes the encoder's own output with a decoder written from the standard
   (format bits, mask, zig-zag, Reed-Solomon syndromes), so a bad table or a

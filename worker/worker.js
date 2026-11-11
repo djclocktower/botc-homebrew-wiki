@@ -129,6 +129,9 @@
  *   GET  /api/page-json       -> a script's or collection's export JSON as a
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
+ *   GET  /api/fancy-design    -> the Fancy Scripts design saved with a script or
+ *   POST /api/fancy-design       collection (?type=&slug=), and saving one: R2
+ *                                fancy/{type}/{slug}.json, editors of the page only
  *
  *   -- the Starlit Gallery (/starlit) --
  *   GET  /api/starlit         -> every icon, texture pack, download and the
@@ -213,6 +216,12 @@
  *                                Published pages only, capped per account,
  *                                and not a content write (no feed changes,
  *                                nothing logged — a bookmark is not an edit)
+ *   GET  /api/my-scripts      -> the Script Builder's My Scripts for this account
+ *   POST /api/my-scripts      -> {put:[{id, chars, meta, updated, base}], remove:[id]}:
+ *                                save or delete saved scripts (50 per account);
+ *                                a save over a newer one keeps both
+ *   POST /api/my-scripts/image -> {data}: a logo or background for a saved
+ *                                script, to library/{userId}/; key minted here
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -609,7 +618,7 @@ const THUMB_MIN_BYTES = 512;
 // conversation images only through /api/attachment, and the Starlit Gallery's
 // files only through /api/starlit, both of which NAME the key themselves (see
 // ATTACH_PREFIX and STARLIT_PREFIX).
-const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'starlit/']);
+const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/', 'starlit/', 'library/']);
 
 /* ---- conversation images (comments + modmail) ----
    Every other R2 prefix names the PAGE an image belongs to, so who may write
@@ -662,7 +671,7 @@ function packAttachments(list) {
    banner key and are orphaned exactly when their original is (imageOrphaned);
    attachments/ are referenced from the images column of comments, modmail
    messages and modmail replies. */
-const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_PREFIX, 'media/', ATTACH_PREFIX];
+const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_PREFIX, 'media/', ATTACH_PREFIX, 'library/'];
 
 /* An image path written anywhere in a row: from its folder to the first image
    extension after it. Deliberately loose about the file name — a key can hold
@@ -670,7 +679,7 @@ const ORPHAN_PREFIXES = ['art/', 'scripts/', 'collections/', 'avatars/', THUMB_P
    file the sweep offers to delete out from under a page. Matching too much
    only ever keeps a file. Bounded by a quote, a backslash, a line break or a
    tag bracket, so a scan never runs past the string it started in. */
-const IMAGE_REF_RE = /(?:art|scripts|collections|attachments)\/[^"\\\n\r<>]*?\.(?:png|jpe?g|webp|gif|svg)/gi;
+const IMAGE_REF_RE = /(?:art|scripts|collections|attachments|library)\/[^"\\\n\r<>]*?\.(?:png|jpe?g|webp|gif|svg)/gi;
 
 /* Every image key something on the wiki refers to (lower-cased), and the
    account ids — what imageOrphaned() judges by. Every page's JSON counts, all
@@ -683,7 +692,8 @@ async function imageReferences(env) {
   await ensureNewsTable(env);
   const refs = new Set();
   const sources = [['characters', 'data'], ['collections', 'data'], ['scripts', 'data'], ['pages', 'data'],
-    ['news', 'data'], ['settings', 'value'], ['comments', 'images'], ['messages', 'images'], ['modmail_replies', 'images']];
+    ['news', 'data'], ['settings', 'value'], ['comments', 'images'], ['messages', 'images'], ['modmail_replies', 'images'],
+    ['script_library', 'data']];
   for (const [tbl, col] of sources) {
     let results;
     try { ({ results } = await env.DB.prepare(`SELECT ${col} AS v FROM ${tbl}`).all()); }
@@ -1214,7 +1224,8 @@ async function accountBackup(env, u, keepPages) {
     pageComments: keepPages ? [] : await rows(`SELECT * FROM comments WHERE ${onPages}`, u.id),
     pageRevisions: keepPages ? [] : await rows(`SELECT * FROM revisions WHERE ${onPages}`, u.id),
     creatorMarks: await rows('SELECT * FROM creator_marks WHERE user_id=?', u.id),
-    favorites: await rows('SELECT * FROM favorites WHERE user_id=?', u.id)
+    favorites: await rows('SELECT * FROM favorites WHERE user_id=?', u.id),
+    myScripts: await rows('SELECT * FROM script_library WHERE user_id=?', u.id)
   };
   const pages = data.characters.length + data.scripts.length + data.collections.length + data.pages.length;
   const key = ACCOUNT_BACKUP_PREFIX + u.id + '-' + Date.now() + '.json';
@@ -2429,6 +2440,66 @@ async function ensureFavoritesTable(env) {
   _favoritesReady = true;
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* ---- My Scripts on the account (the Script Builder's saved scripts) ----
+   One row per (account, script). `data` is {chars, meta} exactly as the
+   builder keeps it in the browser; nothing public reads it. `updated` is when
+   the script was last edited (the browser's clock, for "newest wins"),
+   `saved` when this table last took a version (the server's, for "has
+   anything changed since you last looked"). See "My Scripts on the account"
+   in CLAUDE.md. Images are minted under LIBRARY_PREFIX like attachments. */
+const MY_SCRIPTS_MAX = 50;
+const MY_SCRIPT_BYTES = 300 * 1024;
+// Entries kept from a conflict may pass the limit, but not without end.
+const MY_SCRIPT_COPIES = 20;
+const MY_SCRIPTS_BODY_MAX = 8 * 1024 * 1024;
+const MY_SCRIPT_IMAGES_MAX = 200;
+const LIBRARY_PREFIX = 'library/';
+let _myScriptsReady = false;
+async function ensureMyScriptsTable(env) {
+  if (_myScriptsReady) return;
+  if (await schemaHas(env, { tables: { script_library: ['saved'] } })) { _myScriptsReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS script_library (
+       user_id INTEGER NOT NULL,
+       id      TEXT NOT NULL,
+       data    TEXT NOT NULL,
+       updated INTEGER NOT NULL DEFAULT 0,
+       saved   INTEGER NOT NULL DEFAULT 0,
+       PRIMARY KEY (user_id, id)
+     )`
+  ).run();
+  _myScriptsReady = true;
+}
+function myScriptId() {
+  return 'c' + randomToken().replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 12);
+}
+/* One entry as the browser sent it, cleaned: an id, up to 200 character
+   slugs, the meta object, and the edit time. null when it is not one. */
+function cleanMyScript(e) {
+  if (!e || typeof e !== 'object') return null;
+  const id = String(e.id || '');
+  if (!/^[a-z0-9_-]{1,40}$/i.test(id)) return null;
+  const chars = (Array.isArray(e.chars) ? e.chars : []).filter(x => typeof x === 'string' && x.length <= 200).slice(0, 200);
+  const meta = e.meta && typeof e.meta === 'object' && !Array.isArray(e.meta) ? e.meta : {};
+  const data = JSON.stringify({ chars, meta });
+  if (new TextEncoder().encode(data).length > MY_SCRIPT_BYTES) return { id, tooBig: true };
+  // A clock that runs ahead must not win every conflict from then on.
+  const updated = Math.max(0, Math.min(Number(e.updated) || 0, Date.now() + 300000));
+  return { id, data, updated, base: Number(e.base) || 0 };
+}
+/* A losing version kept as its own entry: "newest save wins, the other is
+   kept as a copy". Copies may pass the limit (by MY_SCRIPT_COPIES), or a
+   conflict on a full account would lose the work it exists to keep. */
+function myScriptCopyData(data) {
+  try {
+    const d = JSON.parse(data);
+    d.meta = d.meta && typeof d.meta === 'object' ? d.meta : {};
+    delete d.meta.libId;
+    d.meta.name = (String(d.meta.name || 'Untitled Script') + ' (older copy)').slice(0, 90);
+    return JSON.stringify(d);
+  } catch { return data; }
+}
 
 /* ---- the Starlit Gallery (/starlit) ----
    Icons by Harry & Co & Bendan, stored as a black layer, a white layer and a
@@ -6426,8 +6497,36 @@ function sanitizePageFields(o, themeBase) {
     const boxes = sanitizeBoxes(o.customBoxes);
     if (boxes.length) o.customBoxes = boxes; else delete o.customBoxes;
   }
+  const ids = sanitizeExportIds(o.exportIds);
+  if (ids) o.exportIds = ids; else delete o.exportIds;
   const theme = PageRender.sanitizeTheme(o.theme, themeBase);
   if (theme) o.theme = theme; else delete o.theme;
+}
+
+// ---- how this script/collection writes the ids in its JSON export ----
+// The official schema's `id` is what every tool pairs characters by, and this
+// wiki has 166 names more than one page answers to, so an export qualifies
+// them: {name}_{creator}_{set} (Render.exportId). This is the owner's say over
+// that — the shape, plus their own text wrapped around it — stored on the
+// page's `data` and read by buildPageExport.
+//
+// The DEFAULT is stored as nothing: an object equal to the default is dropped
+// so a page nobody has touched keeps following the site's rule instead of
+// freezing today's answer into the row, exactly as `logoSize` does.
+const EXPORT_ID_AFFIX_RE = /^[A-Za-z0-9][A-Za-z0-9 _-]*$/;
+function sanitizeExportIds(o) {
+  if (!o || typeof o !== 'object') return null;
+  const modes = Render.EXPORT_ID_MODES.map(m => m.key);
+  const mode = modes.includes(o.mode) ? o.mode : 'full';
+  const affix = v => {
+    const s = String(v == null ? '' : v).trim().slice(0, 24);
+    return EXPORT_ID_AFFIX_RE.test(s) ? s : '';
+  };
+  const out = { mode, prefix: affix(o.prefix), suffix: affix(o.suffix) };
+  if (out.mode === 'full' && !out.prefix && !out.suffix) return null;
+  if (!out.prefix) delete out.prefix;
+  if (!out.suffix) delete out.suffix;
+  return out;
 }
 
 // ---- validation for wiki pages (/p/{slug}) and news articles ----
@@ -6630,6 +6729,29 @@ const CARD_DROP_FIELDS = new Set([
   'almanacAlt', 'iconByLabel'
 ]);
 
+// ---- owner_id -> username ----
+// The account that uploaded a page, which is the first half of the id its
+// characters export under (Render.exportId). It is a handful of hundreds of
+// rows against 1,600 characters, so it is one query memoised per isolate
+// against the content version — the same shape as curataCollections() — not a
+// join, and never a query per page.
+//
+// It is deliberately NOT the answer to "whose creator page is this": that is
+// resolveCreatorAccount(), which weighs published pages and admin aliases.
+// This is the plain owner column, because an id has to be stable and cheap.
+let _ownerNameCache = null;
+async function ownerNames(env) {
+  const version = await contentVersion(env);
+  if (_ownerNameCache && _ownerNameCache.version === version) return _ownerNameCache.map;
+  const map = {};
+  try {
+    const { results } = await env.DB.prepare('SELECT id, username FROM users').all();
+    for (const r of results || []) if (r && r.username) map[String(r.id)] = String(r.username);
+  } catch { /* no accounts table yet: every id falls back to the credit */ }
+  _ownerNameCache = { version, map };
+  return map;
+}
+
 // ---- the GRID feed: only what a card needs ----
 // `?fields=grid` is the third tier, for the pages that only ever DRAW
 // characters — All Characters, the team and tag pages, /favorites, the Script
@@ -6728,7 +6850,12 @@ async function buildPublicJSON(env, table, opts = {}) {
   // this one line is most of the frontend's share of nesting.
   // Scripts and collections read their PK too: a legacy blob without a
   // `slug` is stamped with it below, or the browse feed had no key for it.
-  const cols = (chars ? 'data, status, slug, url_slug' : 'data, status, slug') + ', updated_at';
+  const cols = (chars ? 'data, status, slug, url_slug, owner_id' : 'data, status, slug') + ', updated_at';
+  // The uploading account's handle, for the exported id. Half the wiki has no
+  // owner at all, and those rows fall back to the credit string inside
+  // Render.exportId — which for a bulk import is the only name they have.
+  // Started beside the row read: it is one memoised query.
+  const ownersRead = chars ? ownerNames(env).catch(() => ({})) : null;
   // Fail closed: a transient database error must not retry without the
   // published-only filter and expose drafts in a public, cached response.
   // The url_slug column is added (and the same query retried) only when the
@@ -6747,6 +6874,7 @@ async function buildPublicJSON(env, table, opts = {}) {
   const { results } = rowsRead;
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
+  const owners = ownersRead ? await ownersRead : {};
   const out = [];
   for (const r of results) {
     // One row whose blob is not valid JSON used to throw out of here and take
@@ -6770,6 +6898,10 @@ async function buildPublicJSON(env, table, opts = {}) {
     // reader's info box and onto its editing page — but the feed is a public
     // API, so dropping a field from it is a separate decision.
     delete d.editors;
+    if (chars) {
+      const who = r.owner_id == null ? '' : owners[String(r.owner_id)];
+      if (who) d.ownerName = who; else delete d.ownerName;
+    }
     // A script's or collection's kept JSON can be 100 KB, and only its own
     // page (read from the row) and /api/page-json show it.
     if (!chars) delete d.customJson;
@@ -8722,6 +8854,9 @@ function buildJinxIndex(chars, officialNames) {
     // versioned (immutable, edge-cached) thumbnail rather than a bare URL.
     v: c.v || '',
     creator: c.creator || '',
+    // Both halves of the id this character exports under (Render.exportId):
+    // a jinx has to name its target by the id that target actually writes.
+    ownerName: c.ownerName || '',
     // The id its own export carries, so a jinx naming it exports the same
     // one (Render.jinxExportId). Only imports have one.
     ...(c.jsonId ? { jsonId: String(c.jsonId) } : {}),
@@ -8877,12 +9012,15 @@ async function charsBySlug(env, slugs) {
   const wanted = [...new Set((slugs || []).map(String).filter(Boolean))];
   if (!wanted.length) return [];
   const curata = curataCollections(env).catch(() => []);
+  // The uploading account's handle, for the ids this roster exports under
+  // (Render.exportId). One memoised query, beside the roster read.
+  const ownersRead = ownerNames(env).catch(() => ({}));
   const chunks = [];
   for (let i = 0; i < wanted.length; i += 90) chunks.push(wanted.slice(i, i + 90));
   const readChunk = async chunk => {
     const marks = chunk.map(() => '?').join(',');
     const run = () => env.DB.prepare(
-      `SELECT data, status, slug, url_slug, updated_at FROM characters
+      `SELECT data, status, slug, url_slug, owner_id, updated_at FROM characters
         WHERE status='published' AND slug IN (${marks})`
     ).bind(...chunk).all();
     try {
@@ -8903,7 +9041,8 @@ async function charsBySlug(env, slugs) {
   };
   let incomplete = false;
   const out = [];
-  for (const results of await Promise.all(chunks.map(readChunk))) {
+  const [read, owners] = await Promise.all([Promise.all(chunks.map(readChunk)), ownersRead]);
+  for (const results of read) {
     for (const r of results) {
       try {
         const d = foldLegacyCurata(JSON.parse(r.data));
@@ -8911,6 +9050,10 @@ async function charsBySlug(env, slugs) {
         d.page = 'c/' + charAddress(r);
         const v = rowVersion(r.updated_at);
         if (v) d.v = v; else delete d.v;
+        // The uploading account's handle, for the ids this roster exports
+        // under (Render.exportId). Derived from owner_id, never stored.
+        const who = r.owner_id == null ? '' : owners[String(r.owner_id)];
+        if (who) d.ownerName = who; else delete d.ownerName;
         // Classify.isCurata, as in buildPublicJSON: a creator's opt-out
         // drops the row's own flag, and the curataOptOut it still carries
         // stops applyCollectionCurata lending the mark back below.
@@ -8951,6 +9094,84 @@ async function charsBySlug(env, slugs) {
 
    Content-Disposition is what makes it save rather than display; the filename
    is the page's own slug, as the blob version named it. */
+/* ---- a Fancy Scripts design kept with its script or collection ----
+   One JSON file in R2 (fancy/{type}/{PK slug}.json): the same object as the
+   tool's "Save design file", without the roster, which comes from the page.
+   It is what /fancyscripts?s= and ?c= open with, so the "Fancy Sheet" button
+   on a page gives every reader its owner's design. Anyone who can see the
+   page can read it; whoever may edit the page (owner, approved editors,
+   admins; not a protected page's owner) can save it. The prefix is not in
+   R2_SERVE_PREFIXES, so a draft's design is only reachable through here. */
+const FANCY_DESIGN_MAX = 8 * 1024 * 1024;
+const FANCY_DATA_URL = /^data:[\w.+\/-]*;base64,[A-Za-z0-9+\/=]+$/;
+
+async function fancyDesignRow(env, type, slug) {
+  if (!slug) return null;
+  let row = await getEntityRow(env, type, slug);
+  if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+  return row && row.status !== 'deleted' ? row : null;
+}
+
+const fancyDesignKey = (type, slug) => 'fancy/' + type + '/' + slug + '.json';
+
+async function fancyDesignRoute(env, request, url, method) {
+  const sess = await getSession(env, request);
+  let body = null;
+  if (method === 'POST') {
+    if (!sess) return jsonResponse({ error: 'Log in to save a design to a page.' }, { status: 401 });
+    if (Number(request.headers.get('content-length') || 0) > FANCY_DESIGN_MAX) {
+      return jsonResponse({ error: 'That design is too large to save (8 MB at most). Smaller uploads help.' }, { status: 413 });
+    }
+    const text = await request.text();
+    if (text.length > FANCY_DESIGN_MAX) {
+      return jsonResponse({ error: 'That design is too large to save (8 MB at most). Smaller uploads help.' }, { status: 413 });
+    }
+    try { body = JSON.parse(text); } catch { return jsonResponse({ error: 'Bad request' }, { status: 400 }); }
+  }
+  const src = body || {};
+  const type = (src.type || url.searchParams.get('type')) === 'collection' ? 'collection' : 'script';
+  const row = await fancyDesignRow(env, type, String(src.slug || url.searchParams.get('slug') || ''));
+  const canSave = !!(sess && row && await canEditPage(env, sess, type, row) &&
+    (sess.isAdmin || !(await isProtected(env, type, row.slug))));
+  if (!row || ((row.status || 'published') !== 'published' && !canSave)) {
+    return jsonResponse({ error: 'Not found' }, { status: 404 });
+  }
+  const key = fancyDesignKey(type, row.slug);
+
+  if (method === 'GET') {
+    const obj = await env.ART.get(key).catch(() => null);
+    let design = null;
+    if (obj) { try { design = await obj.json(); } catch { design = null; } }
+    return jsonResponse({ design, savedAt: (obj && obj.customMetadata && obj.customMetadata.at) || '', canSave });
+  }
+
+  if (!canSave) return jsonResponse({ error: 'Only people who can edit this page can save its design.' }, { status: 403 });
+  const limited = await writeLimited(env, request, sess, type);
+  if (limited) return limited;
+  if (src.remove) {
+    await env.ART.delete(key);
+    return jsonResponse({ ok: true, removed: true });
+  }
+  const d = src.design;
+  if (!d || typeof d !== 'object' || Array.isArray(d) || d.app !== 'fancyscripts' || !d.options || typeof d.options !== 'object') {
+    return jsonResponse({ error: 'That is not a Fancy Scripts design.' }, { status: 400 });
+  }
+  delete d.script;
+  delete d.sourceLabel;
+  // Uploaded images and fonts end up inside CSS in every reader's browser:
+  // only plain base64 data: URLs (and plain font names) are stored.
+  const dataUrls = (map, kind, keyRe) => Object.fromEntries(Object.entries(map && typeof map === 'object' ? map : {})
+    .filter(([k, v]) => keyRe.test(k) && typeof v === 'string' && v.startsWith('data:' + kind) && FANCY_DATA_URL.test(v)));
+  d.assets = dataUrls(d.assets, 'image/', /^[\w-]{1,40}$/);
+  d.fonts = dataUrls(d.fonts, '', /^[\w \-]{1,60}$/);
+  const at = new Date().toISOString();
+  await env.ART.put(key, JSON.stringify(d), {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: { owner: String(sess.userId), at },
+  });
+  return jsonResponse({ ok: true, savedAt: at });
+}
+
 async function pageJsonResponse(env, ctx, request, url) {
   const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
   const slug = String(url.searchParams.get('slug') || '');
@@ -8985,7 +9206,15 @@ async function pageJsonResponse(env, ctx, request, url) {
       ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
       : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
     if (isScript && d.creatorMarks) setMarkRegistry(await cachedMarkRegistry(env, ctx).catch(() => null));
-    text = PageRender.buildPageExport(name, d.author, d.logo || d.header, entries, isScript ? d : undefined);
+    // The official roster, so a jinx naming an official character keeps the
+    // official id — the one id an export must never rewrite (see jinxIdWriter).
+    Render.setOfficialNames(await officialNameMap(env, url.origin).catch(() => ({})));
+    // A collection hands over the same narrow view its own page does, so this
+    // download and the JSON box on /collection/ cannot write different ids.
+    // The whole row would drag a SCRIPT's _meta fields (background, hideTitle,
+    // almanac, the night order) onto a page that has none of them.
+    text = PageRender.buildPageExport(name, d.author, d.logo || d.header, entries,
+      isScript ? d : { id: d.id, slug: d.slug, name, exportIds: d.exportIds });
   }
   const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
   return new Response(text, {
@@ -9099,6 +9328,10 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   // suspension before the render (see setWikiTextRegistries).
   WikiRender.setCharLinks(links || {});
   WikiRender.setOfficialNames(officialNames);
+  // render.js's copy too: a jinx naming an official character is recognised
+  // as one by the page's JSON box, and an official id is the one id an export
+  // must leave exactly as it found it (see jinxIdWriter in render-page.js).
+  Render.setOfficialNames(officialNames);
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -10467,15 +10700,21 @@ const app = {
             // memoised, so those passes need no read of their own). A failure
             // in the "Appears in" lookup keeps the client fallback.
             const ownLinks = wantsCharLinks(row.data);
-            const [setHref, icons, names, jx, ownLinkMap, , , marks] = await Promise.all([
+            const [setHref, icons, names, jx, ownLinkMap, , , marks, owners] = await Promise.all([
               appearsInHref(env, ctx, d.appearsIn).catch(() => undefined),
               officialIconMap(env, url.origin), officialNameMap(env, url.origin),
               jinxIndex(env, ctx, url.origin).catch(() => null),
               ownLinks ? cachedCharLinkMap(env, ctx) : null,
               curataCollections(env).catch(() => null),
               includeCollections(env).catch(() => null),
-              cachedMarkRegistry(env, ctx).catch(() => null)
+              cachedMarkRegistry(env, ctx).catch(() => null),
+              row.owner_id != null ? ownerNames(env).catch(() => ({})) : null
             ]);
+            // The uploading account's handle, for the id in this page's JSON
+            // box (Render.exportId). Derived from owner_id on every read, never
+            // stored — see ownerNames().
+            delete d.ownerName;
+            if (owners && owners[String(row.owner_id)]) d.ownerName = owners[String(row.owner_id)];
             // Same Curata inheritance the JSON feeds get, so the star on the
             // page agrees with the star in the grid it was clicked from.
             if (!d.curata) await applyCollectionCurata(env, [d]);
@@ -11217,7 +11456,7 @@ const app = {
         customUrls('script'), customUrls('wikipage')
       ]);
       const staticPages = ['', 'recent', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
-        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload',
+        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'fancyscripts', 'mass-upload',
         'steven-approved-order', 'rules', 'news', 'jinxes', 'articles', 'starlit'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
@@ -11429,6 +11668,12 @@ const app = {
     // The Download JSON button on /s/ and /collection/ points straight here.
     if (method === 'GET' && path === '/api/page-json') {
       return pageJsonResponse(env, ctx, request, url);
+    }
+
+    // The save is answered inside the POST gate below, after the suspended
+    // account and wiki lock checks.
+    if (path === '/api/fancy-design' && method === 'GET') {
+      return fancyDesignRoute(env, request, url, method);
     }
 
     /* ---- read a Bloodstar project ----
@@ -12399,6 +12644,22 @@ const app = {
       // act on it.
       if (!owns) delete pageData.editors;
       if (!editable) delete pageData._draftNote;
+      /* The uploading account's handle and the page's address, so the
+         editor's live preview writes the id the published page will
+         (Render.exportId reads both). Derived on read, never stored — the
+         save handler strips whatever a client sends back. */
+      if (type === 'character') {
+        delete pageData.ownerName;
+        if (row.owner_id != null) {
+          const who = (await ownerNames(env).catch(() => ({})))[String(row.owner_id)];
+          if (who) pageData.ownerName = who;
+        }
+        // The address off the ROW, never the stored `page` — same rule as
+        // buildPublicJSON: what an editor wrote there years ago is not where
+        // the page lives now, and the address is what says which set the id
+        // is qualified by.
+        pageData.page = 'c/' + String(row.url_slug || row.slug || '');
+      }
       /* Curata is admin-only to GRANT and the creator's to decline, so the
          editor has to be told which of the two it is looking at before it
          offers the opt-out — and a character usually has the mark because a
@@ -12554,6 +12815,23 @@ const app = {
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       const expand = url.searchParams.get('expand') === '1';
       return jsonResponse(await favoritesPayload(env, sess.userId, expand, url.origin));
+    }
+
+    // ---------- MY SCRIPTS (the Script Builder's saved scripts) ----------
+    if (method === 'GET' && path === '/api/my-scripts') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      await ensureMyScriptsTable(env);
+      const { results } = await env.DB.prepare(
+        'SELECT id, data, updated, saved FROM script_library WHERE user_id=? ORDER BY updated DESC'
+      ).bind(sess.userId).all();
+      const scripts = [];
+      for (const r of results || []) {
+        let d;
+        try { d = JSON.parse(r.data); } catch { continue; }
+        scripts.push({ id: r.id, chars: d.chars || [], meta: d.meta || {}, updated: r.updated, saved: r.saved });
+      }
+      return jsonResponse({ scripts, max: MY_SCRIPTS_MAX });
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
@@ -13844,7 +14122,7 @@ const app = {
       // /api/attachment does not: modmail uses it too, and the comment it
       // would belong to is refused here anyway.
       const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx',
-        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/starlit', '/api/starlit-file'].includes(path);
+        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/fancy-design', '/api/starlit', '/api/starlit-file'].includes(path) && method !== 'GET';
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -13870,6 +14148,8 @@ const app = {
       if (isContentWrite && await isWikiLocked(env)) {
         return jsonResponse({ error: 'The wiki is locked. Editing and page creation are temporarily disabled.' }, { status: 423 });
       }
+
+      if (path === '/api/fancy-design') return fancyDesignRoute(env, request, url, method);
 
       // ---- account settings ----
       if (path === '/api/account/profile') {
@@ -14045,6 +14325,12 @@ const app = {
           await run("UPDATE comments SET status='removed' WHERE user_id=? AND status='visible'", id);
         }
         await run('DELETE FROM favorites WHERE user_id=?', id);
+        await run('DELETE FROM script_library WHERE user_id=?', id);
+        // The logos and backgrounds uploaded for those scripts go with them.
+        try {
+          const up = env.ART && await env.ART.list({ prefix: LIBRARY_PREFIX + id + '/', limit: 1000 });
+          if (up && up.objects.length) await env.ART.delete(up.objects.map(o => o.key));
+        } catch { /* the orphan sweep finds what is left */ }
         await run('DELETE FROM creator_marks WHERE user_id=?', id);
         await run('DELETE FROM dm_blocks WHERE user_id=? OR blocked_id=?', id, id);
         // An admin link from a creator name to this handle would hand those
@@ -15511,6 +15797,11 @@ const app = {
         // Nor may its classification: that is derived too (see classify.js).
         delete c.appearsInFrom;
         delete c.classification;
+        // Same for the uploading account's handle: it is read off owner_id on
+        // every read (see ownerNames), so a stored copy could only ever be a
+        // stale one — and a forged one would put somebody else's name in this
+        // page's exported id.
+        delete c.ownerName;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.
@@ -15649,6 +15940,123 @@ const app = {
             .bind(sess.userId, b.type, target.slug).run();
         }
         return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
+      }
+
+      /* ---- My Scripts: {put: [...], remove: [ids]} ----
+         A put whose `base` is the `saved` stamp the browser last saw is an
+         ordinary save. Anything else means another device saved in between:
+         the newer edit (`updated`) takes the id and the other is kept as an
+         "(older copy)". The answer gives every id's new `saved` stamp, and
+         `conflicts` tells the browser to read the list again. Not a content
+         write: nothing public changes. */
+      if (path === '/api/my-scripts') {
+        if (await rateLimited(env, request, 'mylib', 900, 3600, { sess })) {
+          return tooManyResponse('Too many saves in the last hour. Your scripts are still kept in this browser.', 3600);
+        }
+        if (Number(request.headers.get('content-length') || 0) > MY_SCRIPTS_BODY_MAX) {
+          return jsonResponse({ error: 'Too much to save at once.' }, { status: 413 });
+        }
+        const b = await request.json().catch(() => ({}));
+        await ensureMyScriptsTable(env);
+        const now = Date.now();
+        const saved = {};
+        let conflicts = 0, full = 0, tooBig = 0;
+        const removes = (Array.isArray(b.remove) ? b.remove : []).map(String).filter(id => /^[a-z0-9_-]{1,40}$/i.test(id)).slice(0, 100);
+        for (const id of removes) {
+          await env.DB.prepare('DELETE FROM script_library WHERE user_id=? AND id=?').bind(sess.userId, id).run();
+        }
+        const puts = (Array.isArray(b.put) ? b.put : []).slice(0, MY_SCRIPTS_MAX + 10);
+        const uid = sess.userId, lost = [];
+        const countRows = async () => (await env.DB.prepare('SELECT COUNT(*) AS n FROM script_library WHERE user_id=?').bind(uid).first()).n || 0;
+        const rowOf = id => env.DB.prepare('SELECT data, updated, saved FROM script_library WHERE user_id=? AND id=?').bind(uid, id).first();
+        // The limit is part of the INSERT itself, so two saves arriving
+        // together cannot both pass a count that was read beforehand.
+        const insertUnder = async (id, data, updated, limit) => {
+          const r = await env.DB.prepare(
+            'INSERT OR IGNORE INTO script_library (user_id, id, data, updated, saved) SELECT ?,?,?,?,? ' +
+            'WHERE (SELECT COUNT(*) FROM script_library WHERE user_id=?) < ?').bind(uid, id, data, updated, now, uid, limit).run();
+          return !!(r.meta && r.meta.changes);
+        };
+        for (const raw of puts) {
+          const e = cleanMyScript(raw);
+          if (!e) continue;
+          if (e.tooBig) { tooBig++; continue; }
+          // Read, then write only if the row is still the one that was read;
+          // a save that landed in between is looked at again.
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const row = await rowOf(e.id);
+            if (!row) {
+              if (await insertUnder(e.id, e.data, e.updated, MY_SCRIPTS_MAX)) { saved[e.id] = now; break; }
+              if (!(await rowOf(e.id))) { full++; break; }
+              continue;
+            }
+            if (row.data === e.data) { saved[e.id] = row.saved; break; }
+            const agreed = row.saved === e.base;
+            const wins = agreed || e.updated >= row.updated;
+            // Saved somewhere else since this browser last looked: the newer
+            // edit keeps the script and the older is kept as its own entry.
+            if (!agreed && (await countRows()) >= MY_SCRIPTS_MAX + MY_SCRIPT_COPIES) { full++; break; }
+            if (!wins) {
+              await insertUnder(myScriptId(), myScriptCopyData(e.data), e.updated, MY_SCRIPTS_MAX + MY_SCRIPT_COPIES);
+              conflicts++; lost.push(e.id);
+              break;
+            }
+            const stamp = Math.max(now, row.saved + 1);
+            const r = await env.DB.prepare('UPDATE script_library SET data=?, updated=?, saved=? WHERE user_id=? AND id=? AND saved=?')
+              .bind(e.data, e.updated, stamp, uid, e.id, row.saved).run();
+            if (!(r.meta && r.meta.changes)) continue;
+            saved[e.id] = stamp;
+            if (!agreed) {
+              conflicts++;
+              await insertUnder(myScriptId(), myScriptCopyData(row.data), row.updated, MY_SCRIPTS_MAX + MY_SCRIPT_COPIES + 1);
+            }
+            break;
+          }
+        }
+        return jsonResponse({ ok: true, saved, lost, conflicts, full, tooBig, max: MY_SCRIPTS_MAX });
+      }
+
+      /* A logo or background for a saved script. The key is minted here
+         (library/{account}/{token}.{ext}), as for /api/attachment, so nothing
+         a client sends decides where the bytes land; the same type whitelist
+         and byte sniffing. The path comes back without /assets/, which is
+         how the export writes it out as an absolute link. */
+      if (path === '/api/my-scripts/image') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage is not configured.' }, { status: 500 });
+        if (await rateLimited(env, request, 'mylibimg', 60, 3600, { sess })) {
+          return tooManyResponse('Too many images in the last hour. Try again later.', 3600);
+        }
+        if (Number(request.headers.get('content-length') || 0) > ATTACH_BYTES * 1.4 + 1024) {
+          return jsonResponse({ error: 'Image is too large (5 MB max).' }, { status: 413 });
+        }
+        const held = await env.ART.list({ prefix: LIBRARY_PREFIX + sess.userId + '/', limit: MY_SCRIPT_IMAGES_MAX + 1 }).catch(() => null);
+        if (held && held.objects && held.objects.length > MY_SCRIPT_IMAGES_MAX) {
+          return jsonResponse({ error: 'Your account holds ' + MY_SCRIPT_IMAGES_MAX + ' uploaded images. Use an image link instead.' }, { status: 409 });
+        }
+        const b = await request.json().catch(() => ({}));
+        let data = String(b.data || '');
+        let declared = '';
+        if (data.startsWith('data:')) {
+          declared = data.slice(5, data.indexOf(';'));
+          data = data.slice(data.indexOf(',') + 1);
+        }
+        const kind = UPLOAD_CONTENT_TYPES[declared.toLowerCase().split(';')[0].trim()];
+        if (!kind) return jsonResponse({ error: 'Images must be PNG, JPEG, WebP, or GIF.' }, { status: 400 });
+        let bytes;
+        try { bytes = base64ToBytes(data); }
+        catch { return jsonResponse({ error: 'That image could not be read.' }, { status: 400 }); }
+        if (!bytes.length) return jsonResponse({ error: 'That image is empty.' }, { status: 400 });
+        if (bytes.length > ATTACH_BYTES) return jsonResponse({ error: 'Image is too large (5 MB max).' }, { status: 413 });
+        if (sniffImageType(bytes) !== kind.type) {
+          return jsonResponse({ error: 'That file is not the kind of image it says it is. Images must be PNG, JPEG, WebP, or GIF.' }, { status: 400 });
+        }
+        const rand = randomToken().replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 16) || 'x';
+        const key = LIBRARY_PREFIX + sess.userId + '/' + rand + '.' + kind.exts[0];
+        await env.ART.put(key, bytes, {
+          httpMetadata: { contentType: kind.type },
+          customMetadata: { owner: String(sess.userId) }
+        });
+        return jsonResponse({ ok: true, path: key });
       }
 
       /* ---------- TAG SUGGESTIONS (worker/autotag.js) ----------
@@ -16310,6 +16718,8 @@ const app = {
         // bookmarks pointing at it (a soft-deleted page keeps them, since it
         // can be restored), its comments, suggestions, views and protection.
         await dropPageRefs(env, type, row.slug);
+        // its Fancy Scripts design too, or a new page on the slug would open with it
+        if (type !== 'character') { try { await env.ART.delete(fancyDesignKey(type, row.slug)); } catch { /* a stray file must not fail the purge */ } }
         // A script's or collection's custom wiki pages went down with it when
         // it was deleted; purged, there is nothing for them to come back
         // with, and a new set taking the same slug would adopt them. So they

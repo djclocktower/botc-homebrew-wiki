@@ -1,0 +1,266 @@
+/* Fancy Scripts engine self-test.
+ *
+ *   node migration/fancyscripts-test.mjs
+ *
+ * Runs the pure engine (assets/fancyscripts/script.js) against the wiki's
+ * own data files and checks the things that are easy to break without
+ * noticing: the night order of the owner's reference sheets ("Blending
+ * In", line for line), the file's own _meta sequences, reminder marks,
+ * the option model's legacy folding, page lists, per-character overrides,
+ * and the ribbon-style night sheet's defaults and bundled step icons.
+ * No browser needed — the engine has no DOM. Exits non-zero on a failure.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const S = await import(path.join(root, 'assets/fancyscripts/script.js'));
+const read = (p) => JSON.parse(fs.readFileSync(path.join(root, p), 'utf8'));
+
+let failures = 0;
+function check(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  if (a === e) { console.log('ok   ' + name); return; }
+  failures++;
+  console.log('FAIL ' + name + '\n     got      ' + a + '\n     expected ' + e);
+}
+
+S.setOfficialRoster(read('assets/roles.json'), read('assets/fancyscripts/official-jinxes.json'), read('assets/night-order.json'));
+
+// the reference night sheets
+const blending = [{ id: '_meta', name: 'Blending In' },
+  'boffin', 'magician', 'pixie', 'librarian', 'steward', 'bountyhunter', 'highpriestess', 'chambermaid',
+  'farmer', 'undertaker', 'towncrier', 'seamstress', 'juggler', 'nightwatchman', 'damsel', 'xaan', 'poisoner', 'scarletwoman', 'imp'];
+const derived = S.deriveScript(S.parseScript(blending, true), S.normalizeOptions({}));
+const lists = S.nightLists(derived, S.DEFAULT_NIGHT);
+check('first night order', lists.first.map((i) => i.name),
+  ['Dusk', 'Boffin', 'Magician', 'Minion Info', 'Demon Info', 'Xaan', 'Poisoner', 'Pixie', 'Damsel', 'Librarian',
+    'Seamstress', 'Steward', 'Bounty Hunter', 'Nightwatchman', 'High Priestess', 'Chambermaid', 'Dawn']);
+check('other nights order', lists.other.map((i) => i.name),
+  ['Dusk', 'Xaan', 'Poisoner', 'Scarlet Woman', 'Imp', 'Damsel', 'Farmer', 'Undertaker', 'Town Crier', 'Seamstress',
+    'Juggler', 'Bounty Hunter', 'Nightwatchman', 'High Priestess', 'Chambermaid', 'Dawn']);
+
+// a homebrew character on the official scale, and the wiki's own reminder marks
+const hb = S.deriveScript(S.parseScript([...blending, { id: 'hb', name: 'Homebrew', team: 'townsfolk', ability: 'x',
+  firstNight: 33.5, firstNightReminder: 'The Homebrew chooses a player. :reminder: Show the *YOU ARE* token.' }], true), S.normalizeOptions({}));
+check('homebrew slots in after the Poisoner', S.nightLists(hb, S.DEFAULT_NIGHT).first.map((i) => i.id).slice(5, 9), ['xaan', 'poisoner', 'hb', 'pixie']);
+check('reminder marks', S.reminderParts('A :reminder: b *YOU ARE* c'),
+  [{ t: 'text', s: 'A ' }, { t: 'dot' }, { t: 'text', s: ' b ' }, { t: 'token', s: 'YOU ARE' }, { t: 'text', s: ' c' }]);
+
+// the file's own sequence, a hand-arranged one, hidden steps
+const seq = S.deriveScript(S.parseScript([{ id: '_meta', name: 'Seq', firstNight: ['dusk', 'poisoner', 'minioninfo', 'demoninfo', 'boffin', 'dawn'] },
+  'boffin', 'poisoner', 'magician'], true), S.normalizeOptions({}));
+check('_meta sequence honoured', S.nightLists(seq, S.DEFAULT_NIGHT).first.map((i) => i.id), ['dusk', 'poisoner', 'minioninfo', 'demoninfo', 'boffin', 'magician', 'dawn']);
+// a hand-arranged sequence beats the file's; a character it does not list
+// (added to the script since) slots in by its own number
+check('hand-arranged order wins', S.nightLists(seq, { ...S.DEFAULT_NIGHT, order: { first: ['dusk', 'boffin', 'poisoner'], other: null } }).first.map((i) => i.id),
+  ['dusk', 'boffin', 'magician', 'minioninfo', 'demoninfo', 'poisoner', 'dawn']);
+check('hidden steps', S.nightLists(seq, { ...S.DEFAULT_NIGHT, useScriptOrder: false, hideSteps: { dusk: true, minioninfo: false, demoninfo: true, dawn: false } }).first.map((i) => i.id), ['boffin', 'magician', 'minioninfo', 'poisoner', 'dawn']);
+
+// the option model
+const n = S.normalizeOptions({ titleDX: 3, skullScale: 1.2, flourishSpread: 2, includeBackCover: false, night: { first: true } });
+check('legacy sliders fold into elements', n.el, { title: { dx: 3 }, skull: { scale: 1.2 }, fll: { dx: -2 }, flr: { dx: 2 } });
+check('legacy back-cover tick', n.exportOpts.pages.back, false);
+check('every default present', [n.night.titleOther, n.bg.mode, n.jinxPage.title, n.exportOpts.pageSize], ['Other Nights', 'parchment', '', 'trim']);
+check('page list: both nights on one page by default', S.pageList(n, { front: 2 }).map(S.pageKey), ['front:0', 'front:1', 'night:both']);
+check('page list', S.pageList(S.normalizeOptions({ ...JSON.parse(JSON.stringify(n)), night: { ...n.night, combined: false } }), { front: 2 }).map(S.pageKey), ['front:0', 'front:1', 'night:first']);
+check('page list with everything', S.pageList(S.normalizeOptions({ night: { first: true, other: true, combined: false }, jinxPage: { enabled: true } }), { front: 1, first: 2, other: 1, jinx: 1 }).map(S.pageKey),
+  ['front:0', 'night:first', 'night:first:1', 'night:other', 'jinx', 'back']);
+check('page list: an empty jinx page is no page', S.pageList(S.normalizeOptions({ jinxPage: { enabled: true } }), { front: 1, jinx: 0 }).map(S.pageKey).includes('jinx'), false);
+check('jinx page: an old design\'s stored "Jinxes" title becomes automatic', [S.normalizeOptions({ jinxPage: { title: 'Jinxes' } }).jinxPage.title, S.normalizeOptions({ jinxPage: { title: 'House Rules' } }).jinxPage.title], ['', 'House Rules']);
+const decorPaths = [...Object.values(S.ART_CHOICES).flat(), ...S.DECOR_STICKERS.flatMap((g) => g.items)].map((c) => c.src).filter((s) => s && s !== S.NO_ART);
+check('decor: every picked or sticker art file exists', decorPaths.filter((s) => !fs.existsSync(path.join(root, s))), []);
+
+// per-character overrides and team hiding
+const ov = S.deriveScript(S.parseScript(blending, true), S.normalizeOptions({ chars: { poisoner: { hidden: true }, imp: { name: 'The Imp!', color: '#ff0000', team: 'minion' } }, hideTeams: { outsider: true } }));
+check('override + hide', ov.characters.filter((c) => c.id === 'imp' || c.id === 'poisoner' || c.team === 'outsider').map((c) => c.name + '/' + c.color + '/' + c.team), ['The Imp!/#ff0000/minion']);
+check('alphabetical sort', S.sortCharacters(derived.characters, 'alpha').slice(0, 3).map((c) => c.name), ['Boffin', 'Bounty Hunter', 'Chambermaid']);
+check('team colours', [S.teamColor(n, 'fabled'), S.teamColor(n, 'minion'), S.teamColor(n, 'townsfolk')], ['#8a6d1f', '#731d1f', '#0d6c97']);
+check('font stacks', [S.fontFamily('upload:My Font').startsWith('"My Font"'), S.fontLabel('tradebold')], [true, 'Trade Gothic Bold Condensed']);
+check('background filter', S.bgFilter({ brightness: 0.9, sepia: 0.2 }), 'brightness(0.9) sepia(0.2)');
+check('credits Fabled skipped', S.parseScript(['imp', 'botchomebrewwiki'], true).characters.map((c) => c.id), ['imp']);
+check('not an array throws', (() => { try { S.parseScript({}, true); return 'no'; } catch (e) { return 'threw'; } })(), 'threw');
+
+// the preview twin of a wiki icon
+check('preview icon: absolute wiki art', S.previewIcon('https://botchomebrew.wiki/assets/art/witcher-odyssey.png?v=abc'), 'https://botchomebrew.wiki/assets/thumb/witcher-odyssey.png.webp?v=abc');
+check('preview icon: site-relative art', S.previewIcon('/assets/art/x.jpg'), '/assets/thumb/x.jpg.webp');
+check('preview icon: everything else untouched', [S.previewIcon('/assets/fancyscripts/icons/imp.webp'), S.previewIcon('data:image/png;base64,AA'), S.previewIcon('https://images.weserv.nl/?url=x'), S.previewIcon('')],
+  ['/assets/fancyscripts/icons/imp.webp', 'data:image/png;base64,AA', 'https://images.weserv.nl/?url=x', '']);
+
+// the Bootlegger tick: added, taken out, and the team it prints under
+check('bootlegger: absent by default', S.hasBootlegger(['imp', 'baron']), false);
+check('bootlegger: added as a fabled', S.withBootlegger(['imp'], true), ['imp', { id: 'bootlegger', team: 'fabled' }]);
+check('bootlegger: adding twice does not', S.withBootlegger(S.withBootlegger(['imp'], true), true).length, 2);
+check('bootlegger: taken out again', S.withBootlegger(S.withBootlegger(['imp'], true), false), ['imp']);
+check('bootlegger: a file that carries one is found', S.hasBootlegger(['imp', 'bootlegger']), true);
+check("bootlegger: a file's bare id is filed under fabled too",
+  S.withBootlegger(['imp', 'bootlegger'], true), ['imp', { id: 'bootlegger', team: 'fabled' }]);
+check("bootlegger: a file's own team is left alone",
+  S.withBootlegger(['imp', { id: 'bootlegger', team: 'loric' }], true), ['imp', { id: 'bootlegger', team: 'loric' }]);
+check('bootlegger: unticking takes out one the file came with', S.withBootlegger(['imp', 'bootlegger'], false), ['imp']);
+check('bootlegger: off leaves a script without one untouched', S.withBootlegger(['imp'], false), ['imp']);
+const bootParsed = S.parseScript(S.withBootlegger(['imp'], true), true).characters;
+check('bootlegger: name, ability and team off the roster',
+  bootParsed.map((c) => c.id + '/' + c.team + '/' + (c.name === 'Bootlegger' && /homebrew/i.test(c.ability))),
+  ['imp/demon/false', 'bootlegger/fabled/true']);
+check('bootlegger: does not wake', bootParsed[1].firstNight + bootParsed[1].otherNight, 0);
+check('bootlegger: the default option is off', S.normalizeOptions({}).bootlegger, false);
+
+// the app view: the style switch, its defaults, and the line setting it
+// does itself. The measure here is one unit per character, so the breaks
+// can be read off the strings.
+const unit = (s) => s.length;
+const plain = S.normalizeOptions({});
+check('app view: both pages start classic', [S.pageStyle(plain, 'front'), S.pageStyle(plain, 'night'), S.pageStyle(plain, 'jinx')],
+  ['classic', 'classic', 'classic']);
+const appOn = S.normalizeOptions({ sheetStyle: 'app', night: { style: 'app' } });
+check('app view: each page switches on its own', [S.pageStyle(appOn, 'front'), S.pageStyle(appOn, 'night'), S.pageStyle(appOn, 'jinx'),
+  S.pageStyle(S.normalizeOptions({ night: { style: 'app' } }), 'front')], ['app', 'app', 'classic', 'classic']);
+check('app view: a design saved before it existed gets its defaults',
+  [plain.app.sidebarColor, plain.app.fontName, plain.app.bg.mode, plain.night.appTitle], ['#670818', 'tradebold', 'parchment', false]);
+check('app view: element keys are unique and styled', (() => {
+  const keys = S.ELEMENTS.map((e) => e.key);
+  return keys.length === new Set(keys).size && S.ELEMENTS.every((e) => !e.only || ['classic', 'app', 'columns'].includes(e.only));
+})(), true);
+const lineText = (lines) => lines.map((l) => l.items.map((it) => (it.lead ? ' ' : '') + (it.kind === 'dot' ? '●' : it.s)).join(''));
+check('break: words wrap at the width', lineText(S.breakRuns([{ s: 'aaa bbb ccc ddd', font: 'f' }], 7, unit)), ['aaa bbb', 'ccc ddd']);
+check('break: a line never starts with a space', S.breakRuns([{ s: 'aaa bbb ccc', font: 'f' }], 7, unit)[1].items[0].lead || 0, 0);
+check('break: a token run is set in its own font', S.breakRuns([{ s: 'show the ', font: 'f' }, { s: 'YOU ARE', font: 'b', kind: 'token' }], 40, unit)[0].items.map((i) => i.font),
+  ['f', 'f', 'b', 'b']);
+check('break: a bracket goes down with its word', lineText(S.breakRuns(
+  [{ s: 'the (or ', font: 'f' }, { s: 'RED', font: 'b', kind: 'token' }, { s: ').', font: 'f' }], 10, unit)), ['the (or', 'RED).']);
+const dotted = S.breakRuns([{ s: 'chooses.', font: 'f' }, { s: ' ', font: 'f' }, { kind: 'dot', font: 'f' }, { s: ' then more', font: 'f' }], 12, unit, { dotW: 2 });
+check('break: a reminder disc is one item and marks its line', [lineText(dotted), dotted.map((l) => l.dot)], [['chooses. ●', 'then more'], [true, false]]);
+const fontAt = (s) => String(s);
+const scaled = (t, f) => t.length * Number(f);
+check('name: fits on one line', S.fitNameLines('Chef', 10, scaled, fontAt), { scale: 1, lines: ['Chef'] });
+check('name: wraps at its spaces', S.fitNameLines('Fortune Teller', 10, scaled, fontAt).lines, ['Fortune', 'Teller']);
+check('name: one long word shrinks instead of being cut', S.fitNameLines('Washerwoman', 8, scaled, fontAt), { scale: 8 / 11, lines: ['Washerwoman'] });
+check('name: a night name shrinks a little before it wraps', S.fitNameLines('Scarlet Woman', 12, scaled, fontAt, { shrinkFirst: 0.8 }),
+  { scale: 12 / 13, lines: ['Scarlet Woman'] });
+
+// the ribbon-style night sheet (the default) and what it retired
+const dn = S.normalizeOptions({});
+check('night: ribbon style by default', [dn.night.style, dn.night.ribbon, dn.night.hang, dn.jinxPage.style], ['ribbon', true, true, 'ribbon']);
+check('night: every-icon offsets default to nothing', [dn.iconShiftX, dn.iconShiftY, dn.night.iconShiftX, dn.night.iconShiftY, dn.jinxPage.iconShiftX, dn.jinxPage.iconShiftY], [0, 0, 0, 0, 0, 0]);
+const oldDesign = S.normalizeOptions({ night: { showFooter: true, footer1: 'x', footer2: 'y', showBadge: true }, jinxPage: { showFooter: false, showBadge: true }, el: { nightBadge: { dx: 2 }, nightFooter: { dy: 1 }, jinxBadge: {}, jinxFooter: {}, nightTitle: { dy: 3 } } });
+check('night: an old design drops the footer and badge', [Object.keys(oldDesign.night).filter((k) => /footer|badge/i.test(k)), Object.keys(oldDesign.jinxPage).filter((k) => /footer|badge/i.test(k)), Object.keys(oldDesign.el)], [[], [], ['nightTitle']]);
+check('night: no footer or badge element', S.ELEMENTS.filter((e) => /Footer|Badge/.test(e.key)).length, 0);
+check('night: the step icons are the bundled discs', ['dusk', 'dawn', 'minion', 'demon'].map((k) => S.STEP_ICONS[k]),
+  ['dusk', 'dawn', 'minion', 'demon'].map((k) => '/assets/fancyscripts/art/night-' + k + '.webp'));
+check('night: the step icon files exist', ['dusk', 'dawn', 'minion', 'demon'].every((k) => fs.existsSync(path.join(root, 'assets/fancyscripts/art/night-' + k + '.webp'))), true);
+check('night: dusk and dawn in the printed sheets\' wording', [S.NIGHT_STEPS.dusk.text, S.NIGHT_STEPS.dawn.text],
+  ['Check that all eyes are closed. Some Travellers & Fabled act.', 'Wait a few seconds. Call for eyes open.']);
+
+// columns: the larger half on the left unless a design asks to balance by text
+check('columns: half and half by default', [S.DEFAULT_OPTIONS.columnSplit, S.normalizeOptions({ columnSplit: 'balance' }).columnSplit], ['count', 'balance']);
+
+// the ribbon: its width and the gold edge beside it
+check('ribbon: full width and a gold edge by default', [S.DEFAULT_OPTIONS.sidebarWidth, S.DEFAULT_OPTIONS.ribbonEdge], [1, true]);
+check('ribbon: damask pattern at full strength by default', S.DEFAULT_OPTIONS.sidebarContrast, 1);
+// the footnote: centred in a pack garland's oval, moving with the garland
+{
+  const bmr = '/assets/fancyscripts/decor/botc-app/bad-moon-rising/sheet-bottom.webp';
+  const o = S.garlandOval(bmr, 88, 1, 0), up = S.garlandOval(bmr, 88, 1, -2);
+  check('footnote: inside the oval', o.top > 88 && o.bottom === 100 && S.footInOval(o, '', 1) > o.top, true);
+  check('footnote: follows a raised garland', Math.round((S.footInOval(o, '', 1) - S.footInOval(up, '', 1)) * 10) / 10, 2);
+  check('footnote: an upload has no known oval', [S.garlandOval('asset:x', 88, 1, 0), S.garlandShift('asset:x')], [null, 50]);
+}
+check('ribbon: the gold edge art exists', fs.existsSync(path.join(root, 'assets/fancyscripts/art/ribbon-edge.png')), true);
+
+// stickers: a layer each, the old "behind" switch folded into it
+const layered = S.normalizeOptions({ custom: [{ id: 'a', type: 'image', behind: true }, { id: 'b', type: 'image' }, { id: 'c', type: 'image', layer: 'mid' }, { id: 'd', type: 'image', layer: 'nonsense' }] });
+check('stickers: old "behind" becomes the paper layer', layered.custom.map((st) => [st.layer, 'behind' in st]), [['back', false], ['front', false], ['mid', false], ['front', false]]);
+check('stickers: a new one starts in front', S.stickerLayer(S.newImageElement()), 'front');
+check('stickers: three layers, bottom to top', S.STICKER_LAYERS.map((l) => l[0]), ['back', 'mid', 'front']);
+
+// page shape: the em stays put, a longer page has more of them, and what
+// sits at the foot moves down with it
+{
+  const bmr = S.ART_CHOICES.garland.find((c) => c.oval).src;
+  const at34 = S.garlandOval(bmr, 88, 1, 0);
+  S.setPageRatio(2);
+  check('page shape: 1:2 is 1.5x the em of 3:4', [Math.round(S.PAGE_EM), S.SHEET_H], [150, 2484]);
+  check('page shape: the foot moves down by the extra', S.footEm(95), 145);
+  check('page shape: a garland oval stays on the foot', Math.round((S.garlandOval(bmr, 88, 1, 0).top - at34.top) * 100) / 100, 50);
+  S.setPageRatio(1);
+  check('page shape: never shorter than 3:4', [S.SHEET_H, S.footEm(95)], [1656, 95]);
+  check('page shape: old multi-sheet settings are dropped', ['paginate', 'minFit', 'repeatHeader'].map((k) => k in S.normalizeOptions({ paginate: true, minFit: 0.5, repeatHeader: true })), [false, false, false]);
+}
+
+// keyword colours: whole words, the good side and the evil side
+check('keywords: good and evil words', S.keywordParts('a good Townsfolk, an evil Minion or the Demons').filter((k) => k.side).map((k) => k.s + ':' + k.side),
+  ['good:good', 'Townsfolk:good', 'evil:evil', 'Minion:evil', 'Demons:evil']);
+check('keywords: never inside a word', S.keywordParts('goodness and Demonic').every((k) => !k.side), true);
+check('keywords: the text survives the split', S.keywordParts('If a good player dies.').map((k) => k.s).join(''), 'If a good player dies.');
+
+// jinx rules under the characters: each pair once, only with a rule to print
+{
+  const notes = S.jinxNotes([
+    { id: 'a', jinxIcons: [{ id: 'b', reason: 'Only one.' }, { id: 'c', reason: '' }] },
+    { id: 'b', jinxIcons: [{ id: 'a', reason: 'Only one, again.' }] },
+  ]);
+  check('jinx rules: a pair printed once, under the first', [...notes.keys()], ['a']);
+  check('jinx rules: an empty rule is left out', notes.get('a').map((j) => j.id), ['b']);
+}
+{
+  const marked = S.deriveScript(S.parseScript([{ id: '_meta', name: 'M' }, 'imp', 'washerwoman', 'spy'], true),
+    S.normalizeOptions({ chars: { imp: { marks: [{ id: 'washerwoman', note: ' starts here ' }, { id: 'nobody' }, { id: 'imp' }] } } }));
+  const imp = marked.characters.find((c) => c.id === 'imp');
+  check('marks: only characters on the sheet, never itself, note trimmed', imp.marks.map((m) => [m.id, m.note]), [['washerwoman', 'starts here']]);
+  check('marks: a character with none has none', marked.characters.find((c) => c.id === 'spy').marks, []);
+}
+check('player table: 11 player counts, 4 rows', [S.PLAYER_TABLE.players.length, S.PLAYER_TABLE.rows.every((r) => r[2].length === 11)], [11, true]);
+check('player table: 7 players is 5/0/1/1', S.PLAYER_TABLE.rows.map((r) => r[2][2]), [5, 0, 1, 1]);
+
+// the night columns style: the grid each team gets, and the style switch
+check('columns: a lone Demon full width, two or four in pairs, the rest in threes',
+  [1, 2, 3, 4, 5, 6, 13].map(S.columnsFor), [1, 2, 3, 2, 3, 3, 3]);
+check('columns: the script sheet style', ['columns', 'app', 'classic', 'nonsense'].map((s) => S.pageStyle({ sheetStyle: s }, 'front')),
+  ['columns', 'app', 'classic', 'classic']);
+check('columns: the night sheets keep their own style', S.pageStyle(S.normalizeOptions({ sheetStyle: 'columns' }), 'night'), 'classic');
+check('columns: across fills row by row', S.columnLists(5, 3, 'across'), [[0, 3], [1, 4], [2]]);
+check('columns: down fills column by column, the first ones longer', S.columnLists(5, 3, 'down'), [[0, 1], [2, 3], [4]]);
+check('columns: thirteen down in threes is 5/4/4', S.columnLists(13, 3, 'down').map((l) => l.length), [5, 4, 4]);
+check('columns: balanced per team, and an old one-switch design means every team',
+  [S.balancedTeam({ colBalance: { townsfolk: true } }, 'townsfolk'), S.balancedTeam({ colBalance: { townsfolk: true } }, 'minion'),
+    S.balancedTeam({ colBalance: true }, 'minion'), S.balancedTeam(S.normalizeOptions({}), 'demon')], [true, false, true, false]);
+check('columns: a team size is clamped, and 1 when unset',
+  [S.teamSize({ colTeamSize: { demon: 1.4 } }, 'demon'), S.teamSize({ colTeamSize: { demon: 9 } }, 'demon'),
+    S.teamSize({ colTeamSize: { demon: 0.1 } }, 'demon'), S.teamSize(S.normalizeOptions({}), 'minion')], [1.4, 1.6, 0.5, 1]);
+check('columns: every grid width has its sizes', [1, 2, 3].every((n) => S.COLUMN_SHEET.cell[n].length === 3), true);
+
+// one set of controls, a look per style
+check('look: a style keeps a shared setting at its own path',
+  [S.lookPath('classic', 'fontName'), S.lookPath('app', 'fontAbility'), S.lookPath('columns', 'teamColors.demon'),
+    S.lookPath('app', 'bg.mode'), S.lookPath('columns', 'iconSize')],
+  ['fontName', 'app.fontText', 'cols.teamColors.demon', 'app.bg.mode', 'iconSize']);
+{
+  const o = S.normalizeOptions({});
+  const c = S.withLook(o, 'columns'), a = S.withLook(o, 'app');
+  check('look: each style reads its own defaults, the rest shared',
+    [c.fontName, c.nameCase, c.abilityAlign, c.goodColor, c.sidebarColor === o.sidebarColor, a.fontAbility, a.inkColor, a.rowGap, o.rowGap,
+      S.withLook(o, 'classic').fontName],
+    ['optimus', 'upper', 'center', '#222222', true, 'trade', '#271d17', 1, 1, 'goudy']);
+  // every look path a style names exists in a fresh design
+  const get = (p) => p.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o);
+  check('look: every mapped path has a default', Object.values(S.STYLE_LOOK).flatMap((m) => Object.values(m)).filter((p) => get(p) === undefined), []);
+}
+
+// a character picked for a top corner leaves its team and takes the corner; the
+// Bootlegger rules go top right, under the character when it is there too
+{
+  const sc = S.deriveScript(S.parseScript([{ id: '_meta', name: 'T', bootlegger: ['Rule one.'] }, 'imp', 'washerwoman', 'poisoner'], true), S.normalizeOptions({}));
+  const o = S.normalizeOptions({ topChar: 'washerwoman', topCharSide: 'left', bootRulesTop: true });
+  check('corner: picked character leaves the grid', S.frontCharacters(sc, o).map((c) => c.id).includes('washerwoman'), false);
+  const c = S.topCorners(sc, o);
+  check('corner: left holds the character, right the rules', [c.left && c.left.name, c.right && c.right.rules.length], ['Washerwoman', 1]);
+  const r = S.topCorners(sc, S.normalizeOptions({ topChar: 'imp', bootRulesTop: true })); // top right is the default
+  check('corner: rules under a character on the right', [r.left, r.right.name, r.right.rules[0]], [null, 'Imp', 'Rule one.']);
+  const h = S.normalizeOptions({ topChar: 'imp', el: { topChar: { hidden: true } } });
+  check('corner: hiding it puts the character back', [S.topCorners(sc, h).right, S.frontCharacters(sc, h).length], [null, 3]);
+}
+
+console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
+process.exit(failures ? 1 : 0);
