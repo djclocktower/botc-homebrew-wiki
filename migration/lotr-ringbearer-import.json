@@ -1,0 +1,1526 @@
+{
+ "source": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/almanac.html (and the script.json beside it).",
+ "note": "Import record for \"LotR: Ringbearer\", Bim's Lord of the Rings script, added as a collection with the author's permission (credit Bim, Cole for script contribution, Lumi for icons). Read the way /mass-upload reads a Bloodstar project: worker/bloodstar.js parsed the almanac, assets/importer.js did the mapping, and every row was saved through the Worker on a local copy first; the objects below are what it stored. Game data (team, ability, night positions, night reminders, reminder tokens, setup) comes from script.json; the prose (flavour line, overview, examples, how to run, tips, attribution) from each character's almanac page. Every text node of the almanac is in a row, and nothing was written that the source does not say. Notes:\n- 19 of the names already belong to pages here (other people's Lord of the Rings characters), so those take a -lotr-ringbearer identity. Samwise, Oathbreaker, Mouth of Sauron, Witch-King, The One Ring, Bombadil, Radagast, Lobelia and Ferny keep their plain one. Every ADDRESS is nested under the collection either way (lotr-ringbearer/merry).\n- Creators on every character: \"Bim, Cole\". The collection's byline is Bim alone, because a collection's author line is a single link; Cole and Lumi are named in its Credits box, which is the only text here that is not the source's.\n- Twelve characters carry the attribution \"@Lumious, for the custom image.\" It is their \"Icon by\", word for word.\n- Bloodstar's Overview is one opening line, then bullets: the line is the lede, the bullets the summary. The project's synopsis is the collection's synopsis and its overview the gameplay text.\n- Wormtongue's second tip is a link in the almanac, so it is stored as one. The Mouth of Sauron's flavour ends inside a quotation mark, which is kept.\n- Tags were chosen by hand from each ability against the definitions in worker/autotag.js; the tag suggester was not used.\n- The almanac's Night Order page lists names only. A collection has nowhere to keep an arranged order, and each character carries the firstNight/otherNight numbers that page was generated from. They are the script's own (first night 11 to 18, other nights 2 to 14), not positions on the official scale.\n- Icons are the project's own 540px files, fitted to the 591px frame at the 60% standard (assets/art-normalize.js), with 192px thumbnails. The project has no logo, background or jinxes.\n- The pages are unowned (owner_id NULL), like the rest of the bulk-imported wiki.",
+ "collection": {
+  "author": "Bim",
+  "synopsis": "The very soil of Middle-earth grows dark with seeping evil. The land itself seems to turn against that which once it harbored. Men kill neighbors, alliances lie shattered like Isildur's Bane, and many a people have forgotten the word \"Friend\".\n\nFor many, hope was lost against the might of Mordor. Sauron's lidless gaze oppressed the minds of men and elves, and Mount Doom quaked with magnificent indifference to the ill-fates of Dwarves and Hobbits.\n\nBut for some, not all was lost. One of good heart and sound mind has found it; the One Ring. They, and the allies they've gained through forged bonds and spilt blood, must resist its temptation, hide it from Sauron, and plunge it into the fires of mount Doom.\n\nThen, and only then, may hope thrive again in Middle-earth. Trust is paramount, for Sauron and his agents of darkness seek to poison your mind and break your heart. There is no room for doubt.\n\nSpeak, Friend, and Enter the crossover of a lifetime:\n\nLord of the Rings: Ringbearer\n\nSpecial thanks to the Unofficial Blood on the Clocktower Discord Server and it's community, without which this script would've never been possible, and to Cole, who might be responsible for a greater percentage of the design work at this point than I am :)",
+  "gameplay": "LOTR: Ringbearer is a script built around the Fabled, \"The One Ring\". A player holds the One Ring, and must ensure that Sauron never finds it. If Sauron, finds the Ring, or his agents obtain it, all hope is lost.\n\nLOTR: Ringbearer is recommended for very experienced Blood on the Clocktower players. The rules are not always complex, but the possibilities are boundless and games can often end due to only a single mistake from either team. Players must be prepared for these losses, and be pleased that the last one ended, so that another may begin.\n\nThe Good team will find themselves making early bonds of trust and alliance, for they must conspire to protect the Ring. After all, only a Fellowship can save them.\n\nThe Evil team will find themselves wielding dramatic, world-quaking power, and yet this power is fragile, for without the Ring the bonds of men, elves, dwarves, and, yes, even hobbits, will prove too strong for the forces of evil.",
+  "id": "lotr-ringbearer",
+  "slug": "lotr-ringbearer",
+  "displayName": "LotR: Ringbearer",
+  "match": [],
+  "include": [
+   "merry-lotr-ringbearer",
+   "pippin-lotr-ringbearer",
+   "legolas-lotr-ringbearer",
+   "aragorn-lotr-ringbearer",
+   "galadriel-lotr-ringbearer",
+   "treebeard-lotr-ringbearer",
+   "gimli-lotr-ringbearer",
+   "samwise",
+   "faramir-lotr-ringbearer",
+   "boromir-lotr-ringbearer",
+   "bilbo-lotr-ringbearer",
+   "eowyn-lotr-ringbearer",
+   "gandalf-lotr-ringbearer",
+   "frodo-lotr-ringbearer",
+   "denethor-lotr-ringbearer",
+   "gollum-lotr-ringbearer",
+   "oathbreaker",
+   "mouth-of-sauron",
+   "saruman-lotr-ringbearer",
+   "wormtongue-lotr-ringbearer",
+   "witch-king",
+   "sauron-lotr-ringbearer",
+   "the-one-ring",
+   "balrog-lotr-ringbearer",
+   "bombadil",
+   "radagast",
+   "lobelia",
+   "ferny"
+  ],
+  "exclude": [],
+  "order": [
+   "merry-lotr-ringbearer",
+   "pippin-lotr-ringbearer",
+   "legolas-lotr-ringbearer",
+   "aragorn-lotr-ringbearer",
+   "galadriel-lotr-ringbearer",
+   "treebeard-lotr-ringbearer",
+   "gimli-lotr-ringbearer",
+   "samwise",
+   "faramir-lotr-ringbearer",
+   "boromir-lotr-ringbearer",
+   "bilbo-lotr-ringbearer",
+   "eowyn-lotr-ringbearer",
+   "gandalf-lotr-ringbearer",
+   "frodo-lotr-ringbearer",
+   "denethor-lotr-ringbearer",
+   "gollum-lotr-ringbearer",
+   "oathbreaker",
+   "mouth-of-sauron",
+   "saruman-lotr-ringbearer",
+   "wormtongue-lotr-ringbearer",
+   "witch-king",
+   "sauron-lotr-ringbearer",
+   "the-one-ring",
+   "balrog-lotr-ringbearer",
+   "bombadil",
+   "radagast",
+   "lobelia",
+   "ferny"
+  ],
+  "description": "",
+  "tagline": "",
+  "version": "",
+  "difficulty": "",
+  "strategyGood": "",
+  "strategyEvil": "",
+  "customBoxes": [
+   {
+    "title": "Credits",
+    "content": "- Bim\n- Cole (script contribution)\n- Lumi (icons)"
+   }
+  ],
+  "header": "",
+  "logo": "",
+  "curata": false
+ },
+ "characters": [
+  {
+   "slug": "merry-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/merry",
+   "status": "published",
+   "bloodstarId": "merry_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/merry_lotrringbearerv7.png",
+   "data": {
+    "slug": "merry-lotr-ringbearer",
+    "name": "Merry",
+    "team": "townsfolk",
+    "ability": "You start knowing a true statement. If Pippin is in play, 1 of you receives reversed info.",
+    "quote": "Don't think he knows about second breakfast, Pip.",
+    "lede": "Merry learns a statement that is certainly true, unless he and Pippin are too fond of the Hobbit weed,",
+    "summaryBullets": [
+     "Merry's statement shouldn't be something obvious, or something unknowable. It should be something Merry can determine by investigating.",
+     "Merry does not know if their info was reversed.",
+     "\"Reversed\" refers to the truth value of the statement. If Merry receives reversed info, he receives any false statement."
+    ],
+    "howToRun": [
+     "While preparing the first night, if Pippin is in play, mark either Merry or Pippin with the \"Reversed\" reminder. When you give that player their info, invert the truth value of the statement.",
+     "On the first night, wake Merry and tell them (via a written note, typed message, sign language, or any other means) something true. If Merry's info was reversed, tell them something false instead."
+    ],
+    "examples": [
+     "Merry is told the true info that \"Samwise bears the Ring.\"",
+     "Pippin is in play, and Merry's info was reversed. Merry learns the false statement \"There are 2 Outsiders in play.\""
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 14,
+    "firstNightReminder": "Show Merry something true.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "Reversed"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "False Info, Information, Reverse, Subjective Info, True Info, You Start Knowing",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/merry-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/merry-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "pippin-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/pippin",
+   "status": "published",
+   "bloodstarId": "pippin_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/pippin_lotrringbearerv7.png",
+   "data": {
+    "slug": "pippin-lotr-ringbearer",
+    "name": "Pippin",
+    "team": "townsfolk",
+    "ability": "You start knowing a false statement.",
+    "quote": "You need people of intelligence on this sort of mission...quest...thing.",
+    "lede": "Pippin learns a statement that is certainly false, unless Merry's guidance makes it true.",
+    "summaryBullets": [
+     "Pippin's statement shouldn't be something obvious, or something unknowable. It should be something Pippin can determine by investigating.",
+     "Pippin does not know if their info was reversed by Merry.",
+     "\"Reversed\" (from Merry's ability) refers to the truth value of the statement. If Pippin receives reversed info, he receives any true statement."
+    ],
+    "howToRun": [
+     "On the first night, wake Pippin and tell them (via a written note, typed message, sign language, or any other means) something false. If Pippin's info was reversed (via Merry's ability), tell them something true instead."
+    ],
+    "examples": [
+     "Pippin is woken and told \"Josephine is evil.\" Josephine is Gollum.",
+     "Merry is in play and Pippin's info was reversed. Pippin is shown the true statement, \"You neighbor a minion.\""
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 15,
+    "firstNightReminder": "Show Pippin something false.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "False Info, Information, Subjective Info, You Start Knowing",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/pippin-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/pippin-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "legolas-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/legolas",
+   "status": "published",
+   "bloodstarId": "legolas_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/legolas_lotrringbearerv7.png",
+   "data": {
+    "slug": "legolas-lotr-ringbearer",
+    "name": "Legolas",
+    "team": "townsfolk",
+    "ability": "You start knowing 2 players, at least one of which is not a Townsfolk.",
+    "quote": "A red sun rises. Blood has been spilled this night.",
+    "lede": "Legolas can intuit much...yet dwarves and men do not always heed Elvish wisdom.",
+    "summaryBullets": [
+     "Legolas does not learn which player is or is not a Townsfolk.",
+     "Legolas can learn 2 players that are both not Townsfolk.",
+     "Evil Townsfolk are still Townsfolk.",
+     "Legolas should be careful with this information. Revealing it too soon may expose Frodo or Denethor to Sauron!"
+    ],
+    "howToRun": [
+     "While preparing the first night, mark 1 non-townsfolk player with a KNOW reminder. Then mark any other player with the other KNOW reminder.",
+     "During the first night, wake Legolas. both players marked KNOW. Put Legolas to sleep."
+    ],
+    "examples": [
+     "Legolas learns Ayden and Phillip. Ayden is Gollum and Phillip is Éowyn.",
+     "Legolas learns Ben who is the Witch-King, and Mugs, who is the Oathbreaker.",
+     "Legolas learns Paden, who is the evil Aragorn, and Kyle, who is Galadriel, but is bearing the Ring while Wormtongue is in play."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 16,
+    "firstNightReminder": "Show Legolas 2 players.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "Know",
+     "Know"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Information, You Start Knowing",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/legolas-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/legolas-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "aragorn-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/aragorn",
+   "status": "published",
+   "bloodstarId": "aragorn_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/aragorn_lotrringbearerv7.png",
+   "data": {
+    "slug": "aragorn-lotr-ringbearer",
+    "name": "Aragorn",
+    "team": "townsfolk",
+    "ability": "Each night, you learn 2 characters: at least 1 is in play. Ringbearer: learn only 1 instead.",
+    "quote": "Hold your ground, hold your ground! Sons of Gondor, of Rohan, my brothers! I see in your eyes the same fear that would take the heart of me. A day may come when the courage of men fails, when we forsake our friends and break all bonds of fellowship, but it is not this day. An hour of wolves and shattered shields, when the age of men comes crashing down! But it is not this day! This day we fight! By all that you hold dear on this good Earth, I bid you: stand, Men of the West!",
+    "lede": "Aragorn bears the fractured shards of a King's power; will he dare to know his destiny?",
+    "summaryBullets": [
+     "Aragorn learns 2 characters each night. Either 1 or both of those characters are in play.",
+     "If Aragorn is the Ringbearer, they learn only 1 character, and therefore determine that that character is in play.",
+     "A drunk or poisoned Aragorn may learn characters that are not in play at all.",
+     "An Aragorn who receives \"false\" information (via Mouth of Sauron or Denethor) must learn only characters that are not in play.",
+     "Aragorn should not learn Sauron."
+    ],
+    "howToRun": [
+     "Each night, wake Aragorn. If they are not the Ringbearer, show them 2 character tokens (at least 1 must be in play). If they are the Ringbearer, show them 1 in-play character instead. You may mark learned players with Aragorn's LEARNED reminders, if convenient. Either way, put Aragorn to sleep."
+    ],
+    "examples": [
+     "Aragorn learns Samwise and Merry. Only Merry is in play.",
+     "Aragorn learns Wormtongue and Galadriel, both of whom are in play.",
+     "The Mouth of Sauron is causing all Townsfolk to receive false info. Aragorn therefore learns Gollum and the Witch-King, neither of which are in play.",
+     "Aragorn bears the Ring and learns Gimli, who is in play."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 18,
+    "firstNightReminder": "Show Aragorn 2 characters (or 1 if they bear).",
+    "otherNight": 12,
+    "otherNightReminder": "Show Aragorn 2 characters (or 1 if they bear).",
+    "reminders": [
+     "Learned",
+     "Learned"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Information",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/aragorn-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/aragorn-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "galadriel-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/galadriel",
+   "status": "published",
+   "bloodstarId": "galadriel_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/galadriel_lotrringbearerv7.png",
+   "data": {
+    "slug": "galadriel-lotr-ringbearer",
+    "name": "Galadriel",
+    "team": "townsfolk",
+    "ability": "Each night, learn a player of a different character type than last night. The Ringbearer might misregister to you.",
+    "quote": "In place of a Dark Lord, you would have a queen! Not dark, but beautiful and terrible as the dawn! Treacherous as the sea! Stronger than the foundations of the earth! All shall love me, and despair!",
+    "lede": "Galadriel discerns good and evil...but can get confused as to which is which.",
+    "summaryBullets": [
+     "The Ringbearer can register in any way to Galadriel. Galadriel can see the Ringbearer after any character type, and can see any character type after seeing the Ringbearer.",
+     "Each time Galadriel learns a player, the player must have a different character type to the previously shown player (even if the previous player was learned falsely).",
+     "Galadriel does not learn which character type they've seen.",
+     "The shown player can be alive or dead.",
+     "If Galadriel is drunk or poisoned, they may learn a character of the same type as the previously shown player. When Galadriel becomes sober and healthy, they must learn a player of a different character type to the previously shown player."
+    ],
+    "howToRun": [
+     "When preparing the first night, mark any player with the KNOW reminder. When preparing each night afterwards, mark a character of a different type than the current with the KNOW reminder (remember to count the Ringbearer as a unique character type for this ability)",
+     "Each night, wake Galadriel. Point to the player marked KNOW. Put Galadriel to sleep."
+    ],
+    "examples": [
+     "Nick is Legolas, Chloe is Saruman, G is Bilbo, and Emily is Gandalf. On the first night, Galadriel learns Nick. On the second night, Galadriel learns Chloe. On the third night, Galadriel learns Emily. On the fourth night, Nick bears the Ring, and is seen by Galadriel again despite being the same character type as Emily. The next night, Galadriel sees Chloe again.",
+     "Last night, Galadriel saw Yvette, who is Aragorn. Tonight, the Mouth of Sauron bears the Ring, so Galadriel's info is false, and she is shown another Townsfolk, Emily."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 17,
+    "firstNightReminder": "Show Galadriel a player.",
+    "otherNight": 13,
+    "otherNightReminder": "Show Galadriel a player.",
+    "reminders": [
+     "Know"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Information, Misregistration",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/galadriel-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/galadriel-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "treebeard-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/treebeard",
+   "status": "published",
+   "bloodstarId": "treebeard_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/treebeard_lotrringbearerv7.png",
+   "data": {
+    "slug": "treebeard-lotr-ringbearer",
+    "name": "Treebeard",
+    "team": "townsfolk",
+    "ability": "Each night*, if you only voted for exactly 1 player today, you learn their alignment.",
+    "quote": "We must not be hasty. I have become too hot. I must cool myself and think; for it is easier to shout 'stop!' than to do it.",
+    "lede": "Treebeard may work at nearly hobbit speed, but he truly does his best work at ent-pace, making deliberate, considerate decisions, voting on only a single player each day to learn their alignment.",
+    "summaryBullets": [
+     "If Treebeard voted for multiple players, or did not vote, they do not wake tonight.",
+     "If Treebeard is poisoned, only information they receive while poisoned is altered. Treebeard being poisoned during voting does not cause their info to later be false."
+    ],
+    "howToRun": [
+     "During the day, when Treebeard votes, mark the player they voted on with the \"BURÁRUM\" reminder. If Treebeard votes again, remove the \"BURÁRUM\" reminder and place the \"HASTY\" reminder on Treebeard.",
+     "Each night except the first, if any player has the \"BURÁRUM\" reminder, wake Treebeard. Point to their character type on the character sheet, such as \"Outsider\", \"Minion, etc., then put Treebeard back to sleep.",
+     "If no player has the \"BURÁRUM\" reminder, don't wake Treebeard."
+    ],
+    "examples": [
+     "Treebeard votes on only Jimmy, and Jimmy dies by execution. That night, Treebeard learns that Jimmy is evil.",
+     "Treebeard votes for 3 players. That night, Treebeard does not wake."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 11,
+    "otherNightReminder": "Show Treebeard Good or Evil (if they wake).",
+    "reminders": [
+     "Hasty",
+     "Burárum"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Binary Info, Information, Votes",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/treebeard-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/treebeard-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "gimli-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/gimli",
+   "status": "published",
+   "bloodstarId": "gimli_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/gimli_lotrringbearerv7.png",
+   "data": {
+    "slug": "gimli-lotr-ringbearer",
+    "name": "Gimli",
+    "team": "townsfolk",
+    "ability": "Each night*, if the Ringbearer died since last night, you learn the character most responsible.",
+    "quote": "Faithless is he who says farewell when the road darkens.",
+    "lede": "Woe to he who gives Gimli cause to mourn—he will find them.",
+    "summaryBullets": [
+     "Gimli learns info only on nights following a Ringbearer's death.",
+     "Gimli may learn info no matter how the Ringbearer died.",
+     "It is possible that responsibility could be assigned several ways -- Sauron might be responsible if he chose the Ringbearer during the day, but the Witch-King might be responsible for discovering who the Ringbearer is and telling Sauron. If the Ringbearer is executed, the nominator might be responsible, but the player that incriminated them might be responsible too."
+    ],
+    "howToRun": [
+     "When the Ringbearer dies, mark them with Gimli's MOURNING reminder (or you may want to mark the player most responsible for their death, to remember it)",
+     "Each night except the first, if any player has the MOURNING reminder, wake Gimli. Show them the character token of the player most responsible for the Ringbearer's death. Remove the MOURNING reminder and put Gimli to sleep."
+    ],
+    "examples": [
+     "The Ringbearer is accused of being evil by Dave. Dave has already nominated today, so asks Rachel to nominate on his behalf. After the Ringbearer is executed, the Storyteller decides to show Gimli Dave's character: Treebeard.",
+     "The Ringbearer is chosen by Sauron and dies. Sauron discovered the Ringbearer because Faramir accidentally hinted at the Ring's location. The Storyteller decides to show Faramir to Gimli."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 14,
+    "otherNightReminder": "If the Ringbearer died, show Gimli a character.",
+    "reminders": [
+     "Mourning"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Death, Information, On Death, Subjective Info",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/gimli-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/gimli-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "samwise",
+   "url_slug": "lotr-ringbearer/samwise",
+   "status": "published",
+   "bloodstarId": "samwise_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/samwise_lotrringbearerv7.png",
+   "data": {
+    "slug": "samwise",
+    "name": "Samwise",
+    "team": "townsfolk",
+    "ability": "Each day, privately choose 2 players: you learn something true about only 1 of them (you don't learn which).",
+    "quote": "I ain't been droppin' no eaves sir, honest. I was just cutting the grass under the window there, if you'll follow me.",
+    "lede": "Samwise drops just enough eaves to pick up bits and pieces of information. Will he learn that which was not meant for him?",
+    "summaryBullets": [
+     "Samwise does not know to which of the two player their information pertains.",
+     "A Samwise that receives \"false\" information (via Denethor or Mouth of Sauron) can learn something that is true about both players, or about neither.",
+     "It may be challenging to come up with a piece of info that is useful to Samwise, while still meeting the ability's restrictions. If so, don't be afraid to tell Samwise this and come back to them later (but don't forget!)"
+    ],
+    "howToRun": [
+     "Once per day, if Samwise requests a private chat with you, take them away from the circle so you cannot be overheard. Prompt Samwise to tell you two players. Tell Samwise something that is true about both. (If you cannot think of something straight away, either take your time or ask them to come back in a few minutes. Samwise cannot change their choice later, though.)"
+    ],
+    "examples": [
+     "Before nominations, Samwise chooses Bim (who is Saruman) and Lumi (who is Frodo). Samwise learns \"their ability has been used\", which is true about Saruman, but not of Frodo (though Samwise doesn't learn which)",
+     "Samwise chooses Marybeth (who is Gollum), and Aya (who is Legolas). The Storyteller decides that Denethor triggers, and Samwise learns \"they are evil\" (which is not true about either player.)"
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Consult, Information, Subjective Info",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/samwise.png",
+    "image": "https://botchomebrew.wiki/assets/art/samwise.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "faramir-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/faramir",
+   "status": "published",
+   "bloodstarId": "faramir_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/faramir_lotrringbearerv7.png",
+   "data": {
+    "slug": "faramir-lotr-ringbearer",
+    "name": "Faramir",
+    "team": "townsfolk",
+    "ability": "Once per game, at night*, choose that the executee you nominated is resurrected if good.",
+    "quote": "I would not take this thing, if it lay by the highway. Not were Minas Tirith falling in ruin and I alone could save her, so, using the weapon of the Dark Lord for her good and my glory. No, I do not wish for such triumphs.",
+    "lede": "Faramir knows the way of mercy, and mercy yields bonds of trust.",
+    "summaryBullets": [
+     "Faramir must nominate a player, and then that player must be executed, for Faramir to wake.",
+     "If Faramir chooses to use their ability and the executee they nominated was good, that player is resurrected, becoming alive again.",
+     "Faramir may only choose to use their ability once per game, whether it succeeds or fails.",
+     "Resurrected players may or may not get to act on the night of their resurrection, depending on whether they would act before or after Faramir. If they had a “first night only” or “you start knowing” ability, they immediately wake to use it again, as soon as Faramir goes to sleep."
+    ],
+    "howToRun": [
+     "When Faramir nominates a player, if that player is executed, mark them with the MERCY? reminder. Remove this reminder at dawn.",
+     "Each night, if any player has a MERCY? reminder, wake Faramir. Show them the USE YOUR ABILITY? info card. They either nod or shake their head.",
+     "If Faramir nodded yes, and their executee was good, that player becomes alive again—mark them with the ALIVE reminder and remove their shroud. (They wake later tonight if they normally would. If they wake on the first night only, they wake now to use their ability.) At dawn, after declaring which players died, declare which player is alive again. (Do not say why.) Whether the player is resurrected or not, Faramir loses their ability—mark them with the NO ABILITY reminder.",
+     "If Faramir shook their head no, put them back to sleep."
+    ],
+    "examples": [
+     "Faramir nominates Bacon, who is executed. Bacon was the evil Bilbo. When Faramir chooses to resurrect them, nothing happens.",
+     "Faramir nominates Camren, who is executed. Camren was the Oathbreaker, who is now good. When Faramir chooses to resurrect them, they come back to life (and become evil again).",
+     "Faramir nominates Kai, but fails to get them executed. The following day, Faramir nominates Phillip, who is Treebeard, and successfully executes them. When Faramir chooses to resurrect them tonight, they come back to life."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 8,
+    "otherNightReminder": "Wake Faramir if they nominated the executee.",
+    "reminders": [
+     "Mercy?",
+     "Alive",
+     "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Execution, Nominations, Once Per Game, Resurrection",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/faramir-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/faramir-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "boromir-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/boromir",
+   "status": "published",
+   "bloodstarId": "boromir_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/boromir_lotrringbearerv7.png",
+   "data": {
+    "slug": "boromir-lotr-ringbearer",
+    "name": "Boromir",
+    "team": "townsfolk",
+    "ability": "While evil bears the Ring, you might die at anytime.",
+    "quote": "I would have followed you, my brother...my captain...my King.",
+    "lede": "Boromir sounds the horn of Gondor when evil forces near victory.",
+    "summaryBullets": [
+     "The Storyteller may kill Boromir at any time, as long as an evil player bears the Ring.",
+     "Boromir can die during the day, at night, between executions, during nominations, mid-sentence, or whenever else.",
+     "There are extremely few ways for a player to die besides Sauron and executions. Usually, Boromir's death confirms them."
+    ],
+    "howToRun": [
+     "At any time, while evil bears the Ring, you may decide that Boromir dies. If this is during the day, immediately declare that Boromir has died. If this is during the night, mark Boromir with the DEAD reminder and wait until dawn to declare which players died during the night. (Do not say how.)"
+    ],
+    "examples": [
+     "Henry passes the Ring to Jenny, who is Saruman. At night, Boromir dies. During the day, players use this new knowledge to try to find the evil Ringbearer. They come out with their info and discover that Jenny bears the Ring.",
+     "The Mouth of Sauron bears the Ring. During the day, good nominated Shaun, who is \"on the block\". Boromir then dies, and players realize that Shaun is not the Ringbearer. They reconsider their nomination."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 6,
+    "otherNightReminder": "Boromir might die if evil bears the Ring.",
+    "reminders": [
+     "Dead"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Confirmation, Day Deaths, Death, Passive",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/boromir-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/boromir-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "bilbo-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/bilbo",
+   "status": "published",
+   "bloodstarId": "bilbo_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/bilbo_lotrringbearerv7.png",
+   "data": {
+    "slug": "bilbo-lotr-ringbearer",
+    "name": "Bilbo",
+    "team": "townsfolk",
+    "ability": "Evil players always pass the Ring to you, then learn who you are.",
+    "quote": "It's a dangerous business, Frodo, going out your door...there's no knowing where you might be swept off to.",
+    "lede": "Bilbo snags the Ring from the clutches of evil; just in the nick of time.",
+    "summaryBullets": [
+     "When any evil player passes the Ring, for any reason, it is passed to Bilbo instead. This includes if they pass it at night, if they die, or if a character ability causes them to pass it.",
+     "An evil player may still choose not to pass the Ring, and therefore keep it.",
+     "Evil players always learn who Bilbo is when the Ring is falsely passed to Bilbo. Bilbo should try to bluff having or not having the Ring, and should try to keep town up to speed.",
+     "If Oathbreaker passes the Ring by dying, they count as evil for the purposes of this ability."
+    ],
+    "howToRun": [
+     "When an evil player passes the Ring instead of keeping it, if Bilbo is alive and healthy, they must pass the Ring to Bilbo. Once they have done so, show them the THIS CHARACTER SELECTED YOU info card, Bilbo's character token, and point to the Bilbo player that received the Ring. Then, put the Minion back to sleep and mark Bilbo with the NO ABILITY reminder. Inform Bilbo that they bear the Ring."
+    ],
+    "examples": [
+     "The Witch-King has the Ring, and tries to pass it to Sauron in order to win the game. The Ring is instead passed to Bilbo, and the Witch-King learns this (and who Bilbo is).",
+     "Oathbreaker is alive and dies with the Ring. The Ring is passed immediately to Bilbo, and Oathbreaker learns who Bilbo is."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Passive, Ping, Safety Net",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/bilbo-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/bilbo-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "eowyn-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/eowyn",
+   "status": "published",
+   "bloodstarId": "owyn_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/owyn_lotrringbearerv7.png",
+   "data": {
+    "slug": "eowyn-lotr-ringbearer",
+    "name": "Éowyn",
+    "team": "townsfolk",
+    "ability": "The 1st time you nominate a player, if they are the nearest mortal evil player, they are executed immediately.",
+    "quote": "No living man am I!",
+    "lede": "Éowyn's righteousness should cause fear among the wicked.",
+    "summaryBullets": [
+     "Éowyn's first nomination may immediately execute an evil player, but she must find the correct target.",
+     "A player is 'mortal' if, when an ability would cause them to die, they would go from alive to dead. Sauron is not mortal if any minion lives. On other scripts, characters like the Lleech and Sailor are not mortal if they \"cannot die\".",
+     "When counting seats, count any immortal evil players as a normal seat. They do not qualify for Éowyn's ability.",
+     "If the two closest mortal evil players are equidistant, they both count as the nearest mortal evil player."
+    ],
+    "howToRun": [
+     "The first time in a game that Éowyn makes a nomination, if the nominated player is mortal, evil, and closer, by seat count, to Éowyn than any other mortal evil player, they are executed immediately, and the nomination process ends. Place the NO ABILITY reminder on Éowyn."
+    ],
+    "examples": [
+     "Éowyn nominates April on day 1, who is her neighbor and the evil Witch-King. April dies. On day 2, Éowyn nominates the other Minion, Riley, who isn't executed because Éowyn has no ability.",
+     "Éowyn nominates Sham, who is two seats counterclockwise, who is the evil Pippin. Sham is not executed, however, because Éowyn's clockwise neighbor is Saruman."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Confirmation, Execution, Nominations",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/eowyn-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/eowyn-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "gandalf-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/gandalf",
+   "status": "published",
+   "bloodstarId": "gandalf_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/gandalf_lotrringbearerv7.png",
+   "data": {
+    "slug": "gandalf-lotr-ringbearer",
+    "name": "Gandalf",
+    "team": "townsfolk",
+    "ability": "If the Demon kills you, you are resurrected that night (Once). Ringbearer: Once per game, during the day, privately make a wish.",
+    "quote": "I am a servant of the Secret Fire, wielder of the flame of Anor. You cannot pass! The dark fire will not avail you, flame of Udûn. Go back to the Shadow! You cannot pass.",
+    "lede": "When Gandalf dies, all is not yet lost. He returns to life as Gandalf the White, should Sauron try to kill him, and is capable of making wishes if the Ring is in his hands.",
+    "summaryBullets": [
+     "Unlike the experimental character the Wizard, Gandalf's wishes are a negotiation between the Storyteller and the Gandalf player.",
+     "These wishes are not limited in scope, only in power. As a general rule, Gandalf's wish ought not be more powerful than something that could be achieved by meeting the conditions of another Townsfolk ability—such as a Banshee or King.",
+     "By wishing once before death and once after, Gandalf may make two wishes. Allow the second wish to be quite powerful; for Gandalf the White must have worked very hard for such a chance.",
+     "Let the player get creative! Let them change seating arrangements, add new rules, or do things with otherwise little precedent, as long as you're pretty sure they won't break the game in half.",
+     "The Storyteller may negotiate conditions or costs to wishes. If a new rule was added, the Storyteller may negotiate that all players learn about the new rule. Information may come at the cost of a player's life. Find a compromise that makes both Gandalf and the Storyteller happy!"
+    ],
+    "howToRun": [
+     "After Sauron attacks and kills Gandalf, that night, Gandalf becomes alive again—mark them with the ALIVE reminder and remove their shroud. At dawn, after declaring which players died, declare which player is alive again. (Do not say why.) Remove the WISH USED reminder, if present. Mark Gandalf with the RESURRECTED reminder, indicating that he should not be resurrected again if killed.",
+     "During the day, while Gandalf is marked with the RINGBEARER reminder, they may take you aside to make a wish. Decide if the wish is appropriate for the state of the game. Consider if it would advantage one team too heavily, or if it would lead to fun outcomes. If you believe the wish is inappropriate, propose an alternative wish that is still desirable. Repeat this process until a mutually agreeable wish is made. Once a wish is made, resolve its effects and mark Gandalf with the WISH USED reminder."
+    ],
+    "examples": [
+     "Bearing the Ring, Gandalf makes the wish \"I wish for a minion to die.\" the Storyteller thinks about this, and decides that the wish would be too powerful at this time. \"I can't grant you that wish, but you could cause a minion to lose their ability. Gandalf agrees, and the wish is granted.",
+     "At the end of the second day, Sauron chooses Stephen, who is Gandalf. Stephen dies. That night, Stephen is resurrected and the fact that he lives is announced in the morning."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "@Lumious, for the custom image.",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 9,
+    "otherNightReminder": "If Gandalf died by the Demon today or last night, he is resurrected.",
+    "reminders": [
+     "Resurrected",
+     "Wish Used"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Consult, Death, Demonsbane, Magic, On Death, Once Per Game, Resurrection, Subjective Info",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/gandalf-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/gandalf-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "frodo-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/frodo",
+   "status": "published",
+   "bloodstarId": "frodo_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/frodo_lotrringbearerv7.png",
+   "data": {
+    "slug": "frodo-lotr-ringbearer",
+    "name": "Frodo",
+    "team": "outsider",
+    "ability": "Each night*, if you do not bear the Ring, Sauron learns which character does. [You are the starting Ringbearer]",
+    "quote": "I will take the ring, though I do not know the way.",
+    "lede": "Frodo did not desire this quest, but is determined to carry it out anyway.",
+    "summaryBullets": [
+     "Frodo is always the Ringbearer at the start of the game, even though they are not a Townsfolk.",
+     "As long as Frodo bears the Ring, Sauron learns nothing and doesn't know that Frodo is in play.",
+     "If Frodo passes or otherwise loses the Ring, Sauron will begin learning the character of the current Ringbearer every night as long as Frodo is alive."
+    ],
+    "howToRun": [
+     "While setting up the game, after character tokens have been handed out, mark Frodo with the RINGBEARER fabled reminder.",
+     "Each night, if Frodo is alive, and is not the current Ringbearer, wake Sauron. Show them the THIS CHARACTER SELECTED YOU info card, Frodo's character token, and the character token of the player that currently bears the Ring."
+    ],
+    "examples": [
+     "Frodo bears the Ring. Sauron doesn't learn anything extra.",
+     "On night 3, Frodo passes the Ring to Gimli. Sauron learns Gimli.",
+     "The following night, Gimli passes to Gollum. Sauron learns Gollum."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 7,
+    "otherNightReminder": "Show Sauron the Ringbearer (Not Frodo)",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": true,
+    "special": [],
+    "tags": "Hidden, Ping, Setup",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/frodo-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/frodo-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "denethor-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/denethor",
+   "status": "published",
+   "bloodstarId": "denethor_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/denethor_lotrringbearerv7.png",
+   "data": {
+    "slug": "denethor-lotr-ringbearer",
+    "name": "Denethor",
+    "team": "outsider",
+    "ability": "Once while you are alive, and once while you are dead, a townsfolk ability might yield false info or succeed when it shouldn't.",
+    "quote": "Gondor has no King.",
+    "lede": "Denethor's rule leads to naught but ruin, making Townsfolk unsure whether their information can be trusted, or their abilities worked as intended.",
+    "summaryBullets": [
+     "Denethor's ability only applies to Townsfolk. It cannot affect the abilities of Minions, Outsiders, or the Demon.",
+     "Denethor's ability can only work 1 time while they are alive, and 1 time while they are dead, no matter how many times Denethor lives or dies.",
+     "Denethor's ability causes abilities to act falsely. It cannot cause abilities not to function, only to yield false info or work when they otherwise wouldn't.",
+     "Denethor's ability should, generally, work against the good team—he is an Outsider, and should not grant Gandalf the conditions to make a wish, for example.",
+     "Denethor's ability can (but is not limited in its ability to): Make Merry's info false, even when Pippin is not in play, show Gimli a character even when no Ringbearer has died, force a player to pass the Ring to Bilbo, execute a player nominated by Éowyn, or resurrect a player nominated by Faramir against his will.",
+     "Denethor's ability can only cause abilities to work by meeting unmet conditions. Éowyn's ability cannot \"work when it shouldn't\" when another player nominates, only when Éowyn does, for example.",
+     "Denethor cannot make impossible game actions take place."
+    ],
+    "howToRun": [
+     "Whenever a Townsfolk ability could succeed, the Storyteller may decide that it succeeds it via Denethor, and whenever a Townsfolk learns true information, the Storyteller may decide that it is false via Denethor, if Denethor does not have the ONCE reminder respective of their current state (ALIVE or DEAD). Then, place that reminder.",
+     "Resolve the effects of an ability affected as if all of its conditions are met, even if they are not, or make any information that ability would yield false.",
+     "Do not remove Denethor's reminders unless they change characters, even between deaths and resurrections."
+    ],
+    "examples": [
+     "A player passes the Ring, but it is stolen by Bilbo, even though the Ringbearer was not evil.",
+     "Denethor has died. When Éowyn makes her first nomination, the good Treebeard she nominated is immediately executed, and Sauron makes their choice.",
+     "Galadriel falsely learns a Townsfolk after having learned a Townsfolk the previous night."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "Once (Alive)",
+     "Once (Dead)"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Death, Even If Dead, False Info, Passive",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/denethor-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/denethor-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "gollum-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/gollum",
+   "status": "published",
+   "bloodstarId": "gollum_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/gollum_lotrringbearerv7.png",
+   "data": {
+    "slug": "gollum-lotr-ringbearer",
+    "name": "Gollum",
+    "team": "outsider",
+    "ability": "If you die with the Ring, only you win. Each night*, you might lose the Ring. Greedy Ringbearers might become Gollum.",
+    "quote": "My...Precious...",
+    "lede": "The Ring's corrupting power took Gollum long ago. He is now overcome with one, coveting, overwhelming desire...as is the fate of every Ringbearer, eventually.",
+    "summaryBullets": [
+     "If Gollum's ability doesn't trigger, they win or lose with the good team as usual.",
+     "No other player can win at the same time as Gollum if they win with their ability.",
+     "Each night that Gollum chooses to keep holding the Ring, it may be passed to another player without Gollum's permission. Gollum learns that they lost the Ring, but not to whom.",
+     "While Gollum is in play, any time that a player chooses not to pass the Ring, they might have their character changed to be Gollum as well. This should be infrequent, and happen more often the more consecutive nights a player keeps the Ring.",
+     "More than one Gollum may be in play this way, but only one may win by their ability."
+    ],
+    "howToRun": [
+     "Whenever any player chooses to keep the Ring rather than pass it, if you determine that they've been \"greedy\" (often by keeping several times in a row), then you may choose for that player to become Gollum. Show them the YOU ARE info token, then the Gollum character token, then put them to sleep. Replace their old character token with the Gollum character token.",
+     "When Gollum makes the choice to keep the ring, you may deny it. Show Gollum the \"THIS CHARACTER SELECTED YOU\" info card and the Gollum character token to indicate that they have lost the Ring. Put Gollum back to sleep and pass the Ring to any player.",
+     "When Gollum dies, by any means, the game ends. Announce that Gollum is the only winner, and every other player loses.",
+     "If multiple Gollums are in play, only 1 may win by their ability at a time."
+    ],
+    "examples": [
+     "Gollum bears the Ring. He bluffs being Frodo, and is killed by Sauron. Gollum wins, and both good and evil lose.",
+     "Gollum bears the Ring. Good executes Gollum. Gollum wins, and every other player loses.",
+     "Gollum bears the Ring, but can't manage to end the game. That night, the Ring slips from his grasp and is passed automatically to Gimli.",
+     "Boromir has been the Ringbearer for 3 nights, and on the fourth, after choosing to keep it again, becomes Gollum, and may or may not lose the Ring that night."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 4,
+    "otherNightReminder": "Gollum might lose the Ring. Greedy Ringbearers might turn.",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Character Change, Death, Duplication, Nonconformist, On Death, Win/Loss Condition",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/gollum-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/gollum-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "oathbreaker",
+   "url_slug": "lotr-ringbearer/oathbreaker",
+   "status": "published",
+   "bloodstarId": "oathbreaker_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/oathbreaker_lotrringbearerv7.png",
+   "data": {
+    "slug": "oathbreaker",
+    "name": "Oathbreaker",
+    "team": "outsider",
+    "ability": "You are evil. (as long as you have this ability)",
+    "quote": "None but the king of Gondor may command me.",
+    "lede": "The Oathbreaker lives in shame and villainy, but will one day restore their oath and have a peaceful rest. They are evil until they die.",
+    "summaryBullets": [
+     "Oathbreaker is evil due to their ability, and so becomes good when they lose the ability; by death, poison, drunkenness, or any other means.",
+     "Oathbreaker learns anytime their alignment changes, even if drunk, poisoned, or dead.",
+     "If Oathbreaker bears the Ring and dies, they were evil at the time they died as a Ringbearer. As such, the Ring is passed to a good player."
+    ],
+    "howToRun": [
+     "Oathbreaker is evil as long as they have their ability. When they do not have their ability, they are good. This includes if they are dead, or drunk or poisoned, or if their character changes. Place Oathbreaker's token upside-down to indicate that they are evil, and right-side up for good.",
+     "If Oathbreaker dies, becomes drunk or poisoned, or loses their ability through any other means, flip their token right-side up. They are good.",
+     "If Oathbreaker keeps their ability after death, or is resurrected, they become evil again (or remain evil).",
+     "Each night, if Oathbreaker's alignment changed, confirm their current alignment to them (even if its obvious)."
+    ],
+    "examples": [
+     "Oathbreaker is alive and evil. When they are passed the Ring, they pass it to Sauron. Evil wins (and Oathbreaker wins with them).",
+     "Oathbreaker is alive and evil. When town catches on, they execute Oathbreaker. Oathbreaker loses their ability and becomes good."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Alignment Change, Extra Evil, Passive",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/oathbreaker.png",
+    "image": "https://botchomebrew.wiki/assets/art/oathbreaker.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "mouth-of-sauron",
+   "url_slug": "lotr-ringbearer/mouth-of-sauron",
+   "status": "published",
+   "bloodstarId": "mouthofsauron_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/mouthofsauron_lotrringbearerv7.png",
+   "data": {
+    "slug": "mouth-of-sauron",
+    "name": "Mouth of Sauron",
+    "team": "minion",
+    "ability": "While evil bears the Ring, Townsfolk abilities yield false info. [+1 Outsider]",
+    "quote": "The rider was robed all in black, and black was his lofty helm...and his name is remembered in no tale; for he himself had forgotten it, and he said: ‘I am the Mouth of Sauron.'",
+    "lede": "The Mouth of Sauron bears one message when the Dark Lord's forces near victory — there is no hope.",
+    "summaryBullets": [
+     "When any evil player bears the Ring, you must give false information whenever a Townsfolk ability prompts you to give information.",
+     "The Mouth of Sauron cannot make false information (Like information from Pippin's ability) true.",
+     "The Mouth of Sauron's ability does not affect abilities that do not yield information."
+    ],
+    "howToRun": [
+     "While setting up the game, before putting character tokens in the bag, add one extra Outsider character token and remove one Townsfolk character token.",
+     "While the Mouth of Sauron is alive and any evil player bears the Ring, you must give false information whenever a Townsfolk ability prompts you to give information."
+    ],
+    "examples": [
+     "The Mouth of Sauron bears the Ring. Tonight, among other falsehoods, Aragorn learns two characters, neither of which are in-play.",
+     "The Witch-King bears the Ring, but the Mouth of Sauron is still alive. Today, when Samwise names 2 players, they learn a piece of information that is not true about either player."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "All is Lost!"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "False Info, Outsider Modification, Passive, Quiet, Setup",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/mouth-of-sauron.png",
+    "image": "https://botchomebrew.wiki/assets/art/mouth-of-sauron.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "saruman-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/saruman",
+   "status": "published",
+   "bloodstarId": "saruman_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/saruman_lotrringbearerv7.png",
+   "data": {
+    "slug": "saruman-lotr-ringbearer",
+    "name": "Saruman",
+    "team": "minion",
+    "ability": "Once per game, if the dead equal or outnumber the living, privately make a wish. Until then, you might register as good.",
+    "quote": "Against the power of Mordor, there can be no victory.",
+    "lede": "Saruman, the white wizard, reveals his true nature amidst calamity.",
+    "summaryBullets": [
+     "Saruman might register as good, but cannot falsely register as a different character or as having a different character type.",
+     "After Saruman makes their wish, they no longer misregister to any character.",
+     "Saruman should never misregister to the Ring.",
+     "Saruman may only make their wish during the day when the dead equal or outnumber the living."
+    ],
+    "howToRun": [
+     "At any point before Saruman makes their wish, each time Saruman is targeted by an ability that detects or affects evil players, choose which alignment Saruman registers as. (Treat Saruman as good or evil for the purposes of that ability).",
+     "While the number of dead players equals or exceeds the number of alive players, during the day, Saruman can take the Storyteller aside to make a wish. When they do so, decide if the wish is appropriate for the state of the game. Consider if it would advantage one team too heavily, or if it would lead to fun outcomes. If you believe the wish is inappropriate, propose an alternative wish that is still desirable. Repeat this process until a mutually agreeable wish is made. Once a wish is made, resolve its effects and mark Saruman with the NO ABILITY reminder."
+    ],
+    "examples": [
+     "Treebeard votes on only Saruman during the day. That night, Treebeard learns \"Good\", even though Saruman is evil.",
+     "Saruman makes the wish \"I wish for Riley to be poisoned.\" the Storyteller agrees, and poisons Riley, who is Boromir.",
+     "Saruman makes the wish \"I wish to add two more outsiders to the game.\" the storyteller believes this ability would be too powerful at the moment, and proposes that 1 outsider be added instead. Saruman thinks that would be too weak, and argues the point. Eventually they settle on Saruman getting to add 1 outsider, but getting to choose which Outsider is added. The wish is then granted.",
+     "Saruman tells the Storyteller \"I don't know how I should make the wish, but I want help finding the Ringbearer.\" the Storyteller proposes the wish \"I wish to know which players have been Ringbearers so far.\" Saruman likes that wish, and agrees. The Storyteller says that only Isabelle and Beth have been Ringbearers so far."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": true,
+    "special": [],
+    "tags": "Consult, Death, Magic, Misregistration, Once Per Game, Subjective Info",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/saruman-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/saruman-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "wormtongue-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/wormtongue",
+   "status": "published",
+   "bloodstarId": "wormtongue_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/wormtongue_lotrringbearerv7.png",
+   "data": {
+    "slug": "wormtongue-lotr-ringbearer",
+    "name": "Wormtongue",
+    "team": "minion",
+    "ability": "The Ringbearer 'babysits' Wormtongue and 'is a minion'. At night, Sauron may make 1 player evil. [+1 Outsider]",
+    "quote": "Why do you lay these troubles on an already troubled mind?",
+    "lede": "Wormtongue corrupts the most trusted men with venomous words.",
+    "summaryBullets": [
+     "Wormtongue does not have a character token. Instead, the Ringbearer \"is a Minion\" while Wormtongue is in play.",
+     "Good cannot win the game until they execute the Ringbearer. This is risky—if they are mistaken, they might give the Ring over to Sauron's agents.",
+     "Sauron wakes each night and decides if they would like to choose a player to become evil. This means that none can be truly trusted while Wormtongue is in play.",
+     "Determining whether Wormtongue is in play can often decide the whole game—find this out at all costs!",
+     "If there is 1 non-Wormtongue Minion alive, and they bear the Ring, they are at extreme risk. If good executes them, both remaining Minions will be dead at once, and Sauron will die."
+    ],
+    "howToRun": [
+     "During setup, remove Wormtongue and add an Outsider token. Mark the Ringbearer with the ADVISOR reminder. This indicates that they \"are a minion\". This reminder moves with the Ring and is never removed or separated from the Ringbearer reminder.",
+     "Each night, if Wormtongue's EVIL reminder has not yet been placed, wake Sauron. Show them the USE YOUR ABILITY? info card and Wormtongue's token. If they point to a player, that player becomes evil. Flip their character token upside-down to indicate this and mark them with the EVIL reminder. Then put Sauron to sleep and wake the evil player, inform them that they are evil, and put them back to sleep.",
+     "If Sauron declines, simply put them back to sleep."
+    ],
+    "examples": [
+     "In a 3 minion game in which Wormtongue is in play, Saruman and the Witch-King have died. When the good team realizes this, the Ringbearer comes forward and volunteers to be executed. When they die, Good wins.",
+     "Sauron has not yet selected an evil player. At night, Sauron chooses Jamie, who is Aragorn. Aragorn approaches Sauron and shares their info."
+    ],
+    "tips": [
+     "Wormtongue's design was originally derived from/inspired by Caliban, from the character collection Circus Music by Bakedice! Though the design has substantially changed.",
+     "[https://classic-ferret-fed.notion.site/Circus-Music-75a68e4d4f194ea585d93e1c40b7c8e1](https://classic-ferret-fed.notion.site/Circus-Music-75a68e4d4f194ea585d93e1c40b7c8e1)"
+    ],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [
+     "Advisor"
+    ],
+    "setup": true,
+    "special": [],
+    "tags": "Alignment Change, Extra Evil, Nonconformist, Outsider Modification, Setup",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/wormtongue-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/wormtongue-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "witch-king",
+   "url_slug": "lotr-ringbearer/witch-king",
+   "status": "published",
+   "bloodstarId": "witchking_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/witchking_lotrringbearerv7.png",
+   "data": {
+    "slug": "witch-king",
+    "name": "Witch-King",
+    "team": "minion",
+    "ability": "Each night, choose a player: you learn if they are poisoned. One of the Ringbearer's Townsfolk neighbors is poisoned.",
+    "quote": "No living man may hinder me!",
+    "lede": "The Witch-King is a plague upon those who bear—the Nazgul do not rest, tire, hunger, or wither.",
+    "summaryBullets": [
+     "One of the Ringbearer's Townsfolk neighbors are poisoned. It can be their nearest Townsfolk neighbor clockwise or anticlockwise.",
+     "This poisoning moves as the Ring does, and may change whenever the Ring moves by any means.",
+     "The Witch-King is the only source of poison on this script—so if they learn that a player is poisoned, they know they've detected the Ringbearer's Townsfolk neighbor.",
+     "The Witch-King does not detect drunkenness."
+    ],
+    "howToRun": [
+     "While preparing the first night, one of the Townsfolk neighboring the Ringbearer are poisoned—mark them with POISONED reminder.",
+     "As the Ring is passed each night, move the POISONED reminder to a Townsfolk neighbor of the new Ringbearer. The previously poisoned Townsfolk becomes HEALTHY.",
+     "Each night, wake the Witch-King. They point to any player. If that player is poisoned, nod your head. Otherwise, shake your head. Either way, put the Witch-King back to sleep afterward."
+    ],
+    "examples": [
+     "The Ringbearer neighbors Gollum and Denethor. Since neither is a Townsfolk, Gimli, who neighbors Denethor, is poisoned.",
+     "The Witch-King chooses Doug, who is the poisoned Gimli, at night, and learns \"yes\"."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 13,
+    "firstNightReminder": "The Witch-King chooses a player.",
+    "otherNight": 10,
+    "otherNightReminder": "The Witch-King chooses a player.",
+    "reminders": [
+     "Poisoned"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Binary Info, Information, Neighbor, Poison, Quiet",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/witch-king.png",
+    "image": "https://botchomebrew.wiki/assets/art/witch-king.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "sauron-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/sauron",
+   "status": "published",
+   "bloodstarId": "sauron_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/sauron_lotrringbearerv7.png",
+   "data": {
+    "slug": "sauron-lotr-ringbearer",
+    "name": "Sauron",
+    "team": "demon",
+    "ability": "At the end of each day, publicly choose a player: they die. You die if & only if there are no living Minions.",
+    "quote": "Concealed within his fortress, the Lord of Mordor sees all. His gaze pierces cloud, shadow, earth, and flesh.",
+    "lede": "The Dark Lord's attention is deadly, and the Ring always seeks its master.",
+    "summaryBullets": [
+     "Sauron kills publicly, during the day, after executions but before dusk falls. This means that all players will know who Sauron is when the first day ends.",
+     "If any Minions are alive, Sauron cannot die by any means.",
+     "If no minions are alive, Sauron cannot live by any means.",
+     "If you are Sauron, take advantage of that first day! Talk to your minions and distribute the bluffs you learned at night, before talking to you seems suspicious."
+    ],
+    "howToRun": [
+     "If Sauron would die but at least 1 Minion is alive, Sauron does not die. If, at any point, there are no living minions, Sauron dies and the good team wins.",
+     "Once per day, at dusk, after nominations have been run, Sauron must publicly choose a player. That player dies."
+    ],
+    "examples": [
+     "Sauron suspects that James, who is Frodo, has the Ring. After Haley is executed that day, Sauron chooses James. James dies, but was not bearing the Ring. The game continues.",
+     "Sauron sees Francesca, who is Gandalf, pull the Storyteller aside. Sauron deduces she might be making a wish with Gandalf's Ringbearer ability, and so chooses her after executions. She dies, and was bearing the Ring, which is passed to a Minion.",
+     "The Good team executed April last night, who was the Witch-King, the last living Minion. Sauron dies because no Minions remain, and good wins."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Day Deaths, Death, Death Modification, Loud, Nonconformist, Public, Single-Kill",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/sauron-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/sauron-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "the-one-ring",
+   "url_slug": "lotr-ringbearer/the-one-ring",
+   "status": "published",
+   "bloodstarId": "theonering_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/theonering_lotrringbearerv7.png",
+   "data": {
+    "slug": "the-one-ring",
+    "name": "The One Ring",
+    "team": "fabled",
+    "ability": "A Townsfolk is the Ringbearer. Each night*, the Ringbearer may pass the Ring to another alive player (who learns they bear). If the Demon bears, evil wins. When the Ringbearer dies, they pass the Ring to an opposing player tonight.",
+    "quote": "One Ring to rule them all, One Ring to find them,\n\nOne Ring to bring them all...and in the darkness, bind them.",
+    "lede": "One player holds the One Ring, which brings great power, but also great risk...",
+    "summaryBullets": [
+     "Should the Dark Lord find you, or otherwise obtain the Ring, all is lost. Keep it secret, keep it safe.",
+     "Players learn when they become the Ringbearer. Players cannot bear the Ring without knowing so.",
+     "Players cannot pass the Ring the night they obtain it.",
+     "When a player dies with the Ring, the following night, a player of the alignment opposite theirs obtains the Ring.",
+     "When a good Ringbearer dies, the Ring can, but usually shouldn't be obtained by Sauron."
+    ],
+    "howToRun": [
+     "At the start of the game, before the first night, declare that The One Ring is in play. Add The One Ring token to the Grimoire.",
+     "While setting up the first night, place the RINGBEARER reminder on a Townsfolk.",
+     "Each night, wake the Ringbearer and show them the THIS CHARACTER SELECTED YOU info card and the \"The One Ring\" character token. Each night except for the first, they point to another player or themselves, then put them back to sleep. Mark the new player, if any, with the RINGBEARER reminder, and wake them. Show them the THIS CHARACTER SELECTED YOU info card and the \"The One Ring\" character token, and put them back to sleep.",
+     "When an evil player dies while bearing the Ring, you may decide to give it to any good player. A safe character is usually the best choice.",
+     "When a good player dies while bearing the Ring, you may decide to give it to any evil player. Sauron is usually a poor choice, as that ends the game immediately.",
+     "If, at any point, Sauron bears the Ring, the game is over. The good team loses and the evil team wins."
+    ],
+    "examples": [
+     "Frodo bears the Ring. On day 2, Sauron chooses James, who is Frodo. He dies, and evil wins.",
+     "Mark, who is the alive and evil Oathbreaker, bears the Ring. When Mark is executed, the Ring is passed to Kim, who is good."
+    ],
+    "tips": [
+     "If playing in-person, it might be fun to play with an actual Ring!"
+    ],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 12,
+    "firstNightReminder": "Inform the Ringbearer that they bear the Ring.",
+    "otherNight": 3,
+    "otherNightReminder": "Ask the Ringbearer to pass the Ring. Inform the new Ringbearer (if any).",
+    "reminders": [
+     "Ringbearer"
+    ],
+    "remindersGlobal": [
+     "Ringbearer"
+    ],
+    "setup": false,
+    "special": [],
+    "tags": "Death, On Death, Win/Loss Condition",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/the-one-ring.png",
+    "image": "https://botchomebrew.wiki/assets/art/the-one-ring.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "balrog-lotr-ringbearer",
+   "url_slug": "lotr-ringbearer/balrog",
+   "status": "published",
+   "bloodstarId": "balrog_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/balrog_lotrringbearerv7.png",
+   "data": {
+    "slug": "balrog-lotr-ringbearer",
+    "name": "Balrog",
+    "team": "traveller",
+    "ability": "Each day, you may move a step for each used vote token: the last player you passed dies.",
+    "quote": "Moria...You fear to go into those mines. The dwarves delved too greedily and too deep. You know what they awoke in the darkness of Khazad-dûm...shadow and flame.",
+    "lede": "The Balrog can bestow utter destruction upon whomever it is set; shall their lust for power and riches fell those who delve to deep?",
+    "summaryBullets": [
+     "The Balrog may choose to move either direction; clockwise or anticlockwise, meaning they do have some choice in who dies.",
+     "The Balrog does this once each day, at any time before Sauron's kill.",
+     "The Balrog must move exactly that many steps, no more, no less.",
+     "The Balrog only kills the last player it passed after moving. If the Balrog moved 3 seats, the 3rd player dies.",
+     "Exiled travelers do not have a vote token (dead ones do)."
+    ],
+    "howToRun": [
+     "Once per day, the Balrog can declare that they wish to use their ability. Count the number of dead players without a vote token, and ask the Balrog which direction they'd like to move — clockwise or anticlockwise. Move the Balrog token and player that many steps in the chosen direction. Whichever player the Balrog passed most recently dies — place a shroud on their token in Town Square."
+    ],
+    "examples": [
+     "2 players are dead and neither have voted. The Balrog may not act.",
+     "3 players have died and 1 has spent a vote. The Balrog is 2 steps away from Leonidas, whom they wish to kill. When Xander is being nominated, one of the dead players votes, and the Balrog chooses to use their ability in between nominations to kill Leonidas."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Day Deaths, Death, Public, Single-Kill, Votes",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/balrog-lotr-ringbearer.png",
+    "image": "https://botchomebrew.wiki/assets/art/balrog-lotr-ringbearer.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "bombadil",
+   "url_slug": "lotr-ringbearer/bombadil",
+   "status": "published",
+   "bloodstarId": "bombadil_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/bombadil_lotrringbearerv7.png",
+   "data": {
+    "slug": "bombadil",
+    "name": "Bombadil",
+    "team": "traveller",
+    "ability": "Once per game, at dusk, you may silence all players, look at the Grimoire, whisper 1 word to 1 player, and leave.",
+    "quote": "Hey dol! merry dol! ring a dong dillo!\nRing a dong! hop along! fal lal the willow!\nTom Bom, jolly Tom, Tom Bombadillo!",
+    "lede": "Bombadil is as powerful as a character gets, but never intervenes so clearly in the affairs of Middle Earth.",
+    "summaryBullets": [
+     "Bombadil makes their decision at dusk, following nominations and Sauron's choice, right before players go to sleep.",
+     "To \"Leave\" can either mean to physically leave the game, or to merely spectate. As usual, however, a spectator may not influence the game, including clarifying what their choice of pointing meant. Bombadil must be a good sport about this!",
+     "\"All players\" includes Bombadil, they may not speak or otherwise communicate until after their ability is done resolving and they leave the game.",
+     "Bombadil wins or loses with their team even after leaving, a trait unique to them.",
+     "A drunk or poisoned Bombadil may be shown a false Grimoire.",
+     "Bombadil may only whisper 1 word, but there is no limitation on what this word is."
+    ],
+    "howToRun": [
+     "At each dusk, allow Bombadil the chance to use their ability. When they do so, all players (including Bombadil), must be silent. Bombadil may then see the Grimoire, and whisper to (or, if a poor whisperer, take aside) a single player. Bombadil may not communicate in any way except a single word. After whispering, Bombadil leaves the game --- remove their character token from the Grimoire. The player may then spectate (though it is cheating to communicate to players as a spectator!)"
+    ],
+    "examples": [
+     "A good Bombadil chooses to leave at the end of the first day. All players are silenced, Bombadil looks at the Grimoire, and whispers to Juno, who bears the Ring, \"Moll\", the name of a player to whom it is safe to pass the Ring. Bombadil then leaves, and Juno doesn't share what Bombadil whispered.",
+     "An evil Bombadil chooses to leave at the end of the third day, sees the Grimoire, and whispers to Sauron \"Frodo\". They had previously agreed that Bombadil would tell Sauron which character Bim was."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Grim Peeker, Information, Once Per Game, Public, Social",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/bombadil.png",
+    "image": "https://botchomebrew.wiki/assets/art/bombadil.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "radagast",
+   "url_slug": "lotr-ringbearer/radagast",
+   "status": "published",
+   "bloodstarId": "radagast_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/radagast_lotrringbearerv7.png",
+   "data": {
+    "slug": "radagast",
+    "name": "Radagast",
+    "team": "traveller",
+    "ability": "You don't learn the Demon. Once per game, if Sauron agrees, you may privately visit the Storyteller and make a wish.",
+    "quote": "I think he’s a very great Wizard, in his own way. He’s a gentle soul who prefers the company of animals to others. He keeps a watchful eye over the vast forest lands to the east. And a good thing too. For always evil will look to find a foothold in this world.",
+    "lede": "Radagast hasn't the same will for power as the wizards of white and grey, but he is a great wizard in his own way. He makes a wish with Sauron's permission.",
+    "summaryBullets": [
+     "Radagast's wish can only be used with Sauron's consent, but the wish is always made privately. Thus Radagast could trick Sauron.",
+     "Radagast can obtain Sauron's consent through whatever means he sees fit. Trickery, honesty, and bargaining are all acceptable.",
+     "A good-aligned Radagast is tasked with tricking Sauron into thinking he will make an evil-favored wish.",
+     "An evil-aligned Radagast is tasked with convincing Sauron that they are on the same side."
+    ],
+    "howToRun": [
+     "During the day, after Radagast obtains Sauron's permission (feel free to confirm with Sauron), when Radagast privately makes a wish, decide if the wish is appropriate for the state of the game. Consider if it would advantage one team too heavily, or if it would lead to fun outcomes. If you believe the wish is inappropriate, propose an alternative wish that is still desirable. Repeat this process until a mutually agreeable wish is made. Once a wish is made, resolve its effects and place the \"No Ability\" token."
+    ],
+    "examples": [
+     "Radagast is good, and convinces Sauron that he is evil. Sauron agrees to a wish, and Radagast wishes for the Ringbearer to be safe tonight. The Storyteller agrees, and grants this wish.",
+     "Radagast is evil, but Sauron does not believe them, and refuses to allow a wish."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+     "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Consult, Magic, Once Per Game, Social, Subjective Info",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/radagast.png",
+    "image": "https://botchomebrew.wiki/assets/art/radagast.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "lobelia",
+   "url_slug": "lotr-ringbearer/lobelia",
+   "status": "published",
+   "bloodstarId": "lobelia_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/lobelia_lotrringbearerv7.png",
+   "data": {
+    "slug": "lobelia",
+    "name": "Lobelia",
+    "team": "traveller",
+    "ability": "Each night, you learn a player: when they die today, your alive vote permanently doubles.",
+    "quote": "Lobelia Sackville­-Baggins. She had all my spoons stuffed in her pockets. Hah! Dreadful woman; make sure you keep an eye on her after I'm... when I'm... when I'm...",
+    "lede": "Lobelia is an opportunist and a vulture...arranging her inheritance of Bag-end.",
+    "summaryBullets": [
+     "Lobelia is given a target each night. Their goal is to have that target killed, either by Sauron or by execution.",
+     "Lobelia's ablity \"stacks\", so the first time their chosen player dies, their vote counts as 2, the next time it counts as 4, and so on.",
+     "When Lobelia dies, her vote is no longer multiplied. Their vote token just counts as 1.",
+     "Exiles are never affected by abilities, so Lobelia's exile vote always counts as 1."
+    ],
+    "howToRun": [
+     "Each night, wake Lobelia. Point to any player and mark them with the LEARNED reminder.",
+     "Whenever a player with a LEARNED reminder dies during the day, mark Lobelia with a DOUBLED reminder (or an additional DOUBLED reminder if they already have one or more.)",
+     "Each time you tally Lobelia's vote, multiply that vote by 2 for every DOUBLED reminder, and count it as that many votes instead of one. (Count this out loud, as normal.)"
+    ],
+    "examples": [
+     "On their first night, the evil Lobelia learns Luis. They ask Sauron that night to kill Luis. Sauron agrees, and Lobelia's vote counts as 2.",
+     "Good Lobelia's vote counts as 2. At night, they learn Flash. Lobelia nominates Flash and votes for them. Flash is nominated with just enough votes, and dies. Lobelia's vote now counts as 4.",
+     "A good Lobelia's vote counts as 8. After executions, Sauron kills them. Their vote token now only counts as 1."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 11,
+    "firstNightReminder": "Show Lobelia a player.",
+    "otherNight": 2,
+    "otherNightReminder": "Show Lobelia a player.",
+    "reminders": [
+     "Learned",
+     "Doubled",
+     "Doubled",
+     "Doubled",
+     "Doubled"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Death, Information, On Death, Votes",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/lobelia.png",
+    "image": "https://botchomebrew.wiki/assets/art/lobelia.png",
+    "curata": false
+   }
+  },
+  {
+   "slug": "ferny",
+   "url_slug": "lotr-ringbearer/ferny",
+   "status": "published",
+   "bloodstarId": "ferny_lotrringbearerv7",
+   "art": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/ferny_lotrringbearerv7.png",
+   "data": {
+    "slug": "ferny",
+    "name": "Ferny",
+    "team": "traveller",
+    "ability": "Each day, you may offer another player a reminder token. Tonight, they use it, but it might misfire.",
+    "quote": "As for Ferny, he would sell anything to anybody, or make mischief for amusement.",
+    "lede": "Ferny is a scammer and an opportunist, happy to line is pockets at the expense of all the worlds of men.",
+    "summaryBullets": [
+     "Any player may accept the offer for a token, even Sauron.",
+     "Ferny may specify which token is being offered, or might not.",
+     "The token may \"misfire\", meaning that it is used against someone other than its intended target. This is more likely if it would benefit Ferny, but can happen either way.",
+     "Ferny may not offer the same token twice. Once offered, the token is used up.",
+     "Players must use a token if they've accepted one and must do so that night.",
+     "A poisoned or drunk Ferny's reminder tokens will not be functional, even controlled by a sober and healthy player.",
+     "A poisoned or drunk player can use reminder tokens without impediment if Ferny is sober and healthy.",
+     "Ferny's tokens have a \"?\", denoting that they are of dubious quality. This means they vary in effectiveness, for example:",
+     "If the LEARNED? token is used, it's not certain what about the target will be learned.",
+     "If the SAFE? token is used, it's not certain what the target will be safe from.",
+     "The POISONED? and DEAD? tokens may only have their chosen effect for a limited time."
+    ],
+    "howToRun": [
+     "If desired, give the Ferny reminder tokens, that they may offer them to players directly.",
+     "Each day, Ferny may, publicly or privately, offer a reminder token to any player besides themself. If a player declines, nothing happens. If they accept (and you have confirmed this), mark them with the corresponding reminder (DEAD?, POISONED?, LEARNED?, SAFE?). Flip that token upside-down to indicate that it is not \"active\", and has not been used by the receiving player.",
+     "Each night, if a player has a Ferny reminder, wake them. They point to any player. The token is either \"used\" on that player, or misfires. If it misfires, redirect it to another player, and then use it. If used, decide how that token's effect will manifest (What would be learned, what that player might be safe from, how long the effect will last, etc.) and apply it. Mark that player with the corresponding reminder."
+    ],
+    "examples": [
+     "Ferny offers Tom, the Witch-King, a POISONED? reminder token. The Witch-King accepts, and poisons Mugs, who is Bilbo.",
+     "Ferny offers Grace, who is Gandalf, the DEAD? reminder token, and Grace tries to kill Arkus. The token misfires, and kills Joel instead.",
+     "Ferny offers Nick the SAFE? reminder. Nick makes himself safe. The Storyteller rules that this makes Nick safe from Outsiders and Minions, but not from Sauron.",
+     "Ferny offers Cole the LEARNED? reminder. Cole chooses to use the token on Ferny, and learns \"Good\". Cole is still unsure about Ferny's goodness, believing the token to have misfired, and advocates for Ferny's exile."
+    ],
+    "tips": [],
+    "callout": "",
+    "iconBy": "",
+    "customBoxes": [],
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 5,
+    "otherNightReminder": "The offered player uses their token.",
+    "reminders": [
+     "Poisoned?",
+     "Dead?",
+     "Learned?",
+     "Safe?"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "special": [],
+    "tags": "Ability Gain, Social",
+    "creator": "Bim, Cole",
+    "appearsIn": "LotR: Ringbearer",
+    "art": "art/ferny.png",
+    "image": "https://botchomebrew.wiki/assets/art/ferny.png",
+    "curata": false
+   }
+  }
+ ]
+}
