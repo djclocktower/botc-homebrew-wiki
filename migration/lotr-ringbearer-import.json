@@ -1,8 +1,8 @@
 {
  "source": "https://bloodstar.clocktica.com/p/Bim/LOTR-Ringbearer-v7/almanac.html (and the script.json beside it).",
- "note": "Import record for \"LotR: Ringbearer\", Bim's Lord of the Rings script, added as a script page with the author's permission (credit Bim, Cole for script contribution, Lumi for icons). Read the way /mass-upload reads a Bloodstar project: worker/bloodstar.js parsed the almanac, assets/importer.js did the mapping, and every row was saved through the Worker on a local copy first; the objects below are what it stored. Game data (team, ability, night positions, night reminders, reminder tokens, setup) comes from script.json; the prose (flavour line, overview, examples, how to run, tips, attribution) from each character's almanac page. Every text node of the almanac is in a row, and nothing was written that the source does not say. Notes:\n- 19 of the names already belong to pages here (other people's Lord of the Rings characters), so those take a -lotr-ringbearer identity. Samwise, Oathbreaker, Mouth of Sauron, Witch-King, The One Ring, Bombadil, Radagast, Lobelia and Ferny keep their plain one. Every ADDRESS is nested under the script either way (lotr-ringbearer/merry).\n- Creators on every character: \"Bim, Cole\". The script's byline is Bim alone, because a script's author line is a single link; Cole and Lumi are named in its Credits box, which is the only text here that is not the source's.\n- Twelve characters carry the attribution \"@Lumious, for the custom image.\" It is their \"Icon by\", word for word.\n- Bloodstar's Overview is one opening line, then bullets: the line is the lede, the bullets the summary. The project's synopsis is the script's synopsis and its overview the gameplay text.\n- Wormtongue's second tip is a link in the almanac, so it is stored as one. The Mouth of Sauron's flavour ends inside a quotation mark, which is kept.\n- Tags were chosen by hand from each ability against the definitions in worker/autotag.js; the tag suggester was not used.\n- The almanac's Night Order page is the script's arranged nightOrder, name for name. Each character also carries its own firstNight/otherNight numbers from script.json. They are the script's own (first night 11 to 18, other nights 2 to 14), not positions on the official scale, so the wiki's Minion Info and Demon Info steps, which the almanac does not list, fall after the characters on the first night.\n- It went in as a collection first and was changed to a script the same hour, at the owner's request. The collection row was removed; no address changed, since the script took the same key.\n- Icons are the project's own 540px files, fitted to the 591px frame at the 60% standard (assets/art-normalize.js), with 192px thumbnails. The project has no logo, background or jinxes.\n- The pages are unowned (owner_id NULL), like the rest of the bulk-imported wiki.",
+ "note": "Import record for \"Lord of the Rings: Ringbearer\", Bim's script, added as a script page with the author's permission (credit Bim, Cole for script contribution, Lumi for icons). Read the way /mass-upload reads a Bloodstar project: worker/bloodstar.js parsed the almanac, assets/importer.js did the mapping, and every row was saved through the Worker on a local copy first; the objects below are what it stored. Game data (team, ability, night positions, night reminders, reminder tokens, setup) comes from script.json; the prose (flavour line, overview, examples, how to run, tips, attribution) from each character's almanac page. Every text node of the almanac is in a row, and nothing was written that the source does not say. Notes:\n- 19 of the names already belong to pages here (other people's Lord of the Rings characters), so those take a -lotr-ringbearer identity. Samwise, Oathbreaker, Mouth of Sauron, Witch-King, The One Ring, Bombadil, Radagast, Lobelia and Ferny keep their plain one. Every ADDRESS is nested under the script either way (lotr-ringbearer/merry).\n- Creators on every character: \"Bim, Cole\". The script's byline is Bim alone, because a script's author line is a single link; Cole and Lumi are named in its Credits box, which is the only text here that is not the source's.\n- Twelve characters carry the attribution \"@Lumious, for the custom image.\" It is their \"Icon by\", word for word.\n- Bloodstar's Overview is one opening line, then bullets: the line is the lede, the bullets the summary. The project's synopsis is the script's synopsis and its overview the gameplay text.\n- Wormtongue's second tip is a link in the almanac, so it is stored as one. The Mouth of Sauron's flavour ends inside a quotation mark, which is kept.\n- Tags were chosen by hand from each ability against the definitions in worker/autotag.js; the tag suggester was not used.\n- The almanac's Night Order page is the script's arranged nightOrder, name for name. Each character also carries its own firstNight/otherNight numbers from script.json. They are the script's own (first night 11 to 18, other nights 2 to 14), not positions on the official scale, so the wiki's Minion Info and Demon Info steps, which the almanac does not list, fall after the characters on the first night.\n- It went in as a collection first and was changed to a script the same hour, at the owner's request. The collection row was removed; no address changed, since the script took the same key.\n- Icons are the project's own 540px files, fitted to the 591px frame at the 60% standard (assets/art-normalize.js), with 192px thumbnails. The project has no logo, background or jinxes.\n- The pages are unowned (owner_id NULL), like the rest of the bulk-imported wiki.\n- The Bloodstar project is titled \"LotR: Ringbearer\". The owner asked for the name spelled out, which is how the synopsis itself ends, so the script page and every character's \"Appears in\" read \"Lord of the Rings: Ringbearer\". The key and the addresses stay lotr-ringbearer.",
  "script": {
-  "name": "LotR: Ringbearer",
+  "name": "Lord of the Rings: Ringbearer",
   "author": "Bim",
   "synopsis": "The very soil of Middle-earth grows dark with seeping evil. The land itself seems to turn against that which once it harbored. Men kill neighbors, alliances lie shattered like Isildur's Bane, and many a people have forgotten the word \"Friend\".\n\nFor many, hope was lost against the might of Mordor. Sauron's lidless gaze oppressed the minds of men and elves, and Mount Doom quaked with magnificent indifference to the ill-fates of Dwarves and Hobbits.\n\nBut for some, not all was lost. One of good heart and sound mind has found it; the One Ring. They, and the allies they've gained through forged bonds and spilt blood, must resist its temptation, hide it from Sauron, and plunge it into the fires of mount Doom.\n\nThen, and only then, may hope thrive again in Middle-earth. Trust is paramount, for Sauron and his agents of darkness seek to poison your mind and break your heart. There is no room for doubt.\n\nSpeak, Friend, and Enter the crossover of a lifetime:\n\nLord of the Rings: Ringbearer\n\nSpecial thanks to the Unofficial Blood on the Clocktower Discord Server and it's community, without which this script would've never been possible, and to Cole, who might be responsible for a greater percentage of the design work at this point than I am :)",
   "gameplay": "LOTR: Ringbearer is a script built around the Fabled, \"The One Ring\". A player holds the One Ring, and must ensure that Sauron never finds it. If Sauron, finds the Ring, or his agents obtain it, all hope is lost.\n\nLOTR: Ringbearer is recommended for very experienced Blood on the Clocktower players. The rules are not always complex, but the possibilities are boundless and games can often end due to only a single mistake from either team. Players must be prepared for these losses, and be pleased that the last one ended, so that another may begin.\n\nThe Good team will find themselves making early bonds of trust and alliance, for they must conspire to protect the Ring. After all, only a Fellowship can save them.\n\nThe Evil team will find themselves wielding dramatic, world-quaking power, and yet this power is fragile, for without the Ring the bonds of men, elves, dwarves, and, yes, even hobbits, will prove too strong for the forces of evil.",
@@ -117,7 +117,7 @@
     "special": [],
     "tags": "False Info, Information, Reverse, Subjective Info, True Info, You Start Knowing",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/merry-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/merry-lotr-ringbearer.png",
     "curata": false
@@ -163,7 +163,7 @@
     "special": [],
     "tags": "False Info, Information, Subjective Info, You Start Knowing",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/pippin-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/pippin-lotr-ringbearer.png",
     "curata": false
@@ -215,7 +215,7 @@
     "special": [],
     "tags": "Information, You Start Knowing",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/legolas-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/legolas-lotr-ringbearer.png",
     "curata": false
@@ -268,7 +268,7 @@
     "special": [],
     "tags": "Information",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/aragorn-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/aragorn-lotr-ringbearer.png",
     "curata": false
@@ -319,7 +319,7 @@
     "special": [],
     "tags": "Information, Misregistration",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/galadriel-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/galadriel-lotr-ringbearer.png",
     "curata": false
@@ -369,7 +369,7 @@
     "special": [],
     "tags": "Binary Info, Information, Votes",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/treebeard-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/treebeard-lotr-ringbearer.png",
     "curata": false
@@ -418,7 +418,7 @@
     "special": [],
     "tags": "Death, Information, On Death, Subjective Info",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/gimli-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/gimli-lotr-ringbearer.png",
     "curata": false
@@ -464,7 +464,7 @@
     "special": [],
     "tags": "Consult, Information, Subjective Info",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/samwise.png",
     "image": "https://botchomebrew.wiki/assets/art/samwise.png",
     "curata": false
@@ -519,7 +519,7 @@
     "special": [],
     "tags": "Execution, Nominations, Once Per Game, Resurrection",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/faramir-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/faramir-lotr-ringbearer.png",
     "curata": false
@@ -567,7 +567,7 @@
     "special": [],
     "tags": "Confirmation, Day Deaths, Death, Passive",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/boromir-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/boromir-lotr-ringbearer.png",
     "curata": false
@@ -616,7 +616,7 @@
     "special": [],
     "tags": "Passive, Ping, Safety Net",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/bilbo-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/bilbo-lotr-ringbearer.png",
     "curata": false
@@ -665,7 +665,7 @@
     "special": [],
     "tags": "Confirmation, Execution, Nominations",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/eowyn-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/eowyn-lotr-ringbearer.png",
     "curata": false
@@ -717,7 +717,7 @@
     "special": [],
     "tags": "Consult, Death, Demonsbane, Magic, On Death, Once Per Game, Resurrection, Subjective Info",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/gandalf-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/gandalf-lotr-ringbearer.png",
     "curata": false
@@ -765,7 +765,7 @@
     "special": [],
     "tags": "Hidden, Ping, Setup",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/frodo-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/frodo-lotr-ringbearer.png",
     "curata": false
@@ -821,7 +821,7 @@
     "special": [],
     "tags": "Death, Even If Dead, False Info, Passive",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/denethor-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/denethor-lotr-ringbearer.png",
     "curata": false
@@ -874,7 +874,7 @@
     "special": [],
     "tags": "Character Change, Death, Duplication, Nonconformist, On Death, Win/Loss Condition",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/gollum-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/gollum-lotr-ringbearer.png",
     "curata": false
@@ -923,7 +923,7 @@
     "special": [],
     "tags": "Alignment Change, Extra Evil, Passive",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/oathbreaker.png",
     "image": "https://botchomebrew.wiki/assets/art/oathbreaker.png",
     "curata": false
@@ -972,7 +972,7 @@
     "special": [],
     "tags": "False Info, Outsider Modification, Passive, Quiet, Setup",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/mouth-of-sauron.png",
     "image": "https://botchomebrew.wiki/assets/art/mouth-of-sauron.png",
     "curata": false
@@ -1024,7 +1024,7 @@
     "special": [],
     "tags": "Consult, Death, Magic, Misregistration, Once Per Game, Subjective Info",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/saruman-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/saruman-lotr-ringbearer.png",
     "curata": false
@@ -1079,7 +1079,7 @@
     "special": [],
     "tags": "Alignment Change, Extra Evil, Nonconformist, Outsider Modification, Setup",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/wormtongue-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/wormtongue-lotr-ringbearer.png",
     "curata": false
@@ -1130,7 +1130,7 @@
     "special": [],
     "tags": "Binary Info, Information, Neighbor, Poison, Quiet",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/witch-king.png",
     "image": "https://botchomebrew.wiki/assets/art/witch-king.png",
     "curata": false
@@ -1179,7 +1179,7 @@
     "special": [],
     "tags": "Day Deaths, Death, Death Modification, Loud, Nonconformist, Public, Single-Kill",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/sauron-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/sauron-lotr-ringbearer.png",
     "curata": false
@@ -1238,7 +1238,7 @@
     "special": [],
     "tags": "Death, On Death, Win/Loss Condition",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/the-one-ring.png",
     "image": "https://botchomebrew.wiki/assets/art/the-one-ring.png",
     "curata": false
@@ -1286,7 +1286,7 @@
     "special": [],
     "tags": "Day Deaths, Death, Public, Single-Kill, Votes",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/balrog-lotr-ringbearer.png",
     "image": "https://botchomebrew.wiki/assets/art/balrog-lotr-ringbearer.png",
     "curata": false
@@ -1335,7 +1335,7 @@
     "special": [],
     "tags": "Grim Peeker, Information, Once Per Game, Public, Social",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/bombadil.png",
     "image": "https://botchomebrew.wiki/assets/art/bombadil.png",
     "curata": false
@@ -1384,7 +1384,7 @@
     "special": [],
     "tags": "Consult, Magic, Once Per Game, Social, Subjective Info",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/radagast.png",
     "image": "https://botchomebrew.wiki/assets/art/radagast.png",
     "curata": false
@@ -1440,7 +1440,7 @@
     "special": [],
     "tags": "Death, Information, On Death, Votes",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/lobelia.png",
     "image": "https://botchomebrew.wiki/assets/art/lobelia.png",
     "curata": false
@@ -1503,7 +1503,7 @@
     "special": [],
     "tags": "Ability Gain, Social",
     "creator": "Bim, Cole",
-    "appearsIn": "LotR: Ringbearer",
+    "appearsIn": "Lord of the Rings: Ringbearer",
     "art": "art/ferny.png",
     "image": "https://botchomebrew.wiki/assets/art/ferny.png",
     "curata": false
