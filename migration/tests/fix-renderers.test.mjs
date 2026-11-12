@@ -310,3 +310,30 @@ test('typed HTML is rebuilt from a whitelist, MediaWiki marks render', () => {
   assert.match(WikiRender.renderBody('== Rules ==\n=== Sub ==='), /<h2[^>]*id="sec-rules".*<h3/);
   assert.equal(WikiRender.plainText("<b>B</b><br>''i'' [https://x.y lab]"), 'B i lab');
 });
+
+test('a script or collection author line links each credited name on its own', () => {
+  // A stub registry: every name has a mark, so a missing one shows.
+  Render.setCreators({
+    splitCreators: s => String(s || '').split(',').map(n => n.trim()).filter(Boolean),
+    markHTMLFor: n => '<i class="creator-mark">' + n[0] + '</i>'
+  });
+  try {
+    const both = '<a class="author-link" href="../author?a=Bim">Bim</a> <i class="creator-mark">B</i>, ' +
+      '<a class="author-link" href="../author?a=Cole%20%26%20Co">Cole &amp; Co</a> <i class="creator-mark">C</i>';
+    const coll = PageRender.renderCollectionPage({ displayName: 'Set', author: 'Bim, Cole & Co' }, [], { linkRoot: '../' });
+    assert.ok(coll.includes('<p class="sv-info-author">by ' + both + '</p>'), coll);
+    const script = PageRender.renderScriptPage({ name: 'S', author: ' Bim ,Cole & Co,', characters: [] }, [], { linkRoot: '../' });
+    assert.ok(script.includes('<dt>Authors:</dt><dd>' + both + '</dd>'), script);
+    assert.ok(!/author\?a=[^"]*%2C/.test(coll + script));
+    // One name is what it always was; none draws no line.
+    const one = '<a class="author-link" href="../author?a=Bim">Bim</a> <i class="creator-mark">B</i>';
+    assert.ok(PageRender.renderScriptPage({ name: 'S', author: 'Bim', characters: [] }, [], { linkRoot: '../' })
+      .includes('<dt>Author:</dt><dd>' + one + '</dd>'));
+    assert.ok(PageRender.renderCollectionPage({ displayName: 'Set', author: 'Bim' }, [], { linkRoot: '../' })
+      .includes('<p class="sv-info-author">by ' + one + '</p>'));
+    const none = PageRender.renderCollectionPage({ displayName: 'Set', author: ' , ' }, [], { linkRoot: '../' });
+    assert.ok(!none.includes('sv-info-author'));
+  } finally {
+    Render.setCreators(null);
+  }
+});
