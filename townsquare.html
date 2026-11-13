@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Town Square — BOTC HomeBrew Wiki</title>
+<meta name="description" content="A storyteller's grimoire for any script on the BOTC HomeBrew Wiki: deal a game, seat the players, place reminders and walk through the night order.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Town Square">
+<meta property="og:description" content="Run a game of any script on the wiki: deal the bag, seat the players, place reminders and step through the night.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* Page-local: the Town Square. The logic is in townsquare.js.
+   Tokens are round because tokens are; everything else is square and flat. */
+.ts-app { max-width: 760px; }
+html.ts-playing .ts-app { max-width: 1500px; padding-bottom: 14px; }
+html.ts-playing .foot { display: none; }
+.ts-hero-icon { width: clamp(52px, 9vw, 84px); height: auto; color: var(--parch); flex-shrink: 0; filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); }
+.ts-app [hidden] { display: none !important; }
+
+.ts-ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ts-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 42px; height: 42px; padding: 0; cursor: pointer; border-radius: 0;
+  background: rgba(0,0,0,.38); border: 1px solid rgba(214,196,150,.35); color: var(--parch);
+  font: 700 1.2rem 'Roboto', sans-serif; -webkit-tap-highlight-color: transparent;
+}
+.ts-btn:disabled { opacity: .35; cursor: default; }
+.ts-btn[aria-pressed="true"] { background: var(--parch); color: var(--maroon); }
+.ts-btn-parch { background: #fffdf8; border-color: var(--parch-frame); color: var(--maroon); }
+.ts-act {
+  font: 600 .8rem 'Roboto', sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  padding: 11px 14px; cursor: pointer; border-radius: 0;
+  background: #fffdf8; border: 1px solid var(--parch-frame); color: var(--maroon);
+  -webkit-tap-highlight-color: transparent;
+}
+.ts-act:hover { background: #fff; border-color: var(--maroon); }
+.ts-act-go { background: var(--maroon); border-color: var(--maroon); color: #f3ead4; margin-left: auto; }
+.ts-act-go:hover { background: #742a2c; }
+.ts-act-quiet { background: none; border-color: transparent; text-decoration: underline; }
+.ts-act-quiet:hover { background: none; border-color: transparent; }
+
+/* ─── Start ─── */
+.ts-panel {
+  background: var(--parch) url('assets/parchment.webp') center / cover;
+  border: 2px solid var(--parch-frame); padding: 16px 18px 18px; margin-bottom: 18px;
+}
+.ts-h { font: 400 1.15rem 'Dumbledor2', serif; letter-spacing: .05em; color: var(--maroon); margin: 0 0 10px; }
+.ts-q {
+  width: 100%; padding: 11px 12px; font-size: 1rem; border-radius: 0;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+.ts-results { min-height: 44px; }
+.ts-row { display: flex; align-items: center; gap: 8px; }
+.ts-result {
+  display: flex; flex: 1; min-width: 0; width: 100%; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 11px 4px; text-align: left; cursor: pointer; font: inherit; color: var(--maroon);
+  background: none; border: 0; border-bottom: 1px solid rgba(180,160,120,.45); border-radius: 0;
+}
+.ts-result:hover b { text-decoration: underline; }
+.ts-result b { font-weight: 700; overflow-wrap: anywhere; }
+.ts-result span { flex: none; font: .78rem 'Roboto', sans-serif; color: rgba(91,31,33,.65); }
+.ts-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.ts-msg { margin: 10px 0 0; min-height: 1.3em; font-size: .9rem; color: var(--evil); }
+.ts-empty { margin: 12px 4px; color: rgba(91,31,33,.7); }
+
+/* ─── The table ─── */
+.ts-bar { display: flex; align-items: center; gap: 6px; padding: 10px 0 8px; }
+.ts-phase {
+  display: flex; align-items: center; gap: 7px; white-space: nowrap;
+  font: 400 1.3rem 'Dumbledor2', serif; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--parch); text-shadow: 0 2px 8px rgba(0,0,0,.6);
+}
+.ts-phase .ts-ico { width: 20px; height: 20px; }
+.ts-next {
+  display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 8px 0 14px; margin-left: 6px; cursor: pointer; border-radius: 0;
+  background: var(--parch); border: 1px solid var(--parch-frame); color: var(--maroon); white-space: nowrap;
+  font: 700 .78rem 'Roboto', sans-serif; letter-spacing: .08em; text-transform: uppercase;
+}
+.ts-next .ts-ico { width: 16px; height: 16px; }
+.ts-title {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; padding: 0 8px;
+  font: 400 1.05rem 'Dumbledor2', serif; letter-spacing: .05em; color: rgba(236,225,200,.75);
+}
+@media (max-width: 700px) { .ts-title { visibility: hidden; } }
+@media (max-width: 350px) {
+  .ts-phase { font-size: 1.05rem; gap: 4px; }
+  .ts-next { padding: 0 4px 0 8px; margin-left: 2px; }
+  .ts-bar .ts-btn { width: 36px; }
+  .ts-title { display: none; }
+}
+.ts-stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.ts-board {
+  position: relative; overflow: hidden; isolation: isolate;
+  height: clamp(420px, calc(100vh - 210px), 880px);
+  height: clamp(420px, calc(100dvh - 210px), 880px);
+  background: rgba(34,14,32,.55); border: 1px solid rgba(214,196,150,.28);
+  transition: background-color .6s;
+}
+.ts-night .ts-board { background: rgba(8,8,30,.72); }
+
+.ts-seat {
+  /* Placed by its centre with left/top and no transform: a transform would
+     make every seat its own stacking context, and a neighbour's token would
+     then paint over this seat's reminders. 19px is the name under the token
+     (LABEL in townsquare.js). */
+  position: absolute; width: var(--d); padding: 0;
+  left: calc(50% + var(--x, 0px) - var(--d) / 2);
+  top: calc(50% + var(--y, 0px) - (var(--d) + 19px) / 2);
+  display: flex; flex-direction: column; align-items: center;
+  background: none; border: 0; border-radius: 0; cursor: pointer; font: inherit; color: var(--parch);
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.ts-token {
+  position: relative; display: block; width: 100%; aspect-ratio: 1; flex: none; border-radius: 50%;
+  background: var(--parch) url('assets/parchment.webp') center / cover;
+  border: max(2px, calc(var(--d, 80px) * .028)) solid var(--parch-frame);
+  box-shadow: 0 4px 12px rgba(0,0,0,.55), inset 0 0 0 max(1px, calc(var(--d, 80px) * .02)) rgba(255,255,255,.4);
+}
+.ts-token img { position: absolute; left: 10%; top: 1%; width: 80%; height: 80%; object-fit: contain; pointer-events: none; }
+.ts-token svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ts-token text { font-family: 'Roboto', sans-serif; font-weight: 700; letter-spacing: .03em; fill: var(--maroon); }
+.ts-token.good text { fill: #1d5596; }
+.ts-token.evil text { fill: var(--evil); }
+.ts-blank { background-color: #cdbfa3; background-blend-mode: multiply; }
+/* A small token's name is a flat plate across its foot: the curved name is
+   unreadable under about 80px. */
+.ts-plate {
+  display: none; position: absolute; left: 50%; bottom: -3px; transform: translateX(-50%);
+  max-width: calc(var(--d, 80px) + 12px); padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--parch); border: 1px solid var(--parch-frame); color: var(--maroon);
+  font: 700 .56rem/12px 'Roboto', sans-serif; letter-spacing: .04em;
+}
+.ts-token.good .ts-plate { color: #1d5596; }
+.ts-token.evil .ts-plate { color: var(--evil); }
+.ts-small .ts-plate { display: block; }
+.ts-small .ts-token svg { display: none; }
+.ts-small .ts-token img { left: 8%; top: 3%; width: 84%; height: 84%; }
+.ts-back {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font: 400 calc(var(--d, 80px) * .4) 'Dumbledor2', serif; color: rgba(91,31,33,.55);
+}
+.ts-pname {
+  margin-top: 3px; max-width: calc(var(--d) + 14px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 500 .78rem/16px 'Roboto', sans-serif; letter-spacing: .02em; text-shadow: 0 1px 3px #000, 0 0 6px #000;
+}
+.ts-seat.dead .ts-token { background-color: #7d766c; background-blend-mode: multiply; }
+.ts-seat.dead .ts-token img, .ts-seat.dead .ts-token svg { opacity: .5; }
+.ts-seat.dead .ts-pname { opacity: .6; }
+.ts-shroud {
+  position: absolute; left: 50%; top: -5%; width: 30%; height: 80%; transform: translateX(-50%);
+  transform-origin: top; background: #150c18;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+.ts-drop { animation: ts-drop .32s ease-out; }
+@keyframes ts-drop { from { transform: translateX(-50%) scaleY(0); } }
+.ts-vote {
+  position: absolute; right: 4%; bottom: 4%; width: 19%; min-width: 13px; aspect-ratio: 1; border-radius: 50%;
+  background: #fff; border: 2px solid #150c18;
+}
+.ts-vote.used { background: #150c18; border-color: rgba(255,255,255,.45); }
+.ts-seat.lit .ts-token { box-shadow: 0 0 0 3px #f1cd68, 0 0 0 8px rgba(241,205,104,.28), 0 4px 12px rgba(0,0,0,.55); }
+.ts-seat.moving .ts-token { box-shadow: 0 0 0 3px #fff; opacity: .6; }
+.ts-seat.hand .ts-token { box-shadow: 0 0 0 4px #f1cd68, 0 4px 12px rgba(0,0,0,.55); }
+.ts-seat.block .ts-token { box-shadow: 0 0 0 4px #d8363c, 0 0 0 9px rgba(216,54,60,.3), 0 4px 12px rgba(0,0,0,.55); }
+/* The clock hand that points at the player being voted on. */
+.ts-hand {
+  position: absolute; z-index: -1; left: 50%; top: 50%; height: 4px; margin-top: -2px; transform-origin: 0 50%;
+  background: var(--parch); pointer-events: none; box-shadow: 0 1px 6px rgba(0,0,0,.6);
+}
+.ts-hand::before {
+  content: ""; position: absolute; left: -7px; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: var(--parch);
+}
+.ts-dealing .ts-seat { animation: ts-deal .55s cubic-bezier(.2,.8,.3,1) both; animation-delay: calc(var(--i) * 45ms); }
+@keyframes ts-deal {
+  from { left: calc(50% - var(--d) / 2); top: calc(50% - (var(--d) + 19px) / 2); transform: scale(.2); opacity: 0; }
+}
+
+/* Reminders: small tags on the side of the token that faces the middle. */
+.ts-tags { position: absolute; z-index: 2; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.ts-seat[data-in="e"] .ts-tags { left: calc(100% + 3px); top: 2px; align-items: flex-start; }
+.ts-seat[data-in="w"] .ts-tags { right: calc(100% + 3px); top: 2px; align-items: flex-end; }
+.ts-seat[data-in="s"] .ts-tags { top: calc(100% + 1px); left: 50%; transform: translateX(-50%); align-items: center; }
+.ts-seat[data-in="n"] .ts-tags { bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); align-items: center; }
+.ts-seat[data-lean="l"] .ts-tags { left: auto; right: 50%; transform: none; align-items: flex-end; }
+.ts-seat[data-lean="r"] .ts-tags { left: 50%; transform: none; align-items: flex-start; }
+.ts-narrow .ts-tag { max-width: 86px; }
+.ts-tag {
+  display: inline-flex; align-items: center; gap: 3px; max-width: 120px; padding: 1px 5px 1px 2px;
+  background: #1d1020; border: 1px solid rgba(214,196,150,.55); color: #f1e6c8; border-radius: 0;
+  font: 600 .62rem/14px 'Roboto', sans-serif; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap;
+}
+.ts-tag img { width: 14px; height: 14px; flex: none; object-fit: contain; border-radius: 50%; background: var(--parch); }
+.ts-tag > span { overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
+.ts-tag-big {
+  max-width: 100%; padding: 7px 10px 7px 7px; gap: 6px; cursor: pointer;
+  background: #fffdf8; border-color: var(--parch-frame); color: var(--maroon); font-size: .76rem; line-height: 18px;
+}
+.ts-tag-big img { width: 22px; height: 22px; }
+.ts-tag-big .ts-ico { width: 13px; height: 13px; opacity: .6; }
+.ts-tag-add { background: none; border-style: dashed; padding-left: 10px; }
+
+.ts-sky {
+  position: absolute; z-index: -2; left: 50%; top: 50%; width: min(46%, 300px); height: auto; transform: translate(-50%, -50%);
+  fill: none; stroke: var(--parch); stroke-width: .5; stroke-linecap: round; stroke-linejoin: round; opacity: .16; pointer-events: none;
+}
+.ts-centre {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.ts-bluffs {
+  display: flex; align-items: center; gap: 4px; padding: 4px 6px; cursor: pointer; border-radius: 0;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(214,196,150,.3); color: rgba(236,225,200,.8);
+  font: 600 .62rem 'Roboto', sans-serif; letter-spacing: .08em; text-transform: uppercase;
+}
+.ts-bluffs > span:first-child:not(.ts-mini) { margin-right: 3px; }
+/* A phone's table has no room in the middle: reminders reach across it.
+   The bluffs are in the menu and on the Demon Info step's cards. */
+.ts-narrow .ts-centre { display: none; }
+.ts-mini {
+  position: relative; display: inline-block; flex: none; width: 30px; height: 30px; border-radius: 50%; overflow: hidden;
+  background: var(--parch) url('assets/parchment.webp') center / cover; border: 1px solid var(--parch-frame);
+}
+.ts-mini img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.22); }
+.ts-town .ts-list { display: none; }
+
+/* The strip under the table */
+.ts-strip { display: flex; align-items: stretch; gap: 6px; margin-top: 8px; min-height: 62px; }
+.ts-strip .ts-btn { height: auto; }
+.ts-step {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 10px; text-align: left;
+  background: var(--parch) url('assets/parchment.webp') center / cover; border: 1px solid var(--parch-frame);
+  color: var(--ink); font: inherit; cursor: pointer; border-radius: 0;
+}
+.ts-step-plain {
+  justify-content: center; text-align: center; cursor: default;
+  font: 600 .86rem 'Roboto', sans-serif; letter-spacing: .05em; color: var(--maroon);
+}
+.ts-count { gap: 12px; }
+.ts-count b { font: 400 2rem/1 'Dumbledor2', serif; }
+.ts-strip .ts-act { align-self: stretch; }
+.ts-step .ts-mini, .ts-li .ts-mini { width: 40px; height: 40px; }
+.ts-mini-step { background: none; border-color: transparent; }
+.ts-step-text { min-width: 0; font-size: .84rem; line-height: 1.3; }
+.ts-step-text > b { font: 700 .82rem 'Roboto', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); margin-right: 7px; }
+.ts-step-text > i { font-style: normal; font-weight: 700; color: var(--good-name); }
+.ts-step-text > span { display: block; }
+.ts-step .ts-step-text > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ts-step-n { align-self: center; font: .74rem 'Roboto', sans-serif; color: rgba(236,225,200,.75); padding: 0 2px; }
+
+/* The night order: a sheet on a phone, a column beside the table when there is room. */
+.ts-list {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; max-height: 66vh; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--parch) url('assets/parchment.webp') center / cover; border-top: 2px solid var(--parch-frame);
+  transform: translateY(105%); transition: transform .22s ease-out; box-shadow: 0 -12px 30px rgba(0,0,0,.6);
+}
+.ts-list.open { transform: none; }
+.ts-list-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 8px 8px 14px; background: var(--parch); border-bottom: 1px solid rgba(180,160,120,.6);
+}
+.ts-list-head h2 { margin: 0; font: 400 1.05rem 'Dumbledor2', serif; letter-spacing: .05em; color: var(--maroon); }
+.ts-list ol { list-style: none; margin: 0; padding: 0; position: relative; }
+.ts-list li { list-style: none; margin: 0; padding: 0; }
+.ts-list li::before, .ts-list li::marker { content: none; }
+.ts-li {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 12px; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid rgba(180,160,120,.4); border-radius: 0; font: inherit; color: var(--ink);
+}
+.ts-list li.done .ts-li { opacity: .45; }
+.ts-list li.cur .ts-li { background: rgba(91,31,33,.1); box-shadow: inset 4px 0 0 var(--maroon); }
+.ts-list li.gone .ts-step-text > b { text-decoration: line-through; }
+@media (min-width: 1100px) {
+  .ts-stage { grid-template-columns: minmax(0, 1fr) 360px; }
+  .ts-town .ts-stage { grid-template-columns: minmax(0, 1fr); }
+  .ts-list {
+    position: static; transform: none; transition: none; box-shadow: none; z-index: auto;
+    border: 2px solid var(--parch-frame); max-height: calc(clamp(420px, calc(100vh - 210px), 880px) + 70px);
+  }
+  .ts-list-close, .ts-list-open { display: none; }
+}
+
+/* ─── Dialogs ─── */
+.ts-dlg {
+  width: min(560px, calc(100vw - 16px)); max-height: min(88vh, 900px); padding: 0 16px 16px; overflow-y: auto;
+  background: var(--parch) url('assets/parchment.webp') center / cover; color: var(--ink);
+  border: 2px solid var(--parch-frame); border-radius: 0; overscroll-behavior: contain;
+}
+.ts-dlg::backdrop { background: rgba(10,4,14,.74); }
+.ts-pickdlg { width: min(880px, calc(100vw - 16px)); }
+@media (max-width: 640px) {
+  .ts-dlg { width: 100vw; max-width: 100vw; margin: auto 0 0; border-width: 2px 0 0; max-height: 88vh; max-height: 88dvh; }
+}
+.ts-dlg-head {
+  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 -16px 12px; padding: 10px 12px 10px 16px; background: var(--parch); border-bottom: 1px solid rgba(180,160,120,.6);
+}
+.ts-dlg-head > div { flex: 1; min-width: 0; }
+.ts-dlg-head h2 { margin: 0; font: 400 1.22rem 'Dumbledor2', serif; letter-spacing: .04em; color: var(--maroon); overflow-wrap: anywhere; }
+.ts-dlg-head p { margin: 2px 0 0; font-size: .84rem; color: rgba(91,31,33,.75); }
+.ts-seat-head > .ts-token { width: 68px; --d: 68px; }
+.ts-team { font: 700 .74rem 'Roboto', sans-serif !important; letter-spacing: .08em; text-transform: uppercase; }
+.ts-team.good { color: var(--good-name); }
+.ts-team.evil { color: var(--evil); }
+.ts-ability { margin: 0 0 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.ts-field { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+.ts-field > span { font: 600 .72rem 'Roboto', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--maroon); }
+.ts-field input, #ts-names {
+  flex: 1; min-width: 0; width: 100%; padding: 10px; font: inherit; font-size: 1rem; border-radius: 0;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+#ts-names { display: block; margin-bottom: 12px; line-height: 1.5; resize: vertical; }
+.ts-inline { gap: 8px; }
+.ts-togs, .ts-rems, .ts-phrases, .ts-acts { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.ts-acts { margin-bottom: 0; gap: 8px; }
+.ts-tog {
+  font: 600 .8rem 'Roboto', sans-serif; letter-spacing: .06em; text-transform: uppercase; padding: 10px 14px; cursor: pointer;
+  background: none; border: 1px solid var(--maroon); color: var(--maroon); border-radius: 0;
+}
+.ts-tog.on { background: var(--maroon); color: #f3ead4; }
+.ts-menu { display: grid; gap: 8px; }
+.ts-menu .ts-act { text-align: left; }
+.ts-more { margin-top: 4px; }
+.ts-more summary { cursor: pointer; padding: 8px 0; font: 600 .76rem 'Roboto', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--maroon); }
+.ts-foot {
+  position: sticky; bottom: -16px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 14px -16px -16px; padding: 10px 16px 12px; background: var(--parch); border-top: 1px solid rgba(180,160,120,.6);
+}
+.ts-players { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.ts-players > span { font: 600 .72rem 'Roboto', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--maroon); margin-right: auto; }
+.ts-players b { min-width: 2ch; text-align: center; font: 400 1.5rem 'Dumbledor2', serif; color: var(--maroon); }
+.ts-pick-team h3 { margin: 14px 0 6px; font: 700 .8rem 'Roboto', sans-serif; letter-spacing: .09em; text-transform: uppercase; color: var(--maroon); }
+.ts-pick-team h3.good { color: var(--good-name); }
+.ts-pick-team h3.evil { color: var(--evil); }
+.ts-pick-n { font-weight: 500; opacity: .75; margin-left: 4px; }
+.ts-pick-n.ok { opacity: 1; color: var(--loric); }
+.ts-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 4px; }
+.ts-pick {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; cursor: pointer; border-radius: 0;
+  background: none; border: 2px solid transparent; color: var(--ink);
+  font: 500 .72rem/1.15 'Roboto', sans-serif; text-align: center; overflow-wrap: anywhere;
+  -webkit-tap-highlight-color: transparent;
+}
+.ts-pick .ts-mini { width: 54px; height: 54px; }
+.ts-pick[aria-pressed="true"] { border-color: var(--maroon); background: rgba(91,31,33,.12); }
+.ts-notes { flex: 0 0 100%; margin: 0; font-size: .82rem; line-height: 1.35; color: var(--maroon); }
+.ts-notes:empty { display: none; }
+.ts-bluff-row { display: flex; justify-content: center; gap: 14px; margin: 4px 0 16px; }
+.ts-bluff { width: 28%; max-width: 116px; padding: 0; background: none; border: 0; cursor: pointer; --d: 104px; }
+.ts-st-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.ts-st-row .ts-mini { width: 44px; height: 44px; }
+.ts-st-row p { margin: 2px 0 0; font-size: .9rem; line-height: 1.4; }
+
+/* ─── A card held up to a player ─── */
+.ts-show {
+  position: fixed; inset: 0; z-index: 200; display: flex; padding: 28px 20px; overflow-y: auto;
+  background: #120616; color: var(--parch); text-align: center; cursor: pointer;
+}
+.ts-show[hidden] { display: none; }
+.ts-show-in { width: 100%; max-width: 760px; margin: auto; }
+.ts-show h2 {
+  margin: 0 0 .7em; font: 400 clamp(1.6rem, 7.5vw, 3.2rem)/1.15 'Dumbledor2', serif; letter-spacing: .06em; text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.ts-show-tokens { display: flex; flex-wrap: wrap; justify-content: center; gap: 4vmin; }
+.ts-show-tokens > div { width: min(64vw, 44vh, 330px); --d: 240px; }
+.ts-show-tokens.n2 > div { width: min(40vw, 34vh, 250px); --d: 180px; }
+.ts-show-tokens.n3 > div, .ts-show-tokens.n4 > div { width: min(27vw, 30vh, 210px); --d: 130px; }
+.ts-show-ability { margin: 1.1em auto 0; max-width: 30em; font-size: clamp(1.05rem, 3.8vw, 1.5rem); line-height: 1.4; overflow-wrap: anywhere; }
+.ts-show-lines { margin: 0; font: 600 clamp(1.5rem, 6.5vw, 2.6rem)/1.3 'Roboto', sans-serif; overflow-wrap: anywhere; }
+.ts-show-n { margin: 1.6em 0 0; font: .8rem 'Roboto', sans-serif; opacity: .5; }
+.ts-show-x { position: fixed; top: 12px; right: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-dealing .ts-seat, .ts-drop { animation: none; }
+  .ts-list, .ts-board { transition: none; }
+}
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero" id="ts-hero">
+    <div class="tool-hero-row">
+      <svg class="ts-hero-icon" viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6">
+        <circle cx="32" cy="9" r="6"/><circle cx="48.3" cy="15.7" r="6"/><circle cx="55" cy="32" r="6"/>
+        <circle cx="48.3" cy="48.3" r="6" fill="currentColor"/><circle cx="32" cy="55" r="6"/><circle cx="15.7" cy="48.3" r="6"/>
+        <circle cx="9" cy="32" r="6"/><circle cx="15.7" cy="15.7" r="6"/>
+        <path d="M32 24v8l5 4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1>Town Square</h1>
+    </div>
+    <p>Run a game of any script.</p>
+  </div>
+
+  <main class="home-panel ts-app" id="ts-app" data-user-content>
+    <section id="ts-start"></section>
+    <section id="ts-game" hidden>
+      <div class="ts-bar" id="ts-bar"></div>
+      <div class="ts-stage">
+        <div>
+          <div class="ts-board" id="ts-board"></div>
+          <div class="ts-strip" id="ts-strip"></div>
+        </div>
+        <aside class="ts-list" id="ts-list" aria-label="Night order"></aside>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="ts-dlg" id="ts-dlg" data-user-content></dialog>
+  <div class="ts-show" id="ts-show" data-user-content hidden></div>
+  <!-- The curve a token's name is written along: left to right through the
+       bottom of the circle, so the letters stand upright (see 404.html). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><path id="ts-arc" d="M 8,50 A 42,42 0 0 0 92,50"/></defs></svg>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/official-roles.js"></script>
+  <script src="assets/townsquare.js"></script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

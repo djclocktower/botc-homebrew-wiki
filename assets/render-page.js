@@ -1738,7 +1738,8 @@
         href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
         label: '<span class="ico ico-download" aria-hidden="true"></span> Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
-      { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
+      { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' },
+      { href: root + 'townsquare?s=' + encodeURIComponent(sc.slug || ''), label: 'Run in Town Square' }
     ];
     return renderPageBody({
       root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v, imageW: sc.imageW,

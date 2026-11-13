@@ -264,6 +264,7 @@
           <button class="sb-btn sb-btn-export" id="sb-export" type="button"><span class="ico ico-download" aria-hidden="true"></span> Export JSON</button>
           <button class="sb-btn sb-btn-copy" id="sb-copy" type="button"><span class="ico ico-copy" aria-hidden="true"></span> Copy JSON</button>
           <button class="sb-btn sb-btn-share" id="sb-share" type="button"><span class="ico ico-link" aria-hidden="true"></span> Share Link</button>
+          <button class="sb-btn sb-btn-sort" id="sb-play" type="button"><span class="ico ico-gamepad" aria-hidden="true"></span> Town Square</button>
           <button class="sb-btn sb-btn-import" id="sb-import" type="button"><span class="ico ico-upload" aria-hidden="true"></span> Import</button>
           <button class="sb-btn sb-btn-clear" id="sb-clear" type="button"><span class="ico ico-x" aria-hidden="true"></span> Clear</button>
           <input type="file" id="sb-import-file" accept=".json,application/json" hidden>
@@ -736,6 +737,14 @@
       withCards(this, function () {
         var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';
         download(fname + '.json', buildExport());
+      });
+    });
+    // Run this roster in the Town Square: the export is left for it to pick up.
+    document.getElementById('sb-play').addEventListener('click', function () {
+      if (!getScript().length) { alert('Your script is empty.'); return; }
+      withCards(this, function () {
+        try { localStorage.setItem('botc_townsquare_in', buildExport()); } catch (e) { alert('Could not hand the script over.'); return; }
+        location.href = 'townsquare?from=builder';
       });
     });
     function copied(btn) {
