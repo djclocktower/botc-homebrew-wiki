@@ -5217,6 +5217,20 @@ async function identityParked(env, slug) {
    fact). Deleted rows count: their art is still in the bucket and they can be
    restored. Throws on a read error; callers treat that as "try again". */
 const ART_SLOT_SUFFIX_RE = /-(alt2?|token|alm)$/;
+
+/* Is there already somebody else's file in this identity's art slots, with
+   no page behind it? A character whose save failed after its art landed, or
+   a purged one, leaves its file in R2, and /api/upload's catch-all refuses
+   anyone else that key ("An image with that name already belongs to another
+   account"). The slug check has to see the same thing, or it hands a new
+   character an identity whose art can never be uploaded. Admins write over
+   it anyway. A read error is "not foreign": the upload is still checked. */
+async function foreignArt(env, sess, slug) {
+  if (sess.isAdmin || !env.ART) return false;
+  const keys = ['', '-alt', '-alt2', '-token', '-alm'].map(x => 'art/' + slug + x + '.png');
+  const heads = await Promise.all(keys.map(k => env.ART.head(k).catch(() => null)));
+  return heads.some(h => h && !(h.customMetadata && h.customMetadata.owner === String(sess.userId)));
+}
 async function artSlotClash(env, slug) {
   const keys = [slug + '-alt', slug + '-alt2', slug + '-token', slug + '-alm'];
   const m = ART_SLOT_SUFFIX_RE.exec(slug);
@@ -11613,7 +11627,8 @@ const app = {
       // a page created on it would answer first and swallow its links.
       const parked = !row && (offPrefix || (type === 'character'
         ? (await identityParked(env, base).catch(() => false)) ||
-          (await artSlotClash(env, base).catch(() => false))
+          (await artSlotClash(env, base).catch(() => false)) ||
+          (await foreignArt(env, sess, base))
         : !!(await lookupRedirect(env, type, base)) || !!(await rowByCustomUrl(env, type, base))));
       // Identities an importer has claimed in this run but not saved yet: the
       // Worker cannot see them, so the importer names them and they count as
@@ -11725,6 +11740,7 @@ const app = {
           // Asked one candidate at a time: almost always the first free one
           // passes, so this is one query rather than a scan per rung.
           if (await artSlotClash(env, s).catch(() => true)) continue;
+          if (await foreignArt(env, sess, s)) continue;
         }
         suggestion = s;
         break;
