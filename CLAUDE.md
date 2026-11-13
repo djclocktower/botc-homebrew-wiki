@@ -949,6 +949,9 @@ assets/
   starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
                        the gallery in an iframe; the picked PNG goes into the
                        art file input with a change event.
+  townsquare.js        The Town Square (/townsquare): reading a script JSON,
+                       the bag, the seats, the night steps, the vote counter
+                       and every dialog. See "The Town Square".
   topbar/              The top bar's damask, drawn by header-redesign.css
                        section 1 as the bar's ::before (no markup):
                        ribbon-damask-v2.webp is a MASK (the Fancy Scripts sidebar
@@ -1126,8 +1129,8 @@ scripts.html           /scripts — the script index. Filter chips for Curata an
                        .filter-bar that is not .open, so the bar was
                        unreachable on a phone without it.
 script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
-tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Starlit Gallery, Mass
+tools.html             /tools — the toolbox hub: Script Builder, Town Square,
+                       Token Tool, Grimoire Forge, Icon Forge, Starlit Gallery, Mass
                        Import, Jinxes, Creator Icons. This is what the "Tools"
                        nav entry points at.
                        Each card carries its tool's icon: assets/grimforge.png
@@ -1139,6 +1142,10 @@ tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        .tool-hero-icon in styles.css; Grimoire Forge keeps its
                        own .gf-hero-* copy), except /starlit, whose title is
                        the team's lettering.
+townsquare.html        The Town Square (/townsquare): a storyteller's grimoire
+                       for running a game of any script on one device. The
+                       page is the shell and the CSS; the rest is
+                       assets/townsquare.js. See "The Town Square".
 starlit.html           The Starlit Gallery (/starlit). See that section.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
@@ -3704,6 +3711,61 @@ wording there and reference it, or the owner cannot edit it. API error
 messages are deliberately out of scope: they come back as JSON, usually into
 an `alert()`, and there is no DOM to patch.
 
+## The Town Square (`/townsquare`)
+
+A storyteller's grimoire for running a game on one device, usually a phone
+at the table: deal a bag, seat the players, place reminders, step through
+the night, count votes, hold a card up to a player. A **static page** (no
+Worker route, no D1) and nothing is sent anywhere.
+
+- **Its only input is a script in the official JSON schema**, so it knows
+  nothing about the wiki's own rows. `?s={slug}` reads `/api/page-json` (a
+  draft follows its page's rule, a custom JSON is what gets played); the
+  Script Builder's "Town Square" button leaves its export in localStorage
+  `botc_townsquare_in`, read once at `?from=builder`; a JSON file; and the
+  three base editions (roles.json's `edition`). The "Run in Town Square"
+  action on a script page is the main door. A bare id is looked up in
+  roles.json + night-order.json through `OfficialRoles.buildOfficialRoles()`;
+  the reminder tokens come off the roles.json rows, which that function
+  drops. The Script Builder's credits entry is skipped. Wiki art is drawn
+  from its 192px thumbnail, officials from `icons-sm/`.
+- **A game is plain data** in localStorage `botc_townsquare`: newest first,
+  six kept, each with the script it was dealt from, so a reload loses nothing
+  and it works offline. A kept game resumes on that copy of the script;
+  deleting it on the start screen is how a changed script is picked up.
+  Every change goes through `commit()` first, which is the Undo.
+- **The bag**: `baseCounts()` is the official table. `outsiderShift()` reads
+  only `[+N Outsider]`-shaped setup text ("+2", "-1 or +1", "+0 to +2");
+  any other bracket is shown under the picker as a note for the Storyteller.
+  `randomBag(chars, players, keep)` deals round characters picked by hand,
+  and Outsiders picked by hand mean the sum is already done. Deal with too
+  few picked tops the bag up.
+- **The night** is `nightSteps()` over `orderSteps()`, the rule
+  `sortNightItems()` in render-page.js follows: the script's
+  `_meta.firstNight` / `otherNight` first, anything it does not list slotted
+  in by its own number. Minion Info and Demon Info only with 7 or more
+  players; their card button shows the Demon, the Minions and the bluffs.
+- **Seats sit on a superellipse** (`ring()`), spaced by an arc length that
+  counts sideways distance for more, because a seat is taller than it is
+  wide. Under 80px a token's curved name is unreadable, so the board takes
+  `ts-small` and draws a flat nameplate. Under 560px (`ts-narrow`) the
+  middle is left empty for reminders, and the bluffs are in the menu.
+  Reminders are tags on the side of the token that faces the middle.
+- **The vote counter** (day): tap the player being voted on, then each
+  raised hand. A dead player's hand spends their vote on Done; one with no
+  vote left cannot raise it. "On the block" is a reminder carrying `b` (the
+  count): more votes takes it, a tie frees it, night clears it.
+- **Hide the characters** is the view for the players' eyes: numbers
+  instead of tokens, and a tap cycles dead, vote used, alive.
+- Tokens are round because tokens are (as on the 404 page); everything else
+  is square and flat. The whole app is `data-user-content`, so site-text
+  overrides never touch a script's wording.
+- The rules are exported as `window.TownSquare` for
+  `migration/tests/townsquare.test.mjs`. Lookup tables keyed by a character
+  id are `Object.create(null)`: there is a character called Constructor.
+- Not on the homepage's browse cards: that grid is eight cards with the
+  Starlit team's art.
+
 ## Icon Forge (`/iconforge`)
 
 A client-side icon maker: line art, a scan or a photo in, an official-style
@@ -4711,7 +4773,7 @@ seeded with whole collections whose characters all arrived unowned.
   `Render.exportTeamOf()`). A team no list knows is drawn with Other. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
   `render-page.js`, `card-filters.js`, `char-filters.js`, `search-core.js`,
-  `render.js`, `site.js`, `token-tool.js`, and inline in `all-characters/index/author/profile/
+  `render.js`, `site.js`, `token-tool.js`, `townsquare.js`, and inline in `all-characters/index/author/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, `TEAM_ALIAS` in `worker/bloodstar.js` and `TEAMS` in `assets/importer.js`
   and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
