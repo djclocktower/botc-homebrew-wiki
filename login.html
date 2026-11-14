@@ -29,7 +29,7 @@
                 inset 0 0 0 4px var(--parch-frame);
   }
   .login-card h2 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: clamp(1.4rem, 4vw, 2rem);
     color: var(--maroon);
     letter-spacing: .06em;
@@ -45,7 +45,7 @@
   .login-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--parch-frame); border-radius: 6px; overflow: hidden; }
   .login-tab {
     flex: 1;
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1.05rem;
     letter-spacing: .04em;
     padding: 10px;
@@ -63,7 +63,7 @@
   .login-field { margin-bottom: 16px; }
   .login-field label {
     display: block;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .8rem;
     text-transform: uppercase;
     letter-spacing: .08em;
@@ -74,7 +74,7 @@
   .login-field input {
     width: 100%;
     box-sizing: border-box;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: 1rem;
     color: #241a12;
     background: #fffdf8;
@@ -84,14 +84,14 @@
   }
   .login-field input:focus { outline: 2px solid #b98; border-color: #b98; }
   .login-hint {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .78rem;
     color: #6d5b40;
     margin-top: 4px;
   }
   .login-btn {
     width: 100%;
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1.15rem;
     letter-spacing: .05em;
     color: #f4ead2;
@@ -110,7 +110,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-weight: 700;
     font-size: 1rem;
     color: #fff;
@@ -127,7 +127,7 @@
   .login-or {
     display: flex; align-items: center; gap: 12px;
     margin: 18px 0 4px;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .8rem; text-transform: uppercase; letter-spacing: .1em;
     color: #6d5b40;
   }
@@ -135,7 +135,7 @@
   .login-msg {
     margin-top: 16px;
     text-align: center;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .95rem;
     min-height: 1.2em;
   }
@@ -144,13 +144,13 @@
   .login-links {
     margin-top: 14px;
     text-align: center;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .9rem;
   }
-  .login-links a { color: var(--good-name); cursor: pointer; }
+  .login-links button { color: var(--good-name); cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
   .login-status {
     text-align: center;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     margin-bottom: 18px;
     color: var(--ink);
   }
@@ -172,10 +172,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -208,56 +208,56 @@
 
       <!-- Login / signup view -->
       <div id="auth-view">
-        <div class="login-tabs" role="tablist">
+        <div class="login-tabs">
           <button class="login-tab active" id="tab-login" type="button">Log In</button>
           <button class="login-tab" id="tab-signup" type="button">Sign Up</button>
         </div>
 
         <!-- LOG IN -->
-        <div id="login-form">
+        <form id="login-form">
           <div class="login-field">
             <label for="username">Username or Email</label>
-            <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false">
+            <input type="text" id="username" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false">
             <div class="login-hint">Your @username, display name or email address all work.</div>
           </div>
           <div class="login-field">
             <label for="password">Password</label>
-            <input type="password" id="password" autocomplete="current-password">
+            <input type="password" id="password" name="password" required autocomplete="current-password">
           </div>
-          <button class="login-btn" id="login-btn" type="button">Log In</button>
-          <div class="login-links"><a id="forgot-link">Forgot your password?</a></div>
-        </div>
+          <button class="login-btn" id="login-btn" type="submit">Log In</button>
+          <div class="login-links"><button type="button" id="forgot-link">Forgot your password?</button></div>
+        </form>
 
         <!-- SIGN UP -->
-        <div id="signup-form" style="display:none">
+        <form id="signup-form" style="display:none">
           <div class="login-field">
             <label for="su-username">Username</label>
-            <input type="text" id="su-username" autocomplete="username" autocapitalize="none" spellcheck="false">
+            <input type="text" id="su-username" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false">
             <div class="login-hint">3–20 characters: letters, numbers, hyphens, underscores</div>
           </div>
           <div class="login-field">
             <label for="su-email">Email</label>
-            <input type="email" id="su-email" autocomplete="email" spellcheck="false">
+            <input type="email" id="su-email" name="email" required autocomplete="email" spellcheck="false">
             <div class="login-hint">Used for password resets</div>
           </div>
           <div class="login-field">
             <label for="su-password">Password</label>
-            <input type="password" id="su-password" autocomplete="new-password">
+            <input type="password" id="su-password" name="password" required autocomplete="new-password">
             <div class="login-hint">At least 8 characters.</div>
           </div>
-          <button class="login-btn" id="signup-btn" type="button">Create Account</button>
-        </div>
+          <button class="login-btn" id="signup-btn" type="submit">Create Account</button>
+        </form>
 
         <!-- FORGOT PASSWORD -->
-        <div id="forgot-form" style="display:none">
+        <form id="forgot-form" style="display:none">
           <p class="login-status">Enter the email (or username) on your account and we'll send a reset link.</p>
           <div class="login-field">
             <label for="fp-email">Email or Username</label>
-            <input type="text" id="fp-email" autocomplete="email" autocapitalize="none" spellcheck="false">
+            <input type="text" id="fp-email" name="email" required autocomplete="email" autocapitalize="none" spellcheck="false">
           </div>
-          <button class="login-btn" id="forgot-btn" type="button">Send Reset Link</button>
-          <div class="login-links"><a id="back-to-login">&larr; Back to log in</a></div>
-        </div>
+          <button class="login-btn" id="forgot-btn" type="submit">Send Reset Link</button>
+          <div class="login-links"><button type="button" id="back-to-login">&larr; Back to log in</button></div>
+        </form>
 
         <div class="login-or">or</div>
         <a class="discord-btn" href="/api/auth/discord">
@@ -266,7 +266,7 @@
         </a>
       </div>
 
-      <p class="login-msg" id="login-msg"></p>
+      <p class="login-msg" id="login-msg" role="status"></p>
     </div>
   </main>
 
@@ -353,8 +353,9 @@
     }
 
     // ── log in ──
-    $('login-btn').addEventListener('click', function () {
-      var btn = this;
+    $('login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = $('login-btn');
       var username = $('username').value.trim();
       var password = $('password').value;
       if (!username || !password) { setMsg('error', 'Enter your username/email and password.'); return; }
@@ -375,11 +376,11 @@
           btn.disabled = false; btn.textContent = 'Log In';
         });
     });
-    $('password').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('login-btn').click(); });
 
     // ── sign up ──
-    $('signup-btn').addEventListener('click', function () {
-      var btn = this;
+    $('signup-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = $('signup-btn');
       var username = $('su-username').value.trim();
       var email = $('su-email').value.trim();
       var password = $('su-password').value;
@@ -401,11 +402,11 @@
           btn.disabled = false; btn.textContent = 'Create Account';
         });
     });
-    $('su-password').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('signup-btn').click(); });
 
     // ── forgot password ──
-    $('forgot-btn').addEventListener('click', function () {
-      var btn = this;
+    $('forgot-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = $('forgot-btn');
       var email = $('fp-email').value.trim();
       if (!email) { setMsg('error', 'Enter your email or username.'); return; }
       btn.disabled = true; btn.textContent = 'Sending…';

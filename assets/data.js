@@ -2,6 +2,12 @@
 (function () {
   'use strict';
   var pending = new Map(), scripts = new Map();
+  /* Enter that only confirms an input method's candidate (Chinese,
+     Japanese, Korean) must not reach the page's own Enter handlers, or a
+     half-typed message is sent. Safari reports it as keyCode 229. */
+  if (window.addEventListener) window.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) e.stopImmediatePropagation();
+  }, true);
   function json(path) {
     var url = new URL(path, document.baseURI);
     var shared = url.origin === location.origin &&
@@ -206,7 +212,23 @@
      The parent holds its height while the box is measured and the scroll is
      put back. size() returns the new height in px from ta.scrollHeight.
      Every grow-with-text box on the site goes through this. */
+  /* Where the browser can size a box to its text itself (field-sizing),
+     it does: no measuring per keystroke. The box keeps the height its
+     `rows` gave it as a floor, as the measuring did. A hidden box (no
+     height to read yet) is measured until it is first seen. */
+  var FIELD_SIZING = !!(window.CSS && CSS.supports && CSS.supports('field-sizing', 'content'));
   function fitHeight(ta, size) {
+    if (ta._fieldSized) return;
+    if (FIELD_SIZING) {
+      ta.style.height = 'auto';
+      var floor = ta.offsetHeight;
+      if (floor) {
+        ta.style.minHeight = floor + 'px';
+        ta.style.fieldSizing = 'content';
+        ta._fieldSized = true;
+        return;
+      }
+    }
     var x = window.scrollX, y = window.scrollY, p = ta.parentNode;
     if (p) p.style.minHeight = p.offsetHeight + 'px';
     ta.style.height = 'auto';

@@ -57,7 +57,7 @@
 .tt-load {
   display: flex; align-items: center; gap: 12px; margin: 0 0 18px;
   color: rgba(236,225,200,.85);
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   letter-spacing: .08em; font-size: .95rem;
 }
 .tt-load.done { display: none; }
@@ -82,7 +82,7 @@
   padding: 16px 18px; margin: 0 0 22px;
 }
 .tt-card > h2 {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.1rem; letter-spacing: .05em; color: var(--maroon);
   margin: 0 0 12px; padding-bottom: 6px;
   border-bottom: 2px solid var(--parch-frame);
@@ -181,7 +181,7 @@
 .tt-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 4px 0 18px; }
 #tt-load-gen { margin: 0; }
 .tt-btn-generate {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; letter-spacing: .06em;
   font-size: 1.05rem; cursor: pointer; border: none; border-radius: 0;
   padding: 13px 30px; color: #f3ead4;
   background: linear-gradient(180deg,#2f6fb8,#1d4a80);
@@ -231,7 +231,7 @@
    evil one and gets both by default; the chips are how you print just one. */
 .tt-vers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .tt-ver {
-  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
   padding: 2px 8px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--card-edge); background: transparent;
@@ -246,7 +246,7 @@
 }
 .tt-adj-head h2 { margin-bottom: 0 !important; border-bottom: none !important; flex: 1; }
 .tt-adj-sect {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: .92rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-size: .92rem;
   letter-spacing: .05em; color: var(--maroon); margin: 16px 0 4px;
   padding-bottom: 3px; border-bottom: 1px solid rgba(180,160,120,.45);
 }
@@ -258,7 +258,7 @@
 }
 .tt-gear[aria-expanded="true"] { color: var(--ink); }
 .tt-kern-gaps { margin: 0 0 8px 14px; padding-left: 10px; border-left: 2px solid rgba(180,160,120,.45); }
-.tt-kern-gaps .tt-row > label { font-family: 'Dumbledor2', serif; letter-spacing: .08em; min-width: 2.4em; }
+.tt-kern-gaps .tt-row > label { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; letter-spacing: .08em; min-width: 2.4em; }
 .tt-kern-none { font-size: .85rem; margin: 6px 0; }
 .tt-adj-actions { margin-top: 14px; }
 .tt-btn-sm {
@@ -287,7 +287,7 @@
 }
 .tte-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--parch-frame); }
 .tte-head h2 {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.15rem; letter-spacing: .05em; color: var(--maroon); margin: 0;
 }
 .tte-close {
@@ -365,10 +365,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

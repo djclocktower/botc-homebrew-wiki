@@ -89,7 +89,8 @@
     else document.addEventListener('DOMContentLoaded', whenMe);
   }
 
-  /* Smooth-scroll the contents box, and keep the heading clear of the topbar. */
+  /* Smooth-scroll the contents box (the topbar clearance is html's
+     scroll-padding-top in styles.css). */
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('.wiki-toc a, .sec-anchor');
     if (!a) return;
@@ -97,8 +98,7 @@
     var target = id && document.getElementById(id);
     if (!target) return;
     e.preventDefault();
-    var y = target.getBoundingClientRect().top + window.pageYOffset - 70;
-    window.scrollTo({ top: y, behavior: 'smooth' });
+    target.scrollIntoView({ behavior: 'smooth' });
     if (history.replaceState) history.replaceState(null, '', '#' + id);
   });
 
@@ -107,7 +107,7 @@
     window.addEventListener('load', function () {
       var target = document.getElementById(location.hash.slice(1));
       if (!target) return;
-      window.scrollTo(0, target.getBoundingClientRect().top + window.pageYOffset - 70);
+      target.scrollIntoView();
     });
   }
 })();

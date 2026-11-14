@@ -1157,7 +1157,8 @@
     if (doc.querySelector('.snap-backdrop')) return;
     var prefs = loadPrefs();
 
-    var back = el('div', 'snap-backdrop');
+    var back = el('dialog', 'snap-backdrop');
+    back.setAttribute('aria-label', 'Almanac snapshot');
     var panel = el('div', 'snap-panel');
     var head = el('div', 'snap-head');
     head.appendChild(el('h2', 'snap-title', 'Almanac snapshot'));
@@ -1232,6 +1233,7 @@
     panel.appendChild(actions);
     back.appendChild(panel);
     doc.body.appendChild(back);
+    back.showModal();
 
     var img = el('img', 'snap-img');
     img.alt = (d.name || 'Character') + ' almanac';
@@ -1246,14 +1248,13 @@
     // The picture on screen. Every button reads it at the moment it is
     // pressed, so a rebuild never leaves a button holding an old one.
     var cur = null, url = null, shut = false, run = 0, timer = null;
-    function close() {
+    // Esc closes the dialog natively; every way out ends at 'close'.
+    function close() { back.close(); }
+    back.addEventListener('close', function () {
       shut = true;
       if (url) URL.revokeObjectURL(url);
-      doc.removeEventListener('keydown', onKey);
       if (back.parentNode) back.parentNode.removeChild(back);
-    }
-    function onKey(e) { if (e.key === 'Escape') close(); }
-    doc.addEventListener('keydown', onKey);
+    });
     closeX.addEventListener('click', close);
     done.addEventListener('click', close);
     back.addEventListener('click', function (e) { if (e.target === back) close(); });

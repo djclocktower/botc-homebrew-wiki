@@ -78,9 +78,7 @@
         var st = { x: TARGET / 2, y: TARGET / 2, fill: FILL * 100, rot: 0 };
 
         /* ── DOM ── */
-        var back = el('div', 'aa-backdrop');
-        back.setAttribute('role', 'dialog');
-        back.setAttribute('aria-modal', 'true');
+        var back = el('dialog', 'aa-backdrop');
         back.setAttribute('aria-label', opts.title || 'Adjust icon');
         var panel = el('div', 'aa-panel');
         panel.appendChild(el('h2', 'aa-title', opts.title || 'Adjust icon'));
@@ -245,8 +243,9 @@
           if (back.parentNode) back.parentNode.removeChild(back);
           if (err) reject(err); else resolve(value);
         }
+        // Esc is Cancel, and goes no further than this window.
         function onKey(e) {
-          if (e.key === 'Escape') { e.stopPropagation(); close(null); }
+          if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(null); }
         }
         document.addEventListener('keydown', onKey, true);
         cancel.addEventListener('click', function () { close(null); });
@@ -262,6 +261,7 @@
         });
 
         document.body.appendChild(back);
+        back.showModal();
         draw();
         ok.focus();
       });

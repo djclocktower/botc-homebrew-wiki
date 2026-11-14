@@ -337,16 +337,22 @@
         var orig = cl.getAttribute('data-orig') || cl.innerHTML;
         cl.setAttribute('data-orig', orig);
         var short = cl.classList.contains('copy-link-short');
-        var linkLabel = function (text) {
-          cl.innerHTML = text;
-          setTimeout(function () { cl.innerHTML = orig; }, 1500);
+        // The button is a live region (aria-live), so the answer is read
+        // out; the icon-only one carries its word for screen readers.
+        var linkLabel = function (ok) {
+          var ico = '<span class="ico ico-' + (ok ? 'check' : 'x') + '" aria-hidden="true"></span>';
+          var word = ok ? 'Copied!' : 'Copy failed';
+          cl.setAttribute('aria-live', 'polite');
+          cl.innerHTML = short ? ico + '<span class="sr-only">' + word + '</span>' : (ok ? ico + ' ' : '') + word;
+          clearTimeout(cl._copyT);
+          cl._copyT = setTimeout(function () { cl.innerHTML = orig; }, 1500);
         };
         // A refused clipboard (permissions, an insecure frame) says so
         // rather than leaving the tap looking ignored, as Copy JSON does.
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(url).then(function () { linkLabel(short ? '\u2713' : '\u2713 Copied!'); },
-            function () { linkLabel(short ? '\u2715' : 'Copy failed'); });
-        } else linkLabel(short ? '\u2715' : 'Copy failed');
+          navigator.clipboard.writeText(url).then(function () { linkLabel(true); },
+            function () { linkLabel(false); });
+        } else linkLabel(false);
         return;
       }
       var tg = e.target.closest && e.target.closest('.json-bar-toggle');
@@ -363,13 +369,16 @@
       if (cp) {
         var b = cp.closest('.json-box');
         var txt = b.querySelector('code').textContent;
+        var jsonLabel = function (text) {
+          cp.setAttribute('aria-live', 'polite');
+          cp.textContent = text;
+          clearTimeout(cp._copyT);
+          cp._copyT = setTimeout(function () { cp.textContent = 'Copy JSON'; }, 1500);
+        };
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(txt).then(function () {
-            cp.textContent = 'Copied!'; setTimeout(function () { cp.textContent = 'Copy JSON'; }, 1500);
-          }, function () {
-            cp.textContent = 'Copy failed'; setTimeout(function () { cp.textContent = 'Copy JSON'; }, 1500);
-          });
-        }
+          navigator.clipboard.writeText(txt).then(function () { jsonLabel('Copied!'); },
+            function () { jsonLabel('Copy failed'); });
+        } else jsonLabel('Copy failed');
       }
     });
     // Keyboard toggle for the collapsible jinx dropdown and the JSON box

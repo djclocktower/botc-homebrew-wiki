@@ -982,7 +982,7 @@
     var banner = p.header
       ? (function () {
           var url = safeImg(p.header, root);
-          return url ? '<div class="wiki-banner-wrap"><img class="wiki-banner" src="' + esc(url) + '" alt=""></div>' : '';
+          return url ? '<div class="wiki-banner-wrap"><img class="wiki-banner" src="' + esc(url) + '" alt="" fetchpriority="high"></div>' : '';
         })()
       : '';
 

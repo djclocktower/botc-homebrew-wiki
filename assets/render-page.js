@@ -856,6 +856,14 @@
     return ' srcset="' + esc(parts.join(', ')) + '" sizes="' + esc(sizes || '(max-width: 640px) 94vw, 800px') + '"';
   }
   var MEDIA_SLOTS = [320, 640, 1280];
+  /* The page's top picture: fetched first, and its shape (`--ar`, from the
+     measured imageW/imageH) lets styles.css reserve its box before it
+     arrives, so nothing under it moves. */
+  function heroAttrs(path, imageW, imageH) {
+    var w = imageW && Number(imageW[path]), h = imageH && Number(imageH[path]);
+    var ar = w > 0 && h > 0 && w <= 20000 && h <= 20000 ? ' style="--ar:' + Math.round(w) + '/' + Math.round(h) + '"' : '';
+    return ' fetchpriority="high"' + ar;
+  }
   /* `sizes` for a script or collection TILE (the browse grids, the
      homepage, a creator page, search). A tile is ~320 CSS px wide on a
      phone and 245-380 on a desktop, its picture object-fit inside a 21:9
@@ -1603,8 +1611,8 @@
              creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px', cfg.imageW) + ' alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px', cfg.imageW) + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px', cfg.imageW) + heroAttrs(cfg.header, cfg.imageW, cfg.imageH) + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px', cfg.imageW) + heroAttrs(cfg.logo, cfg.imageW, cfg.imageH) + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -1667,8 +1675,8 @@
 
     // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px', cfg.imageW) + ' alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px', cfg.imageW) + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px', cfg.imageW) + heroAttrs(cfg.header, cfg.imageW, cfg.imageH) + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px', cfg.imageW) + heroAttrs(cfg.logo, cfg.imageW, cfg.imageH) + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -1741,7 +1749,7 @@
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
     ];
     return renderPageBody({
-      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v, imageW: sc.imageW,
+      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v, imageW: sc.imageW, imageH: sc.imageH,
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
@@ -1771,7 +1779,7 @@
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
     return renderCollectionBody({
-      root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v, imageW: coll.imageW,
+      root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v, imageW: coll.imageW, imageH: coll.imageH,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,

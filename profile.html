@@ -27,7 +27,7 @@
     width:86px; height:86px; border-radius:50%; flex-shrink:0;
     background:var(--maroon, #5b1f21); color:#f7ecd0; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
-    font-family:'Dumbledor2',serif; font-size:2.2rem;
+    font-family:'Dumbledor2','Dumbledor2 Fallback',serif; font-size:2.2rem;
     border:2px solid rgba(236,225,200,.4);
   }
   .profile-avatar img { width:100%; height:100%; object-fit:cover; }
@@ -72,7 +72,7 @@
   .profile-btn-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
   .profile-msg-btn {
     display:inline-block; padding:7px 16px;
-    font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-weight:700; font-size:.88rem;
+    font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-weight:700; font-size:.88rem;
     color:#f4ead2; background:linear-gradient(180deg,#7a2d2f,#5b1f21);
     border:1px solid rgba(236,225,200,.35); border-radius:6px; text-decoration:none;
   }
@@ -115,7 +115,7 @@
   .pin-thumb { width:40px; height:40px; object-fit:contain; flex-shrink:0; }
   .pin-text { min-width:0; }
   .pin-name {
-    display:block; font-family:'Dumbledor2',serif; font-size:1.05rem; letter-spacing:.04em;
+    display:block; font-family:'Dumbledor2','Dumbledor2 Fallback',serif; font-size:1.05rem; letter-spacing:.04em;
     text-transform:uppercase; line-height:1.15; overflow-wrap:anywhere;
   }
   .pin-kind { display:block; font-size:.74rem; font-family:'Roboto',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.6; }
@@ -138,10 +138,10 @@
       <a href="/all-collections">Collections</a>
       <a href="/script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

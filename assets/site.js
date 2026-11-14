@@ -1253,10 +1253,18 @@
         topSearch.value = navSearch.value;
         topSearch.dispatchEvent(new Event('input'));
       });
-      navSearch.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
-      });
     }
+    function closeDrop() {
+      drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
+    }
+    // Esc closes the open menu from anywhere, not only from its search box;
+    // focus goes back to the button when it was inside the menu.
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !drop.classList.contains('open')) return;
+      var inside = drop.contains(document.activeElement);
+      closeDrop();
+      if (inside) btn.focus();
+    });
     window.addEventListener('resize', positionDrop);
     // The bar moves while whatever sits above it scrolls away; keep the
     // open menu hanging off it.
@@ -1264,9 +1272,7 @@
       if (drop.classList.contains('open')) positionDrop();
     }, { passive: true });
     document.addEventListener('click', function (e) {
-      if (!btn.contains(e.target) && !drop.contains(e.target)) {
-        drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
-      }
+      if (!btn.contains(e.target) && !drop.contains(e.target)) closeDrop();
     });
   })();
 

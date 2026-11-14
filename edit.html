@@ -28,14 +28,14 @@
   }
   .formcard{background:#f7f6f2;border:1px solid var(--card-edge);border-radius:10px;
     padding:20px 22px;box-shadow:0 10px 26px rgba(40,12,30,.35);color:#241a12;max-width:100%;box-sizing:border-box;overflow-x:hidden}
-  .formcard h2{font-family:'Dumbledor2',serif;color:var(--maroon);margin:0 0 4px;font-size:1.35rem}
+  .formcard h2{font-family:'Dumbledor2','Dumbledor2 Fallback',serif;color:var(--maroon);margin:0 0 4px;font-size:1.35rem}
   .formcard .sub{font-size:.86rem;color:#6b5d49;margin:0 0 18px}
   .fld{margin-bottom:15px}
   .fld label{display:block;font-family:'Roboto',sans-serif;font-weight:600;font-size:.82rem;
     letter-spacing:.04em;text-transform:uppercase;color:#5b4632;margin-bottom:5px}
   .fld .hint{font-weight:400;text-transform:none;letter-spacing:0;color:#726348;font-size:.78rem}
   .fld input[type=text],.fld input[type=number],.fld textarea,.fld select{
-    width:100%;max-width:100%;box-sizing:border-box;font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.95rem;color:#241a12;
+    width:100%;max-width:100%;box-sizing:border-box;font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.95rem;color:#241a12;
     background:#fffdf8;border:1px solid #cdbfa0;border-radius:6px;padding:9px 11px}
   .fld textarea{resize:none;min-height:64px;line-height:1.4;overflow-y:hidden}
   .fld input:focus,.fld textarea:focus,.fld select:focus{outline:2px solid #b98;border-color:#b98}
@@ -67,7 +67,7 @@
   .sp-time{grid-area:time}.sp-value{grid-area:value}.sp-del{grid-area:del}
   .special-row input,.special-row select{
     width:100%;max-width:100%;box-sizing:border-box;
-    font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;color:#241a12;
+    font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;color:#241a12;
     background:#fffdf8;border:1px solid #cdbfa0;border-radius:6px;padding:8px 10px}
   .special-row input:focus,.special-row select:focus{outline:2px solid #b98;border-color:#b98}
   .special-row .sp-del{width:auto}
@@ -92,7 +92,7 @@
      `.fld label` — that rule is (0,1,1) and uppercases every label in
      the form, so a bare .credit-unlink would lose to it. */
   .fld label.credit-unlink { display:flex; align-items:center; gap:8px;
-    margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    margin:7px 0 0; font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
     color:#5b4632; cursor:pointer; }
   .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
@@ -110,7 +110,7 @@
     border-bottom:1px solid rgba(47,111,184,.35); }
   .gf-check-link:hover { color:var(--maroon); border-bottom-color:var(--maroon); }
   .preview-pane{position:sticky;top:74px}
-  .preview-label{font-family:'Dumbledor2',serif;color:var(--parch);letter-spacing:.06em;
+  .preview-label{font-family:'Dumbledor2','Dumbledor2 Fallback',serif;color:var(--parch);letter-spacing:.06em;
     font-size:1rem;margin:0 0 10px;opacity:.85}
   #preview{width:100%;height:78vh;border:1px solid rgba(214,196,150,.3);
     border-radius:10px;background:#1d0a1a;box-shadow:0 10px 26px rgba(0,0,0,.5)}
@@ -139,10 +139,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

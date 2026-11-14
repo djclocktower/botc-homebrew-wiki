@@ -21,6 +21,33 @@
   font-display: swap;
 }
 
+/* Stand-ins drawn while the wiki's own faces load, sized to take the
+   same room, so text does not reflow when the real font swaps in. Each
+   covers only the characters its real face has, so anything else still
+   falls through to the next font in the stack as before. Measured with
+   fontTools against Liberation Sans/Serif (Arial/Times metrics); Roboto is
+   within half a percent of Arial. A device with none of these local fonts
+   skips the stand-in, as before. */
+@font-face {
+  font-family: 'TradeGothicLT Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Roboto'), local('Roboto-Regular');
+  font-weight: normal;
+  size-adjust: 98.25%; ascent-override: 73.49%; descent-override: 28.30%; line-gap-override: 20.36%;
+  unicode-range: U+20-7E, U+A0-FF, U+131, U+141-142, U+152-153, U+160-161, U+178, U+17D-17E, U+192, U+2C6-2C7, U+2C9, U+2D8-2DD, U+3A9, U+3BC, U+3C0, U+2010, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2113, U+2122, U+2126, U+212E, U+2202, U+2206, U+220F, U+2211-2212, U+2215, U+2219-221A, U+221E, U+222B, U+2248, U+2260, U+2264-2265, U+25CA, U+FB01-FB02;
+}
+@font-face {
+  font-family: 'TradeGothicLT Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Roboto Bold'), local('Roboto-Bold');
+  font-weight: 700;
+  size-adjust: 75.80%; ascent-override: 95.25%; descent-override: 36.68%; line-gap-override: 26.39%;
+  unicode-range: U+20-7E, U+A0-FF, U+131, U+141-142, U+152-153, U+160-161, U+178, U+17D-17E, U+192, U+2C6-2C7, U+2C9, U+2D8-2DD, U+3A9, U+3BC, U+3C0, U+2010, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2113, U+2122, U+2126, U+212E, U+2202, U+2206, U+220F, U+2211-2212, U+2215, U+2219-221A, U+221E, U+222B, U+2248, U+2260, U+2264-2265, U+25CA, U+FB01-FB02;
+}
+@font-face {
+  font-family: 'Dumbledor2 Fallback';
+  src: local('Times New Roman'), local('TimesNewRomanPSMT'), local('Liberation Serif');
+  size-adjust: 89.73%; ascent-override: 89.08%; descent-override: 24.76%; line-gap-override: 0%;
+  unicode-range: U+20-7E, U+A0-FF, U+152-153, U+160-161, U+178, U+192, U+2C6, U+2C9, U+2DC, U+3BC, U+2010, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2122, U+2212, U+2219;
+}
 /* Trade Gothic LT Std - self-hosted, licensed for free personal & commercial use */
 @font-face {
   font-family: 'TradeGothicLT';
@@ -231,7 +258,7 @@
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
-  font-family: 'TradeGothicLT', 'Libre Franklin', -apple-system, sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', -apple-system, sans-serif;
   font-size: 16px; line-height: 1.4;
   color: var(--maroon);
   background-color: var(--purple-deep);
@@ -433,7 +460,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    its initial bleed into the paragraph below. */
 .dropcap {
   float: left;
-  font-family: 'Dumbledor2', 'EB Garamond', serif;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', 'EB Garamond', serif;
   font-size: 3.1em;
   line-height: .78;
   margin: .04em .09em -.04em 0;
@@ -605,7 +632,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    caps-ish letterspacing so BUH-gain reads as a guide rather than a word. */
 .pronounce-ipa { font-family: 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'DejaVu Sans', serif;
   color: #7a6c56; margin-top: 2px; }
-.pronounce-respell { font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+.pronounce-respell { font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: .8rem; letter-spacing: .06em; color: #8a7a62; margin-top: 2px; }
 .info-h { font-weight: 600; text-align: center; font-size: 1.18rem; color: var(--ink); letter-spacing: .02em; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.4); }
 /* minmax(0,1fr) + wrapping: a long unbroken value (creator handle, collection
@@ -655,7 +682,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   background: var(--parch);
   border: 2px solid var(--parch-frame);
   padding: 10px 16px; cursor: pointer; user-select: none;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   letter-spacing: .08em; color: var(--maroon); font-size: 1rem;
 }
 .jinx-drop.open .jinx-drop-bar { border-bottom: none; }
@@ -670,7 +697,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .custom-box-h {
   border-top: none; padding-top: 0;
   /* Match the Jinxes box header (.gen-sech): Dumbledor2, uppercase, maroon. */
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700;
   color: var(--maroon); letter-spacing: .04em;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem);
 }
@@ -699,7 +726,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   text-align: center;
 }
 .home-hero h1 {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700;
   font-size: clamp(2rem, 6vw, 3.8rem);
   color: var(--parch); letter-spacing: .06em;
   margin: 0 0 .3em;
@@ -804,7 +831,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   color: var(--ink);
 }
 .sidebar-card-title {
-  font-family: 'Dumbledor2', serif;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
   font-size: 1.5rem;
   color: var(--maroon);
   letter-spacing: .06em;
@@ -849,7 +876,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 
 .type-section { margin-bottom: 48px; }
 .type-header {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700;
   font-size: clamp(1.1rem, 2.5vw, 1.5rem);
   letter-spacing: .06em; text-transform: uppercase;
   color: var(--parch); margin: 0 0 4px;
@@ -873,7 +900,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .type-section { content-visibility: auto; contain-intrinsic-size: auto 900px; }
 .char-card-info { flex: 1; min-width: 0; }
 .char-card-name {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700;
   font-size: 1.05rem; color: var(--maroon);
   margin: 0 0 3px; line-height: 1.15;
 }
@@ -932,7 +959,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    GENERATED CHARACTER PAGES (form-created, Dumbledor2 text headings)
    ════════════════════════════════════════════════════════════════ */
 .gen-title {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
   /* Sizing is done in JS (fitCharTitle in render.js): the title is measured and
      scaled so the single line always fits its width. white-space:nowrap
      guarantees it never wraps. The font-size below is only a pre-JS fallback. */
@@ -944,7 +971,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 /* Header-less script titles (script-view) don't run the JS title-fitter, so
    they must wrap on their own instead of overflowing the screen on mobile. */
 .script-title-fallback {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
   font-size: clamp(1.7rem, 7vw, 3.4rem); line-height: 1.03; letter-spacing: .04em;
   text-align: center; margin: 2px 0 10px; overflow-wrap: anywhere; word-break: break-word;
   text-shadow: 0 4px 18px rgba(0,0,0,.7), 0 2px 4px rgba(0,0,0,.5);
@@ -958,7 +985,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   background: linear-gradient(90deg, transparent, var(--rule), transparent);
 }
 .gen-sech {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 700; color: var(--maroon);
   letter-spacing: .04em;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem); margin: 0;
 }
@@ -1029,7 +1056,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 /* homepage create button */
 .create-btn {
   display: inline-block; margin-top: 20px;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 600; letter-spacing: .06em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 600; letter-spacing: .06em;
   background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
   padding: 11px 28px; border-radius: 0; text-decoration: none;
   box-shadow: 0 6px 16px rgba(40,12,30,.4); transition: transform .2s ease;
@@ -1056,14 +1083,14 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .json-box.open .json-bar { border-bottom: none; }
 .json-bar-toggle {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
   color: var(--maroon); cursor: pointer; user-select: none;
   display: flex; align-items: center; gap: 8px; flex: 1; font-size: .9rem;
 }
 .json-arrow { transition: transform .2s ease; font-size: .85em; }
 .json-box.open .json-arrow { transform: rotate(180deg); }
 .json-copy {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
   cursor: pointer; font-size: .78rem; flex-shrink: 0;
   padding: 5px 13px;
   color: var(--maroon);
@@ -1121,7 +1148,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   flex-shrink: 0;
 }
 .search-input {
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: .88rem;
   width: clamp(140px, 22vw, 260px);
   padding: 7px 12px 7px 32px;
@@ -1175,7 +1202,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   min-width: 0;
 }
 .search-result-name {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-weight: 700; font-size: .92rem;
   color: var(--parch);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1270,7 +1297,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sp-form { max-width: 760px; margin: 0 auto 16px; }
 .sp-input {
   width: 100%; box-sizing: border-box;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: 1.08rem;
   padding: 13px 16px 13px 44px;
   border-radius: 0;
@@ -1364,7 +1391,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .tag-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(40,12,30,.35); }
 .tag-count {
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-weight: 700;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif; font-weight: 700;
   font-size: .78rem; background: rgba(91,31,33,.12);
   color: var(--maroon); border-radius: 0;
   padding: 1px 8px; min-width: 22px; text-align: center;
@@ -1410,7 +1437,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   transform: translateX(-50%);
   padding: 5px 9px;
   background: #241a12; color: #f7ecd0;
-  font: 600 .78rem/1.3 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font: 600 .78rem/1.3 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   letter-spacing: .02em; text-transform: none;
   white-space: nowrap; border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,.35);
@@ -1443,7 +1470,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   display: block;
 }
 .creator-sidebar-title {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1rem; letter-spacing: .06em;
   color: var(--maroon); text-align: center;
   margin: 0 0 10px; padding-bottom: 8px;
@@ -1495,7 +1522,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .creator-name {
   font-size: .78rem;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1519,7 +1546,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
     padding: 14px;
   }
   .creator-mobile-link {
-    font-family: 'Dumbledor2', serif; text-transform: uppercase;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
     font-size: 1rem; letter-spacing: .06em;
     color: var(--maroon); text-decoration: none;
   }
@@ -1559,7 +1586,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .cr-intro-text { flex: 1 1 420px; min-width: 0; }
 .cr-intro h2 {
-  margin: 0 0 4px; font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  margin: 0 0 4px; font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.1rem; letter-spacing: .05em; color: var(--maroon);
 }
 .cr-intro p { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--ink); }
@@ -1590,7 +1617,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .cr-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cr-name {
   display: flex; align-items: center; gap: 6px;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-weight: 700; font-size: .98rem;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif; font-weight: 700; font-size: .98rem;
   overflow-wrap: anywhere;
 }
 .cr-av { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex: none; border: 1px solid var(--parch-frame); }
@@ -1700,23 +1727,25 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   display: flex; align-items: center; justify-content: space-between;
 }
 .sb-add-title {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon);
   margin: 0 0 10px;
 }
 .sb-close-mobile { display: none; background: none; border: none; font-size: 1.3rem; color: var(--maroon); cursor: pointer; }
 .sb-filter {
   width: 100%; box-sizing: border-box; margin-bottom: 10px;
-  font-family: 'TradeGothicLT', sans-serif; font-size: .9rem;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', sans-serif; font-size: .9rem;
   padding: 7px 10px; border: 2px solid var(--parch-frame); background: #fffdf8;
   color: var(--ink);
 }
-.sb-add-list { flex: 1; overflow-y: auto; padding-right: 4px; }
-.sb-add-list::-webkit-scrollbar { width: 6px; }
-.sb-add-list::-webkit-scrollbar-thumb { background: var(--parch-frame); }
+.sb-add-list { flex: 1; overflow-y: auto; padding-right: 4px; scrollbar-color: var(--parch-frame) transparent; }
+@supports not (scrollbar-color: auto) {
+  .sb-add-list::-webkit-scrollbar { width: 6px; }
+  .sb-add-list::-webkit-scrollbar-thumb { background: var(--parch-frame); }
+}
 .sb-add-group { margin-bottom: 12px; }
 .sb-add-grouphead {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: .82rem; letter-spacing: .08em; color: var(--evil);
   margin: 0 0 4px; padding-bottom: 3px; border-bottom: 1px solid var(--parch-frame);
 }
@@ -1724,7 +1753,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   display: flex; align-items: center; gap: 8px; 
   background: none; border: none; cursor: pointer;
   padding: 4px 6px; text-align: left;
-  font-family: 'TradeGothicLT', sans-serif; color: var(--maroon);
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', sans-serif; color: var(--maroon);
   transition: background .12s;
 }
 .sb-add-item:hover { background: rgba(91,31,33,.08); }
@@ -1742,7 +1771,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
 }
 .sb-count {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.1rem; color: var(--parch); letter-spacing: .04em;
 }
 .sb-toolbar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1759,7 +1788,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sb-btn-import  { background: linear-gradient(180deg,#4a4060,#2e2040); }
 .sb-script-group { margin-bottom: 26px; }
 .sb-script-grouphead {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.2rem; letter-spacing: .06em; color: var(--parch);
   margin: 0 0 10px; padding-bottom: 6px;
   border-bottom: 2px solid var(--parch-frame);
@@ -1775,7 +1804,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sb-script-thumb { width: 50px; height: 50px; object-fit: contain; flex-shrink: 0; }
 .sb-script-info { flex: 1; min-width: 0; }
 .sb-script-name {
-  display: block; font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  display: block; font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.05rem; color: var(--maroon); text-decoration: none; line-height: 1.1;
 }
 .sb-script-name:hover { color: var(--evil); }
@@ -1795,13 +1824,13 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   .sb-mobile-toggle {
     display: block; position: sticky; top: 56px; z-index: 15;
     width: 100%; border: none; cursor: pointer;
-    font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .04em;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; letter-spacing: .04em;
     font-size: 1rem; padding: 12px; color: #f3ead4;
     background: linear-gradient(180deg,#2f6fb8,#1d4a80);
   }
   .sb-add-sidebar {
     position: fixed; top: 0; left: 0; width: 86%; max-width: 360px;
-    height: 100vh; z-index: 50;
+    height: 100vh; height: 100dvh; z-index: 50;
     transform: translateX(-100%); transition: transform .25s ease;
   }
   .sb-add-sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,.5); }
@@ -1813,7 +1842,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .add-to-script-btn {
   display: block; width: 100%; box-sizing: border-box;
   margin-top: 14px;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
   cursor: pointer; font-size: .9rem;
   padding: 10px 16px;
   color: var(--maroon);
@@ -1864,7 +1893,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .page-fav-btn {
   display: inline-block; font-size: .82rem; padding: 8px 18px;
   letter-spacing: .06em; cursor: pointer;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-weight: 400;
 }
 .page-fav-btn.on { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
 .page-fav-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
@@ -1978,7 +2007,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .nav-dropdown-search input {
   width: 100%; box-sizing: border-box;
-  font-family: 'TradeGothicLT', sans-serif; font-size: .95rem;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', sans-serif; font-size: .95rem;
   padding: 9px 14px; border: 2px solid var(--parch-frame);
   background: rgba(255,253,248,.1); color: var(--parch);
 }
@@ -1993,7 +2022,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .nav-search-results .search-result { padding: 10px clamp(14px,4vw,40px); }
 .nav-dropdown a {
   padding: 14px clamp(14px,4vw,40px);
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1rem; letter-spacing: .05em;
   color: var(--parch); text-decoration: none;
   border-bottom: 1px solid rgba(189,168,154,.15);
@@ -2040,7 +2069,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   text-align: center;
 }
 .landing-hero h1 {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: clamp(1.85rem, 5vw, 3.6rem);
   color: var(--parch); letter-spacing: .04em; line-height: 1.15;
   margin: 0 0 .55em;
@@ -2082,7 +2111,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   margin-top: 6px;
 }
 .cta-primary, .cta-secondary {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .08em;
   font-size: 1rem; padding: 13px 28px;
   text-decoration: none; transition: background .15s, color .15s, transform .2s;
@@ -2137,7 +2166,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   border: 1px solid rgba(183,156,111,.35);
 }
 .collection-name {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: 1.15rem; color: var(--maroon);
   margin: 0 0 6px; line-height: 1.15;
 }
@@ -2153,7 +2182,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   color: var(--maroon);
 }
 .collection-arrow {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .08em;
   font-size: .82rem; color: var(--good-name);
 }
@@ -2195,7 +2224,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   filter: drop-shadow(0 2px 5px rgba(91,31,33,.3));
 }
 .browse-card-title {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: 1.05rem; letter-spacing: .04em;
   color: var(--maroon); margin: 0 0 8px;
 }
@@ -2236,7 +2265,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   margin-bottom: 8px;
 }
 .recent-name {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: .92rem; line-height: 1.15;
   color: var(--maroon);
   margin-bottom: 4px;
@@ -2293,7 +2322,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .featured-type.good { color: var(--good-name); }
 .featured-name {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: 1.55rem; color: var(--maroon);
   margin: 0 0 8px; line-height: 1.15;
 }
@@ -2317,7 +2346,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    (after the creator's name) and must stay full strength. */
 .featured-meta > span:not(.cq) { opacity: .75; }
 .featured-link {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .08em;
   font-size: .85rem;
   color: var(--good-name);
@@ -2397,7 +2426,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 }
 .copy-link-btn {
   flex-shrink: 0;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .06em; font-size: .78rem;
   cursor: pointer;
   border: none;
@@ -2443,8 +2472,8 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   transition: opacity .15s;
 }
 .sec-anchor:hover::after { opacity: .7; }
-:target > .gen-sech, .gen-sech-wrap:target { scroll-margin-top: 80px; }
-[id^="sec-"] { scroll-margin-top: 84px; }
+:target > .gen-sech, .gen-sech-wrap:target { scroll-margin-top: 8px; }
+[id^="sec-"] { scroll-margin-top: 12px; }
 
 /* ─── Script-count badge ─────────────────────────────────── */
 .script-badge {
@@ -2547,7 +2576,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   .filter-bar { gap: 12px 16px; padding: 12px 14px; }
   .filter-toggle {
     display: block; width: 100%;
-    font-family: 'Dumbledor2', serif; text-transform: uppercase;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
     font-weight: 400; letter-spacing: .06em; font-size: .95rem;
     cursor: pointer;
     background: var(--parch); color: var(--maroon);
@@ -2590,7 +2619,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    the plain wiki face — the tile's own name below it, and every tile that has
    a real logo, stay in Dumbledor. */
 .script-card-header-empty span {
-  font-family: 'LHFUnlovable', 'Dumbledor2', serif; color: var(--maroon);
+  font-family: 'LHFUnlovable', 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon);
   /* The name has to FIT the 21:9 box, whatever its length — "Smile Babe,
      You're on Camera!" needed three lines at a fixed 2.4rem and was clipped
      top and bottom (don't reach for -webkit-line-clamp: it does nothing
@@ -2656,7 +2685,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .script-team-group { margin-bottom: 18px; }
 .script-team-group:last-child { margin-bottom: 0; }
 .script-team-head {
-  font-family: 'Dumbledor2', serif; font-weight: 400; font-size: 1.15rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; font-size: 1.15rem;
   color: var(--evil); letter-spacing: .04em; text-transform: uppercase;
   margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(180,160,120,.45);
 }
@@ -2677,7 +2706,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    Weight stays 400: Dumbledor2 has no real bold, and synthesised bold turns to
    mud at list size. */
 .script-char-name {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: 1.14rem; letter-spacing: .045em; line-height: 1.14;
   text-transform: uppercase; color: var(--maroon);
 }
@@ -2711,7 +2740,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   filter: drop-shadow(0 6px 18px rgba(0,0,0,.5));
 }
 .coll-title {
-  font-family: 'Dumbledor2', serif; font-weight: 400; text-align: center;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; text-align: center;
   color: var(--parch); font-size: clamp(2rem, 6vw, 3.4rem);
   margin: 6px 0 10px; line-height: 1.05;
 }
@@ -2734,7 +2763,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    straight on the dark page background, so this can't use --ink. */
 .roster-empty {
   color: rgba(236,225,200,.75); padding: 8px 0;
-  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
 }
 .coll-prose { margin-bottom: 22px; }
 .coll-jinx { margin-top: 22px; }
@@ -2748,7 +2777,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .coll-filters { margin: 4px 0 0; }
 .coll-filter-toggle {
   display: block; width: 100%; max-width: 460px; margin: 0 auto 18px;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-weight: 400; letter-spacing: .06em; font-size: .95rem; cursor: pointer;
   background: var(--parch); color: var(--maroon);
   border: 2px solid var(--parch-frame); padding: 11px 16px; text-align: left;
@@ -2815,7 +2844,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
   position: fixed; z-index: 4000; max-width: 280px;
   background: #f7f0e0; color: #241a12; border: 1px solid #b09070;
   border-radius: 7px; padding: 8px 11px;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: .84rem; line-height: 1.4; text-align: left;
   box-shadow: 0 8px 22px rgba(20, 6, 16, .45);
   pointer-events: none;
@@ -2929,7 +2958,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
    SCRIPT / COLLECTION WIKI PAGES (/s/, /collection/ — render-page.js)
    ════════════════════════════════════════════════════════════════ */
 .script-title-fallback {
-  font-family: 'Dumbledor2', serif; font-weight: 400; text-align: center;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; text-align: center;
   color: var(--parch); font-size: clamp(1.8rem, 6vw, 3.2rem);
   letter-spacing: .04em; margin: 10px 0 4px;
   text-shadow: 0 4px 16px rgba(0,0,0,.7);
@@ -2985,7 +3014,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sv-section .gen-sech-wrap { margin: 4px 0 10px; }
 .sv-section p { color: var(--ink); line-height: 1.5; margin: 0 0 .8em; }
 .sv-subhead {
-  font-family: 'Dumbledor2', serif; font-weight: 400; font-size: 1.05rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; font-size: 1.05rem;
   color: var(--evil); letter-spacing: .04em; text-transform: uppercase; margin: 14px 0 6px;
 }
 .sv-subhead.good { color: var(--good-name); }
@@ -3016,7 +3045,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .sv-night-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .sv-night-cols { grid-template-columns: 1fr; } }
 .sv-night-head {
-  font-family: 'Dumbledor2', serif; font-weight: 400; font-size: 1rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; font-size: 1rem;
   color: var(--maroon); letter-spacing: .05em; text-transform: uppercase;
   margin: 0 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(180,160,120,.45);
 }
@@ -3041,7 +3070,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* Same display face as the roster names above, a size down: this is a dense
    two-column list, and the reminder text under each name carries the detail. */
 .sv-night-name {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: 1rem; letter-spacing: .04em; line-height: 1.16;
   text-transform: uppercase; color: var(--maroon); text-decoration: none;
   overflow-wrap: anywhere; word-break: break-word;
@@ -3060,7 +3089,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 /* ── Per-page theming (validated values only — see render-page.js) ──
    The Worker puts .page-themed + theme-* classes and --pg-* custom props on
    <main>. Scope is the page body only; topbar and footer stay untouched. */
-.theme-font-trade    { --pg-font: 'TradeGothicLT', 'Libre Franklin', sans-serif; }
+.theme-font-trade    { --pg-font: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif; }
 .theme-font-oswald   { --pg-font: 'Oswald', sans-serif; }
 .theme-font-garamond { --pg-font: 'EB Garamond', serif; }
 .theme-font-cinzel   { --pg-font: 'Cinzel', serif; }
@@ -3076,7 +3105,7 @@ mark.sr-hl { background: rgba(203,160,70,.3); color: inherit; padding: 0; border
 .page-themed .sv-night-head,
 .page-themed .sv-night-name,
 .page-themed .jinx-drop-title {
-  font-family: var(--pg-font, 'Dumbledor2', serif);
+  font-family: var(--pg-font, 'Dumbledor2','Dumbledor2 Fallback', serif);
 }
 .theme-accent .gen-sech a,
 .theme-accent .script-title-fallback,
@@ -3118,7 +3147,7 @@ body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); 
   background: linear-gradient(180deg, #7a5c18, #5f4712);
   color: #f7ecd0;
   padding: 9px 44px 9px 14px;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: .92rem;
   line-height: 1.35;
   text-align: center;
@@ -3161,7 +3190,16 @@ body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); 
   overflow-y: auto; padding: 20px 10px 40px;
 }
 .rules-modal.open { display: flex; }
-.rules-modal-lock { overflow: hidden; }
+/* The overlay is a native <dialog> opened with showModal(): the browser
+   traps focus in it, closes it on Esc and keeps it above everything. The
+   dialog box itself is the full-screen dim, so the card styles are
+   unchanged. */
+dialog:is(.rules-modal, .snap-backdrop, .sg-modal, .aa-backdrop, .starlit-picker):not([open]) { display: none; }
+dialog:is(.rules-modal, .snap-backdrop, .sg-modal, .aa-backdrop, .starlit-picker) {
+  width: auto; height: auto; max-width: none; max-height: none;
+  margin: 0; border: 0; color: inherit; box-sizing: border-box;
+}
+dialog:is(.rules-modal, .snap-backdrop, .sg-modal, .aa-backdrop, .starlit-picker)::backdrop { background: transparent; }
 .rules-modal-card {
   background-color: var(--card);
   background-image: url('parchment.webp');
@@ -3171,7 +3209,7 @@ body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); 
   box-shadow: 0 8px 24px rgba(40,12,30,.4);
 }
 .rules-modal-title {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: 1.15rem; letter-spacing: .05em; color: var(--maroon);
   margin: 0 0 8px; padding-bottom: 8px;
   border-bottom: 2px solid var(--parch-frame);
@@ -3187,7 +3225,7 @@ body.theme-blur::before { filter: blur(var(--pg-blur)); transform: scale(1.06); 
 .rules-modal-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 16px; }
 .rules-btn-cancel { color: var(--maroon); font-size: .92rem; text-decoration: underline; text-underline-offset: 3px; }
 .rules-btn-go {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: .95rem; letter-spacing: .05em;
   padding: 10px 24px; cursor: pointer;
   color: #f7ecd0; background: var(--maroon);
@@ -3313,7 +3351,7 @@ a:hover .curata-mark { opacity: .9; }
 .page-notice {
   position: relative;
   background: #3a2c17; color: #efe3c6;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: .92rem; line-height: 1.45;
   text-align: center; padding: 10px 44px 10px 16px;
   border-bottom: 1px solid rgba(247,236,208,.18);
@@ -3409,7 +3447,7 @@ a:hover .curata-mark { opacity: .9; }
   text-transform: uppercase; color: #8a7a5e;
 }
 .news-card-title {
-  font-family: 'Dumbledor2', serif; font-size: 1.12rem; letter-spacing: .02em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.12rem; letter-spacing: .02em;
   color: var(--maroon); margin: 5px 0 7px; line-height: 1.25;
 }
 .news-card-summary { color: var(--ink); font-size: .92rem; line-height: 1.45; margin: 0; }
@@ -3426,7 +3464,7 @@ a:hover .curata-mark { opacity: .9; }
 }
 .news-article-head { border-bottom: 2px solid var(--parch-frame); padding-bottom: 12px; margin-bottom: 16px; }
 .news-article h1 {
-  font-family: 'Dumbledor2', serif; font-size: 1.7rem; letter-spacing: .02em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.7rem; letter-spacing: .02em;
   color: var(--maroon); margin: 4px 0 8px; line-height: 1.2;
 }
 .news-meta { font-family: 'Roboto', sans-serif; font-size: .8rem; letter-spacing: .05em; color: #8a7a5e; }
@@ -3434,7 +3472,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-body { color: var(--ink); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
 .news-body p { margin: 0 0 13px; }
 .news-body h2 {
-  font-family: 'Dumbledor2', serif; font-size: 1.15rem; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.15rem; color: var(--maroon);
   letter-spacing: .02em; margin: 22px 0 8px;
 }
 .news-body ul { margin: 0 0 13px; padding-left: 24px; }
@@ -3554,12 +3592,12 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   padding: 18px 24px; margin-bottom: 16px;
 }
 .wiki-title {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: clamp(1.7rem, 4.6vw, 2.6rem); line-height: 1.1;
   color: var(--maroon); margin: 0;
 }
 .wiki-subtitle {
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: 1.02rem; font-style: italic; color: var(--ink);
   opacity: .85; margin: 6px 0 0;
 }
@@ -3595,7 +3633,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 
 /* Headings. # is the biggest a writer can use — the page title is the h1. */
 .wiki-h {
-  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; color: var(--maroon);
   letter-spacing: .02em; line-height: 1.2;
 }
 .wiki-h a.sec-anchor { color: inherit; text-decoration: none; }
@@ -3751,7 +3789,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .page-themed .wiki-toc-head,
 .page-themed .wiki-callout-head,
 .page-themed .wiki-pagelink-title,
-.page-themed .news-article h1 { font-family: var(--pg-font, 'Dumbledor2', serif); }
+.page-themed .news-article h1 { font-family: var(--pg-font, 'Dumbledor2','Dumbledor2 Fallback', serif); }
 .theme-accent .wiki-title,
 .theme-accent .wiki-h a.sec-anchor,
 .theme-accent .wiki-toc a,
@@ -3779,7 +3817,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
    the same three page families each time: script/collection pages, wiki and
    news pages, and the creator page (profile.html). */
 .page-themed .home-hero h1,
-.page-themed .prof-section .type-header { font-family: var(--pg-font, 'Dumbledor2', serif); }
+.page-themed .prof-section .type-header { font-family: var(--pg-font, 'Dumbledor2','Dumbledor2 Fallback', serif); }
 .theme-accent .home-hero h1,
 .theme-accent .prof-section .type-header { color: var(--pg-accent); }
 /* Heading colour: a separate knob from the accent, for pages that want the
@@ -4178,7 +4216,7 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 }
 .snap-head { display: flex; align-items: center; gap: 10px; }
 .snap-title {
-  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; color: var(--maroon);
   font-size: 1.4rem; margin: 0; flex: 1; letter-spacing: .04em;
 }
 .snap-x {
@@ -4693,3 +4731,88 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
 .pgs-anim-pulse { animation: pgs-pulse 1.8s ease-in-out infinite; }
 .pgs-anim-blink { animation: pgs-blink 1.6s steps(2, jump-none) infinite; }
 @media (prefers-reduced-motion: reduce) { .pg-sticker { animation: none !important; } }
+
+/* ─── Modern platform fixes ──────────────────────────────────── */
+/* Anything scrolled or focused into view clears the sticky top bar
+   (hash links, Tab); per-target scroll-margin adds to this. */
+html { scroll-padding-top: 72px; }
+
+/* Native scrollbars and form controls follow the surface they sit on:
+   the page (purple) is dark, the parchment it carries is light. */
+html { color-scheme: dark; }
+body { color-scheme: light; }
+.topbar, .nav-dropdown { color-scheme: dark; }
+:root { accent-color: var(--maroon); }
+
+/* iOS zooms the page into any text box under 16px. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=button], [type=submit], [type=reset], [type=image], .sp-input, .mark-ed-row input),
+  textarea:not(#gf-input), select { font-size: max(1rem, 16px) !important; }
+}
+
+/* A scroll that reaches the end of a list or pop-up stops there
+   instead of carrying on into the page behind it. */
+.search-drop, .nav-search-results, .sb-add-list, .sg-drop, .jx-drop,
+.rules-modal, .snap-backdrop, .snap-stage { overscroll-behavior: contain; }
+/* A modal <dialog> keeps the page under it still, scrolled over or not. */
+dialog:modal { overscroll-behavior: contain; }
+dialog::backdrop { overflow: hidden; overscroll-behavior: contain; }
+
+/* Titles break into even lines; prose avoids a lone last word. */
+.wiki-title, .coll-title, .script-title-fallback, .news-article h1,
+.wiki-h1, .wiki-h2, .news-body h2 { text-wrap: balance; }
+.sv-section p, .news-body p, .wiki-body p, .char-parchment p, .char-parchment li { text-wrap: pretty; }
+
+/* <details> slide open (Chrome; elsewhere they open at once as before). */
+@supports (interpolate-size: allow-keywords) {
+  @media (prefers-reduced-motion: no-preference) {
+    details { interpolate-size: allow-keywords; }
+    /* Clipped only while it moves: an open section must not cut off a
+       picker's drop-down that hangs past its bottom edge. */
+    details::details-content {
+      block-size: 0; overflow: clip;
+      transition: block-size .2s ease, content-visibility .2s allow-discrete, overflow 0s allow-discrete;
+    }
+    details[open]::details-content {
+      block-size: auto; overflow: visible;
+      transition: block-size .2s ease, content-visibility .2s allow-discrete, overflow 0s .2s allow-discrete;
+    }
+  }
+}
+
+/* A soft fade between pages, with the top bar held still. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  .topbar { view-transition-name: topbar; }
+}
+
+/* The top picture of a script or collection reserves its box before it
+   loads (render-page.js heroAttrs writes its measured shape as --ar), so
+   the page under it does not jump. Its width is what the old max-width /
+   max-height pair worked out once the picture had arrived: the narrowest
+   of its column, the srcset's `sizes`, and its height cap times its shape. */
+.script-header-img { --wmax: 100%; --wnat: 1000px; --hmax: 260px; }
+.coll-header-img { --wmax: 100%; --wnat: 1000px; --hmax: clamp(220px, 40vw, 460px); }
+.sv-logo { --wmax: min(70%, 360px); --wnat: 400px; --hmax: 120px; }
+@media (max-width: 640px) {
+  .script-header-img, .coll-header-img { --wnat: 94vw; }
+  .sv-logo { --wnat: 80vw; }
+}
+.theme-header-size .script-header-img { --hmax: calc(260px * var(--pg-header-scale, 1)); }
+.theme-header-size .coll-header-img { --hmax: calc(clamp(220px, 40vw, 460px) * var(--pg-header-scale, 1)); }
+.theme-logo-size .sv-logo {
+  --hmax: calc(120px * var(--pg-logo-scale, 1));
+  --wmax: min(calc(70% * var(--pg-logo-scale, 1)), calc(360px * var(--pg-logo-scale, 1)));
+}
+:is(.script-header-img, .coll-header-img, .sv-logo)[style*="--ar"] {
+  aspect-ratio: var(--ar); height: auto;
+  width: min(var(--wmax), var(--wnat), calc(var(--hmax) * var(--ar)));
+}
+/* The parchment card pads the picture, which the shape above ignores. */
+.theme-logo-panel :is(.script-header-img, .coll-header-img, .sv-logo)[style*="--ar"] { aspect-ratio: auto; width: auto; }
+
+/* Read by screen readers, not drawn. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}

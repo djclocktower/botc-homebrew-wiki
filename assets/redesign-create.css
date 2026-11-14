@@ -24,7 +24,7 @@ html.create-redesign .rsec-head {
   margin: 0 0 12px;
 }
 html.create-redesign .rsec-title {
-  font-family: 'Dumbledor2', serif; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon);
   font-size: 1.08rem; letter-spacing: .02em; white-space: nowrap;
 }
 html.create-redesign h3.rsec-title { margin: 0; font-weight: 400; }
@@ -88,7 +88,7 @@ html.create-redesign fieldset {
   padding: 14px 16px 4px; margin: 0 0 15px;
 }
 html.create-redesign legend {
-  font-family: 'Dumbledor2', serif; text-transform: none; letter-spacing: .02em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: none; letter-spacing: .02em;
   font-size: 1rem; font-weight: 400; color: var(--maroon); padding: 0 8px;
 }
 
@@ -116,7 +116,7 @@ html.create-redesign details.advanced { margin: 0 0 15px; }
 html.create-redesign details.advanced > summary {
   list-style: none; cursor: pointer; user-select: none;
   display: flex; align-items: baseline; gap: 10px;
-  font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.08rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon); font-size: 1.08rem;
   padding: 10px 2px;
 }
 html.create-redesign details.advanced > summary::-webkit-details-marker { display: none; }
@@ -161,7 +161,7 @@ html.create-redesign .preview-label {
   background-size: cover;
   border: 3px solid var(--parch-frame); border-bottom: none;
   border-radius: 10px 10px 0 0;
-  font-family: 'Dumbledor2', serif; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon);
   font-size: 1.05rem; letter-spacing: .04em; opacity: 1;
 }
 html.create-redesign .preview-label .pv-note {

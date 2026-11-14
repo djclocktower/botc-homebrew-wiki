@@ -140,7 +140,7 @@
   }
   .jx-az a:hover { background: #efe7d3; }
   .jx-az span { opacity: .35; }
-  .jx-list-char { scroll-margin-top: 90px; }
+  .jx-list-char { scroll-margin-top: 18px; }
 
   /* Edit / remove, on jinxes stored on a character you own. */
   .jg-panel-act { display: flex; gap: 10px; margin-top: 4px; }
@@ -196,10 +196,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -348,13 +348,18 @@
       // ---------- the map ----------
       function buildGraph() {
         if (!window.mountJinxGraph) return;
-        GRAPH = window.mountJinxGraph({
+        // The layout is worked out in slices (jinx-graph.js), so the map
+        // arrives a moment later; the page stays usable meanwhile.
+        Promise.resolve(window.mountJinxGraph({
           mount: 'jg-stage',
           data: DATA,
           onSelect: showPanel,
           onLinkStep: showLinkStep,
           onPair: startJinxForPair
-        });
+        })).then(graphReady);
+      }
+      function graphReady(g) {
+        GRAPH = g;
         if (!GRAPH) {
           $('jg-summary').textContent = 'No jinxes to map yet.';
           return;

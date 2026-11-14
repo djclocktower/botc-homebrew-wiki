@@ -34,10 +34,8 @@
   }
 
   function modal(title, bodyHTML, buttonLabel) {
-    var overlay = document.createElement('div');
+    var overlay = document.createElement('dialog');
     overlay.className = 'rules-modal open';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'unfinished-title');
     overlay.innerHTML =
       '<div class="rules-modal-card">' +
@@ -49,11 +47,9 @@
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
-    document.body.classList.add('rules-modal-lock');
-    function close() {
-      overlay.remove();
-      document.body.classList.remove('rules-modal-lock');
-    }
+    overlay.showModal();
+    function close() { overlay.close(); }
+    overlay.addEventListener('close', function () { overlay.remove(); });
     overlay.querySelector('#unfinished-ok').addEventListener('click', close);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     overlay.querySelector('#unfinished-ok').focus();

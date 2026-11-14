@@ -90,7 +90,7 @@
 .sg-tile:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(40,12,30,.4); }
 .sg-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
 .sg-tile-name {
-  font-family: 'Dumbledor2', serif; font-size: .98rem; letter-spacing: .03em; line-height: 1.15;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: .98rem; letter-spacing: .03em; line-height: 1.15;
   overflow-wrap: anywhere;
 }
 /* Hovering a tile shows its keywords over the picture, so the team can see
@@ -127,7 +127,7 @@
   background: none; border: 0; cursor: pointer; color: var(--maroon);
 }
 .sg-x svg { width: 100%; height: 100%; display: block; }
-.sg-title { font-family: 'Dumbledor2', serif; font-size: 1.5rem; letter-spacing: .04em; color: var(--maroon); margin: 0 40px 4px 0; overflow-wrap: anywhere; }
+.sg-title { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.5rem; letter-spacing: .04em; color: var(--maroon); margin: 0 40px 4px 0; overflow-wrap: anywhere; }
 .sg-d-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 330px); gap: 22px; align-items: start; }
 @media (max-width: 760px) { .sg-d-layout { grid-template-columns: minmax(0, 1fr); } }
 .sg-stage {
@@ -225,7 +225,7 @@
 .sg-f-preview { width: 150px; height: 150px; display: block; background: radial-gradient(circle at 50% 40%, #4a2548, #1a0820 75%); border: 2px solid var(--parch-frame); }
 
 /* The team panel under the grid. */
-.sg-team h3, #sg-dl-team h3 { font-family: 'Dumbledor2', serif; font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon); margin: 18px 0 8px; }
+.sg-team h3, #sg-dl-team h3 { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon); margin: 18px 0 8px; }
 .sg-team h3:first-child { margin-top: 0; }
 .sg-tex-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
 .sg-tex-list li { display: flex; align-items: center; gap: 10px; padding: 0; margin: 0; }
@@ -287,7 +287,7 @@ html.sg-pick .topbar, html.sg-pick .nav-dropdown, html.sg-pick .site-announcemen
 html.sg-pick .home-hero, html.sg-pick .foot, html.sg-pick .sg-not-pick { display: none !important; }
 html.sg-pick body::before { background: var(--purple-deep); }
 html.sg-pick .home-panel { padding-top: 14px; }
-.sg-pick-head { color: var(--parch); font-family: 'Dumbledor2', serif; font-size: 1.3rem; letter-spacing: .04em; margin: 0 0 12px; }
+.sg-pick-head { color: var(--parch); font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.3rem; letter-spacing: .04em; margin: 0 0 12px; }
 </style>
 </head>
 <body>
@@ -306,10 +306,10 @@ html.sg-pick .home-panel { padding-top: 14px; }
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -441,7 +441,7 @@ html.sg-pick .home-panel { padding-top: 14px; }
   </main>
 
   <!-- One icon, drawn live from its layers. -->
-  <div class="sg-modal" id="sg-detail" hidden role="dialog" aria-modal="true" aria-labelledby="sg-d-name">
+  <dialog class="sg-modal" id="sg-detail" aria-labelledby="sg-d-name">
     <div class="sg-card">
       <button type="button" class="sg-x" id="sg-d-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2 class="sg-title" id="sg-d-name" data-user-content></h2>
@@ -497,10 +497,10 @@ html.sg-pick .home-panel { padding-top: 14px; }
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <!-- The gallery team's form: a new icon, or changes to one. -->
-  <div class="sg-modal" id="sg-form-modal" hidden role="dialog" aria-modal="true" aria-labelledby="sg-f-title">
+  <dialog class="sg-modal" id="sg-form-modal" aria-labelledby="sg-f-title">
     <form class="sg-card sg-card-narrow sg-form" id="sg-form">
       <button type="button" class="sg-x" id="sg-f-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2 class="sg-title" id="sg-f-title">Add an icon</h2>
@@ -528,7 +528,7 @@ html.sg-pick .home-panel { padding-top: 14px; }
       </div>
       <p class="sg-msg" id="sg-f-msg"></p>
     </form>
-  </div>
+  </dialog>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 

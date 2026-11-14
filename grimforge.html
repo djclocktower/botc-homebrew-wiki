@@ -76,7 +76,7 @@
   box-sizing: border-box; width: 100%; margin: 0;
   border: 0; border-radius: 0;
   padding: 12px 14px;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   font-size: 1.02rem; line-height: 1.5; letter-spacing: normal;
   white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
   text-align: left;
@@ -100,7 +100,7 @@
 .gf-name-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
 #gf-name {
   flex: 1 1 220px; min-width: 0;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-size: 1.02rem;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif; font-size: 1.02rem;
   color: var(--ink); background: #fffdf8;
   border: 2px solid var(--parch-frame); border-radius: 0; padding: 9px 12px;
 }
@@ -162,7 +162,7 @@
 }
 .gf-stat-value {
   display: block; width: 100%; text-align: center;
-  font-family: 'Dumbledor2', serif; font-size: 1.3rem; line-height: 1;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.3rem; line-height: 1;
   color: var(--parch); background: var(--maroon);
   border: 2px solid var(--parch-frame); padding: 8px 6px 7px;
 }
@@ -403,10 +403,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

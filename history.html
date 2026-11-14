@@ -11,14 +11,14 @@
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
-  .hist-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  .hist-sub { font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
   .hist-sub a { color:#9fc4ee; }
   .hist-back { display:block; text-align:center; margin:10px 0 0;
     font-family:'Roboto',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
   .hist-back:hover { color:#fff; text-decoration:underline; }
   .hist-note { text-align:center; color:rgba(236,225,200,.85); padding:36px 20px;
-    font-family:'TradeGothicLT','Libre Franklin',sans-serif; }
+    font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; }
   .hist-note a { color:#9fc4ee; }
 </style>
 </head>
@@ -38,10 +38,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

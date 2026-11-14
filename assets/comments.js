@@ -84,7 +84,7 @@
     if (secs < 60) return 'just now';
     if (secs < 3600) return Math.floor(secs / 60) + ' min ago';
     if (secs < 86400) return Math.floor(secs / 3600) + ' hr ago';
-    if (secs < 7 * 86400) return Math.floor(secs / 86400) + ' days ago';
+    if (secs < 7 * 86400) { var days = Math.floor(secs / 86400); return days + (days === 1 ? ' day ago' : ' days ago'); }
     return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
@@ -497,10 +497,8 @@
 
   function showAgreement() {
     return new Promise(function (resolve) {
-      var overlay = document.createElement('div');
+      var overlay = document.createElement('dialog');
       overlay.className = 'rules-modal open';
-      overlay.setAttribute('role', 'dialog');
-      overlay.setAttribute('aria-modal', 'true');
       overlay.setAttribute('aria-labelledby', 'cmt-terms-title');
       overlay.innerHTML =
         '<div class="rules-modal-card">' +
@@ -517,13 +515,17 @@
           '</div>' +
         '</div>';
       document.body.appendChild(overlay);
-      document.body.classList.add('rules-modal-lock');
+      overlay.showModal();
+      var opener = document.activeElement;
 
-      function close(result) {
+      var answer = false;
+      function close(result) { answer = result; overlay.close(); }
+      // Esc closes it too (as Cancel); focus goes back to the comment box.
+      overlay.addEventListener('close', function () {
         overlay.remove();
-        document.body.classList.remove('rules-modal-lock');
-        resolve(result);
-      }
+        if (opener && opener.focus) opener.focus();
+        resolve(answer);
+      });
       var box = overlay.querySelector('#cmt-agree-box');
       var go = overlay.querySelector('#cmt-agree-go');
       box.addEventListener('change', function () { go.disabled = !box.checked; });
