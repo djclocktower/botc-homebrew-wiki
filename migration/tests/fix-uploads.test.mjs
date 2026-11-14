@@ -19,7 +19,7 @@ function bucket(f) {
   const objects = new Map();
   let n = 0;
   const meta = (key, o) => ({
-    key, size: o.body.length, etag: o.etag, httpEtag: '"' + o.etag + '"', uploaded: null,
+    key, size: o.body.length, etag: o.etag, httpEtag: '"' + o.etag + '"', uploaded: o.uploaded || null,
     customMetadata: o.custom || {},
     writeHttpMetadata(h) { h.set('Content-Type', key.endsWith('.webp') ? 'image/webp' : 'image/png'); }
   });
@@ -263,4 +263,24 @@ test('the slug check skips an identity whose art slot holds somebody else\'s lef
   // The file's own uploader still gets the plain identity.
   j = await (await f.request('/api/slug-check?type=character&name=Badge', { headers: member(2) })).json();
   assert.equal(j.taken, false);
+});
+
+test('a leftover art file with no page behind it stops blocking its slot after an hour', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); const art = bucket(f);
+  const upload = (id, key) => f.request('/api/upload', { method: 'POST',
+    headers: { ...member(id), 'Content-Type': 'application/json' }, body: JSON.stringify({ key, data: png }) });
+  // Fresh: somebody is making that character right now.
+  art.set('art/badge.png', 'x', { owner: '2' });
+  art.objects.get('art/badge.png').uploaded = new Date();
+  assert.equal((await upload(1, 'art/badge.png')).status, 403);
+  // Two hours on, nobody saved a page for it: free to take.
+  art.objects.get('art/badge.png').uploaded = new Date(Date.now() - 7200e3);
+  let j = await (await f.request('/api/slug-check?type=character&name=Badge', { headers: member(1) })).json();
+  assert.equal(j.taken, false);
+  assert.equal((await upload(1, 'art/badge.png')).status, 200);
+  // A slot a page claims is never taken this way.
+  f.insert('characters', 'kept', { name: 'Kept', art: 'art/kept.png' }); own(f, 'characters', 'kept', 2);
+  art.set('art/kept.png', 'x', { owner: '2' });
+  art.objects.get('art/kept.png').uploaded = new Date(Date.now() - 7200e3);
+  assert.equal((await upload(1, 'art/kept.png')).status, 403);
 });
