@@ -1626,6 +1626,8 @@ async function uploadSlotDenied(env, sess, key) {
      character can never get its icon, which is the one thing that keeps
      it out of drafts. */
   let ownedSlot = false;
+  // Set when the key is a character art slot that no page lays claim to.
+  let orphanArt = false;
   // tokens/ is reserved for admin tooling; news/ for the news editor,
   // which is admin-only anyway.
   if (key.startsWith('tokens/') || key.startsWith('news/')) {
@@ -1693,6 +1695,7 @@ async function uploadSlotDenied(env, sess, key) {
     }
     if (verdict.response) return verdict.response;
     if (verdict.owned) ownedSlot = true;
+    if (!row && !suffixRow) orphanArt = true;
   }
   // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
   // images collections/{id}[-logo|-bg].{ext}. If that page exists,
@@ -1721,7 +1724,7 @@ async function uploadSlotDenied(env, sess, key) {
   const existing = ownedSlot ? null : await env.ART.head(key).catch(() => null);
   if (existing) {
     const owner = existing.customMetadata && existing.customMetadata.owner;
-    if (owner !== String(sess.userId)) {
+    if (owner !== String(sess.userId) && !(orphanArt && staleOrphan(existing))) {
       return jsonResponse({ error: 'An image with that name already belongs to another account.' }, { status: 403 });
     }
   }
@@ -5229,7 +5232,19 @@ async function foreignArt(env, sess, slug) {
   if (sess.isAdmin || !env.ART) return false;
   const keys = ['', '-alt', '-alt2', '-token', '-alm'].map(x => 'art/' + slug + x + '.png');
   const heads = await Promise.all(keys.map(k => env.ART.head(k).catch(() => null)));
-  return heads.some(h => h && !(h.customMetadata && h.customMetadata.owner === String(sess.userId)));
+  return heads.some(h => h && !staleOrphan(h) &&
+    !(h.customMetadata && h.customMetadata.owner === String(sess.userId)));
+}
+
+/* A character's art is uploaded a moment BEFORE its row is saved, so a file
+   in a slot no page claims is, for a minute, somebody's character being made
+   and must not be written over. After an hour it is a leftover (a save that
+   failed, a purged page) and blocking that name for everyone forever helps
+   nobody: the next character of that name may take the slot. */
+const ORPHAN_ART_MS = 3600 * 1000;
+function staleOrphan(head) {
+  const t = head && head.uploaded ? new Date(head.uploaded).getTime() : NaN;
+  return t > 0 && Date.now() - t > ORPHAN_ART_MS;
 }
 async function artSlotClash(env, slug) {
   const keys = [slug + '-alt', slug + '-alt2', slug + '-token', slug + '-alm'];
