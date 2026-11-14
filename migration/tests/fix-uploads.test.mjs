@@ -251,3 +251,16 @@ test('Bloodstar bundle: absolute images, a third icon, no false warnings, and an
   assert.equal(trav.hasAlmanac, false);
   assert.deepEqual(bundle.warnings, []);
 });
+
+test('the slug check skips an identity whose art slot holds somebody else\'s leftover file', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); const art = bucket(f);
+  // No page called Badge, but account 2's file is still in its slot.
+  art.set('art/badge.png', 'x', { owner: '2' });
+  let j = await (await f.request('/api/slug-check?type=character&name=Badge', { headers: member(1) })).json();
+  assert.equal(j.taken, true);
+  assert.equal(j.mine, false);
+  assert.ok(j.suggestion && j.suggestion !== 'badge', j.suggestion);
+  // The file's own uploader still gets the plain identity.
+  j = await (await f.request('/api/slug-check?type=character&name=Badge', { headers: member(2) })).json();
+  assert.equal(j.taken, false);
+});
