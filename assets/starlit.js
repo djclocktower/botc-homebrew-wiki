@@ -276,10 +276,12 @@
 
   /* ── windows ──────────────────────────────────────────────────── */
 
+  // Both windows are native <dialog>s: showModal() traps focus and keeps
+  // the page under them still (styles.css, dialog:modal).
   function show(id, on) {
-    $(id).hidden = !on;
-    var open = !$('sg-detail').hidden || !$('sg-form-modal').hidden;
-    document.documentElement.style.overflow = open ? 'hidden' : '';
+    var d = $(id);
+    if (on && !d.open) d.showModal();
+    else if (!on && d.open) d.close();
   }
   function setUrlIcon(id) {
     try {
@@ -289,6 +291,8 @@
     } catch (e) { /* the address just stays as it was */ }
   }
   ['sg-detail', 'sg-form-modal'].forEach(function (id) {
+    // Esc goes through closeWindow, so the address and the open icon reset.
+    $(id).addEventListener('cancel', function (e) { e.preventDefault(); closeWindow(id); });
     // Only a press that starts AND ends on the backdrop closes the window, or
     // dragging out past its edge (a selection, a slider) would.
     var downOn = null;
@@ -302,11 +306,6 @@
   $('sg-d-close').addEventListener('click', function () { closeWindow('sg-detail'); });
   $('sg-f-close').addEventListener('click', function () { closeWindow('sg-form-modal'); });
   $('sg-f-cancel').addEventListener('click', function () { closeWindow('sg-form-modal'); });
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape') return;
-    if (!$('sg-form-modal').hidden) closeWindow('sg-form-modal');
-    else if (!$('sg-detail').hidden) closeWindow('sg-detail');
-  });
 
   /* ── one icon ─────────────────────────────────────────────────── */
 

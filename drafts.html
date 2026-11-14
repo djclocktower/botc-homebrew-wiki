@@ -13,7 +13,7 @@
 <style>
   /* Sits on the dark page background, not on parchment — light text, like the
      .home-hero headers everywhere else. */
-  .drafts-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  .drafts-sub { font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
   .drafts-back { display:block; text-align:center; margin:10px 0 0;
     font-family:'Roboto',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
@@ -23,7 +23,7 @@
     color:rgba(236,225,200,.72); margin:0 0 20px; }
   .drafts-gate, .drafts-empty {
     text-align:center; color:rgba(236,225,200,.85); padding:40px 20px;
-    font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   }
   .drafts-gate a, .drafts-empty a { color:#9fc4ee; }
   /* Non-character drafts have no card art, so they get the same tile the
@@ -35,7 +35,7 @@
     color:rgba(236,225,200,.92); min-width:0;
   }
   .draft-tile:hover { background:rgba(20,7,18,.6); border-color:rgba(236,225,200,.4); }
-  .draft-tile-name { display:block; font-family:'Dumbledor2',serif; font-size:1.05rem;
+  .draft-tile-name { display:block; font-family:'Dumbledor2','Dumbledor2 Fallback',serif; font-size:1.05rem;
     color:var(--parch); overflow-wrap:anywhere; }
   .draft-tile-meta { display:block; font-size:.78rem; color:rgba(236,225,200,.65); margin-top:3px; }
 </style>
@@ -56,10 +56,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

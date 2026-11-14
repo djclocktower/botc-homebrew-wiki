@@ -46,7 +46,7 @@
   padding: 14px 16px; margin-bottom: 18px;
 }
 .we-preview > h2 {
-  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; color: var(--maroon);
   margin: 0 0 10px; font-size: 1.2rem;
 }
 /* The form and its preview side by side (WikiEditor.splitPreview). Wide
@@ -196,7 +196,7 @@ html.textedit-on .te-live-editing {
   background: rgba(29,20,14,.94);
   border: 1px solid #6b4f2a;
   box-shadow: 0 10px 28px -12px rgba(0,0,0,.8);
-  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   font-size: .82rem;
   color: #f2e6cc;
 }
@@ -225,7 +225,7 @@ html.textedit-on .te-live-editing {
 .te-live-pop {
   position: fixed; z-index: 10000;
   width: min(520px, calc(100vw - 24px));
-  max-height: calc(100vh - 20px); overflow-y: auto;
+  max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); overflow-y: auto;
   box-sizing: border-box;
   padding: 14px;
   background-color: var(--parch);
@@ -234,7 +234,7 @@ html.textedit-on .te-live-editing {
   border: 2px solid var(--parch-frame);
   border-radius: 6px;
   box-shadow: 0 20px 44px -16px rgba(0,0,0,.7);
-  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   color: var(--ink);
 }
 .te-live-pop-head {
@@ -245,7 +245,7 @@ html.textedit-on .te-live-editing {
   margin-left: auto; padding: 4px; line-height: 0;
   background: none; border: 0; color: var(--maroon); cursor: pointer;
 }
-.te-live-pop-head strong { font-family: 'Dumbledor2', serif; color: var(--maroon); letter-spacing: .04em; }
+.te-live-pop-head strong { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon); letter-spacing: .04em; }
 .te-live-scope {
   font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
   border: 1px solid rgba(122,45,47,.35); border-radius: 999px; padding: 1px 9px;
@@ -277,7 +277,7 @@ html.textedit-on .te-live-editing {
 .te-live-hint { font-size: .76rem; opacity: .78; margin: 7px 0 9px; }
 .te-live-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .te-live-btn {
-  font-family: 'Dumbledor2', serif; font-size: .92rem; letter-spacing: .03em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: .92rem; letter-spacing: .03em;
   color: #f4ead2; background: var(--maroon);
   border: 1px solid #4a1719; border-radius: 6px;
   padding: 7px 15px; cursor: pointer;
@@ -315,10 +315,10 @@ html.textedit-on .te-live-editing {
   border: 2px solid var(--parch-frame); border-radius: 8px;
   box-shadow: 0 18px 50px rgba(0,0,0,.55);
   padding: 18px 20px 16px; width: min(460px, 100%);
-  max-height: calc(100vh - 32px); overflow-y: auto;
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto;
 }
 .aa-title {
-  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400; color: var(--maroon);
   font-size: 1.4rem; margin: 0 0 4px; text-align: center;
 }
 .aa-hint { font-size: .82rem; color: var(--ink); opacity: .8; margin: 0 0 12px; text-align: center; }
@@ -366,7 +366,7 @@ html.textedit-on .te-live-editing {
   border-top: 1px solid rgba(0,0,0,.12); padding-top: 12px;
 }
 .aa-btn {
-  font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .04em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1rem; letter-spacing: .04em;
   border-radius: 6px; padding: 10px 18px; cursor: pointer;
 }
 .aa-cancel { background: transparent; color: var(--maroon); border: 1px solid rgba(122,45,47,.45); }
@@ -439,7 +439,7 @@ html.textedit-on .te-live-editing {
 .no-step .no-name { font-style: italic; font-weight: 500; opacity: .8; }
 .no-moves { display: flex; flex-shrink: 0; gap: 2px; }
 .no-move {
-  font-size: .8rem; line-height: 1; font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .8rem; line-height: 1; font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif;
   background: none; border: 1px solid #cdbfa0; color: #6b5d49; padding: 3px 6px; cursor: pointer;
 }
 .no-move:hover:not(:disabled) { color: var(--maroon); border-color: var(--maroon); }
@@ -640,7 +640,7 @@ html.textedit-on .te-live-editing {
 .starlit-picker-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 10px 8px 16px; background: #2a0f24; color: #f0e8d5;
-  font-family: 'Dumbledor2', serif; font-size: 1.1rem; letter-spacing: .04em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.1rem; letter-spacing: .04em;
 }
 .starlit-picker-bar button {
   width: 40px; height: 40px; padding: 9px; background: none; border: 0; cursor: pointer; color: #f0e8d5;

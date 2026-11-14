@@ -23,7 +23,7 @@
      takes the light .home-hero treatment every other page header uses.
      Maroon/ink here read as almost-invisible on the purple. */
   .dash-h2 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
     color: var(--parch);
     text-shadow: 0 3px 12px rgba(0,0,0,.5);
@@ -31,7 +31,7 @@
     margin: 0 0 4px;
   }
   .dash-sub {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     color: rgba(236,225,200,.8);
     margin: 0 0 22px; font-size: .95rem;
   }
@@ -57,7 +57,7 @@
     margin-bottom: 20px;
   }
   .panel h3 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1.15rem;
     color: var(--maroon);
     letter-spacing: .05em;
@@ -65,7 +65,7 @@
     display: flex; align-items: baseline; gap: 8px;
   }
   .panel h3 .count-pill {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .72rem; font-weight: 700;
     background: rgba(122,45,47,.12);
     color: var(--maroon);
@@ -75,7 +75,7 @@
     letter-spacing: .04em;
   }
   .acct-body, .acct-body td, .acct-body th, .panel p, .panel label, .panel input, .panel textarea, .panel button, .row-list {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   }
 
   /* ---- profile header ---- */
@@ -85,11 +85,11 @@
     border: 2px solid var(--parch-frame);
     background: linear-gradient(180deg,#7a2d2f,#5b1f21);
     color: #f4ead2; display: flex; align-items: center; justify-content: center;
-    font-family: 'Dumbledor2', serif; font-size: 2rem;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 2rem;
     overflow: hidden; flex: 0 0 auto;
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .profile-id .disp { font-family: 'Dumbledor2', serif; font-size: 1.5rem; color: var(--maroon); }
+  .profile-id .disp { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.5rem; color: var(--maroon); }
   .profile-id .uname { font-size: .9rem; opacity: .8; }
   .profile-id .bio { font-size: .9rem; margin-top: 6px; max-width: 60ch; }
   .badge {
@@ -231,7 +231,7 @@
   .msg-reply-box textarea { width: 100%; min-height: 70px; }
   .msg-waiting { font-size: .75rem; }
   .btn {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1rem; letter-spacing: .04em;
     color: #f4ead2;
     background: linear-gradient(180deg,#7a2d2f,#5b1f21);
@@ -242,7 +242,7 @@
   .btn:hover { background: linear-gradient(180deg,#8a3537,#6b2527); }
   .btn:disabled { opacity: .6; cursor: default; }
   .btn.secondary { background: linear-gradient(180deg,#555,#333); border-color: #222; }
-  .btn.discord { background: #5865F2; border-color: #4752c4; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-weight: 700; font-size: .92rem; }
+  .btn.discord { background: #5865F2; border-color: #4752c4; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-weight: 700; font-size: .92rem; }
   .btn.discord:hover { background: #4752c4; }
   .inline-msg { font-size: .85rem; margin-top: 8px; min-height: 1.1em; }
   .inline-msg.ok  { color: #2a6e2a; }
@@ -254,7 +254,7 @@
   #del-dialog { max-width: 460px; width: calc(100% - 32px); border: 1px solid #4a1719; border-radius: 0;
     background: #f4ead2; color: #2b2116; padding: 20px; }
   #del-dialog::backdrop { background: rgba(0,0,0,.55); }
-  #del-dialog h4 { font-family: 'Dumbledor2', serif; color: var(--maroon); margin: 0 0 10px; font-size: 1.15rem; }
+  #del-dialog h4 { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon); margin: 0 0 10px; font-size: 1.15rem; }
   #del-dialog p { font-size: .92rem; margin: 0 0 10px; }
   #del-dialog .del-keep { display: flex; gap: 8px; align-items: flex-start; font-size: .92rem; margin: 12px 0; }
   #del-dialog .del-keep input { margin-top: 3px; }
@@ -263,11 +263,11 @@
   @media (min-width: 760px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
   .settings-grid section { min-width: 0; }
   .settings-grid h4 {
-    font-family: 'Dumbledor2', serif; color: var(--maroon);
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon);
     font-size: 1rem; letter-spacing: .04em; margin: 0 0 10px;
   }
   .top-note {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: .92rem;
   }
   .top-note.ok  { background: rgba(42,110,42,.12); color: #1f5128; border: 1px solid rgba(42,110,42,.4); }
@@ -291,10 +291,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -526,7 +526,7 @@
           </div>
           <div class="inline-msg" id="del-msg"></div>
           <div class="del-actions">
-            <button class="btn secondary" id="del-cancel" type="button">Cancel</button>
+            <button class="btn secondary" id="del-cancel" type="button" autofocus>Cancel</button>
             <button class="btn danger" id="del-confirm" type="button">Delete My Account</button>
           </div>
         </dialog>

@@ -182,7 +182,7 @@ html.redesign-on .topbar .topbar-badge {
   html.redesign-on .crumb .sep { display: none; }
 
   html.redesign-on .crumb a {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: .8rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: .06em;
     color: rgba(240,232,213,.72);
@@ -270,7 +270,7 @@ html.redesign-on .search-input:focus {
    button simply stays in the brand group in its existing subdued style. */
 @media (min-width: 1200px) {
   html.redesign-on .crumb .edit-link {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: .8rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: .06em;
     color: #eadcbb; text-decoration: none;

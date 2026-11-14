@@ -58,7 +58,7 @@
     var w = W();
     var hero = a.image
       ? '<img class="news-hero" src="' + esc(/^https?:\/\//i.test(a.image) ? a.image : root + 'assets/' + a.image) +
-        '" alt="" loading="lazy" decoding="async">'
+        '" alt="" fetchpriority="high" decoding="async">'
       : '';
 
     var body = renderBody(a.body, { linkRoot: root, toc: a.toc ? 'auto' : false });

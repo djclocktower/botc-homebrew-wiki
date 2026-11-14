@@ -22,7 +22,7 @@
   /* On the dark page background, not on parchment — light text, like the
      .home-hero headers everywhere else. */
   .dash-h2 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
     color: var(--parch);
     text-shadow: 0 3px 12px rgba(0,0,0,.5);
@@ -30,7 +30,7 @@
     margin: 0 0 4px;
   }
   .dash-sub {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     color: rgba(236,225,200,.8);
     margin: 0 0 22px;
     font-size: .95rem;
@@ -55,7 +55,7 @@
     margin-bottom: 20px;
   }
   .panel h3 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1.15rem;
     color: var(--maroon);
     letter-spacing: .05em;
@@ -63,7 +63,7 @@
     display: flex; align-items: baseline; gap: 8px;
   }
   .panel h3 .count-pill {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .72rem; font-weight: 700;
     background: rgba(122,45,47,.12);
     color: var(--maroon);
@@ -76,16 +76,16 @@
   /* ---- lock control ---- */
   .lock-panel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .lock-state {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     flex: 1 1 220px; min-width: 200px;
   }
   .lock-state .lbl { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--maroon); font-weight: 700; }
-  .lock-state .val { font-family: 'Dumbledor2', serif; font-size: 1.4rem; margin-top: 2px; }
+  .lock-state .val { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.4rem; margin-top: 2px; }
   .lock-state .val.open   { color: #2a6e2a; }
   .lock-state .val.locked { color: #9a2c2c; }
   .lock-state .desc { font-size: .85rem; opacity: .8; margin-top: 4px; }
   .btn {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1.02rem; letter-spacing: .04em;
     color: #f4ead2;
     border-radius: 6px; padding: 11px 20px;
@@ -110,11 +110,11 @@
     border-radius: 8px;
     padding: 14px 8px;
   }
-  .stat .num { font-family: 'Dumbledor2', serif; font-size: 2rem; color: var(--maroon); line-height: 1; }
-  .stat .lbl { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; margin-top: 6px; opacity: .85; }
+  .stat .num { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 2rem; color: var(--maroon); line-height: 1; }
+  .stat .lbl { font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; margin-top: 6px; opacity: .85; }
 
   .team-bars { margin-top: 16px; }
-  .team-bar { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .85rem; }
+  .team-bar { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .85rem; }
   .team-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
   .team-name { flex: 0 0 96px; text-transform: capitalize; }
   .team-track { flex: 1 1 auto; height: 9px; background: rgba(0,0,0,.10); border-radius: 999px; overflow: hidden; }
@@ -126,7 +126,7 @@
   @media (min-width: 760px) { .panel-grid { grid-template-columns: 1fr 1fr; gap: 20px; } .panel-grid .panel { margin-bottom: 0; } .panel-grid { margin-bottom: 20px; } }
 
   /* ---- lists ---- */
-  .feed { list-style: none; margin: 0; padding: 0; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; }
+  .feed { list-style: none; margin: 0; padding: 0; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; }
   .feed li { padding: 9px 0; border-bottom: 1px solid rgba(74,23,25,.14); font-size: .9rem; line-height: 1.35; }
   .feed li:last-child { border-bottom: none; }
   .feed a { color: var(--good-name, #2c5b9a); text-decoration: none; font-weight: 600; }
@@ -154,7 +154,7 @@
   .adm-row {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     padding: 9px 0; border-bottom: 1px solid rgba(180,160,120,.25);
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .9rem;
   }
   .adm-row .grow { flex: 1; min-width: 140px; }
   .adm-row .dim { font-size: .78rem; opacity: .7; }
@@ -164,7 +164,7 @@
     border-radius: 6px; padding: 8px 10px; font-size: .88rem;
   }
   .mini-act {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .78rem; font-weight: 700; border-radius: 5px; padding: 5px 10px;
     cursor: pointer; border: 1px solid; background: rgba(255,253,248,.5); flex: 0 0 auto;
   }
@@ -214,7 +214,7 @@
     width: 100%; box-sizing: border-box; font: inherit; font-size: .92rem;
     background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
     padding: 9px 12px; min-height: 60px; resize: vertical;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   }
   .orph-thumb { width: 38px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(0,0,0,.2); flex: 0 0 auto; background: #fff; }
   .pv-bar-track { flex: 1 1 90px; height: 9px; background: rgba(0,0,0,.10); border-radius: 999px; overflow: hidden; min-width: 60px; }
@@ -226,7 +226,7 @@
   /* ---- activity log filters ---- */
   .act-filters {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    margin: 0 0 12px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    margin: 0 0 12px; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   }
   .act-filters input, .act-filters select {
     font: inherit; font-size: .88rem; color: #241a12;
@@ -234,7 +234,7 @@
     padding: 6px 9px; max-width: 150px;
   }
   .small-btn {
-    font-family: 'Dumbledor2', serif; font-size: .88rem; letter-spacing: .03em;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: .88rem; letter-spacing: .03em;
     color: #f4ead2; background: linear-gradient(180deg,#7a2d2f,#5b1f21);
     border: 1px solid #4a1719; border-radius: 6px; padding: 7px 14px; cursor: pointer;
   }
@@ -243,12 +243,12 @@
   .small-btn.alt { background: linear-gradient(180deg,#555,#333); border-color: #222; }
 
   /* ---- report output ---- */
-  .rep-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; margin-bottom: 12px; }
+  .rep-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; margin-bottom: 12px; }
   .rep-controls input[type=number] { width: 72px; font: inherit; font-size: .9rem; padding: 6px 9px; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px; }
   .rep-quick { font-size: .8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(122,45,47,.35); background: rgba(122,45,47,.08); color: var(--maroon); cursor: pointer; font-weight: 700; }
   .rep-quick:hover { background: rgba(122,45,47,.16); }
-  #rep-out { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; }
-  #rep-out h4 { font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1rem; letter-spacing: .04em; margin: 16px 0 6px; }
+  #rep-out { font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .9rem; }
+  #rep-out h4 { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; color: var(--maroon); font-size: 1rem; letter-spacing: .04em; margin: 16px 0 6px; }
   #rep-out table { border-collapse: collapse; width: 100%; max-width: 440px; }
   #rep-out td { padding: 4px 8px 4px 0; border-bottom: 1px solid rgba(0,0,0,.08); }
   #rep-out td.n { text-align: right; font-weight: 700; color: var(--maroon); white-space: nowrap; }
@@ -257,23 +257,23 @@
   .rev-row {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     padding: 8px 0; border-bottom: 1px solid rgba(180,160,120,.25);
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .9rem;
   }
   .rev-row .rev-name { flex: 1; min-width: 140px; font-weight: 600; }
   .rev-row .rev-meta { font-size: .78rem; opacity: .7; flex: 0 0 auto; }
-  .empty { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .6; font-size: .88rem; font-style: italic; padding: 6px 0; }
+  .empty { font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; opacity: .6; font-size: .88rem; font-style: italic; padding: 6px 0; }
   .note { font-size: .8rem; opacity: .7; margin-top: 10px; font-style: italic; }
 
   /* ---- deleted content rows ---- */
   .del-row {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     padding: 8px 0; border-bottom: 1px solid rgba(180,160,120,.25);
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   }
   .del-row .del-name { flex: 1; min-width: 140px; color: var(--ink); font-weight: 600; }
   .del-row .del-when { font-size: .78rem; opacity: .7; flex: 0 0 auto; }
   .del-btn {
-    font-family: 'Dumbledor2', serif; font-size: .82rem; letter-spacing: .03em;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: .82rem; letter-spacing: .03em;
     color: #f4ead2; border-radius: 6px; padding: 5px 12px; cursor: pointer;
     border: 1px solid #4a1719; flex: 0 0 auto;
   }
@@ -287,10 +287,10 @@
   /* ---- gate / loading ----
      Both sit on the dark page background (no parchment panel behind them),
      so they need light text — ink/maroon here was unreadable. */
-  .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: rgba(236,225,200,.9); }
+  .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; color: rgba(236,225,200,.9); }
   .gate a { color: #9fc4ee; }
-  .loading { text-align: center; padding: 50px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: rgba(236,225,200,.75); }
-  .toast { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; min-height: 1.2em; margin-top: 10px; }
+  .loading { text-align: center; padding: 50px; font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; color: rgba(236,225,200,.75); }
+  .toast { font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .9rem; min-height: 1.2em; margin-top: 10px; }
   .toast.ok  { color: #2a6e2a; }
   .toast.err { color: #9a2c2c; }
 
@@ -326,14 +326,14 @@
   }
   .dash-tabs-mobile { display: none; }
   .dash-backup-warning {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: .9rem;
     background: rgba(154,44,44,.18); border: 1px solid rgba(216,150,150,.5);
     color: #f0d4d4; padding: 9px 13px; margin: 12px 0 0; line-height: 1.45;
   }
   .dash-backup-warning[hidden] { display: none; }
   .dash-tab-panel[hidden] { display: none; }
   .dash-tab-note {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .86rem; color: rgba(236,225,200,.62);
     margin: 12px 0 4px; max-width: 62ch; line-height: 1.5;
   }
@@ -351,7 +351,7 @@
     }
     .dash-tabs-mobile select {
       display: block; width: 100%; margin-top: 5px; padding: 10px;
-      font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: 1rem;
+      font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; font-size: 1rem;
       background: #2a2118; color: #f2e7cd;
       border: 1px solid rgba(236,225,200,.3); border-radius: 0;
     }
@@ -379,10 +379,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -436,30 +436,30 @@
       <div class="dash-tab-panel" id="tab-triage" role="tabpanel" aria-labelledby="dashtab-triage" hidden>
       <section class="panel">
         <h3>Inbox <span class="count-pill" id="msg-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Bug reports, suggestions, and messages sent from the “Contact the Admins” form on account pages, plus broken-link reports from the 404 page (those can come from people with no account, so they may have nobody to reply to).
         </p>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
           Each one is a conversation every admin can read and answer, newest activity first. “Needs a reply” means the member spoke last. Replying writes into the thread and notifies them; it does not start a private DM.
         </p>
-        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+        <label style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
           <input type="checkbox" id="msg-show-all"> show resolved too
         </label>
         <div id="msg-list"></div>
       </section>
       <section class="panel">
         <h3>Reported Conversations <span class="count-pill" id="dmr-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           When a member reports a private message conversation, it unlocks here so you can read it. Un-reported conversations stay private. After reviewing you can message either person or ban the offender from the Users panel.
         </p>
-        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+        <label style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
           <input type="checkbox" id="dmr-show-all"> show resolved too
         </label>
         <div id="dmr-list"></div>
       </section>
       <section class="panel">
         <h3>Comments <span class="count-pill" id="cmt-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Comments left on character, script, collection and news pages. Reported ones come here first. Removing a comment hides it from the page but keeps it here so you can undo; purge deletes it for good. A page's owner can also remove comments on their own page.
         </p>
         <div class="act-filters">
@@ -479,12 +479,12 @@
       <!-- NEW ACCOUNTS -->
       <section class="panel">
         <h3>New accounts <span class="count-pill" id="nu-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Signing up is open and needs no email confirmation, so the accounts worth keeping an eye on
           are simply the new ones. This is that list, with how much each has posted — a spam run shows
           up here as one obvious row instead of a hundred scattered pages.
         </p>
-        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+        <label style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
           Joined in the last
           <select id="nu-days">
             <option value="1">24 hours</option>
@@ -498,7 +498,7 @@
       </section>
       <section class="panel">
         <h3>Users <span class="count-pill" id="u-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Ban or unban accounts, grant or remove admin, or make a one-time password-reset link to hand to a user. Bans block logging in and all editing; the user's pages stay up.
         </p>
         <div class="act-filters">
@@ -510,13 +510,13 @@
       </section>
       <section class="panel" id="marks-panel">
         <h3>Creator marks <span class="count-pill" id="cm-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Give an account a mark, change it, or take it away. A mark already held by somebody else is only moved when you say so. The member is not messaged; tell them yourself if it matters.
         </p>
         <div class="act-filters">
           <input type="text" id="cm-user" placeholder="username">
           <input type="text" id="cm-glyph" placeholder="mark, e.g. ✶" style="max-width:9em">
-          <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:4px">
+          <label style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:4px">
             <input type="checkbox" id="cm-show" checked> Shown
           </label>
         </div>
@@ -527,7 +527,7 @@
         <div class="toast" id="cm-toast"></div>
         <div id="cm-list" style="margin-top:10px"></div>
         <h4 style="margin:16px 0 6px">Banned marks <span class="count-pill" id="bm-count"></span></h4>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Symbols nobody may use as a mark. Banning one also takes it off whoever has it now.
         </p>
         <div class="act-filters">
@@ -547,21 +547,21 @@
       <div class="dash-tab-panel" id="tab-content" role="tabpanel" aria-labelledby="dashtab-content" hidden>
       <section class="panel">
         <h3>Unowned pages <span class="count-pill" id="unowned-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
           Seeded pages have no owner account, so nobody can edit them on the site. Assign one to a user (by username) to hand it over. Leave the box empty and click <em>Clear</em> to remove an owner.
         </p>
         <div id="unowned-list"></div>
       </section>
       <section class="panel">
         <h3>Deleted content <span class="count-pill" id="deleted-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
           Pages deleted by their owners (or by you) are hidden from the whole site but kept here so nothing breaks by accident. <strong>Restore</strong> puts a page back exactly as it was; <strong>Purge</strong> removes it for good and cannot be undone.
         </p>
         <div id="deleted-list"></div>
       </section>
       <section class="panel" id="acct-backups-panel">
         <h3>Deleted accounts</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
           Every deleted account is backed up first, and the backup is kept for good. Open one to see its pages and restore any of them. Restored pages have no owner unless you type a username. A page that is live again at the same address is skipped.
         </p>
         <button type="button" class="del-btn del-restore" id="ab-load">Load backups</button>
@@ -569,7 +569,7 @@
       </section>
       <section class="panel" id="draft-page-panel">
         <h3>Send a page to drafts</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
           Takes a published page off the site <em>and tells its creator why</em>. Use this instead of a plain unpublish whenever the page has a problem the creator can fix — someone else's art, an official character's ability, a half-written almanac. The reason is sent to them as a message and is shown at the top of their editor until they publish the page again. Nothing is deleted, and the page stays theirs.
         </p>
         <div class="act-filters">
@@ -589,7 +589,7 @@
       </section>
       <section class="panel" id="rollback-panel">
         <h3>Page history &amp; rollback</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
           Every time a page is saved, the version it replaced is kept (up to 50 per page). Pick a page to see its history and roll it back to an earlier version. The current version is saved first, so a rollback can itself be undone. The slug is the last part of the page's URL — e.g. <code>fisherman</code> for <code>/c/fisherman</code> — or use the <em>history</em> links in the activity log below.
         </p>
         <div class="act-filters">
@@ -606,7 +606,7 @@
       </section>
       <section class="panel">
         <h3>Protected pages <span class="count-pill" id="prot-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           A protected page can only be edited, published, or deleted by admins — its owner sees a “page is protected” message. Handy for finished showcase pages or anything being vandalized.
         </p>
         <div class="act-filters">
@@ -623,7 +623,7 @@
       </section>
       <section class="panel">
         <h3>Curata</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Curata marks a page as one of the wiki's best. Curata pages carry a badge, are weighted about five times higher in the Featured Character slot, the Random Character button and the homepage collection/script strips, and readers can filter for them. Works on characters, scripts and collections. Use Bulk actions above to do a whole batch at once.
         </p>
         <div class="act-filters">
@@ -640,7 +640,7 @@
       </section>
       <section class="panel">
         <h3>Bulk actions</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Load a list of pages, tick the ones you want, then apply one action to all of them — reassign an owner, publish/unpublish, grant or remove Curata, move to trash, restore, or add/remove a tag (characters only). The second dropdown narrows the list to pages with no icon, unfinished (Partial) pages, existing Curata pages, or pages with no owner.
         </p>
         <div class="act-filters">
@@ -701,10 +701,10 @@
       </section>
       <section class="panel">
         <h3>Announcement banner</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Show a message at the top of every page on the site — maintenance notices, contests, anything. Visitors can dismiss it; posting a new message shows it again for everyone.
         </p>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
           You can put text links in it with <code>[the text people click](where it goes)</code> — e.g.
           <code>Read the [July update](/news/july-update)</code>, or a full
           <code>https://…</code> address for another site. Everything else stays plain text.
@@ -713,16 +713,16 @@
         <div class="act-filters" style="margin-top:10px">
           <button type="button" class="small-btn" id="ann-post">Post announcement</button>
           <button type="button" class="small-btn alt" id="ann-clear">Clear banner</button>
-          <span class="dim" id="ann-status" style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.8rem;opacity:.7"></span>
+          <span class="dim" id="ann-status" style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.8rem;opacity:.7"></span>
         </div>
         <div class="toast" id="ann-toast"></div>
       </section>
       <section class="panel">
         <h3>Text editor</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Every piece of wording the site writes itself — page copy, buttons, labels, the notices above a page. Search it, filter it down to the em dashes or the curly quotes, sort it by length, and rewrite any of it. Changes go live everywhere straight away. Nobody's characters, scripts or comments are listed there.
         </p>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
           It also has a live mode: switch it on and browse the wiki exactly as normal, double-clicking (double-tapping on a phone) any wording you want to change.
         </p>
         <div class="act-filters">
@@ -731,7 +731,7 @@
       </section>
       <section class="panel">
         <h3>News <span class="count-pill" id="news-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Articles written by admins. Published ones get their own page, show on the homepage and on <a href="news" style="color:inherit;text-decoration:underline">/news</a>, and readers can comment on them.
         </p>
         <div class="act-filters">
@@ -745,7 +745,7 @@
       <div class="dash-tab-panel" id="tab-health" role="tabpanel" aria-labelledby="dashtab-health" hidden>
       <section class="panel">
         <h3>Discord sign-in</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Checks that the "Continue with Discord" button still works, without anyone having to try it. Discord sign-in depends on two settings that live outside the wiki — the app credentials in Cloudflare and the callback URL in the Discord Developer Portal — and if either goes missing the button simply stops working with nothing to see from this end. Run this after any change to either, or whenever someone says they can't log in.
         </p>
         <button type="button" class="small-btn" id="dc-check">Check Discord sign-in</button>
@@ -753,7 +753,7 @@
       </section>
       <section class="panel">
         <h3>Broken references <span class="count-pill" id="br-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Finds scripts and collections that point at characters which no longer exist (or sit in the trash / drafts), so pages don't quietly show gaps.
         </p>
         <button type="button" class="small-btn" id="br-scan">Scan the wiki</button>
@@ -761,7 +761,7 @@
       </section>
       <section class="panel">
         <h3>Orphaned images <span class="count-pill" id="orph-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Uploaded images that no page references any more (replaced art, purged pages, avatars of deleted accounts). Deleting them frees storage and cannot break a live page — but it can't be undone.
         </p>
         <button type="button" class="small-btn" id="orph-scan">Scan for orphans</button>
@@ -776,7 +776,7 @@
       </section>
       <section class="panel">
         <h3>Backups <span class="count-pill" id="bk-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Nightly snapshots of the whole database (kept 30 days). Download any table as JSON, or restore a single page from a chosen night — the current version is saved to page history first, and even purged pages can be brought back this way.
         </p>
         <p class="note" id="bk-last" hidden></p>
@@ -818,7 +818,7 @@
       </section>
       <section class="panel">
         <h3>Admin report</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
           Summarize everything that happened on the wiki over a time window you choose — edits, new pages, deletions, sign-ups, most active creators — with the full event log included in the download.
         </p>
         <div class="rep-controls">
@@ -926,14 +926,14 @@
         <p class="dash-tab-note">Finished migrations and one-off utilities. Nothing here is part of day-to-day moderation — it is kept because these jobs are occasionally still needed, not because they are routine.</p>
       <section class="panel">
         <h3>Maintenance tools</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px">
           <a href="normalize-icons" style="color:var(--good-name,#2c5b9a);font-weight:600">Standardize character icons &rarr;</a>
           &mdash; re-fit every character's art to the 591&times;591 frame so icon sizes are consistent site-wide.
         </p>
       </section>
       <section class="panel">
         <h3>Card thumbnails <span class="count-pill" id="thumb-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Every card, search result and roster row draws a small WebP copy of the character's icon (about 8&nbsp;KB) instead of the full 591px art (150&nbsp;KB and up),
           and a character's own page and the homepage's Featured card draw a full-size WebP copy (about 37&nbsp;KB instead of the PNG's 166&nbsp;KB). Script and collection banners and logos have three WebP sizes.
           The editors make them whenever an image is uploaded; images that arrived before that, or through the server-side Bloodstar copy, have none yet and still load the big picture.
@@ -948,7 +948,7 @@
       </section>
       <section class="panel">
         <h3>Gather a creator into a collection <span class="count-pill" id="cc-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Puts every character credited to one creator into a collection, writing them into its <em>include</em> list (a back catalogue has no shared “Appears in” to match on). Creates the collection if it doesn’t exist. Safe to re-run — it merges rather than replaces. Scan first.
         </p>
         <div class="act-filters">
@@ -962,7 +962,7 @@
       </section>
       <section class="panel">
         <h3>Rules pages → wiki pages <span class="count-pill" id="c2p-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           States, Conditions, Calls, Alignments and Properties were imported as Fabled characters, but they are reference text, not people you can put on a script. This rewrites each one as a <strong>wiki page</strong> under a parent collection and retires the character it came from. Retiring is a <em>soft</em> delete — Deleted Content can put any of them back, and the last version is in revisions. Scan first: the preview shows the exact text each page will get.
         </p>
         <div class="act-filters">
@@ -976,7 +976,7 @@
       </section>
       <section class="panel">
         <h3>Curata by owner <span class="count-pill" id="sto-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Gives <strong>Curata</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Curata also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
         </p>
         <div class="act-filters">
@@ -989,7 +989,7 @@
       </section>
       <section class="panel">
         <h3>Open tag editing <span class="count-pill" id="tgo-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Lets anyone with an account add <strong>tags</strong> to the untagged characters an account owns. Tags are the one gap a stranger can fill correctly without knowing the character, and <em>tags only</em> is the narrowest sharing there is: the save keeps the stored page and takes only the tags. Skips pages that already have tags, and pages whose owner already chose a sharing mode. Safe to re-run. Scan first.
         </p>
         <div class="act-filters">
@@ -1002,7 +1002,7 @@
       </section>
       <section class="panel">
         <h3>Open editing on unowned pages <span class="count-pill" id="oed-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Sets every character with <strong>no owner</strong>, or owned by the import account named below, to <em>anyone with an account can edit, except the ability</em>. These pages have no creator to open them up, so the members look after them; the ability text stays locked. Members of the collections listed are left exactly as they are. Pages already on this mode are skipped, so it is safe to re-run. Scan first.
         </p>
         <div class="act-filters">
@@ -1016,7 +1016,7 @@
       </section>
       <section class="panel">
         <h3>Featured Articles &rarr; standalone articles <span class="count-pill" id="f2a-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Turns every page on Featured Articles that still belongs to a script or collection into a standalone article: it leaves that set's Pages section and is listed on <strong>/articles</strong> (and the homepage's Articles panel) instead. Its address, text, images and comments stay the same, and it stays featured. Only its owner (and admins) can edit it afterwards. A single page can also be converted from its own page with "Make this a standalone article". Scan first.
         </p>
         <div class="act-filters">
@@ -1028,7 +1028,7 @@
       </section>
       <section class="panel">
         <h3>Tag suggestions <span class="count-pill" id="atg-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           How good is the editors' "Suggest tags" button? <strong>Score</strong> runs it on random pages people already tagged and compares; <strong>Try untagged</strong> shows what it would say about pages with no tags. Nothing is saved either way. The existing tags are not complete, so an "extra" tag is sometimes the suggestion being right.
         </p>
         <div class="act-filters">
@@ -1044,7 +1044,7 @@
       </section>
       <section class="panel">
         <h3>Check tags <span class="count-pill" id="tck-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           One character at a time: the tags the AI suggests and the tags on the page are ticked. Untick the wrong ones, tick any it missed, then <strong>Save</strong>. The page itself is not changed. What you save becomes the answer key: the test "Test on the pages checked by hand" runs on, and the examples the AI is shown first.
         </p>
         <div class="act-filters">
@@ -1054,7 +1054,7 @@
       </section>
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Jinxes that point at nothing: a typo, a page that was never imported, or one since renamed or unpublished. On the page itself these just look like a name that does not link anywhere, so nothing else counts them. Also lists pairs where <em>both</em> characters wrote a rule, since only one wording is ever shown.
         </p>
         <button type="button" class="small-btn" id="jxh-scan">Scan</button>
@@ -1062,7 +1062,7 @@
       </section>
       <section class="panel">
         <h3>Nested character URLs <span class="count-pill" id="nest-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Files every character under the set it belongs to &mdash; <strong>/c/odyssey/witcher</strong> instead of <strong>/c/witcher-odyssey</strong> &mdash; using its collection first, then its script, then the set named in &ldquo;Appears in&rdquo;, then its author. Nobody keeps a bare first-come URL, so the first Priest stops owning <strong>/c/priest</strong>. Every old link 301s to the new one forever.
           <strong>Scan first:</strong> it shows what each page would become, and where each address came from, without touching anything. Re-runnable &mdash; a second pass after registering a collection only moves the pages that collection just claimed.
         </p>
@@ -1073,7 +1073,7 @@
       </section>
       <section class="panel">
         <h3>Incomplete published pages <span class="count-pill" id="noicon-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           A character now needs a <strong>name, an icon, an ability and tags</strong> before it can be published — the editor saves it as a draft and says what is missing. This finds pages that went live <em>before</em> that bar existed. <strong>Scan first:</strong> it tells you how many, and what they are short of, before anything moves. Moving them to drafts hides them from the site until their owner fills the gap; nothing is deleted, and re-publishing is one click from Bulk actions. Fabled rules pages (States, Conditions, Calls) are exempt and never appear here.
         </p>
         <button type="button" class="small-btn" id="noicon-scan">Scan</button>
@@ -1083,7 +1083,7 @@
       </section>
       <section class="panel">
         <h3>Official characters on the wiki <span class="count-pill" id="offc-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           This wiki is for homebrew, and a page that <em>is</em> an official character duplicates one the official wiki already has, hosts art that is not ours, and takes the name from anyone writing a real homebrew character of it. The editors now refuse to make another; this finds the ones made before that. <strong>Scan first.</strong> Retiring one keeps it on every script that uses it &mdash; the roster is repointed at the official character, so the name still shows and links to the official wiki &mdash; and the page itself is <strong>soft-deleted</strong>, so it sits in Deleted pages below and can be restored. Nothing is purged and no art is removed. Characters that only <em>share</em> a name are listed separately and never touched.
         </p>
         <button type="button" class="small-btn" id="offc-scan">Scan</button>
@@ -1093,7 +1093,7 @@
       </section>
       <section class="panel">
         <h3>Clean up Odyssey text <span class="count-pill" id="odyc-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+        <p style="font-family:'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           One-time tidy of the 119 Odyssey almanacs: removes the translation's em dashes (commas instead) and rewrites he/him/his and she/her to they/them/their. Character abilities are never touched, and the flavour quotes keep their wording apart from the dashes. Every page it edits is saved to revisions first. Check first, then run.
         </p>
         <button type="button" class="small-btn" id="odyc-check">Check what will change</button>

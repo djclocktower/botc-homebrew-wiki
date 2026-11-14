@@ -70,7 +70,7 @@
 }
 .if-card > :last-child { margin-bottom: 0; }
 .if-card-title {
-  font-family: 'Dumbledor2', serif; font-size: 1.12rem; letter-spacing: .05em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.12rem; letter-spacing: .05em;
   text-transform: uppercase; color: var(--maroon); margin: 0 0 12px;
 }
 
@@ -82,7 +82,7 @@ details.if-sec > summary {
   list-style: none; cursor: pointer;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 12px 0;
-  font-family: 'Dumbledor2', serif; font-size: 1.05rem; letter-spacing: .05em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.05rem; letter-spacing: .05em;
   text-transform: uppercase; color: var(--maroon);
 }
 details.if-sec > summary::-webkit-details-marker { display: none; }
@@ -273,7 +273,7 @@ details.if-sec > summary:hover { color: #8a3526; }
   pointer-events: none;
 }
 .if-stage-empty { text-align: center; color: rgba(236,225,200,.6); padding: 30px 16px; }
-.if-stage-empty b { display: block; font-family: 'Dumbledor2', serif; font-size: 1.25rem; letter-spacing: .05em; text-transform: uppercase; color: rgba(236,225,200,.72); margin-bottom: 6px; }
+.if-stage-empty b { display: block; font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.25rem; letter-spacing: .05em; text-transform: uppercase; color: rgba(236,225,200,.72); margin-bottom: 6px; }
 .if-stage-empty span { font-size: .9rem; }
 
 /* Bucket pins: numbered so the list in the Paint bucket section matches. */
@@ -299,7 +299,7 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-busy-text { flex: 1; min-width: 0; }
 .if-busy p { margin: 0; font-family: 'Roboto',sans-serif; font-size: .84rem; letter-spacing: .04em; color: rgba(236,225,200,.92); }
 .if-busy .if-busy-sub {
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; letter-spacing: 0;
+  font-family: 'TradeGothicLT','TradeGothicLT Fallback', 'Libre Franklin', sans-serif; letter-spacing: 0;
   font-size: .78rem; color: rgba(236,225,200,.5); margin-top: 3px;
 }
 .if-busy-bar { width: 100%; height: 6px; margin-top: 6px; background: rgba(240,232,213,.14); }
@@ -361,7 +361,7 @@ details.if-sec > summary:hover { color: #8a3526; }
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
   gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(214,196,150,.25);
 }
-.if-editor-bar h2 { font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.1rem; letter-spacing: .05em; color: var(--parch); margin: 0; }
+.if-editor-bar h2 { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-size: 1.1rem; letter-spacing: .05em; color: var(--parch); margin: 0; }
 .if-editor-bar p { margin: 2px 0 0; font-size: .8rem; color: rgba(236,225,200,.55); }
 .if-editor-bar .if-btn-row { flex: 0 0 auto; }
 .if-editor-frame { position: relative; flex: 1; min-height: 0; }
@@ -376,7 +376,7 @@ details.if-sec > summary:hover { color: #8a3526; }
 
 /* ── Export dialog ──────────────────────────────────────────────── */
 .if-modal { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(16,6,20,.8); }
-.if-modal-card { max-width: 440px; width: 100%; max-height: 90vh; overflow: auto; }
+.if-modal-card { max-width: 440px; width: 100%; max-height: 90vh; max-height: 90dvh; overflow: auto; }
 .if-modal-card .if-shot {
   display: flex; align-items: center; justify-content: center; padding: 12px; margin-bottom: 12px;
   border: 1px solid var(--parch-frame);
@@ -427,10 +427,10 @@ details.if-sec > summary:hover { color: #8a3526; }
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

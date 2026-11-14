@@ -509,11 +509,11 @@ function imageDims(b) {
 /* The width of an original image, for the media rules above: the `w` the
    upload stamped on the R2 object, or — for an object stored before that,
    or a committed file — read off its first bytes. 0 when it cannot be told. */
-async function sourceImageWidth(env, origin, key) {
+async function sourceImageDims(env, origin, key) {
   try {
     const head = env.ART && await env.ART.head(key);
-    const stamped = Number(head && head.customMetadata && head.customMetadata.w);
-    if (stamped > 0) return stamped;
+    const meta = (head && head.customMetadata) || {};
+    if (Number(meta.w) > 0 && Number(meta.h) > 0) return { w: Number(meta.w), h: Number(meta.h) };
     let bytes = null;
     if (head) {
       const obj = await env.ART.get(key, { range: { offset: 0, length: 65536 } });
@@ -523,8 +523,8 @@ async function sourceImageWidth(env, origin, key) {
       if (res.ok) bytes = new Uint8Array(await res.arrayBuffer());
     }
     const d = bytes && imageDims(bytes);
-    return d && d.w > 0 ? d.w : 0;
-  } catch { return 0; }
+    return d && d.w > 0 && d.h > 0 ? { w: d.w, h: d.h } : { w: 0, h: 0 };
+  } catch { return { w: 0, h: 0 }; }
 }
 
 /* `imageW` on a script or collection: {path: width} for its own header and
@@ -532,11 +532,13 @@ async function sourceImageWidth(env, origin, key) {
    exist. Derived from the stored originals — on every save
    (stampPageImageWidths) and whenever a variant is uploaded
    (stampMediaWidth) — never taken from a client. Entries for an image the
-   page no longer uses are dropped. */
-function pageImageWidths(d, add) {
+   page no longer uses are dropped. `imageH` is the same map of heights
+   (field 'imageH'), so the page can reserve the image's box before it
+   loads instead of moving everything under it. */
+function pageImageWidths(d, add, field = 'imageW') {
   const out = {};
   const own = new Set([d && d.header, d && d.logo].filter(p => typeof p === 'string' && p));
-  const prev = d && d.imageW && typeof d.imageW === 'object' ? d.imageW : {};
+  const prev = d && d[field] && typeof d[field] === 'object' ? d[field] : {};
   for (const [k, v] of Object.entries(Object.assign({}, prev, add || {}))) {
     const n = Math.round(Number(v));
     if (own.has(k) && n > 0 && n <= 20000) out[k] = n;
@@ -544,21 +546,23 @@ function pageImageWidths(d, add) {
   return out;
 }
 async function stampPageImageWidths(env, origin, d) {
-  const add = {};
+  const add = {}, addH = {};
   for (const p of [d.header, d.logo]) {
     if (typeof p === 'string' && PAGE_IMG_RE.test(p) && !(p in add)) {
-      const w = await sourceImageWidth(env, origin, p);
-      if (w) add[p] = w;
+      const dims = await sourceImageDims(env, origin, p);
+      if (dims.w) { add[p] = dims.w; addH[p] = dims.h; }
     }
   }
-  // Only what was just measured: a client cannot hand in a width.
-  delete d.imageW;
+  // Only what was just measured: a client cannot hand in a size.
+  delete d.imageW; delete d.imageH;
   const w = pageImageWidths(d, add);
   if (Object.keys(w).length) d.imageW = w;
+  const h = pageImageWidths(d, addH, 'imageH');
+  if (Object.keys(h).length) d.imageH = h;
 }
 // A variant was just written for `source`: record its width on the page that
 // uses it, without moving the page's version or edit stamp.
-async function stampMediaWidth(env, source, width) {
+async function stampMediaWidth(env, source, width, height) {
   const table = source.startsWith('scripts/') ? 'scripts' : source.startsWith('collections/') ? 'collections' : '';
   if (!table || !(width > 0)) return;
   try {
@@ -569,9 +573,11 @@ async function stampMediaWidth(env, source, width) {
     for (const row of results || []) {
       let d; try { d = JSON.parse(row.data); } catch { continue; }
       if (d.header !== source && d.logo !== source) continue;
-      if (d.imageW && d.imageW[source] === width) continue;
+      if (d.imageW && d.imageW[source] === width && (!height || (d.imageH && d.imageH[source] === height))) continue;
       const w = pageImageWidths(d, { [source]: width });
       if (Object.keys(w).length) d.imageW = w; else delete d.imageW;
+      const h = pageImageWidths(d, height ? { [source]: height } : {}, 'imageH');
+      if (Object.keys(h).length) d.imageH = h; else delete d.imageH;
       await env.DB.prepare(`UPDATE ${table} SET data=? WHERE slug=?`).bind(JSON.stringify(d), row.slug).run();
       changed++;
     }
@@ -6442,9 +6448,10 @@ function sanitizePageFields(o, themeBase) {
   }
   // The widths of its own two images (see pageImageWidths). The save
   // handlers re-measure them; anywhere else this only keeps the shape honest.
-  if (o.imageW != null) {
-    const w = pageImageWidths(o);
-    if (Object.keys(w).length) o.imageW = w; else delete o.imageW;
+  for (const field of ['imageW', 'imageH']) {
+    if (o[field] == null) continue;
+    const w = pageImageWidths(o, null, field);
+    if (Object.keys(w).length) o[field] = w; else delete o[field];
   }
   if (o.customJson != null) {
     const j = String(o.customJson).trim().slice(0, PAGE_JSON_MAX);
@@ -8246,10 +8253,10 @@ ${o.draftBanner || ''}
       <a href="${R}all-collections">Collections</a>
       <a href="${R}script">Script Builder</a>
     </nav>
-  <div class="search-wrap" id="search-wrap">
+  <search class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
     <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
+  </search>
   <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
@@ -9629,10 +9636,16 @@ function hasSessionCookie(request) {
   return /(?:^|;\s*)botc_session=/.test(request.headers.get('Cookie') || '');
 }
 
-function htmlPage(html, viewKey, degraded) {
+// Published HTML is the same for every reader (private controls come from
+// /api/page-viewer), so the browser may keep it: `no-store` would bar it
+// from the back/forward cache and Back would rebuild the page. Drafts stay
+// no-store.
+const SHARED_HTML_CACHE_CONTROL = 'private, no-cache';
+
+function htmlPage(html, viewKey, degraded, shared) {
   const headers = {
     'Content-Type': 'text/html; charset=utf-8',
-    'Cache-Control': 'no-store',
+    'Cache-Control': viewKey || shared ? SHARED_HTML_CACHE_CONTROL : 'no-store',
     Link: PAGE_LINK_HEADER
   };
   if (viewKey) headers[VIEW_HEADER] = viewKey;
@@ -9645,7 +9658,7 @@ function stripViewHeader(res) {
   const headers = new Headers(res.headers);
   headers.delete(VIEW_HEADER);
   headers.delete(DEGRADED_HEADER);
-  headers.set('Cache-Control', 'no-store');
+  headers.set('Cache-Control', SHARED_HTML_CACHE_CONTROL);
   return new Response(res.body, { status: res.status, headers });
 }
 
@@ -9771,7 +9784,7 @@ async function ssrRoute(env, ctx, request, url, build, prefetch) {
 // edge cache as the SSR pages, and the same no-store HTML response.
 const LIST_HELPERS = {
   contentVersion, cachedFeedBody, edgeCacheGet, edgeCachePut, officialRoles: loadOfficialRoles,
-  htmlPage: html => htmlPage(html), cacheControl: SSR_EDGE_CACHE_CONTROL, renderV: SSR_RENDER_V
+  htmlPage: html => htmlPage(html, '', false, true), cacheControl: SSR_EDGE_CACHE_CONTROL, renderV: SSR_RENDER_V
 };
 
 const app = {
@@ -13575,7 +13588,7 @@ const app = {
             const needs = MEDIA_WIDTHS.some(width => {
               const key = 'media/' + width + '/' + art + '.webp';
               return !variantOk(key, art) || !media.get(key).meta.w;
-            }) || !(d.imageW && d.imageW[art] > 0);
+            }) || !(d.imageW && d.imageW[art] > 0) || !(d.imageH && d.imageH[art] > 0);
             if (needs) pagesMissing.push({ slug: row.slug, name: d.name || d.displayName || row.slug, art, media: true });
           }
         }
@@ -14431,9 +14444,9 @@ const app = {
         // enlarged copy is bigger than the original and no sharper, and the
         // srcset would be claiming a width the file does not have.
         const dims = imageDims(bytes);
-        let mediaSrcWidth = 0;
+        let mediaSrcWidth = 0, mediaSrcHeight = 0;
         if (mediaKey) {
-          mediaSrcWidth = await sourceImageWidth(env, url.origin, mediaKey);
+          ({ w: mediaSrcWidth, h: mediaSrcHeight } = await sourceImageDims(env, url.origin, mediaKey));
           const max = mediaSlotMax(mediaParts(key).slot, mediaSrcWidth);
           if (dims && dims.w > max + 1) {
             return jsonResponse({ error: 'A resized copy cannot be larger than its original (' + max + 'px wide at most).' }, { status: 400 });
@@ -14450,7 +14463,7 @@ const app = {
         if (/^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i.test(key)) {
           await env.ART.delete(MEDIA_WIDTHS.map(width => 'media/' + width + '/' + key + '.webp')).catch(() => {});
         }
-        if (mediaKey && mediaSrcWidth) await stampMediaWidth(env, mediaKey, mediaSrcWidth);
+        if (mediaKey && mediaSrcWidth) await stampMediaWidth(env, mediaKey, mediaSrcWidth, mediaSrcHeight);
         // Uploads were never recorded anywhere, so there was no way to answer
         // "who put this image here" or to see a flood while it was happening.
         // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache —

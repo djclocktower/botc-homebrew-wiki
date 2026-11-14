@@ -376,7 +376,10 @@ assets/
                        Shaped like night-order-picker.js on purpose. Used by
                        create.html, edit.html and /jinxes.
   jinx-graph.js        The relationship map on /jinxes: hand-rolled SVG plus a
-                       small spring layout, no library and no CDN. Positions are
+                       small spring layout, no library and no CDN.
+                       mountJinxGraph() returns a PROMISE of the map: the
+                       layout runs in ~40 ms slices with a yield between,
+                       so a phone stays usable while it works. Positions are
                        seeded from a hash of the node id so the map looks the
                        same every visit, and the simulation runs a fixed number
                        of ticks and STOPS rather than animating forever. Read the
@@ -4729,7 +4732,29 @@ seeded with whole collections whose characters all arrived unowned.
   interleave the two groups. Two prefixes can both match one ability only when
   one is a prefix of the other, so longest-first is always the most specific
   match and the list above can be reordered freely.
-- Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- Grid/list `<img>` tags get `loading="lazy" decoding="async"`. The one
+  picture at the top of a page gets `fetchpriority="high"` and never `lazy`.
+- **A pop-up window is a native `<dialog>` opened with `showModal()`**:
+  the browser traps focus, closes it on Esc (`cancel`, then `close`) and
+  keeps it above everything. The full-screen dim IS the dialog element and
+  the card sits inside it, so `dialog:is(.rules-modal, …)` in styles.css
+  resets the browser's dialog box and hides a closed one; add a new
+  window's class there. Never lock the page with `overflow: hidden` on
+  `<html>`/`<body>`: `dialog:modal` carries `overscroll-behavior`. Anything
+  hung off `<body>` (a drop-down list) is drawn UNDER an open modal, so
+  mount it inside the dialog. The Token Tool's modals and wiki-editor's
+  preview overlay are older and not converted yet.
+- **Enter that confirms an input method's candidate never reaches a page's
+  Enter handler**: one capture-phase guard in data.js stops it
+  (`isComposing`, or keyCode 229 for Safari), so no handler needs its own.
+- **Text boxes that grow with their text** all go through
+  `BotcData.fitHeight()`, which hands them to the browser's
+  `field-sizing: content` where supported, with their `rows` height as a
+  floor; a box with a ceiling sets `max-height` in CSS.
+- **Font stacks name a stand-in after the wiki's face**: `'TradeGothicLT',
+  'TradeGothicLT Fallback', …` and `'Dumbledor2', 'Dumbledor2 Fallback', …`
+  (local Arial/Times sized to match, top of styles.css), so text does not
+  reflow when the real font arrives. A new stack keeps the pair.
 - **Never rewrite page markup on every keystroke in a text box.** Chrome
   ends the box's undo step whenever script replaces nodes in the document
   (`textContent`, `innerHTML`, even with the same text), so Ctrl+Z undid
@@ -5190,6 +5215,14 @@ then lists the slots narrower than the source and one at its true width;
 with no `imageW` it lists the three slots as before (copies made by the old
 code really are those widths). Tiles do not pass it: their picture is
 object-fit inside a fixed box, where a descriptor cannot move anything.
+**`imageH`** is the same map of heights, written beside it by the same two
+functions (`pageImageWidths(d, add, 'imageH')`). With both known, the page's
+top picture carries `style="--ar:w/h"` and `fetchpriority="high"`
+(`heroAttrs()` in render-page.js), and styles.css sizes it before it loads
+from `--wmax` / `--wnat` / `--hmax` (its column, its `sizes`, its height
+cap), which is what the old max-width/max-height pair worked out once it had
+loaded. Change one of those caps and change its variable too. The thumbnail
+scan lists a page with no `imageH` until its sizes are remade.
 **Tiles use `PageRender.TILE_SIZES`** (`(max-width: 640px) 210px, 320px`),
 deliberately below a phone tile's ~320 CSS px so a 3x phone takes the 640
 copy rather than the 1280 one (measured on live phone pages: homepage tile
@@ -5210,8 +5243,10 @@ original-image fallbacks.
 published HTML for both anonymous and signed-in readers. Only a cookie-free
 GET build marked `X-Botc-View` can be cached; redirects, failures, drafts,
 private-parent fallback renders and personalized responses are not stored.
-Hits still count views and strip the internal marker. Browser HTML remains
-`no-store`. `/api/page-viewer` separately checks the current account and page
+Hits still count views and strip the internal marker. Published HTML goes to
+the browser as `private, no-cache` (`SHARED_HTML_CACHE_CONTROL`), because
+`no-store` bars a page from the back/forward cache and Back rebuilt it from
+scratch; drafts and everything else private stay `no-store`. `/api/page-viewer` separately checks the current account and page
 permissions before returning edit controls, the incomplete-page notice, or
 the draft wiki-page links and new-page button. Those two go to the owner and
 to the parent's approved editors (see the wiki-page waterfall under "Approved
@@ -5271,7 +5306,8 @@ architecture notes) are cached the same way but by `worker/list-pages.js`
 itself: one cookie-free copy per normalised query (team id, lower-cased
 tag), keyed on the character + collection (+ script, for All Characters'
 Source chips) versions and `SSR_RENDER_V`; built from the published grid
-feed only, no view counting, `no-store` to the browser. The server copy
+feed only, no view counting, `private, no-cache` to the browser (bfcache, as
+above). The server copy
 drops the feed `<link rel=preload>`s: the cards are already there, so the
 1 MB feed waits for idle instead of competing with the first screen.
 

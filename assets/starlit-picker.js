@@ -14,15 +14,14 @@
     if (!overlay) return;
     overlay.remove();
     overlay = null;
-    document.documentElement.style.overflow = '';
   }
   function open(input) {
     if (input.disabled) { alert('The art on this page cannot be changed from here.'); return; }
     close();
     target = input;
-    overlay = document.createElement('div');
+    // A native modal <dialog>: focus stays in it, Esc closes it (as Close).
+    overlay = document.createElement('dialog');
     overlay.className = 'starlit-picker';
-    overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-label', 'Starlit Gallery');
     overlay.innerHTML =
       '<div class="starlit-picker-bar"><span>Starlit Gallery</span>' +
@@ -30,8 +29,9 @@
       'stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
       '<iframe src="/starlit?pick=1" title="Starlit Gallery"></iframe>';
     overlay.querySelector('button').addEventListener('click', close);
+    overlay.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
     document.body.appendChild(overlay);
-    document.documentElement.style.overflow = 'hidden';
+    overlay.showModal();
   }
 
   function credit(d) {
@@ -69,5 +69,4 @@
     e.preventDefault();
     open(input);
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 })();

@@ -14,7 +14,7 @@
 <style>
 .pub-main { padding: 0 clamp(12px,3vw,40px) 64px; max-width: 940px; margin: 0 auto; }
 .sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
-.sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
+.sb-details h2 { font-family:'Dumbledor2','Dumbledor2 Fallback',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
 .sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
 .sb-fld { margin-bottom:12px; }
 .sb-fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
@@ -51,7 +51,7 @@
 .fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.7; margin:8px 0 0; }
 .fmt-help code { background:#fffdf8; border:1px solid #e0d5bd; padding:1px 4px; font-size:.86em; }
 details.sb-details { padding:0; }
-details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20px; font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.15rem; }
+details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20px; font-family:'Dumbledor2','Dumbledor2 Fallback',serif; color:var(--maroon); font-size:1.15rem; }
 details.sb-details > summary::-webkit-details-marker { display:none; }
 details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
 details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
@@ -98,10 +98,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

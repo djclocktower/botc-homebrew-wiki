@@ -28,11 +28,9 @@
   var ROOT = window.BotcData.root();
 
   function build() {
-    var overlay = document.createElement('div');
+    var overlay = document.createElement('dialog');
     overlay.className = 'rules-modal open';
     overlay.id = 'rules-modal';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'rules-modal-title');
     overlay.innerHTML =
       '<div class="rules-modal-card">' +
@@ -49,6 +47,14 @@
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
+    overlay.showModal();
+    // The rules have to be agreed to: Esc does not dismiss them. A browser
+    // that closes it anyway (a second Esc) gets it straight back.
+    var agreed = false;
+    overlay.addEventListener('cancel', function (e) { e.preventDefault(); });
+    overlay.addEventListener('close', function () {
+      if (agreed) overlay.remove(); else overlay.showModal();
+    });
 
     var box = overlay.querySelector('#rules-agree-box');
     var go = overlay.querySelector('#rules-continue');
@@ -56,11 +62,10 @@
     go.addEventListener('click', function () {
       if (!box.checked) return;
       setAcked();
-      overlay.remove();
-      document.body.classList.remove('rules-modal-lock');
+      agreed = true;
+      overlay.close();
     });
 
-    document.body.classList.add('rules-modal-lock');
     box.focus();
   }
 

@@ -22,7 +22,7 @@
     z-index: 5;
   }
   .te-h2 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
     color: var(--parch);
     text-shadow: 0 3px 12px rgba(0,0,0,.5);
@@ -30,7 +30,7 @@
     margin: 0 0 4px;
   }
   .te-sub {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     color: rgba(236,225,200,.8);
     margin: 0 0 22px;
     font-size: .95rem;
@@ -49,10 +49,10 @@
                 inset 0 0 0 3px rgba(255,255,255,.28),
                 inset 0 0 0 4px var(--parch-frame);
     margin-bottom: 18px;
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
   }
   .panel h3 {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: 1.1rem;
     color: var(--maroon);
     letter-spacing: .05em;
@@ -68,7 +68,7 @@
     margin-bottom: -2px;
   }
   .te-input, .te-select {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .95rem;
     padding: 9px 11px;
     border: 1px solid var(--parch-frame);
@@ -82,7 +82,7 @@
   .te-input:focus, .te-select:focus { outline: 2px solid rgba(122,45,47,.45); outline-offset: 1px; }
 
   .chip {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     font-size: .82rem;
     border: 1px solid var(--parch-frame);
     background: rgba(255,255,255,.42);
@@ -101,7 +101,7 @@
   .chip.on .cnt { opacity: .85; }
 
   .btn {
-    font-family: 'Dumbledor2', serif;
+    font-family: 'Dumbledor2','Dumbledor2 Fallback', serif;
     font-size: .98rem; letter-spacing: .04em;
     color: #f4ead2;
     background: var(--maroon);
@@ -117,7 +117,7 @@
     display: flex; flex-wrap: wrap; gap: 8px 20px;
     font-size: .88rem; margin-bottom: 14px;
   }
-  .te-stats b { font-family: 'Dumbledor2', serif; font-size: 1.05rem; }
+  .te-stats b { font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.05rem; }
 
   /* ---- results ---- */
   .te-item {
@@ -155,7 +155,7 @@
   .te-edit { margin-top: 10px; display: none; }
   .te-item.open .te-edit { display: block; }
   .te-edit textarea {
-    width: 100%;
+    width: 100%; max-height: 420px;
     font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
     font-size: .9rem; line-height: 1.5;
     padding: 10px;
@@ -177,13 +177,13 @@
   .te-more { text-align: center; padding-top: 14px; }
 
   .te-progress {
-    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif;
     color: rgba(236,225,200,.85);
     padding: 20px 0;
   }
   .te-bar { height: 6px; background: rgba(0,0,0,.35); border-radius: 999px; overflow: hidden; margin-top: 8px; max-width: 420px; }
   .te-bar span { display: block; height: 100%; width: 0; background: #c8a24a; transition: width .15s linear; }
-  .gate { color: rgba(236,225,200,.9); font-family: 'TradeGothicLT','Libre Franklin',sans-serif; padding: 20px 0; }
+  .gate { color: rgba(236,225,200,.9); font-family: 'TradeGothicLT','TradeGothicLT Fallback','Libre Franklin',sans-serif; padding: 20px 0; }
   .gate a { color: #e8c98a; }
 
   @media (max-width: 620px) {
@@ -208,10 +208,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

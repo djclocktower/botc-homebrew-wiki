@@ -51,7 +51,7 @@
 @keyframes cmtNewIn { from { transform: translateY(-50%) scale(0); } }
 .cmt-avatar-letter {
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Dumbledor2', serif; font-size: 1.1rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1.1rem;
   color: #f7ecd0; background: var(--maroon); border-color: var(--parch-frame);
 }
 .cmt-main { flex: 1 1 auto; min-width: 0; }
@@ -100,7 +100,7 @@
 }
 .cmt-count { font-size: .76rem; color: var(--cmt-cream-dim); }
 .cmt-submit {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: .88rem; letter-spacing: .05em; padding: 9px 20px; cursor: pointer;
   color: #f7ecd0; background: var(--maroon);
   border: 2px solid var(--parch-frame); border-radius: 0;

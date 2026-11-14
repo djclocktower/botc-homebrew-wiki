@@ -39,7 +39,7 @@ test('list pages: the first screen of cards is in the HTML, drawn exactly as the
   const grid = OR.cards(OR.buildOfficialRoles(roles), require('../../assets/official-tags.js')).concat(feed);
   const res = await f.request('/all-characters');
   assert.equal(res.status, 200);
-  assert.equal(res.headers.get('Cache-Control'), 'no-store');
+  assert.equal(res.headers.get('Cache-Control'), 'private, no-cache');
   assert.equal(res.headers.get('Set-Cookie'), null);
   const html = await res.text();
   assert.match(html, /<main class="home-panel list-panel" id="panel" data-ssr="1" data-ssr-sig="/);

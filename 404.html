@@ -42,12 +42,12 @@
 }
 .nf-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
 .nf-arc-text {
-  font-family: 'Dumbledor2', serif; font-size: 17px; letter-spacing: .18em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 17px; letter-spacing: .18em;
   fill: var(--maroon); opacity: .78;
 }
 .nf-face { display: grid; place-items: center; gap: 2px; margin-top: -8%; }
 .nf-num {
-  font-family: 'Dumbledor2', serif; font-size: clamp(2.6rem, 11vw, 4rem);
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: clamp(2.6rem, 11vw, 4rem);
   line-height: 1; color: var(--maroon); letter-spacing: .04em;
 }
 .nf-mark {
@@ -55,7 +55,7 @@
   text-transform: uppercase; color: rgba(91,31,33,.6);
 }
 .nf-head {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase;
   font-size: clamp(1.3rem, 4.4vw, 2rem); letter-spacing: .05em;
   color: var(--parch); margin: 0 0 .45em; text-shadow: 0 3px 12px rgba(0,0,0,.5);
 }
@@ -91,7 +91,7 @@
 .nf-sug:hover { background: rgba(236,225,200,.07); }
 .nf-sug-thumb { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; }
 .nf-sug-text { min-width: 0; }
-.nf-sug-name { display: block; font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .02em; }
+.nf-sug-name { display: block; font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-size: 1rem; letter-spacing: .02em; }
 .nf-sug-meta {
   display: block; font-family: 'Roboto',sans-serif; font-size: .72rem;
   letter-spacing: .08em; text-transform: uppercase; color: rgba(236,225,200,.6);
@@ -114,7 +114,7 @@
   padding: clamp(16px,3vw,24px);
 }
 .nf-report-head {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.05rem;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; font-size: 1.05rem;
   letter-spacing: .05em; color: var(--parch); margin: 0 0 6px;
 }
 .nf-report-note, .nf-report-who { color: rgba(236,225,200,.72); }
@@ -132,7 +132,7 @@
 }
 .nf-report textarea { min-height: 84px; resize: vertical; }
 .nf-report-send {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; text-transform: uppercase; letter-spacing: .06em;
   background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
   border: none; padding: 10px 22px; cursor: pointer; font-size: .95rem;
 }
@@ -158,10 +158,10 @@
       <a href="/all-collections">Collections</a>
       <a href="/script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>

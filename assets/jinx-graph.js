@@ -23,7 +23,8 @@
       leave open is a battery cost for no benefit, and dragging re-heats
       only the neighbourhood being dragged.
 
-   mountJinxGraph({mount, data, onSelect, onPair, onLinkStep}) -> api:
+   mountJinxGraph({mount, data, onSelect, onPair, onLinkStep}) -> Promise of api
+   (null when there is nothing to map):
      focus(id), filter(fn), fit(), fitAll(), resetLayout(), hasMoved(),
      setBaseLayer(on), setLinkMode(on), select(id), destroy(). */
 (function () {
@@ -113,9 +114,9 @@
     var LINK_REST = 175;         // slack in a jinx line, on top of both radii
     var NODE_GAP = 52;           // clear parchment between two icons
 
-    function simulate(ticks) {
-      var i, j, k, n, m, dx, dy, d2, len, force, ux, uy;
-      for (k = 0; k < ticks; k++) {
+    function tick(k, ticks) {
+      var i, j, n, m, dx, dy, d2, len, force, ux, uy;
+      {
         // Cooling: big moves early, fine adjustment late.
         var a = Math.max(1 - k / ticks, 0.03);
 
@@ -187,14 +188,30 @@
         }
       }
     }
+    /* Ticks run in slices of about 40 ms with a yield between, so the page
+       keeps answering taps and scrolls while a big map lays itself out. The
+       result is the same layout: the same ticks, in the same order. */
+    function simulate(ticks) {
+      return new Promise(function (done) {
+        var k = 0;
+        (function run() {
+          var end = Date.now() + 40;
+          while (k < ticks && Date.now() < end) tick(k++, ticks);
+          if (k >= ticks) done();
+          else if (window.scheduler && window.scheduler.yield) window.scheduler.yield().then(run);
+          else setTimeout(run, 0);
+        })();
+      });
+    }
     /* The two O(n^2) passes per tick are the whole cost of this, and the map
        grows with the wiki. 560 ticks is comfortable at ~150 nodes and locks a
        phone's main thread for seconds at several hundred, with nothing on
        screen until it finishes. Trade ticks for size past that: a bigger map
        needs fewer of them anyway, because there is more room to spread into. */
-    simulate(nodes.length > 150
+    // Everything after this runs once the layout is done (not re-indented).
+    return simulate(nodes.length > 150
       ? Math.max(180, Math.round(560 * Math.pow(150 / nodes.length, 1.5)))
-      : 560);
+      : 560).then(function () {
     // Where the simulation left each node. Dragging is meant to be a way to
     // untangle a corner and then put it back, so the computed layout is kept
     // and "Reset layout" restores it.
@@ -751,6 +768,7 @@
         if (tip.parentNode) tip.parentNode.removeChild(tip);
       }
     };
+    });
   }
 
   if (typeof window !== 'undefined') window.mountJinxGraph = mountJinxGraph;

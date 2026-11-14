@@ -40,7 +40,7 @@
 .tool-card-sym svg { width: 64px; height: 64px; filter: drop-shadow(0 2px 3px rgba(91,31,33,.2)); }
 .tool-card-sym img { max-height: 76px; width: auto; filter: drop-shadow(0 2px 5px rgba(91,31,33,.3)); }
 .tool-card-title {
-  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-family: 'Dumbledor2','Dumbledor2 Fallback', serif; font-weight: 400;
   font-size: 1.22rem; letter-spacing: .04em; color: var(--maroon);
   margin: 0 0 8px;
 }
@@ -73,10 +73,10 @@
       <a href="all-collections">Collections</a>
       <a href="script">Script Builder</a>
     </nav>
-    <div class="search-wrap" id="search-wrap">
+    <search class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-    </div>
+    </search>
     <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
