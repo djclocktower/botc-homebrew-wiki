@@ -184,6 +184,7 @@
  *                                belongs to an account
  *   POST /api/admin/creator-alias -> admin: link a creator name to an account
  *   GET  /random              -> 302 to a random published character page
+ *   GET  /krita/*             -> the Krita web port test page, from R2 krita/ (cross-origin isolated)
  *   GET  /sitemap.xml         -> built live from D1
  *   GET  /s/{slug}            -> script page (server-side rendered from D1)
  *   GET  /collection/{id}     -> collection page (server-side rendered from D1)
@@ -10620,6 +10621,11 @@ const app = {
       if (typeof obj.writeHttpMetadata === 'function') obj.writeHttpMetadata(headers);
       return new Response(null, { headers });
     }
+    // The Krita web port's test page: files under krita/ in R2 (too big to be
+    // static assets; the engine is over the 25 MiB limit). Its engine uses
+    // threads, so this path alone is cross-origin isolated. Upload with the
+    // port's deploy/upload.sh, bucket botc-wiki-art.
+    if (isKritaPath(path)) return serveKrita(request, env);
     // HEAD is answered exactly as GET, without the body: left to fall through,
     // an image that lives only in R2 came back 404 to anything that checks
     // before it downloads.
@@ -18712,6 +18718,65 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
 };
 const HTML_CSP = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'";
+// The Krita web port (/krita/), from the port's deploy/cloudflare-worker.js
+// with the bucket swapped for ART. Large files are stored Brotli-compressed
+// (Content-Encoding: br) by its deploy/upload.sh and passed through as they
+// are; the default export skips withSecurityHeaders for these, because
+// re-wrapping the response would compress the bytes a second time.
+const KRITA_TYPES = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8', json: 'application/json', wasm: 'application/wasm',
+  svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', ico: 'image/x-icon',
+  woff2: 'font/woff2', txt: 'text/plain; charset=utf-8', map: 'application/json',
+  data: 'application/octet-stream', sqlite: 'application/octet-stream'
+};
+const KRITA_HEADERS = Object.assign({
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'X-Robots-Tag': 'noindex'
+}, SECURITY_HEADERS);
+const isKritaPath = path => path === '/krita' || path.startsWith('/krita/');
+function kritaReply(body, status, extra) {
+  const headers = new Headers(extra instanceof Headers ? extra : Object.assign({ 'Cache-Control': 'no-store' }, extra));
+  for (const [k, v] of Object.entries(KRITA_HEADERS)) headers.set(k, v);
+  return new Response(body, { status, headers, encodeBody: 'manual' });
+}
+async function serveKrita(request, env) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return kritaReply('Method not allowed', 405, { Allow: 'GET, HEAD' });
+  const url = new URL(request.url);
+  let key;
+  try { key = decodeURIComponent(url.pathname).replace(/^\/+/, ''); } catch { return kritaReply('Bad request', 400); }
+  // /krita -> /krita/ so the page's relative URLs (./assets, ./engine) resolve inside /krita/.
+  if (key === 'krita') return kritaReply(null, 301, { Location: url.origin + '/krita/' + url.search });
+  if (key.endsWith('/')) key += 'index.html';
+  if (!key.startsWith('krita/') || key.split('/').includes('..') || !env.ART) return kritaReply('Not found', 404);
+  const object = request.method === 'HEAD'
+    ? await env.ART.head(key)
+    : await env.ART.get(key, { onlyIf: request.headers, range: request.headers });
+  if (!object) return kritaReply('Not found', 404);
+  const headers = new Headers();
+  if (typeof object.writeHttpMetadata === 'function') object.writeHttpMetadata(headers);   // Content-Encoding: br as stored
+  headers.set('Content-Type', KRITA_TYPES[key.split('.').pop().toLowerCase()] || 'application/octet-stream');
+  // Vite's hashed files never change; the page and the engine (no hash in their names) revalidate by ETag.
+  headers.set('Cache-Control', key.startsWith('krita/assets/') ? 'public, max-age=31536000, immutable' : 'public, no-cache');
+  headers.set('ETag', object.httpEtag);
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Vary', 'Accept-Encoding');
+  if (request.method === 'HEAD') {
+    headers.set('Content-Length', String(object.size));
+    return kritaReply(null, 200, headers);
+  }
+  if (!('body' in object)) return kritaReply(null, 304, headers);   // If-None-Match matched
+  let status = 200;
+  if (request.headers.has('Range') && object.range) {
+    const { suffix, offset = Math.max(0, object.size - (suffix || 0)), length = object.size - offset } = object.range;
+    headers.set('Content-Range', `bytes ${offset}-${offset + length - 1}/${object.size}`);
+    status = 206;
+  }
+  return kritaReply(object.body, status, headers);
+}
+
 function withSecurityHeaders(res) {
   if (!res || res.status === 101 || res.webSocket) return res;
   let out;
@@ -18729,7 +18794,9 @@ function withSecurityHeaders(res) {
 export default {
   async fetch(request, env, ctx) {
     try {
-      return withSecurityHeaders(withLoginHint(request, await app.fetch(request, env, ctx)));
+      const res = await app.fetch(request, env, ctx);
+      if (isKritaPath(new URL(request.url).pathname)) return res;   // carries its own headers; see serveKrita
+      return withSecurityHeaders(withLoginHint(request, res));
     } catch (e) {
       let path = '';
       try { path = new URL(request.url).pathname; } catch { /* ignore */ }
