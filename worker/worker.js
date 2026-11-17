@@ -184,6 +184,7 @@
  *                                belongs to an account
  *   POST /api/admin/creator-alias -> admin: link a creator name to an account
  *   GET  /random              -> 302 to a random published character page
+ *   GET  /krita/*             -> the Krita web port test page, from R2 krita/ (cross-origin isolated)
  *   GET  /sitemap.xml         -> built live from D1
  *   GET  /s/{slug}            -> script page (server-side rendered from D1)
  *   GET  /collection/{id}     -> collection page (server-side rendered from D1)
@@ -10620,6 +10621,10 @@ const app = {
       if (typeof obj.writeHttpMetadata === 'function') obj.writeHttpMetadata(headers);
       return new Response(null, { headers });
     }
+    // The Krita web port's test page: files under krita/ in R2 (too big to be
+    // static assets; the engine is over the 25 MiB limit). Its engine uses
+    // threads, so this path alone is cross-origin isolated.
+    if (method === 'GET' && (path === '/krita' || path.startsWith('/krita/'))) return serveKrita(env, request, url, path);
     // HEAD is answered exactly as GET, without the body: left to fall through,
     // an image that lives only in R2 came back 404 to anything that checks
     // before it downloads.
@@ -18712,6 +18717,30 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
 };
 const HTML_CSP = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'";
+const KRITA_TYPES = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript', css: 'text/css', wasm: 'application/wasm',
+  json: 'application/json', svg: 'image/svg+xml', png: 'image/png'
+};
+async function serveKrita(env, request, url, path) {
+  if (path === '/krita') return Response.redirect(url.origin + '/krita/', 301);
+  let key;
+  try { key = decodeURIComponent(path.slice(1)); } catch { return new Response('Not found', { status: 404 }); }
+  if (key.endsWith('/')) key += 'index.html';
+  if (key.includes('..') || !env.ART) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  const obj = await env.ART.get(key, { onlyIf: request.headers });
+  if (!obj) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  const headers = new Headers({
+    'Content-Type': KRITA_TYPES[key.split('.').pop()] || 'application/octet-stream',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'X-Robots-Tag': 'noindex',
+    ETag: obj.httpEtag,
+    // Vite's hashed files never change; the page and the engine are replaced per build.
+    'Cache-Control': key.startsWith('krita/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=0, must-revalidate'
+  });
+  return new Response(obj.body || null, { status: obj.body ? 200 : 304, headers });
+}
+
 function withSecurityHeaders(res) {
   if (!res || res.status === 101 || res.webSocket) return res;
   let out;
