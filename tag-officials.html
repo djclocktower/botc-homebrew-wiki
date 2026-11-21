@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tag the Official Characters — BOTC HomeBrew Wiki</title>
+<title>Official Tagger — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -19,6 +19,8 @@
   .ot-row { display: grid; grid-template-columns: 56px 1fr; gap: 4px 12px; background: #f3ead4; color: #2b1d12; padding: 10px 12px; margin: 0 0 8px; border: 1px solid #d9cba6; }
   .ot-row img { width: 56px; height: 56px; grid-row: span 3; }
   .ot-name { font-weight: 700; font-family: 'Roboto',sans-serif; }
+  .ot-done { border-left: 4px solid var(--maroon); }
+  .ot-mark { display: inline-block; margin-left: 8px; padding: 1px 6px; background: var(--maroon); color: #f3ead4; font-size: .7rem; font-weight: 600; letter-spacing: .04em; vertical-align: 2px; }
   .ot-ability { font-size: .9rem; }
   .ot-tags { font-family: 'Roboto',sans-serif; font-size: .8rem; color: #5b4632; }
   .ot-by { color: #7a6a55; }
@@ -28,7 +30,7 @@
   .ot-actions { display: flex; gap: 8px; align-items: center; }
   .ot-actions button, .ot-open { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .8rem; padding: 5px 12px; border: 1px solid var(--maroon); background: #fffdf8; color: var(--maroon); cursor: pointer; }
   .ot-actions .ot-save { background: var(--maroon); color: #f3ead4; }
-  .ot-open { justify-self: start; }
+  .ot-open { justify-self: start; grid-column: 2; }
 </style>
 </head>
 <body>
@@ -67,15 +69,17 @@
   </nav>
 
   <div class="home-hero">
-    <h1>Tag the Official Characters</h1>
+    <h1>Official Tagger</h1>
   </div>
 
   <main class="home-panel">
     <div class="ot-bar" id="ot-bar" hidden>
       <input type="search" id="ot-q" placeholder="Find a character" aria-label="Find a character">
-      <label><input type="checkbox" id="ot-todo"> Not saved yet</label>
+      <label><input type="checkbox" id="ot-todo"> Hide tagged</label>
       <span class="ot-count" id="ot-count"></span>
     </div>
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
+    <div id="filter-bar" class="filter-bar" hidden></div>
     <div id="ot-list"><p class="ot-msg">Loading…</p></div>
   </main>
 
@@ -83,12 +87,13 @@
 
   <script src="assets/tags.js"></script>
   <script src="assets/official-tags.js"></script>
+  <script src="assets/char-filters.js"></script>
   <script>
     (function () {
       var TEAMS = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
       var list = document.getElementById('ot-list');
       var q = document.getElementById('ot-q'), todo = document.getElementById('ot-todo');
-      var roles = [], saved = {};
+      var roles = [], saved = {}, ctrl = null;
       function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
       function msg(html) { list.innerHTML = '<p class="ot-msg">' + html + '</p>'; }
       function current(id) { return saved[id] ? saved[id].tags : (window.OFFICIAL_TAGS[id] || ''); }
@@ -96,28 +101,28 @@
 
       function rowHTML(r) {
         var s = saved[r.id];
-        return '<div class="ot-row" data-id="' + esc(r.id) + '">' +
+        return '<div class="ot-row' + (s ? ' ot-done' : '') + '" data-id="' + esc(r.id) + '">' +
           '<img src="assets/icons-sm/' + esc(r.id) + '.webp" alt="" loading="lazy" decoding="async">' +
-          '<div class="ot-name">' + esc(r.name) + '</div>' +
+          '<div class="ot-name">' + esc(r.name) + (s ? '<span class="ot-mark">Tagged</span>' : '') + '</div>' +
           '<div class="ot-ability">' + esc(r.ability) + '</div>' +
           '<div class="ot-tags">' + (esc(current(r.id)) || '<em>No tags</em>') +
-            (s ? ' <span class="ot-by">&middot; saved by ' + esc(s.by || 'someone') + '</span>' : '') + '</div>' +
+            (s ? ' <span class="ot-by">&middot; tagged by ' + esc(s.by || 'someone') + '</span>' : '') + '</div>' +
           '<button type="button" class="ot-open">Edit tags</button>' +
         '</div>';
       }
       function draw() {
-        var term = q.value.trim().toLowerCase(), html = '', shown = 0;
-        TEAMS.forEach(function (team) {
-          var rows = roles.filter(function (r) {
-            return r.team === team && (!todo.checked || !saved[r.id]) &&
-              (!term || (r.name + ' ' + r.ability).toLowerCase().indexOf(term) !== -1);
-          });
-          if (!rows.length) return;
-          shown += rows.length;
-          html += '<h2 class="type-header">' + team.charAt(0).toUpperCase() + team.slice(1) + '</h2><div class="type-rule"></div>' + rows.map(rowHTML).join('');
+        var term = q.value.trim().toLowerCase(), html = '';
+        var shown = ctrl.apply(roles.filter(function (r) {
+          return (!todo.checked || !saved[r.id]) &&
+            (!term || (r.name + ' ' + r.ability).toLowerCase().indexOf(term) !== -1);
+        }));
+        if (ctrl.state.group === 'none') html = shown.map(rowHTML).join('');
+        else TEAMS.forEach(function (team) {
+          var rows = shown.filter(function (r) { return r.team === team; });
+          if (rows.length) html += '<h2 class="type-header">' + team.charAt(0).toUpperCase() + team.slice(1) + ' (' + rows.length + ')</h2><div class="type-rule"></div>' + rows.map(rowHTML).join('');
         });
         list.innerHTML = html || '<p class="ot-msg">Nothing matches.</p>';
-        document.getElementById('ot-count').textContent = Object.keys(saved).length + ' of ' + roles.length + ' saved';
+        document.getElementById('ot-count').textContent = Object.keys(saved).length + ' of ' + roles.length + ' tagged';
       }
 
       list.addEventListener('click', function (e) {
@@ -148,8 +153,9 @@
             .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Could not save.'); return d; }); })
             .then(function (d) {
               saved[id] = { tags: d.tags, by: 'you' };
+              roles.find(function (r) { return r.id === id; }).tags = d.tags;
               row.outerHTML = rowHTML(roles.find(function (r) { return r.id === id; }));
-              document.getElementById('ot-count').textContent = Object.keys(saved).length + ' of ' + roles.length + ' saved';
+              document.getElementById('ot-count').textContent = Object.keys(saved).length + ' of ' + roles.length + ' tagged';
             })
             .catch(function (err) { btn.disabled = false; status.textContent = err.message; });
         }
@@ -164,9 +170,17 @@
       }).then(function (res) {
         if (!res) return;
         saved = res[0].tags || {};
-        roles = res[1].filter(function (r) { return TEAMS.indexOf(r.team) !== -1; })
-          .sort(function (a, b) { return a.name.localeCompare(b.name); });
+        roles = res[1].filter(function (r) { return TEAMS.indexOf(r.team) !== -1; }).map(function (r) {
+          // The row shape the filter box reads. No `official` flag: every row
+          // is official, so an Official chip could only empty the list.
+          return { id: r.id, slug: 'off-' + r.id, name: r.name, team: r.team, ability: r.ability,
+            creator: 'The Pandemonium Institute', tags: current(r.id), _partial: false, _curata: false };
+        });
         document.getElementById('ot-bar').hidden = false;
+        ctrl = CharFilters.mount({
+          bar: document.getElementById('filter-bar'), toggle: document.getElementById('filter-toggle'),
+          list: roles, groups: ['team', 'none'], onChange: function () { if (ctrl) draw(); }
+        });
         draw();
       }).catch(function () { msg('Could not load. Refresh to try again.'); });
     })();
