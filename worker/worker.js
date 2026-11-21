@@ -214,6 +214,8 @@
  *                                Published pages only, capped per account,
  *                                and not a content write (no feed changes,
  *                                nothing logged — a bookmark is not an edit)
+ *   GET  /api/official-tags   -> tags saved on /tag-officials, by roles.json id
+ *   POST /api/official-tags   -> {id, tags[]}: save one official character's tags
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -2433,6 +2435,25 @@ async function ensureFavoritesTable(env) {
   _favoritesReady = true;
 }
 const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+// ---- official character tags (/tag-officials) ----
+// Tags members propose for the OFFICIAL characters, one row per roles.json id,
+// last save wins. Nothing reads it but that page: assets/official-tags.js
+// stays what the site draws until these are folded into it by hand.
+let _officialTagsReady = false;
+async function ensureOfficialTagsTable(env) {
+  if (_officialTagsReady) return;
+  if (await schemaHas(env, { tables: { official_tags: [] } })) { _officialTagsReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS official_tags (
+       id      TEXT PRIMARY KEY,
+       tags    TEXT NOT NULL,
+       user_id INTEGER,
+       ts      TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _officialTagsReady = true;
+}
 
 /* ---- the Starlit Gallery (/starlit) ----
    Icons by Harry & Co & Bendan, stored as a black layer, a white layer and a
@@ -12586,6 +12607,21 @@ const app = {
     // account page lists) and `characterSlugs` (what the Favorites filter on
     // the browse pages admits: saved characters plus every character on a
     // saved script or collection). Private: the lists are one reader's own.
+    // The tags saved on /tag-officials, with who saved each and when.
+    if (method === 'GET' && path === '/api/official-tags') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      let rows = [];
+      try {
+        rows = (await env.DB.prepare(
+          'SELECT o.id, o.tags, o.ts, u.username FROM official_tags o LEFT JOIN users u ON u.id = o.user_id'
+        ).all()).results || [];
+      } catch (e) { if (!isMissingSchema(e)) throw e; }
+      const tags = {};
+      for (const r of rows) tags[r.id] = { tags: r.tags, by: r.username || '', ts: r.ts };
+      return jsonResponse({ tags });
+    }
+
     if (method === 'GET' && path === '/api/favorites') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
@@ -13881,7 +13917,7 @@ const app = {
       // /api/attachment does not: modmail uses it too, and the comment it
       // would belong to is refused here anyway.
       const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx',
-        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/starlit', '/api/starlit-file'].includes(path);
+        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/starlit', '/api/starlit-file', '/api/official-tags'].includes(path);
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -15653,6 +15689,28 @@ const app = {
       // still allows is taking back a bookmark this account ALREADY holds —
       // a saved page that went to draft must stay removable — and that reply
       // carries no name.
+      // Body: {id, tags[]}. id is a roles.json id; tags are kept only if
+      // tags.js knows them. An empty list is saved too (no tags is an answer).
+      if (path === '/api/official-tags') {
+        if (await rateLimited(env, request, 'offtags', 600, 3600, { sess })) {
+          return tooManyResponse('Too many saves in the last hour. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => null);
+        const id = String((b && b.id) || '');
+        const roles = await loadOfficialRoles(env, url.origin);
+        if (!roles.length) return jsonResponse({ error: 'Could not load the official roster. Try again.' }, { status: 503 });
+        if (!roles.some(r => r.id === id)) return jsonResponse({ error: 'No such official character' }, { status: 404 });
+        const known = new Map(Tags.KNOWN_TAGS.map(t => [t.toLowerCase(), t]));
+        const tags = [...new Set((Array.isArray(b.tags) ? b.tags : [])
+          .map(t => known.get(String(t).trim().toLowerCase())).filter(Boolean))].sort();
+        await ensureOfficialTagsTable(env);
+        await env.DB.prepare(
+          `INSERT INTO official_tags (id, tags, user_id, ts) VALUES (?,?,?,datetime('now'))
+           ON CONFLICT(id) DO UPDATE SET tags=excluded.tags, user_id=excluded.user_id, ts=excluded.ts`
+        ).bind(id, tags.join(', '), sess.userId).run();
+        return jsonResponse({ ok: true, id, tags: tags.join(', ') });
+      }
+
       if (path === '/api/favorite') {
         if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
           return tooManyResponse('Too many favorite changes in the last hour. Try again later.', 3600);
