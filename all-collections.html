@@ -146,7 +146,7 @@
         return {
           coll: {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
                  tagline:c.tagline||'', header:c.header||'', logo:c.logo||'',
-                 author:c.author||'', curata:!!c.curata, v:c.v},
+                 author:c.author||'', curata:!!c.curata, megaAward:!!c.megaAward, v:c.v},
           count: +c.count || 0,
           icons: Array.isArray(c.icons) ? c.icons : []
         };
