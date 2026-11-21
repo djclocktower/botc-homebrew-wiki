@@ -85,3 +85,29 @@ test('a page under a script stays unlisted and noindex', async t => {
   r = await f.request('/api/wiki-page', post(2, { parentType: 'script', parentSlug: 'demo', title: 'Mine', body: 'x' }));
   assert.equal(r.status, 403);
 });
+
+test('a set page its owner lists as an article: listed, indexed, names its set', async t => {
+  const f = await fixture();
+  t.after(() => f.finish());
+  users(f);
+  f.db.prepare("INSERT INTO scripts(slug,name,data,status,owner_id) VALUES('demo','Demo',?,'published',1)")
+    .run(JSON.stringify({ slug: 'demo', name: 'Demo', characters: [] }));
+  let r = await f.request('/api/wiki-page', post(1, { parentType: 'script', parentSlug: 'demo', title: 'Rules', body: 'x', status: 'published', article: true }));
+  assert.equal(r.status, 200, await r.clone().text());
+  const list = (await (await f.request('/api/articles')).json()).articles;
+  assert.equal(list.length, 1);
+  assert.equal(list[0].parentName, 'Demo');
+  const html = await (await f.request('/p/rules')).text();
+  assert.doesNotMatch(html, /name="robots" content="noindex/);
+  assert.match(html, /in <a class="author-link" href="\.\.\/s\/demo">Demo<\/a>/);
+  assert.match(await (await f.request('/sitemap.xml')).text(), /\/p\/rules</);
+  assert.match((await (await f.request('/api/articles?format=cards&limit=3')).json()).html, /Demo/);
+  // Unticked, it goes back to being the set's own unlisted page.
+  await f.request('/api/wiki-page', post(1, { slug: 'rules', title: 'Rules', body: 'x', status: 'published' }));
+  assert.equal((await (await f.request('/api/articles')).json()).articles.length, 0);
+  // A draft set hides it from the list too.
+  await f.request('/api/wiki-page', post(1, { slug: 'rules', title: 'Rules', body: 'x', status: 'published', article: true }));
+  f.db.prepare("UPDATE scripts SET status='draft' WHERE slug='demo'").run();
+  f.db.prepare("UPDATE settings SET value=CAST(CAST(value AS INTEGER)+1 AS TEXT) WHERE key='content_version'").run();
+  assert.equal((await (await f.request('/api/articles')).json()).articles.length, 0);
+});

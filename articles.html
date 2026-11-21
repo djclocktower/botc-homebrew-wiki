@@ -107,7 +107,7 @@
     function card(a){
       return window.NewsRender.renderPageCard({
         slug: a.slug, title: a.title, author: a.author, blurb: a.blurb,
-        parentName: window.NewsRender.formatDate(a.createdAt)
+        parentName: window.NewsRender.formatDate(a.createdAt) + (a.parentName ? ' · ' + a.parentName : '')
       }, { linkRoot: '' });
     }
     function mineCard(a){

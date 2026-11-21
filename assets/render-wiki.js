@@ -991,6 +991,10 @@
       metaParts.push('by <a class="author-link" href="' + esc(root) + 'author?a=' +
         encodeURIComponent(p.author) + '">' + esc(p.author) + '</a>');
     }
+    // A set's page names its set beside the credit, as a link back to it.
+    if (p.parentName && p.parentType !== 'article') {
+      metaParts.push('in <a class="author-link" href="' + esc(parentHref) + '">' + esc(p.parentName) + '</a>');
+    }
     if (p.updatedAt) metaParts.push('updated ' + esc(formatDate(p.updatedAt)));
     if (opts.isDraft) metaParts.push('DRAFT');
 

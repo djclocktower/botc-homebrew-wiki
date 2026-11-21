@@ -3401,6 +3401,13 @@ set's custom pages, which were meant for that set's own mechanics.
 - **It is LISTED, unlike a set's page**: `GET /api/articles` (published, plus
   `?mine=1` for the reader's own drafts), the sitemap, and no `noindex` on its
   `/p/` page. A set's pages stay unlisted and `noindex` exactly as before.
+- **A set's page can also be an article, if its owner ticks "List as an
+  article"** (`data.article`, the page owner's field: a non-owner save keeps
+  the stored answer). It stays under its set and is listed with the
+  standalone ones (`/api/articles`, the homepage panel, the sitemap, no
+  `noindex`) while that set is published — `listedArticleSQL()` /
+  `listedArticleRows()` are the one test. Every set's page names its set
+  beside the author credit ("by X · in Set"), as a link back.
 - **The homepage's Articles panel** (under News, where Featured Articles used
   to be) is the 3 newest published articles: `GET /api/articles?format=cards
   &limit=3`, the news card built on the server (`cachedArticleCards()`,
