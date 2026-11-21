@@ -211,6 +211,7 @@
           if (MARK_COLOR[c]) { next.color = MARK_COLOR[c]; next.bold = true; }
           else if (c === 'tok') next.token = true;
           else if (c === 'dropcap') next.drop = true;
+          else if (c === 'wiki-charlink') next.bold = true;   // .wiki-charlink { font-weight: 600 }
         }
         if (tag === 'A') { next.under = true; if (!next.color) next.color = C.goodName; }
         walk(n, next);

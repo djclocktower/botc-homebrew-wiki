@@ -3482,6 +3482,32 @@ const ARTICLE_PARENT = 'article';
 function articleParent() {
   return { type: ARTICLE_PARENT, slug: '', key: '', name: 'Articles', ownerId: null, status: 'published', data: {} };
 }
+// A set's page can ALSO be an article: its owner ticks "List as an article"
+// (data.article), and it is listed with the standalone ones — /articles, the
+// homepage panel, the sitemap, indexable — while staying under its set and
+// naming it. Only while that set is public (wikiParentPublic), checked in JS
+// wherever these are listed. The SQL test is a substring of the JSON blob, as
+// CREDIT_UNLINKED_SQL is: JSON.stringify spells the pair exactly this way, and
+// the same text typed into a body is escaped to \" on the way in.
+function listedArticleSQL(t) {
+  return `(${t}parent_type='${ARTICLE_PARENT}' OR ${t}data LIKE '%"article":true%')`;
+}
+function isListedArticle(row, d) {
+  return row.parent_type === ARTICLE_PARENT || !!(d && d.article === true);
+}
+// The listed articles' rows, newest first, with their parent resolved and
+// the ones whose set is hidden dropped.
+async function listedArticleRows(env, rows) {
+  const out = [];
+  for (const r of rows || []) {
+    const d = parseData(r);
+    if (!isListedArticle(r, d)) continue;
+    const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+    if (!wikiParentPublic(parent)) continue;
+    out.push({ r, d, parent });
+  }
+  return out;
+}
 
 // The parent script/collection row a wiki page hangs off, resolved the same
 // way the SSR routes resolve it (collections may be addressed by kebab id).
@@ -6524,6 +6550,7 @@ function sanitizeWikiFields(o, imgBase, themeBase) {
   if (info) o.infobox = info; else delete o.infobox;
   o.toc = o.toc !== false;
   o.comments = o.comments !== false;
+  if (o.article === true) o.article = true; else delete o.article;
   const theme = PageRender.sanitizeTheme(o.theme, themeBase);
   if (theme) o.theme = theme; else delete o.theme;
 }
@@ -7812,14 +7839,13 @@ async function cachedArticleCards(env, ctx, limit, version) {
     if (body === null) {
       await ensurePagesTable(env);
       const { results } = await env.DB.prepare(
-        `SELECT slug, title, author, data FROM pages
-         WHERE parent_type=? AND status='published'
+        `SELECT slug, title, author, parent_type, parent_slug, data FROM pages
+         WHERE ${listedArticleSQL('')} AND status='published'
          ORDER BY created_at DESC LIMIT ?`
-      ).bind(ARTICLE_PARENT, limit).all();
-      const html = (results || []).map(r => {
-        const d = parseData(r);
+      ).bind(limit + 10).all();
+      const html = (await listedArticleRows(env, results)).slice(0, limit).map(({ r, d, parent }) => {
         return NewsRender.renderPageCard({
-          slug: r.slug, title: r.title, parentType: ARTICLE_PARENT,
+          slug: r.slug, title: r.title, parentType: r.parent_type, parentName: parent.name,
           author: r.author || d.author || null,
           blurb: d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 160)
         }, { linkRoot: '' });
@@ -7906,7 +7932,7 @@ async function homeTemplate(env, origin) {
   throw new Error('Homepage template unavailable');
 }
 async function homeCards(env, ctx) {
-  const [newsV, articleV] = await Promise.all([contentVersion(env, ['news']), contentVersion(env, ['wikipage'])]);
+  const [newsV, articleV] = await Promise.all([contentVersion(env, ['news']), contentVersion(env, ['wikipage', 'collection', 'script'])]);
   const card = p => p.then(body => ({ html: JSON.parse(body).html || '' }), () => ({ html: '', failed: true }));
   return Promise.all([
     card(cachedNewsBody(env, ctx, HOME_NEWS_LIMIT, true, newsV)),
@@ -10144,7 +10170,7 @@ const app = {
       // ?format=cards&limit=3 is the homepage panel: public, cached, cards.
       if (url.searchParams.get('format') === 'cards') {
         const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '3', 10) || 3, 1), ARTICLE_CARDS_MAX);
-        const version = await contentVersion(env, ['wikipage']);
+        const version = await contentVersion(env, ['wikipage', 'collection', 'script']);
         const etag = `W/"article-cards-${version}-${limit}-${BUILD_ID}"`;
         const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
         if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
@@ -10154,16 +10180,17 @@ const app = {
       const sess = await getSession(env, request);
       const mine = url.searchParams.get('mine') === '1' && sess && sess.userId != null;
       const { results } = await env.DB.prepare(
-        `SELECT p.slug, p.title, p.author, p.owner_id, p.status, p.data, p.created_at, p.updated_at,
-                u.username AS owner_username
+        `SELECT p.slug, p.title, p.author, p.owner_id, p.status, p.parent_type, p.parent_slug, p.data,
+                p.created_at, p.updated_at, u.username AS owner_username
          FROM pages p LEFT JOIN users u ON u.id = p.owner_id
-         WHERE p.parent_type=? AND (p.status='published'${mine ? ' OR p.owner_id=?' : ''})
+         WHERE ${listedArticleSQL('p.')} AND (p.status='published'${mine ? ' OR p.owner_id=?' : ''})
          ORDER BY p.created_at DESC LIMIT 300`
-      ).bind(...(mine ? [ARTICLE_PARENT, sess.userId] : [ARTICLE_PARENT])).all().catch(() => ({ results: [] }));
-      const articles = (results || []).map(r => {
-        const d = parseData(r);
+      ).bind(...(mine ? [sess.userId] : [])).all().catch(() => ({ results: [] }));
+      const articles = (await listedArticleRows(env, results)).map(({ r, d, parent }) => {
         return {
           slug: r.slug, title: r.title,
+          parentType: r.parent_type, parentKey: parent.key,
+          parentName: r.parent_type === ARTICLE_PARENT ? null : parent.name,
           author: r.author || d.author || null,
           ownerUsername: r.owner_username || null,
           subtitle: d.subtitle || '',
@@ -10363,7 +10390,7 @@ const app = {
           // A set's pages are intentionally unlisted: no search engines and no
           // sitemap entry. A standalone article is listed (/articles), so it
           // may be indexed like any other public page.
-          noindex: row.parent_type !== ARTICLE_PARENT,
+          noindex: !isListedArticle(row, d),
           ...ta,
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
@@ -11265,9 +11292,11 @@ const app = {
       async function pubArticles() {
         try {
           await ensurePagesTable(env);
-          return (await env.DB.prepare(
-            `SELECT slug, updated_at FROM pages WHERE status='published' AND parent_type=?`
-          ).bind(ARTICLE_PARENT).all()).results || [];
+          const { results } = await env.DB.prepare(
+            `SELECT slug, parent_type, parent_slug, data, updated_at FROM pages
+             WHERE status='published' AND ${listedArticleSQL('')}`
+          ).all();
+          return (await listedArticleRows(env, results)).map(x => ({ slug: x.r.slug, updated_at: x.r.updated_at }));
         } catch { degraded = true; return []; }
       }
       // Pages with a custom address are listed at it, not at the slug that
@@ -16253,9 +16282,15 @@ const app = {
           subtitle: b.subtitle, blurb: b.blurb, author: b.author,
           body: b.body, header: b.header, images: b.images,
           boxes: b.boxes, infobox: b.infobox, theme: b.theme,
-          toc: b.toc, comments: b.comments, customUrl: b.customUrl
+          toc: b.toc, comments: b.comments, customUrl: b.customUrl,
+          article: b.article === true
         };
         sanitizeWikiFields(page, 'pages/' + slug + '-', 'pages/' + slug);
+        // "List as an article" is the page owner's choice, and only means
+        // something for a set's page (a standalone article is listed anyway).
+        const wasArticle = !!(existing && parseData(existing).article === true);
+        if (access !== 'owner') page.article = wasArticle;
+        if (!page.article || parent.type === ARTICLE_PARENT) delete page.article;
         page.parentType = parent.type;
         page.parentSlug = parent.slug;
         if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
