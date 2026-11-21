@@ -162,7 +162,8 @@
       '<div class="collection-footer">' +
         '<span class="collection-count">' + count + ' character' + (count === 1 ? '' : 's') +
           (coll.author ? ' · ' + markFn(coll.author) : '') +
-          (coll.curata ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
+          (coll.curata ? window.classBadgeHTML('curata', { sep: true }) : '') +
+          (coll.megaAward ? window.classBadgeHTML('mega', { sep: true }) : '') + '</span>' +
         '<span class="collection-arrow">Browse →</span>' +
       '</div></a>';
   }

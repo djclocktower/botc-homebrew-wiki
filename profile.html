@@ -351,7 +351,8 @@
       var blurb = coll.tagline || coll.description || '';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
-        '<h3 class="collection-name">' + esc(name) + curataMark(coll) + draftMark(coll) + '</h3>' +
+        '<h3 class="collection-name">' + esc(name) + curataMark(coll) +
+          (coll.megaAward ? ' <span class="curata-mark award-mark" role="img" title="MegaSupaUltra Collection award™" aria-label="MegaSupaUltra Collection award™"></span>' : '') + draftMark(coll) + '</h3>' +
         (blurb ? '<p class="collection-tile-tagline">' + esc(blurb) + '</p>' : '') +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + esc(coll.author || 'Collection') + '</span>' +

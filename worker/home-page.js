@@ -66,7 +66,8 @@ export function collectionTileHTML(c) {
       // Curata wreath behind a hairline.
       '<span class="collection-count">' + count + ' character' + (count === 1 ? '' : 's') +
         (c.author ? ' · ' + esc(c.author) : '') +
-        (Classify.isCurata(c) ? Classify.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
+        (Classify.isCurata(c) ? Classify.classBadgeHTML('curata', { sep: true }) : '') +
+        (c.megaAward ? Classify.classBadgeHTML('mega', { sep: true }) : '') + '</span>' +
       '<span class="collection-arrow">Browse →</span>' +
     '</div>' +
   '</a>';
