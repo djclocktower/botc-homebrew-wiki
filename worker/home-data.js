@@ -80,7 +80,7 @@ function icons(list) {
 function pick(row, keys) {
   return Object.fromEntries(keys.filter(k => row[k] !== undefined).map(k => [k, row[k]]));
 }
-const tileFields = ['id','slug','displayName','name','author','tagline','header','logo','curata','v'];
+const tileFields = ['id','slug','displayName','name','author','tagline','header','logo','curata','megaAward','v'];
 const cardFields = ['slug','page','name','team','art','image','v','curata','curataFrom'];
 export function homeData(characters, collections, scripts, day) {
   const creators = new Set(), tags = new Set();

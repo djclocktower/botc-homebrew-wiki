@@ -3298,6 +3298,8 @@ a:hover .curata-mark { opacity: .9; }
    that (Chrome breaks in front of an atomic inline anyway), and one element
    cannot be split at all. Its colour is mixed down rather than set with a
    second `opacity`, which would apply to the wreath as well. */
+/* The MegaSupaUltra Collection award: the wreath's box, its own drawing. */
+.award-mark::before { -webkit-mask-image: url('award-mark.png'); mask-image: url('award-mark.png'); }
 .curata-mark-sep {
   border-left: 1px solid currentColor;
   border-left-color: color-mix(in srgb, currentColor 50%, transparent);

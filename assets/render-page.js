@@ -1355,6 +1355,14 @@
       'aria-label="Curata"></span> Curata</dd>'];
   }
 
+  // The MegaSupaUltra Collection award: shown like Curata, means nothing.
+  function megaRow(d) {
+    if (!d || !d.megaAward) return [];
+    return ['<dt>Award:</dt><dd><span class="curata-mark award-mark" role="img" ' +
+      'title="MegaSupaUltra Collection award™" aria-label="MegaSupaUltra Collection award™"></span> ' +
+      'MegaSupaUltra Collection award™</dd>'];
+  }
+
   function renderJsonPanel(jsonText, actions, label, collapsed) {
     return '<div class="json-box' + (collapsed ? '' : ' open') + '">' +
       '<div class="json-bar">' +
@@ -1778,7 +1786,7 @@
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: curataRow(coll)
+      extraInfoRows: curataRow(coll).concat(megaRow(coll))
     });
   }
 

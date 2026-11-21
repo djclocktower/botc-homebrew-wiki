@@ -1389,6 +1389,8 @@
       return '<a class="tag-link" data-tag="' + esc(display) + '" href="' + root + 'tag?t=' + encodeURIComponent(display) + '">' + esc(display) + '</a>';
     }).filter(Boolean).join('<span class="tag-sep">, </span>') : '';
     var mark = curataMark(d, { sep: true });
+    var megaFn = curataMarkFn || (typeof window !== 'undefined' ? window.classBadgeHTML : null);
+    if (d.megaFrom && megaFn) mark += megaFn('mega', { sep: true });
     var tagsRow = (tagLinks || mark)
       ? '<dt>Tags:</dt><dd>' + (tagLinks || '<span class="tag-none">&mdash;</span>') +
         mark + '</dd>'

@@ -455,6 +455,9 @@
       <div class="fld" id="curata-fld" style="display:none">
         <label class="curata-check"><input type="checkbox" id="curataOptOut"> Disable Curata</label>
       </div>
+      <div class="fld" id="mega-fld" style="display:none">
+        <label class="curata-check"><input type="checkbox" id="megaAwardOptOut"> Disable MegaSupaUltra Collection award™</label>
+      </div>
 
       <fieldset>
         <legend>Who can edit this page</legend>
@@ -859,6 +862,7 @@
         customJson: $('customJson').value.trim(),
         publicEdit: $('publicEdit').value,
         curataOptOut: $('curataOptOut').checked,
+        megaAwardOptOut: $('megaAwardOptOut').checked,
         editors: editorsUI ? editorsUI.get() : []
       };
     }
@@ -1517,6 +1521,8 @@
       // stored answer forward whatever a guest posts.
       var cur = $('curata-fld');
       if (cur) cur.style.display = 'none';
+      var mega = $('mega-fld');
+      if (mega) mega.style.display = 'none';
       // So is whether the credit points at the owner's account: whose work a
       // page is said to be is not a guest's answer, and the Worker pins it
       // from the stored row whatever gets posted.
@@ -1730,6 +1736,7 @@
       $('customJson').value      = entry.customJson || '';
       $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
       $('curataOptOut').checked  = !!entry.curataOptOut;
+      $('megaAwardOptOut').checked = !!entry.megaAwardOptOut;
       $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
       if (almAltUI) almAltUI.set(entry.almanacAlt);
@@ -1994,6 +2001,7 @@
           // Explicit for the same reason publicEdit is: unticking the box has
           // to reach the save, and Object.assign would keep the loaded value.
           curataOptOut: d.curataOptOut,
+          megaAwardOptOut: d.megaAwardOptOut,
           // Same again: unticking "this credit isn't mine" has to reach the
           // save, or the credit would stay unlinked for good.
           creditUnlinked: d.creditUnlinked,
@@ -2238,6 +2246,7 @@
           showRelatedBy(res.relatedBy);
           syncCurataBox(entry, res.curataFrom === undefined ? null : res.curataFrom,
                         mode === 'owner');
+          $('mega-fld').style.display = (res.megaFrom && mode === 'owner') ? '' : 'none';
           if (mode === 'tags') tagsOnlyMode(entry);
           else if (mode === 'approved') approvedNotice(entry, res.editVia);
           else if (mode === 'all') guestNotice(entry);

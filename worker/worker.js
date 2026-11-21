@@ -5406,7 +5406,7 @@ function sanitizeScriptFields(s) {
                            (an approval; a rollback restores what WAS live) */
 // customUrl too: the address lives in the custom_url column as well, and an
 // old version must not put the data and the column out of step.
-const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
+const RESTORE_PINNED_KEYS = ['curata', 'megaAward', 'megaAwardOptOut', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
 async function prepareRestore(env, type, row, d, opts) {
   opts = opts || {};
   const now = parseData(row);
@@ -6329,6 +6329,18 @@ async function applyCollectionCurata(env, chars) {
   return chars;
 }
 
+/* The MegaSupaUltra Collection award, lent to a collection's characters on
+   the /c/ page only (never the feeds), unless the creator turned it off. */
+async function applyCollectionMega(env, chars) {
+  const all = await publishedCollectionData(env, await contentVersion(env, ['collection']));
+  for (const coll of (all || []).filter(d => d && d.megaAward)) {
+    for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
+      if (!c.megaAwardOptOut && !c.megaFrom) c.megaFrom = coll.displayName || coll.id || coll.slug || 'a collection';
+    }
+  }
+  return chars;
+}
+
 /* ---- "Appears in", derived from collection membership ----
    A collection lists members either by matching their own `appearsIn` text or
    by hand in `include[]`. The hand-listed half left the character page saying
@@ -6745,7 +6757,7 @@ function gridRow(d) {
 // Public display projections. Full/card endpoints retain their export schema.
 const BROWSE_FIELDS = ['id', 'slug', 'displayName', 'name', 'author', 'description',
   'tagline', 'header', 'logo', 'characters', 'match', 'include', 'exclude',
-  'classification', 'curata', 'curataFrom', 'v'];
+  'classification', 'curata', 'curataFrom', 'megaAward', 'v'];
 function browseRow(d) {
   return Object.fromEntries(BROWSE_FIELDS.filter(k => d[k] !== undefined).map(k => [k, d[k]]));
 }
@@ -7471,7 +7483,7 @@ const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
 // 3: public feeds stopped carrying a `status` stored inside the data blob.
 // 4: script and collection rows carry their PK `slug` when the blob has none,
 //    and a row whose JSON cannot be parsed is skipped instead of failing all.
-const FEED_FORMAT_V = 4;
+const FEED_FORMAT_V = 5;
 const _feedBodyPending = new Map(); // coalesce overlapping misses within this isolate
 async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   const version = knownVersion === undefined ? await contentVersion(env, FEED_DEPS[table]) : knownVersion;
@@ -7514,7 +7526,7 @@ async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
    the grid in feed order, only collections with at least one member are
    listed, and the icons are one per team first, then the rest, art only.
    Bump SUMMARY_FORMAT_V if either shape changes. */
-const SUMMARY_FORMAT_V = 1;
+const SUMMARY_FORMAT_V = 2;
 const _summaryCache = new Map();    // name -> { version, body }
 const _summaryPending = new Map();
 function titleCaseTag(s) {
@@ -7542,7 +7554,7 @@ function collectionTiles(chars, collections) {
     for (const c of art) if (icons.length < 4 && !teams.has(c.team)) { icons.push(c); teams.add(c.team); }
     for (const c of art) if (icons.length < 4 && !icons.includes(c)) icons.push(c);
     const tile = {};
-    for (const k of ['id', 'slug', 'displayName', 'author', 'tagline', 'header', 'logo', 'curata', 'v']) {
+    for (const k of ['id', 'slug', 'displayName', 'author', 'tagline', 'header', 'logo', 'curata', 'megaAward', 'v']) {
       if (coll[k] !== undefined && coll[k] !== '' && coll[k] !== false) tile[k] = coll[k];
     }
     tile.count = members.length;
@@ -7859,7 +7871,7 @@ async function unfeatureArticle(env, slug) {
 
 // One compact homepage snapshot per content version and UTC day. Random tile
 // order remains a browser choice, so every collection/script stays eligible.
-const HOME_FORMAT_V = 4;
+const HOME_FORMAT_V = 5;
 const _homePending = new Map();
 let _homeCache = null;
 async function cachedHome(env, ctx, request) {
@@ -10557,6 +10569,7 @@ const app = {
             // Same Curata inheritance the JSON feeds get, so the star on the
             // page agrees with the star in the grid it was clicked from.
             if (!d.curata) await applyCollectionCurata(env, [d]);
+            await applyCollectionMega(env, [d]).catch(() => null);
             // Same for the "Appears in" row: a character listed by hand in a
             // collection says so here without its creator typing the name in.
             await applyCollectionAppearsIn(env, [d]);
@@ -10980,6 +10993,7 @@ const app = {
         // along so applyCollectionCurata below does not lend it back either.
         if (Classify.isCurata(d)) o.curata = true;
         if (d.curataOptOut) o.curataOptOut = true;
+        if (d.megaAward) o.megaAward = true;
         const cls = Classify.classifyPage(d, type);
         if (cls !== 'standard') o.classification = cls;
         // Partial is derived per read, and the page needs the raw ingredients
@@ -12501,6 +12515,12 @@ const app = {
         await applyCollectionCurata(env, [probe]).catch(() => null);
         if (probe.curata) curataFrom = probe.curataFrom || '';
       }
+      let megaFrom = null;
+      if (type === 'character') {
+        const probe = { slug: row.slug, appearsIn: pageData.appearsIn || '' };
+        await applyCollectionMega(env, [probe]).catch(() => null);
+        if (probe.megaFrom) megaFrom = probe.megaFrom;
+      }
       /* Approved editing that came from the script or collection this
          character is on, rather than from the character itself. The editor
          needs it to word its banner — see waterfallParent. */
@@ -12545,7 +12565,7 @@ const app = {
       }
       return jsonResponse({
         slug: row.slug, data: pageData,
-        curataFrom, editVia, governedBy, relatedBy,
+        curataFrom, megaFrom, editVia, governedBy, relatedBy,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, editDefault, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -15045,6 +15065,7 @@ const app = {
         // Declining Curata is the owner's, so it is re-pinned exactly as the
         // grant is — a suggestion can neither add it nor take it off.
         if (storedNow.curataOptOut) data.curataOptOut = true; else delete data.curataOptOut;
+        if (storedNow.megaAwardOptOut) data.megaAwardOptOut = true; else delete data.megaAwardOptOut;
         // Whose work the page is said to be is the owner's answer too, so a
         // suggestion carries the stored one — see CREDIT_UNLINKED_SQL.
         if (storedNow.creditUnlinked) data.creditUnlinked = true; else delete data.creditUnlinked;
@@ -15581,6 +15602,8 @@ const app = {
         } else {
           delete c.curataOptOut;
         }
+        const megaOff = perm === 'owner' ? c.megaAwardOptOut : stored && stored.megaAwardOptOut;
+        if (megaOff) c.megaAwardOptOut = true; else delete c.megaAwardOptOut;
         /* "This credit isn't mine" — the page is somebody else's character
            uploaded on their behalf, so the credited name must not resolve to
            the uploader's account. Owner-only for the same reason curataOptOut
@@ -15987,6 +16010,8 @@ const app = {
         if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.curata = existing ? !!parseData(existing).curata : false;
+        // The MegaSupaUltra award is set in D1 by hand; same rule.
+        if (existing && parseData(existing).megaAward) c.megaAward = true; else delete c.megaAward;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
         if (!existing && await rowByCustomUrl(env, 'collection', c.id)) {
@@ -17389,6 +17414,7 @@ const app = {
         // include[] is capped at 500 by sanitizePageFields; 258 fits today.
         d.include = [...new Set([...(Array.isArray(d.include) ? d.include : []), ...slugs])];
         d.curata = existing ? !!parseData(existing).curata : false;
+        if (existing && parseData(existing).megaAward) d.megaAward = true; else delete d.megaAward;
         sanitizePageFields(d, 'collections/' + id);
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
