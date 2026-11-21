@@ -5380,7 +5380,7 @@ function sanitizeScriptFields(s) {
                            (an approval; a rollback restores what WAS live) */
 // customUrl too: the address lives in the custom_url column as well, and an
 // old version must not put the data and the column out of step.
-const RESTORE_PINNED_KEYS = ['curata', 'megaAward', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
+const RESTORE_PINNED_KEYS = ['curata', 'megaAward', 'megaAwardOptOut', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
 async function prepareRestore(env, type, row, d, opts) {
   opts = opts || {};
   const now = parseData(row);
@@ -6298,6 +6298,18 @@ async function applyCollectionCurata(env, chars) {
       c.curata = true;
       c.curataFrom = name;
       c.classification = 'curata';
+    }
+  }
+  return chars;
+}
+
+/* The MegaSupaUltra Collection award, lent to a collection's characters on
+   the /c/ page only (never the feeds), unless the creator turned it off. */
+async function applyCollectionMega(env, chars) {
+  const all = await publishedCollectionData(env, await contentVersion(env, ['collection']));
+  for (const coll of (all || []).filter(d => d && d.megaAward)) {
+    for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
+      if (!c.megaAwardOptOut && !c.megaFrom) c.megaFrom = coll.displayName || coll.id || coll.slug || 'a collection';
     }
   }
   return chars;
@@ -10530,6 +10542,7 @@ const app = {
             // Same Curata inheritance the JSON feeds get, so the star on the
             // page agrees with the star in the grid it was clicked from.
             if (!d.curata) await applyCollectionCurata(env, [d]);
+            await applyCollectionMega(env, [d]).catch(() => null);
             // Same for the "Appears in" row: a character listed by hand in a
             // collection says so here without its creator typing the name in.
             await applyCollectionAppearsIn(env, [d]);
@@ -12473,6 +12486,12 @@ const app = {
         await applyCollectionCurata(env, [probe]).catch(() => null);
         if (probe.curata) curataFrom = probe.curataFrom || '';
       }
+      let megaFrom = null;
+      if (type === 'character') {
+        const probe = { slug: row.slug, appearsIn: pageData.appearsIn || '' };
+        await applyCollectionMega(env, [probe]).catch(() => null);
+        if (probe.megaFrom) megaFrom = probe.megaFrom;
+      }
       /* Approved editing that came from the script or collection this
          character is on, rather than from the character itself. The editor
          needs it to word its banner — see waterfallParent. */
@@ -12517,7 +12536,7 @@ const app = {
       }
       return jsonResponse({
         slug: row.slug, data: pageData,
-        curataFrom, editVia, governedBy, relatedBy,
+        curataFrom, megaFrom, editVia, governedBy, relatedBy,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, editDefault, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -15017,6 +15036,7 @@ const app = {
         // Declining Curata is the owner's, so it is re-pinned exactly as the
         // grant is — a suggestion can neither add it nor take it off.
         if (storedNow.curataOptOut) data.curataOptOut = true; else delete data.curataOptOut;
+        if (storedNow.megaAwardOptOut) data.megaAwardOptOut = true; else delete data.megaAwardOptOut;
         // Whose work the page is said to be is the owner's answer too, so a
         // suggestion carries the stored one — see CREDIT_UNLINKED_SQL.
         if (storedNow.creditUnlinked) data.creditUnlinked = true; else delete data.creditUnlinked;
@@ -15553,6 +15573,8 @@ const app = {
         } else {
           delete c.curataOptOut;
         }
+        const megaOff = perm === 'owner' ? c.megaAwardOptOut : stored && stored.megaAwardOptOut;
+        if (megaOff) c.megaAwardOptOut = true; else delete c.megaAwardOptOut;
         /* "This credit isn't mine" — the page is somebody else's character
            uploaded on their behalf, so the credited name must not resolve to
            the uploader's account. Owner-only for the same reason curataOptOut
