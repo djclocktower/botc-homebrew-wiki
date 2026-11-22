@@ -479,9 +479,10 @@
     return sideGroups;
   }
   function searchQ() { return ($('sb-filter').value || '').trim().toLowerCase(); }
+  var openRows = Object.create(null); // abilities opened in the panel, kept when the list is drawn again
   function rowHTML(c, TICK, CHEV) {
     var on = setSlugs.indexOf(c.slug) >= 0;
-    return '<div class="sbx-add-row" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
+    return '<div class="sbx-add-row' + (openRows[c.slug] ? ' open' : '') + '" data-slug="' + esc(c.slug) + '"><div class="sbx-add-head-row">' +
       '<button type="button" class="sbx-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '" aria-pressed="' + on + '">' +
         '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
         '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
@@ -536,7 +537,7 @@
       var more = e.target.closest('.tt-side-more');
       if (more) { sideLimit[more.dataset.team] = (sideLimit[more.dataset.team] || SIDE_STEP) + SIDE_STEP * 4; renderSidebar(); return; }
       var chev = e.target.closest('.sbx-add-chev');
-      if (chev) { chev.closest('.sbx-add-row').classList.toggle('open'); return; }
+      if (chev) { var orow = chev.closest('.sbx-add-row'); openRows[orow.dataset.slug] = orow.classList.toggle('open'); return; }
       var item = e.target.closest('.sbx-add-item');
       if (!item) return;
       var sl = item.dataset.slug;
@@ -548,7 +549,7 @@
       if (e.key !== 'Enter') return;
       clearTimeout(timer); filterSidebar();
       var first = $('sb-add-list').querySelector('.sbx-add-item');
-      if (first) first.click();
+      if (first && !first.classList.contains('on')) first.click(); // Enter adds, never takes off
     });
     $('tt-abilities').addEventListener('change', function () {
       $('sb-add-list').classList.toggle('abil', this.checked);
@@ -577,6 +578,8 @@
       if ((window.pageYOffset || 0) > target) window.scrollTo(0, Math.max(0, target));
     }
     try { localStorage.setItem('botc_token_tab', name); } catch (e) {}
+    // measured while its preview was hidden (a narrow screen's Tokens tab), the box is 0 wide
+    if (mainGizmo) mainGizmo.sync();
   }
   function wireTabs() {
     $('tt-tabs').addEventListener('click', function (e) {
@@ -750,9 +753,13 @@
   function degFmt(v) { return (v > 0 ? '+' : '') + v + '&deg;'; }
 
   function buildAdjPanel(container, prefix, getVal, setVal) {
-    var html = '';
+    var html = '', sect = '';
+    // a slider's spoken name: its group, its label, and which way a Position moves
+    var named = function (f) {
+      return sect + ' ' + f.label.replace(/<[^>]*ico-swap-v[^>]*><\/span>/, 'up and down').replace(/<[^>]*ico-swap[^>]*><\/span>/, 'across').replace(/<[^>]*>/g, '').trim();
+    };
     ADJ_FIELDS.forEach(function (f, i) {
-      if (f.section) { html += '<h3 class="tt-adj-sect">' + f.section + '</h3>'; return; }
+      if (f.section) { sect = f.section; html += '<h3 class="tt-adj-sect">' + f.section + '</h3>'; return; }
       if (f.seg) {
         html += '<div class="tt-row"><label>' + f.label + '</label><div class="tt-seg tt-seg-sm" id="' + prefix + f.k + '">';
         f.seg.forEach(function (o) {
@@ -763,7 +770,7 @@
         var gear = (f.k === 'name_kern' && prefix === 'ta-')
           ? ' <button type="button" class="tt-gear" id="ta-kern-gear" aria-expanded="false" aria-controls="ta-kern-gaps" title="Space each letter" aria-label="Space each letter">' + ico('gear') + '</button>' : '';
         html += '<div class="tt-row"><label>' + f.label + gear + '</label><div class="tt-range">' +
-          '<input type="range" id="' + prefix + f.k + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">' +
+          '<input type="range" id="' + prefix + f.k + '" aria-label="' + esc(named(f)) + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '">' +
           '<output id="' + prefix + f.k + '-out"></output></div></div>';
         if (gear) html += '<div class="tt-kern-gaps" id="ta-kern-gaps" hidden></div>';
       }

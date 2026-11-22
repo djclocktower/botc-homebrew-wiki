@@ -151,6 +151,11 @@ function toast(text, kind) {
 
 /* ── control binding ────────────────────────────────────────────── */
 const sliderRows = Array.from(document.querySelectorAll('.if-row[data-opt]'));
+// the row's <label> names its <output> (the first control inside it), so each slider is named here
+for (const row of sliderRows) {
+  const input = row.querySelector('input[type=range]'), lab = row.querySelector('.if-label');
+  if (input && lab && !input.hasAttribute('aria-label')) input.setAttribute('aria-label', lab.textContent.trim());
+}
 const switchRows = Array.from(document.querySelectorAll('.if-switch[data-opt]'));
 
 sliderRows.forEach((row) => {

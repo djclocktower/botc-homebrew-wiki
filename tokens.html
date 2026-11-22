@@ -304,6 +304,8 @@
   .tt-preview-col .sbx-panel-head { display: none; }
   .tt-preview-col .tt-tf-bar { margin-bottom: 6px; }
   .tt-preview { min-height: 110px; padding: 6px; }
+  /* a phone on its side: a pinned preview would leave no room for the sliders */
+  @media (max-height: 520px) { .tt-preview-col { position: static; } }
   .tt-work .tt-preview img { max-height: 34vh; }
   .tte-preview { min-height: 110px; padding: 6px; }
   .tte-preview img { max-height: 34vh; }
@@ -493,26 +495,27 @@
           </aside>
         </div>
       </div>
+      <p class="sbx-foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
     </main>
   </div>
   <div class="sbx-scrim" id="sbx-scrim"></div>
 
   <!-- import JSON modal -->
-  <div class="tt-modal" id="tt-import">
+  <div class="tt-modal" id="tt-import" role="dialog" aria-modal="true" aria-label="Import a script">
     <div class="tt-modal-card">
       <div class="tte-head">
         <h2>Import Script JSON</h2>
         <button type="button" class="sbx-icon" id="tt-import-close" aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
       </div>
       <p class="tt-hint">Official script-tool format. Replaces your current set.</p>
-      <input type="file" accept=".json,application/json" id="tt-import-file">
-      <textarea id="tt-import-text" class="tt-import-text" placeholder='…or paste the JSON here, e.g. [{"id":"_meta","name":"My Script"}, …]'></textarea>
+      <input type="file" accept=".json,application/json" id="tt-import-file" aria-label="Script JSON file">
+      <textarea id="tt-import-text" class="tt-import-text" aria-label="Script JSON" placeholder='…or paste the JSON here, e.g. [{"id":"_meta","name":"My Script"}, …]'></textarea>
       <div class="tt-acts"><button type="button" class="tt-btn-sm tt-btn-main" id="tt-import-go">Import</button></div>
     </div>
   </div>
 
   <!-- per-token editor modal -->
-  <div class="tt-modal" id="tt-editor">
+  <div class="tt-modal" id="tt-editor" role="dialog" aria-modal="true" aria-labelledby="tte-title">
     <div class="tt-modal-card">
       <div class="tte-head">
         <h2 id="tte-title">Edit Token</h2>

@@ -95,8 +95,12 @@ details.if-sec > summary:hover { background: #fff; }
     position: fixed; top: 0; left: 0; right: 0; bottom: 56dvh; z-index: 55;
     overflow: auto; padding: 8px; background: #1f0c25;
   }
-  html.if-split .if-stage-col { width: min(100%, calc(44dvh - 64px)); }
-  html.if-split .if-zoom .if-label { display: none; }
+  /* the icon and its backdrop buttons both fit above the sheet */
+  html.if-split .if-stage-col { min-width: 0; width: min(100%, calc(44dvh - 76px)); }
+  html.if-split .if-zoom { display: none; }
+  html.if-split .if-stage-bar { margin-top: 6px; }
+  html.if-split .if-stage-bar .if-seg { flex-wrap: nowrap; }
+  html.if-split .if-stage-bar .if-seg button { padding: 4px 6px; font-size: .62rem; letter-spacing: 0; }
 }
 
 /* ── Controls ───────────────────────────────────────────────────── */
@@ -886,6 +890,7 @@ details.if-sec > summary:hover { background: #fff; }
       </div>
         </div>
       </div>
+      <p class="sbx-foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
     </main>
   </div>
   <div class="sbx-scrim" id="sbx-scrim"></div>
