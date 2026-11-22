@@ -38,6 +38,9 @@ test('scripts save to the account, stay private, and are deleted on request', as
   assert.deepEqual(mine[0].chars, ['off-imp', 'x']);
   assert.equal(mine[0].meta.name, 'Night');
   assert.deepEqual(await list(f, 2), [], 'one account never sees another\'s scripts');
+  // the list names its account by id, so a browser can tell whose list it holds after a rename
+  assert.equal((await (await f.request('/api/my-scripts', { headers: as(1) })).json()).owner, 1);
+  assert.equal((await (await f.request('/api/my-scripts', { headers: as(2) })).json()).owner, 2);
 
   // an ordinary save on the stamp it was given
   r = await post(f, 1, '/api/my-scripts', { put: [{ id: 'abc', chars: ['off-imp'], meta: { name: 'Night 2' }, updated: 2000, base: j.saved.abc }] });

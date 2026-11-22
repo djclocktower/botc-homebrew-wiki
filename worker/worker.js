@@ -12953,7 +12953,8 @@ const app = {
         try { d = JSON.parse(r.data); } catch { continue; }
         scripts.push({ id: r.id, chars: d.chars || [], meta: d.meta || {}, updated: r.updated, saved: r.saved });
       }
-      return jsonResponse({ scripts, max: MY_SCRIPTS_MAX });
+      // `owner` lets the browser tell whose list it holds, whatever the username is now.
+      return jsonResponse({ scripts, max: MY_SCRIPTS_MAX, owner: sess.userId });
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------

@@ -64,6 +64,8 @@ const script = [
   mk('d2', 'minion', { name: 'd', tags: '' }),
   mk('e', 'demon', { tags: 'Single-Kill', otherNight: 30, official: true })
 ];
+// a character called Constructor is a character (no lookup may find Object's own)
+ok(!!T.analyse([mk('constructor', 'townsfolk', { name: 'Constructor', creator: 'toString', tags: ['constructor'] }), mk('tostring', 'townsfolk', { name: 'toString' })]), 'names that are also Object properties do not break Analyse');
 const an = T.analyse(script, { shape: T.DEFAULT_SHAPE, jinxes: [{}] });
 eq(an.total, 6, 'counts the roster');
 eq(an.official, 1, 'counts officials');

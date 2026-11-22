@@ -1679,14 +1679,26 @@ What shapes it:
   screen, and the step before the next change was never recorded.
 - **A script holds 200 characters** (`SCRIPT_MAX`, the Worker's
   `SCRIPT_CHARACTERS_MAX`): `toggle`, "+ All", import and a share link stop
-  there and say so.
+  there and say so, and `replaceOrder()` holds it for everything else
+  (Random, Fill the gaps, the team dice).
+- **Maps keyed by a slug or a name have no prototype** (`sel`, `bySlug`,
+  `rowBySlug`, and Analyse's `byName` / `tagCount` / `credit`): on a plain
+  object a character called Constructor was already "on the script", so it
+  could never be added, and Analyse threw.
 - **Deleting the open script closes it** (`deleteEntry`): only dropping its
   `libId` let the next autosave put it straight back. Undo reopens it.
 - **A confirm never promises a copy it will not keep**: `keptNote()` says
   the open script is NOT kept when My Scripts is full and it is not in it.
 - **A share link's script-only characters are cleaned first** (`applyShare`:
   `ownEntry()` over each, slugs checked) and counted as known, or the link
-  loaded without them; its logo, background and almanac must be https.
+  loaded without them; its logo, background and almanac must be https, and
+  its Bootlegger rules a list (a string there threw in `primeForm()` on
+  every later load, until site data was cleared). A slug the page has no
+  character for is KEPT, as an import keeps it: the list may be the cached
+  feed, older than the link.
+- **Import reads the file's `_meta.firstNight` / `otherNight`** back into
+  `nightOrder` (ids to the matched slugs, the four steps to `@dusk` etc.),
+  so an exported script keeps its arranged night order on the way back in.
 - More > **Print tokens** opens the roster in the Token Tool
   (`tokens?replace=1&chars=`), without characters made for this script.
 - **The name and the author are on the page.** They were not, and
@@ -1744,12 +1756,24 @@ as it always was. The browser's copy is still what the page works from.
   open script redrawn), one deleted elsewhere removed, and anything only
   here sent up, so the first login adds the browser's scripts to the
   account. Deletes wait in `botc_script_library_gone` until sent.
-  `botc_script_library_owner` names the account the list last synced with;
-  a different account signing in on that browser gets its own list, never
-  the previous one's scripts. A push is about 2 MB at most (the rest
-  follows in the next) and uses `keepalive` only under 60 KB: the browser
-  refuses a larger keepalive body outright, which used to make every big
-  save fail without a word. A failed push retries up to four times.
+  The pull skips an id waiting there, or a script deleted offline came
+  back. `botc_script_library_owner` names the account the list last synced
+  with, by ID (`id:{n}`, the `owner` field of the GET; a list stamped
+  before that carries the username, which still matches), so a change of
+  username keeps the list. A different account signing in on that browser
+  gets its own list, never the previous one's scripts: what the previous
+  account holds is dropped (it is safe there), an edit it had not sent yet
+  is set aside in `botc_script_library_stash` and comes back when that
+  account signs in again, the script left OPEN is cleared when it was one
+  of that account's saved ones (it used to be shown to, and saved into,
+  the next account), and a script that was only ever in the browser (made
+  logged out) stays and joins the account signed in. **Nothing is pushed
+  until a pull has succeeded** (`cloud.ok`): the browser's list may be
+  another account's, and a push before the pull sent it up. A push is
+  about 2 MB at most (the rest follows in the next) and uses `keepalive`
+  only under 60 KB, counted in bytes: the browser refuses a larger
+  keepalive body outright, which used to make every big save fail without
+  a word. A failed push retries up to four times and then says so once.
 - **Images**: `POST /api/my-scripts/image` mints `library/{userId}/{token}`
   like `/api/attachment` (type whitelist, byte sniffing, 5 MB). `library/` is
   in `R2_SERVE_PREFIXES`, `run_worker_first` and the orphan sweep, whose

@@ -53,6 +53,7 @@
   var LIB_MAX = 50;
   var LIB_GONE_KEY = 'botc_script_library_gone';   // deleted here, not yet on the account
   var LIB_OWNER_KEY = 'botc_script_library_owner'; // the account this list last synced with
+  var LIB_STASH_KEY = 'botc_script_library_stash'; // {owner: [entries]}: another account's unsent edits, kept for it
 
   var TEAMS = [['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
                ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'],
@@ -73,10 +74,10 @@
   // ── state ──────────────────────────────────────────────────────────────
   var allChars = [];        // this wiki's characters
   var officialChars = [];   // the official roster, merged with its night order
-  var bySlug = {};          // both of the above, by slug
+  var bySlug = Object.create(null); // both of the above, by slug (no prototype: 'constructor' is a slug)
   var order = [];           // the current script, in order
-  var sel = {};             // the same, as a set, for O(1) "is it on?"
-  var rowBySlug = {};       // slug -> the sidebar row's button element
+  var sel = Object.create(null); // the same, as a set, for O(1) "is it on?"
+  var rowBySlug = Object.create(null); // slug -> the sidebar row's button element
   var rosterCache = null;   // rosterChars(), invalidated on every change
 
   var nightUI = null, jinxUI = null;
@@ -161,7 +162,7 @@
   function loadCurrent() {
     var arr = readJSON(SCRIPT_KEY, []);
     order = Array.isArray(arr) ? arr.filter(function (s) { return typeof s === 'string'; }) : [];
-    sel = {};
+    sel = Object.create(null);
     order.forEach(function (s) { sel[s] = 1; });
     rosterCache = null;
   }
@@ -462,8 +463,9 @@
   function replaceOrder(list, quiet, label) {
     if (!quiet) mark(label || 'change the roster');
     var before = order.slice();
-    order = list.slice();
-    sel = {};
+    order = list.slice(0, SCRIPT_MAX);
+    if (list.length > SCRIPT_MAX) toast('A script holds ' + SCRIPT_MAX + ' characters. The rest were left out.', 3200);
+    sel = Object.create(null);
     order.forEach(function (s) { sel[s] = 1; });
     commitOrder();
     // Only the rows whose state actually flipped are repainted; with ~1,900
@@ -722,7 +724,7 @@
         '</span>';
       var folded = !!(prefs.rosterFolded && prefs.rosterFolded[t[0]]);
       html += '<div class="sbx-team' + (folded ? ' folded' : '') + '" data-team="' + esc(t[0]) + '">' +
-        (head ? '<h3 class="sbx-team-head"><span class="sbx-team-label" data-team-fold="' + esc(t[0]) + '" title="' +
+        (head ? '<h3 class="sbx-team-head"><span class="sbx-team-label" tabindex="0" role="button" data-team-fold="' + esc(t[0]) + '" title="' +
           (folded ? 'Unfold' : 'Fold this team away') + '">' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
           '>(' + group.length + (want ? '/' + want : '') + ')</span>' + (folded ? ' <span class="sbx-team-foldmark">' + ico('right') + '</span>' : '') + '</span>' + tools + '</h3>' : '') +
         '<div class="sbx-sheet">';
@@ -1052,7 +1054,7 @@
     var list = $('sb-add-list');
     if (!list) return;
     var groups = panelGroups(computeMatches());
-    rowBySlug = {};
+    rowBySlug = Object.create(null);
     highlight(null);
     if (!groups.length) {
       list.innerHTML = '<p class="sbx-note">' + (panelChars.length ? 'Nothing matches that.' : 'No characters found.') + '</p>';
@@ -1066,7 +1068,7 @@
       var lim = panelLimit[g.key] || Math.max(0, Math.min(PANEL_STEP, PANEL_BUDGET - drawn));
       html += '<div class="sbx-add-group' + (folded ? ' collapsed' : '') + '" data-group="' + esc(g.key) + '"' +
         (g.team ? ' data-team="' + esc(g.team[0]) + '"' : '') + '>' +
-        '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
+        '<h3 class="sbx-add-grouphead" tabindex="0" title="Fold this group away">' + esc(g.label) +
           ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-groupneed"></span>' +
           '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from this group" aria-label="Add a random ' + esc(g.label) + '">' + ico('dice') + '</button>' +
           '<span class="sbx-add-fold" aria-hidden="true">' + ico('down') + '</span></h3>' +
@@ -1140,6 +1142,10 @@
       var on = b.getAttribute('data-tab') === name;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
+      // a phone's tab strip scrolls sideways: the tab picked comes into view
+      if (on && b.parentNode && b.parentNode.scrollWidth > b.parentNode.clientWidth) {
+        b.parentNode.scrollLeft = Math.max(0, b.offsetLeft - (b.parentNode.clientWidth - b.offsetWidth) / 2);
+      }
     });
     [].slice.call(document.querySelectorAll('.sbx-pane')).forEach(function (p) {
       p.classList.toggle('on', p.getAttribute('data-tab') === name);
@@ -1873,10 +1879,11 @@
      to put back the MARKUP it replaced — textContent would restore the words
      and drop the icon for good. */
   function flash(btn, text) {
-    if (!btn) return;
+    if (!btn || btn._flash) return;
     var was = btn.innerHTML;
+    btn._flash = true;
     btn.innerHTML = ico('check') + ' ' + esc(text);
-    setTimeout(function () { btn.innerHTML = was; }, 1500);
+    setTimeout(function () { btn.innerHTML = was; btn._flash = false; }, 1500);
   }
   function notEmpty() {
     if (order.length) return true;
@@ -1917,6 +1924,8 @@
   function doShare(btn) {
     if (!notEmpty()) return;
     var link = SITE_ROOT + 'script?share=' + encodeShare();
+    // Chat apps and some browsers cut a very long address short.
+    if (link.length > 8000) toast('This link is long and may not open everywhere. Download JSON is safer.', 4500);
     if (navigator.clipboard) {
       navigator.clipboard.writeText(link).then(function () { flash(btn, 'Link copied'); },
         function () { window.prompt('Copy this link:', link); });
@@ -2029,7 +2038,7 @@
     var ix = importIndex();
     var meta = data.filter(function (e) { return e && e.id === '_meta'; })[0] || null;
     var setName = meta && meta.name;
-    var slugs = [], missing = [], made = {};
+    var slugs = [], missing = [], made = {}, slugOfId = Object.create(null);
     data.forEach(function (entry) {
       var id = (typeof entry === 'string') ? entry : (entry && entry.id);
       if (!id || id === '_meta') return;
@@ -2037,13 +2046,14 @@
       // builder wrote must not come back reported as unrecognised.
       if (slugify(id) === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
       var slug = matchEntry(entry, ix, setName);
-      if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
+      if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); slugOfId[String(id).toLowerCase()] = slug; }
       else if (entry && typeof entry === 'object' && entry.name && entry.ability) {
         // A character the file carries whole and this wiki has no page for:
         // it comes in as one of this script's own, like the ones made here.
         var s2 = OWN_PREFIX + uid();
         made[s2] = ownEntry(Object.assign({}, entry, { image: Array.isArray(entry.image) ? entry.image[0] : entry.image }));
         slugs.push(s2);
+        slugOfId[String(id).toLowerCase()] = s2;
       }
       else { missing.push((entry && entry.name) || id); }
     });
@@ -2073,6 +2083,18 @@
           if (/^https:\/\//i.test(meta.logo || '')) m.exportLogo = String(meta.logo).slice(0, 500);
           if (/^https:\/\//i.test(meta.background || '')) m.exportBg = String(meta.background).slice(0, 500);
           if (Array.isArray(meta.bootlegger)) m.bootlegger = meta.bootlegger.slice(0, 20).map(String);
+          // The file's own night order (an export writes one when it was
+          // arranged by hand) comes back as the arranged order.
+          var night = {};
+          [['first', 'firstNight'], ['other', 'otherNight']].forEach(function (p) {
+            if (!Array.isArray(meta[p[1]])) return;
+            var list = meta[p[1]].map(function (nid) {
+              var k = String(nid).toLowerCase();
+              return /^(dusk|minioninfo|demoninfo|dawn)$/.test(k) ? '@' + k : slugOfId[k];
+            }).filter(Boolean);
+            if (list.length) night[p[0]] = list;
+          });
+          if (night.first || night.other) m.nightOrder = night;
         }
         // A new script may keep the file itself as its JSON: publish-script's
         // Custom JSON box, which the published page's JSON box and download
@@ -2139,6 +2161,9 @@
   function libDirty(e) { return e.updated !== e.syncedUpdated; }
   function cloudPush() {
     if (!cloud.user) return;
+    // Nothing is sent until this account's own list has been read: what is
+    // in the browser may be another account's.
+    if (!cloud.ok) { cloudPull(); return; }
     if (cloud.busy) { cloud.again = true; return; }
     // About 2 MB a request: the rest of a long list follows in the next.
     var put = [], size = 0;
@@ -2155,7 +2180,7 @@
     fetch('/api/my-scripts', {
       // keepalive lets a save finish while the page is closing, but the
       // browser refuses one over 64 KB outright.
-      method: 'POST', credentials: 'same-origin', keepalive: body.length < 60000,
+      method: 'POST', credentials: 'same-origin', keepalive: new Blob([body]).size < 60000,
       headers: { 'Content-Type': 'application/json' },
       body: body
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
@@ -2190,26 +2215,60 @@
   }
   function cloudRetry() {
     cloud.tries = (cloud.tries || 0) + 1;
-    if (cloud.tries > 4) return;
+    if (cloud.tries > 4) {
+      if (!cloud.failed) { cloud.failed = true; toast('Could not save to your account. Your scripts are kept in this browser.', 4500); }
+      return;
+    }
     clearTimeout(cloud.timer);
     cloud.timer = setTimeout(cloudPush, 20000 * cloud.tries);
   }
   /* Read the account's list and fold it into this browser's. */
+  function stashOf(stash, k) { return Object.prototype.hasOwnProperty.call(stash, k) && Array.isArray(stash[k]) ? stash[k] : null; }
   function cloudPull() {
-    return fetch('/api/my-scripts', { credentials: 'same-origin' })
+    if (cloud.pulling) return cloud.pulling;
+    cloud.pulling = fetch('/api/my-scripts', { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
+        cloud.pulling = null;
         if (!j || !Array.isArray(j.scripts)) return;
         var owner = readJSON(LIB_OWNER_KEY, '');
-        // Another account's list in this browser is not this account's to
-        // keep: it is replaced, never added to the account signed in now.
-        var local = owner && owner !== cloud.user ? [] : getLib();
-        if (owner && owner !== cloud.user) writeJSON(LIB_GONE_KEY, []);
+        // The account is named by its id, which a change of username does
+        // not move (a list stamped before that carries the username).
+        var who = j.owner != null ? 'id:' + j.owner : cloud.user;
+        var other = !!owner && owner !== who && owner !== cloud.user;
+        var local = getLib(), openId = getMeta().libId, wipeOpen = false;
+        var stash = readJSON(LIB_STASH_KEY, {});
+        if (!stash || typeof stash !== 'object' || Array.isArray(stash)) stash = {};
+        if (other) {
+          // Another account's list in this browser is not this account's to
+          // keep. What that account holds is safe there and goes; an edit
+          // it had not sent yet is set aside for it; a script that was only
+          // ever in this browser (made logged out) stays and joins this one.
+          var aside = stashOf(stash, owner) || [];
+          local = local.filter(function (e) {
+            if (e.saved == null) return true;
+            if (libDirty(e)) aside.push(e);
+            if (e.id === openId) wipeOpen = true;
+            return false;
+          });
+          if (aside.length) stash[owner] = aside.slice(-LIB_MAX);
+          writeJSON(LIB_GONE_KEY, []);
+        }
+        // This account's own set-aside edits come back.
+        [who, cloud.user].forEach(function (k) {
+          (stashOf(stash, k) || []).forEach(function (e) {
+            if (e && e.id && !local.some(function (x) { return x.id === e.id; })) local.push(e);
+          });
+          delete stash[k];
+        });
+        writeJSON(LIB_STASH_KEY, stash);
+        var gone = readJSON(LIB_GONE_KEY, []);
         var byId = {};
         local.forEach(function (e) { byId[e.id] = e; });
-        var srvIds = {}, out = [], openId = getMeta().libId, reopen = null;
+        var srvIds = {}, out = [], reopen = null;
         j.scripts.forEach(function (sv) {
           srvIds[sv.id] = 1;
+          if (gone.indexOf(sv.id) !== -1) return; // deleted here; the delete goes up with the next push
           var e = byId[sv.id];
           var fresh = { id: sv.id, chars: sv.chars || [], meta: sv.meta || {}, updated: sv.updated, saved: sv.saved, syncedUpdated: sv.updated };
           if (!e) { out.push(fresh); return; }
@@ -2223,12 +2282,21 @@
           if (e.saved != null && !libDirty(e)) { if (e.id === openId) patchMeta(function (m) { delete m.libId; }, 'silent'); return; }
           out.push(e);
         });
-        if (owner && owner !== cloud.user && openId) patchMeta(function (m) { delete m.libId; }, 'silent');
         out.sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
         writeJSON(LIB_KEY, out);
-        writeJSON(LIB_OWNER_KEY, cloud.user);
-        // The open script changed on another device and not here: show it.
-        if (reopen) {
+        writeJSON(LIB_OWNER_KEY, who);
+        cloud.ok = true;
+        if (other && openId && !wipeOpen && !out.some(function (e) { return e.id === openId; })) {
+          patchMeta(function (m) { delete m.libId; }, 'silent');
+        }
+        if (wipeOpen) {
+          // The script left open was the other account's: it is not shown
+          // to this one, and not saved into it.
+          setMeta({});
+          primeForm();
+          replaceOrder([], true);
+        } else if (reopen) {
+          // The open script changed on another device and not here: show it.
           var m = JSON.parse(JSON.stringify(reopen.meta || {}));
           m.libId = reopen.id;
           setMeta(m);
@@ -2237,7 +2305,8 @@
         }
         paintLibrary();
         cloudPush();
-      }).catch(function () { /* the browser's copy carries on */ });
+      }).catch(function () { cloud.pulling = null; /* the browser's copy carries on */ });
+    return cloud.pulling;
   }
   function cloudStart() {
     if (!window.BotcData || !window.BotcData.me) { paintLibrary(); return; }
@@ -2721,7 +2790,7 @@
       own[s] = next;
       m.ownChars = own;
       setMeta(m);
-      if (!sel[s]) { sel[s] = 1; order.push(s); }
+      if (!sel[s] && order.length < SCRIPT_MAX) { sel[s] = 1; order.push(s); }
       commitOrder();
       afterChange();
       close();
@@ -2782,7 +2851,7 @@
     $('sb-notes').value = m.notes || '';
     if (idsUI) idsUI.set(m.exportIds || null);
     $('sb-boot-list').innerHTML = '';
-    (m.bootlegger || []).forEach(addBootRow);
+    (Array.isArray(m.bootlegger) ? m.bootlegger : []).forEach(addBootRow);
     document.title = ((m.name || '').trim() || 'Script Builder') + ' — BOTC HomeBrew Wiki';
     paintEditNote();
   }
@@ -3828,7 +3897,11 @@
       Object.keys(rawOwn).slice(0, SCRIPT_MAX).forEach(function (k) {
         if (k.indexOf(OWN_PREFIX) === 0 && /^[\w-]{1,40}$/.test(k)) shOwn[k] = ownEntry(rawOwn[k]);
       });
-      var incoming = (sh.c || []).filter(function (slug) { return bySlug[slug] || shOwn[slug]; }).slice(0, SCRIPT_MAX);
+      // A slug this page has no character for is kept, as an import keeps
+      // it: the list on screen may be the cached one, older than the link.
+      var incoming = (Array.isArray(sh.c) ? sh.c : []).filter(function (slug) {
+        return typeof slug === 'string' && (bySlug[slug] || shOwn[slug] || (slug.indexOf(OWN_PREFIX) !== 0 && /^[a-z0-9][a-z0-9_-]{0,99}$/.test(slug)));
+      }).slice(0, SCRIPT_MAX);
       if (incoming.length &&
           (!order.length ||
            confirm('Load the shared script (' + incoming.length + ' characters)?\n\n' + keptNote()))) {
@@ -3848,11 +3921,13 @@
             if (typeof m[k] !== 'string' || !/^https:\/\//i.test(m[k])) delete m[k]; else m[k] = m[k].slice(0, 500);
           });
           if (typeof m.notes === 'string') m.notes = m.notes.slice(0, 4000); else delete m.notes;
+          if (Array.isArray(m.bootlegger)) m.bootlegger = m.bootlegger.slice(0, 20).map(function (r) { return String(r).slice(0, 300); });
+          else delete m.bootlegger;
         }
         setMeta(m);
         primeForm();
         order = incoming;
-        sel = {};
+        sel = Object.create(null);
         order.forEach(function (s) { sel[s] = 1; });
         commitOrder();
       }
@@ -3880,6 +3955,13 @@
   paintHistory();
   // A small console / test-harness handle (the same idea as
   // window.FancyScripts): read the state, drive the undo stack, no DOM.
+  // The fold headings answer the keyboard as they answer a click.
+  document.addEventListener('keydown', function (e) {
+    if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches || !e.target.matches('[data-team-fold], .sbx-add-grouphead')) return;
+    e.preventDefault();
+    e.target.click();
+  });
+
   window.ScriptBuilder = {
     order: function () { return order.slice(); },
     meta: getMeta,

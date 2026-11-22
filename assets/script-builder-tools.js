@@ -194,7 +194,7 @@
     });
 
     // tags
-    var tagCount = {};
+    var tagCount = Object.create(null);
     chars.forEach(function (c) {
       tagsOf(c).forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; });
     });
@@ -202,7 +202,7 @@
       .sort(function (a, b) { return b.n - a.n || a.tag.localeCompare(b.tag); });
 
     // creators
-    var credit = {};
+    var credit = Object.create(null);
     chars.forEach(function (c) {
       creditNames(c).forEach(function (n) { credit[n] = (credit[n] || 0) + 1; });
     });
@@ -225,7 +225,7 @@
 
     // duplicate names: two pages answering to one name export as one id
     // unless the ids are qualified, and confuse a table either way
-    var byName = {};
+    var byName = Object.create(null);
     chars.forEach(function (c) {
       var k = String(c.name || '').trim().toLowerCase();
       if (k) (byName[k] = byName[k] || []).push(c);
