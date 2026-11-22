@@ -156,16 +156,16 @@ test('the export: traveller art positions, the quote, and jinx ids', () => {
   assert.equal(s.flavor, 'New line');
 
   // A jinx exports the id its target's own export carries.
-  Render.setWikiChars(Render.jinxCharIndex([
-    { slug: 'warden-2', name: 'Warden', jsonId: 'warden_potato' },
-    { slug: 'gardener', name: 'Gardener' }
-  ]).byKey);
+  const warden = { slug: 'warden-2', name: 'Warden', jsonId: 'warden_potato', creator: 'Potato' };
+  const gardener = { slug: 'gardener', name: 'Gardener' };
+  Render.setWikiChars(Render.jinxCharIndex([warden, gardener]).byKey);
   s = Render.buildSchema({ name: 'X', jinxes: [
     { slug: 'warden-2', name: 'Warden', text: 'a' },
     { id: 'kept_as_written', name: 'Whoever', text: 'b' },
     { name: 'Gardener', text: 'c' }
   ] });
-  assert.deepEqual(s.jinxes.map(j => j.id), ['warden_potato', 'kept_as_written', 'gardener']);
+  assert.deepEqual(s.jinxes.map(j => j.id),
+    [Render.buildSchema(warden).id, 'kept_as_written', Render.buildSchema(gardener).id]);
   Render.setWikiChars(null);
 });
 
@@ -238,7 +238,7 @@ test('the Night Order box carries dusk, minion info, demon info and dawn', () =>
 
 test('a script export writes a jinx with another homebrew character under that character\'s exported id', () => {
   // A Bloodstar import stores `{name}_{set}`; the Esper itself exports as
-  // `esper`, and the official app pairs the two by id.
+  // under its own exported id, and the official app pairs the two by id.
   const esper = { slug: 'esper', name: 'Esper', team: 'minion', ability: 'x',
     page: 'c/the-bootlegger-s-anthology/esper' };
   const vis = { slug: 'visionary-tba', name: 'Visionary', team: 'minion', ability: 'y',
@@ -246,8 +246,9 @@ test('a script export writes a jinx with another homebrew character under that c
     jinxes: [{ id: 'esper_the_bootleggers_anthology', name: 'Esper', text: 'Only 1.' },
              { id: 'elsewhere_not_here', text: 'Untouched.' }] };
   const out = JSON.parse(PageRender.buildPageExport('S', '', '', [esper, vis], {}));
-  const v = out.find(e => e.id === 'visionary');
-  assert.deepEqual(v.jinxes.map(j => j.id), ['esper', 'elsewhere_not_here']);
+  const e = out.find(x => x.name === 'Esper');
+  const v = out.find(x => x.name === 'Visionary');
+  assert.deepEqual(v.jinxes.map(j => j.id), [e.id, 'elsewhere_not_here']);
 });
 
 test('a kept JSON (customJson) replaces the built one on script and collection pages, and stays off the feeds', async t => {

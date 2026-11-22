@@ -1,0 +1,32 @@
+[
+  {
+    "id": "_meta",
+    "name": "Trouble Brewing Test",
+    "author": "botchomebrew.wiki",
+    "hideTitle": true,
+    "logo": "https://raw.githubusercontent.com/djclocktower/botc-homebrew-wiki/claude/nifty-knuth-p08zp1/migration/test-art/tb-logo.png",
+    "background": "https://raw.githubusercontent.com/djclocktower/botc-homebrew-wiki/claude/nifty-knuth-p08zp1/migration/test-art/tb-background.jpg"
+  },
+  "washerwoman",
+  "librarian",
+  "investigator",
+  "chef",
+  "empath",
+  "fortuneteller",
+  "undertaker",
+  "monk",
+  "ravenkeeper",
+  "virgin",
+  "slayer",
+  "soldier",
+  "mayor",
+  "butler",
+  "drunk",
+  "recluse",
+  "saint",
+  "poisoner",
+  "spy",
+  "scarletwoman",
+  "baron",
+  "imp"
+]

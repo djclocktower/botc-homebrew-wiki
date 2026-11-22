@@ -1,0 +1,1152 @@
+/* Fancy Scripts — the app view.
+ *
+ * The official app's own script view, as a second style for the script
+ * sheet and for the night sheets (options.sheetStyle / options.night.style
+ * = 'app'). One column down the page:
+ *
+ *   script sheet   [ribbon + team name] icon  Name  | ability…
+ *   night sheet    [ribbon]             icon  Name  | reminder… ●
+ *
+ * a red damask ribbon with the team names turned up it, a coloured bar
+ * between the name and the text, thin lines between the teams, the
+ * script's logo (the sheet's title, and after the night list), and the
+ * "*Not the first night" footnote in the garland's oval. Geometry is
+ * APP_SHEET / APP_NIGHT in script.js, measured off the owner's
+ * screenshots of the app; the look is options.app (DEFAULT_APP).
+ *
+ * It keeps the classic renderers' contracts so the rest of the tool does
+ * not need to know which style a page is in: inline styles only (the
+ * export captures these nodes), data-fs-drag on everything movable
+ * ('crow:' / 'nrow:' rows reorder exactly as on the classic pages, 'char:'
+ * icons nudge), a layout pass that measures, solves the density and packs
+ * pages, then a render pass per page. The layouts carry the fields
+ * app.js's reorderFront / reorderNight read (sections with left/leftHeights/
+ * topPx; pages with columns of units).
+ *
+ * Unlike the classic sheet, the text is broken into lines HERE
+ * (breakRuns in script.js) and each line is drawn as its own nowrap
+ * block, because the bar beside a block has to be exactly as tall as the
+ * block, and a night line carrying a reminder disc is taller than one that
+ * does not. The layout pass and the render pass read the same breaks.
+ * Browser-only (canvas + DOM).
+ */
+
+import {
+  APP_SHEET, APP_NIGHT, FIT, SHEET_W, SHEET_H, U, TEAM_LABELS, PLACEHOLDER_ICON, footEm,
+  groupByTeam, frontCharacters, proxiedArt, smartTypography, teamColor, fontFamily, elGet, reminderParts, garlandOval, garlandShift, footInOval,
+  breakRuns, fitNameLines, keywordParts, jinxNotes, NO_ART, contentFloor, topCorners, SHEET,
+} from './script.js';
+import {
+  el, img, px, clamp, solveFit, textWidth, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon, trimmedArt, artAspectOf, shade,
+} from './util.js';
+import { ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected, watermark } from './elements.js';
+import { appendRibbon, cornerBox, cornerScale, skullSpec, drawSkull } from './sheet.js';
+
+function iconImg(src, style, alt) {
+  const n = img(src, style, alt);
+  n.crossOrigin = 'anonymous';
+  n.decoding = 'sync';
+  n.addEventListener('error', () => {
+    if (n.src !== PLACEHOLDER_ICON) n.src = PLACEHOLDER_ICON;
+  });
+  return n;
+}
+
+/* title art that failed to load: fall back to the text title */
+const failedArt = new Set();
+
+const appCfg = (options) => options.app || {};
+const sum = (a) => a.reduce((x, y) => x + y, 0);
+
+/* the centre of the parchment right of the ribbon, where the app centres
+   its logo */
+const paperCX = (ribbonW) => (ribbonW + 100) / 2;
+
+function fontsOf(options, cfg) {
+  const a = appCfg(options);
+  return {
+    name: fontFamily(a.fontName || 'tradebold'),
+    text: fontFamily(a.fontText || 'trade'),
+    label: fontFamily(a.fontLabel || 'goudy'),
+    token: fontFamily((cfg && cfg.fontToken) || 'tradebold'),
+    foot: fontFamily(a.fontFootnote || 'trade'),
+    title: fontFamily(options.fontTitle || 'unlovable'),
+    author: fontFamily(options.fontAuthor || 'goudy'),
+  };
+}
+
+/* the ribbon, shared by both pages */
+function drawRibbon(sheet, options, widthPct, ctx) {
+  const a = appCfg(options);
+  const t = elGet(options, 'appSidebar');
+  if (t.hidden) return;
+  appendRibbon(sheet, {
+    mode: a.sidebarMode || 'damask',
+    color: a.sidebarColor,
+    contrast: a.sidebarContrast,
+    src: resolveSrc(t.src),
+    opacity: t.opacity,
+    shade: 0,
+    widthPct,
+  }, { requestRender: ctx.requestRender, forExport: ctx.forExport });
+}
+
+/* one line of set text: its items as spans / discs / icons, nowrap, in a
+   block exactly `lineH` px tall */
+function lineNode(line, style, drawItem) {
+  const n = el('div', { position: 'absolute', whiteSpace: 'nowrap', ...style });
+  for (const it of line.items) {
+    if (it.lead) n.append(el('span', { display: 'inline-block', width: px(it.lead) }));
+    n.append(drawItem(it));
+  }
+  return n;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   THE SCRIPT SHEET
+   ════════════════════════════════════════════════════════════════════ */
+
+function labelTextFor(options, team, total) {
+  return ((options.teamLabels && options.teamLabels[team] || '').trim() || TEAM_LABELS[team]).toUpperCase() +
+    (options.labelCounts ? ' · ' + total : '');
+}
+
+/* the header band's height, and where its pieces sit (em) */
+function headerMetrics(script, options) {
+  const A = APP_SHEET;
+  const aT = elGet(options, 'appAuthor');
+  const tT = elGet(options, 'appTitle');
+  const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
+  const withAuthor = !!(options.showAuthor && author && !aT.hidden);
+  /* a logo is drawn larger than the text title, and as tall as its shape
+     allows: the header grows to hold it */
+  const art = tT.hidden ? '' : titleArt(script, options);
+  let titleH = A.titleMaxH, titleCY = A.titleCY;
+  if (art) {
+    const aspect = artAspectOf(art);
+    const maxH = A.logoMaxH * tT.scale;
+    const byW = aspect ? (A.titleMaxW / 100) * SHEET_W * tT.scale / aspect / U : maxH;
+    titleH = Math.min(maxH, byW);
+    titleCY = A.titleCY - A.titleMaxH / 2 + titleH / 2;
+  }
+  const authorCY = titleCY + titleH / 2 + A.authorGap + A.authorSize / 2;
+  const top = withAuthor ? authorCY + A.authorSize / 2 + 0.75
+    : Math.max(A.contentTop, titleCY + titleH / 2 + 0.9);
+  return { withAuthor, author, authorCY, top, art, titleH, titleCY };
+}
+
+// the title image: an upload, else the script's logo (trimmed to its ink)
+function titleArt(script, options) {
+  const tT = elGet(options, 'appTitle');
+  let art = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
+  if (art && failedArt.has(art)) art = '';
+  return trimmedArt(art);
+}
+
+/* layoutAppSheet(script, options, requestRender) → {style:'app', pages, d, …}
+   The classic sheet's policy, in one column: measure every row at a
+   density, pack the teams onto pages (a team that does not fit is split
+   and its name repeated), solve the density that fills the page, and deal
+   whatever is left over out as space. A short team — the lone Imp — grows
+   to hold its name up the ribbon, as it does in the app. */
+export function layoutAppSheet(script, options, requestRender) {
+  const A = APP_SHEET;
+  const a = appCfg(options);
+  const groups = groupByTeam(frontCharacters(script, options), options.sortMode);
+  const fonts = fontsOf(options);
+  const iconSize = options.iconSize || 1;
+  const textSize = options.textSize || 1;
+  const nameSize = options.nameSize || 1;
+  const lineMul = options.abilityLine || 1;
+
+  if (options.normalizeIcons) {
+    const urls = new Set();
+    script.characters.forEach((c) => { urls.add(c.icon); c.jinxIcons.forEach((j) => urls.add(j.icon)); });
+    normalizeIcons([...urls], requestRender);
+  }
+
+  const g = appColumns(a);
+  const textW = ((g.textRight - g.textX) / 100) * SHEET_W;
+  const nameW = (g.nameW / 100) * SHEET_W;
+  // extra space under every row, em (the "Space between characters" slider)
+  const rowExtra = (clamp(Number(a.rowGap) || 1, 0.5, 3) - 1) * 1.6;
+  const lineEm = A.textLine * textSize * lineMul;
+  const nameLineEm = (s) => A.nameSize * nameSize * s * A.nameLine;
+  const rowMin = A.rowMin * Math.max(1, iconSize);
+  const nameFont = (d) => (s) => `${options.nameCase === 'smallcaps' ? 'small-caps ' : ''}700 ${(A.nameSize * nameSize * U * d * s).toFixed(2)}px ${fonts.name}`;
+  const caseName = (s) => (options.nameCase === 'upper' ? s.toUpperCase() : s);
+
+  const kw = options.colorKeywords ? { good: teamColor(options, 'townsfolk'), evil: teamColor(options, 'demon') } : null;
+  const notes = options.jinxText ? jinxNotes(script.characters) : null;
+  // ability text as runs, the keywords carrying their ink when asked and
+  // "[+2 Outsiders]" setup notes in the Setup notes style
+  const words = (s, font, style) => (kw
+    ? keywordParts(s).map((k) => ({ s: k.s, font, kind: 'text', ...(style ? { style } : {}), ...(k.side ? { color: kw[k.side] } : {}) }))
+    : [{ s, font, kind: 'text', ...(style ? { style } : {}) }]);
+  const bs = options.bracketStyle;
+  const textRuns = (raw, font) => {
+    const s = smartTypography(raw);
+    if (!bs || bs === 'plain') return words(s, font);
+    const bFont = bs === 'bold' ? font.replace(/^400 /, '700 ') : 'italic ' + font;
+    const bStyle = bs === 'bold' ? { fontWeight: '700' } : bs === 'italic' ? { fontStyle: 'italic' } : { fontStyle: 'italic', opacity: '0.72' };
+    const out = [];
+    const re = /\[[^\]\n]{1,60}\]/g;
+    let last = 0, m;
+    while ((m = re.exec(s))) {
+      if (m.index > last) out.push(...words(s.slice(last, m.index), font));
+      out.push(...words(m[0], bFont, bStyle));
+      last = m.index + m[0].length;
+    }
+    if (last < s.length || !out.length) out.push(...words(s.slice(last), font));
+    return out;
+  };
+  // names with Name letter spacing, measured as drawn
+  const nameSp = Number(a.nameSpacing) || 0;
+  const nameMeasure = (t, f) => textWidth(t, f) + (nameSp ? nameSp * Number((/([\d.]+)px/.exec(f) || [0, 16])[1]) * [...t].length : 0);
+
+  const measureRow = (c, d) => {
+    const textPx = A.textSize * textSize * U * d;
+    const font = `400 ${textPx.toFixed(2)}px ${fonts.text}`;
+    const runs = textRuns(c.ability || '', font);
+    if (options.showJinxes && c.jinxIcons.length) {
+      // the partners' icons close the ability, where the app lists them
+      runs.push({ s: ' ', font, kind: 'text' });
+      const jw = textPx * 1.3 * (options.jinxIconSize || 1);
+      for (const j of c.jinxIcons) runs.push({ kind: 'icon', src: j.icon, name: j.name, reason: j.reason, w: jw, font });
+    }
+    if (c.marks && c.marks.length) {
+      // marks: another character's icon, then a short note in small italic
+      const mw = textPx * 1.3 * (options.jinxIconSize || 1);
+      const notePx = textPx * 0.8;
+      const noteFont = `italic 400 ${notePx.toFixed(2)}px ${fonts.text}`;
+      for (const m of c.marks) {
+        runs.push({ s: ' ', font, kind: 'text' });
+        runs.push({ kind: 'icon', src: m.icon, name: m.name, w: mw, font });
+        if (m.note) runs.push({ s: ' ' + smartTypography(m.note), font: noteFont, kind: 'text', style: { fontStyle: 'italic', fontSize: px(notePx) } });
+      }
+    }
+    const lines = breakRuns(runs, textW, textWidth, { baseFont: font });
+    for (const j of (notes && notes.get(c.id)) || []) {
+      // a jinx rule under the ability: smaller, italic, the partner's icon first
+      const nFont = `italic 400 ${(textPx * 0.86).toFixed(2)}px ${fonts.text}`;
+      const nRuns = [{ kind: 'icon', src: j.icon, name: j.name, w: textPx * 1.1, font: nFont }, ...textRuns(j.reason, nFont)];
+      for (const ln of breakRuns(nRuns, textW, textWidth, { baseFont: nFont })) lines.push({ ...ln, note: true });
+    }
+    const nm = fitNameLines(caseName(smartTypography(c.name)), nameW, nameMeasure, nameFont(d));
+    const textH = lines.length * lineEm;
+    const nameH = nm.lines.length * nameLineEm(nm.scale);
+    const blockH = Math.max(textH, nameH);
+    return { lines, name: nm, textH, nameH, blockH, h: Math.max(blockH + 0.15, Math.max(rowMin, blockH + A.rowPad) + rowExtra) };
+  };
+
+  // the team names are set at the sheet's size (they scale with density
+  // like everything else, so a band's height in layout em is fixed)
+  const labelOn = options.showLabels !== false && !elGet(options, 'appLabels').hidden;
+  const labelEm = (text) => {
+    const fs = A.labelSize * (options.labelSize || 1) * U;
+    const spacing = (a.labelSpacing == null ? 0.04 : a.labelSpacing) * fs;
+    return (textWidth(text, `400 ${fs.toFixed(2)}px ${fonts.label}`) + spacing * Math.max(0, text.length - 1)) / U;
+  };
+
+  const measureSection = (team, chars, d, total) => {
+    const rows = chars.map((c) => measureRow(c, d));
+    const rowsH = sum(rows.map((r) => r.h));
+    const label = labelTextFor(options, team, total);
+    const labelNeed = labelOn ? labelEm(label) + 2 * A.labelPad : 0;
+    return { team, chars, rows, rowsH, label, labelNeed, need: Math.max(rowsH, labelNeed) };
+  };
+
+  const hm = headerMetrics(script, options);
+  const pageHasHeader = () => options.showHeader !== false;
+  const topFor = (i) => (pageHasHeader(i) ? hm.top : A.bareTop);
+  // with the garland set to None the rows may run down to the footnote
+  const gT0 = elGet(options, 'appGarland');
+  const floorEm = contentFloor(gT0.src, false, A.contentBottom, A.bottomNoGarland, A.garlandW, gT0.scale, gT0.dy, A.garlandH);
+  const availFor = (i) => floorEm - topFor(i);
+  const gapEm = A.sectionGap;
+
+  // every section on the one page: the script sheet is always one page
+  const pack = (d) => {
+    const page = { sections: [], used: 0, index: 0 };
+    groups.forEach((g, i) => {
+      const m = measureSection(g.team, g.characters, d, g.characters.length);
+      page.used += m.need + (i ? gapEm : 0);
+      page.sections.push({ ...m, cont: false });
+    });
+    return [page];
+  };
+
+  const totalNeedAt = (d) => sum(groups.map((g) => measureSection(g.team, g.characters, d, g.characters.length).need)) +
+    Math.max(0, groups.length - 1) * gapEm;
+
+  let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
+  if (options.fitToContent && groups.length) d = solveFit((dd) => availFor(0) / Math.max(0.01, totalNeedAt(dd)), 0.01, FIT.growMax);
+  const pages = pack(d);
+
+  const ed = (em) => em * U * d;
+
+  /* take up the rest of the page: rows and gaps stretch (to FIT.spreadMax)
+     and what is still left is split above and below. A team held open by
+     its name only grows once its rows have caught up with it. */
+  pages.forEach((page) => {
+    page.header = pageHasHeader(page.index);
+    const roomEm = availFor(page.index) / d;
+    const gaps = Math.max(0, page.sections.length - 1);
+    const natural = (s) => sum(page.sections.map((m) => Math.max(m.rowsH * s, m.labelNeed))) + gaps * gapEm * s;
+    let lo = 1, hi = FIT.spreadMax;
+    if (natural(1) >= roomEm) hi = 1;
+    else if (natural(hi) <= roomEm) lo = hi;
+    else for (let k = 0; k < 24; k++) { const mid = (lo + hi) / 2; if (natural(mid) <= roomEm) lo = mid; else hi = mid; }
+    const stretch = lo;
+    const spare = Math.max(0, roomEm - natural(stretch));
+    let cursor = topFor(page.index) * U + ed(spare * FIT.topShare);
+    page.stretch = stretch;
+    page.sections.forEach((m, i) => {
+      if (i) cursor += ed(gapEm * stretch);
+      const rowsH = m.rowsH * stretch;
+      const secH = Math.max(rowsH, m.labelNeed);
+      m.sectionTopPx = cursor;
+      m.heightPx = ed(secH);
+      m.gapAboveEm = i ? gapEm * stretch : 0;
+      m.heights = m.rows.map((r) => r.h * stretch);
+      m.topPx = cursor + ed((secH - rowsH) / 2); // where the rows begin
+      // what app.js's reorderFront reads, in the classic sheet's shape
+      m.left = m.chars; m.right = [];
+      m.leftHeights = m.heights; m.rightHeights = [];
+      m.rightTopPx = m.topPx; m.rowsTopPx = m.topPx;
+      cursor += m.heightPx;
+    });
+  });
+
+  return { style: 'app', pages, d, fonts, groups, hm, g, iconEm: A.iconSize * iconSize, lineEm, nameLineEm };
+}
+
+/* the sheet's columns across a row, % of the width: "Move the ability
+   toward the icons" slides the bar and the text left, and the name column
+   gives up the room (its names shrink to fit, as ever) */
+function appColumns(a) {
+  const A = APP_SHEET;
+  const s = clamp(Number(a.textShift) || 0, -10, 6);
+  return { nameX: A.nameX, nameW: Math.max(5, A.nameW + s), barX: A.barX + s, textX: A.textX + s, textRight: A.textRight };
+}
+
+/* the text title: the script's name between the tool's own flourishes,
+   the way the official logos set it, sized to the band, with the skull in
+   front of it when asked for (the classic sheet's order: flourish, skull,
+   title, flourish) */
+function textTitle(sheet, title, options, cx, mark, e, band) {
+  const A = APP_SHEET;
+  const a = appCfg(options);
+  const tT = elGet(options, 'appTitle');
+  const fam = fontFamily(options.fontTitle || 'unlovable');
+  const unlovable = (options.fontTitle || 'unlovable') === 'unlovable';
+  let fs = e(A.titleSize) * tT.scale;
+  const measure = (size) => {
+    const w = textWidth(title, `400 ${size}px ${fam}`);
+    // the swash face's spaces are tightened on the page; measure the same
+    return w - (unlovable ? (title.split(' ').length - 1) * 0.21 * size : 0);
+  };
+  const k = fs / e(8.35); // the classic title's size, which the flourish art is drawn to
+  const flLW = options.showFlourishes !== false ? 9.956 * k : 0; // % width
+  const flRW = options.showFlourishes !== false ? 17.453 * k : 0;
+  const gap = 0.9 * k; // clear air between each flourish and the words
+  const sk = skullSpec(appCfg(options).showSkull, options, k);
+  // the left side: flourish then words, or flourish tucked under the skull then words
+  const leftW = sk ? (flLW ? flLW - 1.24 * k : 0) + sk.w - sk.tuck : (flLW ? flLW + gap : 0);
+  const decorW = leftW + (flRW ? flRW + gap : 0);
+  let w = (measure(fs) / SHEET_W) * 100;
+  if (w + decorW > band) {
+    const s = clamp((band - decorW) / w, 0.35, 1);
+    fs *= s;
+    w *= s;
+  }
+  const total = w + decorW;
+  const left = cx + tT.dx - total / 2;
+  const cy = A.titleCY + tT.dy;
+  const titleLeft = left + leftW;
+  if (sk) drawSkull(sheet, options, sk, titleLeft + sk.tuck - sk.w, cy - 0.76 * k, mark, e);
+  if (flLW) {
+    sheet.append(img(ART + 'flourish-left.png', {
+      position: 'absolute', left: left + '%', top: px(e(cy) - e(3.204 * k) / 2 + e(0.26 * k)), width: flLW + '%',
+      opacity: String(tT.opacity),
+    }));
+  }
+  if (flRW) {
+    sheet.append(img(ART + 'flourish-right.png', {
+      position: 'absolute', left: (titleLeft + w + gap) + '%', top: px(e(cy) - e(3.295 * k) / 2 + e(0.26 * k)),
+      width: flRW + '%', opacity: String(tT.opacity),
+    }));
+  }
+  const titleEl = el('div', {
+    position: 'absolute',
+    left: titleLeft + '%',
+    top: px(e(cy)),
+    transform: `translateY(-52%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
+    fontFamily: fam,
+    fontSize: px(fs),
+    lineHeight: '1',
+    whiteSpace: 'nowrap',
+    wordSpacing: unlovable ? '-0.21em' : '0',
+    color: a.titleColor || '#8b1a23',
+    opacity: String(tT.opacity),
+    textShadow: `${e(0.04)}px ${e(0.07)}px ${e(0.08)}px rgba(40, 20, 10, 0.35)`,
+  }, title);
+  sheet.append(mark(titleEl, 'el:appTitle'));
+}
+
+/* one character row, drawn at `h` layout em (the row may have stretched
+   past what its own block needs; everything centres in it) */
+function sheetRow(c, m, h, options, layout, ed, e, mark) {
+  const A = APP_SHEET;
+  const a = appCfg(options);
+  const { fonts, lineEm, nameLineEm } = layout;
+  const g = layout.g || appColumns(a);
+  const row = el('div', { position: 'relative', height: px(ed(h)) });
+  row.dataset.fsChar = c.id;
+  if (mark) mark(row, 'crow:' + c.id);
+  const color = c.color || teamColor(options, c.team);
+
+  // icon, centred on the row
+  const iconEm = layout.iconEm;
+  const iconPx = ed(iconEm) * (c.iconScale || 1);
+  // this character's own nudge plus the sheet's "move every icon" offset
+  const iconLeft = (A.iconCX / 100) * SHEET_W - iconPx / 2 +
+    (((c.iconDX || 0) + (Number(options.iconShiftX) || 0)) / 100) * SHEET_W;
+  const iconTop = ed(h / 2) - iconPx / 2 + e((c.iconDY || 0) + (Number(options.iconShiftY) || 0));
+  const fit = options.normalizeIcons ? iconFit(c.icon) : ICON_IDENTITY;
+  const icon = iconImg(drawIcon(c.icon), {
+    position: 'absolute', left: px(iconLeft), top: px(iconTop), width: px(iconPx), height: px(iconPx),
+    objectFit: 'contain', transform: inkTransform(fit), transformOrigin: 'center',
+    filter: iconFilter(options.iconEffect, options.iconShadow == null ? 1 : options.iconShadow, ed),
+  });
+  if (options.iconEffect === 'engraved') icon.style.mixBlendMode = 'multiply';
+  if (mark) mark(icon, 'char:' + c.id);
+  row.append(icon);
+
+  const blockTop = (h - m.blockH) / 2;
+  // the name, wrapped at its spaces, shrunk only when one word will not fit
+  const nlh = nameLineEm(m.name.scale);
+  const nameTop = blockTop + (m.blockH - m.nameH) / 2;
+  m.name.lines.forEach((ln, i) => {
+    row.append(el('div', {
+      position: 'absolute',
+      left: g.nameX + '%',
+      top: px(ed(nameTop + i * nlh)),
+      height: px(ed(nlh)),
+      lineHeight: px(ed(nlh)),
+      whiteSpace: 'nowrap',
+      fontFamily: fonts.name,
+      fontWeight: '700',
+      fontSize: px(ed(A.nameSize * (options.nameSize || 1) * m.name.scale)),
+      fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
+      letterSpacing: (Number(a.nameSpacing) || 0) + 'em',
+      color,
+    }, ln));
+  });
+
+  // the bar, exactly as tall as the text block
+  const textTop = blockTop + (m.blockH - m.textH) / 2;
+  if (a.showBars !== false) {
+    row.append(el('div', {
+      position: 'absolute',
+      left: g.barX + '%',
+      top: px(ed(textTop) + ed(0.08)),
+      width: px(Math.max(1.5, (A.barW / 100) * SHEET_W * (a.barWidth || 1))),
+      height: px(Math.max(2, ed(m.textH) - ed(0.16))),
+      background: color,
+    }));
+  }
+
+  // the ability, one block per line
+  const textPx = ed(A.textSize * (options.textSize || 1));
+  m.lines.forEach((ln, i) => {
+    row.append(lineNode(ln, {
+      left: g.textX + '%',
+      top: px(ed(textTop + i * lineEm)),
+      height: px(ed(lineEm)),
+      lineHeight: px(ed(lineEm)),
+      fontFamily: fonts.text,
+      fontSize: px(ln.note ? textPx * 0.86 : textPx),
+      fontStyle: ln.note ? 'italic' : 'normal',
+      color: a.inkColor || '#271d17',
+    }, (it) => {
+      if (it.kind === 'icon') {
+        const jf = options.normalizeIcons ? iconFit(it.src) : ICON_IDENTITY;
+        const ji = iconImg(drawIcon(it.src), {
+          display: 'inline-block', width: px(it.w), height: px(it.w), verticalAlign: 'middle',
+          objectFit: 'contain', transform: inkTransform(jf), marginTop: px(-it.w * 0.12),
+        }, it.name);
+        ji.title = 'Jinxed: ' + it.name;
+        return ji;
+      }
+      return it.color || it.style ? el('span', { ...(it.style || {}), ...(it.color ? { color: it.color } : {}) }, it.s) : document.createTextNode(it.s);
+    }));
+  });
+  return row;
+}
+
+export function renderAppSheetPage(script, options, layout, pageIndex, ctx) {
+  ctx = ctx || {};
+  const A = APP_SHEET;
+  const a = appCfg(options);
+  const selected = ctx.selected || '';
+  const page = layout.pages[Math.min(pageIndex, layout.pages.length - 1)];
+  const { d, fonts, hm } = layout;
+  const ed = (em) => em * U * d;
+  const e = (em) => em * U;
+  const isLastPage = pageIndex === layout.pages.length - 1;
+  const title = (options.titleOverride || '').trim() || script.meta.name;
+  let cx = paperCX(A.sidebarW);
+
+  const sheet = pageFrame(SHEET_W, SHEET_H, U, 'script-sheet script-app');
+  sheet.dataset.fsPage = String(pageIndex);
+  sheet.dataset.fsDensity = d.toFixed(3);
+  const mark = (node, id) => {
+    node.dataset.fsDrag = id;
+    if (id === selected) markSelected(node);
+    return node;
+  };
+
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
+  for (const n of renderBackground(a.bg, 'appfront', { scriptBg, noGarland: !!elGet(options, 'appGarland').src })) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
+  drawRibbon(sheet, options, A.sidebarW, ctx);
+  for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
+
+  // the garland across the foot: only when one has been picked or uploaded,
+  // which also takes the aged parchment's own off the paper
+  const gT = elGet(options, 'appGarland');
+  const garland = gT.src === NO_ART ? '' : resolveSrc(gT.src);
+  if (garland && !gT.hidden && isLastPage) {
+    const gEl = img(garland, {
+      position: 'absolute',
+      left: (cx + gT.dx) + '%',
+      bottom: px(-e(gT.dy)),
+      width: (A.garlandW * gT.scale) + '%',
+      maxHeight: px(e(A.garlandH) * gT.scale),
+      objectFit: 'contain',
+      objectPosition: '50% 100%',
+      // the pack's ovals sit about 54% across; an upload is centred
+      transform: `translateX(-${garlandShift(gT.src)}%)${gT.rot ? ` rotate(${gT.rot}deg)` : ''}`,
+      opacity: String(gT.opacity),
+    });
+    gEl.crossOrigin = 'anonymous';
+    sheet.append(mark(gEl, 'el:appGarland'));
+  }
+
+  // the title: an uploaded title image, the script's logo, or the name
+  if (page.header) {
+    /* a top corner (a character, the Bootlegger rules) takes a side of the
+       band, and the title centres in what is left */
+    const corners = topCorners(script, options);
+    const x0 = A.sidebarW + 1.5, x1 = 95, W = A.cornerW; // clear of the burnt right edge
+    const freeL = corners.left ? x0 + W + 1 : corners.right ? x0 : null;
+    const freeR = corners.right ? x1 - W - 1 : x1;
+    let band = A.titleMaxW + 18; // the logo's width plus the flourishes'
+    if (freeL != null) { cx = (freeL + freeR) / 2; band = freeR - freeL; }
+    const cTop = 1.2, cBottom = hm.top - 0.6;
+    const look = {
+      name: fonts.name, text: fonts.text, rules: fontFamily(options.bootRulesFont || 'dumbledor2'),
+      ink: a.inkColor || '#271d17', rulesInk: options.bootRulesColor || a.inkColor || '#271d17',
+      nameColor: (cn) => cn.color || teamColor(options, cn.team), nameWeight: '700',
+      iconFilter: iconFilter(options.iconEffect, options.iconShadow == null ? 1 : options.iconShadow, e),
+    };
+    for (const side of ['left', 'right']) {
+      const cn = corners[side];
+      if (!cn) continue;
+      const key = cn.name ? 'topChar' : 'bootRules';
+      const T = elGet(options, key);
+      const left = side === 'left' ? x0 : x1 - W;
+      const hEm = Math.max(2, cBottom - cTop);
+      const k = cornerScale(cn, look, e, T.scale, (W / 100) * SHEET_W, e(hEm));
+      const box = cornerBox(cn, look, e, T.scale, k);
+      Object.assign(box.style, {
+        position: 'absolute', left: (left + T.dx) + '%', width: W + '%', top: px(e(cTop + T.dy)), height: px(e(hEm)),
+        opacity: String(T.opacity),
+      });
+      sheet.append(mark(box, 'el:' + key));
+    }
+    const tT = elGet(options, 'appTitle');
+    if (!tT.hidden) {
+      const art = titleArt(script, options);
+      // the skull in front of a logo, once the logo's shape is known
+      const aspect = art && artAspectOf(art);
+      const sk = aspect ? skullSpec(a.showSkull, options, Math.min(1, hm.titleH / SHEET.skullH)) : null;
+      const logoW = aspect ? Math.min(A.titleMaxW * tT.scale, band, (hm.titleH * U * aspect / SHEET_W) * 100) : 0;
+      if (sk) {
+        cx += (sk.w + 0.6) / 2;
+        drawSkull(sheet, options, sk, cx + tT.dx - logoW / 2 - 0.6 - sk.w, hm.titleCY + tT.dy, mark, e);
+      }
+      if (art) {
+        const logoEl = img(art, {
+          position: 'absolute',
+          left: (cx + tT.dx) + '%',
+          top: px(e(hm.titleCY + tT.dy)),
+          transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
+          maxWidth: Math.min(A.titleMaxW * tT.scale, band) + '%',
+          maxHeight: px(e(A.logoMaxH) * tT.scale),
+          objectFit: 'contain',
+          opacity: String(tT.opacity),
+        }, title);
+        logoEl.crossOrigin = 'anonymous';
+        logoEl.addEventListener('error', () => { failedArt.add(art); if (ctx.requestRender) ctx.requestRender(); });
+        sheet.append(mark(logoEl, 'el:appTitle'));
+      } else {
+        textTitle(sheet, title, options, cx, mark, e, band);
+      }
+    }
+    if (hm.withAuthor) {
+      const aT = elGet(options, 'appAuthor');
+      sheet.append(mark(el('div', {
+        position: 'absolute',
+        left: (cx + tT.dx + aT.dx) + '%',
+        top: px(e(hm.authorCY + tT.dy + aT.dy)),
+        transform: `translate(-50%, -50%)${aT.rot ? ` rotate(${aT.rot}deg)` : ''}`,
+        fontFamily: fonts.author,
+        fontStyle: 'italic',
+        fontSize: px(e(A.authorSize) * aT.scale),
+        letterSpacing: '0.04em',
+        color: a.authorColor || '#5a4632',
+        opacity: String(aT.opacity),
+        whiteSpace: 'nowrap',
+      }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(hm.author)), 'el:appAuthor'));
+    }
+  }
+
+  // the teams
+  const cT = elGet(options, 'content');
+  const lT = elGet(options, 'appLabels');
+  const dvT = elGet(options, 'appDividers');
+  const wrap = el('div', { position: 'absolute', inset: '0', opacity: String(cT.opacity), display: cT.hidden ? 'none' : 'block' });
+  applyEl(wrap, { ...cT, opacity: 1, hidden: false, scale: 1 }, '', U, SHEET_W);
+  if (cT.scale !== 1) {
+    wrap.style.transformOrigin = '50% 0';
+    wrap.style.transform = (wrap.style.transform || '') + ` scale(${cT.scale})`;
+  }
+  wrap.dataset.fsEl = 'content';
+  wrap.style.pointerEvents = 'none';
+
+  page.sections.forEach((sec, si) => {
+    // the line between two teams, half way down the gap: pale on the
+    // ribbon, a faint rule on the paper that fades out to the right
+    if (si > 0 && a.showDividers !== false && !dvT.hidden) {
+      const y = sec.sectionTopPx - ed(sec.gapAboveEm) / 2 + e(dvT.dy);
+      const k = clamp((a.dividerStrength == null ? 1 : a.dividerStrength) * dvT.opacity, 0, 1.5);
+      const h = Math.max(1.5, e(0.12) * dvT.scale);
+      wrap.append(el('div', {
+        position: 'absolute', left: A.dividerX0 + '%', top: px(y - h / 2), width: (A.sidebarW - A.dividerX0) + '%', height: px(h),
+        background: `rgba(236, 206, 182, ${(0.42 * k).toFixed(3)})`,
+      }));
+      wrap.append(el('div', {
+        position: 'absolute', left: A.sidebarW + '%', top: px(y - h / 2), width: (A.dividerX1 - A.sidebarW) + '%', height: px(h),
+        background: `linear-gradient(90deg, rgba(70, 50, 34, ${(0.2 * k).toFixed(3)}) 0%, rgba(70, 50, 34, ${(0.16 * k).toFixed(3)}) 80%, rgba(70, 50, 34, 0) 100%)`,
+      }));
+    }
+
+    // the team's name up the ribbon, centred on its section
+    if (sec.labelNeed > 0 && !lT.hidden) {
+      const fs = ed(A.labelSize * (options.labelSize || 1)) * lT.scale;
+      wrap.append(el('div', {
+        position: 'absolute',
+        left: (A.labelCX + lT.dx) + '%',
+        top: px(sec.sectionTopPx + sec.heightPx / 2 + e(lT.dy)),
+        transform: 'translate(-50%, -50%) rotate(-90deg)',
+        fontFamily: fonts.label,
+        fontSize: px(fs),
+        lineHeight: '1',
+        letterSpacing: (a.labelSpacing == null ? 0.04 : a.labelSpacing) + 'em',
+        color: a.labelColor || '#dcc0a4',
+        opacity: String(lT.opacity),
+        whiteSpace: 'nowrap',
+        textShadow: `0 ${ed(0.05)}px ${ed(0.12)}px rgba(20, 0, 4, 0.55)`,
+      }, sec.label));
+    }
+
+    const col = el('div', { position: 'absolute', left: '0', top: px(sec.topPx), width: '100%', pointerEvents: 'auto' });
+    sec.chars.forEach((c, i) => col.append(sheetRow(c, sec.rows[i], sec.heights[i], options, layout, ed, e, mark)));
+    wrap.append(col);
+  });
+  sheet.append(wrap);
+
+  // "*Not the first night", in the garland's oval
+  const fT = elGet(options, 'footnote');
+  const hasNightStar = script.characters.some((c) => c.ability.includes('night*'));
+  if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) && !fT.hidden &&
+      (isLastPage || options.footnoteEveryPage)) {
+    const custom = (options.footnoteText || '').trim();
+    // a garland from the pack: centred in its oval, wherever it is moved
+    const gT = elGet(options, 'appGarland');
+    const oval = isLastPage && !gT.hidden && garlandOval(gT.src, A.garlandW, gT.scale, gT.dy, A.garlandH);
+    const foot = el('div', {
+      position: 'absolute',
+      left: (A.footnoteCX + (oval ? gT.dx : 0) + fT.dx) + '%',
+      top: px(e(fT.dy + (oval ? footInOval(oval, custom, A.footnoteLine) : footEm(A.footnoteTop)))),
+      transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
+      transformOrigin: '50% 0',
+      textAlign: 'center',
+      fontFamily: fonts.foot,
+      fontSize: px(e(A.footnoteSize)),
+      lineHeight: px(e(A.footnoteLine)),
+      color: a.footnoteColor || '#8b786b',
+      opacity: String(fT.opacity),
+      whiteSpace: 'nowrap',
+    });
+    const lines = custom ? custom.split('\n') : ['*Not the', 'first night'];
+    lines.forEach((ln) => foot.append(el('div', null, ln)));
+    sheet.append(mark(foot, 'el:footnote'));
+  }
+
+
+  if (ctx.forExport) sheet.append(watermark(1.2, 0.5));
+  for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
+  return sheet;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   THE NIGHT SHEETS
+   ════════════════════════════════════════════════════════════════════ */
+
+/* the horizontal grid of each column: one column is the app's own grid;
+   two split the paper right of the ribbon, and keep the icon and the name
+   nearly their full width (a name squeezed into a proportional share of
+   the page spills over its icon) while the text column narrows */
+function nightCols(n, shift) {
+  const A = APP_NIGHT;
+  /* "Move the reminder toward the icons": the bar and the text slide, and
+     the names, set flush right against the bar, give up the room */
+  const s = clamp(Number(shift) || 0, -10, 6);
+  if (n < 2) return [{ iconCX: A.iconCX, nameRight: A.nameRight + s, barX: A.barX + s, textX: A.textX + s, textRight: A.textRight }];
+  const x0 = A.sidebarW;
+  const half = (100 - x0 - A.colGap) / 2;
+  const at = (start) => ({
+    iconCX: start + 4.4,
+    nameRight: start + 19.5 + s,
+    barX: start + 20.6 + s,
+    textX: start + 22.0 + s,
+    textRight: Math.min(start + half - 0.8, A.textRight),
+  });
+  return [at(x0), at(x0 + half + A.colGap)];
+}
+
+/* layoutAppList(spec, options, requestRender) → a layout in the classic
+   list's shape (pages of columns of units), so the drag reorder reads it */
+export function layoutAppList(spec, options, requestRender) {
+  const A = APP_NIGHT;
+  const cfg = spec.cfg;
+  const fonts = fontsOf(options, cfg);
+  const two = spec.columns.length > 1;
+  const a = appCfg(options);
+  const cols = nightCols(spec.columns.length, a.nightTextShift);
+  // extra space under every step, em (the App view card's slider)
+  const rowExtra = (clamp(Number(a.nightRowGap) || 1, 0.5, 3) - 1) * 1.6;
+  const textSize = cfg.textSize || 1;
+  const nameSize = cfg.nameSize || 1;
+  const iconEm = A.iconSize * (cfg.iconSize || 1);
+  const rowGap = cfg.rowGap == null ? 1 : cfg.rowGap;
+  const pitch = Math.max(A.rowPitch * (1 + (rowGap - 1) * 0.35), iconEm + 0.15);
+  const nameLineEm = (s) => A.nameSize * nameSize * s * A.nameLine;
+
+  const urls = new Set();
+  spec.columns.forEach((c) => c.blocks.forEach((b) => b.rows.forEach((r) => r.icons.forEach((u) => urls.add(resolveSrc(u))))));
+  normalizeIcons([...urls], requestRender);
+
+  const dotOn = cfg.dotStyle !== 'none';
+  const measureRow = (row, ci, d) => {
+    const g = cols[ci];
+    const textPx = A.textSize * textSize * U * d;
+    const base = `400 ${textPx.toFixed(2)}px ${fonts.text}`;
+    const tokenFont = cfg.tokenStyle === 'plain' ? base
+      : `700 ${(textPx * 0.96).toFixed(2)}px ${cfg.tokenStyle === 'bold' ? fonts.text : fonts.token}`;
+    const runs = [];
+    for (const p of reminderParts(smartTypography(row.text || ''))) {
+      if (p.t === 'text') runs.push({ s: p.s, font: base, kind: 'text' });
+      else if (p.t === 'token') runs.push({ s: cfg.tokenStyle === 'plain' ? p.s : p.s.toUpperCase(), font: tokenFont, kind: 'token' });
+      else if (dotOn) runs.push({ kind: 'dot', font: base });
+    }
+    const dotW = textPx * (cfg.dotStyle === 'token' ? 1.15 : A.dotSize) + textPx * 0.3;
+    const textW = ((g.textRight - g.textX) / 100) * SHEET_W;
+    const lines = row.text ? breakRuns(runs, textW, textWidth, { baseFont: base, dotW }) : [];
+    const lineHs = lines.map((ln) => (ln.dot && dotOn ? A.dotLine : A.textLine) * textSize);
+    const textH = sum(lineHs);
+    // the name, flush right against the bar
+    const nameLeft = g.iconCX + ((iconEm * U * d) / SHEET_W) * 50 + 1.2;
+    const nameW = ((g.nameRight - nameLeft) / 100) * SHEET_W;
+    const label = (cfg.numbered && row.number ? row.number + '. ' : '') + smartTypography(row.name || '');
+    const nm = fitNameLines(label, nameW, textWidth, (s) => `700 ${(A.nameSize * nameSize * U * d * s).toFixed(2)}px ${fonts.name}`,
+      { shrinkFirst: 0.8, minScale: 0.4 });
+    const nameH = row.name ? nm.lines.length * nameLineEm(nm.scale) : 0;
+    const blockH = Math.max(textH, nameH);
+    return { lines, lineHs, textH, name: nm, nameH, blockH, h: Math.max(blockH + 0.15, Math.max(pitch, blockH + A.rowPad) + rowExtra) };
+  };
+
+  // headings: a column heading (both nights on one page), and the page
+  // title when it is asked for (the app shows none)
+  const hasHeadings = spec.columns.some((c) => c.heading);
+  const titleOn = !!cfg.appTitle && !elGet(options, spec.elPrefix + 'Title').hidden;
+  const listTop = A.listTop + (titleOn ? A.titleSize + 1.6 : 0) + (hasHeadings ? 3.4 : 0);
+  // the logo after the list
+  const logoOn = !elGet(options, spec.elPrefix + 'Logo').hidden && cfg.showLogo !== false;
+  const logoEm = logoOn ? A.logoGap + A.logoMaxH : 0;
+  const availEm = footEm(A.listBottom) - listTop - logoEm;
+
+  const colUnits = spec.columns.map((c) => {
+    const units = [];
+    c.blocks.forEach((b, bi) => {
+      if (b.heading) units.push({ type: 'heading', text: b.heading, h: 2.9 + (bi ? 1.2 : 0) });
+      b.rows.forEach((r) => units.push({ type: 'row', row: r }));
+    });
+    return units;
+  });
+  const measure = (u, ci, d) => (u.type === 'row' ? measureRow(u.row, ci, d) : { h: u.h });
+  const needAt = (ci, d) => sum(colUnits[ci].map((u) => measure(u, ci, d).h));
+
+  let d = cfg.fit === false ? clamp(Number(cfg.density) || 1, 0.3, 2) : 1;
+  const minFit = clamp(Number(cfg.minFit) || 0.68, 0.3, 1);
+  let pagesN = 1;
+  if (cfg.fit !== false) {
+    const fit = solveFit((dd) => availEm / Math.max(0.01, ...colUnits.map((_, ci) => needAt(ci, dd))), 0.42, FIT.growMax);
+    if (fit >= minFit || !spec.paginate || two) d = fit;
+    else {
+      const need1 = needAt(0, 1);
+      pagesN = Math.max(1, Math.ceil((need1 * minFit) / (availEm + logoEm)));
+      d = clamp((pagesN * (availEm + logoEm)) / need1, minFit, 1);
+    }
+  }
+
+  const pack = (dd) => {
+    const pages = [];
+    let page = { columns: cols.map(() => ({ units: [], used: 0 })) };
+    colUnits.forEach((units, ci) => {
+      // only the last page carries the logo, so the others have its room
+      const cap = (availEm + logoEm) / dd;
+      for (const u of units) {
+        const m = measure(u, ci, dd);
+        const pc = page.columns[ci];
+        if (pc.used + m.h > cap + 0.001 && pc.units.length && spec.paginate && !two) {
+          pages.push(page);
+          page = { columns: cols.map(() => ({ units: [], used: 0 })) };
+        }
+        page.columns[ci].units.push({ ...u, m, hEm: m.h });
+        page.columns[ci].used += m.h;
+      }
+    });
+    pages.push(page);
+    return pages;
+  };
+  let pages = pack(d);
+  const lastFits = (ps, dd) => ps[ps.length - 1].columns.every((pc) => pc.used <= availEm / dd + 0.001);
+  if (spec.paginate && !two) {
+    for (let iter = 0; iter < 6 && (pages.length > pagesN || !lastFits(pages, d)); iter++) {
+      if (d <= minFit) break;
+      d = Math.max(minFit, d * 0.97);
+      pages = pack(d);
+    }
+  }
+
+  // rows spaced further apart to take up the rest (never taller: the bar
+  // and the name are drawn off a row's own block), anchored at the top as
+  // the app is, with the logo following the list
+  pages.forEach((p, pi) => {
+    const isLast = pi === pages.length - 1;
+    const room = (isLast ? availEm : availEm + logoEm) / d;
+    let natural = 0, units = 0;
+    p.columns.forEach((pc) => {
+      natural = Math.max(natural, sum(pc.units.map((u) => u.hEm)));
+      units = Math.max(units, pc.units.length);
+    });
+    const slack = room - natural;
+    let gapEm = 0;
+    if (slack > 0.01 && units > 1) gapEm = Math.min(slack / (units - 1), (FIT.spreadMax - 1) * (natural / units));
+    p.gapEm = gapEm;
+    p.offsetEm = 0;
+    p.naturalEm = natural + gapEm * Math.max(0, units - 1);
+  });
+
+  return { style: 'app', pages, d, cols, fonts, listTop, two, iconEm, nameLineEm, logoOn, titleOn, pitch };
+}
+
+/* a reminder mark: a disc in the dot colour (the app's is plum; the owner
+   asked for black), the little token with the icon, or nothing */
+function dotNode(cfg, row, size) {
+  if (cfg.dotStyle === 'token') {
+    const tok = el('span', {
+      display: 'inline-block', width: px(size * 1.15), height: px(size * 1.15), borderRadius: '50%',
+      background: '#efe6d2', border: `${Math.max(1, size * 0.06)}px solid #7a6a4a`, boxSizing: 'border-box',
+      verticalAlign: 'middle', margin: `0 ${px(size * 0.15)}`, overflow: 'hidden', position: 'relative',
+    });
+    if (row.icons[0]) {
+      tok.append(iconImg(drawIcon(resolveSrc(row.icons[0])), {
+        position: 'absolute', left: '8%', top: '8%', width: '84%', height: '84%', objectFit: 'contain',
+      }));
+    }
+    return tok;
+  }
+  const d = size * APP_NIGHT.dotSize;
+  return el('span', {
+    display: 'inline-block', width: px(d), height: px(d), borderRadius: '50%', verticalAlign: 'middle',
+    margin: `0 ${px(size * 0.15)}`, boxSizing: 'border-box',
+    background: `radial-gradient(circle at 38% 32%, ${shade(cfg.dotColor || '#1c1c1c', 0.14)} 0%, ${cfg.dotColor || '#1c1c1c'} 60%)`,
+    border: `${Math.max(1, size * 0.05)}px solid rgba(0, 0, 0, 0.5)`,
+    boxShadow: `0 ${px(size * 0.04)} ${px(size * 0.08)} rgba(0, 0, 0, 0.3)`,
+  });
+}
+
+function nightRow(u, g, layout, cfg, options, ed, e, mark) {
+  const A = APP_NIGHT;
+  const a = appCfg(options);
+  const row = u.row;
+  const m = u.m;
+  const h = u.hEm;
+  const { fonts, nameLineEm } = layout;
+  const node = el('div', { position: 'absolute', left: '0', right: '0', height: px(ed(h)) });
+  node.dataset.fsRow = row.id;
+  if (mark && row.list) mark(node, 'nrow:' + row.list + ':' + row.id);
+
+  // icon(s), centred on the row, moved by the sheet's "move every icon"
+  const iconPx = ed(layout.iconEm);
+  const shiftX = ((Number(cfg.iconShiftX) || 0) / 100) * SHEET_W;
+  const shiftY = e(Number(cfg.iconShiftY) || 0);
+  row.icons.forEach((raw, k) => {
+    const src = resolveSrc(raw);
+    const fit = iconFit(src) || ICON_IDENTITY;
+    const size = iconPx * (row.icons.length > 1 ? 0.86 : 1);
+    const ic = iconImg(drawIcon(src), {
+      position: 'absolute',
+      left: px((g.iconCX / 100) * SHEET_W - size / 2 + k * size * 0.62 + shiftX),
+      top: px(ed(h / 2) - size / 2 + shiftY),
+      width: px(size), height: px(size),
+      objectFit: 'contain', transform: inkTransform(fit), transformOrigin: 'center',
+      filter: iconFilter(options.iconEffect, cfg.iconShadow == null ? 1 : cfg.iconShadow, ed),
+      zIndex: String(2 - k),
+    });
+    if (options.iconEffect === 'engraved') ic.style.mixBlendMode = 'multiply';
+    node.append(ic);
+  });
+
+  const blockTop = (h - m.blockH) / 2;
+  if (row.name) {
+    const nlh = nameLineEm(m.name.scale);
+    const top = blockTop + (m.blockH - m.nameH) / 2;
+    m.name.lines.forEach((ln, i) => {
+      node.append(el('div', {
+        position: 'absolute',
+        right: (100 - g.nameRight) + '%',
+        top: px(ed(top + i * nlh)),
+        height: px(ed(nlh)),
+        lineHeight: px(ed(nlh)),
+        whiteSpace: 'nowrap',
+        textAlign: 'right',
+        fontFamily: fonts.name,
+        fontWeight: '700',
+        fontSize: px(ed(A.nameSize * (cfg.nameSize || 1) * m.name.scale)),
+        color: row.color,
+      }, ln));
+    });
+  }
+
+  if (row.text) {
+    const textTop = blockTop + (m.blockH - m.textH) / 2;
+    if (a.showBars !== false) {
+      node.append(el('div', {
+        position: 'absolute',
+        left: g.barX + '%',
+        top: px(ed(textTop) + ed(0.06)),
+        width: px(Math.max(1.5, (A.barW / 100) * SHEET_W * (a.barWidth || 1))),
+        height: px(Math.max(2, ed(m.textH) - ed(0.12))),
+        background: row.color,
+      }));
+    }
+    const textPx = ed(A.textSize * (cfg.textSize || 1));
+    let y = textTop;
+    m.lines.forEach((ln, i) => {
+      const lh = m.lineHs[i];
+      node.append(lineNode(ln, {
+        left: g.textX + '%',
+        top: px(ed(y)),
+        height: px(ed(lh)),
+        lineHeight: px(ed(lh)),
+        fontFamily: fonts.text,
+        fontSize: px(textPx),
+        color: cfg.textColor || '#2b2b2b',
+      }, (it) => {
+        if (it.kind === 'dot') return dotNode(cfg, row, textPx);
+        if (it.kind === 'token') {
+          const s = el('span', null, it.s);
+          if (cfg.tokenStyle !== 'plain') {
+            Object.assign(s.style, {
+              fontFamily: cfg.tokenStyle === 'bold' ? fonts.text : fonts.token,
+              fontWeight: '700', fontSize: '0.96em',
+            });
+          }
+          return s;
+        }
+        return document.createTextNode(it.s);
+      }));
+      y += lh;
+    });
+  }
+  return node;
+}
+
+export function renderAppListPage(script, spec, options, layout, pageIndex, ctx) {
+  ctx = ctx || {};
+  const A = APP_NIGHT;
+  const a = appCfg(options);
+  const selected = ctx.selected || '';
+  const cfg = spec.cfg;
+  const { d, fonts, cols, listTop } = layout;
+  const page = layout.pages[Math.min(pageIndex, layout.pages.length - 1)];
+  const isLast = pageIndex === layout.pages.length - 1;
+  const ed = (em) => em * U * d;
+  const e = (em) => em * U;
+  const P = spec.elPrefix;
+  const cx = paperCX(A.sidebarW);
+  const mark = (node, id) => {
+    node.dataset.fsDrag = id;
+    if (id === selected) markSelected(node);
+    return node;
+  };
+
+  const sheet = pageFrame(SHEET_W, SHEET_H, U, 'script-night script-app');
+  sheet.dataset.fsPage = String(pageIndex);
+  sheet.dataset.fsDensity = d.toFixed(3);
+  const scriptBg = script.meta.background ? proxiedArt(script.meta.background, options.proxyIcons) : '';
+  for (const n of renderBackground(a.bg, 'applist', { scriptBg })) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, 'back')) sheet.append(n);
+  drawRibbon(sheet, options, A.sidebarW, ctx);
+  for (const n of renderStickers(ctx.stickers, selected, 'mid')) sheet.append(n);
+
+  // the corner art at the top right, one per night
+  const decorKey = spec.which === 'other' ? 'nightDecorOther' : 'nightDecorFirst';
+  const dT = elGet(options, decorKey);
+  const decor = resolveSrc(dT.src);
+  if (decor && !dT.hidden) {
+    const dEl = img(decor, {
+      position: 'absolute',
+      right: (A.decorRight - dT.dx) + '%',
+      top: px(e(dT.dy)),
+      width: (A.decorW * dT.scale) + '%',
+      maxHeight: px(e(A.decorMaxH) * dT.scale),
+      objectFit: 'contain',
+      objectPosition: '100% 0',
+      transform: dT.rot ? `rotate(${dT.rot}deg)` : '',
+      transformOrigin: '100% 0',
+      opacity: String(dT.opacity),
+    });
+    dEl.crossOrigin = 'anonymous';
+    sheet.append(mark(dEl, 'el:' + decorKey));
+  }
+
+  // the page title, only when asked for
+  if (layout.titleOn) {
+    const tT = elGet(options, P + 'Title');
+    const suffix = layout.pages.length > 1 ? ' (' + (pageIndex + 1) + '/' + layout.pages.length + ')' : '';
+    sheet.append(mark(el('div', {
+      position: 'absolute',
+      left: (cols[0].textX + tT.dx) + '%',
+      top: px(e(A.titleTop + tT.dy)),
+      transform: tT.rot ? `rotate(${tT.rot}deg)` : '',
+      transformOrigin: '0 0',
+      fontFamily: fonts.name,
+      fontWeight: '700',
+      fontSize: px(e(A.titleSize) * tT.scale),
+      lineHeight: '1',
+      color: cfg.titleColor || '#1c1c1c',
+      opacity: String(tT.opacity),
+      whiteSpace: 'nowrap',
+    }, spec.title + suffix), 'el:' + P + 'Title'));
+  }
+
+  // the list
+  const listT = elGet(options, P + 'List');
+  const listWrap = el('div', {
+    position: 'absolute', inset: '0',
+    opacity: String(listT.opacity),
+    display: listT.hidden ? 'none' : 'block',
+    transform: (listT.dx || listT.dy) ? `translate(${(listT.dx / 100) * SHEET_W}px, ${listT.dy * U}px)` : '',
+    pointerEvents: 'none',
+  });
+  if (listT.scale !== 1) {
+    listWrap.style.transformOrigin = '0 0';
+    listWrap.style.transform += ` scale(${listT.scale})`;
+  }
+  listWrap.dataset.fsEl = P + 'List';
+  page.columns.forEach((pc, ci) => {
+    const g = cols[ci];
+    const col = el('div', { position: 'absolute', left: '0', top: px(e(listTop)), width: '100%', pointerEvents: 'auto' });
+    if (spec.columns[ci].heading) {
+      col.append(el('div', {
+        position: 'absolute', left: g.textX + '%', top: px(-e(3.1)),
+        fontFamily: fonts.name, fontWeight: '700', fontSize: px(e(2.1)), lineHeight: '1',
+        color: cfg.titleColor || '#1c1c1c', whiteSpace: 'nowrap',
+      }, spec.columns[ci].heading));
+    }
+    let y = page.offsetEm || 0;
+    for (const u of pc.units) {
+      if (u.type === 'heading') {
+        col.append(el('div', {
+          position: 'absolute', left: g.textX + '%', top: px(ed(y) + ed(u.hEm - 2.9) + ed(0.5)),
+          fontFamily: fonts.name, fontWeight: '700', fontSize: px(ed(2.0)), lineHeight: '1',
+          color: cfg.titleColor || '#1c1c1c', whiteSpace: 'nowrap',
+        }, u.text));
+      } else {
+        const rn = nightRow(u, g, layout, cfg, options, ed, e, mark);
+        rn.style.top = px(ed(y));
+        col.append(rn);
+      }
+      y += u.hEm + (page.gapEm || 0);
+    }
+    listWrap.append(col);
+  });
+  sheet.append(listWrap);
+
+  // the script's logo (or its name) after the list, on the last page
+  if (isLast && layout.logoOn) {
+    const lT = elGet(options, P + 'Logo');
+    const top = listTop + (page.naturalEm || 0) * d + A.logoGap + A.logoMaxH / 2;
+    let logoSrc = resolveSrc(lT.src) || (script.meta.logo && options.useLogo ? proxiedArt(script.meta.logo, options.proxyIcons) : '');
+    if (logoSrc && failedArt.has(logoSrc)) logoSrc = '';
+    logoSrc = trimmedArt(logoSrc);
+    if (logoSrc) {
+      const logoEl = img(logoSrc, {
+        position: 'absolute',
+        left: (cx + lT.dx) + '%',
+        top: px(e(top + lT.dy)),
+        transform: `translate(-50%, -50%)${lT.rot ? ` rotate(${lT.rot}deg)` : ''}`,
+        maxWidth: (A.logoMaxW * lT.scale) + '%',
+        maxHeight: px(e(A.logoMaxH) * lT.scale),
+        objectFit: 'contain',
+        opacity: String(lT.opacity),
+      }, script.meta.name);
+      logoEl.crossOrigin = 'anonymous';
+      logoEl.addEventListener('error', () => { failedArt.add(logoSrc); if (ctx.requestRender) ctx.requestRender(); });
+      sheet.append(mark(logoEl, 'el:' + P + 'Logo'));
+    } else if (cfg.showName !== false) {
+      const title = (options.titleOverride || '').trim() || script.meta.name;
+      const fam = fontFamily(options.fontTitle || 'unlovable');
+      const unlovable = (options.fontTitle || 'unlovable') === 'unlovable';
+      let fs = e(A.logoNameSize) * lT.scale;
+      const w = textWidth(title, `400 ${fs}px ${fam}`) - (unlovable ? (title.split(' ').length - 1) * 0.21 * fs : 0);
+      const maxW = (A.logoMaxW / 100) * SHEET_W;
+      if (w > maxW) fs *= maxW / w;
+      sheet.append(mark(el('div', {
+        position: 'absolute',
+        left: (cx + lT.dx) + '%',
+        top: px(e(top + lT.dy)),
+        transform: `translate(-50%, -50%)${lT.rot ? ` rotate(${lT.rot}deg)` : ''}`,
+        fontFamily: fam,
+        fontSize: px(fs),
+        lineHeight: '1',
+        whiteSpace: 'nowrap',
+        wordSpacing: unlovable ? '-0.21em' : '0',
+        color: a.titleColor || '#8b1a23',
+        opacity: String(lT.opacity),
+        textShadow: `${e(0.04)}px ${e(0.07)}px ${e(0.08)}px rgba(40, 20, 10, 0.35)`,
+      }, title), 'el:' + P + 'Logo'));
+    }
+  }
+
+  if (ctx.forExport) sheet.append(watermark(3.4, 0.7));
+  for (const n of renderStickers(ctx.stickers, selected, 'front')) sheet.append(n);
+  return sheet;
+}
