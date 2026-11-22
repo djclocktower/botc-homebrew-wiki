@@ -436,7 +436,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
         transformOrigin: 'center',
         filter: iconFilter(options.iconEffect, options.iconShadow * 0.7, ed),
       }, j.name);
-      ji.title = 'Jinxed: ' + j.name + (j.reason ? ' — ' + j.reason : '');
+      ji.title = 'Jinxed: ' + j.name + (j.reason ? ': ' + j.reason : '');
       nameRow.append(ji);
     }
   }

@@ -124,12 +124,23 @@ check('app view: element keys are unique and styled', (() => {
   return keys.length === new Set(keys).size && S.ELEMENTS.every((e) => !e.only || ['classic', 'app', 'columns'].includes(e.only));
 })(), true);
 const lineText = (lines) => lines.map((l) => l.items.map((it) => (it.lead ? ' ' : '') + (it.kind === 'dot' ? '●' : it.s)).join(''));
+const twins = S.parseScript([{ id: '_meta', name: 'Twins' },
+  { id: 'phantom', name: 'Phantom', team: 'townsfolk', ability: 'One.', firstNight: 3 },
+  { id: 'phantom', name: 'Phantom', team: 'townsfolk', ability: 'Two.', firstNight: 4 },
+  { id: 'phantom', name: 'Phantom', team: 'townsfolk', ability: 'Two.', firstNight: 4 },
+  { id: 'odd', name: 'Odd', team: 'wizard', ability: 'x' }], true);
+check('parse: two characters under one id are both kept', twins.characters.map((c) => c.id + ':' + c.ability), ['phantom:One.', 'phantom-2:Two.', 'odd:x']);
+check('parse: both of them act on the first night', S.nightLists(S.deriveScript(twins, S.normalizeOptions({})), S.DEFAULT_NIGHT).first.filter((i) => i.name === 'Phantom').length, 2);
+check('parse: a true duplicate and an unknown team are warned about', twins.warnings.filter((w) => /twice|unknown team/.test(w)).length, 2);
+check('options: a null section keeps its defaults', [typeof S.normalizeOptions({ night: null }).night.style, typeof S.normalizeOptions({ exportOpts: { pages: null } }).exportOpts.pages], ['string', 'object']);
 check('break: words wrap at the width', lineText(S.breakRuns([{ s: 'aaa bbb ccc ddd', font: 'f' }], 7, unit)), ['aaa bbb', 'ccc ddd']);
 check('break: a line never starts with a space', S.breakRuns([{ s: 'aaa bbb ccc', font: 'f' }], 7, unit)[1].items[0].lead || 0, 0);
 check('break: a token run is set in its own font', S.breakRuns([{ s: 'show the ', font: 'f' }, { s: 'YOU ARE', font: 'b', kind: 'token' }], 40, unit)[0].items.map((i) => i.font),
   ['f', 'f', 'b', 'b']);
 check('break: a bracket goes down with its word', lineText(S.breakRuns(
   [{ s: 'the (or ', font: 'f' }, { s: 'RED', font: 'b', kind: 'token' }, { s: ').', font: 'f' }], 10, unit)), ['the (or', 'RED).']);
+check('break: a word wider than the line is cut to fit', lineText(S.breakRuns([{ s: 'ab cdefghijkl mn', font: 'f' }], 4, unit)), ['ab', 'cdef', 'ghij', 'kl', 'mn']);
+check('break: text with no spaces wraps', lineText(S.breakRuns([{ s: '每个夜晚选择一名玩家', font: 'f' }], 4, unit)), ['每个夜晚', '选择一名', '玩家']);
 const dotted = S.breakRuns([{ s: 'chooses.', font: 'f' }, { s: ' ', font: 'f' }, { kind: 'dot', font: 'f' }, { s: ' then more', font: 'f' }], 12, unit, { dotW: 2 });
 check('break: a reminder disc is one item and marks its line', [lineText(dotted), dotted.map((l) => l.dot)], [['chooses. ●', 'then more'], [true, false]]);
 const fontAt = (s) => String(s);
@@ -137,6 +148,8 @@ const scaled = (t, f) => t.length * Number(f);
 check('name: fits on one line', S.fitNameLines('Chef', 10, scaled, fontAt), { scale: 1, lines: ['Chef'] });
 check('name: wraps at its spaces', S.fitNameLines('Fortune Teller', 10, scaled, fontAt).lines, ['Fortune', 'Teller']);
 check('name: one long word shrinks instead of being cut', S.fitNameLines('Washerwoman', 8, scaled, fontAt), { scale: 8 / 11, lines: ['Washerwoman'] });
+check('name: a word too long for the smallest size is cut', S.fitNameLines('abcdefghijklmnopqrstuvwxyzabcdefghij', 10, scaled, fontAt, { maxLines: 9 }),
+  { scale: 0.55, lines: ['abcdefghijklmnopqr', 'stuvwxyzabcdefghij'] });
 check('name: a night name shrinks a little before it wraps', S.fitNameLines('Scarlet Woman', 12, scaled, fontAt, { shrinkFirst: 0.8 }),
   { scale: 12 / 13, lines: ['Scarlet Woman'] });
 

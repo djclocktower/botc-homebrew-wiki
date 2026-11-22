@@ -1496,6 +1496,7 @@ export function parseScript(json, proxyIcons) {
 
   const characters = [];
   const seen = new Set();
+  const ids = new Set();
 
   for (const raw of json) {
     if (typeof raw === 'object' && raw !== null && raw.id != null && isMeta(raw)) {
@@ -1529,9 +1530,17 @@ export function parseScript(json, proxyIcons) {
     const name = String(entry.name || (official && official.name) || entry.id);
     const ability = String(entry.ability != null ? entry.ability : ((official && official.ability) || ''));
     // listed twice: drawn once
-    const dupKey = id + '|' + team + '|' + name;
+    const dupKey = id + '|' + team + '|' + name + '|' + ability;
     if (seen.has(dupKey)) { warnings.push('"' + name + '" is on the script twice. Shown once.'); continue; }
     seen.add(dupKey);
+    // two different characters under one id (an export that wrote the bare
+    // name as the id): each keeps its own row, night step and edits
+    let uid = id;
+    for (let n = 2; ids.has(uid); n++) uid = id + '-' + n;
+    ids.add(uid);
+    if (entry.team && !/^(townsfolk|outsider|minion|demon|travell?er|fabled|loric)s?$/i.test(String(entry.team).trim())) {
+      warnings.push('"' + name + '" has an unknown team. Shown as Townsfolk.');
+    }
     if (!official && typeof raw === 'string') {
       warnings.push('"' + raw + '" is not a known official character id. Shown as written.');
     }
@@ -1584,7 +1593,7 @@ export function parseScript(json, proxyIcons) {
       ? String(entry.otherNightReminder) : ((official && official.otherNightReminder) || '');
 
     characters.push({
-      id, name, team, ability, icon, jinxIcons, jinxList,
+      id: uid, name, team, ability, icon, jinxIcons, jinxList,
       isOfficial: !!official,
       firstNight, otherNight, firstNightReminder, otherNightReminder,
       reminders: Array.isArray(entry.reminders) ? entry.reminders.map(String)
@@ -1938,7 +1947,21 @@ export function breakRuns(runs, maxW, measure, opts) {
     for (const p of String(r.s).split(/(\s+)/)) {
       if (!p) continue;
       if (/^\s+$/.test(p)) { pendingSpace = true; continue; }
-      push({ s: p, font: r.font, kind: r.kind || 'text', w: measure(p, r.font), ...(r.color ? { color: r.color } : {}), ...(r.style ? { style: r.style } : {}) });
+      // A word wider than the line (text with no spaces: Chinese, a long
+      // link) is cut to the width, as the sheet's overflow-wrap does.
+      let parts = [p];
+      if (measure(p, r.font) > maxW + 0.5) {
+        parts = [];
+        let cur = '';
+        for (const ch of Array.from(p)) {
+          if (cur && measure(cur + ch, r.font) > maxW) { parts.push(cur); cur = ch; } else cur += ch;
+        }
+        if (cur) parts.push(cur);
+      }
+      parts.forEach((s, i) => {
+        if (i) { lines.push(line); line = newLine([]); chainStart = 0; }
+        push({ s, font: r.font, kind: r.kind || 'text', w: measure(s, r.font), ...(r.color ? { color: r.color } : {}), ...(r.style ? { style: r.style } : {}) });
+      });
     }
   }
   if (line.items.length || !lines.length) lines.push(line);
@@ -1966,7 +1989,17 @@ export function fitNameLines(name, maxW, measure, fontAt, opts) {
     const font = fontAt(scale);
     const lines = [];
     let cur = '';
-    for (const w of words) {
+    // a word too wide even at the smallest size (no spaces: Chinese, a link) is cut to fit
+    const fitting = words.flatMap((w) => {
+      if (measure(w, font) <= maxW + 0.5) return [w];
+      const parts = [];
+      let part = '';
+      for (const ch of Array.from(w)) {
+        if (part && measure(part + ch, font) > maxW) { parts.push(part); part = ch; } else part += ch;
+      }
+      return parts.concat(part);
+    });
+    for (const w of fitting) {
       const trial = cur ? cur + ' ' + w : w;
       if (cur && measure(trial, font) > maxW) { lines.push(cur); cur = w; } else cur = trial;
     }
@@ -2014,6 +2047,14 @@ export function normalizeOptions(o) {
   const src = isObj(o) ? o : {};
   const out = deepMerge(deepMerge({}, DEFAULT_OPTIONS), src);
   out.back = deepMerge(deepMerge({}, DEFAULT_BACK), isObj(src.back) ? src.back : {});
+  // a design whose section is null (or a string) keeps that section's defaults
+  const sections = (to, def) => {
+    for (const k of Object.keys(def)) {
+      if (!isObj(def[k])) continue;
+      if (isObj(to[k])) sections(to[k], def[k]); else to[k] = deepMerge({}, def[k]);
+    }
+  };
+  sections(out, DEFAULT_OPTIONS);
   if (!Array.isArray(out.back.texts)) out.back.texts = [];
   if (!Array.isArray(out.custom)) out.custom = [];
   for (const st of out.custom) {

@@ -1285,9 +1285,9 @@ function buildScriptOpts() {
 
 function buildPagesCard() {
   const box = $('fs-pages-box');
-  const styles = [['classic', 'Printed sheet'], ['app', 'App view'], ['columns', 'Night order down the sides']];
+  const styles = [['classic', 'Printed sheet'], ['app', 'App view'], ['columns', 'Night columns']];
   makeSelect(box, 'Script sheet style', styles, bindPath('sheetStyle'), { onChange: styleChanged });
-  makeSelect(box, 'Night sheet style', [['ribbon', 'Ribbon (name beside a colour bar)'], ['classic', 'Printed sheet (name over the reminder)'], ['app', 'App view']],
+  makeSelect(box, 'Night sheet style', [['ribbon', 'Ribbon'], ['classic', 'Printed sheet'], ['app', 'App view']],
     bindPath('night.style'), { onChange: styleChanged });
   makeToggle(box, 'First Night sheet', bindPath('night.first'));
   makeToggle(box, 'Other Nights sheet', bindPath('night.other'));

@@ -857,10 +857,15 @@ function stackedRowNode(u, ci, layout, cfg, options, ed, mark, rowIndex) {
   rowIcons(row, node, ed(Math.max(0, (blockH - m.iconEm) / 2)), ed(m.iconEm), cfg, options, ed);
 
   if (row.name) {
+    // a name wider than the row (a long jinx pair) is set smaller, as the bar rows do
+    const nameText = (cfg.numbered && row.number && !row.nameParts ? row.number + '. ' : '')
+      + smartTypography(row.nameParts ? row.nameParts.map((p) => p.s).join('') : row.name);
+    const nameSize = ed(m.nameH);
+    const natural = textWidth(nameText, `700 ${nameSize}px ${fonts.name}`) * 1.015;
     const nameEl = el('div', {
       position: 'absolute', left: textLeft, top: px(ed(NIGHT.nameTop)),
       fontFamily: fonts.name, fontWeight: '700',
-      fontSize: px(ed(m.nameH)),
+      fontSize: px(natural > textW ? nameSize * (textW / natural) : nameSize),
       lineHeight: '1', letterSpacing: '0.015em', whiteSpace: 'nowrap',
       color: row.color,
     });
