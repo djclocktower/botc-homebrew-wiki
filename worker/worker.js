@@ -187,6 +187,7 @@
  *                                belongs to an account
  *   POST /api/admin/creator-alias -> admin: link a creator name to an account
  *   GET  /random              -> 302 to a random published character page
+ *   GET  /krita/*             -> the Krita web port test page, from R2 krita/ (cross-origin isolated)
  *   GET  /sitemap.xml         -> built live from D1
  *   GET  /s/{slug}            -> script page (server-side rendered from D1)
  *   GET  /collection/{id}     -> collection page (server-side rendered from D1)
@@ -222,6 +223,8 @@
  *                                a save over a newer one keeps both
  *   POST /api/my-scripts/image -> {data}: a logo or background for a saved
  *                                script, to library/{userId}/; key minted here
+ *   GET  /api/official-tags   -> tags saved on /tag-officials, by roles.json id
+ *   POST /api/official-tags   -> {id, tags[]}: save one official character's tags
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -1637,6 +1640,8 @@ async function uploadSlotDenied(env, sess, key) {
      character can never get its icon, which is the one thing that keeps
      it out of drafts. */
   let ownedSlot = false;
+  // Set when the key is a character art slot that no page lays claim to.
+  let orphanArt = false;
   // tokens/ is reserved for admin tooling; news/ for the news editor,
   // which is admin-only anyway.
   if (key.startsWith('tokens/') || key.startsWith('news/')) {
@@ -1704,6 +1709,7 @@ async function uploadSlotDenied(env, sess, key) {
     }
     if (verdict.response) return verdict.response;
     if (verdict.owned) ownedSlot = true;
+    if (!row && !suffixRow) orphanArt = true;
   }
   // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
   // images collections/{id}[-logo|-bg].{ext}. If that page exists,
@@ -1732,7 +1738,7 @@ async function uploadSlotDenied(env, sess, key) {
   const existing = ownedSlot ? null : await env.ART.head(key).catch(() => null);
   if (existing) {
     const owner = existing.customMetadata && existing.customMetadata.owner;
-    if (owner !== String(sess.userId)) {
+    if (owner !== String(sess.userId) && !(orphanArt && staleOrphan(existing))) {
       return jsonResponse({ error: 'An image with that name already belongs to another account.' }, { status: 403 });
     }
   }
@@ -2499,6 +2505,25 @@ function myScriptCopyData(data) {
     d.meta.name = (String(d.meta.name || 'Untitled Script') + ' (older copy)').slice(0, 90);
     return JSON.stringify(d);
   } catch { return data; }
+}
+
+// ---- official character tags (/tag-officials) ----
+// Tags members propose for the OFFICIAL characters, one row per roles.json id,
+// last save wins. Nothing reads it but that page: assets/official-tags.js
+// stays what the site draws until these are folded into it by hand.
+let _officialTagsReady = false;
+async function ensureOfficialTagsTable(env) {
+  if (_officialTagsReady) return;
+  if (await schemaHas(env, { tables: { official_tags: [] } })) { _officialTagsReady = true; return; }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS official_tags (
+       id      TEXT PRIMARY KEY,
+       tags    TEXT NOT NULL,
+       user_id INTEGER,
+       ts      TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  _officialTagsReady = true;
 }
 
 /* ---- the Starlit Gallery (/starlit) ----
@@ -3527,6 +3552,32 @@ async function ensurePagesTable(env) {
 const ARTICLE_PARENT = 'article';
 function articleParent() {
   return { type: ARTICLE_PARENT, slug: '', key: '', name: 'Articles', ownerId: null, status: 'published', data: {} };
+}
+// A set's page can ALSO be an article: its owner ticks "List as an article"
+// (data.article), and it is listed with the standalone ones — /articles, the
+// homepage panel, the sitemap, indexable — while staying under its set and
+// naming it. Only while that set is public (wikiParentPublic), checked in JS
+// wherever these are listed. The SQL test is a substring of the JSON blob, as
+// CREDIT_UNLINKED_SQL is: JSON.stringify spells the pair exactly this way, and
+// the same text typed into a body is escaped to \" on the way in.
+function listedArticleSQL(t) {
+  return `(${t}parent_type='${ARTICLE_PARENT}' OR ${t}data LIKE '%"article":true%')`;
+}
+function isListedArticle(row, d) {
+  return row.parent_type === ARTICLE_PARENT || !!(d && d.article === true);
+}
+// The listed articles' rows, newest first, with their parent resolved and
+// the ones whose set is hidden dropped.
+async function listedArticleRows(env, rows) {
+  const out = [];
+  for (const r of rows || []) {
+    const d = parseData(r);
+    if (!isListedArticle(r, d)) continue;
+    const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+    if (!wikiParentPublic(parent)) continue;
+    out.push({ r, d, parent });
+  }
+  return out;
 }
 
 // The parent script/collection row a wiki page hangs off, resolved the same
@@ -5288,6 +5339,32 @@ async function identityParked(env, slug) {
    fact). Deleted rows count: their art is still in the bucket and they can be
    restored. Throws on a read error; callers treat that as "try again". */
 const ART_SLOT_SUFFIX_RE = /-(alt2?|token|alm)$/;
+
+/* Is there already somebody else's file in this identity's art slots, with
+   no page behind it? A character whose save failed after its art landed, or
+   a purged one, leaves its file in R2, and /api/upload's catch-all refuses
+   anyone else that key ("An image with that name already belongs to another
+   account"). The slug check has to see the same thing, or it hands a new
+   character an identity whose art can never be uploaded. Admins write over
+   it anyway. A read error is "not foreign": the upload is still checked. */
+async function foreignArt(env, sess, slug) {
+  if (sess.isAdmin || !env.ART) return false;
+  const keys = ['', '-alt', '-alt2', '-token', '-alm'].map(x => 'art/' + slug + x + '.png');
+  const heads = await Promise.all(keys.map(k => env.ART.head(k).catch(() => null)));
+  return heads.some(h => h && !staleOrphan(h) &&
+    !(h.customMetadata && h.customMetadata.owner === String(sess.userId)));
+}
+
+/* A character's art is uploaded a moment BEFORE its row is saved, so a file
+   in a slot no page claims is, for a minute, somebody's character being made
+   and must not be written over. After an hour it is a leftover (a save that
+   failed, a purged page) and blocking that name for everyone forever helps
+   nobody: the next character of that name may take the slot. */
+const ORPHAN_ART_MS = 3600 * 1000;
+function staleOrphan(head) {
+  const t = head && head.uploaded ? new Date(head.uploaded).getTime() : NaN;
+  return t > 0 && Date.now() - t > ORPHAN_ART_MS;
+}
 async function artSlotClash(env, slug) {
   const keys = [slug + '-alt', slug + '-alt2', slug + '-token', slug + '-alm'];
   const m = ART_SLOT_SUFFIX_RE.exec(slug);
@@ -5400,7 +5477,7 @@ function sanitizeScriptFields(s) {
                            (an approval; a rollback restores what WAS live) */
 // customUrl too: the address lives in the custom_url column as well, and an
 // old version must not put the data and the column out of step.
-const RESTORE_PINNED_KEYS = ['curata', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
+const RESTORE_PINNED_KEYS = ['curata', 'megaAward', 'megaAwardOptOut', 'curataOptOut', 'creditUnlinked', 'publicEdit', 'editors', 'tagsBy', '_draftNote', 'customUrl'];
 async function prepareRestore(env, type, row, d, opts) {
   opts = opts || {};
   const now = parseData(row);
@@ -6323,6 +6400,18 @@ async function applyCollectionCurata(env, chars) {
   return chars;
 }
 
+/* The MegaSupaUltra Collection award, lent to a collection's characters on
+   the /c/ page only (never the feeds), unless the creator turned it off. */
+async function applyCollectionMega(env, chars) {
+  const all = await publishedCollectionData(env, await contentVersion(env, ['collection']));
+  for (const coll of (all || []).filter(d => d && d.megaAward)) {
+    for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
+      if (!c.megaAwardOptOut && !c.megaFrom) c.megaFrom = coll.displayName || coll.id || coll.slug || 'a collection';
+    }
+  }
+  return chars;
+}
+
 /* ---- "Appears in", derived from collection membership ----
    A collection lists members either by matching their own `appearsIn` text or
    by hand in `include[]`. The hand-listed half left the character page saying
@@ -6560,6 +6649,7 @@ function sanitizeWikiFields(o, imgBase, themeBase) {
   if (info) o.infobox = info; else delete o.infobox;
   o.toc = o.toc !== false;
   o.comments = o.comments !== false;
+  if (o.article === true) o.article = true; else delete o.article;
   const theme = PageRender.sanitizeTheme(o.theme, themeBase);
   if (theme) o.theme = theme; else delete o.theme;
 }
@@ -6789,7 +6879,7 @@ function gridRow(d) {
 // Public display projections. Full/card endpoints retain their export schema.
 const BROWSE_FIELDS = ['id', 'slug', 'displayName', 'name', 'author', 'description',
   'tagline', 'header', 'logo', 'characters', 'match', 'include', 'exclude',
-  'classification', 'curata', 'curataFrom', 'v'];
+  'classification', 'curata', 'curataFrom', 'megaAward', 'v'];
 function browseRow(d) {
   return Object.fromEntries(BROWSE_FIELDS.filter(k => d[k] !== undefined).map(k => [k, d[k]]));
 }
@@ -7525,7 +7615,7 @@ const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
 // 3: public feeds stopped carrying a `status` stored inside the data blob.
 // 4: script and collection rows carry their PK `slug` when the blob has none,
 //    and a row whose JSON cannot be parsed is skipped instead of failing all.
-const FEED_FORMAT_V = 4;
+const FEED_FORMAT_V = 5;
 const _feedBodyPending = new Map(); // coalesce overlapping misses within this isolate
 async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   const version = knownVersion === undefined ? await contentVersion(env, FEED_DEPS[table]) : knownVersion;
@@ -7568,7 +7658,7 @@ async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
    the grid in feed order, only collections with at least one member are
    listed, and the icons are one per team first, then the rest, art only.
    Bump SUMMARY_FORMAT_V if either shape changes. */
-const SUMMARY_FORMAT_V = 1;
+const SUMMARY_FORMAT_V = 2;
 const _summaryCache = new Map();    // name -> { version, body }
 const _summaryPending = new Map();
 function titleCaseTag(s) {
@@ -7596,7 +7686,7 @@ function collectionTiles(chars, collections) {
     for (const c of art) if (icons.length < 4 && !teams.has(c.team)) { icons.push(c); teams.add(c.team); }
     for (const c of art) if (icons.length < 4 && !icons.includes(c)) icons.push(c);
     const tile = {};
-    for (const k of ['id', 'slug', 'displayName', 'author', 'tagline', 'header', 'logo', 'curata', 'v']) {
+    for (const k of ['id', 'slug', 'displayName', 'author', 'tagline', 'header', 'logo', 'curata', 'megaAward', 'v']) {
       if (coll[k] !== undefined && coll[k] !== '' && coll[k] !== false) tile[k] = coll[k];
     }
     tile.count = members.length;
@@ -7881,14 +7971,13 @@ async function cachedArticleCards(env, ctx, limit, version) {
     if (body === null) {
       await ensurePagesTable(env);
       const { results } = await env.DB.prepare(
-        `SELECT slug, title, author, data FROM pages
-         WHERE parent_type=? AND status='published'
+        `SELECT slug, title, author, parent_type, parent_slug, data FROM pages
+         WHERE ${listedArticleSQL('')} AND status='published'
          ORDER BY created_at DESC LIMIT ?`
-      ).bind(ARTICLE_PARENT, limit).all();
-      const html = (results || []).map(r => {
-        const d = parseData(r);
+      ).bind(limit + 10).all();
+      const html = (await listedArticleRows(env, results)).slice(0, limit).map(({ r, d, parent }) => {
         return NewsRender.renderPageCard({
-          slug: r.slug, title: r.title, parentType: ARTICLE_PARENT,
+          slug: r.slug, title: r.title, parentType: r.parent_type, parentName: parent.name,
           author: r.author || d.author || null,
           blurb: d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 160)
         }, { linkRoot: '' });
@@ -7914,7 +8003,7 @@ async function unfeatureArticle(env, slug) {
 
 // One compact homepage snapshot per content version and UTC day. Random tile
 // order remains a browser choice, so every collection/script stays eligible.
-const HOME_FORMAT_V = 4;
+const HOME_FORMAT_V = 5;
 const _homePending = new Map();
 let _homeCache = null;
 async function cachedHome(env, ctx, request) {
@@ -7975,7 +8064,7 @@ async function homeTemplate(env, origin) {
   throw new Error('Homepage template unavailable');
 }
 async function homeCards(env, ctx) {
-  const [newsV, articleV] = await Promise.all([contentVersion(env, ['news']), contentVersion(env, ['wikipage'])]);
+  const [newsV, articleV] = await Promise.all([contentVersion(env, ['news']), contentVersion(env, ['wikipage', 'collection', 'script'])]);
   const card = p => p.then(body => ({ html: JSON.parse(body).html || '' }), () => ({ html: '', failed: true }));
   return Promise.all([
     card(cachedNewsBody(env, ctx, HOME_NEWS_LIMIT, true, newsV)),
@@ -10314,7 +10403,7 @@ const app = {
       // ?format=cards&limit=3 is the homepage panel: public, cached, cards.
       if (url.searchParams.get('format') === 'cards') {
         const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '3', 10) || 3, 1), ARTICLE_CARDS_MAX);
-        const version = await contentVersion(env, ['wikipage']);
+        const version = await contentVersion(env, ['wikipage', 'collection', 'script']);
         const etag = `W/"article-cards-${version}-${limit}-${BUILD_ID}"`;
         const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
         if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
@@ -10324,16 +10413,17 @@ const app = {
       const sess = await getSession(env, request);
       const mine = url.searchParams.get('mine') === '1' && sess && sess.userId != null;
       const { results } = await env.DB.prepare(
-        `SELECT p.slug, p.title, p.author, p.owner_id, p.status, p.data, p.created_at, p.updated_at,
-                u.username AS owner_username
+        `SELECT p.slug, p.title, p.author, p.owner_id, p.status, p.parent_type, p.parent_slug, p.data,
+                p.created_at, p.updated_at, u.username AS owner_username
          FROM pages p LEFT JOIN users u ON u.id = p.owner_id
-         WHERE p.parent_type=? AND (p.status='published'${mine ? ' OR p.owner_id=?' : ''})
+         WHERE ${listedArticleSQL('p.')} AND (p.status='published'${mine ? ' OR p.owner_id=?' : ''})
          ORDER BY p.created_at DESC LIMIT 300`
-      ).bind(...(mine ? [ARTICLE_PARENT, sess.userId] : [ARTICLE_PARENT])).all().catch(() => ({ results: [] }));
-      const articles = (results || []).map(r => {
-        const d = parseData(r);
+      ).bind(...(mine ? [sess.userId] : [])).all().catch(() => ({ results: [] }));
+      const articles = (await listedArticleRows(env, results)).map(({ r, d, parent }) => {
         return {
           slug: r.slug, title: r.title,
+          parentType: r.parent_type, parentKey: parent.key,
+          parentName: r.parent_type === ARTICLE_PARENT ? null : parent.name,
           author: r.author || d.author || null,
           ownerUsername: r.owner_username || null,
           subtitle: d.subtitle || '',
@@ -10533,7 +10623,7 @@ const app = {
           // A set's pages are intentionally unlisted: no search engines and no
           // sitemap entry. A standalone article is listed (/articles), so it
           // may be indexed like any other public page.
-          noindex: row.parent_type !== ARTICLE_PARENT,
+          noindex: !isListedArticle(row, d),
           ...ta,
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
           draftBanner: isDraft
@@ -10718,6 +10808,7 @@ const app = {
             // Same Curata inheritance the JSON feeds get, so the star on the
             // page agrees with the star in the grid it was clicked from.
             if (!d.curata) await applyCollectionCurata(env, [d]);
+            await applyCollectionMega(env, [d]).catch(() => null);
             // Same for the "Appears in" row: a character listed by hand in a
             // collection says so here without its creator typing the name in.
             await applyCollectionAppearsIn(env, [d]);
@@ -10830,6 +10921,11 @@ const app = {
       if (typeof obj.writeHttpMetadata === 'function') obj.writeHttpMetadata(headers);
       return new Response(null, { headers });
     }
+    // The Krita web port's test page: files under krita/ in R2 (too big to be
+    // static assets; the engine is over the 25 MiB limit). Its engine uses
+    // threads, so this path alone is cross-origin isolated. Upload with the
+    // port's deploy/upload.sh, bucket botc-wiki-art.
+    if (isKritaPath(path)) return serveKrita(request, env);
     // HEAD is answered exactly as GET, without the body: left to fall through,
     // an image that lives only in R2 came back 404 to anything that checks
     // before it downloads.
@@ -11136,6 +11232,7 @@ const app = {
         // along so applyCollectionCurata below does not lend it back either.
         if (Classify.isCurata(d)) o.curata = true;
         if (d.curataOptOut) o.curataOptOut = true;
+        if (d.megaAward) o.megaAward = true;
         const cls = Classify.classifyPage(d, type);
         if (cls !== 'standard') o.classification = cls;
         // Partial is derived per read, and the page needs the raw ingredients
@@ -11434,9 +11531,11 @@ const app = {
       async function pubArticles() {
         try {
           await ensurePagesTable(env);
-          return (await env.DB.prepare(
-            `SELECT slug, updated_at FROM pages WHERE status='published' AND parent_type=?`
-          ).bind(ARTICLE_PARENT).all()).results || [];
+          const { results } = await env.DB.prepare(
+            `SELECT slug, parent_type, parent_slug, data, updated_at FROM pages
+             WHERE status='published' AND ${listedArticleSQL('')}`
+          ).all();
+          return (await listedArticleRows(env, results)).map(x => ({ slug: x.r.slug, updated_at: x.r.updated_at }));
         } catch { degraded = true; return []; }
       }
       // Pages with a custom address are listed at it, not at the slug that
@@ -11858,7 +11957,8 @@ const app = {
       // a page created on it would answer first and swallow its links.
       const parked = !row && (offPrefix || (type === 'character'
         ? (await identityParked(env, base).catch(() => false)) ||
-          (await artSlotClash(env, base).catch(() => false))
+          (await artSlotClash(env, base).catch(() => false)) ||
+          (await foreignArt(env, sess, base))
         : !!(await lookupRedirect(env, type, base)) || !!(await rowByCustomUrl(env, type, base))));
       // Identities an importer has claimed in this run but not saved yet: the
       // Worker cannot see them, so the importer names them and they count as
@@ -11970,6 +12070,7 @@ const app = {
           // Asked one candidate at a time: almost always the first free one
           // passes, so this is one query rather than a scan per rung.
           if (await artSlotClash(env, s).catch(() => true)) continue;
+          if (await foreignArt(env, sess, s)) continue;
         }
         suggestion = s;
         break;
@@ -12675,6 +12776,12 @@ const app = {
         await applyCollectionCurata(env, [probe]).catch(() => null);
         if (probe.curata) curataFrom = probe.curataFrom || '';
       }
+      let megaFrom = null;
+      if (type === 'character') {
+        const probe = { slug: row.slug, appearsIn: pageData.appearsIn || '' };
+        await applyCollectionMega(env, [probe]).catch(() => null);
+        if (probe.megaFrom) megaFrom = probe.megaFrom;
+      }
       /* Approved editing that came from the script or collection this
          character is on, rather than from the character itself. The editor
          needs it to word its banner — see waterfallParent. */
@@ -12719,7 +12826,7 @@ const app = {
       }
       return jsonResponse({
         slug: row.slug, data: pageData,
-        curataFrom, editVia, governedBy, relatedBy,
+        curataFrom, megaFrom, editVia, governedBy, relatedBy,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, editDefault, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -12810,6 +12917,21 @@ const app = {
     // account page lists) and `characterSlugs` (what the Favorites filter on
     // the browse pages admits: saved characters plus every character on a
     // saved script or collection). Private: the lists are one reader's own.
+    // The tags saved on /tag-officials, with who saved each and when.
+    if (method === 'GET' && path === '/api/official-tags') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      let rows = [];
+      try {
+        rows = (await env.DB.prepare(
+          'SELECT o.id, o.tags, o.ts, u.username FROM official_tags o LEFT JOIN users u ON u.id = o.user_id'
+        ).all()).results || [];
+      } catch (e) { if (!isMissingSchema(e)) throw e; }
+      const tags = {};
+      for (const r of rows) tags[r.id] = { tags: r.tags, by: r.username || '', ts: r.ts };
+      return jsonResponse({ tags });
+    }
+
     if (method === 'GET' && path === '/api/favorites') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
@@ -14122,7 +14244,7 @@ const app = {
       // /api/attachment does not: modmail uses it too, and the comment it
       // would belong to is refused here anyway.
       const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx',
-        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/fancy-design', '/api/starlit', '/api/starlit-file'].includes(path) && method !== 'GET';
+        '/api/page-rollback', '/api/suggest', '/api/suggestion', '/api/fancy-design', '/api/starlit', '/api/starlit-file', '/api/official-tags'].includes(path) && method !== 'GET';
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -15229,6 +15351,7 @@ const app = {
         // Declining Curata is the owner's, so it is re-pinned exactly as the
         // grant is — a suggestion can neither add it nor take it off.
         if (storedNow.curataOptOut) data.curataOptOut = true; else delete data.curataOptOut;
+        if (storedNow.megaAwardOptOut) data.megaAwardOptOut = true; else delete data.megaAwardOptOut;
         // Whose work the page is said to be is the owner's answer too, so a
         // suggestion carries the stored one — see CREDIT_UNLINKED_SQL.
         if (storedNow.creditUnlinked) data.creditUnlinked = true; else delete data.creditUnlinked;
@@ -15765,6 +15888,8 @@ const app = {
         } else {
           delete c.curataOptOut;
         }
+        const megaOff = perm === 'owner' ? c.megaAwardOptOut : stored && stored.megaAwardOptOut;
+        if (megaOff) c.megaAwardOptOut = true; else delete c.megaAwardOptOut;
         /* "This credit isn't mine" — the page is somebody else's character
            uploaded on their behalf, so the credited name must not resolve to
            the uploader's account. Owner-only for the same reason curataOptOut
@@ -15907,6 +16032,28 @@ const app = {
       // still allows is taking back a bookmark this account ALREADY holds —
       // a saved page that went to draft must stay removable — and that reply
       // carries no name.
+      // Body: {id, tags[]}. id is a roles.json id; tags are kept only if
+      // tags.js knows them. An empty list is saved too (no tags is an answer).
+      if (path === '/api/official-tags') {
+        if (await rateLimited(env, request, 'offtags', 600, 3600, { sess })) {
+          return tooManyResponse('Too many saves in the last hour. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => null);
+        const id = String((b && b.id) || '');
+        const roles = await loadOfficialRoles(env, url.origin);
+        if (!roles.length) return jsonResponse({ error: 'Could not load the official roster. Try again.' }, { status: 503 });
+        if (!roles.some(r => r.id === id)) return jsonResponse({ error: 'No such official character' }, { status: 404 });
+        const known = new Map(Tags.KNOWN_TAGS.map(t => [t.toLowerCase(), t]));
+        const tags = [...new Set((Array.isArray(b.tags) ? b.tags : [])
+          .map(t => known.get(String(t).trim().toLowerCase())).filter(Boolean))].sort();
+        await ensureOfficialTagsTable(env);
+        await env.DB.prepare(
+          `INSERT INTO official_tags (id, tags, user_id, ts) VALUES (?,?,?,datetime('now'))
+           ON CONFLICT(id) DO UPDATE SET tags=excluded.tags, user_id=excluded.user_id, ts=excluded.ts`
+        ).bind(id, tags.join(', '), sess.userId).run();
+        return jsonResponse({ ok: true, id, tags: tags.join(', ') });
+      }
+
       if (path === '/api/favorite') {
         if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
           return tooManyResponse('Too many favorite changes in the last hour. Try again later.', 3600);
@@ -16271,6 +16418,8 @@ const app = {
         if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.curata = existing ? !!parseData(existing).curata : false;
+        // The MegaSupaUltra award is set in D1 by hand; same rule.
+        if (existing && parseData(existing).megaAward) c.megaAward = true; else delete c.megaAward;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
         if (!existing && await rowByCustomUrl(env, 'collection', c.id)) {
@@ -16541,9 +16690,15 @@ const app = {
           subtitle: b.subtitle, blurb: b.blurb, author: b.author,
           body: b.body, header: b.header, images: b.images,
           boxes: b.boxes, infobox: b.infobox, theme: b.theme,
-          toc: b.toc, comments: b.comments, customUrl: b.customUrl
+          toc: b.toc, comments: b.comments, customUrl: b.customUrl,
+          article: b.article === true
         };
         sanitizeWikiFields(page, 'pages/' + slug + '-', 'pages/' + slug);
+        // "List as an article" is the page owner's choice, and only means
+        // something for a set's page (a standalone article is listed anyway).
+        const wasArticle = !!(existing && parseData(existing).article === true);
+        if (access !== 'owner') page.article = wasArticle;
+        if (!page.article || parent.type === ARTICLE_PARENT) delete page.article;
         page.parentType = parent.type;
         page.parentSlug = parent.slug;
         if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
@@ -17669,6 +17824,7 @@ const app = {
         // include[] is capped at 500 by sanitizePageFields; 258 fits today.
         d.include = [...new Set([...(Array.isArray(d.include) ? d.include : []), ...slugs])];
         d.curata = existing ? !!parseData(existing).curata : false;
+        if (existing && parseData(existing).megaAward) d.megaAward = true; else delete d.megaAward;
         sanitizePageFields(d, 'collections/' + id);
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
@@ -19091,6 +19247,65 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
 };
 const HTML_CSP = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'";
+// The Krita web port (/krita/), from the port's deploy/cloudflare-worker.js
+// with the bucket swapped for ART. Large files are stored Brotli-compressed
+// (Content-Encoding: br) by its deploy/upload.sh and passed through as they
+// are; the default export skips withSecurityHeaders for these, because
+// re-wrapping the response would compress the bytes a second time.
+const KRITA_TYPES = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8', json: 'application/json', wasm: 'application/wasm',
+  svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', ico: 'image/x-icon',
+  woff2: 'font/woff2', txt: 'text/plain; charset=utf-8', map: 'application/json',
+  data: 'application/octet-stream', sqlite: 'application/octet-stream'
+};
+const KRITA_HEADERS = Object.assign({
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'X-Robots-Tag': 'noindex'
+}, SECURITY_HEADERS);
+const isKritaPath = path => path === '/krita' || path.startsWith('/krita/');
+function kritaReply(body, status, extra) {
+  const headers = new Headers(extra instanceof Headers ? extra : Object.assign({ 'Cache-Control': 'no-store' }, extra));
+  for (const [k, v] of Object.entries(KRITA_HEADERS)) headers.set(k, v);
+  return new Response(body, { status, headers, encodeBody: 'manual' });
+}
+async function serveKrita(request, env) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return kritaReply('Method not allowed', 405, { Allow: 'GET, HEAD' });
+  const url = new URL(request.url);
+  let key;
+  try { key = decodeURIComponent(url.pathname).replace(/^\/+/, ''); } catch { return kritaReply('Bad request', 400); }
+  // /krita -> /krita/ so the page's relative URLs (./assets, ./engine) resolve inside /krita/.
+  if (key === 'krita') return kritaReply(null, 301, { Location: url.origin + '/krita/' + url.search });
+  if (key.endsWith('/')) key += 'index.html';
+  if (!key.startsWith('krita/') || key.split('/').includes('..') || !env.ART) return kritaReply('Not found', 404);
+  const object = request.method === 'HEAD'
+    ? await env.ART.head(key)
+    : await env.ART.get(key, { onlyIf: request.headers, range: request.headers });
+  if (!object) return kritaReply('Not found', 404);
+  const headers = new Headers();
+  if (typeof object.writeHttpMetadata === 'function') object.writeHttpMetadata(headers);   // Content-Encoding: br as stored
+  headers.set('Content-Type', KRITA_TYPES[key.split('.').pop().toLowerCase()] || 'application/octet-stream');
+  // Vite's hashed files never change; the page and the engine (no hash in their names) revalidate by ETag.
+  headers.set('Cache-Control', key.startsWith('krita/assets/') ? 'public, max-age=31536000, immutable' : 'public, no-cache');
+  headers.set('ETag', object.httpEtag);
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Vary', 'Accept-Encoding');
+  if (request.method === 'HEAD') {
+    headers.set('Content-Length', String(object.size));
+    return kritaReply(null, 200, headers);
+  }
+  if (!('body' in object)) return kritaReply(null, 304, headers);   // If-None-Match matched
+  let status = 200;
+  if (request.headers.has('Range') && object.range) {
+    const { suffix, offset = Math.max(0, object.size - (suffix || 0)), length = object.size - offset } = object.range;
+    headers.set('Content-Range', `bytes ${offset}-${offset + length - 1}/${object.size}`);
+    status = 206;
+  }
+  return kritaReply(object.body, status, headers);
+}
+
 function withSecurityHeaders(res) {
   if (!res || res.status === 101 || res.webSocket) return res;
   let out;
@@ -19108,7 +19323,9 @@ function withSecurityHeaders(res) {
 export default {
   async fetch(request, env, ctx) {
     try {
-      return withSecurityHeaders(withLoginHint(request, await app.fetch(request, env, ctx)));
+      const res = await app.fetch(request, env, ctx);
+      if (isKritaPath(new URL(request.url).pathname)) return res;   // carries its own headers; see serveKrita
+      return withSecurityHeaders(withLoginHint(request, res));
     } catch (e) {
       let path = '';
       try { path = new URL(request.url).pathname; } catch { /* ignore */ }

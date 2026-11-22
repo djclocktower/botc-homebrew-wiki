@@ -292,6 +292,7 @@
 
      Partial stays a word because "unfinished" is not something a mark can
      say. */
+  var MEGA_AWARD = 'MegaSupaUltra Collection award™';
   function classBadgeHTML(cls, opts) {
     if (cls === 'curata') {
       var title = (opts && opts.from)
@@ -300,6 +301,12 @@
       return '<span class="curata-mark' + ((opts && opts.sep) ? ' curata-mark-sep' : '') +
         '" role="img" title="' +
         title.replace(/"/g, '&quot;') + '" aria-label="Curata"></span>';
+    }
+    // A collection award: drawn like the wreath, means nothing (no filter,
+    // no weighting, never lent to characters). `megaAward` on the row.
+    if (cls === 'mega') {
+      return '<span class="curata-mark award-mark' + ((opts && opts.sep) ? ' curata-mark-sep' : '') +
+        '" role="img" title="' + MEGA_AWARD + '" aria-label="' + MEGA_AWARD + '"></span>';
     }
     if (cls === 'partial') {
       return '<span class="page-class page-class-partial" title="' +

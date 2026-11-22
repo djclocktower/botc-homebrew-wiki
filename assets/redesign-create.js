@@ -96,7 +96,7 @@
        Curata mark. It sits with the tags because that is where the wreath is
        drawn on the page itself — the end of the /c/ page's Tags row. */
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
-      ids: ['tag-picker', 'tags', 'curata-fld'] },
+      ids: ['tag-picker', 'tags', 'curata-fld', 'mega-fld'] },
     /* Sharing is a section of its own rather than another fieldset swept into
        Advanced Options. Buried under a summary reading "credits, jinxes,
        sidebar boxes, custom JSON", the one control that decides who

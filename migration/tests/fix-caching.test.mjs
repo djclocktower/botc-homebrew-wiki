@@ -254,3 +254,16 @@ test('BUILD_ID rolls when the official data files change', async t => {
   await write('assets/night-order.json', '{}');
   const second = await id(); build(); assert.notEqual(await id(), second);
 });
+
+test('the MegaSupaUltra award shows on a member\'s page unless its creator turned it off', async t => {
+  const f = await fixture(); t.after(() => f.finish());
+  f.insert('characters', 'proud', { name: 'Proud', ability: 'x' });
+  f.insert('characters', 'shy', { name: 'Shy', ability: 'x', megaAwardOptOut: true });
+  f.insert('collections', 'gold', { id: 'gold', displayName: 'Gold', megaAward: true, include: ['proud', 'shy'] });
+  const page = async slug => {
+    const r = await f.request('/c/' + slug);
+    return (await (r.status === 301 ? f.request(new URL(r.headers.get('location'), 'https://x').pathname) : r)).text();
+  };
+  assert.match(await page('proud'), /award-mark/);
+  assert.doesNotMatch(await page('shy'), /award-mark/);
+});

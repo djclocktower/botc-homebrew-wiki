@@ -1321,16 +1321,19 @@
     //        authorProminent} — authorProminent shows the author as a bold
     //        credit line at the top of the box instead of a plain table row.
     var root = opts.root;
-    // Creator/credit symbol next to the name, same as character info boxes.
+    // A credit can name several people ("Bim, Cole"): each gets their own
+    // link and mark, as on a character's Creators row.
     var markFn = dep('creatorMarkHTML');
-    var mk = (typeof markFn === 'function' && opts.author) ? (markFn(opts.author) || '') : '';
-    var symHTML = mk ? ' ' + mk : '';
-    var authorLink = opts.author
-      ? '<a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a>'
-      : '';
+    var authors = (dep('splitCreators') ||
+      function (s) { return String(s || '').split(',').map(function (n) { return n.trim(); }).filter(Boolean); })(opts.author);
+    var authorLink = authors.map(function (n) {
+      var mk = typeof markFn === 'function' ? (markFn(n) || '') : '';
+      return '<a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(n) + '">' + esc(n) + '</a>' +
+        (mk ? ' ' + mk : '');
+    }).join(', ');
     var rows = '';
-    if (opts.author && !opts.authorProminent) {
-      rows += '<dt>Author:</dt><dd>' + authorLink + symHTML + '</dd>';
+    if (authorLink && !opts.authorProminent) {
+      rows += '<dt>Author' + (authors.length > 1 ? 's' : '') + ':</dt><dd>' + authorLink + '</dd>';
     }
     if (opts.version) rows += '<dt>Version:</dt><dd>' + esc(opts.version) + '</dd>';
     if (opts.difficulty && DIFFICULTY_LABEL[opts.difficulty]) {
@@ -1344,7 +1347,7 @@
     return '<div class="card char-infocard sv-infobox">' +
       (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '"' + responsiveAttrs(root, opts.logoPath, opts.artVersion, '240px', opts.imageW) + ' alt="" onerror="this.style.display=\'none\'">' : '') +
       // Prominent author credit sits directly under the logo.
-      (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
+      (authorLink && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
       '<dl class="info">' + rows + '</dl></div>';
   }
@@ -1356,6 +1359,14 @@
     return ['<dt>Status:</dt><dd><span class="curata-mark" ' +
       'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks." ' +
       'aria-label="Curata"></span> Curata</dd>'];
+  }
+
+  // The MegaSupaUltra Collection award: shown like Curata, means nothing.
+  function megaRow(d) {
+    if (!d || !d.megaAward) return [];
+    return ['<dt>Award:</dt><dd><span class="curata-mark award-mark" role="img" ' +
+      'title="MegaSupaUltra Collection award™" aria-label="MegaSupaUltra Collection award™"></span> ' +
+      'MegaSupaUltra Collection award™</dd>'];
   }
 
   function renderJsonPanel(jsonText, actions, label, collapsed) {
@@ -1856,7 +1867,7 @@
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: curataRow(coll)
+      extraInfoRows: curataRow(coll).concat(megaRow(coll))
     });
   }
 

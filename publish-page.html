@@ -182,6 +182,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
         <label class="sb-check"><input type="checkbox" id="p-toc" checked> Show a contents box (automatic once the page has three or more headings)</label>
         <label class="sb-check"><input type="checkbox" id="p-comments" checked> Let readers comment on this page</label>
+        <label class="sb-check" id="p-article-wrap"><input type="checkbox" id="p-article"> List as an article</label>
       </div>
 
       <details class="sb-details" id="p-images-sec">
@@ -374,6 +375,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         theme: window.PageRender.sanitizeTheme(t, 'pages/' + (slug || 'new')),
         toc: $('p-toc').checked,
         comments: $('p-comments').checked,
+        article: $('p-article').checked,
         // Only once known (loaded or typed), so a stale form never clears it.
         customUrl: cuField.known() ? cuField.get() : undefined
       };
@@ -405,6 +407,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var editorMode = false;
     function applyEditorMode(){
       if (!editorMode) return;
+      $('p-article-wrap').style.display = 'none';   // the owner's choice
       $('p-url-sec').style.display = 'none';   // the address is the owner's
       $('p-delete').style.display = 'none';
       $('p-draft').style.display = 'none';
@@ -438,6 +441,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     function showParent(){
       articleWording();
+      if (isArticle()) $('p-article-wrap').style.display = 'none';
       if (isArticle()) {
         $('p-parent').innerHTML = 'A standalone article, listed on <a href="articles" style="color:var(--maroon);font-weight:600">Articles</a> once it is published.';
         $('p-parent-link').href = 'articles';
@@ -718,6 +722,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('p-body').value = p.body || '';
           $('p-toc').checked = p.toc !== false;
           $('p-comments').checked = p.comments !== false;
+          $('p-article').checked = p.article === true;
           images = (p.images || []).slice();
           headerPath = p.header || '';
           theme = p.theme || {};
