@@ -246,6 +246,12 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .86rem; }
   #fs-splitbar .sbx-tabs { flex: 1; min-width: 0; position: static; background: none; backdrop-filter: none; border-bottom: none; }
   html.fs-split #fs-sel-info { display: none; }
 }
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  /* a phone on its side: the settings take the right half, the page the left */
+  .sbx-side { top: 0; left: auto; right: 0; width: 50%; height: auto; border-top: 0; border-left: 2px solid var(--parch-frame); transform: translateX(100%); }
+  html.fs-split #fs-scroll { right: 50%; bottom: 40px; }
+  html.fs-split #fs-splitbar { right: 50%; bottom: 0; }
+}
 </style>
 </head>
 <body>

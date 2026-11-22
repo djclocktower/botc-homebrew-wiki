@@ -112,6 +112,12 @@ export function mountDrag(root, h) {
     clearGuides();
     try { root.releasePointerCapture(d.pointerId); } catch { /* already released */ }
     if (!d.moved) return; // a click: selection only, nothing to commit
+    if (ev && ev.type === 'pointercancel') {
+      // the browser took the gesture (a touch that became a scroll): put it back
+      d.node.style.translate = '';
+      if (h.onCancel) h.onCancel(d.id);
+      return;
+    }
     if (d.resize) { if (h.onResize) h.onResize(d.id, d.last, true); return; }
     if (h.onCommit) h.onCommit(d.id, d.last);
   };

@@ -4707,10 +4707,16 @@ wraps it: `breakPieces()` in util.js lets a word break between CJK
 characters, a piece wider than the line counts `ceil(w / line)` lines, and
 the ability and reminder nodes carry `overflow-wrap: anywhere` so the
 measure and the page agree. Ordinary words are measured exactly as before.
+The app view sets its own lines, so `breakRuns()` and `fitNameLines()` in
+script.js cut a word wider than the line themselves.
 A name too long for its column on the printed sheet is set smaller
-(`nameFit` in sheet.js). `parseScript()` draws a character listed twice
-once (same id, team and name), reads `_meta` in any case, and makes a
-non-text name or ability text. `proxiedArt()` asks the image proxy for a
+(`nameFit` in sheet.js); so is one on a stacked night or jinx row.
+`parseScript()` draws a character listed twice once (same id, team, name
+and ability), gives a DIFFERENT character under an id already used its own
+id (`phantom-2`: rows, night steps and per-character edits are keyed on
+it), warns about a team it does not know, reads `_meta` in any case, and
+makes a non-text name or ability text. `normalizeOptions()` puts the
+defaults back for a section a design file set to null. `proxiedArt()` asks the image proxy for a
 logo or background at 1600px (an icon gets 256). The script sheet
 comes in two styles, the printed sheet above and the **app view** (see
 below); the night sheets in three: the ribbon style (the default), the

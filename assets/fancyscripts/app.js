@@ -162,10 +162,11 @@ function pushHistory() {
 }
 function restoreSnapshot(s) {
   options = normalizeOptions(JSON.parse(s));
-  lastSnapshot = s;
   afterOptionsReplaced();
+  lastSnapshot = snapshot(); // as the options stand now, so undo() sees nothing waiting
 }
 function undo() {
+  pushHistory(); // an edit still waiting on its timer (typing, an arrow nudge) is a step of its own
   if (history.idx <= 0) return;
   history.idx--;
   restoreSnapshot(history.stack[history.idx]);
@@ -173,6 +174,7 @@ function undo() {
   toast('Undone');
 }
 function redo() {
+  pushHistory();
   if (history.idx >= history.stack.length - 1) return;
   history.idx++;
   restoreSnapshot(history.stack[history.idx]);
@@ -406,6 +408,7 @@ function buildTabs() {
     b.className = 'sbx-tab' + (pageKey(p) === currentKey ? ' on' : '');
     b.textContent = p.label;
     b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', pageKey(p) === currentKey ? 'true' : 'false');
     b.addEventListener('click', () => {
       currentKey = pageKey(p);
       selectedId = '';
@@ -539,7 +542,7 @@ function loadJson(json, label, slug, keepDesign) {
     // not a script: keep what was loaded, the error note says why
     rawJson = prev.rawJson; sourceLabel = prev.sourceLabel; scriptKey = prev.scriptKey;
     options.bootlegger = prev.bootlegger;
-    return;
+    return false;
   }
   if (!keepDesign) {
     // a fresh script gets fresh overrides — the old title would stick otherwise
@@ -561,6 +564,7 @@ function loadJson(json, label, slug, keepDesign) {
   requestRender();
   showWikiSave();
   if (label) note('Loaded ' + label + '.', 'ok');
+  return true;
 }
 
 function loadFile(file) {
@@ -587,8 +591,10 @@ function loadFile(file) {
    "Fancy Sheet" button opens with, and what Save design writes. */
 let wikiSaved = { key: '', type: '', slug: '', canSave: false, at: '' };
 
+let wikiLoadSeq = 0;
 async function loadWikiScript(slug, keepDesign, type) {
   const t = type === 'collection' ? 'collection' : 'script';
+  const seq = ++wikiLoadSeq; // a slower answer for a script picked earlier is dropped
   note('Loading ' + t + '…');
   try {
     const q = '?type=' + t + '&slug=' + encodeURIComponent(slug);
@@ -598,6 +604,7 @@ async function loadWikiScript(slug, keepDesign, type) {
     ]);
     if (!r.ok) throw new Error('Could not load that ' + t + ' (HTTP ' + r.status + ').');
     const json = await r.json();
+    if (seq !== wikiLoadSeq) return false;
     const key = 'wiki:' + (t === 'collection' ? 'c:' : '') + slug;
     wikiSaved = { key, type: t, slug, canSave: !!(saved && saved.canSave), at: (saved && saved.design && saved.savedAt) || '' };
     // The page's saved design, unless this browser is already working on it
@@ -611,6 +618,7 @@ async function loadWikiScript(slug, keepDesign, type) {
     showWikiSave();
     return fromSaved;
   } catch (e) {
+    if (seq !== wikiLoadSeq) return false;
     note(e && e.message ? e.message : 'Could not load that ' + t + '.', 'err');
   }
   showWikiSave();
@@ -683,10 +691,16 @@ async function fillScriptPicker(preselect) {
 /* ── autosave ── */
 const AUTOSAVE_KEY = 'botc_fancy_v2';
 let autosaveTimer = null;
+let autosavePending = false;
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
+  autosavePending = true;
   autosaveTimer = setTimeout(autosave, 900);
 }
+// an edit made just before leaving (a reload, switching apps on a phone) is kept
+const flushAutosave = () => { if (autosavePending) { clearTimeout(autosaveTimer); autosave(); } };
+window.addEventListener('pagehide', flushAutosave);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAutosave(); });
 function designObject(includeScript) {
   // only the uploads this design still uses: a replaced or removed one
   // stays in memory for Undo, but is not written out again
@@ -699,6 +713,7 @@ function designObject(includeScript) {
 }
 let autosaveWarned = false;
 function autosave() {
+  autosavePending = false;
   if (rawJson == null) return;
   const full = designObject(true);
   try {
@@ -732,9 +747,16 @@ function applyDesignData(d) {
   options = normalizeOptions(d.options || {});
 }
 function loadDesign(d) {
+  const before = { options, assets: [...assets] };
   applyDesignData(d);
   if (d.script) {
-    loadJson(d.script, d.sourceLabel || 'the design file', d.key && d.key.startsWith('wiki:') ? d.key.slice(5) : '', true);
+    if (!loadJson(d.script, d.sourceLabel || 'the design file', d.key && d.key.startsWith('wiki:') ? d.key.slice(5) : '', true)) {
+      // its script could not be read: nothing changes, and the note says why
+      options = before.options;
+      assets.clear();
+      for (const [k, v] of before.assets) assets.set(k, v);
+      return;
+    }
   } else {
     afterOptionsReplaced();
   }
@@ -798,6 +820,7 @@ function makeSlider(parent, label, min, max, step, format, b, extra) {
   input.type = 'range';
   input.min = min; input.max = max; input.step = step;
   input.rtFmt = format; // range-type.js maps a typed number back through it
+  input.setAttribute('aria-label', label);
   const refresh = () => {
     const v = b.get();
     input.value = v == null ? (extra && extra.fallback != null ? extra.fallback : min) : v;
@@ -904,6 +927,7 @@ function makeSelect(parent, label, choices, b, extra) {
   name.textContent = label;
   const sel = document.createElement('select');
   sel.className = 'fs-select';
+  sel.setAttribute('aria-label', label);
   sel.style.width = 'auto';
   sel.style.maxWidth = '62%';
   const fill = () => {
@@ -2242,6 +2266,13 @@ function mountPreviewDrag() {
       syncElementPanel();
       return { dx: x - dragStart.x, dy: (y - dragStart.y) / k, guideX, guideY };
     },
+    onCancel: () => {
+      if (dragStart && dragStart.m && !dragStart.m.reorder && dragStart.x != null) dragStart.m.set(dragStart.x, dragStart.y);
+      if (dragStart && dragStart.size0 != null) { const z = sizeModel(dragStart.id); if (z) z.set(dragStart.size0); }
+      dragStart = null;
+      syncElementPanel();
+      requestRender();
+    },
     onCommit: (id, d) => {
       const m = dragStart && dragStart.m;
       dragStart = null;
@@ -2276,8 +2307,9 @@ function onKey(ev) {
   const tag = (ev.target && ev.target.tagName) || '';
   const typing = /INPUT|TEXTAREA|SELECT/.test(tag) && ev.target.type !== 'range' && ev.target.type !== 'checkbox';
   if ((ev.ctrlKey || ev.metaKey) && !typing) {
-    if (ev.key === 'z' && !ev.shiftKey) { ev.preventDefault(); undo(); return; }
-    if (ev.key === 'y' || (ev.key === 'z' && ev.shiftKey)) { ev.preventDefault(); redo(); return; }
+    const k = String(ev.key).toLowerCase(); // Shift makes it 'Z'
+    if (k === 'z' && !ev.shiftKey) { ev.preventDefault(); undo(); return; }
+    if (k === 'y' || (k === 'z' && ev.shiftKey)) { ev.preventDefault(); redo(); return; }
   }
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); saveDesign(); return; }
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 'd' && !typing && selectedId) {
@@ -2552,7 +2584,9 @@ async function withExport(btn, fn) {
     await fn();
   } catch (e) {
     console.error(e);
-    note('Export failed. An icon hosted on another site may be blocking it.', 'err');
+    const why = e && e.name === 'SecurityError' ? 'An icon hosted on another site is blocking it.' : 'Try again.';
+    note('Export failed. ' + why, 'err');
+    toast('Export failed. ' + why); // the note is inside the settings, off screen on a phone
   } finally {
     exporting = false;
     btn.innerHTML = old;
@@ -3096,7 +3130,14 @@ async function boot() {
     } catch { incoming = null; }
   }
   if (incoming) {
-    loadJson(incoming, 'your Script Builder roster');
+    // the script that was being designed here, sent to the builder and back
+    // (same name, at least half the same characters): its design stays
+    const idsOf = (j) => new Set((Array.isArray(j) ? j : []).map((e) => (typeof e === 'string' ? e : e && e.id)).filter((x) => x && x !== '_meta'));
+    const mine = idsOf(incoming), was = idsOf(saved && saved.script);
+    const same = !!(saved && saved.key === keyFor(incoming, '') && mine.size && [...mine].filter((x) => was.has(x)).length * 2 >= mine.size);
+    if (same) applyDesignData(saved);
+    loadJson(incoming, 'your Script Builder roster', '', same);
+    if (same) buildFontSelects();
   } else if (wikiKey) {
     const same = !!(saved && saved.key === wikiKey);
     if (same) applyDesignData(saved);
