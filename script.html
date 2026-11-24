@@ -10,8 +10,8 @@
 <meta property="og:title" content="Script Builder">
 <meta property="og:description" content="Build a custom Blood on the Clocktower script from homebrew characters: randomize, SAO sort, export script JSON, and share.">
 <meta property="og:type" content="website">
-<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
-<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/logo/favicon.png">
+<link rel="apple-touch-icon" href="assets/logo/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <!-- The sidebar draws from the small grid feed, which starts downloading here
      rather than after the scripts at the end of the body; the card feed the
@@ -190,8 +190,8 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
-        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+        <img class="brand-skull" src="assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
@@ -273,7 +273,7 @@
       <!-- Credits Fabled: every export from the builder carries it. -->
       <div class="sb-credits">
         <span class="sb-credits-head">
-          <img class="sb-credits-skull" src="assets/logo_skull.webp" alt="">
+          <img class="sb-credits-skull" src="assets/logo/mark.webp" alt="">
           <span>Your exported JSON includes a <strong>botchomebrew.wiki</strong> Fabled crediting everyone whose characters are on the script.</span>
         </span>
         <label class="sb-credits-detail">
@@ -467,7 +467,7 @@
     // falls back to the original where no thumbnail exists yet.
     function thumb(c) {
       if (window.PageRender && window.PageRender.thumbSrc) return window.PageRender.thumbSrc(c, '');
-      return c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png');
+      return c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/logo/favicon.png');
     }
 
     /* ── the "add" sidebar (all chars, grouped by team, alphabetical) ──
@@ -504,7 +504,7 @@
             ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
             ' data-partial="' + partial + '" data-curata="' + star + '">' +
             '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumb(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumb(c)) + '" alt="" onerror="this.src=\'assets/logo/favicon.png\'">' +
               '<span class="sb-add-name">' + esc(c.name) +
                 (c.official ? ' <span class="sb-add-off">official</span>' : '') + '</span>' +
             '</button>' +
@@ -578,7 +578,7 @@
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
         group.forEach(function (c) {
           html += '<div class="sb-script-item">' +
-            '<img class="sb-script-thumb" src="' + esc(thumb(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-script-thumb" src="' + esc(thumb(c)) + '" alt="" onerror="this.src=\'assets/logo/favicon.png\'">' +
             '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '"' +
               (c.official ? ' target="_blank" rel="noopener" title="Official character; opens the official wiki"' : '') + '>' +
               nameHTML(c) + (c.official ? ' <span class="sb-add-off">official <span class="ico ico-external" aria-hidden="true"></span></span>' : '') + '</a>' +

@@ -56,7 +56,7 @@ export function collectionTileHTML(c) {
       PageRender.responsiveAttrs('', banner, c.v, SIZES) + ' alt="' + esc(name) + '"></div>'
     : '<div class="collection-icons">' + (c.icons || []).map(i =>
       '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(i, '')) +
-      '" onerror="this.src=\'assets/favicon.png\'" alt="">').join('') + '</div>';
+      '" onerror="this.src=\'assets/logo/favicon.png\'" alt="">').join('') + '</div>';
   return '<a class="collection-tile" data-pick' + weightAttr(c) + ' href="' + esc('collection/' + encodeURIComponent(id)) + '">' +
     top +
     '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -99,7 +99,7 @@ function allScriptsTileHTML(n) {
 
 export function recentCardHTML(c) {
   return '<a class="recent-card" href="' + esc(c.page) + '">' +
-    '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
+    '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/logo/favicon.png\'" alt="">' +
     '<div class="recent-name">' + esc(c.name) + '</div>' +
     '<div class="recent-type' + (GOOD[c.team] ? ' good' : c.team === 'other' ? ' other' : '') + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
     // The Favorites / Add to Script quick actions, side by side under the

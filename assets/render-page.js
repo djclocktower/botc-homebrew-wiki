@@ -759,7 +759,7 @@
     if (c.art) return root + 'assets/' + c.art + artVer(c);
     if (typeof c.image === 'string' && c.image) return c.image;
     if (Array.isArray(c.image) && c.image[0]) return c.image[0];
-    return root + 'assets/favicon.png';
+    return root + 'assets/logo/favicon.png';
   }
   /* What a CARD draws: the 192px WebP thumbnail (thumb/{file}.webp beside
      art/{file}, ~8 KB against the original's ~150 KB). Only art under art/ has
@@ -950,7 +950,7 @@
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '" data-slug="' + esc(c.slug || '') + '"' +
           filterAttrs(c, orderMap[c.slug]) + offsite(c) + '>' +
           '<span class="card-side">' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
+          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/logo/favicon.png\'') + '>' +
           quickSlot(c) + '</span>' +
           '<div class="script-char-text"><span class="script-char-name">' + rosterName(c, marks) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
@@ -1021,7 +1021,7 @@
         // The icon and, under it, the two quick actions (Favorites, Add to
         // Script — assets/card-actions.js). A draft gets no slot.
         '<span class="card-side">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'') + '>' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt=""' + fbAttrs(thumbFallback(c), 'this.onerror=null;this.src=\'' + esc(root) + 'assets/logo/favicon.png\'') + '>' +
         quickSlot(c) + '</span>' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +

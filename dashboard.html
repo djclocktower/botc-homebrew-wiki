@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
-<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
-<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/logo/favicon.png">
+<link rel="apple-touch-icon" href="assets/logo/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
@@ -290,6 +290,26 @@
   .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: rgba(236,225,200,.9); }
   .gate a { color: #9fc4ee; }
   .loading { text-align: center; padding: 50px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: rgba(236,225,200,.75); }
+  /* ---- wiki logo (assets/logo-admin.js) ---- */
+  .lg-list { display: flex; flex-wrap: wrap; gap: 10px; }
+  .lg-tile { flex: 1 1 200px; max-width: 280px; border: 1px solid #cdbfa0; background: #fffdf8; padding: 8px; }
+  .lg-tile.on { border: 2px solid var(--maroon); padding: 7px; }
+  .lg-bar { display: flex; align-items: center; gap: 10px; background: #1a0820; padding: 8px 10px; min-height: 42px; overflow: hidden; }
+  .lg-mark { height: 42px; width: auto; display: block; }
+  .lg-word { height: 33px; width: auto; display: block; min-width: 0; }
+  .lg-name { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .92rem; margin: 8px 0 6px; overflow-wrap: anywhere; }
+  .lg-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .lg-on { font-family: 'Roboto',sans-serif; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); padding: 8px 0; }
+  .lg-add { margin-top: 16px; padding-top: 12px; border-top: 1px solid #cdbfa0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; }
+  .lg-head { font-family: 'Roboto',sans-serif; font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; opacity: .75; }
+  .lg-field { display: flex; flex-direction: column; gap: 4px; font-size: .88rem; max-width: 100%; }
+  .lg-field input[type="text"] { font: inherit; background: #fffdf8; border: 1px solid #cdbfa0; padding: 6px 9px; width: 240px; max-width: 100%; box-sizing: border-box; }
+  .lg-field input[type="file"] { font: inherit; font-size: .84rem; max-width: 100%; }
+  .lg-preview { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #1a0820; padding: 10px; max-width: 100%; box-sizing: border-box; }
+  .lg-preview[hidden] { display: none; }
+  .lg-preview .lg-bar { padding: 0; }
+  .lg-tab { width: 32px; height: 32px; }
+  .lg-hero { height: 110px; width: auto; }
   .toast { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; min-height: 1.2em; margin-top: 10px; }
   .toast.ok  { color: #2a6e2a; }
   .toast.err { color: #9a2c2c; }
@@ -368,8 +388,8 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
-        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+        <img class="brand-skull" src="assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
@@ -716,6 +736,10 @@
           <span class="dim" id="ann-status" style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.8rem;opacity:.7"></span>
         </div>
         <div class="toast" id="ann-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Wiki logo</h3>
+        <div id="logo-admin"></div>
       </section>
       <section class="panel">
         <h3>Text editor</h3>
@@ -3858,5 +3882,6 @@
   <script src="assets/attach.js"></script>
   <script src="assets/art-thumb.js"></script>
   <script src="assets/site.js"></script>
+  <script src="assets/logo-admin.js"></script>
 </body>
 </html>

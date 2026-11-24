@@ -173,7 +173,7 @@
      every character on the wiki, and drawing it with full art (and no lazy
      loading) had a phone downloading hundreds of MB alongside the engine. */
   function thumbSrc(c) {
-    if (c.ext) return c.image || 'assets/favicon.png';
+    if (c.ext) return c.image || 'assets/logo/favicon.png';
     if (c.art && /^art\/[^/]+$/.test(c.art)) {
       return 'assets/thumb/' + c.art.slice(4) + '.webp' + (c.v ? '?v=' + encodeURIComponent(String(c.v)) : '');
     }
@@ -430,7 +430,7 @@
         var ability = c.ability || '';
         html += '<div class="sb-add-row">' +
           '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/logo/favicon.png\'">' +
             '<span class="sb-add-name">' + esc(c.name) + '</span>' +
           '</button>' +
           (ability
@@ -508,7 +508,7 @@
       group.forEach(function (c) {
         var edited = adjState.per[c.slug] && Object.keys(adjState.per[c.slug].adj || {}).length > 0;
         html += '<div class="sb-script-item">' +
-          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          '<img class="sb-script-thumb" loading="lazy" decoding="async" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/logo/favicon.png\'">' +
           '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
           '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
           versionChipsHTML(c) + '</div>' +

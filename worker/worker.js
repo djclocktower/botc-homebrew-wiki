@@ -3392,17 +3392,148 @@ const SITE_TEXT_CACHE_MS = 5000;
 let _siteTextCache = null;
 // The announcement banner, memoised the same way: it was one D1 read per page
 // view on every page of the site, for a setting that changes a few times a year.
-let _announcementCache = null;
-async function announcementValue(env) {
-  if (_announcementCache && (Date.now() - _announcementCache.at) < SITE_TEXT_CACHE_MS) return _announcementCache.ann;
-  let ann = null;
+// The logo in use is read with it, in the same query: both are `settings`
+// rows that every page asks about through /api/boot.
+let _bootSettings = null;
+async function bootSettings(env) {
+  if (_bootSettings && (Date.now() - _bootSettings.at) < SITE_TEXT_CACHE_MS) return _bootSettings;
+  let ann = null, logo = null, failed = false;
   try {
-    const r = await env.DB.prepare("SELECT value FROM settings WHERE key='announcement'").first();
-    if (r && r.value) ann = JSON.parse(r.value);
-  } catch { /* no announcement */ }
-  ann = ann && ann.text ? ann : null;
-  _announcementCache = { at: Date.now(), ann };
-  return ann;
+    const rows = await env.DB.prepare(
+      "SELECT key, value FROM settings WHERE key IN ('announcement','" + LOGO_KEY + "')").all();
+    for (const r of rows.results || []) {
+      try {
+        if (r.key === 'announcement') ann = JSON.parse(r.value);
+        else logo = JSON.parse(r.value);
+      } catch { /* a row that is not JSON reads as not set */ }
+    }
+  } catch { failed = true; }
+  _bootSettings = { at: Date.now(), ann: ann && ann.text ? ann : null, logo: cleanLogoState(logo), failed };
+  return _bootSettings;
+}
+async function announcementValue(env) { return (await bootSettings(env)).ann; }
+
+/* ---- the wiki's logo ----
+   The logo is six pictures (LOGO_SLOTS), each at ONE fixed address,
+   /assets/logo/{file}, which every page, the link previews and the exported
+   credits Fabled point at. The Worker answers that address with the version
+   in use: the committed files in assets/logo/ (Classic), or a version an
+   admin added on the dashboard, whose files are in R2 under logo/{id}/.
+   Switching is one settings row, so nothing that draws the logo ever changes.
+   See "The wiki logo" in CLAUDE.md. */
+const LOGO_KEY = 'site_logo';
+const LOGO_PREFIX = 'logo/';
+const LOGO_VERSIONS_MAX = 24;
+const LOGO_SIDE_MAX = 1024;        // px, either side of any one picture
+const LOGO_ID_RE = /^[a-f0-9]{12}$/;
+// slot -> the Classic file, the types an added one may be, its size cap.
+// The three that leave the site (browser tab, link preview, exported JSON)
+// are always PNG.
+const LOGO_SLOTS = {
+  mark:     { file: 'mark.webp',    types: ['image/webp', 'image/png'], max: 300 * 1024 },
+  hero:     { file: 'hero.webp',    types: ['image/webp', 'image/png'], max: 900 * 1024 },
+  wordmark: { file: 'wordmark.png', types: ['image/webp', 'image/png'], max: 300 * 1024 },
+  favicon:  { file: 'favicon.png',  types: ['image/png'], max: 100 * 1024 },
+  icon:     { file: 'icon.png',     types: ['image/png'], max: 600 * 1024 },
+  og:       { file: 'og.png',       types: ['image/png'], max: 900 * 1024 }
+};
+const LOGO_FILE_SLOT = Object.fromEntries(Object.entries(LOGO_SLOTS).map(([slot, s]) => [s.file, slot]));
+// What these files were called before they moved under logo/. Old exports,
+// link previews and bookmarks still ask for them, and get the logo in use.
+const LOGO_OLD_NAMES = {
+  'logo_skull.webp': 'mark', 'wiki-skull.webp': 'hero', 'headertext.png': 'wordmark',
+  'favicon.png': 'favicon', 'logo_skull_icon.png': 'icon', 'logo_skull.png': 'og'
+};
+// An hour, then the stale copy is shown once more while a fresh one is
+// fetched. site.js does not wait for it: /api/boot names the logo in use, and
+// a browser that last saw another one re-fetches these addresses at once.
+const LOGO_CACHE = 'public, max-age=3600, stale-while-revalidate=86400';
+
+// Whatever is stored, as {active, versions[]} with nothing in it the routes
+// below would have to distrust. `active` is '' for Classic.
+function cleanLogoState(raw) {
+  const versions = [];
+  for (const v of (raw && Array.isArray(raw.versions) ? raw.versions : [])) {
+    if (!v || !LOGO_ID_RE.test(String(v.id || '')) || versions.some(x => x.id === v.id)) continue;
+    const slots = {};
+    for (const slot of Object.keys(LOGO_SLOTS)) {
+      const ext = v.slots && v.slots[slot];
+      if (ext === 'png' || ext === 'webp') slots[slot] = ext;
+    }
+    if (!slots.mark) continue;
+    versions.push({ id: v.id, name: String(v.name || '').slice(0, 40) || 'Logo', at: String(v.at || ''), by: String(v.by || ''), slots });
+  }
+  const active = raw && versions.some(v => v.id === raw.active) ? raw.active : '';
+  return { active, versions };
+}
+async function logoState(env) {
+  const s = await bootSettings(env);
+  return { ...s.logo, failed: s.failed };
+}
+// For the admin routes: straight from D1, and a failed read is an error
+// rather than "Classic", or a save would write the list back empty.
+async function readLogoState(env) {
+  const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?').bind(LOGO_KEY).first();
+  let raw = null;
+  try { raw = r && r.value ? JSON.parse(r.value) : null; } catch { raw = null; }
+  return cleanLogoState(raw);
+}
+async function writeLogoState(env, state) {
+  await env.DB.prepare(
+    `INSERT INTO settings (key,value) VALUES (?,?)
+     ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+  ).bind(LOGO_KEY, JSON.stringify({ active: state.active, versions: state.versions })).run();
+  _bootSettings = null;
+}
+function logoObjectKey(id, slot, ext) { return LOGO_PREFIX + id + '/' + slot + '.' + ext; }
+function logoOut(state) {
+  return {
+    active: state.active,
+    versions: state.versions.map(v => ({ id: v.id, name: v.name, at: v.at, by: v.by, slots: Object.keys(v.slots) }))
+  };
+}
+// 'logo/mark.webp' (the logo in use), 'logo/{id}/mark.webp' (one version, for
+// the dashboard's previews; 'classic' is the committed set) or an old name
+// -> {slot, id?}; null for anything else under /assets/.
+function logoTarget(key) {
+  if (LOGO_OLD_NAMES[key]) return { slot: LOGO_OLD_NAMES[key] };
+  if (!key.startsWith(LOGO_PREFIX)) return null;
+  const parts = key.split('/');
+  if (parts.length === 2 && LOGO_FILE_SLOT[parts[1]]) return { slot: LOGO_FILE_SLOT[parts[1]] };
+  if (parts.length === 3 && (parts[1] === 'classic' || LOGO_ID_RE.test(parts[1])) && LOGO_FILE_SLOT[parts[2]]) {
+    return { slot: LOGO_FILE_SLOT[parts[2]], id: parts[1] };
+  }
+  return null;
+}
+async function serveLogo(env, request, url, target) {
+  const state = await logoState(env);
+  const pinned = target.id != null;
+  const version = state.versions.find(v => v.id === (pinned ? target.id : state.active)) || null;
+  if (pinned && !version && target.id !== 'classic') {
+    return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  }
+  // A read that failed says "Classic" without knowing: never let that sit in
+  // a browser for an hour.
+  let cc = state.failed ? 'no-store' : LOGO_CACHE;
+  const ext = version && version.slots[target.slot];
+  if (ext && env.ART) {
+    const key = logoObjectKey(version.id, target.slot, ext);
+    // A version's files never change (a changed logo is a new version), so
+    // the id is the whole ETag and a match needs no R2 read.
+    const etag = '"logo-' + version.id + '-' + target.slot + '"';
+    const headers = imageHeaders(null, key, pinned ? IMAGE_CACHE_IMMUTABLE : cc);
+    headers.set('ETag', etag);
+    const inm = request.headers.get('If-None-Match') || '';
+    if (inm.split(',').some(t => cleanETag(t.trim()) === cleanETag(etag))) {
+      return new Response(null, { status: 304, headers });
+    }
+    let obj = null;
+    try { obj = await env.ART.get(key); } catch { cc = 'no-store'; }
+    if (obj) return new Response(obj.body, { headers });
+  }
+  // Classic, or a size this version does not have: the committed file.
+  return (await committedImageResponse(env, url.origin, LOGO_PREFIX + LOGO_SLOTS[target.slot].file, request, cc, true))
+    || new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
 }
 
 // A short content hash for ETags of small bodies (/api/boot): FNV-1a over the
@@ -8283,8 +8414,8 @@ ${o.themeColor ? '<meta name="theme-color" content="' + attr(o.themeColor) + '">
 <meta name="twitter:title" content="${attr(ogTitle)}">
 <meta name="twitter:description" content="${attr(o.desc)}">
 <meta name="twitter:image" content="${attr(o.ogImage)}">
-<link rel="icon" type="image/png" sizes="64x64" href="${R}assets/favicon.png">
-<link rel="apple-touch-icon" href="${R}assets/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="${R}assets/logo/favicon.png">
+<link rel="apple-touch-icon" href="${R}assets/logo/favicon.png">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['styles.css'] || 'styles.css'}">
 <link rel="stylesheet" href="${R}assets/${ASSET_MANIFEST['header-redesign.css'] || 'header-redesign.css'}">
 ${themeHead}</head>
@@ -8294,8 +8425,8 @@ ${o.draftBanner || ''}
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="${R}">
-        <img class="brand-skull" src="${R}assets/logo_skull.webp" alt="">
-        <img class="brand-header-text" src="${R}assets/headertext.png" alt="BOTC HomeBrew Wiki">
+        <img class="brand-skull" src="${R}assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="${R}assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="${R}assets/ccc-parchment.webp" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#"><span class="ico ico-edit" aria-hidden="true"></span> Edit</a>
@@ -9215,7 +9346,7 @@ async function renderContentPage(env, ctx, request, url, type, slug, loadRow) {
   const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(address);
   // A banner or logo can be an absolute URL (Bloodstar imports, remote art),
   // which must not be glued onto this origin's /assets/ path.
-  const imgPath = String(d.header || d.logo || 'logo_skull.png');
+  const imgPath = String(d.header || d.logo || 'logo/og.png');
   const img = /^https?:\/\//i.test(imgPath) ? imgPath : url.origin + '/assets/' + imgPath;
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>' +
@@ -9989,8 +10120,12 @@ const app = {
     // (max-age=0): an edit has to show on the next page, which a max-age would
     // break for that long. A matching ETag answers 304 with no body.
     if (method === 'GET' && path === '/api/boot') {
-      const [items, announcement] = await Promise.all([siteTextItems(env), announcementValue(env)]);
-      const body = JSON.stringify({ items, announcement });
+      // `logo` names the logo in use ('' is Classic) and is left out when the
+      // read failed; site.js compares it with the one this browser last saw.
+      const [items, settings] = await Promise.all([siteTextItems(env), bootSettings(env)]);
+      const body = JSON.stringify(settings.failed
+        ? { items, announcement: settings.ann }
+        : { items, announcement: settings.ann, logo: settings.logo.active });
       const etag = 'W/"boot-' + fnv1a(body) + '"';
       const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
       return withServerTiming(env, (request.headers.get('If-None-Match') || '') === etag
@@ -10130,7 +10265,7 @@ const app = {
           'News from the BOTC Homebrew Wiki.');
         const img = a.image
           ? (/^https?:\/\//i.test(a.image) ? a.image : url.origin + '/assets/' + a.image)
-          : url.origin + '/assets/logo_skull.png';
+          : url.origin + '/assets/logo/og.png';
         // [[Character Name]] in an article links to that character's page. The
         // map is only fetched when the article has a [[link]] to resolve, and
         // both registries are set with no suspension before the render. A
@@ -10385,7 +10520,7 @@ const app = {
         const html = pageShell({
           title: (isDraft ? 'Draft: ' : '') + (row.title || 'Page'),
           desc, canonicalUrl: url.origin + '/p/' + encodeURIComponent(pageAddress),
-          ogImage: bannerImg || (url.origin + '/assets/logo_skull.png'),
+          ogImage: bannerImg || (url.origin + '/assets/logo/og.png'),
           ogCard: bannerImg ? 'summary_large_image' : 'summary',
           // A set's pages are intentionally unlisted: no search engines and no
           // sitemap entry. A standalone article is listed (/articles), so it
@@ -10696,6 +10831,8 @@ const app = {
         try { key = decodeURIComponent(path.slice('/assets/'.length)); }
         catch { return new Response('Invalid image path', { status: 400 }); }
         if (key.includes('..')) return new Response('Not found', { status: 404 });
+        const logo = logoTarget(key);
+        if (logo) return serveLogo(env, request, url, logo);
         if (key.startsWith('media/')) return serveMedia(env, ctx, request, url, key);
         if (key.startsWith(THUMB_PREFIX)) return serveThumb(env, ctx, request, url, key);
         if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
@@ -13854,6 +13991,12 @@ const app = {
         ).bind(since).first()
       ]);
       return jsonResponse({ days, totals: totals || { views: 0, pages: 0 }, top: top.results || [] });
+    }
+
+    // ---------- ADMIN: THE WIKI'S LOGO ----------
+    // Every version and which one is in use. (Admin-only by the gate above.)
+    if (method === 'GET' && path === '/api/admin/logo') {
+      return jsonResponse(logoOut(await readLogoState(env)));
     }
 
     // ---------- ADMIN: SYSTEM TEXT OVERRIDES ----------
@@ -18233,6 +18376,83 @@ const app = {
         });
       }
 
+      // ---- admin: the wiki's logo ----
+      // {action:'use', id} switches ('' is Classic). {action:'add', name,
+      // files:{slot: data URL}} stores a version; the dashboard makes the six
+      // pictures from one upload (assets/logo-admin.js), and a slot it leaves
+      // out keeps drawing Classic. {action:'delete', id} removes one, falling
+      // back to Classic if it was in use. Keys are minted here, as for
+      // attachments/, so /api/upload cannot write under logo/. Not a content
+      // write: it stays available while the wiki is locked, like the banner.
+      if (path === '/api/admin/logo') {
+        const b = await request.json().catch(() => ({}));
+        const action = String(b.action || '');
+        const state = await readLogoState(env);
+        const id = String(b.id || '');
+        if (action === 'use') {
+          const version = state.versions.find(v => v.id === id);
+          if (id && !version) return jsonResponse({ error: 'That logo is not on the list any more.' }, { status: 404 });
+          state.active = id;
+          await writeLogoState(env, state);
+          await logActivity(env, sess, 'logo', 'wiki', null, 'use: ' + (version ? version.name : 'Classic'));
+          return jsonResponse({ ok: true, ...logoOut(state) });
+        }
+        if (action === 'delete') {
+          const version = state.versions.find(v => v.id === id);
+          if (!version) return jsonResponse({ error: 'That logo is not on the list any more.' }, { status: 404 });
+          state.versions = state.versions.filter(v => v.id !== id);
+          if (state.active === id) state.active = '';
+          await writeLogoState(env, state);
+          if (env.ART) {
+            await env.ART.delete(Object.entries(version.slots).map(([slot, ext]) => logoObjectKey(id, slot, ext)))
+              .catch(() => { /* the list no longer names them; nothing serves them */ });
+          }
+          await logActivity(env, sess, 'logo', 'wiki', null, 'delete: ' + version.name);
+          return jsonResponse({ ok: true, ...logoOut(state) });
+        }
+        if (action === 'add') {
+          if (!env.ART) return jsonResponse({ error: 'Image storage is not available.' }, { status: 503 });
+          if (state.versions.length >= LOGO_VERSIONS_MAX) {
+            return jsonResponse({ error: 'That is the most logos the list holds (' + LOGO_VERSIONS_MAX + '). Delete one first.' }, { status: 400 });
+          }
+          const name = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+          if (!name) return jsonResponse({ error: 'Give the logo a name.' }, { status: 400 });
+          const files = b.files && typeof b.files === 'object' ? b.files : {};
+          if (!files.mark) return jsonResponse({ error: 'Pick the logo picture.' }, { status: 400 });
+          // Every picture is checked before any is stored.
+          const images = {};
+          for (const [slot, spec] of Object.entries(LOGO_SLOTS)) {
+            if (!files[slot]) continue;
+            const img = starlitImage(files[slot], spec.types, spec.max);
+            if (img.error) return jsonResponse({ error: img.error }, { status: 400 });
+            const dims = imageDims(img.bytes);
+            if (!dims || dims.w > LOGO_SIDE_MAX || dims.h > LOGO_SIDE_MAX) {
+              return jsonResponse({ error: 'That picture is too large (' + LOGO_SIDE_MAX + 'px a side at most).' }, { status: 400 });
+            }
+            images[slot] = img;
+          }
+          const newId = randomToken().slice(0, 12);
+          let by = '';
+          try {
+            const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+            by = (u && u.username) || '';
+          } catch { /* non-fatal */ }
+          const slots = {};
+          for (const [slot, img] of Object.entries(images)) {
+            await env.ART.put(logoObjectKey(newId, slot, img.ext), img.bytes, {
+              httpMetadata: { contentType: img.type },
+              customMetadata: { owner: String(sess.userId) }
+            });
+            slots[slot] = img.ext;
+          }
+          state.versions.push({ id: newId, name, at: new Date().toISOString(), by, slots });
+          await writeLogoState(env, state);
+          await logActivity(env, sess, 'logo', 'wiki', null, 'add: ' + name);
+          return jsonResponse({ ok: true, id: newId, ...logoOut(state) });
+        }
+        return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+      }
+
       // ---- admin: site-wide announcement banner ----
       if (path === '/api/admin/announce') {
         const b = await request.json().catch(() => ({}));
@@ -18241,7 +18461,7 @@ const app = {
         const text = String(b.text || '').trim().slice(0, 600);
         if (!text) {
           await env.DB.prepare("DELETE FROM settings WHERE key='announcement'").run();
-          _announcementCache = null;
+          _bootSettings = null;
           await logActivity(env, sess, 'announce', 'wiki', null, 'cleared');
           return jsonResponse({ ok: true, announcement: null });
         }
@@ -18255,7 +18475,7 @@ const app = {
           `INSERT INTO settings (key,value) VALUES ('announcement',?)
            ON CONFLICT(key) DO UPDATE SET value=excluded.value`
         ).bind(JSON.stringify(ann)).run();
-        _announcementCache = null;
+        _bootSettings = null;
         await logActivity(env, sess, 'announce', 'wiki', null, text.slice(0, 60));
         return jsonResponse({ ok: true, announcement: ann });
       }

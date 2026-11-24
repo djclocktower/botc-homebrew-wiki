@@ -966,6 +966,17 @@ assets/
                        bar hides, and the strip it left was blank. Only while
                        pinned, or that layer would cover an announcement,
                        draft bar or Partial notice above the bar.
+  logo/                The wiki's logo, in its six sizes: mark.webp (top
+                       bar), hero.webp (homepage title), wordmark.png (the
+                       lettering), favicon.png (browser tab, and the stand-in
+                       for a missing picture), icon.png (credits Fabled in an
+                       exported script), og.png (link previews). These files
+                       are the Classic logo; the Worker answers their
+                       addresses with whichever version is in use. See "The
+                       wiki logo".
+  logo-admin.js        The dashboard's "Wiki logo" card: lists the versions,
+                       switches, and makes the six sizes of a new one from a
+                       single upload (canvas). Browser only.
   icons/               Official BotC role icons (never change; long-cached).
                        The OLDER art style — what pages draw is the CDN art in
                        roles.json, so nothing displays these directly any more.
@@ -2540,9 +2551,9 @@ once instead of hiding behind the year-long versioned cache. About 2,100
 icons from the admin's browser, `PARALLEL` (6) in flight at once: expect
 ten to fifteen minutes, and leave the tab open. It cannot run anywhere
 else — the Worker has no image encoder, so the resize is a canvas job. The credits Fabled the Script Builder
-appends had the same problem for the same reason — `logo_skull.png` is
-cropped to the ink — so `buildCreditsFabled()` points at
-`logo_skull_icon.png`, the same pixels on a padded 320px square.
+appends had the same problem for the same reason — the top bar's skull is
+cropped to the ink — so `buildCreditsFabled()` points at the logo's `icon`
+size (`/assets/logo/icon.png`), the same picture on a padded 320px square.
 
 ## The printable token (`tokenArt` / `token`)
 
@@ -4040,6 +4051,58 @@ the rules and `markHTML()`, the one way a mark is drawn (a CSS tooltip,
   script tool prints it). A name with the mark already typed in is not given
   it twice.
 
+## The wiki logo (switchable versions)
+
+The logo is the pirate skull and its lettering. An admin can keep several
+versions and switch between them: Dashboard → Site → **Wiki logo**. Asked
+for by the owner (2026-11).
+
+- **Six sizes, six fixed addresses** (`LOGO_SLOTS` in worker.js):
+  `/assets/logo/mark.webp` (top bar, the Script Builder's credits line),
+  `hero.webp` (homepage title), `wordmark.png` (the lettering),
+  `favicon.png` (browser tab, and the stand-in every card draws for a
+  missing picture), `icon.png` (the credits Fabled in an exported script),
+  `og.png` (the link preview of a page with no picture of its own). **Every
+  page, renderer and export points at these and nothing else**, so switching
+  the logo edits no page. A new place that draws the logo uses one of them.
+- **`serveLogo()` answers them with the version in use.** Classic is the
+  committed files in `assets/logo/`; an added version's files are in R2 under
+  `logo/{id}/{slot}.{ext}`. A size a version lacks draws Classic.
+  `/assets/logo/{id}/{file}` (`classic` included) is one version whatever is
+  in use, for the dashboard's previews. The six names the files had before
+  (`LOGO_OLD_NAMES`: `logo_skull.png`, `favicon.png` …) are answered the same
+  way, because old exports and link previews still ask for them; both sets
+  are in `run_worker_first`.
+- **State is one `settings` row**, `site_logo` = `{active, versions: [{id,
+  name, at, by, slots: {slot: ext}}]}`, cleaned on every read
+  (`cleanLogoState()`). `active` is `''` for Classic. It is read in the same
+  query as the announcement (`bootSettings()`), memoised for five seconds.
+- **`POST /api/admin/logo`**: `{action: 'use', id}`, `{action: 'add', name,
+  files: {slot: data URL}}`, `{action: 'delete', id}` (deleting the one in
+  use falls back to Classic). `GET` lists. Keys are minted by the Worker;
+  `logo/` is not in `R2_PREFIXES`, so `/api/upload` cannot write there. Bytes
+  are sniffed, PNG or WebP only (the three that leave the site are PNG), and
+  capped at `LOGO_SIDE_MAX` a side. A version's files never change: a changed
+  logo is a new version, which is what lets its id be the ETag. Not a content
+  write (it works while the wiki is locked) and its `logo` log action is not
+  in `FEED_CHANGING_ACTIONS`.
+- **One upload makes all six** (`assets/logo-admin.js`, `SIZES`), in the
+  admin's browser because the Worker has no image encoder: the picture is
+  trimmed to its drawing and fitted into each size's frame, so a new logo
+  sits where the old one did. The lettering is a second, optional picture.
+- **Caching.** The addresses are sent `max-age=3600` plus
+  `stale-while-revalidate`; they used to be immutable for a year, which is
+  why they could not simply be overwritten. Nobody waits the hour:
+  `/api/boot` carries `logo` (the id in use), site.js keeps the last one it
+  saw in localStorage (`botc_logo`), and on a difference re-fetches the four
+  sizes a page draws with `cache: 'reload'` and swaps them on the page
+  (`SiteLogo.refresh()`), so the next page has the new logo from its first
+  paint. The dashboard calls the same function after a switch. A failed
+  settings read answers Classic with `no-store` and leaves `logo` out of
+  `/api/boot`.
+- **`assets/logo.png`** (skull and lettering in one picture) is drawn
+  nowhere and is not part of this.
+
 ## Featured Character (the homepage slot)
 
 A **creator** is drawn first, then one of that creator's characters
@@ -5310,9 +5373,10 @@ the jinx index rows carry `v` for it (cache key `&s=2`, `/api/jinxes` ETag
 `cover` look) instead of `parchment.jpg` (64 KB). The top-bar skull and badge
 WebPs were re-encoded at ~3x their drawn height (16 → 12 KB, 17 → 8 KB) in
 place — the same picture, so a cached old copy looks identical; that is the
-only reason an immutable file could be overwritten. `headertext.png` (the
-wordmark, 82×44 — too small to be sharp on a 3x screen, and there is no
-larger source) now caches for a day instead of revalidating on every page.
+only reason an immutable file could be overwritten. The skull and the
+wordmark (82×44 — too small to be sharp on a 3x screen, and there is no
+larger source) are the wiki's logo now, served by the Worker and cached for
+an hour: see "The wiki logo".
 
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route

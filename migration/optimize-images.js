@@ -5,7 +5,7 @@
 
    `decor`  — the page furniture as WebP, beside the originals: bg.webp and the
               phone-sized bg-m.webp (styles.css picks one by viewport),
-              parchment.webp, ccc-parchment.webp, logo_skull.webp. These are
+              parchment.webp, ccc-parchment.webp, logo/mark.webp. These are
               cached immutable for a year (_headers), so a CHANGED picture must
               get a new filename and a new reference, never an overwrite.
    `thumbs` — assets/thumb/{file}.webp for every file in assets/art/: the
@@ -42,7 +42,7 @@ async function decor() {
     // two are made by `node migration/make-small-icons.js decor` (canvas,
     // q85), which needs no sharp; this line is kept in step with it.
     ['ccc-parchment.png', 'ccc-parchment.webp', { height: 96 }, { quality: 85, alphaQuality: 90 }],
-    ['logo_skull.png', 'logo_skull.webp', { height: 162 }, { quality: 85, alphaQuality: 90 }]
+    ['logo/og.png', 'logo/mark.webp', { height: 162 }, { quality: 85, alphaQuality: 90 }]
   ];
   for (const [src, dst, resize, opts, rotate] of jobs) {
     let img = sharp(A + src);

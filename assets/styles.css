@@ -290,7 +290,7 @@ body::after { display: none; }
   height: 54px; width: auto; display: block;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
 }
-/* brand-text removed — replaced by headertext.png image */
+/* brand-text removed — replaced by the logo's wordmark image */
 .brand-header-text {
   height: 44px; width: auto; display: block;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));

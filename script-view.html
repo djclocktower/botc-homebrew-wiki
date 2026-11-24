@@ -5,7 +5,7 @@
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script — BOTC HomeBrew Wiki</title>
-<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/logo/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
@@ -14,8 +14,8 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
-        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+        <img class="brand-skull" src="assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
@@ -125,7 +125,7 @@
           listHTML += '<div class="script-char-list">';
           grp.forEach(function(c){
             listHTML += '<a class="script-char-row" href="' + esc(c.page) + '">' +
-              '<img class="script-char-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<img class="script-char-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/logo/favicon.png')) + '" alt="" onerror="this.src=\'assets/logo/favicon.png\'">' +
               '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + '</span>' +
               '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
           });

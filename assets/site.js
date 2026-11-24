@@ -690,6 +690,50 @@
       .catch(function () {});
   })();
 
+  /* ── The wiki's logo ──
+     Every page draws the logo from fixed addresses (/assets/logo/…), which
+     the Worker answers with the version in use and the browser keeps for an
+     hour. /api/boot names that version. When it is not the one this browser
+     last saw, the addresses are fetched again past the cache: the pictures
+     on this page are swapped, and the next page has the new logo from its
+     first paint. A browser that has never been told a version has nothing
+     stale to replace. The dashboard calls both functions after a switch. */
+  (function () {
+    var KEY = 'botc_logo';
+    // The sizes a page draws. The other two (icon, og) are only ever fetched
+    // by other sites.
+    var FILES = ['mark.webp', 'wordmark.png', 'favicon.png', 'hero.webp'];
+    function fileOf(u) {
+      var m = /\/assets\/logo\/([a-z]+\.(?:webp|png))(?:[?#]|$)/.exec(String(u || ''));
+      return m ? m[1] : '';
+    }
+    function refresh() {
+      return Promise.all(FILES.map(function (file) {
+        return fetch('/assets/logo/' + file, { cache: 'reload' })
+          .then(function (r) { return r.ok ? r.blob() : null; })
+          .then(function (blob) {
+            if (!blob) return;
+            var fresh = URL.createObjectURL(blob);
+            Array.prototype.forEach.call(document.images, function (img) {
+              if (fileOf(img.src) === file) img.src = fresh;
+            });
+            Array.prototype.forEach.call(document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]'), function (link) {
+              if (fileOf(link.href) === file) link.href = fresh;
+            });
+          })
+          .catch(function () {});
+      }));
+    }
+    function seen(id) { try { localStorage.setItem(KEY, String(id || '')); } catch (e) {} }
+    window.SiteLogo = { refresh: refresh, seen: seen };
+    (window.__botcBoot || Promise.resolve(null)).then(function (d) {
+      if (!d || typeof d.logo !== 'string') return;
+      var last = null;
+      try { last = localStorage.getItem(KEY); localStorage.setItem(KEY, d.logo); } catch (e) { return; }
+      if (last !== null && last !== d.logo) refresh();
+    });
+  })();
+
   /* ── "This page is Partial" notice: closeable, like the announcement ──
      The notice itself is server-rendered (partialNoticeHTML in worker.js) and
      only ever served to the page's owner or an admin, so anything found here
@@ -1015,18 +1059,18 @@
       if (c.art) return assetSrc(c.art) + ver;
       if (typeof c.image === 'string' && c.image) return assetSrc(c.image);
       if (Array.isArray(c.image) && c.image[0]) return assetSrc(c.image[0]);
-      return ROOT + 'assets/favicon.png';
+      return ROOT + 'assets/logo/favicon.png';
     }
     function pageThumb(p) {
       var img = p.logo || p.header;
       var ver = img && p.v && !/^(?:https?:)?\/\//i.test(img)
         ? (img.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(p.v)) : '';
-      return img ? assetSrc(img) + ver : (ROOT + 'assets/favicon.png');
+      return img ? assetSrc(img) + ver : (ROOT + 'assets/logo/favicon.png');
     }
     function clip(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
     function thumbHTML(src, round) {
       return '<img class="search-result-thumb' + (round ? ' round' : '') + '" src="' + esc(src) + '" alt="" ' +
-        'onerror="this.onerror=null;this.src=\'' + ROOT + 'assets/favicon.png\'">';
+        'onerror="this.onerror=null;this.src=\'' + ROOT + 'assets/logo/favicon.png\'">';
     }
     function iconHTML(glyph, cls) {
       return '<span class="search-result-icon' + (cls ? ' ' + cls : '') + '" aria-hidden="true">' + glyph + '</span>';
@@ -1073,7 +1117,7 @@
           sub = mark(clip([d.parentName, d.author ? 'by ' + d.author : ''].filter(Boolean).join(' · '), 90));
           break;
         case 'news':
-          pic = thumbHTML(ROOT + 'assets/favicon.png');
+          pic = thumbHTML(ROOT + 'assets/logo/favicon.png');
           sub = mark(clip(d.summary, 90));
           break;
         case 'tag':
@@ -1081,7 +1125,7 @@
           sub = (d.kind === 'team' ? 'Team' : 'Tag') + ' · ' + d.count + ' character' + (d.count === 1 ? '' : 's');
           break;
         default:
-          pic = thumbHTML(ROOT + 'assets/favicon.png');
+          pic = thumbHTML(ROOT + 'assets/logo/favicon.png');
           sub = esc(d.desc || d.kind || '');
       }
       return '<a class="search-result" href="' + esc(item.href) + '" role="option">' + pic +

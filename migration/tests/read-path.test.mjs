@@ -116,7 +116,7 @@ test('/api/boot is one round trip, creates nothing, and answers 304 to its own E
   const f = await fixture();
   const log = timed(f);
   const res = await f.request('/api/boot');
-  assert.deepEqual(await res.json(), { items: [], announcement: null });
+  assert.deepEqual(await res.json(), { items: [], announcement: null, logo: '' });
   assert.equal(waves(log), 1);
   assert.deepEqual(f.calls.filter(schemaWrite), []);
   const etag = res.headers.get('ETag');
