@@ -889,14 +889,14 @@
      credited still gets the Fabled, just without the "by:" half. */
   var CREDITS_FABLED_ID = 'botchomebrewwiki';
   var CREDITS_FABLED_NAME = 'botchomebrew.wiki';
-  /* The padded copy, not the topbar's logo_skull.png: that one is cropped
-     to the ink (149×190) and the script tool draws whatever it is handed
-     into the same box as its own icons, so the skull printed half again the
-     size of the Bootlegger beside it. logo_skull_icon.png is the same
-     pixels on a transparent 320px square, the figure at the standard
-     ART_FILL of art-normalize.js. Regenerate it the same way if the skull
-     ever changes. */
-  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull_icon.png';
+  /* The logo's `icon` size (see "The wiki logo" in CLAUDE.md), not the top
+     bar's: that one is cropped to the ink and the script tool draws whatever
+     it is handed into the same box as its own icons, so the skull printed
+     half again the size of the Bootlegger beside it. This one is the logo
+     on a transparent 320px square, the figure at the standard ART_FILL of
+     art-normalize.js. The address is fixed and the Worker answers it with
+     the logo in use, so a file exported last month follows a new logo. */
+  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo/icon.png';
   var CREDITS_FABLED_LEAD = 'This script was made on botchomebrew.wiki';
 
   /* [{ creator, characters[] }] in order of first appearance on the script.

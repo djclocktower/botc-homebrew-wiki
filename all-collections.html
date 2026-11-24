@@ -10,7 +10,7 @@
 <meta property="og:title" content="All Collections">
 <meta property="og:description" content="Browse every collection of homebrew Blood on the Clocktower characters on the wiki.">
 <meta property="og:type" content="website">
-<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/logo/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <!-- The feeds this page draws from start downloading here, while the
      stylesheet and scripts are still on their way, instead of after the
@@ -26,8 +26,8 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
-        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+        <img class="brand-skull" src="assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
@@ -113,7 +113,7 @@
       var banner = header || (coll && coll.logo);
       var topHTML = banner
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, PageRender.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/logo/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +

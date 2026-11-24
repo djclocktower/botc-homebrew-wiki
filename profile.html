@@ -17,8 +17,8 @@
 
   Served from both paths, so every path in here is absolute.
 -->
-<link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon.png">
-<link rel="apple-touch-icon" href="/assets/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/logo/favicon.png">
+<link rel="apple-touch-icon" href="/assets/logo/favicon.png">
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="stylesheet" href="/assets/header-redesign.css">
 <style>
@@ -127,8 +127,8 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="/assets/logo_skull.webp" alt="">
-        <img class="brand-header-text" src="/assets/headertext.png" alt="BOTC HomeBrew Wiki">
+        <img class="brand-skull" src="/assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="/assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="/assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
@@ -378,7 +378,7 @@
         href = '/' + String(hit.page || ('c/' + hit.slug)).replace(/^\//, '');
         // PageRender.imgSrc, like the tiles: a path that is already a whole
         // URL (art hosted elsewhere) must not get /assets/ glued on.
-        thumb = hit.art ? PageRender.imgSrc('/', hit.art, hit.v) : (hit.image || '/assets/favicon.png');
+        thumb = hit.art ? PageRender.imgSrc('/', hit.art, hit.v) : (hit.image || '/assets/logo/favicon.png');
         name = hit.name;
       } else if (p.type === 'script') {
         href = '/s/' + encodeURIComponent(hit.slug);
@@ -386,11 +386,11 @@
         // /collection/ pages themselves fall back through. Reading `header`
         // alone put the skull on every page with a logo and no header, which
         // is every Bloodstar import.
-        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/favicon.png';
+        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/logo/favicon.png';
         name = hit.name;
       } else {
         href = '/collection/' + encodeURIComponent(hit.id || hit.slug);
-        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/favicon.png';
+        thumb = PageRender.imgSrc('/', hit.header || hit.logo, hit.v) || '/assets/logo/favicon.png';
         name = hit.displayName || hit.slug;
       }
       // A pinned character carries the same quick actions as every other
@@ -400,7 +400,7 @@
       return '<a class="pin-card" href="' + esc(href) + '">' +
         (slot ? '<span class="card-side">' : '') +
         '<img loading="lazy" decoding="async" class="pin-thumb" src="' + esc(thumb) +
-        '" alt="" onerror="this.onerror=null;this.src=\'/assets/favicon.png\'">' +
+        '" alt="" onerror="this.onerror=null;this.src=\'/assets/logo/favicon.png\'">' +
         (slot ? slot + '</span>' : '') +
         '<span class="pin-text"><span class="pin-name">' + esc(name) + '</span>' +
         '<span class="pin-kind">' + esc(p.type) + '</span></span></a>';

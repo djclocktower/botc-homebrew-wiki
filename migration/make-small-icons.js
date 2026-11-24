@@ -29,7 +29,7 @@
    just slower.
 
    `decor` — the top bar's badge and skull (assets/ccc-parchment.webp,
-   assets/logo_skull.webp) from their PNG originals, at ~3x the height they
+   assets/logo/mark.webp) from their PNG originals, at ~3x the height they
    are drawn at (32px and 54px at most), q85. They were the full-size PNGs
    re-encoded: 17 KB and 16 KB for a 24-54px picture on every first visit.
    These two were overwritten in place rather than renamed, which the
@@ -53,7 +53,7 @@ const QUALITY = 0.85;
 const DECOR = [
   // [source PNG, output WebP, height in px]
   ['ccc-parchment.png', 'ccc-parchment.webp', 96],
-  ['logo_skull.png', 'logo_skull.webp', 162]
+  ['logo/og.png', 'logo/mark.webp', 162]
 ];
 
 function playwright() {

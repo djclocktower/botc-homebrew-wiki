@@ -153,7 +153,7 @@
     var topHTML = banner
       ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PR.imgSrc('', banner, coll.v)) + '"' + PR.responsiveAttrs('', banner, coll.v, PR.TILE_SIZES) + ' alt="' + esc(name) + '"></div>'
       : '<div class="collection-icons">' + pickIcons(list, 8).map(function (c) {
-          return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PR.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
+          return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PR.thumbSrc(c, '')) + '" onerror="this.src=\'assets/logo/favicon.png\'" alt="">';
         }).join('') + '</div>';
     return '<a class="collection-tile" href="collection/' + esc(encodeURIComponent(coll.id || coll.slug)) + '">' +
       topHTML +

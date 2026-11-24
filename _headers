@@ -20,7 +20,7 @@
 # sheet exports, which the browser refuses without this header — wiki-hosted
 # characters printed as generic placeholders while looking fine on screen.
 # The Worker sets the same header on the R2-served image prefixes; this rule
-# covers the committed copies (assets/icons/, assets/art/, logo_skull.png …).
+# covers the committed copies (assets/icons/, assets/art/ …).
 /assets/*
   Access-Control-Allow-Origin: *
 
@@ -100,13 +100,9 @@
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
-# The top bar's wordmark is on every page, and the /assets/*.png rule above
-# made every page view revalidate it. A day is long enough to stop that and
-# short enough that a replaced wordmark shows by tomorrow (a new filename
-# shows at once).
-/assets/headertext.png
-  ! Cache-Control
-  Cache-Control: public, max-age=86400
+# The wiki's logo (/assets/logo/*, and the old names it used to have) is
+# answered by the Worker, which sets its own Cache-Control: see serveLogo in
+# worker.js. Nothing here applies to it.
 
 # Fonts rarely change and are large. The woff2 files are self-hosted copies
 # of the Google faces the site used to @import (see assets/fonts/README.md).

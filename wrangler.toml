@@ -53,6 +53,12 @@ run_worker_first = [
   "/assets/attachments/*",
   # The Starlit Gallery's icon layers and textures (see STARLIT_PREFIX).
   "/assets/starlit/*",
+  # The wiki's logo: the Worker answers these with the version in use (see
+  # serveLogo). The second line is what the files were called before they
+  # moved under logo/; old exports and link previews still ask for them.
+  "/assets/logo/*",
+  "/assets/logo_skull.webp", "/assets/wiki-skull.webp", "/assets/headertext.png",
+  "/assets/favicon.png", "/assets/logo_skull_icon.png", "/assets/logo_skull.png",
   # The Krita web port test page, served from R2 (see serveKrita).
   "/krita", "/krita/*"
 ]

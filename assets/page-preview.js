@@ -71,7 +71,7 @@
       '<style id="pp-css">' + FRAME_CSS + '</style>' +
       '<style id="page-custom-css"></style><style id="page-moves"></style>' +
       '</head><body>' +
-      '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.webp" alt="">' +
+      '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo/mark.webp" alt="">' +
       '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span></a></header>' +
       '<main class="wrap" id="content"></main></body></html>';
   }

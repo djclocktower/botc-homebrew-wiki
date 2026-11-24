@@ -154,7 +154,7 @@
     if (c.art) return 'assets/' + c.art + ver;
     if (typeof c.image === 'string' && c.image) return c.image;
     if (Array.isArray(c.image) && c.image[0]) return c.image[0];
-    return 'assets/favicon.png';
+    return 'assets/logo/favicon.png';
   }
   // One character card, as the browse pages draw it. `mark` (optional) turns
   // plain text into HTML with the search words highlighted; without it the
@@ -167,7 +167,7 @@
       // The icon, and under it the Favorites / Add to Script quick actions
       // (assets/card-actions.js fills the slot).
       '<span class="card-side">' +
-      '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+      '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/logo/favicon.png\'">' +
       (dep('CardActions') ? dep('CardActions').slotHTML(c) : '') + '</span>' +
       '<div class="char-card-info">' +
       '<div class="char-card-name">' + m(c.name) +
