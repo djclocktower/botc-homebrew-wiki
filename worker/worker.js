@@ -2472,49 +2472,8 @@ async function ensureOfficialTagsTable(env) {
    a list of its own: the Fridge Gallery is blubber's from its first day. */
 const GALLERIES = {
   starlit: { id: 'starlit', name: 'Starlit Gallery', prefix: 'starlit/', table: 'starlit', owners: [] },
-  fridge: { id: 'fridge', name: 'Fridge Gallery', prefix: 'fridge/', table: 'fridge', owners: ['blubber-nibble'],
-    artist: 'blubber', seedIcons: () => FRIDGE_SEED_ICONS }
+  fridge: { id: 'fridge', name: 'Fridge Gallery', prefix: 'fridge/', table: 'fridge', owners: ['blubber-nibble'] }
 };
-/* The Fridge Gallery's first icons, by blubber: committed files under
-   assets/fridge/seed/ ({slug}-black.png, -white.png, -thumb.webp, served
-   through the fridge/ R2 fallback), written in as rows once, when the
-   gallery's tables are made, as the seed texture packs are. After that they
-   are ordinary icons the team edits, re-layers and deletes like any other. */
-const FRIDGE_SEED_ICONS = [
-  ['wine-board', 'Wine Board', 'wine, glass, grapes, cheese, food'],
-  ['windmill', 'Windmill', 'windmill, building'],
-  ['veiled-hat', 'Veiled Hat', 'hat, veil, clothing'],
-  ['tomato-strawberry', 'Tomato Strawberry', 'pincushion, tomato, strawberry, pins, sewing'],
-  ['tire', 'Tire', 'tire, wheel'],
-  ['sun-hat', 'Sun Hat', 'hat, flower, clothing'],
-  ['bag-of-coal', 'Bag of Coal', 'coal, bag, winter'],
-  ['stumped', 'Stumped', 'stump, axe, tree'],
-  ['sonic', 'Sonic', 'hedgehog, animal'],
-  ['snowman', 'Snowman', 'snowman, hat, scarf, winter'],
-  ['snowglobe', 'Snowglobe', 'snowglobe, house, winter'],
-  ['snowflake', 'Snowflake', 'snowflake, winter'],
-  ['shrink-chaise', 'Shrink Chaise', 'chaise, couch, furniture'],
-  ['sleigh', 'Sleigh', 'sleigh, winter'],
-  ['scarlet-woman', 'Scarlet Woman', 'heart, horns'],
-  ['planet-x', 'Planet X', 'planet, space'],
-  ['parallax', 'Parallax', 'arch, door, mirror'],
-  ['pine-trees', 'Pine Trees', 'trees, forest'],
-  ['onion', 'Onion', ''],
-  ['mumkey', 'Mumkey', 'monkey, toy, cymbals'],
-  ['ley-line', 'Ley Line', 'line'],
-  ['keyring', 'Keyring', 'keys, ring'],
-  ['heavy-is-the-crown', 'Heavy Is the Crown', 'crown, thorns'],
-  ['froot', 'Froot', 'fruit'],
-  ['fags', 'Fags', 'cigarettes, pack'],
-  ['engihere', 'Engihere', 'helmet, pencil'],
-  ['doggo', 'Doggo', 'dog, animal'],
-  ['chopper', 'Chopper', 'ham, knives, board, food'],
-  ['boots', 'Boots', 'boots, clothing'],
-  ['binding-of-sacred-heart', 'Binding of Sacred Heart', 'heart, thorns, cross'],
-  ['candle', 'Candle', 'candle, flame'],
-  ['beedle', 'Beedle', 'beetle, tank, insect'],
-  ['ball-and-chain', 'Ball and Chain', 'ball, chain, shackle']
-];
 function galleryOf(v) {
   const id = String(v == null || v === '' ? 'starlit' : v);
   return Object.prototype.hasOwnProperty.call(GALLERIES, id) ? GALLERIES[id] : null;
@@ -2584,14 +2543,6 @@ async function ensureGalleryTables(env, g) {
       }
     }
     await env.DB.prepare(`INSERT INTO ${T}_textures (name, image, thumb, pack, kind) VALUES ` + rows.join(',')).run();
-    // The gallery's own first icons, in the same once-only step.
-    const seeds = g.seedIcons ? g.seedIcons() : [];
-    if (seeds.length) {
-      const base = g.prefix + 'seed/';
-      await env.DB.prepare(`INSERT INTO ${T}_icons (name, tags, artist, black, white, thumb) VALUES ` + seeds.map(([slug, name, tags]) =>
-        '(' + [q(name), q(JSON.stringify(starlitTags(tags))), q(g.artist || ''), q(base + slug + '-black.png'),
-          q(base + slug + '-white.png'), q(base + slug + '-thumb.webp')].join(',') + ')').join(',')).run();
-    }
   }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS ${T}_files (

@@ -16,21 +16,21 @@
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
-/* One card per icon gallery: its title art on the night sky it was drawn
-   for, its credit on parchment under it. Each gallery is the same page
+/* One card per icon gallery: its title art on parchment, its credit under
+   it. Each gallery is the same page
    (starlit.html; see "The Galleries" in CLAUDE.md). */
 .gal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
 .gal-card {
   display: flex; flex-direction: column; text-decoration: none; color: var(--maroon);
-  border: 2px solid var(--parch-frame); background: var(--purple-deep);
+  border: 2px solid var(--parch-frame);
+  background-color: var(--parch); background-image: url('assets/parchment.webp'); background-size: cover;
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .gal-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(40,12,30,.45); }
 .gal-art { display: flex; align-items: center; justify-content: center; aspect-ratio: 2 / 1; padding: 14px; }
-.gal-art img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.gal-art img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 2px 5px rgba(91,31,33,.3)); }
 .gal-foot {
-  background-color: var(--parch); background-image: url('assets/parchment.webp'); background-size: cover;
-  border-top: 2px solid var(--parch-frame); padding: 10px 16px;
+  border-top: 1px solid rgba(180,160,120,.45); padding: 10px 16px;
   font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .76rem; letter-spacing: .07em; text-transform: uppercase;
   display: flex; justify-content: space-between; gap: 10px; align-items: baseline; color: var(--good-name);
 }

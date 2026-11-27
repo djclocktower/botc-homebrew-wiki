@@ -3871,14 +3871,6 @@ Forge's `GALLERY_TEXTURES`.
   Gallery is `blubber-nibble`'s (credit name "blubber") from its first day.
   Once an admin saves a list in the team panel, that list is the whole
   answer.
-- **The Fridge Gallery starts with blubber's 33 icons** (`FRIDGE_SEED_ICONS`
-  in worker.js, a gallery's optional `seedIcons`): committed files in
-  `assets/fridge/seed/` (`{slug}-black.png`, `-white.png`, `-thumb.webp`,
-  made from the artist's flattened PNGs: black = the dark pixels, white = the
-  whole opaque figure, thumb drawn with compose()'s own code), written in as
-  rows in the same once-only step as the seed texture packs. Served through
-  the `fridge/` R2 fallback, like the Goat Skull's; after that they are
-  ordinary icons.
 - **`/galleries`** (galleries.html) is the hub, and what the Tools card
   ("The Galleries") and the editors' "Browse the Galleries" open. In pick
   mode its cards open a gallery with `?pick=1`, whose header has an "All

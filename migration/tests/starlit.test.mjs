@@ -285,17 +285,7 @@ test('the Fridge Gallery is its own gallery: its own icons, files and team', asy
   const { f, objects, call, feed, fridge, fcall } = await fridgeSetup(t);
   const empty = await fridge();
   assert.equal(empty.gallery, 'fridge');
-  // blubber's first icons are written in with the tables, from committed files.
-  assert.equal(empty.icons.length, 33);
-  const wine = empty.icons.find(i => i.name === 'Wine Board');
-  assert.equal(wine.artist, 'blubber');
-  assert.equal(wine.black, '/assets/fridge/seed/wine-board-black.png');
-  assert.equal(wine.thumb, '/assets/fridge/seed/wine-board-thumb.webp');
-  assert.ok(wine.tags.includes('wine'));
-  const fs = await import('node:fs');
-  for (const ic of empty.icons) for (const k of ['black', 'white', 'thumb']) {
-    assert.ok(fs.existsSync(new URL('../../' + ic[k].slice(1), import.meta.url)), ic[k] + ' is committed');
-  }
+  assert.deepEqual(empty.icons, []);
   assert.equal(empty.textures.length, 54, 'the same seed packs');
   // blubber is its team from the start, and only of this gallery.
   assert.equal((await fridge('blubber-nibble')).canUpload, true);
@@ -307,10 +297,9 @@ test('the Fridge Gallery is its own gallery: its own icons, files and team', asy
   assert.equal(made.status, 200);
   assert.match(made.body.icon.black, /^\/assets\/fridge\/[0-9a-f]{20}-black\.png$/);
   assert.deepEqual((await feed()).icons, [], 'nothing reaches the Starlit Gallery');
-  assert.ok((await fridge()).icons.some(i => i.name === 'Milk'));
+  assert.equal((await fridge()).icons[0].name, 'Milk');
   assert.equal((await call('admin', { action: 'save', name: 'Star', black: png(), white: png(), thumb: png() })).status, 200);
-  assert.ok(!(await fridge()).icons.some(i => i.name === 'Star'));
-  assert.deepEqual((await feed()).icons.map(i => i.name), ['Star']);
+  assert.deepEqual((await fridge()).icons.map(i => i.name), ['Milk']);
 
   // Its downloads and its page settings are its own too.
   const pdf = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(50)]);
