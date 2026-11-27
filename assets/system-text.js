@@ -48,7 +48,14 @@
        handle and {reason} is what they wrote. */
     draftedByAdmin: 'An admin moved this page to drafts:',
     draftedByAdminWho: 'by {by}',
-    draftedByAdminFix: 'Fix the problem above, then publish the page again.'
+    draftedByAdminFix: 'Fix the problem above, then publish the page again.',
+
+    /* The Fridge Gallery's page (/fridge): drawn by the Worker from
+       starlit.html, so its head and the line under its title are here. The
+       gallery's team can replace the line in its Settings. */
+    fridgeTitle: 'The Fridge Gallery',
+    fridgeDescription: 'The Fridge Gallery is a free to use icon collection by @blubber-nibble.',
+    fridgeIntro: 'The Fridge Gallery is a free to use icon collection by'
   };
 
   if (typeof window !== 'undefined') window.SystemText = SYSTEM_TEXT;

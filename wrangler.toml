@@ -51,8 +51,9 @@ run_worker_first = [
   "/assets/avatars/*", "/assets/pages/*", "/assets/news/*",
   # Images posted on comments and modmail messages (see ATTACH_PREFIX).
   "/assets/attachments/*",
-  # The Starlit Gallery's icon layers and textures (see STARLIT_PREFIX).
-  "/assets/starlit/*",
+  # The galleries' icon layers and textures (see GALLERIES), and the Fridge
+  # Gallery's page, which the Worker draws from starlit.html.
+  "/assets/starlit/*", "/assets/fridge/*", "/fridge",
   # The wiki's logo: the Worker answers these with the version in use (see
   # serveLogo). The second line is what the files were called before they
   # moved under logo/; old exports and link previews still ask for them.

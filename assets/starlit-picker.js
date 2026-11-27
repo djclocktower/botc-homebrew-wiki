@@ -1,6 +1,7 @@
-/* assets/starlit-picker.js: "Browse the Starlit Gallery" in create.html and
+/* assets/starlit-picker.js: "Browse the Galleries" in create.html and
  * edit.html. A button with data-starlit-into="{file input id}" opens
- * /starlit?pick=1 over the page; the picked PNG goes into that input with a
+ * /galleries?pick=1 over the page (the reader picks a gallery there, which
+ * opens in the same frame); the picked PNG goes into that input with a
  * change event, so the editor treats it like a file from the device. An empty
  * "Icon by" box (or one holding an earlier pick) gets the artist and a link
  * back. Browser only.
@@ -23,22 +24,26 @@
     overlay = document.createElement('div');
     overlay.className = 'starlit-picker';
     overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-label', 'Starlit Gallery');
+    overlay.setAttribute('aria-label', 'Galleries');
     overlay.innerHTML =
-      '<div class="starlit-picker-bar"><span>Starlit Gallery</span>' +
+      '<div class="starlit-picker-bar"><span>Galleries</span>' +
       '<button type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
       'stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-      '<iframe src="/starlit?pick=1" title="Starlit Gallery"></iframe>';
+      '<iframe src="/galleries?pick=1" title="Galleries"></iframe>';
     overlay.querySelector('button').addEventListener('click', close);
     document.body.appendChild(overlay);
     document.documentElement.style.overflow = 'hidden';
   }
 
+  // Only a gallery the wiki has: the link is built from it.
+  var GALLERY_PATHS = { starlit: 'Starlit Gallery', fridge: 'Fridge Gallery' };
   function credit(d) {
     var box = document.getElementById('iconBy');
-    if (!box || box.disabled || (box.value.trim() && box.value.indexOf('Starlit Gallery') < 0)) return;
+    // An empty box, or one still holding an earlier pick from any gallery.
+    if (!box || box.disabled || (box.value.trim() && !/ Gallery\]\(\/[a-z]+\?icon=/.test(box.value))) return;
+    var path = Object.prototype.hasOwnProperty.call(GALLERY_PATHS, d.path) ? d.path : 'starlit';
     box.value = String(d.artist || '').replace(/[[\]()]/g, '').trim() +
-      ' ([Starlit Gallery](/starlit?icon=' + encodeURIComponent(d.id) + '))';
+      ' ([' + GALLERY_PATHS[path] + '](/' + path + '?icon=' + encodeURIComponent(d.id) + '))';
     box.dispatchEvent(new Event('input', { bubbles: true }));
   }
 

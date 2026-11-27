@@ -742,21 +742,30 @@ function addTexButton(t) {
 }
 COLOR_TEXTURES.forEach(addTexButton);
 
-/* The Starlit Gallery's own textures, after the official ones. Pushed onto
+/* The galleries' own textures, after the official ones. Pushed onto
    COLOR_TEXTURES, where loadTexturesFor() looks ids up; resolves once they
-   are in. */
-const starlitTextures = fetch('/api/starlit?textures=1', { credentials: 'same-origin' })
-  .then((r) => (r.ok ? r.json() : { textures: [] }))
-  .then((d) => {
+   are in. Every gallery starts with the same seed packs (committed files
+   under /assets/starlit/tex/), so those are listed once, from the Starlit
+   Gallery; a later gallery adds only the sheets its team uploaded. */
+const GALLERY_TEXTURES = [['starlit', 'Starlit Gallery'], ['fridge', 'Fridge Gallery']];
+const starlitTextures = Promise.all(GALLERY_TEXTURES.map(([g]) =>
+  fetch('/api/starlit?textures=1&g=' + g, { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : { textures: [] }))
+    .catch(() => ({ textures: [] }))))
+  .then((all) => {
     // Each pack's sheets, but not its outline (that paints the whites) and
     // not the Official pack's (those are the sheets this tool already has).
     const KIND = { base: 'Base', good: 'Good', evil: 'Evil', traveller: 'Traveller', 'traveller-good': 'Traveller Good',
       'traveller-evil': 'Traveller Evil', fabled: 'Fabled', loric: 'Loric' };
-    (d.textures || []).forEach((t) => {
-      if (!KIND[t.kind] || t.image.startsWith('/assets/starlit/tex/official-')) return;
-      const def = { id: 'starlit-' + t.id, label: t.pack + ': ' + (t.name || KIND[t.kind]), sub: 'Starlit Gallery', file: t.image + '?v=' + t.v };
-      COLOR_TEXTURES.push(def);
-      addTexButton(def);
+    all.forEach((d, i) => {
+      const [g, name] = GALLERY_TEXTURES[i];
+      (d.textures || []).forEach((t) => {
+        if (!KIND[t.kind] || t.image.startsWith('/assets/starlit/tex/official-')) return;
+        if (i > 0 && t.image.startsWith('/assets/starlit/tex/')) return;
+        const def = { id: g + '-' + t.id, label: t.pack + ': ' + (t.name || KIND[t.kind]), sub: name, file: t.image + '?v=' + t.v };
+        COLOR_TEXTURES.push(def);
+        addTexButton(def);
+      });
     });
   })
   .catch(() => {});
@@ -969,7 +978,7 @@ $('if-save').addEventListener('click', async () => {
     const dataUrl = out.toDataURL('image/png');
 
     setSaveMsg('', 'Uploading…');
-    // assets/char-icon-save.js, shared with the Starlit Gallery.
+    // assets/char-icon-save.js, shared with the galleries.
     const savedSlug = await window.CharIconSave.save(slug, dataUrl);
     const page = { slug: savedSlug };
 
@@ -991,7 +1000,7 @@ pickTexture(colorTexId);
 syncControls();
 sizeStage();
 
-/* The Starlit Gallery's "Open in Icon Forge": the icon, flattened black over
+/* A gallery's "Open in Icon Forge": the icon, flattened black over
    white, waits in localStorage for iconforge?from=starlit and is read once.
    Its white layer is the outline, so the forge's own border and hole filling
    start off. */
@@ -1004,7 +1013,7 @@ if (new URLSearchParams(location.search).get('from') === 'starlit') {
   if (handoff && typeof handoff.png === 'string' && handoff.png.startsWith('data:image/png')) {
     fetch(handoff.png)
       .then((r) => r.blob())
-      .then((blob) => onFile(new File([blob], String(handoff.name || 'Starlit icon') + '.png', { type: 'image/png' })))
+      .then((blob) => onFile(new File([blob], String(handoff.name || 'Gallery icon') + '.png', { type: 'image/png' })))
       .then(() => {
         setOpts({ borderWidth: 0, fillHoles: false, innerDetails: false });
         return starlitTextures;
@@ -1012,15 +1021,15 @@ if (new URLSearchParams(location.search).get('from') === 'starlit') {
       .then(() => {
         // The gallery's texture, as a file: its sets are not Icon Forge's.
         const t = handoff.tex;
-        if (!t || typeof t.file !== 'string' || !t.file.startsWith('/assets/starlit/')) return;
+        if (!t || typeof t.file !== 'string' || !/^\/assets\/(starlit|fridge)\//.test(t.file)) return;
         const id = 'starlit-pick-' + String(t.id || '').replace(/[^a-z0-9-]/gi, '');
         if (!COLOR_TEXTURES.some((x) => x.id === id)) {
-          const def = { id, label: String(t.name || 'Starlit').slice(0, 60), sub: 'Starlit Gallery', file: t.file };
+          const def = { id, label: String(t.name || 'Gallery').slice(0, 60), sub: String(handoff.gallery || 'Starlit Gallery').slice(0, 40), file: t.file };
           COLOR_TEXTURES.push(def);
           addTexButton(def);
         }
         pickTexture(id);
       })
-      .catch(() => toast('The icon from the Starlit Gallery could not be opened.', 'err'));
+      .catch(() => toast('The icon from the gallery could not be opened.', 'err'));
   }
 }

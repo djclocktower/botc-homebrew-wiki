@@ -1,5 +1,7 @@
-/* assets/starlit.js: the Starlit Gallery (/starlit). See "The Starlit
- * Gallery" in CLAUDE.md.
+/* assets/starlit.js: every icon gallery (/starlit, /fridge). See "The
+ * Galleries" in CLAUDE.md. Which gallery a page is comes from <html
+ * data-gallery>, which the Worker sets when it draws a gallery other than
+ * the Starlit one from starlit.html; GALLERIES holds what differs.
  *
  * An icon is a BLACK layer, filled with the picked texture, over a WHITE one,
  * filled with parchment, with a drop shadow under both. The layers are only
@@ -16,7 +18,38 @@
   var TARGET = window.ART_TARGET || 591;
   var LAYER_MAX = 1200;       // longest side a layer is stored at
   var THUMB = 256;            // the grid's picture
-  var ARTISTS = 'Harry & Co & Bendan';
+  /* What differs between the galleries. `artists` is the credit an icon
+     with no artist of its own gets; `file` ends a downloaded icon's name;
+     `hint` is a handle the team panel and the page editor show as an
+     example; intro, synopsis and overview are the page's own text in the
+     wiki's marks, which the page editor opens on. */
+  var GALLERIES = {
+    starlit: {
+      id: 'starlit', name: 'Starlit Gallery', path: 'starlit', artists: 'Harry & Co & Bendan', file: 'Starlit', hint: 'harryandco',
+      intro: 'The Starlit Gallery is a free to use icon collection, developed by [@harryandco](/u/harryandco) and [@bendan07](/u/Bendan).',
+      synopsis: [
+        '{{i|The endless void of the skies above stretches into the darkness far beyond mortal perception. Galaxies, vagabond planets, and unreachable alien life dwell beyond the lights that mark our known universe, shimmering with miracles humanity may never witness.}}',
+        '{{i|Vibrant constellations line the ceilings in colors beyond perception. As gravity weaves, the planets waltz in a pure celestial dance of forces that will last far beyond the mortal race.}}',
+        '{{i|Mother nature\'s firstborn children, the stars, blink past the shimmering veils of the night sky, waiting to be seen, known, and found.}}',
+        '{{i|This is the universe at its finest, its veil, its costume.}}',
+        '{{i|Welcome in, visitors, to the...}}'
+      ].join('\n\n'),
+      overview: [
+        'Created by [@Harry & Co](/u/harryandco) and [@Bendan07](/u/Bendan), the creators of **Travel by the Starlight**, the Starlit Gallery contains **100 unique, hand-drawn, and black-and-white icons**, **5 texture variants,** and handful of **icon templates, a custom script logo, and a blank character token image** for you to use on your botc homebrew characters.',
+        'Notably, you **do not** need to credit us when you use* our resources - however, a shout-out would be appreciated, since it helps promote the collection.\n{{i|*Please refrain from using our work for commercial products, though!}}',
+        'So take a look, visitors, and experience the wonders of craft, of creativity, of human expression.',
+        'Welcome once more to the... **Starlit Gallery.**'
+      ].join('\n\n')
+    },
+    fridge: {
+      id: 'fridge', name: 'Fridge Gallery', path: 'fridge', artists: 'blubber', file: 'Fridge', hint: 'blubber-nibble',
+      intro: 'The Fridge Gallery is a free to use icon collection by [@blubber-nibble](/u/blubber-nibble).',
+      synopsis: '', overview: ''
+    }
+  };
+  var G = GALLERIES[document.documentElement.getAttribute('data-gallery')] || GALLERIES.starlit;
+  var ARTISTS = G.artists;
+  var ARTIST_KEY = 'botc_' + G.id + '_artist';
   /* Textures come in PACKS, kept by the team in Settings (the ones the page
      shipped with are the team's Photoshop sets, Default to Glitchy, and the
      wiki's own Official set): eight sheets for the blacks and an Outline
@@ -165,7 +198,7 @@
     });
   }
   function fileName(icon) {
-    return (String(icon.name).replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '') || 'icon') + '_Starlit.png';
+    return (String(icon.name).replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '') || 'icon') + '_' + G.file + '.png';
   }
 
   /* ── the grid ─────────────────────────────────────────────────── */
@@ -316,7 +349,7 @@
     return 'Art by ' + names.map(function (n) {
       var mark = window.CreatorSymbols ? window.CreatorSymbols.markHTMLFor(n) : '';
       return esc(n) + (mark ? ' ' + mark : '');
-    }).join(', ') + ', from the Starlit Gallery';
+    }).join(', ') + ', from the ' + G.name;
   }
   function openIcon(icon) {
     if (!icon) return;
@@ -537,7 +570,7 @@
     render(icon, TARGET * 2, { tex: view.tex, texture: false, whites: view.whites, blacks: view.blacks, shadow: false })
       .then(function (c) {
         localStorage.setItem('botc_starlit_forge', JSON.stringify({
-          name: icon.name, png: c.toDataURL('image/png'),
+          name: icon.name, png: c.toDataURL('image/png'), gallery: G.name,
           tex: tex ? { id: tex.id, name: tex.set + ': ' + tex.name, file: tex.src } : null
         }));
         location.href = 'iconforge?from=starlit';
@@ -552,7 +585,8 @@
     btn.disabled = true;
     render(icon, TARGET).then(toBlob).then(function (blob) {
       window.parent.postMessage({
-        starlit: 'pick', id: icon.id, name: icon.name, artist: icon.artist || ARTISTS, blob: blob
+        starlit: 'pick', id: icon.id, name: icon.name, artist: icon.artist || ARTISTS, blob: blob,
+        gallery: G.name, path: G.path
       }, location.origin);
     }).catch(function (e) { say('sg-d-msg', e.message, true); })
       .then(function () { btn.disabled = false; });
@@ -567,7 +601,7 @@
     myChars = window.CharIconSave.list().then(function (list) {
       $('sg-save').hidden = false;
       if (!list) {
-        $('sg-save-msg').innerHTML = '<a href="login?next=' + encodeURIComponent('starlit' + location.search) + '">Sign in</a> to save it straight onto one of your characters.';
+        $('sg-save-msg').innerHTML = '<a href="login?next=' + encodeURIComponent(G.path + location.search) + '">Sign in</a> to save it straight onto one of your characters.';
         return;
       }
       if (!list.length) {
@@ -591,7 +625,7 @@
     render(icon, TARGET).then(function (c) {
       return window.CharIconSave.save(slug, c.toDataURL('image/png'), {
         iconBy: String(icon.artist || ARTISTS).replace(/[[\]()]/g, '').trim() +
-          ' ([Starlit Gallery](/starlit?icon=' + encodeURIComponent(icon.id) + '))',
+          ' ([' + G.name + '](/' + G.path + '?icon=' + encodeURIComponent(icon.id) + '))',
         confirmReplace: function (n) { return window.confirm('Replace the icon on ' + n + '?'); }
       });
     }).then(function (saved) {
@@ -604,11 +638,12 @@
 
   /* ── the gallery team ─────────────────────────────────────────── */
 
+  // Every write names this page's gallery (the Worker defaults to starlit).
   function api(body, path) {
     return fetch(path || '/api/starlit', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(Object.assign({ gallery: G.id }, body))
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (!r.ok || j.error) throw new Error(j.error || 'The wiki could not save that (' + r.status + ').');
@@ -903,7 +938,7 @@
     var title = $('sg-dl-title').value.trim(), file = $('sg-dl-file').files[0], btn = this;
     if (!title || !file) { say('sg-dl-msg', 'Give it a title and pick the file.', true); return; }
     if (file.size > 95 * 1024 * 1024) { say('sg-dl-msg', 'That file is over 95 MB.', true); return; }
-    var q = new URLSearchParams({ title: title, note: $('sg-dl-note').value.trim(), name: file.name });
+    var q = new URLSearchParams({ g: G.id, title: title, note: $('sg-dl-note').value.trim(), name: file.name });
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/starlit-file?' + q);
     xhr.upload.onprogress = function (e) {
@@ -1001,7 +1036,7 @@
     $('sg-f-tags').value = icon ? icon.tags.join(', ') : '';
     drawFormTags();
     var last = '';
-    try { last = localStorage.getItem('botc_starlit_artist') || ''; } catch (e) { /* none */ }
+    try { last = localStorage.getItem(ARTIST_KEY) || ''; } catch (e) { /* none */ }
     $('sg-f-artist').value = icon ? icon.artist : last;
     drawPick('artist');
     $('sg-f-black').value = ''; $('sg-f-white').value = '';
@@ -1180,7 +1215,7 @@
       return api(body);
     }).then(function (r) {
       gallery.icons = gallery.icons.filter(function (x) { return x.id !== r.icon.id; }).concat([r.icon]).sort(byName);
-      try { localStorage.setItem('botc_starlit_artist', body.artist); } catch (e2) { /* fine */ }
+      try { localStorage.setItem(ARTIST_KEY, body.artist); } catch (e2) { /* fine */ }
       closeWindow('sg-form-modal');
       drawTags(); drawGrid();
       openIcon(r.icon);
@@ -1195,23 +1230,10 @@
      page has (PageRender.sanitizeTheme, applied as on a creator page). Until
      the team saves anything, the page's own HTML is what shows. The DEFAULT
      texts are that HTML in marks, so the editor opens on what is there. */
-  var DEFAULT_INTRO = 'The Starlit Gallery is a free to use icon collection, developed by [@harryandco](/u/harryandco) and [@bendan07](/u/Bendan).';
-  var DEFAULT_SYNOPSIS = [
-    '{{i|The endless void of the skies above stretches into the darkness far beyond mortal perception. Galaxies, vagabond planets, and unreachable alien life dwell beyond the lights that mark our known universe, shimmering with miracles humanity may never witness.}}',
-    '{{i|Vibrant constellations line the ceilings in colors beyond perception. As gravity weaves, the planets waltz in a pure celestial dance of forces that will last far beyond the mortal race.}}',
-    '{{i|Mother nature\'s firstborn children, the stars, blink past the shimmering veils of the night sky, waiting to be seen, known, and found.}}',
-    '{{i|This is the universe at its finest, its veil, its costume.}}',
-    '{{i|Welcome in, visitors, to the...}}'
-  ].join('\n\n');
-  var DEFAULT_OVERVIEW = [
-    'Created by [@Harry & Co](/u/harryandco) and [@Bendan07](/u/Bendan), the creators of **Travel by the Starlight**, the Starlit Gallery contains **100 unique, hand-drawn, and black-and-white icons**, **5 texture variants,** and handful of **icon templates, a custom script logo, and a blank character token image** for you to use on your botc homebrew characters.',
-    'Notably, you **do not** need to credit us when you use* our resources - however, a shout-out would be appreciated, since it helps promote the collection.\n{{i|*Please refrain from using our work for commercial products, though!}}',
-    'So take a look, visitors, and experience the wonders of craft, of creativity, of human expression.',
-    'Welcome once more to the... **Starlit Gallery.**'
-  ].join('\n\n');
+  var DEFAULT_INTRO = G.intro, DEFAULT_SYNOPSIS = G.synopsis, DEFAULT_OVERVIEW = G.overview;
   // What the page's own HTML says, put back when the team clears a piece.
   var ORIGINAL = { intro: document.querySelector('.sg-by').innerHTML, synopsis: $('sg-synopsis').innerHTML, overview: $('sg-overview').innerHTML };
-  var PAGE_BASE = 'starlit/page';
+  var PAGE_BASE = G.id + '/page';
 
   function drawHeroMark() {
     if (!window.CreatorSymbols) return;
@@ -1321,7 +1343,7 @@
         '<label class="sg-f">The line under the title<textarea id="sg-pe-intro" rows="3" maxlength="600"></textarea></label>' +
         '<label class="sg-f">Under that line, in smaller type<textarea id="sg-pe-overview" rows="10" maxlength="8000"></textarea></label>' +
         '<label class="sg-f">Credits, near the bottom of the page<textarea id="sg-pe-credits" rows="8" maxlength="8000"></textarea></label>' +
-        '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/harryandco), ## a heading, ### a smaller one, - a list. Leave a box empty to show nothing there. The page changes as you type; nothing is kept until you press Save.</p>' +
+        '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/' + G.hint + '), ## a heading, ### a smaller one, - a list. Leave a box empty to show nothing there. The page changes as you type; nothing is kept until you press Save.</p>' +
         '<h4>Look</h4>' +
         '<div class="sg-row"><span class="sg-label" style="flex-basis:100%">Page background</span>' +
         '<img id="sg-pe-bg" alt="" style="display:none;width:120px;height:68px;object-fit:cover;border:1px solid #cdbfa0">' +
@@ -1414,6 +1436,11 @@
 
   /* ── start ────────────────────────────────────────────────────── */
 
+  // The bits of the page's own markup that name the gallery or its team.
+  $('sg-pick-title').textContent = 'Pick an icon from the ' + G.name;
+  $('sg-search').setAttribute('aria-label', 'Search the ' + G.name);
+  $('sg-f-artist').placeholder = G.artists;
+  $('sg-up-names').placeholder = G.hint;
   if (PICK) {
     $('sg-pick-head').hidden = false;
     $('sg-use').hidden = false;
@@ -1427,7 +1454,7 @@
 
   // The whole gallery, from the server; again after a rename changes icons.
   function load() {
-    return fetch('/api/starlit', { credentials: 'same-origin' })
+    return fetch('/api/starlit?g=' + encodeURIComponent(G.id), { credentials: 'same-origin' })
       .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
       .then(function (d) {
         gallery = {
