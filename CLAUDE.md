@@ -99,7 +99,8 @@ Key dynamic behavior:
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
   pictures, uploaded via `/api/account/avatar`, never via `/api/upload`; so is
-  `starlit/`, the Starlit Gallery's files, written only by `/api/starlit`).
+  `starlit/` and `fridge/`, the galleries' files, written only by
+  `/api/starlit`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
@@ -109,8 +110,8 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page),
   **message images** (`/api/attachment` — one image for a comment or a modmail
   message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
-  **the Starlit Gallery** (`/api/starlit` and `/api/admin/starlit-uploaders`;
-  see that section),
+  **the Galleries** (`/api/starlit` and `/api/admin/starlit-uploaders`, both
+  taking a gallery id; see "The Galleries"),
   **`GET /api/boot`** (the one call `site.js` makes on every page: the
   system-text overrides AND the announcement together — they were two
   requests per page view; `/api/site-text` and `/api/announcement` stay for
@@ -939,16 +940,19 @@ assets/
                        Subfolders textures/ minipaint/ vendor/ are the
                        sealed payload — see the section below, and
                        migration/icon-forge-guide.md for the engine reference.
-  starlit.js           The Starlit Gallery page (/starlit): browsing, the icon
-                       window and the team's forms. compose() draws an icon.
-                       See "The Starlit Gallery".
+  starlit.js           Every gallery's page (/starlit, /fridge): browsing,
+                       the icon window and the team's forms. compose() draws
+                       an icon; GALLERIES holds what differs between them.
+                       See "The Galleries".
   char-icon-save.js    CharIconSave: put a finished icon on one of your own
                        characters (drafts included) — art/{identity}.png,
                        then the row saved back with its status unchanged.
-                       Shared by Icon Forge and the Starlit Gallery.
-  starlit-picker.js    "Browse the Starlit Gallery" in create.html + edit.html:
-                       the gallery in an iframe; the picked PNG goes into the
+                       Shared by Icon Forge and the galleries.
+  starlit-picker.js    "Browse the Galleries" in create.html + edit.html:
+                       /galleries?pick=1 in an iframe, a gallery picked there
+                       opens in the same frame; the picked PNG goes into the
                        art file input with a change event.
+  fridge-logo.webp     The Fridge Gallery's title art (its team's own).
   topbar/              The top bar's damask, drawn by header-redesign.css
                        section 1 as the bar's ::before (no markup):
                        ribbon-damask-v2.webp is a MASK (the Fancy Scripts sidebar
@@ -1138,7 +1142,7 @@ scripts.html           /scripts — the script index. Filter chips for Curata an
                        unreachable on a phone without it.
 script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Starlit Gallery, Mass
+                       Grimoire Forge, Icon Forge, The Galleries, Mass
                        Import, Jinxes, Creator Icons. This is what the "Tools"
                        nav entry points at.
                        Each card carries its tool's icon: assets/grimforge.png
@@ -1148,9 +1152,15 @@ tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        Mass Import's, which took the Bloodstar importer in). The same picture
                        sits beside each tool page's title (.tool-hero-row /
                        .tool-hero-icon in styles.css; Grimoire Forge keeps its
-                       own .gf-hero-* copy), except /starlit, whose title is
-                       the team's lettering.
-starlit.html           The Starlit Gallery (/starlit). See that section.
+                       own .gf-hero-* copy), except the galleries, whose
+                       titles are their teams' lettering. The Galleries card
+                       (still starlit.webp) goes to /galleries.
+starlit.html           Every gallery's page: served as itself at /starlit
+                       and the Worker's template for /fridge. See "The
+                       Galleries"; keep its gallery:head/hero markers.
+galleries.html         /galleries: one card per gallery (its title art and
+                       credit). ?pick=1 is the editors' picker, whose links
+                       open a gallery in pick mode.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -3814,12 +3824,66 @@ uploaded — except for the one opt-in save described below.
   in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
-- **Starlit Gallery** (next section): `?from=starlit` opens the icon the
-  gallery left in localStorage (`botc_starlit_forge`, read once) with the
-  forge's border and hole filling off; the gallery's textures are added to
-  the picker from `/api/starlit?textures=1`.
+- **The Galleries** (next section): `?from=starlit` opens the icon a
+  gallery left in localStorage (`botc_starlit_forge`, read once, whichever
+  gallery it came from) with the forge's border and hole filling off; every
+  gallery's textures are added to the picker from
+  `/api/starlit?textures=1&g={id}` (`GALLERY_TEXTURES` in app.js). The seed
+  packs every gallery starts with are listed once, from the Starlit Gallery.
 
-## The Starlit Gallery (`/starlit`)
+## The Galleries (`/galleries`, `/starlit`, `/fridge`)
+
+Icon galleries, each kept by its own team, and **one implementation**. The
+owner asked for the Fridge Gallery as an exact replica of the Starlit one
+(2026-11), so nothing was copied: a gallery is a row in `GALLERIES` in
+worker.js (id, name, R2 prefix, table prefix, `owners`) and in `GALLERIES`
+in assets/starlit.js (name, path, default artist credit, the download's
+filename suffix, the page's default text). Adding a third gallery is those
+two rows, a `GALLERY_PAGES` entry (its head and hero), its route in
+`run_worker_first`, its R2 prefix in `R2_SERVE_PREFIXES`, a card on
+`/galleries`, and its id in starlit-picker.js's `GALLERY_PATHS` and Icon
+Forge's `GALLERY_TEXTURES`.
+
+- **One page.** `starlit.html` is served as itself at `/starlit`; `/fridge`
+  is the Worker reading that same file (`galleryPageHTML()`) and swapping
+  its `<!--gallery:head-->` and `<!--gallery:hero-->` regions and
+  `data-gallery` on `<html>`. A template missing either marker pair 404s
+  rather than serving the Starlit Gallery under another name. starlit.js
+  reads `data-gallery` and sets the few labels in the markup that name a
+  gallery (the pick header, the search box's label, two placeholders).
+  The Fridge Gallery's head and line under its title are in
+  assets/system-text.js (`fridge*`); its team can replace the line in
+  Settings like any gallery's.
+- **Everything is per gallery**: tables `{id}_icons`, `{id}_textures`,
+  `{id}_files` (`ensureGalleryTables(env, g)`), settings `{id}_uploaders`,
+  `{id}_page`, `{id}_order`, R2 prefix `{id}/` (page slots
+  `{id}/page-bg.*`), log actions `{id}-add` etc. with entity type `{id}`.
+  Every call names its gallery: `?g=` on the GETs and on
+  `/api/starlit-file`, `gallery` in the POST bodies (starlit.js's `api()`
+  adds it); absent means starlit, so old clients keep working, and an
+  unknown id is a 404. The routes kept their `/api/starlit*` names.
+- **A gallery only deletes its own files**: `dropFiles` takes only keys
+  under the gallery's prefix and never `starlit/tex/` (`GALLERY_SEED_TEX`),
+  the committed seed packs every gallery is seeded with. So the Fridge team
+  removing its copy of Default leaves the Starlit Gallery's alone.
+- **`owners`** are the handles a gallery's team starts as, resolved by name
+  while no `{id}_uploaders` row exists (`galleryUploaders()`): the Fridge
+  Gallery is `blubber-nibble`'s (credit name "blubber") from its first day.
+  Once an admin saves a list in the team panel, that list is the whole
+  answer.
+- **`/galleries`** (galleries.html) is the hub, and what the Tools card
+  ("The Galleries") and the editors' "Browse the Galleries" open. In pick
+  mode its cards open a gallery with `?pick=1`, whose header has an "All
+  galleries" link back. A picked icon's "Icon by" credit links the gallery
+  it came from (`[Fridge Gallery](/fridge?icon=…)`).
+
+Everything below was written about the Starlit Gallery and holds for every
+gallery, with its own names: `starlit_` tables, `starlit_` settings and
+`starlit/` keys are the Fridge Gallery's `fridge_`, `fridge_` and `fridge/`.
+The Starlit team's terms and words are theirs alone; the Fridge Gallery's
+page starts with a one-line intro and nothing else until blubber writes it.
+
+### The Starlit Gallery (`/starlit`)
 
 Character icons by **Harry & Co & Bendan** (wiki account `harryandco`; the
 makers of the Travel by the Starlight collection), hosted here after the
@@ -3969,12 +4033,12 @@ required but a shout-out is appreciated, and no commercial use.
   and saving it with one new name twice took the other artist off. Any of them can change or delete anything there. No
   public submissions and no mass upload, on purpose: vetting for copyright and
   AI is the team's job, and two-layer uploads do not batch well.
-- `starlit-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
+- `starlit-*` / `fridge-*` log actions are not in `FEED_CHANGING_ACTIONS` (nothing else
   reads the gallery, so it must not roll the feed caches). `/api/starlit` and
   `/api/starlit-file` are in the wiki-lock list.
 - **Hand-offs**: "Open in Icon Forge" leaves the flattened icon in
-  localStorage for `iconforge?from=starlit`; the editors' "Browse the Starlit
-  Gallery" (`assets/starlit-picker.js`) opens `/starlit?pick=1` in an iframe
+  localStorage for `iconforge?from=starlit`; the editors' "Browse the
+  Galleries" (`assets/starlit-picker.js`) opens `/galleries?pick=1` in an iframe
   and "Use this icon" posts the PNG back. "Save to one of your characters"
   in the icon window puts the icon, as shown, on a character the reader owns
   (drafts too) through `assets/char-icon-save.js`, Icon Forge's save, and

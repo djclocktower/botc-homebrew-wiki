@@ -269,3 +269,99 @@ test('a pictographic creator mark is drawn in its text form, everything else as 
   // One already carrying a selector keeps it, and only it.
   assert.match(Creators.markHTMLFor('Pynstripe'), />\u2663\uFE0E<\/span>$/);
 });
+
+/* ---- the Fridge Gallery: the same gallery, kept apart ---- */
+
+async function fridgeSetup(t) {
+  const s = await setup(t);
+  s.f.db.prepare("INSERT INTO users(id,username,password_hash) VALUES(4,'blubber-nibble','')").run();
+  s.f.state.sessions.set('sess:blubber-nibble', { userId: 4, username: 'blubber-nibble', isAdmin: false });
+  s.fridge = async who => (await s.f.request('/api/starlit?g=fridge', who ? as(who) : undefined)).json();
+  s.fcall = (who, body, path) => s.call(who, { gallery: 'fridge', ...body }, path);
+  return s;
+}
+
+test('the Fridge Gallery is its own gallery: its own icons, files and team', async t => {
+  const { f, objects, call, feed, fridge, fcall } = await fridgeSetup(t);
+  const empty = await fridge();
+  assert.equal(empty.gallery, 'fridge');
+  assert.deepEqual(empty.icons, []);
+  assert.equal(empty.textures.length, 54, 'the same seed packs');
+  // blubber is its team from the start, and only of this gallery.
+  assert.equal((await fridge('blubber-nibble')).canUpload, true);
+  assert.equal((await feed('blubber-nibble')).canUpload, false);
+  assert.deepEqual((await fridge('admin')).uploaders, [{ username: 'blubber-nibble' }]);
+  assert.equal((await call('blubber-nibble', { action: 'save', name: 'Milk', black: png(), white: png(), thumb: png() })).status, 403);
+
+  const made = await fcall('blubber-nibble', { action: 'save', name: 'Milk', black: png(), white: png(), thumb: png() });
+  assert.equal(made.status, 200);
+  assert.match(made.body.icon.black, /^\/assets\/fridge\/[0-9a-f]{20}-black\.png$/);
+  assert.deepEqual((await feed()).icons, [], 'nothing reaches the Starlit Gallery');
+  assert.equal((await fridge()).icons[0].name, 'Milk');
+  assert.equal((await call('admin', { action: 'save', name: 'Star', black: png(), white: png(), thumb: png() })).status, 200);
+  assert.deepEqual((await fridge()).icons.map(i => i.name), ['Milk']);
+
+  // Its downloads and its page settings are its own too.
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(50)]);
+  const res = await f.request('/api/starlit-file?' + new URLSearchParams({ g: 'fridge', title: 'Template' }), {
+    method: 'POST', headers: { Cookie: 'botc_session=blubber-nibble', 'Content-Length': String(pdf.length) }, body: pdf });
+  assert.equal(res.status, 200);
+  assert.match((await res.json()).file.url, /^\/assets\/fridge\/files\//);
+  assert.deepEqual((await feed()).files, []);
+  await fcall('blubber-nibble', { action: 'page', page: { intro: 'Cold', theme: { background: 'fridge/page-bg.png' } } });
+  assert.deepEqual((await fridge()).page, { intro: 'Cold', theme: { background: 'fridge/page-bg.png' } });
+  assert.equal((await feed()).page, null);
+  const bg = await fcall('blubber-nibble', { action: 'page-image', kind: 'bg', data: png() });
+  assert.equal(bg.body.path, 'fridge/page-bg.png');
+
+  // An admin's list replaces the default, for this gallery alone.
+  await fcall('admin', { names: ['harry'] }, '/api/admin/starlit-uploaders');
+  assert.equal((await fridge('blubber-nibble')).canUpload, false);
+  assert.equal((await fridge('harry')).canUpload, true);
+  assert.equal((await feed('harry')).canUpload, false);
+  const log = f.db.prepare("SELECT action FROM activity_log WHERE entity_type='fridge' ORDER BY id").all().map(r => r.action);
+  assert.deepEqual(log, ['fridge-add', 'fridge-file', 'fridge-page', 'fridge-uploaders']);
+  assert.ok([...objects.keys()].some(k => k.startsWith('starlit/')));
+});
+
+test('a gallery deletes only its own files, never another\'s or the shared seed textures', async t => {
+  const { objects, call, feed, fridge, fcall } = await fridgeSetup(t);
+  const star = await call('admin', { action: 'texture', pack: 'Mine', kind: 'base', image: png() });
+  const key = star.body.texture.image.slice('/assets/'.length);
+  objects.set('starlit/tex/default-base.webp', { body: Buffer.from('x'), opts: { httpMetadata: { contentType: 'image/webp' } } });
+  // The fridge team removes its copy of a seed pack: the seed file stays.
+  await fcall('blubber-nibble', { action: 'pack', from: 'Default', remove: true });
+  assert.ok(objects.has('starlit/tex/default-base.webp'));
+  assert.ok(!(await fridge()).textures.some(x => x.pack === 'Default'));
+  assert.ok((await feed()).textures.some(x => x.pack === 'Default'), 'the Starlit Gallery keeps its pack');
+  // A fridge row cannot name a starlit file to delete: there is none to name,
+  // and the Starlit Gallery's own upload is untouched by fridge writes.
+  assert.ok(objects.has(key));
+});
+
+test('an unknown gallery is refused', async t => {
+  const { f, call } = await fridgeSetup(t);
+  assert.equal((await f.request('/api/starlit?g=attic')).status, 404);
+  assert.equal((await call('admin', { gallery: 'attic', action: 'save', name: 'X' })).status, 404);
+  assert.equal((await call('admin', { gallery: '__proto__', names: [] }, '/api/admin/starlit-uploaders')).status, 404);
+});
+
+test('/fridge is starlit.html with the Fridge Gallery\'s head and hero', async t => {
+  const { f } = await fridgeSetup(t);
+  const res = await f.request('/fridge');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('Content-Type'), /text\/html/);
+  const html = await res.text();
+  assert.match(html, /<html[^>]*data-gallery="fridge"/);
+  assert.match(html, /<title>The Fridge Gallery — BOTC HomeBrew Wiki<\/title>/);
+  assert.match(html, /assets\/fridge-logo\.webp/);
+  assert.match(html, /href="u\/blubber-nibble"/);
+  assert.doesNotMatch(html, /starlit-logo|harryandco|Harry &amp; Co|Travel by the Starlight/);
+  // Everything else is the one page every gallery shares.
+  assert.match(html, /id="sg-grid"/);
+  assert.match(html, /assets\/starlit\.js/);
+  const starlit = await (await f.env.ASSETS.fetch(new Request('https://botchomebrew.wiki/starlit'))).text();
+  for (const m of ['<!--gallery:head-->', '<!--/gallery:head-->', '<!--gallery:hero-->', '<!--/gallery:hero-->', 'data-gallery="starlit"']) {
+    assert.ok(starlit.includes(m), 'starlit.html keeps ' + m);
+  }
+});

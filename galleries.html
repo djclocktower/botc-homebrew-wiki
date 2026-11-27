@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script>if (/[?&]pick=1(&|$)/.test(location.search)) document.documentElement.classList.add('sg-pick');</script>
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Galleries — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Free to use character icon galleries: the Starlit Gallery and the Fridge Gallery.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="The Galleries">
+<meta property="og:description" content="Free to use character icon galleries: the Starlit Gallery and the Fridge Gallery.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/logo/favicon.png">
+<link rel="apple-touch-icon" href="assets/logo/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* One card per icon gallery: its title art on the night sky it was drawn
+   for, its credit on parchment under it. Each gallery is the same page
+   (starlit.html; see "The Galleries" in CLAUDE.md). */
+.gal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.gal-card {
+  display: flex; flex-direction: column; text-decoration: none; color: var(--maroon);
+  border: 2px solid var(--parch-frame); background: var(--purple-deep);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.gal-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(40,12,30,.45); }
+.gal-art { display: flex; align-items: center; justify-content: center; aspect-ratio: 2 / 1; padding: 14px; }
+.gal-art img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.gal-foot {
+  background-color: var(--parch); background-image: url('assets/parchment.webp'); background-size: cover;
+  border-top: 2px solid var(--parch-frame); padding: 10px 16px;
+  font-family: 'Roboto', sans-serif; font-weight: 600; font-size: .76rem; letter-spacing: .07em; text-transform: uppercase;
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline; color: var(--good-name);
+}
+.gal-by { color: rgba(91,31,33,.7); }
+
+/* Inside a character editor (assets/starlit-picker.js): only the cards. */
+html.sg-pick .topbar, html.sg-pick .nav-dropdown, html.sg-pick .site-announcement,
+html.sg-pick .home-hero, html.sg-pick .foot { display: none !important; }
+html.sg-pick body::before { background: var(--purple-deep); }
+html.sg-pick .home-panel { padding-top: 14px; }
+.gal-pick-head { display: none; color: var(--parch); font-family: 'Dumbledor2', serif; font-size: 1.3rem; letter-spacing: .04em; margin: 0 0 12px; }
+html.sg-pick .gal-pick-head { display: block; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo/mark.webp" alt="">
+        <img class="brand-header-text" src="assets/logo/wordmark.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search" aria-label="Search the wiki">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>The Galleries</h1>
+    <p>Character icons, free to use on your homebrew.</p>
+  </div>
+
+  <main class="home-panel" id="content">
+    <p class="gal-pick-head">Pick a gallery</p>
+    <div class="gal-grid">
+
+      <a class="gal-card" href="starlit">
+        <span class="gal-art"><img src="assets/starlit-logo.webp" width="840" height="451" alt="Starlit Gallery"></span>
+        <span class="gal-foot"><span class="gal-by">By Harry &amp; Co &amp; Bendan</span><span>Open →</span></span>
+      </a>
+
+      <a class="gal-card" href="fridge">
+        <span class="gal-art"><img src="assets/fridge-logo.webp" width="840" height="420" alt="The Fridge Gallery"></span>
+        <span class="gal-foot"><span class="gal-by">By blubber</span><span>Open →</span></span>
+      </a>
+
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>
+    // Picking for a character editor: the gallery opens in the same frame.
+    if (document.documentElement.classList.contains('sg-pick')) {
+      Array.prototype.forEach.call(document.querySelectorAll('.gal-card'), function (a) {
+        a.setAttribute('href', a.getAttribute('href') + '?pick=1');
+      });
+    }
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

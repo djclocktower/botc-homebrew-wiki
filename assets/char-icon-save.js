@@ -1,5 +1,5 @@
 /* assets/char-icon-save.js: put a finished icon on one of your characters.
- * Shared by Icon Forge and the Starlit Gallery so the two cannot drift.
+ * Shared by Icon Forge and the galleries so they cannot drift.
  *
  * CharIconSave.list() -> the signed-in account's characters, drafts included
  *   ([{slug, name, status}]), or null when nobody is signed in.
