@@ -264,7 +264,7 @@ test('theme kit: character boxes, team headings and dividers each get their own 
   assert.ok(a.fonts.some(h => h.includes('family=Metal+Mania')));
   assert.doesNotMatch(a.style, /[<>"{}]/);
   // Untouched, nothing at all is added.
-  assert.equal(PageRender.themeAttrs(PageRender.sanitizeTheme({ accent: '#000000' }, 'x')).cls, 'page-themed theme-accent');
+  assert.equal(PageRender.themeAttrs(PageRender.sanitizeTheme({ accent: '#000000' }, 'x')).cls, 'page-themed theme-accent own-colours');
 });
 
 function bucket(f) {

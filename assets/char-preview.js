@@ -57,8 +57,20 @@
       '<\/scr' + 'ipt>';
   }
 
+  function isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; }
+  // Follow the switch while the editor is open (BotcData.theme fires this).
+  var frames = [];
+  document.addEventListener('botc-theme', function () {
+    frames.forEach(function (f) {
+      var d; try { d = f.contentDocument; } catch (e) { d = null; }
+      if (!d || !d.documentElement) return;
+      if (isDark()) d.documentElement.setAttribute('data-theme', 'dark'); else d.documentElement.removeAttribute('data-theme');
+    });
+  });
+
   function shell(siteRoot, inner) {
-    return '<!doctype html><html><head><meta charset="utf-8">' +
+    // The preview is the page as its reader will see it, dark mode included.
+    return '<!doctype html><html' + (isDark() ? ' data-theme="dark"' : '') + '><head><meta charset="utf-8">' +
       '<base href="' + siteRoot + '">' +
       '<link rel="stylesheet" href="' + window.BotcData.asset('styles.css') + '">' +
       '</head><body>' +
@@ -70,6 +82,7 @@
   }
 
   function mount(frame, opts) {
+    if (frames.indexOf(frame) < 0) frames.push(frame);
     opts = opts || {};
     // The credit line's mark comes from the live registry once it is in
     // (picture marks included); the next repaint draws it.

@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tags — BOTC HomeBrew Wiki</title>
@@ -63,7 +64,7 @@
   </div>
 
   <main class="home-panel" id="panel">
-    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading tags…</p>
+    <p style="text-align:center;color:var(--fg-ece1c8-a70);padding:30px">Loading tags…</p>
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
@@ -111,7 +112,7 @@
       })
       .catch(function() {
         document.getElementById('panel').innerHTML =
-          '<p style="text-align:center;color:#e6a;padding:30px">Could not load tags.</p>';
+          '<p style="text-align:center;color:var(--fg-e6a);padding:30px">Could not load tags.</p>';
       });
   </script>
 

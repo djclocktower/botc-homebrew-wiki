@@ -937,6 +937,45 @@
     }
   })();
 
+  /* ── Dark mode switch ──
+     A square button in the bar on a wide screen, a row in the menu on a
+     narrow one; both flip BotcData.theme (data.js), which keeps the choice
+     per browser. Injected here like Tools, so no page's hand-copied top bar
+     changed. On a page with colours of its own the switch still sets the
+     choice, and says the page keeps its own look. */
+  (function () {
+    var T = window.BotcData && window.BotcData.theme;
+    if (!T) return;
+    var MOON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z"/></svg>';
+    var SUN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg>';
+    var buttons = [];
+    function paint() {
+      var dark = T.choice() === 'dark';
+      var own = document.documentElement.hasAttribute('data-own-colours');
+      buttons.forEach(function (b) {
+        var label = dark ? 'Light mode' : 'Dark mode';
+        b.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        b.title = own && dark ? 'This page keeps its own colours' : label;
+        b.innerHTML = (dark ? SUN : MOON) + (b.classList.contains('nav-theme') ? '<span>' + label + '</span>' : '');
+        if (!b.classList.contains('nav-theme')) b.setAttribute('aria-label', label);
+      });
+    }
+    function make(cls) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = cls;
+      b.addEventListener('click', function () { T.set(T.choice() === 'dark' ? 'light' : 'dark'); });
+      buttons.push(b);
+      return b;
+    }
+    var bar = document.querySelector('.topbar');
+    var burger = document.getElementById('hamburger');
+    if (bar && burger && burger.parentNode === bar) bar.insertBefore(make('theme-toggle'), burger);
+    var drop = document.getElementById('nav-dropdown');
+    if (drop) drop.appendChild(make('nav-theme'));
+    paint();
+    document.addEventListener('botc-theme', paint);
+  })();
+
   /* ── Search ──
      The box in the top bar. As you type it shows the best few matches of
      every kind (characters, scripts, collections, creators, users, wiki

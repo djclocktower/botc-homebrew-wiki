@@ -254,6 +254,8 @@ _headers               Cache rules for static assets. Matching rules COMBINE
 assets/
   styles.css           Shared reading styles. editor.css is loaded by tool/editor
                        pages; comments.css is loaded with deferred comments.
+                       Holds the generated colour table (light and dark) and,
+                       at its end, the hand-written dark rules. See "Dark mode".
   data.js              Shared parsed public feeds and versioned asset loaders,
                        plus root() — the page's link prefix, and the single
                        source of truth for it (see "Character identity vs
@@ -1299,6 +1301,11 @@ messages.html         Direct messages (/messages): conversation list + thread UI
                       link (no standalone Messages tab — owner's preference).
 character.html         Legacy ?c=slug redirect → /c/{slug} (keep; old links)
 characters/*.html      3 legacy redirect stubs → /c/{slug} (keep; old links)
+migration/theme-vars.mjs  The colour table: rewrites bare colours to variables
+                       and regenerates the light and dark tables in styles.css.
+                       Run after adding CSS with a colour. See "Dark mode".
+migration/make-night-parchment.py  Recolours the parchment sheet for the dark
+                       theme (assets/parchment-night-v1.webp).
 migration/             D1 schema reference (schema.sql, accounts_migration.sql,
                        schema_explanation.md, ACCOUNTS_SETUP.md), plus the
                        two image/font maintenance scripts: optimize-images.js
@@ -1603,6 +1610,65 @@ address or live redirect), `commitCustomUrl()` writes the column after it and
 leaves the old address as a redirect. A new script/collection/page never lands
 on somebody's custom address, `/api/slug-check` counts them as taken, and
 `prepareRestore` pins `customUrl`. Creator pages' URL is still the username.
+
+## Dark mode (the colour table)
+
+A reader can switch the wiki to a dark theme: the moon button in the top bar
+(1200px and wider) or the "Dark mode" row at the end of the hamburger menu,
+both drawn by site.js. The choice is per browser (`localStorage botc_theme`,
+`'dark'` or nothing) and **light is the default**; nothing follows the
+device's setting. The owner asked for the wiki's own look in purple, textures
+kept, not a flat dark skin (2026-11).
+
+- **Every colour on the wiki is a CSS variable.** `color: #6b5d49` is written
+  `color: var(--fg-6b5d49)`: the name is the ROLE the colour plays (`fg` text,
+  `bg` surface, `bd` border, `sh` light shadow) and its light value. One
+  colour does opposite jobs (#5b1f21 is body text on parchment and a button's
+  fill under white text), which is why the role is in the name. The older
+  named variables keep their name for their main role and take a suffix for
+  the others (`--maroon` is text, `--maroon-bg` a fill, `--maroon-bd` a
+  border).
+- **`node migration/theme-vars.mjs` owns the table.** It rewrites any bare
+  colour in `assets/styles.css`, `editor.css`, `comments.css`,
+  `redesign-create.css`, every page's `<style>` blocks and `style=""`
+  attributes, and the `style=""` strings of the scripts in its `JS_FILES`
+  list, then regenerates the two blocks between the "Colour table" markers in
+  styles.css: `:root` (light, the value in each name) and
+  `:root[data-theme="dark"]`. A dark value is `darkOf(role, colour)` (warm
+  neutrals take the purple hue, lightness is mirrored about the parchment;
+  team colours, gold and red keep their hue) unless `DARK` in that file names
+  it by hand. **Run it after adding CSS that names a colour**, then the asset
+  build. `--check` (a test runs it) fails on a bare colour or a stale table;
+  `--report` lists what was skipped.
+- **Left alone on purpose:** `header-redesign.css` (the top bar looks the same
+  in both themes), any declaration marked `/*keep*/` before its semicolon
+  (the hamburger's bars), any rule whose selector says `data-theme`, theme-kit
+  rules (`--pg-`), canvas code (Snapshot, tokens, the jinx map), emails and
+  the Worker's draft bars.
+- **Textures:** the parchment is `--tex-parch` (root-absolute, see the
+  comment on it); dark swaps in `assets/parchment-night-v1.webp`, the same
+  sheet recoloured by `migration/make-night-parchment.py` (a changed picture
+  takes a new name: it is cached for a year). The page background keeps its
+  picture under a darkening layer. Both, the purple homepage button and the
+  light edge on logos drawn for parchment are the hand-written "Dark theme"
+  block at the END of styles.css. Write dark-only rules there, with literal
+  colours.
+- **No flash:** one inline line in every page's `<head>` (and `EARLY_THEME`
+  in `pageShell()`) sets `<html data-theme="dark">` before first paint. A
+  test checks every page has the identical line. `BotcData.theme` (data.js:
+  `choice`, `set`, `apply`, `ownColours`) is the same rule for anything that
+  changes it later; it fires `botc-theme` on `document`, which the editors'
+  preview frames (char-preview.js, page-preview.js) follow.
+- **A page with colours of its own is never darkened.** `themeAttrs()` adds
+  `own-colours` when a theme sets any `THEME_COLORS` key, `panelAlpha` or
+  custom CSS (`PageRender.ownsColours`); `pageShell()` turns that into
+  `<html data-own-colours>`, which the head line respects, and profile.html
+  and starlit.js call `BotcData.theme.ownColours()` once they know. The
+  night palette is built for the wiki's parchment, not for a page somebody
+  else designed. Fonts, layout and a background image alone do not count.
+- **Checking it:** `migration/tests/dark-mode.test.mjs` holds the invariants
+  (every dark text colour is light, every opaque dark surface is dark, red
+  stays red). A contrast pass over real pages needs a browser.
 
 ## Night order (script pages)
 
@@ -4799,6 +4865,11 @@ seeded with whole collections whose characters all arrived unowned.
   interleave the two groups. Two prefixes can both match one ability only when
   one is a prefix of the other, so longest-first is always the most specific
   match and the list above can be reordered freely.
+- **Never leave a bare colour in CSS or a `style=""`.** Write it, then run
+  `node migration/theme-vars.mjs`, which turns it into a variable the dark
+  theme can answer (see "Dark mode"). A colour that must not follow the
+  theme takes a `/*keep*/` mark. A bare one is right in light mode and
+  usually unreadable in dark, and a test fails on it.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
 - **Never rewrite page markup on every keystroke in a text box.** Chrome
   ends the box's undo step whenever script replaces nodes in the document

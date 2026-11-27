@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script — BOTC HomeBrew Wiki</title>
@@ -83,12 +84,12 @@
         .then(function(page){
           if (page && page.data){ render(page.data, bySlug, page.status === 'draft'); }
           else {
-            content.innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Script not found. <a href="scripts" style="color:#7fb2e6">Back to all scripts</a>.</p>';
+            content.innerHTML = '<p style="color:var(--fg-ece1c8-a80);text-align:center;padding:40px">Script not found. <a href="scripts" style="color:var(--fg-7fb2e6)">Back to all scripts</a>.</p>';
           }
         });
     }).catch(function(err){
       console.error(err);
-      content.innerHTML = '<p style="color:#e6a">Could not load script data.</p>';
+      content.innerHTML = '<p style="color:var(--fg-e6a)">Could not load script data.</p>';
     });
 
     function render(sc, bySlug, isDraft){
@@ -153,7 +154,7 @@
       if (sc.author) countLine += ' · by ' + esc(sc.author);
 
       var draftBanner = isDraft
-        ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;margin-bottom:16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em;overflow-wrap:anywhere">DRAFT: only you can see this script. Publish it from <a href="publish-script?s=' + encodeURIComponent(sc.slug) + '" style="color:#ffe9ad">the publish page</a> or <a href="account" style="color:#ffe9ad">your account</a>.</div>'
+        ? '<div style="background:var(--bg-7a5c18);color:var(--fg-f7ecd0);text-align:center;padding:10px 16px;margin-bottom:16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em;overflow-wrap:anywhere">DRAFT: only you can see this script. Publish it from <a href="publish-script?s=' + encodeURIComponent(sc.slug) + '" style="color:var(--fg-ffe9ad)">the publish page</a> or <a href="account" style="color:var(--fg-ffe9ad)">your account</a>.</div>'
         : '';
 
       content.innerHTML =

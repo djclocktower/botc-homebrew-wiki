@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Write News — BOTC HomeBrew Wiki</title>
@@ -14,34 +15,34 @@
 .pub-main { padding: 0 clamp(12px,3vw,40px) 64px; max-width: 900px; margin: 0 auto; }
 .sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
 .sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
-.sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+.sb-details .sub { font-size:.84rem; color:var(--fg-6b5d49); margin:0 0 14px; }
 .sb-fld { margin-bottom:12px; }
-.sb-fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:var(--fg-5b4632); margin-bottom:4px; }
 .sb-fld .req { color:var(--evil); }
-.sb-fld .opt { font-weight:400; text-transform:none; letter-spacing:0; color:#726348; }
-.sb-fld input[type=text], .sb-fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.sb-fld .opt { font-weight:400; text-transform:none; letter-spacing:0; color:var(--fg-726348); }
+.sb-fld input[type=text], .sb-fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:var(--fg-241a12); background:var(--bg-fffdf8); border:1px solid var(--bd-cdbfa0); padding:8px 10px; box-sizing:border-box; }
 .sb-fld textarea { resize:vertical; min-height:54px; }
 #n-body { min-height:320px; font-family:'Libre Franklin',sans-serif; line-height:1.5; }
 .sb-fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 @media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
-.sb-check { display:flex; align-items:center; gap:8px; font-size:.9rem; color:#241a12; margin:6px 0 12px; cursor:pointer; }
+.sb-check { display:flex; align-items:center; gap:8px; font-size:.9rem; color:var(--fg-241a12); margin:6px 0 12px; cursor:pointer; }
 .sb-check input { width:17px; height:17px; }
-.sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
-.sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
-.sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
+.sb-btn-publish { background:linear-gradient(180deg,var(--bg-2f7d3e),var(--bg-1c5429)); }
+.sb-btn-draft { background:linear-gradient(180deg,var(--bg-7a5c18),var(--bg-5a4310)); }
+.sb-btn-delete { background:linear-gradient(180deg,var(--bg-8a3526),var(--bg-5b1f21)); }
 .pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
 .pub-status-pill { display:none; font-family:'Roboto',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
-.pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
-.pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
-.pub-back { display:inline-block; font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
-.pub-back:hover { color:#fff; text-decoration:underline; }
+.pub-status-pill.draft { display:inline-block; background:var(--bg-9a6e14-a14); color:var(--fg-7a5c18); border:1px solid var(--bd-9a6e14-a40); }
+.pub-status-pill.published { display:inline-block; background:var(--bg-2a6e2a-a12); color:var(--fg-2a6e2a); border:1px solid var(--bd-2a6e2a-a40); }
+.pub-back { display:inline-block; font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch-fg); text-decoration:none; }
+.pub-back:hover { color:var(--fg-fff); text-decoration:underline; }
 #n-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
-#n-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
-#n-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
-#n-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+#n-status.ok { display:block; background:var(--bg-dff0e2); color:var(--fg-1c5429); border:1px solid var(--bd-9bcfa9); }
+#n-status.err { display:block; background:var(--bg-f6dede); color:var(--fg-9a0d12); border:1px solid var(--bd-d99); }
+#n-status.work { display:block; background:var(--bg-e9eefb); color:var(--fg-234f74); border:1px solid var(--bd-aac0e6); }
 #n-status a { color:inherit; font-weight:700; }
-.fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.7; margin:8px 0 0; }
-.fmt-help code { background:#fffdf8; border:1px solid #e0d5bd; padding:1px 4px; font-size:.86em; }
+.fmt-help { font-size:.82rem; color:var(--fg-6b5d49); line-height:1.7; margin:8px 0 0; }
+.fmt-help code { background:var(--bg-fffdf8); border:1px solid var(--bd-e0d5bd); padding:1px 4px; font-size:.86em; }
 /* Live preview reuses the real article styles so what you see is what ships. */
 .news-preview { background:var(--parch); border:2px solid var(--parch-frame); padding:14px 16px; margin-bottom:18px; }
 .news-preview > h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 10px; font-size:1.2rem; }
@@ -52,26 +53,26 @@ details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20p
 details.sb-details > summary::-webkit-details-marker { display:none; }
 details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
 details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
-details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:#6b5d49; margin-top:2px; }
+details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:var(--fg-6b5d49); margin-top:2px; }
 details.sb-details > .sb-details-body { padding:4px 20px 18px; }
-.sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
-.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:var(--fg-241a12); background:var(--bg-fffdf8); border:1px solid var(--bd-cdbfa0); padding:8px 10px; box-sizing:border-box; }
+.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--bd-b4a078-a25); }
 .th-row:last-child { border-bottom:none; }
-.th-row label { flex:1; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
-.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
-.th-clear { font-size:.75rem; font-family:'Roboto',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
-.th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
-.sb-header-prev { margin-top:8px; max-width:100%; max-height:150px; border:1px solid #cdbfa0; display:none; }
+.th-row label { flex:1; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:var(--fg-5b4632); margin:0; }
+.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid var(--bd-cdbfa0); background:var(--bg-fffdf8); cursor:pointer; }
+.th-clear { font-size:.75rem; font-family:'Roboto',sans-serif; background:none; border:1px solid var(--bd-cdbfa0); color:var(--fg-6b5d49); padding:2px 8px; cursor:pointer; }
+.th-state { font-size:.75rem; color:var(--fg-6b5d49); min-width:64px; text-align:right; }
+.sb-header-prev { margin-top:8px; max-width:100%; max-height:150px; border:1px solid var(--bd-cdbfa0); display:none; }
 #n-body { border-top:none; }
 .article-list { list-style:none; margin:0; padding:0; }
-.article-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(180,160,120,.35); }
+.article-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--bd-b4a078-a35); }
 .article-row:last-child { border-bottom:none; }
 .article-row a { color:var(--maroon); font-weight:600; font-size:.94rem; text-decoration:none; }
 .article-row a:hover { text-decoration:underline; }
-.article-row .meta { font-size:.8rem; color:#6b5d49; }
+.article-row .meta { font-size:.8rem; color:var(--fg-6b5d49); }
 .article-row .pill { font-family:'Roboto',sans-serif; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:999px; }
-.article-row .pill.draft { background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
-.article-row .pill.published { background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+.article-row .pill.draft { background:var(--bg-9a6e14-a14); color:var(--fg-7a5c18); border:1px solid var(--bd-9a6e14-a40); }
+.article-row .pill.published { background:var(--bg-2a6e2a-a12); color:var(--fg-2a6e2a); border:1px solid var(--bd-2a6e2a-a40); }
 </style>
 </head>
 <body>
@@ -112,7 +113,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <main class="pub-main">
     <div class="home-hero" style="padding-bottom:14px">
       <h1 id="page-title">Write a News Article</h1>
-      <p>News articles get their own page, appear on the homepage and on <a href="news" style="color:#ffe9ad">/news</a>, and readers can comment on them.</p>
+      <p>News articles get their own page, appear on the homepage and on <a href="news" style="color:var(--fg-ffe9ad)">/news</a>, and readers can comment on them.</p>
     </div>
 
     <div id="gate" style="display:none">

@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Favorites — BOTC HomeBrew Wiki</title>
@@ -14,32 +15,32 @@
   /* Sits on the dark page background, not on parchment — light text, like the
      .home-hero headers everywhere else. Same furniture as /drafts. */
   .fav-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
-    color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
+    color:var(--fg-ece1c8-a80); text-align:center; margin:0 0 4px; font-size:.95rem; }
   .fav-back { display:block; text-align:center; margin:10px 0 0;
-    font-family:'Roboto',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
-  .fav-back:hover { color:#fff; text-decoration:underline; }
+    font-family:'Roboto',sans-serif; letter-spacing:.03em; color:var(--parch-fg); text-decoration:none; }
+  .fav-back:hover { color:var(--fg-fff); text-decoration:underline; }
   .fav-count { text-align:center; font-family:'Roboto',sans-serif;
     letter-spacing:.07em; text-transform:uppercase; font-size:.9rem;
-    color:rgba(236,225,200,.72); margin:0 0 20px; }
+    color:var(--fg-ece1c8-a72); margin:0 0 20px; }
   .fav-gate, .fav-empty {
-    text-align:center; color:rgba(236,225,200,.85); padding:40px 20px;
+    text-align:center; color:var(--fg-ece1c8-a85); padding:40px 20px;
     font-family:'TradeGothicLT','Libre Franklin',sans-serif;
   }
-  .fav-gate a, .fav-empty a { color:#9fc4ee; }
+  .fav-gate a, .fav-empty a { color:var(--fg-9fc4ee); }
   .fav-section-note { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
-    color:rgba(236,225,200,.7); font-size:.9rem; margin:-6px 0 16px; }
+    color:var(--fg-ece1c8-a70); font-size:.9rem; margin:-6px 0 16px; }
   /* Scripts and collections have no card art, so they get the same tile the
      creator page and /drafts use. */
   .fav-tiles { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); margin-bottom:34px; }
   .fav-tile {
     display:block; padding:12px 14px; text-decoration:none;
-    background:rgba(20,7,18,.42); border:1px solid rgba(236,225,200,.22);
-    color:rgba(236,225,200,.92); min-width:0;
+    background:var(--bg-140712-a42); border:1px solid var(--bd-ece1c8-a22);
+    color:var(--fg-ece1c8-a92); min-width:0;
   }
-  .fav-tile:hover { background:rgba(20,7,18,.6); border-color:rgba(236,225,200,.4); }
+  .fav-tile:hover { background:var(--bg-140712-a60); border-color:var(--bd-ece1c8-a40); }
   .fav-tile-name { display:block; font-family:'Dumbledor2',serif; font-size:1.05rem;
-    color:var(--parch); overflow-wrap:anywhere; }
-  .fav-tile-meta { display:block; font-size:.78rem; color:rgba(236,225,200,.65); margin-top:3px; }
+    color:var(--parch-fg); overflow-wrap:anywhere; }
+  .fav-tile-meta { display:block; font-size:.78rem; color:var(--fg-ece1c8-a65); margin-top:3px; }
   .fav-via { margin-top:34px; }
 </style>
 </head>
@@ -108,7 +109,7 @@
         <h2 class="type-header">On your saved scripts &amp; collections</h2>
         <div class="type-rule"></div>
         <p class="fav-section-note">The <strong>Favorites</strong> filter on
-          <a href="all-characters?favorites=1" style="color:#9fc4ee">All Characters</a> and in the Script Builder includes these too.</p>
+          <a href="all-characters?favorites=1" style="color:var(--fg-9fc4ee)">All Characters</a> and in the Script Builder includes these too.</p>
         <div id="via-grid"></div>
       </div>
     </div>
@@ -198,7 +199,7 @@
         return Promise.all([BotcData.json('characters.json?fields=grid'), BotcData.officials()])
           .then(function (r) { return r[1].concat(r[0]); }).catch(function () {
           $('other-favs').insertAdjacentHTML('beforeend',
-            '<p class="fav-section-note">The character cards could not be loaded just now. <a href="favorites" style="color:#9fc4ee">Try again</a></p>');
+            '<p class="fav-section-note">The character cards could not be loaded just now. <a href="favorites" style="color:var(--fg-9fc4ee)">Try again</a></p>');
           return null;
         }).then(function (all) {
           if (!all) return;

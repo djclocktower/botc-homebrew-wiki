@@ -481,6 +481,11 @@
      Every value written into `style` is a validated hex colour, a number, a
      constant from this file or a GOOGLE_FONT_RE name, so nothing a writer
      typed can close the declaration it sits in. */
+  function ownsColours(theme) {
+    if (!theme) return false;
+    if (theme.css || theme.panelAlpha != null) return true;
+    return THEME_COLORS.some(function (k) { return !!theme[k]; });
+  }
   function themeAttrs(theme, linkRoot) {
     if (!theme) return { cls: '', style: '', fonts: [], movesCss: '' };
     var cls = ['page-themed'];
@@ -637,6 +642,11 @@
       style.push('--pg-header-scale:' + (theme.headerSize / 100));
     }
     if (theme.logoPanel) cls.push('theme-logo-panel');
+    /* A page with colours of its own is not darkened by the site's dark
+       mode: its author chose them against each other, and against the
+       parchment where they left a setting alone. pageShell() and the pages
+       that apply a theme in the browser read this class. */
+    if (ownsColours(theme)) cls.push('own-colours');
     return { cls: cls.join(' '), style: style.join(';'), fonts: themeFontLinks(theme), movesCss: movesCss };
   }
 
@@ -1823,6 +1833,7 @@
     THEME_CSS_MAX: THEME_CSS_MAX,
     FONT_STACKS: FONT_STACKS,
     themeAttrs: themeAttrs,
+    ownsColours: ownsColours,
     LOGO_SIZE_MIN: LOGO_SIZE_MIN,
     LOGO_SIZE_MAX: LOGO_SIZE_MAX,
     buildPageExport: buildPageExport,

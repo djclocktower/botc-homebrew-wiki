@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Steven Approved Order — BOTC HomeBrew Wiki</title>
@@ -19,13 +20,13 @@
   }
   .sao-card {
     background-color: var(--parch);
-    background-image: url('assets/parchment.webp');
+    background-image: var(--tex-parch);
     background-size: cover;
     border: 2px solid var(--parch-frame);
     padding: clamp(20px,4vw,40px) clamp(20px,4vw,48px);
     color: var(--ink);
     box-shadow: 0 20px 48px -16px rgba(0,0,0,.6),
-                inset 0 0 0 3px rgba(255,255,255,.3),
+                inset 0 0 0 3px var(--sh-fff-a30),
                 inset 0 0 0 4px var(--parch-frame);
   }
   .sao-card h2 {
@@ -38,7 +39,7 @@
   }
   .sao-rule {
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--rule), transparent);
+    background: linear-gradient(90deg, transparent, var(--rule-bg), transparent);
     margin: 10px 0 24px;
     border: none;
   }
@@ -51,7 +52,7 @@
     display: flex;
     gap: 10px;
     padding: 5px 0;
-    border-bottom: 1px solid rgba(182,163,126,.25);
+    border-bottom: 1px solid var(--bd-b6a37e-a25);
     font-family: 'Libre Franklin', sans-serif;
     font-size: 1rem;
     line-height: 1.4;

@@ -1246,6 +1246,9 @@
     ['page-custom-css', 'page-moves'].forEach(function (id) { var o = $(id); if (o) o.remove(); });
     var oldSt = document.querySelector('body > .pg-stickers'); if (oldSt) oldSt.remove();
     var t = theme && PR && PR.sanitizeTheme ? PR.sanitizeTheme(theme, PAGE_BASE) : null;
+    // Dark mode leaves a page with its own colours alone (BotcData.theme).
+    var BT = window.BotcData && window.BotcData.theme;
+    if (BT) BT.ownColours(!!(t && PR.ownsColours && PR.ownsColours(t)));
     if (!t) return;
     var ta = PR.themeAttrs(t);
     ta.cls.split(' ').forEach(function (c) {
@@ -1324,7 +1327,7 @@
         '<p class="sg-hint">Marks: **bold**, {{i|italic}}, [a link](/u/harryandco), ## a heading, ### a smaller one, - a list. Leave a box empty to show nothing there. The page changes as you type; nothing is kept until you press Save.</p>' +
         '<h4>Look</h4>' +
         '<div class="sg-row"><span class="sg-label" style="flex-basis:100%">Page background</span>' +
-        '<img id="sg-pe-bg" alt="" style="display:none;width:120px;height:68px;object-fit:cover;border:1px solid #cdbfa0">' +
+        '<img id="sg-pe-bg" alt="" style="display:none;width:120px;height:68px;object-fit:cover;border:1px solid var(--bd-cdbfa0)">' +
         '<input type="file" id="sg-pe-bgfile" accept="image/png,image/jpeg,image/webp" hidden>' +
         '<button type="button" class="sg-btn" id="sg-pe-bgup">Upload background</button>' +
         '<button type="button" class="sg-link-btn" id="sg-pe-bgdel" hidden>Remove</button></div>' +

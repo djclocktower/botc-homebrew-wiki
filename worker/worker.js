@@ -8345,6 +8345,12 @@ const EARLY_ANNOUNCEMENT = String.raw`<script>(function(){try{var c=JSON.parse(l
   String.raw`var x=document.createElement("button");x.className="site-announcement-close";x.type="button";x.setAttribute("aria-label","Dismiss announcement");x.textContent="×";` +
   String.raw`b.appendChild(s);b.appendChild(x);document.body.insertBefore(b,document.body.firstChild)}catch(e){}})();</script>`;
 
+// Dark mode, before the first paint: the reader's choice (localStorage
+// botc_theme) onto <html data-theme>. The same line is in every static page's
+// head, and BotcData.theme in assets/data.js is the rule for changing it later.
+// Identical for every reader, so it is safe in the shared SSR cache.
+const EARLY_THEME = '<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>';
+
 // Shared HTML shell for every server-rendered page (/c/, /s/, /collection/).
 // The topbar/nav markup mirrors the static pages (scripts.html is canonical).
 // Every script is `defer`, data.js in the head included: none of them blocks
@@ -8395,10 +8401,15 @@ function pageShell(o) {
   const mainBody = o.customCss
     ? '<div class="ucss-frame"><div class="ucss">' + o.body + '</div></div>'
     : o.body;
+  // Dark mode never touches a page with colours of its own (the own-colours
+  // class from themeAttrs, or a custom stylesheet): the attribute tells the
+  // head script, and BotcData.theme, to leave it as its author drew it.
+  const ownColours = /(^|\s)own-colours(\s|$)/.test(o.bodyClass || '') || !!o.customCss;
   return `<!DOCTYPE html>
-<html lang="en" class="redesign-on">
+<html lang="en" class="redesign-on"${ownColours ? ' data-own-colours' : ''}>
 <head>
 <meta charset="UTF-8">
+${EARLY_THEME}
 <script src="${R}assets/${ASSET_MANIFEST['data.js'] || 'data.js'}" defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${attr(o.title)} — BOTC HomeBrew Wiki</title>

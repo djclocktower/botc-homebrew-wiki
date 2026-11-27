@@ -160,6 +160,13 @@
       if (bgUrl) style = style.split('/assets/x/pp-bg.png').join(bgUrl);
       doc.body.className = ta.cls;
       doc.body.setAttribute('style', style);
+      // Dark mode as the published page will have it: on for the reader who
+      // chose it, off for a page with colours of its own.
+      var own = !!(P.ownsColours && P.ownsColours(clean));
+      var dark = global.document.documentElement.getAttribute('data-theme') === 'dark' ||
+        (global.BotcData && global.BotcData.theme && global.BotcData.theme.choice() === 'dark');
+      if (dark && !own) doc.documentElement.setAttribute('data-theme', 'dark');
+      else doc.documentElement.removeAttribute('data-theme');
       (ta.fonts || []).forEach(function (href) {
         if (doc.querySelector('link[href="' + href + '"]')) return;
         var l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = href; doc.head.appendChild(l);
@@ -401,6 +408,7 @@
       }
     });
 
+    global.document.addEventListener('botc-theme', function () { try { paintNow(); } catch (e) {} });
     return { paint: paintNow, refresh: refresh, frame: frame, fit: fit };
   }
 

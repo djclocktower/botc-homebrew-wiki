@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Official Tagger — BOTC HomeBrew Wiki</title>
@@ -13,23 +14,23 @@
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
   .ot-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 16px; }
-  .ot-bar input[type=search] { flex: 1 1 220px; padding: 8px 10px; border: 1px solid #cdbfa0; background: #fffdf8; color: #2b1d12; font: inherit; }
-  .ot-bar label, .ot-count { color: rgba(236,225,200,.85); font-family: 'Roboto',sans-serif; font-size: .85rem; }
-  .ot-msg { text-align: center; color: rgba(236,225,200,.75); padding: 18px; }
-  .ot-row { display: grid; grid-template-columns: 56px 1fr; gap: 4px 12px; background: #f3ead4; color: #2b1d12; padding: 10px 12px; margin: 0 0 8px; border: 1px solid #d9cba6; }
+  .ot-bar input[type=search] { flex: 1 1 220px; padding: 8px 10px; border: 1px solid var(--bd-cdbfa0); background: var(--bg-fffdf8); color: var(--fg-2b1d12); font: inherit; }
+  .ot-bar label, .ot-count { color: var(--fg-ece1c8-a85); font-family: 'Roboto',sans-serif; font-size: .85rem; }
+  .ot-msg { text-align: center; color: var(--fg-ece1c8-a75); padding: 18px; }
+  .ot-row { display: grid; grid-template-columns: 56px 1fr; gap: 4px 12px; background: var(--bg-f3ead4); color: var(--fg-2b1d12); padding: 10px 12px; margin: 0 0 8px; border: 1px solid var(--bd-d9cba6); }
   .ot-row img { width: 56px; height: 56px; grid-row: span 3; }
   .ot-name { font-weight: 700; font-family: 'Roboto',sans-serif; }
-  .ot-done { border-left: 4px solid var(--maroon); }
-  .ot-mark { display: inline-block; margin-left: 8px; padding: 1px 6px; background: var(--maroon); color: #f3ead4; font-size: .7rem; font-weight: 600; letter-spacing: .04em; vertical-align: 2px; }
+  .ot-done { border-left: 4px solid var(--maroon-bd); }
+  .ot-mark { display: inline-block; margin-left: 8px; padding: 1px 6px; background: var(--maroon-bg); color: var(--fg-f3ead4); font-size: .7rem; font-weight: 600; letter-spacing: .04em; vertical-align: 2px; }
   .ot-ability { font-size: .9rem; }
-  .ot-tags { font-family: 'Roboto',sans-serif; font-size: .8rem; color: #5b4632; }
-  .ot-by { color: #7a6a55; }
+  .ot-tags { font-family: 'Roboto',sans-serif; font-size: .8rem; color: var(--fg-5b4632); }
+  .ot-by { color: var(--fg-7a6a55); }
   .ot-edit { grid-column: 1 / -1; }
   .ot-pick { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
   .ot-pick .tag-pick-btn { border-radius: 0; }
   .ot-actions { display: flex; gap: 8px; align-items: center; }
-  .ot-actions button, .ot-open { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .8rem; padding: 5px 12px; border: 1px solid var(--maroon); background: #fffdf8; color: var(--maroon); cursor: pointer; }
-  .ot-actions .ot-save { background: var(--maroon); color: #f3ead4; }
+  .ot-actions button, .ot-open { font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .8rem; padding: 5px 12px; border: 1px solid var(--maroon-bd); background: var(--bg-fffdf8); color: var(--maroon); cursor: pointer; }
+  .ot-actions .ot-save { background: var(--maroon-bg); color: var(--fg-f3ead4); }
   .ot-open { justify-self: start; grid-column: 2; }
 </style>
 </head>

@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recently Added — BOTC HomeBrew Wiki</title>
@@ -56,28 +57,28 @@
     <section class="landing-section">
       <h2 class="type-header">New Members</h2>
       <div class="type-rule"></div>
-      <div class="creators-page-grid" id="recent-members"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+      <div class="creators-page-grid" id="recent-members"><p style="text-align:center;color:var(--fg-ece1c8-a60);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
     </section>
 
     <section class="landing-section">
       <h2 class="type-header">Characters</h2>
       <div class="type-rule"></div>
-      <div class="recent-strip" id="recent-characters"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+      <div class="recent-strip" id="recent-characters"><p style="text-align:center;color:var(--fg-ece1c8-a60);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
       <p style="text-align:right;margin:10px 2px 0">
-        <a href="all-characters" style="font-family:'Roboto',sans-serif;font-size:.82rem;letter-spacing:.05em;color:rgba(236,225,200,.75);text-decoration:none">All characters →</a>
+        <a href="all-characters" style="font-family:'Roboto',sans-serif;font-size:.82rem;letter-spacing:.05em;color:var(--fg-ece1c8-a75);text-decoration:none">All characters →</a>
       </p>
     </section>
 
     <section class="landing-section">
       <h2 class="type-header">Newest Script</h2>
       <div class="type-rule"></div>
-      <div class="collections-grid" id="recent-script"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+      <div class="collections-grid" id="recent-script"><p style="text-align:center;color:var(--fg-ece1c8-a60);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
     </section>
 
     <section class="landing-section">
       <h2 class="type-header">Newest Collection</h2>
       <div class="type-rule"></div>
-      <div class="collections-grid" id="recent-collection"><p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
+      <div class="collections-grid" id="recent-collection"><p style="text-align:center;color:var(--fg-ece1c8-a60);padding:18px;width:100%;grid-column:1/-1">Loading…</p></div>
     </section>
   </main>
 
@@ -93,7 +94,7 @@
       var EMPTY = { members: 'No members yet.', characters: 'No characters yet.',
         script: 'No scripts yet.', collection: 'No collections yet.' };
       function msg(el, text) {
-        el.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%;grid-column:1/-1"></p>';
+        el.innerHTML = '<p style="text-align:center;color:var(--fg-ece1c8-a60);padding:18px;width:100%;grid-column:1/-1"></p>';
         el.firstChild.textContent = text;
       }
       BotcData.json('/api/recent').then(function (data) {
