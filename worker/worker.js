@@ -244,6 +244,11 @@
  *                                A plain unpublish (/api/publish, or the bulk
  *                                tool) tells the creator nothing, which is
  *                                the gap this fills.
+ *   POST /api/admin/draft-collection -> admin: a collection AND its
+ *                                characters to drafts, one reason on all
+ *                                ({slug, reason, others?, dryRun}; a dry run
+ *                                unless dryRun:false). {action:'publish'}
+ *                                puts back exactly what it took down.
  *   POST /api/admin/protect   -> protect/unprotect one page from edits
  *   POST /api/admin/announce  -> set/clear the site-wide announcement banner
  *   GET  /api/admin/site-text -> every saved system-text override, with who
@@ -5225,6 +5230,34 @@ async function keepUploaderEditing(env, next, ownerId, stored) {
   if (next.publicEdit !== 'all' && next.publicEdit !== 'all-but-ability') {
     next.publicEdit = 'approved';
   }
+}
+
+/* The collection take-down's message: one per owner, saying what of theirs
+   went (the set, some of its characters, or both) rather than one DM per
+   page. Same rules as notifyDrafted: no block list, never fails the act. */
+async function notifyCollectionDrafted(env, opts) {
+  // opts: {fromId, owners: Map(id -> {set, chars}), name, reason, origin, editHref}
+  try {
+    if (!opts.owners || !opts.owners.size) return;
+    await ensureDmTables(env);
+    const set = '\u201c' + (opts.name || '') + '\u201d';
+    for (const [id, e] of opts.owners) {
+      const n = e.chars;
+      const yours = n + ' of your character' + (n === 1 ? '' : 's');
+      const what = e.set
+        ? 'the collection ' + set + (n ? ' and ' + yours + ' on it' : '')
+        : yours + ' on the collection ' + set;
+      const many = n + (e.set ? 1 : 0) > 1;
+      const text = 'An admin moved ' + what + ' to drafts, so ' +
+        (many ? 'they are' : 'it is') + ' no longer public.' +
+        (opts.reason ? '\n\n\u201c' + opts.reason + '\u201d' : '') +
+        '\n\nNothing is lost. Fix ' + (many ? 'them' : 'it') + ' and publish again: ' +
+        (opts.origin || '') + (e.set ? opts.editHref : '/drafts');
+      await env.DB.prepare(
+        'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+      ).bind(opts.fromId, id, text).run().catch(() => {});
+    }
+  } catch { /* a notification must never fail the moderation act */ }
 }
 
 async function notifyDrafted(env, opts) {
@@ -17333,6 +17366,153 @@ const app = {
           // the dashboard says so rather than implying a message went out.
           notified: row.owner_id != null && row.owner_id !== sess.userId
         });
+      }
+
+      /* ---- admin: send a whole collection, and its characters, to drafts ----
+         The same act as /api/admin/draft-page, for a set rather than a page:
+         the collection goes to drafts and so does every published character
+         on it, each with the one reason written on it as data._draftNote.
+         The reason is required for the same reason it is there: the owners
+         are told, and the note is what their editors say until they publish.
+         A note made here also names the collection (`set`), which is how
+         {action: 'publish'} puts back exactly the pages this took down and
+         not drafts their owners never published.
+
+         Whose characters: the collection owner's, the unowned and the ones an
+         admin owns (the bulk import's leftovers) by default. A collection can
+         list anybody's characters, and a member whose character merely sits
+         on somebody else's set has done nothing; those are counted (`held`)
+         and only taken with {others: true}.
+
+         Each owner gets ONE message, however many of their pages went, and a
+         dry run (the default, like every admin sweep) reports the counts
+         before anything moves. The set's wiki pages need nothing: a page whose
+         set is a draft is not public (wikiParentPublic). */
+      if (path === '/api/admin/draft-collection') {
+        const b = await request.json().catch(() => ({}));
+        const dryRun = b.dryRun !== false;
+        const action = b.action === 'publish' ? 'publish' : 'draft';
+        const others = !!b.others;
+        // A pasted address works as well as an id.
+        let key = String(b.slug || '').trim();
+        try { key = decodeURIComponent(key); } catch { /* keep it as typed */ }
+        key = key.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/?collection\//, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
+        if (!key) return jsonResponse({ error: 'Which collection?' }, { status: 400 });
+        const row = await findCollectionRow(env, key);
+        if (!row) return jsonResponse({ error: 'No collection by that name.' }, { status: 404 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That collection is deleted. Restore it first.' }, { status: 400 });
+        }
+        const reason = String(b.reason || '').trim().slice(0, DRAFT_NOTE_MAX);
+        if (action === 'draft' && reason.length < 5) {
+          return jsonResponse({ error: 'Say what is wrong with the collection. Its creators read this.' }, { status: 400 });
+        }
+        const cd = parseData(row);
+        const setMark = n => !!(n && n.set && n.set.type === 'collection' && n.set.slug === row.slug);
+
+        // The members, read in chunks (D1's bind cap; nothing else is bound).
+        const slugs = [...new Set(await rosterCharacterSlugs(env, 'collection', row))].slice(0, OWNER_WATERFALL_MAX);
+        const members = [];
+        for (let i = 0; i < slugs.length; i += 90) {
+          const chunk = slugs.slice(i, i + 90);
+          const { results } = await env.DB.prepare(
+            `SELECT slug, name, owner_id, status, data FROM characters
+             WHERE slug IN (${chunk.map(() => '?').join(',')}) AND status IS NOT 'deleted'`
+          ).bind(...chunk).all();
+          members.push(...(results || []));
+        }
+        const admins = await adminUserIds(env);
+        const ownerId = row.owner_id == null ? null : Number(row.owner_id);
+        const ours = r => r.owner_id == null || Number(r.owner_id) === ownerId || admins.includes(Number(r.owner_id));
+
+        const pick = [], incomplete = [];
+        let held = 0, already = 0;
+        for (const r of members) {
+          const d = parseData(r);
+          if (action === 'draft') {
+            if (r.status !== 'published') { already++; continue; }
+            if (!others && !ours(r)) { held++; continue; }
+            pick.push({ r, d });
+          } else {
+            if (r.status !== 'draft' || !setMark(d._draftNote)) continue;
+            const missing = Classify.missingForPublish(d);
+            if (missing.length) { incomplete.push({ slug: r.slug, name: r.name, missing }); continue; }
+            pick.push({ r, d });
+          }
+        }
+        const collectionMoves = action === 'draft'
+          ? row.status === 'published'
+          : row.status === 'draft' && setMark(cd._draftNote);
+        const report = {
+          ok: true, dryRun, action,
+          collection: { slug: row.slug, id: cd.id || row.slug, name: row.name, status: row.status, moves: collectionMoves },
+          members: members.length,
+          characters: pick.length,
+          held, already,
+          incomplete
+        };
+        if (dryRun) return jsonResponse(report);
+        if (!collectionMoves && !pick.length) return jsonResponse({ ...report, notified: 0 });
+
+        let adminName = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          adminName = u ? u.username : null;
+        } catch { /* the note is still worth writing without a name */ }
+        const note = () => ({ ...draftNote(reason, adminName), set: { type: 'collection', slug: row.slug } });
+        const nextStatus = action === 'draft' ? 'draft' : 'published';
+        const reshape = d => {
+          if (action === 'draft') d._draftNote = note();
+          else delete d._draftNote;
+          return JSON.stringify(d);
+        };
+
+        if (collectionMoves) {
+          await env.DB.prepare(`UPDATE collections SET status=?, data=?, updated_at=datetime('now') WHERE slug=?`)
+            .bind(nextStatus, reshape(cd), row.slug).run();
+          await logActivity(env, sess, action === 'draft' ? 'admin-draft' : 'publish', 'collection', row.slug, row.name);
+        }
+        // Batched, so a 200-character set is a handful of round trips. A batch
+        // that fails is counted rather than swallowed (the waterfall lesson).
+        let moved = 0, failed = 0;
+        const done = [];
+        for (let i = 0; i < pick.length; i += 50) {
+          const part = pick.slice(i, i + 50);
+          try {
+            await env.DB.batch(part.map(({ r, d }) => env.DB.prepare(
+              `UPDATE characters SET status=?, data=?, updated_at=datetime('now') WHERE slug=?`
+            ).bind(nextStatus, reshape(d), r.slug)));
+            moved += part.length;
+            done.push(...part);
+          } catch (err) {
+            failed += part.length;
+            console.log('draft-collection: batch failed on ' + row.slug + ': ' + ((err && err.message) || err));
+          }
+        }
+        if (moved) {
+          await logActivity(env, sess, action === 'draft' ? 'admin-draft' : 'publish', 'character', null,
+            moved + ' character page' + (moved === 1 ? '' : 's') + ' with collection ' + row.slug);
+        }
+
+        // One message per owner, and only when pages went down.
+        let notified = 0;
+        if (action === 'draft') {
+          const per = new Map();
+          const add = (id, k) => {
+            if (id == null || Number(id) === sess.userId) return;
+            const e = per.get(Number(id)) || { set: false, chars: 0 };
+            if (k === 'set') e.set = true; else e.chars++;
+            per.set(Number(id), e);
+          };
+          if (collectionMoves) add(row.owner_id, 'set');
+          for (const { r } of done) add(r.owner_id, 'char');
+          notified = per.size;
+          const editHref = '/publish-collection?c=' + encodeURIComponent(cd.id || row.slug);
+          ctx.waitUntil(notifyCollectionDrafted(env, {
+            fromId: sess.userId, owners: per, name: row.name, reason, origin: url.origin, editHref
+          }));
+        }
+        return jsonResponse({ ...report, characters: moved, failed, notified });
       }
 
       // ---- admin: protect / unprotect one page ----
