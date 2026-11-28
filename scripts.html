@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scripts — BOTC HomeBrew Wiki</title>
@@ -89,7 +90,7 @@
   <main class="home-panel">
     <section class="landing-section">
       <div class="collections-grid" id="scripts-grid">
-        <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading scripts…</p>
+        <p style="grid-column:1/-1;text-align:center;color:var(--fg-ece1c8-a60);padding:24px">Loading scripts…</p>
       </div>
     </section>
   </main>
@@ -109,7 +110,7 @@
     BotcData.json('scripts.json?fields=browse')
       .then(function(scripts){
         if (!scripts.length){
-          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="script" style="color:#7fb2e6">Create the first one →</a></p>';
+          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--fg-ece1c8-a60);padding:24px">No scripts yet. <a href="script" style="color:var(--fg-7fb2e6)">Create the first one →</a></p>';
           return;
         }
         var curataOnly = false, teensyOnly = false, favOnly = false, FAV = {};
@@ -165,7 +166,7 @@
           });
           // The chips combine, so the empty message cannot name one of them.
           grid.innerHTML = rows.map(cardHTML).join('') ||
-            '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts match those filters.</p>';
+            '<p style="grid-column:1/-1;text-align:center;color:var(--fg-ece1c8-a60);padding:24px">No scripts match those filters.</p>';
         }
         // A chip only shows up once something matches it, and the bar only
         // shows up once a chip does — a filter that can only ever empty the
@@ -229,7 +230,7 @@
       // rendering bug looks like the feed being down.
       .catch(function(err){
         if (window.console && console.error) console.error('scripts:', err);
-        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load scripts.</p>';
+        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--fg-e6a);padding:30px">Could not load scripts.</p>';
       });
   })();
   </script>

@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="/assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Creator — BOTC HomeBrew Wiki</title>
@@ -25,10 +26,10 @@
   .profile-hero { display:flex; align-items:center; gap:22px; flex-wrap:wrap; justify-content:center; text-align:left; }
   .profile-avatar {
     width:86px; height:86px; border-radius:50%; flex-shrink:0;
-    background:var(--maroon, #5b1f21); color:#f7ecd0; overflow:hidden;
+    background:var(--maroon, var(--bg-5b1f21)); color:var(--fg-f7ecd0); overflow:hidden;
     display:flex; align-items:center; justify-content:center;
     font-family:'Dumbledor2',serif; font-size:2.2rem;
-    border:2px solid rgba(236,225,200,.4);
+    border:2px solid var(--bd-ece1c8-a40);
   }
   .profile-avatar img { width:100%; height:100%; object-fit:cover; }
   .profile-hero-text { min-width:0; max-width:100%; }
@@ -38,10 +39,10 @@
      name is too long for the width, and styles.css lets it wrap if even that
      is not enough. */
   .profile-hero-text h1 { margin:0 0 2px; text-align:left; }
-  .profile-uname { font-size:.95rem; color:rgba(236,225,200,.75); margin:0 0 6px; }
-  .profile-bio { font-size:.95rem; color:rgba(236,225,200,.9); max-width:60ch; margin:0 0 6px; white-space:pre-wrap; }
-  .profile-joined { font-size:.82rem; color:rgba(236,225,200,.6); margin:0; }
-  .profile-aka { font-size:.82rem; color:rgba(236,225,200,.6); margin:0 0 6px; }
+  .profile-uname { font-size:.95rem; color:var(--fg-ece1c8-a75); margin:0 0 6px; }
+  .profile-bio { font-size:.95rem; color:var(--fg-ece1c8-a90); max-width:60ch; margin:0 0 6px; white-space:pre-wrap; }
+  .profile-joined { font-size:.82rem; color:var(--fg-ece1c8-a60); margin:0; }
+  .profile-aka { font-size:.82rem; color:var(--fg-ece1c8-a60); margin:0 0 6px; }
   /* Collapsible sections. A creator with 258 characters made Scripts and
      Collections a very long scroll away; the heading is a toggle now.
      Everything starts open, so the page reads exactly as it did before
@@ -52,66 +53,66 @@
     font:inherit; color:inherit; letter-spacing:inherit;
     text-transform:inherit; text-align:left;
   }
-  .prof-sec-toggle:hover { color:#fff; }
-  .prof-sec-toggle:focus-visible { outline:2px solid rgba(236,225,200,.6); outline-offset:3px; }
+  .prof-sec-toggle:hover { color:var(--fg-fff); }
+  .prof-sec-toggle:focus-visible { outline:2px solid var(--bd-ece1c8-a60); outline-offset:3px; }
   .prof-sec-caret {
     flex:0 0 auto; font-size:.7em; line-height:1;
-    color:rgba(236,225,200,.65); transition:transform .15s ease;
+    color:var(--fg-ece1c8-a65); transition:transform .15s ease;
   }
   .prof-sec-count {
     flex:0 0 auto; margin-left:auto;
     font-family:'Roboto',sans-serif; font-size:.62em; letter-spacing:.06em;
-    color:rgba(236,225,200,.55); text-transform:uppercase;
+    color:var(--fg-ece1c8-a55); text-transform:uppercase;
   }
   .prof-section.collapsed .prof-sec-caret { transform:rotate(-90deg); }
   .prof-section.collapsed .prof-sec-body { display:none; }
   .prof-section.collapsed .type-rule { margin-bottom:10px; }
   @media (prefers-reduced-motion: reduce) { .prof-sec-caret { transition:none; } }
-  .profile-empty { text-align:center; color:rgba(236,225,200,.7); padding:30px; }
-  .profile-unclaimed { font-size:.88rem; color:rgba(236,225,200,.6); margin:2px 0 6px; max-width:56ch; }
+  .profile-empty { text-align:center; color:var(--fg-ece1c8-a70); padding:30px; }
+  .profile-unclaimed { font-size:.88rem; color:var(--fg-ece1c8-a60); margin:2px 0 6px; max-width:56ch; }
   .profile-btn-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
   .profile-msg-btn {
     display:inline-block; padding:7px 16px;
     font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-weight:700; font-size:.88rem;
-    color:#f4ead2; background:linear-gradient(180deg,#7a2d2f,#5b1f21);
-    border:1px solid rgba(236,225,200,.35); border-radius:6px; text-decoration:none;
+    color:var(--fg-f4ead2); background:linear-gradient(180deg,var(--bg-7a2d2f),var(--bg-5b1f21));
+    border:1px solid var(--bd-ece1c8-a35); border-radius:6px; text-decoration:none;
   }
-  .profile-msg-btn:hover { background:linear-gradient(180deg,#8a3537,#6b2527); }
-  .profile-msg-btn.ghost { background:none; color:rgba(236,225,200,.9); }
-  .profile-msg-btn.ghost:hover { background:rgba(236,225,200,.1); }
+  .profile-msg-btn:hover { background:linear-gradient(180deg,var(--bg-8a3537),var(--bg-6b2527)); }
+  .profile-msg-btn.ghost { background:none; color:var(--fg-ece1c8-a90); }
+  .profile-msg-btn.ghost:hover { background:var(--bg-ece1c8-a10); }
   /* Links the creator added in their account settings. */
   .profile-links { display:flex; flex-wrap:wrap; gap:12px; margin:6px 0 0; padding:0; list-style:none; }
   .profile-links li { margin:0; padding:0; }
   .profile-links li::before { display:none; }
   .profile-links a, .profile-links span {
-    font-size:.85rem; color:rgba(236,225,200,.85); text-decoration:none;
-    border-bottom:1px solid rgba(236,225,200,.3);
+    font-size:.85rem; color:var(--fg-ece1c8-a85); text-decoration:none;
+    border-bottom:1px solid var(--bd-ece1c8-a30);
   }
-  .profile-links a:hover { color:#ffe9ad; }
+  .profile-links a:hover { color:var(--fg-ffe9ad); }
   .profile-links .plink-icon { border:none; margin-right:5px; opacity:.7; color:inherit; }
   /* Admin-only box for linking a creator name to an account. */
   .creator-link-box {
     margin:14px auto 0; max-width:520px; padding:10px 12px; text-align:left;
-    background:rgba(0,0,0,.25); border:1px solid rgba(236,225,200,.25);
-    font-size:.84rem; color:rgba(236,225,200,.85);
+    background:var(--bg-000-a25); border:1px solid var(--bd-ece1c8-a25);
+    font-size:.84rem; color:var(--fg-ece1c8-a85);
   }
   .creator-link-box form { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
   .creator-link-box input {
     flex:1 1 160px; min-width:0; padding:5px 8px; font-size:.85rem;
-    background:#1c1018; color:#f0e6cd; border:1px solid rgba(236,225,200,.3);
+    background:var(--bg-1c1018); color:var(--fg-f0e6cd); border:1px solid var(--bd-ece1c8-a30);
   }
   .creator-link-box button {
     padding:5px 12px; font-size:.82rem; font-weight:700; cursor:pointer;
-    background:#5b1f21; color:#f4ead2; border:1px solid rgba(236,225,200,.35);
+    background:var(--bg-5b1f21); color:var(--fg-f4ead2); border:1px solid var(--bd-ece1c8-a35);
   }
   .creator-link-msg { margin:6px 0 0; font-size:.82rem; }
   /* Pinned strip — one uniform card, because a pin can be any of the three types. */
   .pin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
   .pin-card {
     display:flex; align-items:center; gap:10px; padding:10px 12px; text-decoration:none;
-    background:var(--parch,#F0E8D5); border:2px solid var(--parch-frame,#bda89a); color:var(--maroon);
+    background:var(--parch,var(--bg-f0e8d5)); border:2px solid var(--parch-frame,var(--bd-bda89a)); color:var(--maroon);
   }
-  .pin-card:hover { background:#f7f1e2; }
+  .pin-card:hover { background:var(--bg-f7f1e2); }
   .pin-thumb { width:40px; height:40px; object-fit:contain; flex-shrink:0; }
   .pin-text { min-width:0; }
   .pin-name {
@@ -256,11 +257,14 @@
         var old = document.getElementById(id); if (old) old.remove();
       });
       var oldSt = document.querySelector('body > .pg-stickers'); if (oldSt) oldSt.remove();
-      if (!theme) return;
+      // Dark mode leaves a creator page with its own colours alone.
+      function own(yes) { if (window.BotcData && window.BotcData.theme) window.BotcData.theme.ownColours(yes); }
+      if (!theme) { own(false); return; }
       var bg = String(theme.background || '').match(/^(avatars\/u\d+)-bg\./);
       var t = PR.sanitizeTheme(theme, bg ? bg[1] : null);
-      if (!t) return;
+      if (!t) { own(false); return; }
       var ta = PR.themeAttrs(t);
+      own(!!(PR.ownsColours && PR.ownsColours(t)));
       ta.cls.split(' ').forEach(function (c) {
         if (c && !document.body.classList.contains(c)) { document.body.classList.add(c); themed.cls.push(c); }
       });
@@ -307,7 +311,7 @@
     function fail(msg) {
       hero.innerHTML = '<h1>Creator not found</h1>';
       panel.innerHTML = '<p class="profile-empty">' + esc(msg) +
-        ' <a href="/creators" style="color:#7fb2e6">Browse all creators</a>.</p>';
+        ' <a href="/creators" style="color:var(--fg-7fb2e6)">Browse all creators</a>.</p>';
     }
     if (!username && !authorName) { fail('No creator specified.'); return; }
 

@@ -231,9 +231,49 @@
     return officialsP;
   }
 
+  /* Dark mode. The choice is per browser (localStorage botc_theme, 'dark' or
+     nothing) and is put on <html data-theme> before first paint by the
+     one-line script in every page's head; this is the same rule for anything
+     that changes it afterwards. A page whose author gave it colours of its
+     own (data-own-colours, see themeAttrs in render-page.js) is never
+     darkened: the night palette is built for the wiki's parchment, not for
+     a page somebody else designed. */
+  var THEME_KEY = 'botc_theme';
+  function themeChoice() {
+    try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; }
+  }
+  function applyTheme() {
+    var el = document.documentElement;
+    if (!el || !el.setAttribute) return false;
+    var dark = themeChoice() === 'dark' && !el.hasAttribute('data-own-colours');
+    if (dark) el.setAttribute('data-theme', 'dark'); else el.removeAttribute('data-theme');
+    try { document.dispatchEvent(new CustomEvent('botc-theme', { detail: { dark: dark } })); } catch (e) {}
+    return dark;
+  }
+  function setTheme(choice) {
+    try {
+      if (choice === 'dark') localStorage.setItem(THEME_KEY, 'dark'); else localStorage.removeItem(THEME_KEY);
+    } catch (e) {}
+    return applyTheme();
+  }
+  // A page that learns its colours late (the creator page reads its theme
+  // from the API) says so here.
+  function ownColours(own) {
+    var el = document.documentElement;
+    if (!el || !el.setAttribute) return false;
+    if (own) el.setAttribute('data-own-colours', ''); else el.removeAttribute('data-own-colours');
+    return applyTheme();
+  }
+  // Another tab changed it, or this page came back from the back/forward cache.
+  if (window.addEventListener) {
+    window.addEventListener('storage', function (e) { if (e.key === THEME_KEY) applyTheme(); });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) applyTheme(); });
+  }
+
   window.BotcData = {
     json: json, asset: asset, script: script, style: style, root: root, officials: officials,
     boot: boot, me: me, forgetMe: forgetMe, loginHint: loginHint,
-    fitHeight: fitHeight
+    fitHeight: fitHeight,
+    theme: { choice: themeChoice, set: setTheme, apply: applyTheme, ownColours: ownColours }
   };
 })();

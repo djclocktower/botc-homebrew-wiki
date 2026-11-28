@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="/assets/data.js"></script>
 <script src="/assets/did-you-mean.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,10 +35,10 @@
   margin: 0 auto clamp(18px,3vw,28px);
   border-radius: 50%;
   background-color: var(--parch);
-  background-image: url('/assets/parchment.webp');
+  background-image: var(--tex-parch);
   background-size: cover;
   border: 3px solid var(--parch-frame);
-  box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 0 0 7px rgba(255,255,255,.35), inset 0 0 0 9px var(--parch-frame);
+  box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 0 0 7px var(--sh-fff-a35), inset 0 0 0 9px var(--parch-frame);
   display: grid; place-items: center;
 }
 .nf-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -52,25 +53,25 @@
 }
 .nf-mark {
   font-family: 'Roboto',sans-serif; font-size: .7rem; letter-spacing: .22em;
-  text-transform: uppercase; color: rgba(91,31,33,.6);
+  text-transform: uppercase; color: var(--fg-5b1f21-a60);
 }
 .nf-head {
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
   font-size: clamp(1.3rem, 4.4vw, 2rem); letter-spacing: .05em;
-  color: var(--parch); margin: 0 0 .45em; text-shadow: 0 3px 12px rgba(0,0,0,.5);
+  color: var(--parch-fg); margin: 0 0 .45em; text-shadow: 0 3px 12px rgba(0,0,0,.5);
 }
 .nf-sub {
-  color: rgba(236,225,200,.78); max-width: 48ch; margin: 0 auto;
+  color: var(--fg-ece1c8-a78); max-width: 48ch; margin: 0 auto;
   font-size: clamp(.94rem, 2.2vw, 1.04rem);
 }
-.nf-rule { height: 1px; max-width: 520px; margin: 22px auto 0; background: linear-gradient(90deg, transparent, var(--rule), transparent); }
+.nf-rule { height: 1px; max-width: 520px; margin: 22px auto 0; background: linear-gradient(90deg, transparent, var(--rule-bg), transparent); }
 
 /* ─── The address that was asked for ──────────────────────────── */
 .nf-url {
   display: inline-block; max-width: 100%; overflow-wrap: anywhere;
   font-family: 'Roboto',sans-serif; font-size: .92em; letter-spacing: .02em;
-  background: rgba(0,0,0,.3); border: 1px solid rgba(214,196,150,.3);
-  padding: 1px 7px; color: #f0e0b8;
+  background: var(--bg-000-a30); border: 1px solid var(--bd-d6c496-a30);
+  padding: 1px 7px; color: var(--fg-f0e0b8);
 }
 .nf-url-note { display: block; font-size: .78rem; opacity: .6; margin-top: 6px; }
 /* Anything given an explicit `display` here would otherwise beat the browser's
@@ -81,20 +82,20 @@
 .nf-suggest { margin: clamp(18px,3vw,26px) auto 0; max-width: 560px; text-align: left; }
 .nf-suggest-head {
   font-family: 'Roboto',sans-serif; font-size: .76rem; letter-spacing: .14em;
-  text-transform: uppercase; color: rgba(236,225,200,.55); margin: 0 0 8px; text-align: center;
+  text-transform: uppercase; color: var(--fg-ece1c8-a55); margin: 0 0 8px; text-align: center;
 }
 .nf-sug {
   display: flex; align-items: center; gap: 11px; text-decoration: none;
-  padding: 8px 10px; border-top: 1px solid rgba(214,196,150,.18); color: var(--parch);
+  padding: 8px 10px; border-top: 1px solid var(--bd-d6c496-a18); color: var(--parch-fg);
 }
 .nf-sug:first-of-type { border-top: none; }
-.nf-sug:hover { background: rgba(236,225,200,.07); }
+.nf-sug:hover { background: var(--bg-ece1c8-a07); }
 .nf-sug-thumb { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; }
 .nf-sug-text { min-width: 0; }
 .nf-sug-name { display: block; font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .02em; }
 .nf-sug-meta {
   display: block; font-family: 'Roboto',sans-serif; font-size: .72rem;
-  letter-spacing: .08em; text-transform: uppercase; color: rgba(236,225,200,.6);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--fg-ece1c8-a60);
 }
 
 /* ─── Quick links ─────────────────────────────────────────────── */
@@ -102,44 +103,44 @@
 .nf-links a {
   font-family: 'Roboto',sans-serif; font-size: .8rem; letter-spacing: .08em;
   text-transform: uppercase; text-decoration: none;
-  padding: 7px 14px; border: 1px solid rgba(214,196,150,.3); color: var(--parch);
+  padding: 7px 14px; border: 1px solid var(--bd-d6c496-a30); color: var(--parch-fg);
 }
-.nf-links a:hover { background: rgba(236,225,200,.1); }
+.nf-links a:hover { background: var(--bg-ece1c8-a10); }
 
 /* ─── Report box ──────────────────────────────────────────────── */
 .nf-report {
   max-width: 620px; margin: clamp(26px,4vw,40px) auto 0; text-align: left;
-  background: rgba(20,7,18,.5); border: 1px solid rgba(214,196,150,.28);
+  background: var(--bg-140712-a50); border: 1px solid var(--bd-d6c496-a28);
   backdrop-filter: blur(4px);
   padding: clamp(16px,3vw,24px);
 }
 .nf-report-head {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.05rem;
-  letter-spacing: .05em; color: var(--parch); margin: 0 0 6px;
+  letter-spacing: .05em; color: var(--parch-fg); margin: 0 0 6px;
 }
-.nf-report-note, .nf-report-who { color: rgba(236,225,200,.72); }
+.nf-report-note, .nf-report-who { color: var(--fg-ece1c8-a72); }
 .nf-report-note { font-size: .88rem; margin: 0 0 14px; }
 .nf-report-who { font-size: .78rem; margin: 0 0 12px; }
 .nf-field { display: block; margin-bottom: 12px; }
 .nf-field > span {
   display: block; font-family: 'Roboto',sans-serif; font-size: .74rem;
-  letter-spacing: .1em; text-transform: uppercase; color: rgba(236,225,200,.6); margin-bottom: 4px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--fg-ece1c8-a60); margin-bottom: 4px;
 }
 .nf-report textarea, .nf-report input {
   width: 100%; font: inherit; font-size: .93rem;
-  background: rgba(0,0,0,.28); border: 1px solid rgba(214,196,150,.3);
-  color: var(--parch); padding: 8px 10px; border-radius: 0;
+  background: var(--bg-000-a28); border: 1px solid var(--bd-d6c496-a30);
+  color: var(--parch-fg); padding: 8px 10px; border-radius: 0;
 }
 .nf-report textarea { min-height: 84px; resize: vertical; }
 .nf-report-send {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
-  background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
+  background: linear-gradient(180deg, var(--bg-8a3526), var(--bg-5b1f21)); color: var(--fg-f3ead4);
   border: none; padding: 10px 22px; cursor: pointer; font-size: .95rem;
 }
 .nf-report-send[disabled] { opacity: .6; cursor: default; }
 .nf-report-msg { font-size: .86rem; margin-top: 9px; min-height: 1.1em; }
-.nf-report-msg.ok  { color: #8fd08f; }
-.nf-report-msg.err { color: #e79aa0; }
+.nf-report-msg.ok  { color: var(--fg-8fd08f); }
+.nf-report-msg.err { color: var(--fg-e79aa0); }
 </style>
 </head>
 <body>

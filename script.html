@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script Builder — BOTC HomeBrew Wiki</title>
@@ -23,7 +24,7 @@
 /* ─── Script builder: ability dropdown ───────────────────── */
 .sb-add-row {
   display: flex; flex-wrap: wrap; align-items: stretch;
-  border-bottom: 1px solid rgba(180,160,120,.25);
+  border-bottom: 1px solid var(--bd-b4a078-a25);
 }
 .sb-add-row:last-child { border-bottom: none; }
 
@@ -35,8 +36,8 @@
   text-align: left; color: var(--ink); min-width: 0;
   transition: background .14s;
 }
-.sb-add-item:hover { background: rgba(91,31,33,.06); }
-.sb-add-item.on { background: rgba(91,31,33,.10); }
+.sb-add-item:hover { background: var(--bg-5b1f21-a06); }
+.sb-add-item.on { background: var(--bg-5b1f21-a10); }
 .sb-add-item.on .sb-add-name { color: var(--maroon); font-weight: 600; }
 
 /* Thin left border stripe when selected */
@@ -46,12 +47,12 @@
 .sb-add-chevron {
   flex-shrink: 0; width: 34px;
   display: flex; align-items: center; justify-content: center;
-  background: none; border: none; border-left: 1px solid rgba(180,160,120,.25);
-  cursor: pointer; color: rgba(91,31,33,.5);
+  background: none; border: none; border-left: 1px solid var(--bd-b4a078-a25);
+  cursor: pointer; color: var(--fg-5b1f21-a50);
   font-size: .85rem; line-height: 1;
   transition: background .14s, color .14s, transform .18s;
 }
-.sb-add-chevron:hover { background: rgba(91,31,33,.07); color: var(--maroon); }
+.sb-add-chevron:hover { background: var(--bg-5b1f21-a07); color: var(--maroon); }
 .sb-add-chevron.open {
   color: var(--maroon);
   transform: rotate(180deg);
@@ -63,16 +64,16 @@
   padding: 8px 12px 10px 44px;   /* indent to clear the thumb */
   font-size: .84rem; line-height: 1.45;
   color: var(--ink);
-  background: rgba(243,239,229,.55);
-  border-top: 1px solid rgba(180,160,120,.2);
+  background: var(--bg-f3efe5-a55);
+  border-top: 1px solid var(--bd-b4a078-a20);
   font-style: italic;
 }
 
 /* ─── Toolbar button variants ────────────────────────────── */
-.sb-btn-randomize { background: linear-gradient(180deg,#2a7d7d,#1a5252); }
-.sb-btn-sort { background: linear-gradient(180deg,#5a3a7d,#3a1f5a); }
-.sb-btn-share { background: linear-gradient(180deg,#3a6d9e,#23486b); }
-.sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); text-decoration:none; display:inline-flex; align-items:center; }
+.sb-btn-randomize { background: linear-gradient(180deg,var(--bg-2a7d7d),var(--bg-1a5252)); }
+.sb-btn-sort { background: linear-gradient(180deg,var(--bg-5a3a7d),var(--bg-3a1f5a)); }
+.sb-btn-share { background: linear-gradient(180deg,var(--bg-3a6d9e),var(--bg-23486b)); }
+.sb-btn-publish { background:linear-gradient(180deg,var(--bg-b07d1a),var(--bg-7a5310)); text-decoration:none; display:inline-flex; align-items:center; }
 
 /* ─── Credits Fabled (added to every exported script) ────── */
 .sb-credits {
@@ -87,11 +88,11 @@
   display:flex; align-items:center; gap:6px; font-size:.84rem;
   color:var(--ink); cursor:pointer; user-select:none; margin-left:auto;
 }
-.sb-credits-detail input { width:16px; height:16px; accent-color:var(--maroon); cursor:pointer; }
+.sb-credits-detail input { width:16px; height:16px; accent-color:var(--maroon-bg); cursor:pointer; }
 .sb-credits-text {
   flex-basis:100%; margin:0; font-size:.8rem; line-height:1.5; font-style:italic;
-  color:var(--ink); background:rgba(243,239,229,.55);
-  border-top:1px solid rgba(180,160,120,.25); padding-top:8px;
+  color:var(--ink); background:var(--bg-f3efe5-a55);
+  border-top:1px solid var(--bd-b4a078-a25); padding-top:8px;
 }
 .sb-marks-opt { flex-basis:100%; margin-left:0; flex-wrap:wrap; }
 .sb-marks-sub { opacity:.7; font-size:.78rem; }
@@ -134,7 +135,7 @@
 .sb-add-filters .filter-select { font-size: .82rem; padding: 5px 8px; width: 100%; }
 .sb-add-count {
   font-family: 'Roboto',sans-serif; font-size: .74rem; letter-spacing: .04em;
-  color: #6b5d49; margin: 0 0 6px;
+  color: var(--fg-6b5d49); margin: 0 0 6px;
 }
 .sb-add-count:empty { display: none; }
 
@@ -152,23 +153,23 @@
 .sb-night[open] > summary .sb-night-arrow { transform: rotate(180deg); }
 .sb-night-sub {
   display: block; font-family: 'Libre Franklin', sans-serif;
-  font-size: .78rem; color: #6b5d49; margin-top: 2px;
+  font-size: .78rem; color: var(--fg-6b5d49); margin-top: 2px;
 }
 .sb-night-body { padding: 0 16px 16px; }
 .sb-btn-nightreset {
-  margin-top: 12px; background: linear-gradient(180deg,#6b5d49,#4a4133);
+  margin-top: 12px; background: linear-gradient(180deg,var(--bg-6b5d49),var(--bg-4a4133));
 }
 
 /* Official characters sit in the same list as homebrew ones, so they say so */
 .sb-add-off {
   font-family:'Roboto',sans-serif; font-size:.62rem; font-weight:600;
-  letter-spacing:.06em; text-transform:uppercase; color:#6b5d49;
-  border:1px solid rgba(180,160,120,.6); border-radius:3px;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--fg-6b5d49);
+  border:1px solid var(--bd-b4a078-a60); border-radius:3px;
   padding:0 4px; margin-left:4px; vertical-align:1px; white-space:nowrap;
 }
 
 /* ─── Jinxes between characters on the script ─────────────── */
-.sb-jinx-row { padding:8px 10px; border-bottom:1px solid rgba(180,160,120,.25); display:flex; flex-direction:column; gap:2px; }
+.sb-jinx-row { padding:8px 10px; border-bottom:1px solid var(--bd-b4a078-a25); display:flex; flex-direction:column; gap:2px; }
 .sb-jinx-row:last-child { border-bottom:none; }
 .sb-jinx-pair { font-weight:600; color:var(--maroon); font-size:.92rem; }
 .sb-jinx-text { font-size:.86rem; color:var(--ink); font-style:italic; }
@@ -176,12 +177,12 @@
 /* ─── The import dialog: real choices, not OK/Cancel ─── */
 .sb-dlg { border:2px solid var(--parch-frame); border-radius:10px; background:var(--parch);
   color:var(--ink); padding:18px 20px; max-width:min(440px, calc(100vw - 32px)); box-sizing:border-box; }
-.sb-dlg::backdrop { background:rgba(20,6,16,.6); }
+.sb-dlg::backdrop { background:var(--bg-140610-a60); }
 .sb-dlg h3 { font-family:'Dumbledor2',serif; color:var(--maroon); margin:0 0 8px; font-size:1.2rem; }
 .sb-dlg p { margin:0 0 10px; font-size:.9rem; }
 .sb-dlg label { display:flex; gap:8px; align-items:flex-start; margin:8px 0; font-size:.92rem; cursor:pointer; }
 .sb-dlg label input { margin-top:3px; flex:none; }
-.sb-dlg .hint { display:block; font-size:.78rem; color:#6b5d49; }
+.sb-dlg .hint { display:block; font-size:.78rem; color:var(--fg-6b5d49); }
 .sb-dlg-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap; }
 </style>
 </head>

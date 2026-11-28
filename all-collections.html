@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>All Collections — BOTC HomeBrew Wiki</title>
@@ -88,7 +89,7 @@
   <main class="home-panel">
     <section class="landing-section">
       <div class="collections-grid" id="collections-grid">
-        <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading collections…</p>
+        <p style="grid-column:1/-1;text-align:center;color:var(--fg-ece1c8-a60);padding:24px">Loading collections…</p>
       </div>
     </section>
   </main>
@@ -171,8 +172,8 @@
           return collectionTileHTML(coll.displayName || coll.slug, coll.id || coll.slug,
             x.count, x.icons, coll.header||'', coll.tagline||'', coll);
         }).join('') || ((curataOnly || favOnly)
-          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections match those filters.</p>'
-          : '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>');
+          ? '<p style="grid-column:1/-1;text-align:center;color:var(--fg-ece1c8-a60);padding:24px">No collections match those filters.</p>'
+          : '<p style="grid-column:1/-1;text-align:center;color:var(--fg-ece1c8-a60);padding:24px">No collections yet. <a href="publish-collection" style="color:var(--fg-7fb2e6)">Create the first one →</a></p>');
       }
       // A chip only shows up once something matches it, and the bar (with
       // its phone toggle) only once a chip does.
@@ -230,7 +231,7 @@
       }
       draw();
     }).catch(function(){
-      grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load collections.</p>';
+      grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--fg-e6a);padding:30px">Could not load collections.</p>';
     });
   })();
   </script>

@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Articles — BOTC HomeBrew Wiki</title>
@@ -86,9 +87,9 @@
   <style>
     .art-tools { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 16px; }
     .art-filter { flex:1 1 220px; min-width:0; padding:9px 12px; border:1px solid var(--parch-frame);
-      background:var(--parch); color:#2b1d12; font-size:.95rem; }
-    .art-sort-label { color:rgba(236,225,200,.85); font-size:.9rem; display:flex; gap:6px; align-items:center; }
-    .art-sort { padding:8px 10px; border:1px solid var(--parch-frame); background:var(--parch); color:#2b1d12; }
+      background:var(--parch); color:var(--fg-2b1d12); font-size:.95rem; }
+    .art-sort-label { color:var(--fg-ece1c8-a85); font-size:.9rem; display:flex; gap:6px; align-items:center; }
+    .art-sort { padding:8px 10px; border:1px solid var(--parch-frame); background:var(--parch); color:var(--fg-2b1d12); }
   </style>
 
   <!-- render-news.js formats through render-wiki.js — load the engine first. -->

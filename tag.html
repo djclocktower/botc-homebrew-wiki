@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <script src="assets/viewport.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -57,7 +58,7 @@
   </div>
 
   <main class="home-panel list-panel" id="panel">
-    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
+    <p style="text-align:center;color:var(--fg-ece1c8-a70);padding:30px">Loading characters…</p>
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
@@ -107,13 +108,13 @@
       Promise.all([BotcData.json('characters.json?fields=grid'), BotcData.officials()]).then(function(r) {
         var list = r[1].concat(r[0]);
         if (!rawTag) {
-          PANEL.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No tag specified. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
+          PANEL.innerHTML = '<p style="text-align:center;color:var(--fg-ece1c8-a70);padding:30px">No tag specified. <a href="tags" style="color:var(--fg-7fb2e6)">Browse all tags</a>.</p>';
           return;
         }
         // Partial pages are listed like any other, as on All Characters.
         var chars = list.filter(function(c) { return hasTag(c, rawTag); });
         if (!chars.length) {
-          PANEL.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found with tag <strong>' + esc(displayTag) + '</strong>. <a href="tags" style="color:#7fb2e6">Browse all tags</a>.</p>';
+          PANEL.innerHTML = '<p style="text-align:center;color:var(--fg-ece1c8-a70);padding:30px">No characters found with tag <strong>' + esc(displayTag) + '</strong>. <a href="tags" style="color:var(--fg-7fb2e6)">Browse all tags</a>.</p>';
           return;
         }
         // One grid, drawn a screen at a time.
@@ -126,7 +127,7 @@
       .catch(function() {
         if (SSR) return;   // the first screen is still here
         PANEL.innerHTML =
-          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+          '<p style="text-align:center;color:var(--fg-e6a);padding:30px">Could not load character list.</p>';
       });
     }
     // Every card is on the page already: nothing to fetch at all.

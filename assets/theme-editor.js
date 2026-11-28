@@ -346,7 +346,7 @@
         var t = presets[k].t;
         var bg = t.bgColor2 ? 'linear-gradient(135deg,' + (t.bgColor || '#2a0f24') + ',' + t.bgColor2 + ')' : (t.bgColor || '#2a0f24');
         return '<button type="button" class="thx-swatch" data-preset="' + escH(k) + '" style="background:' + escH(bg) + '">' +
-          '<span style="background:' + escH(t.panel || '#f0e8d5') + ';color:' + escH(t.accent || '#5b1f21') + '">Aa</span>' +
+          '<span style="background:' + escH(t.panel || 'var(--bg-f0e8d5)') + ';color:' + escH(t.accent || 'var(--fg-5b1f21)') + '">Aa</span>' +
           escH(presets[k].label) + '</button>';
       }).join('') + '</div>' +
       '<p class="thx-sub">One click sets the fonts, colours and boxes. Change anything afterwards. Your images and custom CSS are kept.</p></div>';

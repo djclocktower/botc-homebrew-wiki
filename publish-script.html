@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <script src="assets/art-thumb.js"></script>
 
@@ -24,7 +25,7 @@
 /* Script details form */
 .sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
 .sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
-.sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+.sb-details .sub { font-size:.84rem; color:var(--fg-6b5d49); margin:0 0 14px; }
 /* "This credit isn't mine": the tick that keeps a page's credit from being
    read as proof that the credited name is this account. Sits with the
    Author field because that is the field it is about. Scoped through
@@ -33,66 +34,66 @@
 .sb-fld label.credit-unlink { display:flex; align-items:center; gap:8px;
   margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
   font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
-  color:#5b4632; cursor:pointer; }
+  color:var(--fg-5b4632); cursor:pointer; }
 .sb-fld label.credit-unlink input { width:auto; flex:none; margin:0; }
 .sb-fld .credit-unlink-hint { display:block; margin-top:4px;
-  font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+  font-size:.78rem; color:var(--fg-726348); line-height:1.45; text-transform:none;
   letter-spacing:0; font-weight:400; }
 .sb-fld { margin-bottom:12px; }
-.sb-fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:var(--fg-5b4632); margin-bottom:4px; }
 .sb-fld .req { color:var(--evil); }
-.sb-fld input[type=text], .sb-fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.sb-fld input[type=text], .sb-fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:var(--fg-241a12); background:var(--bg-fffdf8); border:1px solid var(--bd-cdbfa0); padding:8px 10px; box-sizing:border-box; }
 .sb-fld textarea { resize:vertical; min-height:54px; }
-.sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid #cdbfa0; display:none; }
+.sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid var(--bd-cdbfa0); display:none; }
 
 /* Publish button + blurb + status */
-.sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
-.sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
-.sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
+.sb-btn-publish { background:linear-gradient(180deg,var(--bg-2f7d3e),var(--bg-1c5429)); }
+.sb-btn-draft { background:linear-gradient(180deg,var(--bg-7a5c18),var(--bg-5a4310)); }
+.sb-btn-delete { background:linear-gradient(180deg,var(--bg-8a3526),var(--bg-5b1f21)); }
 .pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
 .pub-status-pill { display:none; font-family:'Roboto',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
-.pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
-.pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+.pub-status-pill.draft { display:inline-block; background:var(--bg-9a6e14-a14); color:var(--fg-7a5c18); border:1px solid var(--bd-9a6e14-a40); }
+.pub-status-pill.published { display:inline-block; background:var(--bg-2a6e2a-a12); color:var(--fg-2a6e2a); border:1px solid var(--bd-2a6e2a-a40); }
 /* Sits on the dark page background, next to .pub-back (which is already
    parchment-coloured) — ink here was unreadable. */
-.sb-publish-blurb { font-size:.82rem; color:rgba(236,225,200,.82); margin:4px 0 0; line-height:1.5; }
+.sb-publish-blurb { font-size:.82rem; color:var(--fg-ece1c8-a82); margin:4px 0 0; line-height:1.5; }
 #sb-publish-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
-#sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
-#sb-publish-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
-#sb-publish-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+#sb-publish-status.ok { display:block; background:var(--bg-dff0e2); color:var(--fg-1c5429); border:1px solid var(--bd-9bcfa9); }
+#sb-publish-status.err { display:block; background:var(--bg-f6dede); color:var(--fg-9a0d12); border:1px solid var(--bd-d99); }
+#sb-publish-status.work { display:block; background:var(--bg-e9eefb); color:var(--fg-234f74); border:1px solid var(--bd-aac0e6); }
 #sb-publish-status a { color:inherit; font-weight:700; }
 
 /* Read-only roster summary */
 .pub-summary { background:var(--parch); border:2px solid var(--parch-frame); padding:16px 20px; margin-bottom:18px; }
 .pub-summary h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.2rem; }
-.pub-summary .sub { font-size:.84rem; color:#6b5d49; margin:0 0 12px; }
+.pub-summary .sub { font-size:.84rem; color:var(--fg-6b5d49); margin:0 0 12px; }
 .pub-teams { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
-.pub-team-chip { font-family:'Roboto',sans-serif; font-size:.8rem; letter-spacing:.03em; text-transform:uppercase; color:var(--maroon); background:rgba(91,31,33,.08); border:1px solid rgba(180,160,120,.4); padding:4px 10px; }
+.pub-team-chip { font-family:'Roboto',sans-serif; font-size:.8rem; letter-spacing:.03em; text-transform:uppercase; color:var(--maroon); background:var(--bg-5b1f21-a08); border:1px solid var(--bd-b4a078-a40); padding:4px 10px; }
 /* The roster, arrangeable with ▲▼ */
-.pub-roster { margin-top:10px; max-height:340px; overflow-y:auto; border:1px solid #cdbfa0; background:#fffdf8; }
+.pub-roster { margin-top:10px; max-height:340px; overflow-y:auto; border:1px solid var(--bd-cdbfa0); background:var(--bg-fffdf8); }
 .pub-roster-head {
   font-family:'Roboto',sans-serif; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
-  color:#6b5d49; background:rgba(91,31,33,.05); padding:4px 10px;
-  border-bottom:1px solid rgba(180,160,120,.25);
+  color:var(--fg-6b5d49); background:var(--bg-5b1f21-a05); padding:4px 10px;
+  border-bottom:1px solid var(--bd-b4a078-a25);
 }
-.pub-roster-row { display:flex; align-items:center; gap:8px; padding:5px 10px; border-bottom:1px solid rgba(180,160,120,.25); }
+.pub-roster-row { display:flex; align-items:center; gap:8px; padding:5px 10px; border-bottom:1px solid var(--bd-b4a078-a25); }
 .pub-roster-row:last-child { border-bottom:none; }
 .pub-roster-name { flex:1; font-size:.92rem; color:var(--maroon); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.pub-roster-missing { color:#6b5d49; font-weight:400; font-style:italic; }
+.pub-roster-missing { color:var(--fg-6b5d49); font-weight:400; font-style:italic; }
 .pub-move { display:flex; flex-shrink:0; gap:2px; }
 .pub-move-btn {
   font-size:.8rem; line-height:1; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
-  background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:3px 6px; cursor:pointer;
+  background:none; border:1px solid var(--bd-cdbfa0); color:var(--fg-6b5d49); padding:3px 6px; cursor:pointer;
 }
-.pub-move-btn:hover:not(:disabled) { color:var(--maroon); border-color:var(--maroon); }
+.pub-move-btn:hover:not(:disabled) { color:var(--maroon); border-color:var(--maroon-bd); }
 .pub-move-btn:disabled { opacity:.3; cursor:default; }
-.pub-empty { color:#6b5d49; font-size:.92rem; }
+.pub-empty { color:var(--fg-6b5d49); font-size:.92rem; }
 .pub-empty a { color:var(--maroon); font-weight:600; }
-.pub-back { display:inline-block; margin-top:4px; font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
-.pub-back:hover { color:#fff; text-decoration:underline; }
+.pub-back { display:inline-block; margin-top:4px; font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch-fg); text-decoration:none; }
+.pub-back:hover { color:var(--fg-fff); text-decoration:underline; }
 
 /* Jinxes list (shared look with builder) */
-.sb-jinx-row { padding:8px 10px; border-bottom:1px solid rgba(180,160,120,.25); display:flex; flex-direction:column; gap:2px; }
+.sb-jinx-row { padding:8px 10px; border-bottom:1px solid var(--bd-b4a078-a25); display:flex; flex-direction:column; gap:2px; }
 .sb-jinx-row:last-child { border-bottom:none; }
 .sb-jinx-pair { font-weight:600; color:var(--maroon); font-size:.92rem; }
 .sb-jinx-text { font-size:.86rem; color:var(--ink); font-style:italic; }
@@ -103,38 +104,38 @@ details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20p
 details.sb-details > summary::-webkit-details-marker { display:none; }
 details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
 details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
-details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:#6b5d49; margin-top:2px; }
+details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:var(--fg-6b5d49); margin-top:2px; }
 details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
 /* Field pairs + theme controls */
 .sb-fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 @media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
-.sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
-.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:var(--fg-241a12); background:var(--bg-fffdf8); border:1px solid var(--bd-cdbfa0); padding:8px 10px; box-sizing:border-box; }
+.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--bd-b4a078-a25); }
 .th-row:last-child { border-bottom:none; }
-.th-row label { flex:1; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
-.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+.th-row label { flex:1; font-family:'Roboto',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:var(--fg-5b4632); margin:0; }
+.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid var(--bd-cdbfa0); background:var(--bg-fffdf8); cursor:pointer; }
 .th-row input[type=range] { flex:none; width:130px; }
 /* The two image previews follow the size sliders and the parchment-box tick,
    so the percentage is something you can see rather than a number to guess at.
    They sit on the page's purple — the background the box exists to solve for. */
 .sb-header-prev[data-th-preview] {
-  background:#1a0820; padding:6px;
+  background:var(--bg-1a0820); padding:6px;
   max-height:calc(140px * var(--th-prev-scale, 1));
 }
-.sb-header-prev.th-prev-panel { background:#f0e8d5; border-radius:8px; padding:10px; }
+.sb-header-prev.th-prev-panel { background:var(--bg-f0e8d5); border-radius:8px; padding:10px; }
 .th-check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.9rem; text-transform:none; letter-spacing:0; }
 .th-check input { width:auto; }
-.th-clear { font-size:.75rem; font-family:'Roboto',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
-.th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
+.th-clear { font-size:.75rem; font-family:'Roboto',sans-serif; background:none; border:1px solid var(--bd-cdbfa0); color:var(--fg-6b5d49); padding:2px 8px; cursor:pointer; }
+.th-state { font-size:.75rem; color:var(--fg-6b5d49); min-width:64px; text-align:right; }
 .sb-sort-row { margin-top:10px; }
-.sb-check { display:flex; align-items:flex-start; gap:8px; font-size:.9rem; color:#241a12; margin:6px 0 12px; cursor:pointer; }
+.sb-check { display:flex; align-items:flex-start; gap:8px; font-size:.9rem; color:var(--fg-241a12); margin:6px 0 12px; cursor:pointer; }
 .sb-check input { width:17px; height:17px; flex-shrink:0; margin-top:2px; }
 /* Bootlegger rules (_meta.bootlegger) repeater */
 .boot-row { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
-.boot-row input { flex:1; font-family:'Libre Franklin',sans-serif; font-size:.9rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:7px 9px; }
-.pub-url { font-size:.8rem; color:#6b5d49; margin:6px 0 0; word-break:break-all; }
-.pub-url code { background:rgba(91,31,33,.07); padding:1px 5px; }
+.boot-row input { flex:1; font-family:'Libre Franklin',sans-serif; font-size:.9rem; color:var(--fg-241a12); background:var(--bg-fffdf8); border:1px solid var(--bd-cdbfa0); padding:7px 9px; }
+.pub-url { font-size:.8rem; color:var(--fg-6b5d49); margin:6px 0 0; word-break:break-all; }
+.pub-url code { background:var(--bg-5b1f21-a07); padding:1px 5px; }
 </style>
 </head>
 <body>
@@ -200,22 +201,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
       <p class="pub-url" id="pub-url" style="display:none"></p>
       <div class="sb-fld">
-        <label for="sb-author">Author <span class="req">*</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(several? separate them with commas)</span></label>
+        <label for="sb-author">Author <span class="req">*</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(several? separate them with commas)</span></label>
         <input type="text" id="sb-author" placeholder="Your name">
           <label class="credit-unlink" for="sb-credit-unlinked"><input type="checkbox" id="sb-credit-unlinked"> This credit isn’t mine</label>
           <span class="credit-unlink-hint">Tick this if you’re publishing someone else’s script. Their name gets its own creator page instead of linking to yours, and you can still edit this page.</span>
       </div>
       <div class="sb-fld">
-        <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional: one line shown under the title)</span></label>
+        <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(optional: one line shown under the title)</span></label>
         <input type="text" id="sb-tagline" maxlength="140" placeholder="e.g. Nothing is as it seems in Ravenswood Bluff.">
       </div>
       <div class="sb-fld-row">
         <div class="sb-fld">
-          <label for="sb-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
+          <label for="sb-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(optional)</span></label>
           <input type="text" id="sb-version" maxlength="32" placeholder="e.g. 1.2">
         </div>
         <div class="sb-fld">
-          <label for="sb-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
+          <label for="sb-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(optional)</span></label>
           <select id="sb-difficulty">
             <option value="">— not set —</option>
             <option value="beginner">Beginner</option>
@@ -225,11 +226,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         </div>
       </div>
       <div class="sb-fld">
-        <label for="sb-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
+        <label for="sb-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(optional)</span></label>
         <textarea id="sb-desc" placeholder="A short blurb about the script."></textarea>
       </div>
       <div class="sb-fld">
-        <label for="sb-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional PNG, wide banner works best)</span></label>
+        <label for="sb-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(optional PNG, wide banner works best)</span></label>
         <input type="file" id="sb-header" accept="image/*">
         <img id="sb-header-prev" class="sb-header-prev" data-th-preview="header" alt="header preview">
         <div class="th-row" data-th-row="header" style="display:none">
@@ -248,7 +249,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. Synopsis, gameplay and strategy notes for your script page.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label for="sb-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro; a blank line starts a new paragraph)</span></label>
+          <label for="sb-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(flavor intro; a blank line starts a new paragraph)</span></label>
           <textarea id="sb-synopsis" rows="4" maxlength="4000" placeholder="Clouds roll in over Ravenswood Bluff…"></textarea>
         </div>
         <div class="sb-fld">
@@ -285,10 +286,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <div id="sb-boxes"></div>
         <button type="button" class="th-clear" id="sb-box-add">+ Add a box</button>
         <p class="sub" style="margin-top:10px">
-          Boxes take the same formatting as a wiki page: <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">- bullet</code>,
-          <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">**bold**</code>,
-          <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">[link](https://…)</code> and
-          <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">[[Character Name]]</code>.
+          Boxes take the same formatting as a wiki page: <code style="background:var(--bg-fffdf8);border:1px solid var(--bd-e0d5bd);padding:1px 4px">- bullet</code>,
+          <code style="background:var(--bg-fffdf8);border:1px solid var(--bd-e0d5bd);padding:1px 4px">**bold**</code>,
+          <code style="background:var(--bg-fffdf8);border:1px solid var(--bd-e0d5bd);padding:1px 4px">[link](https://…)</code> and
+          <code style="background:var(--bg-fffdf8);border:1px solid var(--bd-e0d5bd);padding:1px 4px">[[Character Name]]</code>.
         </p>
       </div>
     </details>
@@ -348,7 +349,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. An almanac link, creator marks and the title setting for the official app.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label for="sb-almanac">Almanac link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
+          <label for="sb-almanac">Almanac link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(optional)</span></label>
           <input type="text" id="sb-almanac" placeholder="https://…">
           <p class="sub" style="margin-top:6px">Where the app sends players for the character write-ups. <button type="button" class="th-clear" id="sb-almanac-self">Use this script's wiki page</button></p>
         </div>
@@ -404,7 +405,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
-            <label for="sb-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(square-ish works best)</span></label>
+            <label for="sb-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(square-ish works best)</span></label>
             <input type="file" id="sb-logo" accept="image/*">
             <img id="sb-logo-prev" class="sb-header-prev" data-th-preview="logo" alt="logo preview">
             <div class="th-row" data-th-row="logo" style="display:none">
@@ -417,7 +418,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <button type="button" class="th-clear" id="sb-logo-remove" style="display:none;margin-top:6px">Remove logo</button>
           </div>
           <div class="sb-fld">
-            <label for="sb-bg">Background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image)</span></label>
+            <label for="sb-bg">Background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(large image)</span></label>
             <input type="file" id="sb-bg" accept="image/*">
             <img id="sb-bg-prev" class="sb-header-prev" alt="background preview">
             <div class="sub" style="margin-top:6px">Shown behind your script page and in the official app.</div>
@@ -430,14 +431,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <select id="th-font"></select>
         </div>
         <div class="sb-fld">
-          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(leave unset to keep the wiki look)</span></label>
+          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(leave unset to keep the wiki look)</span></label>
           <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
           <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
           <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
           <div class="th-row"><label for="th-link">Links / names</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
         </div>
         <div class="sb-fld">
-          <label>Top image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the header if you set one, otherwise the logo)</span></label>
+          <label>Top image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-726348)">(the header if you set one, otherwise the logo)</span></label>
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
           <p class="sub" style="margin:6px 0 0">For an image drawn on a light background that gets lost on the wiki's purple.</p>
         </div>
@@ -809,7 +810,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         ? window.PageRender.scriptJinxes(chars, getJinxEdits())
         : (window.findScriptJinxes ? window.findScriptJinxes(chars) : []);
       if (jinxes.length){
-        html += '<div style="margin-top:12px"><h2 style="font-size:1rem">Jinxes <span style="color:#6b5d49;font-size:.85rem">(' + jinxes.length + ')</span></h2>';
+        html += '<div style="margin-top:12px"><h2 style="font-size:1rem">Jinxes <span style="color:var(--fg-6b5d49);font-size:.85rem">(' + jinxes.length + ')</span></h2>';
         jinxes.forEach(function(j){
           html += '<div class="sb-jinx-row"><span class="sb-jinx-pair">' + esc(j.a.name) + ' <span class="ico ico-swap" aria-hidden="true"></span> ' + esc(j.b.name) + '</span>' +
             '<span class="sb-jinx-text">' + esc(j.text) + '</span></div>';

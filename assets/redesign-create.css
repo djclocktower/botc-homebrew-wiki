@@ -16,7 +16,7 @@
 html.create-redesign .formcard { overflow-x: clip; min-width: 0; padding: 22px 24px 0; }
 
 /* ---------- section wrappers (added by redesign-create.js) ---------- */
-html.create-redesign .rsec { margin: 0 0 8px; padding: 14px 0 6px; border-top: 1px dashed #c9b78f; }
+html.create-redesign .rsec { margin: 0 0 8px; padding: 14px 0 6px; border-top: 1px dashed var(--bd-c9b78f); }
 html.create-redesign .rsec:first-of-type { border-top: none; padding-top: 4px; }
 
 html.create-redesign .rsec-head {
@@ -34,14 +34,14 @@ html.create-redesign .rsec-rule {
 }
 html.create-redesign .rsec-sub {
   font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: .84rem; color: #726348; white-space: nowrap;
+  font-size: .84rem; color: var(--fg-726348); white-space: nowrap;
 }
 
 /* ---------- hints: small italic line under the label text ---------- */
 html.create-redesign .fld .hint {
   display: block; margin-top: 2px;
   font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: .84rem; color: #726348; letter-spacing: 0;
+  font-size: .84rem; color: var(--fg-726348); letter-spacing: 0;
 }
 html.create-redesign .fld label { margin-bottom: 6px; }
 
@@ -58,23 +58,23 @@ html.create-redesign .fld select { transition: border-color .15s, box-shadow .15
 html.create-redesign .fld input:focus,
 html.create-redesign .fld textarea:focus,
 html.create-redesign .fld select:focus {
-  outline: none; border-color: var(--maroon);
+  outline: none; border-color: var(--maroon-bd);
   box-shadow: 0 0 0 2px rgba(91,31,33,.22);
 }
-html.create-redesign .fld ::placeholder { color: #b3a68c; font-style: italic; }
+html.create-redesign .fld ::placeholder { color: var(--fg-b3a68c); font-style: italic; }
 
 /* JSON boxes read as code */
 html.create-redesign #jsonpaste,
 html.create-redesign #customJson {
   font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
-  font-size: .82rem; line-height: 1.45; background: #fbf7ec;
+  font-size: .82rem; line-height: 1.45; background: var(--bg-fbf7ec);
 }
 
 /* the ability character counter becomes a small pill under the field */
 html.create-redesign #ability-count {
   float: none; display: inline-block; margin: 4px 0 0 2px;
   font-family: 'Roboto',sans-serif; font-size: .7rem; letter-spacing: .05em;
-  color: #726348; background: #efe7d3; border: 1px solid #d9cba6;
+  color: var(--fg-726348); background: var(--bg-efe7d3); border: 1px solid var(--bd-d9cba6);
   border-radius: 999px; padding: 1px 9px;
 }
 
@@ -83,8 +83,8 @@ html.create-redesign fieldset {
   /* fieldsets default to min-width:min-content, which pushed the Jinxes box
      past the right edge of the card on a phone */
   min-width: 0;
-  border: 1px dashed #c9b78f; border-radius: 8px;
-  background: rgba(240,232,213,.45);
+  border: 1px dashed var(--bd-c9b78f); border-radius: 8px;
+  background: var(--bg-f0e8d5-a45);
   padding: 14px 16px 4px; margin: 0 0 15px;
 }
 html.create-redesign legend {
@@ -95,20 +95,20 @@ html.create-redesign legend {
 /* import box: parchment "utility" tone instead of the out-of-palette blue */
 html.create-redesign fieldset.import {
   border: 1px dashed var(--parch-frame);
-  background: linear-gradient(180deg, rgba(240,232,213,.85), rgba(240,232,213,.55));
+  background: linear-gradient(180deg, var(--bg-f0e8d5-a85), var(--bg-f0e8d5-a55));
 }
 html.create-redesign fieldset.import legend { color: var(--maroon); }
 html.create-redesign fieldset.import .btn-blue {
-  background: var(--maroon); color: #f3ead4;
+  background: var(--maroon-bg); color: var(--fg-f3ead4);
 }
 html.create-redesign fieldset.import .btn-blue:hover { filter: brightness(1.15); }
 
 /* ---------- tag picker: boxed, with the selected tags pinned first ---------- */
 html.create-redesign .tag-picker {
   padding: 8px 10px;
-  background: #fbf7ec; border: 1px solid #d9cba6; border-radius: 6px;
+  background: var(--bg-fbf7ec); border: 1px solid var(--bd-d9cba6); border-radius: 6px;
 }
-html.create-redesign .tag-pick-btn.selected { order: -1; box-shadow: inset 0 0 0 1px rgba(243,234,212,.35); }
+html.create-redesign .tag-pick-btn.selected { order: -1; box-shadow: inset 0 0 0 1px var(--sh-f3ead4-a35); }
 html.create-redesign .tag-pick-btn.selected::before { content: '\2713\00a0'; font-size: .72rem; }
 
 /* ---------- advanced options collapsible ---------- */
@@ -121,11 +121,11 @@ html.create-redesign details.advanced > summary {
 }
 html.create-redesign details.advanced > summary::-webkit-details-marker { display: none; }
 html.create-redesign details.advanced > summary .adv-sub {
-  font-family: 'EB Garamond', serif; font-style: italic; font-size: .84rem; color: #726348;
+  font-family: 'EB Garamond', serif; font-style: italic; font-size: .84rem; color: var(--fg-726348);
 }
 html.create-redesign details.advanced > summary .adv-caret {
   margin-left: auto; font-family: 'Roboto',sans-serif; font-size: .8rem;
-  color: #726348; letter-spacing: .08em; white-space: nowrap;
+  color: var(--fg-726348); letter-spacing: .08em; white-space: nowrap;
 }
 html.create-redesign details.advanced > summary .adv-caret::before { content: 'show'; }
 html.create-redesign details.advanced[open] > summary .adv-caret::before { content: 'hide'; }
@@ -141,7 +141,7 @@ html.create-redesign .box-row textarea { resize: none; overflow-y: hidden; }
 html.create-redesign .ractions {
   position: sticky; bottom: 0; z-index: 20;
   margin: 18px -24px 0; padding: 12px 24px 16px;
-  background: #f7f6f2;
+  background: var(--bg-f7f6f2);
   border-top: 1px solid var(--card-edge);
   box-shadow: 0 -8px 14px rgba(40,12,30,.08);
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
@@ -157,7 +157,7 @@ html.create-redesign .preview-pane { position: sticky; top: 74px; }
 html.create-redesign .preview-label {
   display: flex; align-items: baseline; gap: 10px;
   margin: 0; padding: 10px 16px 9px;
-  background-color: var(--parch); background-image: url('parchment.webp');
+  background-color: var(--parch); background-image: var(--tex-parch);
   background-size: cover;
   border: 3px solid var(--parch-frame); border-bottom: none;
   border-radius: 10px 10px 0 0;
@@ -167,16 +167,16 @@ html.create-redesign .preview-label {
 html.create-redesign .preview-label .pv-note {
   margin-left: auto; display: flex; align-items: center; gap: 7px;
   font-family: 'Roboto',sans-serif; font-size: .68rem; font-weight: 600;
-  letter-spacing: .12em; text-transform: uppercase; color: #7a6a52;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--fg-7a6a52);
 }
 html.create-redesign .pv-dot {
   width: 9px; height: 9px; border-radius: 50%;
-  background: #b3902f; box-shadow: 0 0 0 0 rgba(179,144,47,.55);
+  background: var(--bg-b3902f); box-shadow: 0 0 0 0 var(--sh-b3902f-a55);
 }
 html.create-redesign .pv-dot.flash { animation: pvflash .7s ease-out; }
 @keyframes pvflash {
-  0%   { box-shadow: 0 0 0 0 rgba(179,144,47,.65); background: #d4af3f; }
-  100% { box-shadow: 0 0 0 9px rgba(179,144,47,0); background: #b3902f; }
+  0%   { box-shadow: 0 0 0 0 var(--sh-b3902f-a65); background: var(--bg-d4af3f); }
+  100% { box-shadow: 0 0 0 9px rgba(179,144,47,0); background: var(--bg-b3902f); }
 }
 
 html.create-redesign #preview {
@@ -214,7 +214,7 @@ html.create-redesign #preview {
 
 .no-sentence {
   margin: 0 0 6px;
-  font-family: 'EB Garamond', serif; font-size: .95rem; color: #5b4632;
+  font-family: 'EB Garamond', serif; font-size: .95rem; color: var(--fg-5b4632);
 }
 .no-sentence b { color: var(--maroon); font-weight: 600; }
 
@@ -223,29 +223,29 @@ html.create-redesign #preview {
 .no-drop {
   position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
   max-height: 250px; overflow-y: auto;
-  background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  background: var(--bg-fffdf8); border: 1px solid var(--bd-cdbfa0); border-radius: 6px;
   box-shadow: 0 10px 22px rgba(40,12,30,.28);
 }
 .no-opt {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left; cursor: pointer;
-  background: none; border: 0; border-bottom: 1px solid #f0e8d5;
+  background: none; border: 0; border-bottom: 1px solid var(--bd-f0e8d5);
   padding: 7px 10px;
 }
 .no-opt:last-child { border-bottom: none; }
-.no-opt:hover, .no-opt.on { background: #efe7d3; }
+.no-opt:hover, .no-opt.on { background: var(--bg-efe7d3); }
 .no-opt-name {
-  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
+  font-family: 'Roboto',sans-serif; font-weight: 600; font-size: .84rem; color: var(--fg-5b4632);
 }
-.no-opt-meta { font-size: .76rem; color: #726348; white-space: nowrap; }
+.no-opt-meta { font-size: .76rem; color: var(--fg-726348); white-space: nowrap; }
 .no-empty {
-  margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #726348;
+  margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: var(--fg-726348);
 }
 
-.no-result { margin: 6px 0 8px; font-size: .82rem; color: #5b4632; }
+.no-result { margin: 6px 0 8px; font-size: .82rem; color: var(--fg-5b4632); }
 .no-result b { color: var(--maroon); }
 .no-clear {
   background: none; border: 0; padding: 0; cursor: pointer;
-  font: inherit; color: #726348; text-decoration: underline;
+  font: inherit; color: var(--fg-726348); text-decoration: underline;
 }
 .no-clear:hover { color: var(--maroon); }

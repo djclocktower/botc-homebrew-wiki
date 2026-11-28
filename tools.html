@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tools — BOTC HomeBrew Wiki</title>
@@ -25,7 +26,7 @@
 .tool-card {
   display: flex; flex-direction: column; align-items: center; text-align: center;
   background-color: var(--parch);
-  background-image: url('assets/parchment.webp');
+  background-image: var(--tex-parch);
   background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 26px 20px 18px;
@@ -51,10 +52,10 @@
   font-size: .76rem; letter-spacing: .07em; text-transform: uppercase;
   color: var(--good-name);
   width: 100%; padding-top: 9px;
-  border-top: 1px solid rgba(180,160,120,.45);
+  border-top: 1px solid var(--bd-b4a078-a45);
   display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
 }
-.tool-card-by { color: rgba(91,31,33,.65); }
+.tool-card-by { color: var(--fg-5b1f21-a65); }
 </style>
 </head>
 <body>

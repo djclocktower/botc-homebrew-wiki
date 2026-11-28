@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mass Import — BOTC HomeBrew Wiki</title>
@@ -14,66 +15,66 @@
 <style>
   .mu-wrap { position:relative; z-index:5; max-width:900px; margin:0 auto;
     padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px; box-sizing:border-box; }
-  .formcard { background:#f7f6f2; border:1px solid var(--card-edge); border-radius:10px;
-    padding:20px 22px; box-shadow:0 10px 26px rgba(40,12,30,.35); color:#241a12;
+  .formcard { background:var(--bg-f7f6f2); border:1px solid var(--card-edge); border-radius:10px;
+    padding:20px 22px; box-shadow:0 10px 26px rgba(40,12,30,.35); color:var(--fg-241a12);
     max-width:100%; box-sizing:border-box; margin-bottom:16px; }
   .formcard h2 { font-family:'Dumbledor2',serif; color:var(--maroon); margin:0 0 4px; font-size:1.35rem; }
-  .formcard .sub { font-size:.86rem; color:#6b5d49; margin:0 0 16px; line-height:1.45; }
+  .formcard .sub { font-size:.86rem; color:var(--fg-6b5d49); margin:0 0 16px; line-height:1.45; }
   .fld { margin-bottom:14px; }
   .fld label { display:block; font-family:'Roboto',sans-serif; font-weight:600; font-size:.82rem;
-    letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:5px; }
-  .hint { font-weight:400; text-transform:none; letter-spacing:0; color:#726348; font-size:.78rem; }
+    letter-spacing:.04em; text-transform:uppercase; color:var(--fg-5b4632); margin-bottom:5px; }
+  .hint { font-weight:400; text-transform:none; letter-spacing:0; color:var(--fg-726348); font-size:.78rem; }
   .fld input[type=text], .fld input[type=url], .fld textarea, .fld select {
     width:100%; max-width:100%; box-sizing:border-box;
-    font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-size:.95rem; color:#241a12;
-    background:#fffdf8; border:1px solid #cdbfa0; border-radius:6px; padding:9px 11px; }
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-size:.95rem; color:var(--fg-241a12);
+    background:var(--bg-fffdf8); border:1px solid var(--bd-cdbfa0); border-radius:6px; padding:9px 11px; }
   .fld textarea { min-height:110px; line-height:1.4; }
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width:700px){ .row2 { grid-template-columns:1fr; } }
   .or { text-align:center; font-family:'Roboto',sans-serif; font-size:.78rem; letter-spacing:.08em;
-    text-transform:uppercase; color:#8a7a5c; margin:16px 0; }
+    text-transform:uppercase; color:var(--fg-8a7a5c); margin:16px 0; }
   .btn { font-family:'Roboto',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer;
     border:none; border-radius:7px; padding:9px 16px; font-size:.9rem; }
-  .btn-blue { background:#2f6fb8; color:#fff; }
-  .btn-ghost { background:#e8e0cc; color:#5b4632; border:1px solid #cdbfa0; }
-  .btn-pub { background:linear-gradient(180deg,#2f7d3e,#1c5429); color:#eafaee; font-size:1rem; padding:12px 22px; }
+  .btn-blue { background:var(--bg-2f6fb8); color:var(--fg-fff); }
+  .btn-ghost { background:var(--bg-e8e0cc); color:var(--fg-5b4632); border:1px solid var(--bd-cdbfa0); }
+  .btn-pub { background:linear-gradient(180deg,var(--bg-2f7d3e),var(--bg-1c5429)); color:var(--fg-eafaee); font-size:1rem; padding:12px 22px; }
   .btn:disabled { opacity:.5; cursor:not-allowed; }
   .mu-check { display:flex; align-items:flex-start; gap:9px; margin:8px 0; font-size:.92rem; line-height:1.35; cursor:pointer; }
   .mu-check input { margin-top:3px; flex:none; width:17px; height:17px; }
   .mu-check .hint { display:block; }
   .msg { margin-top:12px; padding:10px 13px; border-radius:8px; font-size:.9rem; line-height:1.45; display:none; }
-  .msg.ok  { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
-  .msg.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
-  .msg.work{ display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+  .msg.ok  { display:block; background:var(--bg-dff0e2); color:var(--fg-1c5429); border:1px solid var(--bd-9bcfa9); }
+  .msg.err { display:block; background:var(--bg-f6dede); color:var(--fg-9a0d12); border:1px solid var(--bd-d99); }
+  .msg.work{ display:block; background:var(--bg-e9eefb); color:var(--fg-234f74); border:1px solid var(--bd-aac0e6); }
   .msg a { color:inherit; font-weight:700; }
-  .mu-warn { background:#fbf1d8; border:1px solid #d9c68b; border-radius:8px; padding:10px 13px;
-    font-size:.86rem; color:#6b5223; margin-top:12px; }
+  .mu-warn { background:var(--bg-fbf1d8); border:1px solid var(--bd-d9c68b); border-radius:8px; padding:10px 13px;
+    font-size:.86rem; color:var(--fg-6b5223); margin-top:12px; }
   .mu-warn ul { margin:6px 0 0; padding-left:20px; }
   .mu-found { display:flex; gap:14px; align-items:flex-start; }
   .mu-found img { width:72px; height:72px; object-fit:contain; flex:none; border-radius:8px; }
   .mu-found .n { font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.3rem; line-height:1.1; }
-  .mu-found .a { font-size:.88rem; color:#6b5d49; margin-top:3px; }
+  .mu-found .a { font-size:.88rem; color:var(--fg-6b5d49); margin-top:3px; }
   .mu-tagbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 10px; }
   .mu-tagbar select { flex:1 1 200px; min-width:0; font-size:.92rem; padding:7px 9px;
-    border:1px solid #cdbfa0; border-radius:6px; background:#fffdf8; }
+    border:1px solid var(--bd-cdbfa0); border-radius:6px; background:var(--bg-fffdf8); }
   .mu-scroll { overflow-x:auto; }
   .mu-table { width:100%; border-collapse:collapse; font-size:.88rem; }
   .mu-table th { font-family:'Roboto',sans-serif; font-size:.74rem; letter-spacing:.05em;
-    text-transform:uppercase; color:#5b4632; text-align:left; padding:6px 7px; border-bottom:2px solid #cdbfa0; }
-  .mu-table td { padding:6px 7px; border-bottom:1px solid #e4d9bf; vertical-align:top; }
+    text-transform:uppercase; color:var(--fg-5b4632); text-align:left; padding:6px 7px; border-bottom:2px solid var(--bd-cdbfa0); }
+  .mu-table td { padding:6px 7px; border-bottom:1px solid var(--bd-e4d9bf); vertical-align:top; }
   .mu-table td.c { width:26px; }
   .mu-table select { font-size:.82rem; max-width:170px; }
-  .mu-team { display:block; font-family:'Roboto',sans-serif; font-size:.72rem; text-transform:capitalize; color:#7a6a4e; }
-  .mu-note { display:block; font-size:.75rem; color:#8a6a23; }
-  .mu-tags { font-size:.8rem; color:#1c5429; }
-  .mu-tags.none { color:#a08b63; font-style:italic; }
-  .mu-tog { font-family:'Roboto',sans-serif; font-size:.72rem; border:1px solid #cdbfa0; background:#fffdf8;
-    color:#5b4632; border-radius:20px; padding:2px 8px; margin-top:4px; cursor:pointer; }
-  .mu-tog.on { background:#2f7d3e; border-color:#2f7d3e; color:#fff; }
-  .mu-state-wait { color:#726348; }
-  .mu-state-work { color:#234f74; font-weight:700; }
-  .mu-state-ok { color:#1c5429; font-weight:700; }
-  .mu-state-err { color:#9A0D12; font-weight:700; }
+  .mu-team { display:block; font-family:'Roboto',sans-serif; font-size:.72rem; text-transform:capitalize; color:var(--fg-7a6a4e); }
+  .mu-note { display:block; font-size:.75rem; color:var(--fg-8a6a23); }
+  .mu-tags { font-size:.8rem; color:var(--fg-1c5429); }
+  .mu-tags.none { color:var(--fg-a08b63); font-style:italic; }
+  .mu-tog { font-family:'Roboto',sans-serif; font-size:.72rem; border:1px solid var(--bd-cdbfa0); background:var(--bg-fffdf8);
+    color:var(--fg-5b4632); border-radius:20px; padding:2px 8px; margin-top:4px; cursor:pointer; }
+  .mu-tog.on { background:var(--bg-2f7d3e); border-color:var(--bd-2f7d3e); color:var(--fg-fff); }
+  .mu-state-wait { color:var(--fg-726348); }
+  .mu-state-work { color:var(--fg-234f74); font-weight:700; }
+  .mu-state-ok { color:var(--fg-1c5429); font-weight:700; }
+  .mu-state-err { color:var(--fg-9a0d12); font-weight:700; }
   tr.off td:not(.c) { opacity:.5; }
 </style>
 </head>

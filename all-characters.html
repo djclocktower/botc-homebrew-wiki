@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script>try{if(localStorage.getItem("botc_theme")==="dark"&&!document.documentElement.hasAttribute("data-own-colours"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <script src="assets/data.js"></script>
 <script src="assets/viewport.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -178,7 +179,7 @@
 
       if (!list.length){
         ADOPT = false;
-        panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
+        panel.innerHTML = '<p style="text-align:center;color:var(--fg-ece1c8-a60);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
         return;
       }
       // Team sections, one grid, or author sections: CharFilters.sections()
@@ -434,7 +435,7 @@
           return;
         }
         PANEL.innerHTML =
-          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+          '<p style="text-align:center;color:var(--fg-e6a);padding:30px">Could not load character list.</p>';
       });
     }
     // While the list loads, the server's filter box is greyed out but not

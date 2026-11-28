@@ -381,3 +381,50 @@ html.redesign-on .collection-count { min-width: 0; }
   html.redesign-on .crumb .edit-link { margin-left: 3px; padding: 6px 7px; font-size: .7rem; letter-spacing: 0; }
   html.redesign-on .search-input { min-width: 130px; }
 }
+
+/* ── 7. Dark mode switch (site.js) ───────────────────────────────
+   Two controls for one setting: a square button in the bar where the bar is
+   wide enough to hold it (the same widths the hamburger is hidden at), and a
+   row at the end of the menu everywhere else. The bar looks the same in
+   both themes, so nothing here follows the colour table. */
+html.redesign-on .theme-toggle {
+  display: none; flex: 0 0 auto;
+  align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0; margin: 0;
+  background: rgba(26,12,30,.88);
+  border: 1px solid rgba(214,196,150,.35);
+  color: #eadcbb; cursor: pointer;
+  position: relative; z-index: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+html.redesign-on .theme-toggle:hover,
+html.redesign-on .theme-toggle:focus-visible {
+  background: rgba(214,196,150,.16);
+  border-color: rgba(214,196,150,.8);
+  color: #fff; outline: none;
+}
+@media (min-width: 1200px) {
+  html.redesign-on .theme-toggle { display: inline-flex; }
+}
+html.redesign-on .nav-dropdown .nav-theme {
+  order: 99;
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; margin: 0;
+  padding: 14px clamp(14px,4vw,40px);
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1rem; letter-spacing: .05em; text-align: left;
+  color: rgba(240,232,213,.82);
+  background: none; border: 0;
+  border-top: 1px solid rgba(214,196,150,.14);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html.redesign-on .nav-dropdown .nav-theme:hover,
+html.redesign-on .nav-dropdown .nav-theme:focus-visible {
+  background: rgba(214,196,150,.12);
+  color: #f8f0dd; outline: none;
+}
+@media (min-width: 1200px) {
+  html.redesign-on .nav-dropdown .nav-theme { display: none; }
+}
