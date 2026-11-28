@@ -1649,7 +1649,10 @@ kept, not a flat dark skin (2026-11).
   comment on it); dark swaps in `assets/parchment-night-v1.webp`, the same
   sheet recoloured by `migration/make-night-parchment.py` (a changed picture
   takes a new name: it is cached for a year). The page background keeps its
-  picture under a darkening layer. Both, the purple homepage button and the
+  picture under a darkening layer. The top bar's Community Created Content
+  badge swaps to the owner's night version (`assets/ccc-night-v1.webp`, from
+  `ccc-night.png`) through `content: url()` on the `<img>`, so no page's
+  markup changed. All of these, the purple homepage button and the
   light edge on logos drawn for parchment are the hand-written "Dark theme"
   block at the END of styles.css. Write dark-only rules there, with literal
   colours.

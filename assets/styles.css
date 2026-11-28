@@ -5057,3 +5057,9 @@ button.news-admin-edit:disabled { opacity: .5; cursor: default; }
   border-color: #a877bb;
   color: #f6ecfb;
 }
+/* The Community Created Content badge has a night version (the owner's art,
+   assets/ccc-night.png, drawn here from its 96px WebP). `content` swaps an
+   <img>'s picture from the stylesheet, so the badge's markup, hand-copied
+   into every page, did not change; a browser without it keeps the parchment
+   badge. Cached for a year: a changed picture takes a new name. */
+:root[data-theme="dark"] .topbar-badge { content: url('ccc-night-v1.webp'); }
