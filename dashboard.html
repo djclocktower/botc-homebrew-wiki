@@ -607,6 +607,23 @@
         </div>
         <div class="toast" id="dp-toast"></div>
       </section>
+      <section class="panel" id="draft-coll-panel">
+        <h3>Send a collection to drafts</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          The collection and its published characters go to drafts with one note, and each owner gets one message. Characters other members own stay up unless ticked below.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="dc-slug" placeholder="collection id or address">
+        </div>
+        <textarea class="adm-textarea" id="dc-reason" rows="3" maxlength="1000" style="margin-top:8px"
+          placeholder="What is wrong, and what would fix it? The creators read this word for word."></textarea>
+        <label class="note" style="display:flex;align-items:center;gap:.35em;margin-top:8px"><input type="checkbox" id="dc-others"> Also characters other members own</label>
+        <div class="act-filters" style="margin-top:8px">
+          <button type="button" class="small-btn alt" id="dc-go">Send to drafts</button>
+          <button type="button" class="small-btn" id="dc-undo">Publish it all again</button>
+        </div>
+        <div class="toast" id="dc-toast"></div>
+      </section>
       <section class="panel" id="rollback-panel">
         <h3>Page history &amp; rollback</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
@@ -2784,6 +2801,55 @@
         });
     });
 
+    /* ---- a collection and its characters to drafts (or back) ---- */
+    function plural(n, word){ return n + ' ' + word + (n === 1 ? '' : 's'); }
+    function draftCollection(action, btn){
+      var slug = $('dc-slug').value.trim();
+      var reason = $('dc-reason').value.trim();
+      if (!slug) { setToast('dc-toast', false, 'Which collection?'); return; }
+      if (action === 'draft' && reason.length < 5) { setToast('dc-toast', false, 'Say what is wrong with it. The creators read this.'); return; }
+      var body = { slug: slug, reason: reason, others: $('dc-others').checked, action: action };
+      btn.disabled = true;
+      postJSON('/api/admin/draft-collection', Object.assign({ dryRun: true }, body)).then(function(res){
+        var d = res.body || {};
+        if (!d.ok) { btn.disabled = false; setToast('dc-toast', false, d.error || 'Failed.'); return; }
+        var c = d.collection || {};
+        if (!c.moves && !d.characters) {
+          btn.disabled = false;
+          setToast('dc-toast', false, action === 'draft'
+            ? '\u201c' + c.name + '\u201d has nothing published to take down.'
+            : 'Nothing on \u201c' + c.name + '\u201d was taken down with this tool.' +
+              (d.incomplete && d.incomplete.length ? ' ' + plural(d.incomplete.length, 'character') + ' cannot go live yet.' : ''));
+          return;
+        }
+        var parts = [];
+        if (c.moves) parts.push('the collection');
+        if (d.characters) parts.push(plural(d.characters, 'character'));
+        var q = (action === 'draft' ? 'Send ' : 'Publish ') + parts.join(' and ') + ' of \u201c' + c.name + '\u201d' +
+          (action === 'draft' ? ' to drafts?' : ' again?');
+        if (action === 'draft' && d.held) q += '\n\n' + plural(d.held, 'character') + ' other members own will stay up.';
+        if (action === 'publish' && d.incomplete && d.incomplete.length) {
+          q += '\n\n' + plural(d.incomplete.length, 'character') + ' will stay drafts: they are missing what a page needs to go live.';
+        }
+        if (!confirm(q)) { btn.disabled = false; return; }
+        return postJSON('/api/admin/draft-collection', Object.assign({ dryRun: false }, body)).then(function(res){
+          btn.disabled = false;
+          var r = res.body || {};
+          if (!r.ok) { setToast('dc-toast', false, r.error || 'Failed.'); return; }
+          var msg = '\u201c' + c.name + '\u201d: ' + (r.collection.moves ? 'collection and ' : '') +
+            plural(r.characters, 'character') + (action === 'draft' ? ' sent to drafts' : ' published again');
+          if (action === 'draft') msg += r.notified ? ', ' + plural(r.notified, 'owner') + ' told why.' : '. Nobody had an account to tell.';
+          else msg += '.';
+          if (r.failed) msg += ' ' + plural(r.failed, 'character') + ' could not be written; run it again.';
+          setToast('dc-toast', !r.failed, msg);
+          if (action === 'draft') $('dc-reason').value = '';
+          loadActivity(true);
+        });
+      });
+    }
+    $('dc-go').addEventListener('click', function(){ draftCollection('draft', this); });
+    $('dc-undo').addEventListener('click', function(){ draftCollection('publish', this); });
+
     /* ---- news ---- */
     function loadNews(){
       getJSON('/api/news?drafts=1&limit=100').then(function(d){
@@ -3820,6 +3886,7 @@
 
       mount('rb-slug', pageOf('rb-type'), 'No page by that name.');
       mount('dp-slug', pageOf('dp-type'), 'No page by that name.');
+      mount('dc-slug', function(){ return feed('collection'); }, 'No collection by that name.');
       mount('cm-user', users, 'No account by that name.');
       mount('prot-slug', pageOf('prot-type'), 'No page by that name.');
       mount('curata-slug', pageOf('curata-type'), 'No page by that name.');

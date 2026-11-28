@@ -318,3 +318,66 @@ test('drafts: a creator page lists only drafts the viewer can open; /api/account
   assert.equal(c.ability, 'Does a thing.');
   assert.equal(c.data, undefined);
 });
+
+test('draft-collection: a set and its characters go down with one note, and come back exactly', async t => {
+  const f = await fixture(); t.after(() => f.finish()); await seed(f);
+  f.insert('collections', 'the-set', { id: 'the-set', displayName: 'The Set', include: ['mine', 'nobodys', 'theirs', 'unfinished', 'was-draft'] });
+  f.db.prepare('UPDATE collections SET owner_id=2 WHERE slug=?').run('the-set');
+  for (const [slug, owner, status, extra] of [
+    ['mine', 2, 'published', {}], ['nobodys', null, 'published', {}], ['theirs', 3, 'published', {}],
+    ['unfinished', 2, 'published', {}], ['was-draft', 2, 'draft', {}]
+  ]) {
+    f.insert('characters', slug, { name: slug, ...complete, ...extra }, status);
+    f.db.prepare('UPDATE characters SET owner_id=? WHERE slug=?').run(owner, slug);
+  }
+  const status = (table, slug) => f.db.prepare(`SELECT status FROM ${table} WHERE slug=?`).get(slug).status;
+
+  // A reason is required, and a member cannot reach it.
+  assert.equal((await f.request('/api/admin/draft-collection', post('admin', { slug: 'the-set', dryRun: false }))).status, 400);
+  assert.equal((await f.request('/api/admin/draft-collection', post('member', { slug: 'the-set', reason: 'Stolen art.' }))).status, 403);
+
+  // Dry run by default; the address works as well as the id.
+  let d = await json(await f.request('/api/admin/draft-collection', post('admin', { slug: '/collection/the-set', reason: 'Stolen art.' })));
+  assert.equal(d.dryRun, true);
+  assert.equal(d.collection.moves, true);
+  assert.equal(d.characters, 3);
+  assert.equal(d.held, 1);
+  assert.equal(d.already, 1);
+  assert.equal(status('collections', 'the-set'), 'published');
+
+  d = await json(await f.request('/api/admin/draft-collection', post('admin', { slug: 'the-set', reason: 'Stolen art.', dryRun: false })));
+  assert.equal(d.characters, 3);
+  assert.equal(d.failed, 0);
+  assert.equal(d.notified, 1);
+  assert.equal(status('collections', 'the-set'), 'draft');
+  for (const s of ['mine', 'nobodys', 'unfinished']) assert.equal(status('characters', s), 'draft', s);
+  assert.equal(status('characters', 'theirs'), 'published');
+  const note = JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='mine'").get().data)._draftNote;
+  assert.equal(note.reason, 'Stolen art.');
+  assert.deepEqual(note.set, { type: 'collection', slug: 'the-set' });
+  await Promise.all(f.background);
+  const dms = f.db.prepare('SELECT recipient_id, body FROM dms').all();
+  assert.equal(dms.length, 1);
+  assert.equal(dms[0].recipient_id, 2);
+  assert.match(dms[0].body, /collection “The Set” and 2 of your characters/);
+
+  // One page was broken meanwhile; it stays a draft. The page that was a
+  // draft before is not published by the undo.
+  const u = JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='unfinished'").get().data);
+  delete u.ability;
+  f.db.prepare("UPDATE characters SET data=? WHERE slug='unfinished'").run(JSON.stringify(u));
+  d = await json(await f.request('/api/admin/draft-collection', post('admin', { slug: 'the-set', action: 'publish', dryRun: false })));
+  assert.equal(d.characters, 2);
+  assert.equal(d.incomplete.length, 1);
+  assert.equal(status('collections', 'the-set'), 'published');
+  assert.equal(status('characters', 'mine'), 'published');
+  assert.equal(status('characters', 'nobodys'), 'published');
+  assert.equal(status('characters', 'unfinished'), 'draft');
+  assert.equal(status('characters', 'was-draft'), 'draft');
+  assert.equal(JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='mine'").get().data)._draftNote, undefined);
+
+  // With others ticked, the member's character goes too.
+  d = await json(await f.request('/api/admin/draft-collection', post('admin', { slug: 'the-set', reason: 'Again.', others: true })));
+  assert.equal(d.characters, 3);
+  assert.equal(d.held, 0);
+});

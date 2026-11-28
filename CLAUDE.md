@@ -4489,6 +4489,29 @@ This is the same act with the reason attached.
   moderation take-down is not lost among ordinary unpublishes) and it is in
   `FEED_CHANGING_ACTIONS`.
 
+### A whole collection at once (`/api/admin/draft-collection`)
+
+The one exception to "one page at a time": a collection is one piece of work,
+so one reason fits all of it. Dashboard card **"Send a collection to drafts"**.
+`{slug, reason, others?, dryRun}` (a dry run unless `dryRun: false`; `slug`
+may be the id, the PK or a pasted `/collection/` address).
+
+- The collection and its **published** characters go to drafts, each with the
+  same `_draftNote`, which also carries `set: {type: 'collection', slug}`.
+- **Whose characters**: the collection owner's, unowned ones and admin-owned
+  ones (the import's leftovers). A character another member owns stays up and
+  is counted as `held`, unless `others: true` — a collection can list
+  anybody's characters, and sitting on somebody else's set is not a fault.
+- **One DM per owner** (`notifyCollectionDrafted()`), not one per page.
+- **`action: 'publish'` is the undo**: it publishes the collection and the
+  drafts whose note names this collection, and nothing else, so a draft its
+  owner never published stays a draft. The publish bar holds (incomplete
+  pages are reported and stay drafts), and `markNewlyLive` is not called —
+  these pages were live before and must not land in Recently Added. Any
+  ordinary publish clears the note, so the marker cannot outlive the take-down.
+- The set's `/p/` pages need nothing: a page whose set is a draft is not
+  public (`wikiParentPublic()`).
+
 ## Account security
 
 The rules below each exist because of a specific hole. Keep them when changing
